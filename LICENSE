@@ -1,20 +1,57 @@
-Copyright (c) 2025 codewithcj
+Copyright (c) 2025–present codewithcj
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to use,
-copy, and share the Software for **personal, non-commercial purposes only**,
-including with friends and family, subject to the following conditions:
+copy, modify, and distribute the Software for **non-commercial purposes only**,
+subject to the following conditions:
 
-1. **Non-Commercial Use Only**  
-   The Software may not be used, either directly or indirectly, in any product, service, or project that is intended for or results in **financial gain or commercial advantage**, without the express written permission of the author.
+1. Non-Commercial Use Only  
+   The Software may not be used, directly or indirectly, in any product, service,
+   or project primarily intended for or resulting in commercial advantage or
+   monetary compensation, without prior written permission from the author.
+   Non-commercial use includes personal, educational, or nonprofit activities,
+   provided they do not generate revenue.
 
-2. **No Derivative Commercial Work**  
-   Any forks, modifications, or derivative works must also remain non-commercial unless explicitly authorized by the author.
+2. Modifications & Derivative Works  
+   You may modify the Software or create derivative works for non-commercial
+   purposes. Derivative works are any modified versions of the Software or new
+   works that incorporate substantial portions of it. All derivative works
+   must also be licensed under these same non-commercial terms unless
+   explicitly approved in writing by the author.
 
-3. **Attribution Required**  
-   You must retain this copyright notice in all copies or substantial portions of the Software.
+3. Distribution  
+   You may distribute the Software or derivative works for non-commercial
+   purposes, provided that all copies include this copyright notice and
+   license in their entirety.
 
-4. **No Warranty**  
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY.
+4. Attribution  
+   This copyright notice and license must be included in all copies or
+   substantial portions of the Software.
 
-For commercial use, licensing inquiries, or partnerships, please contact the author via GitHub at [https://github.com/codewithcj](https://github.com/codewithcj).
+5. No Warranty  
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL
+   THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM
+   THE USE OF THE SOFTWARE.
+
+6. Contributor Assignment  
+   By submitting any code, documentation, or other contributions (the
+   "Contribution") to this project, you hereby assign **all** right, title,
+   and interest in the Contribution to the original author (codewithcj). You
+   waive any claim of ownership or compensation for your Contribution, and
+   acknowledge that contributions do not grant the contributor any rights to
+   use the Software commercially.
+
+7. Termination  
+   This license terminates automatically if you breach any of its terms,
+   including using the Software for commercial purposes without permission.
+   Upon termination, you must cease all use and distribution of the Software
+   and destroy all copies in your possession.
+
+---
+
+For commercial use, licensing, or partnership inquiries, please contact the author:
+https://github.com/codewithcj
+
+> **Note:** “codewithcj” refers to the GitHub handle of the original author.
