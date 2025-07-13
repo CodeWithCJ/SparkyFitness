@@ -135,12 +135,12 @@ To get the SparkyFitness application running on your local machine, follow these
 
 ### ⚠️ Known Issues / Beta Features ⚠️
 
-The following features are currently in beta and may not have been thoroughly tested. Expect potential bugs or incomplete functionality:
+The following features are currently in beta and may not have been thoroughly tested. Expect potential bugs or incomplete functionality: I haven't tweaked these yet after Supabase to Postgre migration
 
 *   AI Chatbot
 *   Multi-user support
 *   Family & Friends access
-*   Apple Health Data integration
+
 
 This application is under heavy development. Things may not work as expected due to the Supabase to PostgreSQL migration. BREAKING CHANGES might be introduced until the application is stable.
 You might need to change Docker/environment variables for new releases. Therefore, auto-upgrades using Watchtower or similar apps are not recommended. Read release notes for any BREAKING CHANGES.
