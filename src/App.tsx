@@ -3,12 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { ChatbotVisibilityProvider } from "@/contexts/ChatbotVisibilityContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import AppContent from "@/components/AppContent";
 import DraggableChatbotButton from "@/components/DraggableChatbotButton";
 import AboutDialog from "@/components/AboutDialog";
 import NewReleaseDialog from "@/components/NewReleaseDialog";
 import AppSetup from '@/components/AppSetup';
 import axios from 'axios';
+import '@/i18n/config';
 
 const queryClient = new QueryClient();
 
@@ -39,21 +41,23 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider>
-        <ChatbotVisibilityProvider>
-          <AppSetup
-            setLatestRelease={setLatestRelease}
-            setShowNewReleaseDialog={setShowNewReleaseDialog}
-          />
-          <AppContent onShowAboutDialog={() => setShowAboutDialog(true)} />
-          <DraggableChatbotButton />
-          <AboutDialog isOpen={showAboutDialog} onClose={() => setShowAboutDialog(false)} version={appVersion} />
-          <NewReleaseDialog
-            isOpen={showNewReleaseDialog}
-            onClose={() => setShowNewReleaseDialog(false)}
-            releaseInfo={latestRelease}
-            onDismissForVersion={handleDismissRelease}
-          />
-        </ChatbotVisibilityProvider>
+        <LanguageProvider>
+          <ChatbotVisibilityProvider>
+            <AppSetup
+              setLatestRelease={setLatestRelease}
+              setShowNewReleaseDialog={setShowNewReleaseDialog}
+            />
+            <AppContent onShowAboutDialog={() => setShowAboutDialog(true)} />
+            <DraggableChatbotButton />
+            <AboutDialog isOpen={showAboutDialog} onClose={() => setShowAboutDialog(false)} version={appVersion} />
+            <NewReleaseDialog
+              isOpen={showNewReleaseDialog}
+              onClose={() => setShowNewReleaseDialog(false)}
+              releaseInfo={latestRelease}
+              onDismissForVersion={handleDismissRelease}
+            />
+          </ChatbotVisibilityProvider>
+        </LanguageProvider>
       </PreferencesProvider>
     </QueryClientProvider>
   );

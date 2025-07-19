@@ -1,0 +1,105 @@
+{
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успешно",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "add": "Добавить",
+    "search": "Поиск",
+    "close": "Закрыть",
+    "yes": "Да",
+    "no": "Нет",
+    "back": "Назад",
+    "next": "Далее",
+    "previous": "Предыдущий",
+    "submit": "Отправить",
+    "confirm": "Подтвердить"
+  },
+  "navigation": {
+    "diary": "Дневник",
+    "checkin": "Отметка",
+    "reports": "Отчёты",
+    "foods": "Продукты",
+    "exercises": "Упражнения",
+    "goals": "Цели",
+    "settings": "Настройки",
+    "admin": "Администратор",
+    "signOut": "Выйти"
+  },
+  "header": {
+    "welcome": "Добро пожаловать, {{name}}",
+    "appName": "SparkyFitness",
+    "language": "Язык"
+  },
+  "auth": {
+    "signIn": "Войти",
+    "signOut": "Выйти",
+    "signedOutSuccessfully": "Успешный выход из системы",
+    "failedToSignOut": "Не удалось выйти из системы",
+    "loadingAuthentication": "Загрузка аутентификации..."
+  },
+  "foodDiary": {
+    "title": "Дневник питания",
+    "breakfast": "Завтрак",
+    "lunch": "Обед",
+    "dinner": "Ужин",
+    "snacks": "Перекусы",
+    "addFood": "Добавить продукт",
+    "totalCalories": "Всего калорий",
+    "protein": "Белки",
+    "carbs": "Углеводы",
+    "fat": "Жиры"
+  },
+  "checkIn": {
+    "title": "Отметка",
+    "weight": "Вес",
+    "bodyMeasurements": "Измерения тела",
+    "steps": "Шаги",
+    "recordMeasurement": "Записать измерение"
+  },
+  "reports": {
+    "title": "Отчёты",
+    "analyticsReports": "Аналитические отчёты",
+    "progressTracking": "Отслеживание прогресса",
+    "nutritionTrends": "Тренды питания"
+  },
+  "goals": {
+    "title": "Цели",
+    "goalsManagement": "Управление целями",
+    "setGoals": "Установить цели",
+    "calorieGoal": "Цель по калориям",
+    "proteinGoal": "Цель по белкам",
+    "carbsGoal": "Цель по углеводам",
+    "fatGoal": "Цель по жирам",
+    "waterGoal": "Цель по воде"
+  },
+  "settings": {
+    "title": "Настройки",
+    "preferences": "Предпочтения",
+    "language": "Язык",
+    "theme": "Тема",
+    "units": "Единицы измерения",
+    "weightUnit": "Единица веса",
+    "measurementUnit": "Единица измерения",
+    "dateFormat": "Формат даты",
+    "about": "О программе"
+  },
+  "units": {
+    "kg": "кг",
+    "lbs": "фунты",
+    "cm": "см",
+    "inches": "дюймы",
+    "grams": "г",
+    "ounces": "унции"
+  },
+  "languages": {
+    "english": "English",
+    "russian": "Русский"
+  },
+  "footer": {
+    "version": "SparkyFitness v{{version}}"
+  }
+}
