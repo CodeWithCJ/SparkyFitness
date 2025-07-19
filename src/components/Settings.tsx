@@ -21,6 +21,7 @@ import AIServiceSettings from "./AIServiceSettings";
 import CustomCategoryManager from "./CustomCategoryManager";
 import ExternalProviderSettings from "./ExternalProviderSettings"; // Import ExternalProviderSettings
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
+import { useLanguage } from "@/contexts/LanguageContext"; // Import useLanguage
 import { parse } from "date-fns"; // Import parse for parsing user-entered date strings
 
 interface Profile {
@@ -62,6 +63,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     saveAllPreferences, // Add saveAllPreferences from context
     formatDate // Destructure formatDate
   } = usePreferences();
+  const { t, language, setLanguage } = useLanguage();
   const [profile, setProfile] = useState<Profile | null>(null);
   // Remove local preferences state as it's now managed by PreferencesContext
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
@@ -253,13 +255,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     try {
       await saveAllPreferences(); // Call the new function from context
       toast({
-        title: "Success",
+        title: t('common.success'),
         description: "Preferences updated successfully",
       });
     } catch (error: any) {
       console.error('Error updating preferences:', error);
       toast({
-        title: "Error",
+        title: t('common.error'),
         description: `Failed to update preferences: ${error.message}`,
         variant: "destructive",
       });
@@ -541,13 +543,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <SettingsIcon className="h-5 w-5" />
-            Preferences
+            {t('settings.preferences')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="date_format">Date Format</Label>
+              <Label htmlFor="date_format">{t('settings.dateFormat')}</Label>
               <Select
                 value={dateFormat}
                 onValueChange={setDateFormat}
@@ -565,7 +567,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               </Select>
             </div>
             <div>
-              <Label htmlFor="weight_unit">Weight Unit</Label>
+              <Label htmlFor="weight_unit">{t('settings.weightUnit')}</Label>
               <Select
                 value={weightUnit}
                 onValueChange={setWeightUnit}
@@ -580,7 +582,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               </Select>
             </div>
             <div>
-              <Label htmlFor="measurement_unit">Measurement Unit</Label>
+              <Label htmlFor="measurement_unit">{t('settings.measurementUnit')}</Label>
               <Select
                 value={measurementUnit}
                 onValueChange={setMeasurementUnit}
@@ -632,10 +634,25 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label htmlFor="language">{t('settings.language')}</Label>
+              <Select
+                value={language}
+                onValueChange={setLanguage}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">{t('languages.english')}</SelectItem>
+                  <SelectItem value="ru">{t('languages.russian')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <Button onClick={handlePreferencesUpdate} disabled={loading}>
             <Save className="h-4 w-4 mr-2" />
-            {loading ? 'Saving...' : 'Save Preferences'}
+            {loading ? t('common.loading') : t('common.save')}
           </Button>
          </CardContent>
        </Card>

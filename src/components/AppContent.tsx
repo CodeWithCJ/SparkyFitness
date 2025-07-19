@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ActiveUserProvider } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 import Index from '@/pages/Index';
 import NotFound from '@/pages/NotFound';
@@ -21,10 +22,11 @@ interface AppContentProps {
 const AppContent: React.FC<AppContentProps> = ({ onShowAboutDialog }) => {
   const { loggingLevel } = usePreferences();
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
 
   if (loading) {
     // Optionally, render a loading spinner or skeleton screen here
-    return <div>Loading authentication...</div>;
+    return <div>{t('auth.loadingAuthentication')}</div>;
   }
 
   return (

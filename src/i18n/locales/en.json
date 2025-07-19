@@ -1,0 +1,105 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "confirm": "Confirm"
+  },
+  "navigation": {
+    "diary": "Diary",
+    "checkin": "Check-In",
+    "reports": "Reports",
+    "foods": "Foods",
+    "exercises": "Exercises",
+    "goals": "Goals",
+    "settings": "Settings",
+    "admin": "Admin",
+    "signOut": "Sign Out"
+  },
+  "header": {
+    "welcome": "Welcome {{name}}",
+    "appName": "SparkyFitness",
+    "language": "Language"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "signedOutSuccessfully": "Signed out successfully",
+    "failedToSignOut": "Failed to sign out",
+    "loadingAuthentication": "Loading authentication..."
+  },
+  "foodDiary": {
+    "title": "Food Diary",
+    "breakfast": "Breakfast",
+    "lunch": "Lunch",
+    "dinner": "Dinner",
+    "snacks": "Snacks",
+    "addFood": "Add Food",
+    "totalCalories": "Total Calories",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "fat": "Fat"
+  },
+  "checkIn": {
+    "title": "Check-In",
+    "weight": "Weight",
+    "bodyMeasurements": "Body Measurements",
+    "steps": "Steps",
+    "recordMeasurement": "Record Measurement"
+  },
+  "reports": {
+    "title": "Reports",
+    "analyticsReports": "Analytics Reports",
+    "progressTracking": "Progress Tracking",
+    "nutritionTrends": "Nutrition Trends"
+  },
+  "goals": {
+    "title": "Goals",
+    "goalsManagement": "Goals Management",
+    "setGoals": "Set Goals",
+    "calorieGoal": "Calorie Goal",
+    "proteinGoal": "Protein Goal",
+    "carbsGoal": "Carbs Goal",
+    "fatGoal": "Fat Goal",
+    "waterGoal": "Water Goal"
+  },
+  "settings": {
+    "title": "Settings",
+    "preferences": "Preferences",
+    "language": "Language",
+    "theme": "Theme",
+    "units": "Units",
+    "weightUnit": "Weight Unit",
+    "measurementUnit": "Measurement Unit",
+    "dateFormat": "Date Format",
+    "about": "About"
+  },
+  "units": {
+    "kg": "kg",
+    "lbs": "lbs",
+    "cm": "cm",
+    "inches": "inches",
+    "grams": "g",
+    "ounces": "oz"
+  },
+  "languages": {
+    "english": "English",
+    "russian": "Русский"
+  },
+  "footer": {
+    "version": "SparkyFitness v{{version}}"
+  }
+}

@@ -51,6 +51,7 @@ interface PreferencesContextType {
   defaultFoodDataProviderId: string | null; // Add default food data provider ID
   timezone: string; // Add timezone
   foodDisplayLimit: number;
+  language: string; // Add language preference
   setWeightUnit: (unit: 'kg' | 'lbs') => void;
   setMeasurementUnit: (unit: 'cm' | 'inches') => void;
   setDateFormat: (format: string) => void;
@@ -59,6 +60,7 @@ interface PreferencesContextType {
   setDefaultFoodDataProviderId: (id: string | null) => void; // Add setter for default food data provider ID
   setTimezone: (timezone: string) => void; // Add setter for timezone
   setFoodDisplayLimit: (limit: number) => void;
+  setLanguage: (language: string) => void; // Add setter for language
   convertWeight: (value: number, from: 'kg' | 'lbs', to: 'kg' | 'lbs') => number;
   convertMeasurement: (value: number, from: 'cm' | 'inches', to: 'cm' | 'inches') => number;
   formatDate: (date: string | Date) => string;
@@ -88,6 +90,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [defaultFoodDataProviderId, setDefaultFoodDataProviderIdState] = useState<string | null>(null); // Default food data provider ID
   const [timezone, setTimezoneState] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone); // Add state for timezone
   const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10);
+  const [language, setLanguageState] = useState<string>('en'); // Add state for language
 
   // Log initial state
   useEffect(() => {
@@ -106,6 +109,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         const savedWeightUnit = localStorage.getItem('weightUnit') as 'kg' | 'lbs';
         const savedMeasurementUnit = localStorage.getItem('measurementUnit') as 'cm' | 'inches';
         const savedDateFormat = localStorage.getItem('dateFormat');
+        const savedLanguage = localStorage.getItem('i18nextLng') || 'en';
         // auto_clear_history and loggingLevel are not stored in localStorage, defaults to 'never' and 'INFO' respectively
 
         if (savedWeightUnit) {
@@ -119,6 +123,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (savedDateFormat) {
           setDateFormatState(savedDateFormat);
           debug(loggingLevel, "PreferencesProvider: Loaded dateFormat from localStorage:", savedDateFormat);
+        }
+        if (savedLanguage) {
+          setLanguageState(savedLanguage);
+          debug(loggingLevel, "PreferencesProvider: Loaded language from localStorage:", savedLanguage);
         }
       }
     }
@@ -144,6 +152,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setDefaultFoodDataProviderIdState(data.default_food_data_provider_id || null); // Set default food data provider ID state
         setTimezoneState(data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone); // Set timezone state
         setFoodDisplayLimitState(data.food_display_limit || 10);
+        setLanguageState(data.language || 'en'); // Set language state
         info(loggingLevel, 'PreferencesContext: Preferences states updated from database.');
       } else {
         info(loggingLevel, 'PreferencesContext: No preferences found, creating default preferences.');
@@ -174,6 +183,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         default_food_data_provider_id: null, // Default to no specific food data provider
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Add default timezone
         food_display_limit: 10,
+        language: 'en', // Add default language
       };
 
 
@@ -206,6 +216,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     default_food_data_provider_id: string | null; // Add default food data provider ID to updates type
     timezone: string; // Add timezone to updates type
     food_display_limit: number;
+    language: string; // Add language to updates type
   }>) => {
     debug(loggingLevel, "PreferencesProvider: Attempting to update preferences with:", updates);
     if (!user) {
@@ -222,6 +233,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (updates.date_format) {
         localStorage.setItem('dateFormat', updates.date_format);
         debug(loggingLevel, "PreferencesProvider: Saved dateFormat to localStorage:", updates.date_format);
+      }
+      if (updates.language) {
+        localStorage.setItem('i18nextLng', updates.language);
+        debug(loggingLevel, "PreferencesProvider: Saved language to localStorage:", updates.language);
       }
       // default_food_data_provider_id, logging_level and food_display_limit are not stored in localStorage
       return;
@@ -368,6 +383,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setFoodDisplayLimitState(limit);
   };
 
+  const setLanguage = (newLanguage: string) => {
+    info(loggingLevel, "PreferencesProvider: Setting language to:", newLanguage);
+    setLanguageState(newLanguage);
+  };
+
   const saveAllPreferences = async () => {
     info(loggingLevel, "PreferencesProvider: Saving all preferences to backend.");
     try {
@@ -380,6 +400,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         default_food_data_provider_id: defaultFoodDataProviderId,
         timezone: timezone,
         food_display_limit: foodDisplayLimit,
+        language: language,
       });
       info(loggingLevel, "PreferencesProvider: All preferences saved successfully.");
     } catch (err) {
@@ -398,6 +419,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       defaultFoodDataProviderId, // Expose defaultFoodDataProviderId
       timezone, // Expose timezone
       foodDisplayLimit,
+      language, // Expose language
       setWeightUnit,
       setMeasurementUnit,
       setDateFormat,
@@ -406,6 +428,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setDefaultFoodDataProviderId, // Expose setDefaultFoodDataProviderId
       setTimezone, // Expose setTimezone
       setFoodDisplayLimit,
+      setLanguage, // Expose setLanguage
       convertWeight,
       convertMeasurement,
       formatDate,
