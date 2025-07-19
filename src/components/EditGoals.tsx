@@ -12,7 +12,9 @@ import { GoalPreset } from '@/services/goalPresetService';
 import { getGoalPresets } from '@/services/goalPresetService';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ExpandedGoals } from '@/types/goals'; // Import from new types file
+import { ExpandedGoals } from '@/types/goals';
+import MealPercentageManager from './MealPercentageManager';
+import { Separator } from "@/components/ui/separator";
 
 
 interface EditGoalsProps {
@@ -46,7 +48,11 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
     target_exercise_duration_minutes: 0,
     protein_percentage: null,
     carbs_percentage: null,
-    fat_percentage: null
+    fat_percentage: null,
+    breakfast_percentage: 25,
+    lunch_percentage: 25,
+    dinner_percentage: 25,
+    snacks_percentage: 25
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -68,8 +74,13 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
       setLoading(true);
       
       const goalData = await loadGoals(selectedDate);
-      const cleanGoalValue = (value: number | null | undefined, defaultValue: number) =>
-        isNaN(value as number) || value === null || value === undefined ? defaultValue : value;
+      const cleanGoalValue = (value: any, defaultValue: number | null): number | null => {
+        if (value === null || value === undefined || value === '') {
+            return defaultValue;
+        }
+        const num = Number(value);
+        return isNaN(num) ? defaultValue : num;
+      };
 
       setGoals({
         calories: cleanGoalValue(goalData.calories, 2000),
@@ -94,7 +105,11 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
         target_exercise_duration_minutes: cleanGoalValue(goalData.target_exercise_duration_minutes, 0),
         protein_percentage: cleanGoalValue(goalData.protein_percentage, null),
         carbs_percentage: cleanGoalValue(goalData.carbs_percentage, null),
-        fat_percentage: cleanGoalValue(goalData.fat_percentage, null)
+        fat_percentage: cleanGoalValue(goalData.fat_percentage, null),
+        breakfast_percentage: cleanGoalValue(goalData.breakfast_percentage, 25),
+        lunch_percentage: cleanGoalValue(goalData.lunch_percentage, 25),
+        dinner_percentage: cleanGoalValue(goalData.dinner_percentage, 25),
+        snacks_percentage: cleanGoalValue(goalData.snacks_percentage, 25)
       });
 
       // Determine macro input type based on loaded data
@@ -204,6 +219,10 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
         protein_percentage: preset.protein_percentage,
         carbs_percentage: preset.carbs_percentage,
         fat_percentage: preset.fat_percentage,
+        breakfast_percentage: preset.breakfast_percentage,
+        lunch_percentage: preset.lunch_percentage,
+        dinner_percentage: preset.dinner_percentage,
+        snacks_percentage: preset.snacks_percentage,
       });
       // Set macro input type based on the applied preset
       if (preset.protein_percentage !== null && preset.carbs_percentage !== null && preset.fat_percentage !== null) {
@@ -229,7 +248,8 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
         cholesterol: 300, sodium: 2300, potassium: 3500, dietary_fiber: 25, sugars: 50,
         vitamin_a: 900, vitamin_c: 90, calcium: 1000, iron: 18,
         target_exercise_calories_burned: 0, target_exercise_duration_minutes: 0,
-        protein_percentage: null, carbs_percentage: null, fat_percentage: null
+        protein_percentage: null, carbs_percentage: null, fat_percentage: null,
+        breakfast_percentage: 25, lunch_percentage: 25, dinner_percentage: 25, snacks_percentage: 25
       });
       toast({
         title: "Success",
@@ -563,10 +583,31 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
                 </div>
               </div>
 
+            <Separator className="my-6" />
+
+            <h3 className="text-lg font-semibold mb-4">Meal Calorie Distribution</h3>
+            <MealPercentageManager
+              initialPercentages={{
+                breakfast: goals.breakfast_percentage,
+                lunch: goals.lunch_percentage,
+                dinner: goals.dinner_percentage,
+                snacks: goals.snacks_percentage,
+              }}
+              onPercentagesChange={(newPercentages) => {
+                setGoals(prevGoals => ({
+                  ...prevGoals,
+                  breakfast_percentage: newPercentages.breakfast,
+                  lunch_percentage: newPercentages.lunch,
+                  dinner_percentage: newPercentages.dinner,
+                  snacks_percentage: newPercentages.snacks,
+                }));
+              }}
+            />
+
             <Button
               onClick={handleSaveGoals}
               className="w-full"
-              disabled={saving}
+              disabled={saving || (goals.breakfast_percentage + goals.lunch_percentage + goals.dinner_percentage + goals.snacks_percentage) !== 100}
             >
               {saving ? 'Saving...' : 'Save Goals'}
             </Button>

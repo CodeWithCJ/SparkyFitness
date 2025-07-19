@@ -19,9 +19,10 @@ async function createGoalPreset(presetData) {
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron,
         target_exercise_calories_burned, target_exercise_duration_minutes,
-        protein_percentage, carbs_percentage, fat_percentage
+        protein_percentage, carbs_percentage, fat_percentage,
+        breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
       RETURNING *`,
       [
         presetData.user_id, presetData.preset_name, presetData.calories, presetData.protein, presetData.carbs, presetData.fat, presetData.water_goal,
@@ -29,7 +30,8 @@ async function createGoalPreset(presetData) {
         presetData.cholesterol, presetData.sodium, presetData.potassium, presetData.dietary_fiber, presetData.sugars,
         presetData.vitamin_a, presetData.vitamin_c, presetData.calcium, presetData.iron,
         presetData.target_exercise_calories_burned, presetData.target_exercise_duration_minutes,
-        presetData.protein_percentage, presetData.carbs_percentage, presetData.fat_percentage
+        presetData.protein_percentage, presetData.carbs_percentage, presetData.fat_percentage,
+        presetData.breakfast_percentage, presetData.lunch_percentage, presetData.dinner_percentage, presetData.snacks_percentage
       ]
     );
     return result.rows[0];
@@ -83,8 +85,9 @@ async function updateGoalPreset(presetId, presetData) {
         vitamin_a = $16, vitamin_c = $17, calcium = $18, iron = $19,
         target_exercise_calories_burned = $20, target_exercise_duration_minutes = $21,
         protein_percentage = $22, carbs_percentage = $23, fat_percentage = $24,
+        breakfast_percentage = $25, lunch_percentage = $26, dinner_percentage = $27, snacks_percentage = $28,
         updated_at = now()
-      WHERE id = $25 AND user_id = $26
+      WHERE id = $29 AND user_id = $30
       RETURNING *`,
       [
         presetData.preset_name, presetData.calories, presetData.protein, presetData.carbs, presetData.fat, presetData.water_goal,
@@ -93,6 +96,7 @@ async function updateGoalPreset(presetId, presetData) {
         presetData.vitamin_a, presetData.vitamin_c, presetData.calcium, presetData.iron,
         presetData.target_exercise_calories_burned, presetData.target_exercise_duration_minutes,
         presetData.protein_percentage, presetData.carbs_percentage, presetData.fat_percentage,
+        presetData.breakfast_percentage, presetData.lunch_percentage, presetData.dinner_percentage, presetData.snacks_percentage,
         presetId, presetData.user_id
       ]
     );

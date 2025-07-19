@@ -26,8 +26,9 @@ import {
   copyFoodEntries, // Import the new copy function
   copyFoodEntriesFromYesterday, // Import the new copy from yesterday function
 } from '@/services/foodDiaryService';
-import { Food, FoodVariant, FoodEntry } from '@/types/food';
-import { ExpandedGoals } from '@/types/goals'; // Import ExpandedGoals
+import { Food, FoodVariant } from '@/types/food';
+import { FoodEntry } from '@/types/food.d';
+import { ExpandedGoals } from '@/types/goals';
 
 
 import { Meal as MealType } from '@/types/meal'; // Import MealType from types/meal.d.ts
@@ -61,14 +62,7 @@ const FoodDiary = ({ selectedDate, onDateChange, refreshTrigger: externalRefresh
   const [date, setDate] = useState<Date>(new Date(selectedDate));
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
-  const [goals, setGoals] = useState<ExpandedGoals>({
-    calories: 2000, protein: 150, carbs: 250, fat: 67, water_goal: 8,
-    saturated_fat: 20, polyunsaturated_fat: 10, monounsaturated_fat: 25, trans_fat: 0,
-    cholesterol: 300, sodium: 2300, potassium: 3500, dietary_fiber: 25, sugars: 50,
-    vitamin_a: 900, vitamin_c: 90, calcium: 1000, iron: 18,
-    target_exercise_calories_burned: 0, target_exercise_duration_minutes: 0,
-    protein_percentage: null, carbs_percentage: null, fat_percentage: null
-  });
+  const [goals, setGoals] = useState<ExpandedGoals | null>(null);
   const [dayTotals, setDayTotals] = useState<MealTotals>({ calories: 0, protein: 0, carbs: 0, fat: 0, dietary_fiber: 0 });
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<string>("");
@@ -120,7 +114,7 @@ const FoodDiary = ({ selectedDate, onDateChange, refreshTrigger: externalRefresh
     try {
       const goalData = await loadGoals(currentUserId, selectedDate); // Use imported loadGoals
       info(loggingLevel, 'Goals loaded successfully:', goalData);
-      setGoals(goalData); // Directly set the ExpandedGoals object
+      setGoals(goalData);
     } catch (err) {
       error(loggingLevel, 'Error loading goals:', err);
     }
@@ -157,7 +151,7 @@ const FoodDiary = ({ selectedDate, onDateChange, refreshTrigger: externalRefresh
       name: mealNames[mealType as keyof typeof mealNames] || mealType,
       type: mealType,
       entries: entries,
-      targetCalories: goals.calories / 4 // Simple distribution
+      targetCalories: goals ? (goals.calories * (goals[`${mealType}_percentage`] || 0)) / 100 : 0
     };
   }, [foodEntries, goals, loggingLevel]);
 
@@ -370,77 +364,81 @@ const FoodDiary = ({ selectedDate, onDateChange, refreshTrigger: externalRefresh
       </Card>
 
       {/* Top Controls Section */}
-      <DiaryTopControls
-        selectedDate={selectedDate}
-        onDateChange={onDateChange}
-        dayTotals={dayTotals}
-        goals={goals}
-        onGoalsUpdated={handleDataChange}
-        refreshTrigger={externalRefreshTrigger}
-      />
+      {goals && (
+        <>
+          <DiaryTopControls
+            selectedDate={selectedDate}
+            onDateChange={onDateChange}
+            dayTotals={dayTotals}
+            goals={goals}
+            onGoalsUpdated={handleDataChange}
+            refreshTrigger={externalRefreshTrigger}
+          />
 
-      {/* Main Content - Meals and Exercise */}
-      <div className="space-y-6">
-        <MealCard
-          meal={{ ...getMealData("breakfast"), selectedDate: selectedDate }}
-          totals={getMealTotals("breakfast")}
-          onFoodSelect={handleFoodSelect}
-          onEditEntry={handleEditEntry}
-          onEditFood={handleEditFood}
-          onRemoveEntry={handleRemoveEntry}
-          getEntryNutrition={getEntryNutrition}
-          onMealAdded={handleDataChange}
-          onCopyClick={handleCopyClick} // Pass the new handler
-          onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
-          key={`breakfast-${externalRefreshTrigger}`}
-        />
-        <MealCard
-          meal={{ ...getMealData("lunch"), selectedDate: selectedDate }}
-          totals={getMealTotals("lunch")}
-          onFoodSelect={handleFoodSelect}
-          onEditEntry={handleEditEntry}
-          onEditFood={handleEditFood}
-          onRemoveEntry={handleRemoveEntry}
-          getEntryNutrition={getEntryNutrition}
-          onMealAdded={handleDataChange}
-          onCopyClick={handleCopyClick} // Pass the new handler
-          onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
-          key={`lunch-${externalRefreshTrigger}`}
-        />
-        <MealCard
-          meal={{ ...getMealData("dinner"), selectedDate: selectedDate }}
-          totals={getMealTotals("dinner")}
-          onFoodSelect={handleFoodSelect}
-          onEditEntry={handleEditEntry}
-          onEditFood={handleEditFood}
-          onRemoveEntry={handleRemoveEntry}
-          getEntryNutrition={getEntryNutrition}
-          onMealAdded={handleDataChange}
-          onCopyClick={handleCopyClick} // Pass the new handler
-          onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
-          key={`dinner-${externalRefreshTrigger}`}
-        />
-        <MealCard
-          meal={{ ...getMealData("snacks"), selectedDate: selectedDate }}
-          totals={getMealTotals("snacks")}
-          onFoodSelect={handleFoodSelect}
-          onEditEntry={handleEditEntry}
-          onEditFood={handleEditFood}
-          onRemoveEntry={handleRemoveEntry}
-          getEntryNutrition={getEntryNutrition}
-          onMealAdded={handleDataChange}
-          onCopyClick={handleCopyClick} // Pass the new handler
-          onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
-          key={`snacks-${externalRefreshTrigger}`}
-        />
+          {/* Main Content - Meals and Exercise */}
+          <div className="space-y-6">
+            <MealCard
+              meal={{ ...getMealData("breakfast"), selectedDate: selectedDate }}
+              totals={getMealTotals("breakfast")}
+              onFoodSelect={handleFoodSelect}
+              onEditEntry={handleEditEntry}
+              onEditFood={handleEditFood}
+              onRemoveEntry={handleRemoveEntry}
+              getEntryNutrition={getEntryNutrition}
+              onMealAdded={handleDataChange}
+              onCopyClick={handleCopyClick} // Pass the new handler
+              onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
+              key={`breakfast-${externalRefreshTrigger}`}
+            />
+            <MealCard
+              meal={{ ...getMealData("lunch"), selectedDate: selectedDate }}
+              totals={getMealTotals("lunch")}
+              onFoodSelect={handleFoodSelect}
+              onEditEntry={handleEditEntry}
+              onEditFood={handleEditFood}
+              onRemoveEntry={handleRemoveEntry}
+              getEntryNutrition={getEntryNutrition}
+              onMealAdded={handleDataChange}
+              onCopyClick={handleCopyClick} // Pass the new handler
+              onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
+              key={`lunch-${externalRefreshTrigger}`}
+            />
+            <MealCard
+              meal={{ ...getMealData("dinner"), selectedDate: selectedDate }}
+              totals={getMealTotals("dinner")}
+              onFoodSelect={handleFoodSelect}
+              onEditEntry={handleEditEntry}
+              onEditFood={handleEditFood}
+              onRemoveEntry={handleRemoveEntry}
+              getEntryNutrition={getEntryNutrition}
+              onMealAdded={handleDataChange}
+              onCopyClick={handleCopyClick} // Pass the new handler
+              onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
+              key={`dinner-${externalRefreshTrigger}`}
+            />
+            <MealCard
+              meal={{ ...getMealData("snacks"), selectedDate: selectedDate }}
+              totals={getMealTotals("snacks")}
+              onFoodSelect={handleFoodSelect}
+              onEditEntry={handleEditEntry}
+              onEditFood={handleEditFood}
+              onRemoveEntry={handleRemoveEntry}
+              getEntryNutrition={getEntryNutrition}
+              onMealAdded={handleDataChange}
+              onCopyClick={handleCopyClick} // Pass the new handler
+              onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
+              key={`snacks-${externalRefreshTrigger}`}
+            />
 
-        {/* Exercise Section */}
-        <ExerciseCard
-          selectedDate={selectedDate}
-          onExerciseChange={handleDataChange}
-          key={`exercise-${externalRefreshTrigger}`}
-        />
-      </div>
+            {/* Exercise Section */}
+            <ExerciseCard
+              selectedDate={selectedDate}
+              onExerciseChange={handleDataChange}
+              key={`exercise-${externalRefreshTrigger}`}
+            />
+          </div>
+        </>
+      )}
 
       {/* Food Unit Selector Dialog */}
       {selectedFood && (

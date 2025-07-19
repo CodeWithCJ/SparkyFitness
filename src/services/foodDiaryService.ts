@@ -1,9 +1,8 @@
 import { apiCall } from './api';
 
-import { Food, FoodVariant, FoodEntry } from '@/types/food';
+import { Food, FoodVariant } from '@/types/food';
+import { FoodEntry } from '@/types/food.d';
 import { ExpandedGoals } from '@/types/goals'; // Import ExpandedGoals
-
-export interface Goal extends ExpandedGoals {} // Extend the ExpandedGoals interface
 
 export const loadFoodEntries = async (userId: string, selectedDate: string): Promise<FoodEntry[]> => {
   const params = new URLSearchParams({
@@ -17,7 +16,7 @@ export const loadFoodEntries = async (userId: string, selectedDate: string): Pro
   return data || []; // Return empty array if 404 (no food entries found)
 };
 
-export const loadGoals = async (userId: string, selectedDate: string): Promise<Goal> => {
+export const loadGoals = async (userId: string, selectedDate: string): Promise<ExpandedGoals> => {
   const params = new URLSearchParams({
     date: selectedDate,
   });
@@ -50,6 +49,10 @@ export const loadGoals = async (userId: string, selectedDate: string): Promise<G
     protein_percentage: data?.protein_percentage ?? null,
     carbs_percentage: data?.carbs_percentage ?? null,
     fat_percentage: data?.fat_percentage ?? null,
+    breakfast_percentage: data?.breakfast_percentage || 25,
+    lunch_percentage: data?.lunch_percentage || 25,
+    dinner_percentage: data?.dinner_percentage || 25,
+    snacks_percentage: data?.snacks_percentage || 25,
   };
 };
 

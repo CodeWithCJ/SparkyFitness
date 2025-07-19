@@ -22,7 +22,8 @@ async function getUserGoals(targetUserId, selectedDate) {
         cholesterol: 300, sodium: 2300, potassium: 3500, dietary_fiber: 25, sugars: 50,
         vitamin_a: 900, vitamin_c: 90, calcium: 1000, iron: 18,
         target_exercise_calories_burned: 0, target_exercise_duration_minutes: 0,
-        protein_percentage: null, carbs_percentage: null, fat_percentage: null
+        protein_percentage: null, carbs_percentage: null, fat_percentage: null,
+        breakfast_percentage: 25, lunch_percentage: 25, dinner_percentage: 25, snacks_percentage: 25
       };
     }
 
@@ -63,7 +64,8 @@ async function getUserGoals(targetUserId, selectedDate) {
         cholesterol: 300, sodium: 2300, potassium: 3500, dietary_fiber: 25, sugars: 50,
         vitamin_a: 900, vitamin_c: 90, calcium: 1000, iron: 18,
         target_exercise_calories_burned: 0, target_exercise_duration_minutes: 0,
-        protein_percentage: null, carbs_percentage: null, fat_percentage: null
+        protein_percentage: null, carbs_percentage: null, fat_percentage: null,
+        breakfast_percentage: 25, lunch_percentage: 25, dinner_percentage: 25, snacks_percentage: 25
       };
     }
 
@@ -95,7 +97,8 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
       p_cholesterol, p_sodium, p_potassium, p_dietary_fiber, p_sugars,
       p_vitamin_a, p_vitamin_c, p_calcium, p_iron,
       p_target_exercise_calories_burned, p_target_exercise_duration_minutes,
-      p_protein_percentage, p_carbs_percentage, p_fat_percentage
+      p_protein_percentage, p_carbs_percentage, p_fat_percentage,
+      p_breakfast_percentage, p_lunch_percentage, p_dinner_percentage, p_snacks_percentage
     } = goalData;
 
     log('debug', `manageGoalTimeline - Received goalData: ${JSON.stringify(goalData)}`);
@@ -155,9 +158,13 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
         iron: cleanNumber(p_iron),
         target_exercise_calories_burned: cleanNumber(p_target_exercise_calories_burned),
         target_exercise_duration_minutes: cleanNumber(p_target_exercise_duration_minutes),
-        protein_percentage: cleanNumber(p_protein_percentage, true), // Allow null for percentages
-        carbs_percentage: cleanNumber(p_carbs_percentage, true),     // Allow null for percentages
-        fat_percentage: cleanNumber(p_fat_percentage, true)          // Allow null for percentages
+        protein_percentage: cleanNumber(p_protein_percentage, true),
+        carbs_percentage: cleanNumber(p_carbs_percentage, true),
+        fat_percentage: cleanNumber(p_fat_percentage, true),
+        breakfast_percentage: cleanNumber(p_breakfast_percentage, true),
+        lunch_percentage: cleanNumber(p_lunch_percentage, true),
+        dinner_percentage: cleanNumber(p_dinner_percentage, true),
+        snacks_percentage: cleanNumber(p_snacks_percentage, true)
       });
       return { message: 'Goal for past date updated successfully.' };
     }
@@ -196,7 +203,11 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
         target_exercise_duration_minutes: cleanNumber(p_target_exercise_duration_minutes),
         protein_percentage: cleanNumber(p_protein_percentage, true),
         carbs_percentage: cleanNumber(p_carbs_percentage, true),
-        fat_percentage: cleanNumber(p_fat_percentage, true)
+        fat_percentage: cleanNumber(p_fat_percentage, true),
+        breakfast_percentage: cleanNumber(p_breakfast_percentage, true),
+        lunch_percentage: cleanNumber(p_lunch_percentage, true),
+        dinner_percentage: cleanNumber(p_dinner_percentage, true),
+        snacks_percentage: cleanNumber(p_snacks_percentage, true)
       });
       currentDate.setDate(currentDate.getDate() + 1);
     }

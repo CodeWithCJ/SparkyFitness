@@ -19,32 +19,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import MealPercentageManager from './MealPercentageManager';
+import { Separator } from "@/components/ui/separator";
 
-interface ExpandedGoals {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  water_goal: number;
-  saturated_fat: number;
-  polyunsaturated_fat: number;
-  monounsaturated_fat: number;
-  trans_fat: number;
-  cholesterol: number;
-  sodium: number;
-  potassium: number;
-  dietary_fiber: number;
-  sugars: number;
-  vitamin_a: number;
-  vitamin_c: number;
-  calcium: number;
-  iron: number;
-  target_exercise_calories_burned: number;
-  target_exercise_duration_minutes: number;
-  protein_percentage: number | null;
-  carbs_percentage: number | null;
-  fat_percentage: number | null;
-}
+import { ExpandedGoals } from '@/types/goals';
 
 const GoalsSettings = () => {
   const { user } = useAuth();
@@ -55,7 +33,8 @@ const GoalsSettings = () => {
     cholesterol: 300, sodium: 2300, potassium: 3500, dietary_fiber: 25, sugars: 50,
     vitamin_a: 900, vitamin_c: 90, calcium: 1000, iron: 18,
     target_exercise_calories_burned: 0, target_exercise_duration_minutes: 0,
-    protein_percentage: null, carbs_percentage: null, fat_percentage: null
+    protein_percentage: null, carbs_percentage: null, fat_percentage: null,
+    breakfast_percentage: 25, lunch_percentage: 25, dinner_percentage: 25, snacks_percentage: 25
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -116,7 +95,11 @@ const GoalsSettings = () => {
           target_exercise_duration_minutes: goalData.target_exercise_duration_minutes || 0,
           protein_percentage: goalData.protein_percentage || null,
           carbs_percentage: goalData.carbs_percentage || null,
-          fat_percentage: goalData.fat_percentage || null
+          fat_percentage: goalData.fat_percentage || null,
+          breakfast_percentage: goalData.breakfast_percentage || 25,
+          lunch_percentage: goalData.lunch_percentage || 25,
+          dinner_percentage: goalData.dinner_percentage || 25,
+          snacks_percentage: goalData.snacks_percentage || 25
         });
       }
     } catch (error) {
@@ -148,7 +131,8 @@ const GoalsSettings = () => {
       cholesterol: 300, sodium: 2300, potassium: 3500, dietary_fiber: 25, sugars: 50,
       vitamin_a: 900, vitamin_c: 90, calcium: 1000, iron: 18,
       target_exercise_calories_burned: 0, target_exercise_duration_minutes: 0,
-      protein_percentage: null, carbs_percentage: null, fat_percentage: null
+      protein_percentage: null, carbs_percentage: null, fat_percentage: null,
+      breakfast_percentage: 25, lunch_percentage: 25, dinner_percentage: 25, snacks_percentage: 25
     });
     setPresetMacroInputType('grams'); // Default to grams for new preset
     setIsPresetDialogOpen(true);
@@ -355,7 +339,11 @@ const GoalsSettings = () => {
           p_target_exercise_duration_minutes: goals.target_exercise_duration_minutes,
           p_protein_percentage: goals.protein_percentage,
           p_carbs_percentage: goals.carbs_percentage,
-          p_fat_percentage: goals.fat_percentage
+          p_fat_percentage: goals.fat_percentage,
+          p_breakfast_percentage: goals.breakfast_percentage,
+          p_lunch_percentage: goals.lunch_percentage,
+          p_dinner_percentage: goals.dinner_percentage,
+          p_snacks_percentage: goals.snacks_percentage
         }),
       });
 
@@ -607,11 +595,32 @@ const GoalsSettings = () => {
             </div>
           </div>
 
+          <Separator className="my-6" />
+
+          <h3 className="text-lg font-semibold mb-4">Meal Calorie Distribution</h3>
+          <MealPercentageManager
+            initialPercentages={{
+              breakfast: goals.breakfast_percentage,
+              lunch: goals.lunch_percentage,
+              dinner: goals.dinner_percentage,
+              snacks: goals.snacks_percentage,
+            }}
+            onPercentagesChange={(newPercentages) => {
+              setGoals(prevGoals => ({
+                ...prevGoals,
+                breakfast_percentage: newPercentages.breakfast,
+                lunch_percentage: newPercentages.lunch,
+                dinner_percentage: newPercentages.dinner,
+                snacks_percentage: newPercentages.snacks,
+              }));
+            }}
+          />
+
           <div className="mt-6">
-            <Button 
-              onClick={saveGoals} 
-              className="w-full" 
-              disabled={saving}
+            <Button
+              onClick={saveGoals}
+              className="w-full"
+              disabled={saving || (goals.breakfast_percentage + goals.lunch_percentage + goals.dinner_percentage + goals.snacks_percentage) !== 100}
             >
               {saving ? 'Saving...' : 'Save Goals'}
             </Button>
@@ -858,11 +867,34 @@ const GoalsSettings = () => {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button onClick={handleSavePreset} disabled={presetSaving}>
-              {presetSaving ? 'Saving...' : 'Save Preset'}
-            </Button>
-          </DialogFooter>
+          {currentPreset && (
+            <>
+              <Separator className="my-6" />
+              <h3 className="text-lg font-semibold col-span-full mt-4">Meal Calorie Distribution</h3>
+              <MealPercentageManager
+                initialPercentages={{
+                  breakfast: currentPreset.breakfast_percentage,
+                  lunch: currentPreset.lunch_percentage,
+                  dinner: currentPreset.dinner_percentage,
+                  snacks: currentPreset.snacks_percentage,
+                }}
+                onPercentagesChange={(newPercentages) => {
+                  setCurrentPreset(prevPreset => prevPreset ? ({
+                    ...prevPreset,
+                    breakfast_percentage: newPercentages.breakfast,
+                    lunch_percentage: newPercentages.lunch,
+                    dinner_percentage: newPercentages.dinner,
+                    snacks_percentage: newPercentages.snacks,
+                  }) : null);
+                }}
+              />
+              <DialogFooter>
+                <Button onClick={handleSavePreset} disabled={presetSaving || (currentPreset.breakfast_percentage + currentPreset.lunch_percentage + currentPreset.dinner_percentage + currentPreset.snacks_percentage) !== 100}>
+                  {presetSaving ? 'Saving...' : 'Save Preset'}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

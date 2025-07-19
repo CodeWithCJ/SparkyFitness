@@ -27,6 +27,10 @@ export interface GoalPreset {
   protein_percentage: number | null;
   carbs_percentage: number | null;
   fat_percentage: number | null;
+  breakfast_percentage: number;
+  lunch_percentage: number;
+  dinner_percentage: number;
+  snacks_percentage: number;
 }
 
 export async function createGoalPreset(presetData: GoalPreset): Promise<GoalPreset> {
