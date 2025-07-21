@@ -8,7 +8,8 @@
     "dev": "vite",
     "start-backend": "node SparkyFitnessServer/SparkyFitnessServer.js",
     "build": "vite build",
-    "build:dev": "vite build --mode development",
+    "preview": "vite preview",
+    "start-backend": "cd SparkyFitnessServer && npm start"
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "jest"
