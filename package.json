@@ -6,12 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "start-backend": "node SparkyFitnessServer/SparkyFitnessServer.js",
     "build": "vite build",
     "preview": "vite preview",
-    "start-backend": "cd SparkyFitnessServer && npm start"
+    "start-backend": "cd SparkyFitnessServer && npm start",
     "lint": "eslint .",
-    "preview": "vite preview",
     "test": "jest"
   },
   "jest": {
