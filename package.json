@@ -66,7 +66,7 @@
     "next-themes": "^0.3.0",
     "node-cache": "^5.1.2",
     "openid-client": "^6.6.2",
-    "quagga": "^0.12.1",
+    "quagga": "^0.6.16",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",

@@ -1,4 +1,3 @@
-// https://github.com/nuxt-themes/docus/blob/main/nuxt.schema.ts
 export default defineAppConfig({
   docus: {
     title: 'SparkyFitness Docs',
@@ -20,6 +19,11 @@ export default defineAppConfig({
       showLinkIcon: true,
       exclude: [],
       fluid: true
-    }
+    },
+    // Add a home property to explicitly define the home page
+    home: {
+      title: 'Welcome to SparkyFitness',
+      description: 'Your comprehensive fitness tracking solution.'
+    },
   }
 })

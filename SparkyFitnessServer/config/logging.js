@@ -8,23 +8,25 @@ const LOG_LEVELS = {
 };
 
 // Get desired log level from environment variable, default to INFO
-const currentLogLevel = LOG_LEVELS[process.env.SPARKY_FITNESS_LOG_LEVEL?.trim().toUpperCase()] || LOG_LEVELS.INFO;
+const currentLogLevel =
+  LOG_LEVELS[process.env.SPARKY_FITNESS_LOG_LEVEL?.trim().toUpperCase()] ||
+  LOG_LEVELS.INFO;
 
 // Custom logger function
 function log(level, message, ...args) {
   if (LOG_LEVELS[level.toUpperCase()] >= currentLogLevel) {
     const timestamp = new Date().toISOString();
     switch (level.toUpperCase()) {
-      case 'DEBUG':
+      case "DEBUG":
         console.debug(`[${timestamp}] [DEBUG] ${message}`, ...args);
         break;
-      case 'INFO':
+      case "INFO":
         console.info(`[${timestamp}] [INFO] ${message}`, ...args);
         break;
-      case 'WARN':
+      case "WARN":
         console.warn(`[${timestamp}] [WARN] ${message}`, ...args);
         break;
-      case 'ERROR':
+      case "ERROR":
         console.error(`[${timestamp}] [ERROR] ${message}`, ...args);
         break;
       default:
@@ -35,5 +37,5 @@ function log(level, message, ...args) {
 
 module.exports = {
   log,
-  LOG_LEVELS
+  LOG_LEVELS,
 };

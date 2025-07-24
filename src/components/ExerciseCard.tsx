@@ -2,14 +2,27 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Plus, Dumbbell, Edit, Trash2, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import EditExerciseEntryDialog from "./EditExerciseEntryDialog";
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
-import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
+import { debug, info, warn, error } from "@/utils/logging"; // Import logging utility
 import { parseISO, addDays } from "date-fns"; // Import parseISO and addDays
 import { toast } from "@/hooks/use-toast"; // Import toast
 import {
@@ -17,8 +30,13 @@ import {
   addExerciseEntry,
   deleteExerciseEntry,
   ExerciseEntry,
-} from '@/services/exerciseEntryService';
-import { getSuggestedExercises, loadExercises, createExercise, Exercise } from "@/services/exerciseService";
+} from "@/services/exerciseEntryService";
+import {
+  getSuggestedExercises,
+  loadExercises,
+  createExercise,
+  Exercise,
+} from "@/services/exerciseService";
 import ExerciseSearch from "./ExerciseSearch"; // New import for ExerciseSearch
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"; // New import for tabs
 import { Label } from "./ui/label";
@@ -29,16 +47,27 @@ interface ExerciseCardProps {
   onExerciseChange: () => void;
 }
 
-const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => {
+const ExerciseCard = ({
+  selectedDate,
+  onExerciseChange,
+}: ExerciseCardProps) => {
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const { loggingLevel, itemDisplayLimit } = usePreferences(); // Get logging level
-  debug(loggingLevel, "ExerciseCard component rendered for date:", selectedDate);
+  debug(
+    loggingLevel,
+    "ExerciseCard component rendered for date:",
+    selectedDate,
+  );
   const [exerciseEntries, setExerciseEntries] = useState<ExerciseEntry[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const addDialogRef = useRef<HTMLDivElement>(null); // Declare addDialogRef
-  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
-  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null); // New state for selected exercise object
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(
+    null,
+  );
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(
+    null,
+  ); // New state for selected exercise object
   const [duration, setDuration] = useState<number>(30);
   const [notes, setNotes] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -46,7 +75,9 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
   const [searchTerm, setSearchTerm] = useState(""); // Keep for internal search
   const [searchLoading, setSearchLoading] = useState(false); // Keep for internal search
   const [filterType, setFilterType] = useState<string>("all"); // Keep for internal search
-  const [searchMode, setSearchMode] = useState<'internal' | 'external' | 'custom'>('internal'); // New state for search mode
+  const [searchMode, setSearchMode] = useState<
+    "internal" | "external" | "custom"
+  >("internal"); // New state for search mode
   const [recentExercises, setRecentExercises] = useState<Exercise[]>([]);
   const [topExercises, setTopExercises] = useState<Exercise[]>([]);
   const [searchResults, setSearchResults] = useState<Exercise[]>([]);
@@ -74,7 +105,10 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
   }, [currentUserId, selectedDate, loggingLevel]);
 
   useEffect(() => {
-    debug(loggingLevel, "currentUserId or selectedDate useEffect triggered.", { currentUserId, selectedDate });
+    debug(loggingLevel, "currentUserId or selectedDate useEffect triggered.", {
+      currentUserId,
+      selectedDate,
+    });
     if (currentUserId) {
       _fetchExerciseEntries();
     }
@@ -86,7 +120,11 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
 
       setSearchLoading(true);
       try {
-        const { exercises } = await loadExercises(currentUserId, searchTerm, filterType);
+        const { exercises } = await loadExercises(
+          currentUserId,
+          searchTerm,
+          filterType,
+        );
         setSearchResults(exercises);
         info(loggingLevel, "Internal exercise search results:", exercises);
       } catch (err) {
@@ -98,15 +136,23 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
 
     const fetchSuggested = async () => {
       if (currentUserId) {
-        debug(loggingLevel, "Fetching suggested exercises with limit:", itemDisplayLimit);
-        const { recentExercises, topExercises } = await getSuggestedExercises(itemDisplayLimit);
-        info(loggingLevel, "Suggested exercises data:", { recentExercises, topExercises });
+        debug(
+          loggingLevel,
+          "Fetching suggested exercises with limit:",
+          itemDisplayLimit,
+        );
+        const { recentExercises, topExercises } =
+          await getSuggestedExercises(itemDisplayLimit);
+        info(loggingLevel, "Suggested exercises data:", {
+          recentExercises,
+          topExercises,
+        });
         setRecentExercises(recentExercises);
         setTopExercises(topExercises);
       }
     };
 
-    if (isAddDialogOpen && searchMode === 'internal') {
+    if (isAddDialogOpen && searchMode === "internal") {
       if (searchTerm.trim() === "") {
         fetchSuggested();
         setSearchResults([]);
@@ -117,7 +163,15 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
         return () => clearTimeout(delayDebounceFn);
       }
     }
-  }, [searchTerm, filterType, currentUserId, loggingLevel, searchMode, isAddDialogOpen, itemDisplayLimit]);
+  }, [
+    searchTerm,
+    filterType,
+    currentUserId,
+    loggingLevel,
+    searchMode,
+    isAddDialogOpen,
+    itemDisplayLimit,
+  ]);
 
   const handleOpenAddDialog = () => {
     debug(loggingLevel, "Opening add exercise dialog.");
@@ -137,7 +191,8 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
     setNotes("");
   };
 
-  const handleExerciseSelect = (exercise: Exercise) => { // Modified to accept full Exercise object
+  const handleExerciseSelect = (exercise: Exercise) => {
+    // Modified to accept full Exercise object
     debug(loggingLevel, "Exercise selected in search:", exercise.id);
     setSelectedExerciseId(exercise.id);
     setSelectedExercise(exercise); // Store the full exercise object
@@ -177,7 +232,8 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
 
   const handleAddToDiary = async () => {
     debug(loggingLevel, "Handling add to diary.");
-    if (!selectedExerciseId || !selectedExercise) { // Check for selectedExercise object
+    if (!selectedExerciseId || !selectedExercise) {
+      // Check for selectedExercise object
       warn(loggingLevel, "Submit called with no exercise selected.");
       toast({
         title: "Error",
@@ -258,7 +314,10 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
   };
 
   const handleDataChange = () => {
-    debug(loggingLevel, "Handling data change, fetching entries and triggering parent change.");
+    debug(
+      loggingLevel,
+      "Handling data change, fetching entries and triggering parent change.",
+    );
     _fetchExerciseEntries(); // Call the memoized local function
     onExerciseChange();
   };
@@ -269,13 +328,16 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
   }
   debug(loggingLevel, "ExerciseCard finished loading.");
 
-  const totalExerciseCaloriesBurned = exerciseEntries.reduce((sum, entry) => sum + Number(entry.calories_burned), 0);
+  const totalExerciseCaloriesBurned = exerciseEntries.reduce(
+    (sum, entry) => sum + Number(entry.calories_burned),
+    0,
+  );
 
   return (
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Exercise</CardTitle>
+          <CardTitle className="dark:text-slate-300">Exercise</CardTitle>
           <Button size="default" onClick={handleOpenAddDialog}>
             <Plus className="w-4 h-4 mr-1" />
             <Dumbbell className="w-4 h-4" />
@@ -284,17 +346,25 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
       </CardHeader>
       <CardContent>
         {exerciseEntries.length === 0 ? (
-          <p>No exercise entries for this day.</p>
+          <p className="dark:text-slate-300">
+            No exercise entries for this day.
+          </p>
         ) : (
           <div className="space-y-4">
             {exerciseEntries.map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between p-4 bg-gray-100 rounded-md">
+              <div
+                key={entry.id}
+                className="flex items-center justify-between p-4 bg-gray-100 rounded-md"
+              >
                 <div className="flex items-center">
                   <Dumbbell className="w-5 h-5 mr-2" />
                   <div>
-                    <span className="font-medium">{entry.exercises?.name || 'Unknown Exercise'}</span>
+                    <span className="font-medium">
+                      {entry.exercises?.name || "Unknown Exercise"}
+                    </span>
                     <div className="text-sm text-gray-500">
-                      {entry.exercises?.name === "Active Calories (Apple Health)"
+                      {entry.exercises?.name ===
+                      "Active Calories (Apple Health)"
                         ? `${Math.round(entry.calories_burned)} active calories`
                         : `${entry.duration_minutes} minutes • ${Math.round(entry.calories_burned)} calories`}
                     </div>
@@ -314,13 +384,15 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
                   </Button>
                   {entry.exercises?.user_id === currentUserId && (
                     <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEditExerciseDatabase(entry.exercise_id)}
-                    className="h-8 w-8"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </Button>
+                      variant="ghost"
+                      size="icon"
+                      onClick={() =>
+                        handleEditExerciseDatabase(entry.exercise_id)
+                      }
+                      className="h-8 w-8"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
                   )}
                   <Button
                     variant="ghost"
@@ -337,7 +409,9 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
               <span className="font-semibold">Exercise Total:</span>
               <div className="grid grid-cols-1 gap-2 sm:gap-4 text-xs sm:text-sm">
                 <div className="text-center">
-                  <div className="font-bold text-gray-900 dark:text-gray-100">{Math.round(totalExerciseCaloriesBurned)}</div>
+                  <div className="font-bold text-gray-900 dark:text-gray-100">
+                    {Math.round(totalExerciseCaloriesBurned)}
+                  </div>
                   <div className="text-xs text-gray-500">cal</div>
                 </div>
               </div>
@@ -354,7 +428,12 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
                 Add a new exercise entry for the selected date.
               </DialogDescription>
             </DialogHeader>
-            <Tabs value={searchMode} onValueChange={(value) => setSearchMode(value as 'internal' | 'external' | 'custom')}>
+            <Tabs
+              value={searchMode}
+              onValueChange={(value) =>
+                setSearchMode(value as "internal" | "external" | "custom")
+              }
+            >
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="internal">My Exercises</TabsTrigger>
                 <TabsTrigger value="external">Online</TabsTrigger>
@@ -367,15 +446,26 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
                     placeholder="Search your exercises..."
                     value={searchTerm}
                     onChange={(e) => {
-                      debug(loggingLevel, "Exercise search term changed:", e.target.value);
+                      debug(
+                        loggingLevel,
+                        "Exercise search term changed:",
+                        e.target.value,
+                      );
                       setSearchTerm(e.target.value);
                     }}
                     className="mb-2"
                   />
-                  <Select value={filterType} onValueChange={(value) => {
-                    debug(loggingLevel, "Exercise filter type changed:", value);
-                    setFilterType(value);
-                  }}>
+                  <Select
+                    value={filterType}
+                    onValueChange={(value) => {
+                      debug(
+                        loggingLevel,
+                        "Exercise filter type changed:",
+                        value,
+                      );
+                      setFilterType(value);
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Filter exercises" />
                     </SelectTrigger>
@@ -395,12 +485,20 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
                     <>
                       {recentExercises.length > 0 && (
                         <div className="mb-4">
-                          <h3 className="text-lg font-semibold mb-2">Recent Exercises</h3>
+                          <h3 className="text-lg font-semibold mb-2">
+                            Recent Exercises
+                          </h3>
                           {recentExercises.map((exercise) => (
-                            <Card key={exercise.id} className="mb-2 cursor-pointer" onClick={() => handleExerciseSelect(exercise)}>
+                            <Card
+                              key={exercise.id}
+                              className="mb-2 cursor-pointer"
+                              onClick={() => handleExerciseSelect(exercise)}
+                            >
                               <CardContent className="p-3">
                                 <p className="font-semibold">{exercise.name}</p>
-                                <p className="text-sm text-gray-500">{exercise.category}</p>
+                                <p className="text-sm text-gray-500">
+                                  {exercise.category}
+                                </p>
                               </CardContent>
                             </Card>
                           ))}
@@ -408,20 +506,31 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
                       )}
                       {topExercises.length > 0 && (
                         <div>
-                          <h3 className="text-lg font-semibold mb-2">Top Exercises</h3>
+                          <h3 className="text-lg font-semibold mb-2">
+                            Top Exercises
+                          </h3>
                           {topExercises.map((exercise) => (
-                            <Card key={exercise.id} className="mb-2 cursor-pointer" onClick={() => handleExerciseSelect(exercise)}>
+                            <Card
+                              key={exercise.id}
+                              className="mb-2 cursor-pointer"
+                              onClick={() => handleExerciseSelect(exercise)}
+                            >
                               <CardContent className="p-3">
                                 <p className="font-semibold">{exercise.name}</p>
-                                <p className="text-sm text-gray-500">{exercise.category}</p>
+                                <p className="text-sm text-gray-500">
+                                  {exercise.category}
+                                </p>
                               </CardContent>
                             </Card>
                           ))}
                         </div>
                       )}
-                      {topExercises.length === 0 && recentExercises.length === 0 && (
-                        <div className="text-center text-gray-500">No recent or top exercises found.</div>
-                      )}
+                      {topExercises.length === 0 &&
+                        recentExercises.length === 0 && (
+                          <div className="text-center text-gray-500">
+                            No recent or top exercises found.
+                          </div>
+                        )}
                     </>
                   ) : (
                     <>
@@ -429,30 +538,43 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
                         <div
                           key={exercise.id}
                           className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer ${
-                            selectedExerciseId === exercise.id ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/90'
+                            selectedExerciseId === exercise.id
+                              ? "bg-accent text-accent-foreground"
+                              : "hover:bg-accent/90"
                           }`}
                           onClick={() => handleExerciseSelect(exercise)}
                         >
                           <div>
                             <div className="font-medium">{exercise.name}</div>
                             <div className="text-sm text-gray-500">
-                              {exercise.category} • {exercise.calories_per_hour} cal/hour
+                              {exercise.category} • {exercise.calories_per_hour}{" "}
+                              cal/hour
                             </div>
                             {exercise.description && (
-                              <div className="text-xs text-gray-400">{exercise.description}</div>
+                              <div className="text-xs text-gray-400">
+                                {exercise.description}
+                              </div>
                             )}
                           </div>
                         </div>
                       ))}
-                      {searchTerm && !searchLoading && searchResults.length === 0 && (
-                        <div className="text-center text-gray-500 mb-4">No exercises found</div>
-                      )}
+                      {searchTerm &&
+                        !searchLoading &&
+                        searchResults.length === 0 && (
+                          <div className="text-center text-gray-500 mb-4">
+                            No exercises found
+                          </div>
+                        )}
                     </>
                   )}
                 </div>
               </TabsContent>
               <TabsContent value="external" className="mt-4 space-y-4">
-                <ExerciseSearch onExerciseSelect={handleExerciseSelect} showInternalTab={false} /> {/* Now expects Exercise object */}
+                <ExerciseSearch
+                  onExerciseSelect={handleExerciseSelect}
+                  showInternalTab={false}
+                />{" "}
+                {/* Now expects Exercise object */}
               </TabsContent>
               <TabsContent value="custom">
                 <div className="grid gap-4 py-4">
@@ -471,7 +593,10 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
                     <Label htmlFor="category" className="text-right">
                       Category
                     </Label>
-                    <Select onValueChange={setNewExerciseCategory} defaultValue={newExerciseCategory}>
+                    <Select
+                      onValueChange={setNewExerciseCategory}
+                      defaultValue={newExerciseCategory}
+                    >
                       <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="Select a category" />
                       </SelectTrigger>
@@ -491,7 +616,9 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
                       id="calories"
                       type="number"
                       value={newExerciseCalories.toString()}
-                      onChange={(e) => setNewExerciseCalories(Number(e.target.value))}
+                      onChange={(e) =>
+                        setNewExerciseCalories(Number(e.target.value))
+                      }
                       className="col-span-3"
                     />
                   </div>
@@ -502,7 +629,9 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
                     <Textarea
                       id="description"
                       value={newExerciseDescription}
-                      onChange={(e) => setNewExerciseDescription(e.target.value)}
+                      onChange={(e) =>
+                        setNewExerciseDescription(e.target.value)
+                      }
                       className="col-span-3"
                     />
                   </div>
@@ -523,7 +652,10 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
               </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
-              <label htmlFor="duration" className="block text-gray-700 text-sm font-bold mb-2">
+              <label
+                htmlFor="duration"
+                className="block text-gray-700 text-sm font-bold mb-2"
+              >
                 Duration (minutes):
               </label>
               <Input
@@ -531,13 +663,20 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
                 id="duration"
                 value={duration}
                 onChange={(e) => {
-                  debug(loggingLevel, "Exercise duration changed:", e.target.value);
+                  debug(
+                    loggingLevel,
+                    "Exercise duration changed:",
+                    e.target.value,
+                  );
                   setDuration(Number(e.target.value));
                 }}
               />
             </div>
             <div className="mt-4">
-              <label htmlFor="notes" className="block text-gray-700 text-sm font-bold mb-2">
+              <label
+                htmlFor="notes"
+                className="block text-gray-700 text-sm font-bold mb-2"
+              >
                 Notes:
               </label>
               <textarea
@@ -545,19 +684,24 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
                 className="shadow appearance-none border rounded w-full py-2 px-3 bg-background text-foreground leading-tight focus:outline-none focus:shadow-outline"
                 value={notes}
                 onChange={(e) => {
-                  debug(loggingLevel, "Exercise notes changed:", e.target.value);
+                  debug(
+                    loggingLevel,
+                    "Exercise notes changed:",
+                    e.target.value,
+                  );
                   setNotes(e.target.value);
                 }}
               />
             </div>
             <div className="items-center px-4 py-3">
-              <Button
-                size="default"
-                onClick={handleAddToDiary}
-              >
+              <Button size="default" onClick={handleAddToDiary}>
                 Add to Diary
               </Button>
-              <Button variant="ghost" className="mt-2 px-4 py-2 text-gray-500 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300" onClick={() => setShowDurationDialog(false)}>
+              <Button
+                variant="ghost"
+                className="mt-2 px-4 py-2 text-gray-500 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                onClick={() => setShowDurationDialog(false)}
+              >
                 Cancel
               </Button>
             </div>
@@ -570,7 +714,11 @@ const ExerciseCard = ({ selectedDate, onExerciseChange }: ExerciseCardProps) => 
             entry={editingEntry}
             open={!!editingEntry}
             onOpenChange={(open) => {
-              debug(loggingLevel, "Edit exercise entry dialog open state changed:", open);
+              debug(
+                loggingLevel,
+                "Edit exercise entry dialog open state changed:",
+                open,
+              );
               if (!open) {
                 setEditingEntry(null);
               }

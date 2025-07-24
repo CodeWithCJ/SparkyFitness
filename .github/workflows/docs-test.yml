@@ -1,0 +1,25 @@
+# https://github.com/actions/deploy-pages#usage
+name: Build docs to test they work
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs-deploy.yml'
+      - '.github/workflows/docs-test.yml'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: corepack enable
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      # Pick your own package manager and build script
+      - run: |
+          cd docs
+          npm install
+          NUXT_APP_BASE_URL=/SparkyFitness/ npx nuxt build --preset github_pages

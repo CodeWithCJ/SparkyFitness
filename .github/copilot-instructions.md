@@ -31,10 +31,28 @@ npm run start-backend
 ### Key Configuration Files
 - **Vite config** (`vite.config.ts`): API proxy setup (`/api` → `localhost:3010`)
 - **Environment**: Root `.env` file (loaded by backend at `path.resolve(__dirname, '../.env')`)
-- **Docker**: `docker/` directory contains all Docker-related files
-  - `docker-compose.dev.yml` - Local development builds
+- **Docker**: `docker/` directory contains organized Docker configuration
+  - `docker-compose.dev.yml` - Local development builds with volume mounts
   - `docker-compose.prod.yml` - Production DockerHub images
-  - `docker-helper.sh` - Management script for Docker operations
+  - `docker-helper.sh` - Comprehensive management script with help system
+  - `nginx.conf.template` - Parameterized nginx configuration with envsubst
+  - `.env.example` - Template for environment variables
+
+### Docker Helper Script
+The `docker-helper.sh` script provides easy management:
+```bash
+# Show all available commands
+./docker/docker-helper.sh help
+
+# Development environment
+./docker/docker-helper.sh dev up     # Start all services
+./docker/docker-helper.sh dev logs   # View logs
+./docker/docker-helper.sh dev clean  # Clean volumes and images
+
+# Production environment  
+./docker/docker-helper.sh prod up    # Start production services
+./docker/docker-helper.sh prod down  # Stop and remove containers
+```
 
 ## Critical Architecture Patterns
 
@@ -153,6 +171,24 @@ try {
 
 ## Key Files for Understanding
 - **Server entry**: `SparkyFitnessServer/SparkyFitnessServer.js` (route registration, middleware setup)
-- **Database schema**: `docs/content/database-schema.md` (comprehensive table documentation)
-- **App overview**: `docs/content/app-overview.md` (feature documentation)
 - **Frontend entry**: `src/App.tsx` (context providers, query client setup)
+- **Documentation site**: `docs/` - Comprehensive Nuxt Content documentation (https://codewithcj.github.io/SparkyFitness)
+
+## Documentation Structure
+
+### Developer Documentation
+The developer documentation has been consolidated into focused guides at `docs/content/3.developer/`:
+
+1. **`1.getting-started.md`** - Complete setup, installation, and quick start guide
+2. **`2.architecture.md`** - System architecture, patterns, and project structure  
+3. **`3.contributing.md`** - Development workflow, guidelines, and PR process
+4. **`4.database.md`** - Database schema, migrations, and operations
+5. **`5.api-reference.md`** - OpenAPI specification and endpoint documentation
+6. **`6.troubleshooting.md`** - Comprehensive debugging guide and common solutions
+
+### Documentation Site Features
+- **Live site**: https://codewithcj.github.io/SparkyFitness hosted on GitHub Pages
+- **Technology**: Nuxt Content + Docus theme for optimal developer experience
+- **Navigation**: Auto-generated navigation with numerical ordering
+- **Search**: Full-text search across all documentation
+- **Mobile-friendly**: Responsive design for all devices
