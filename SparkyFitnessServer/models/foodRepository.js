@@ -38,10 +38,10 @@ async function searchFoods(name, userId, exactMatch, broadMatch, checkCustom) {
     let paramIndex = 1;
  
     if (exactMatch) {
-      query += `f.name ILIKE $${paramIndex++} AND f.user_id = $${paramIndex++}`;
+      query += `CONCAT(f.brand, ' ', f.name) ILIKE $${paramIndex++} AND f.user_id = $${paramIndex++}`;
       queryParams.push(name, userId);
     } else if (broadMatch) {
-      query += `f.name ILIKE $${paramIndex++} AND (f.user_id = $${paramIndex++} OR f.is_custom = FALSE)`;
+      query += `CONCAT(f.brand, ' ', f.name) ILIKE $${paramIndex++} AND (f.user_id = $${paramIndex++} OR f.is_custom = FALSE)`;
       queryParams.push(`%${name}%`, userId);
     } else if (checkCustom) {
       query += `f.name = $${paramIndex++} AND f.user_id = $${paramIndex++}`;
@@ -230,7 +230,7 @@ async function getFoodsWithPagination(searchTerm, foodFilter, authenticatedUserI
     let paramIndex = 1;
 
     if (searchTerm) {
-      whereClauses.push(`name ILIKE $${paramIndex}`);
+      whereClauses.push(`CONCAT(brand, ' ', name) ILIKE $${paramIndex}`);
       queryParams.push(`%${searchTerm}%`);
       paramIndex++;
     }
@@ -317,7 +317,7 @@ async function countFoods(searchTerm, foodFilter, authenticatedUserId) {
     let paramIndex = 1;
 
     if (searchTerm) {
-      whereClauses.push(`name ILIKE $${paramIndex}`);
+      whereClauses.push(`CONCAT(brand, ' ', name) ILIKE $${paramIndex}`);
       countQueryParams.push(`%${searchTerm}%`);
       paramIndex++;
     }
