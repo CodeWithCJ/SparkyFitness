@@ -1,5 +1,13 @@
 # Use an official Python runtime as a parent image
-FROM python:3.10-slim-buster
+# FROM python:3.13.7-alpine3.22
+FROM python:3.13.7-slim-trixie
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl openssl \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-ca-certificates
+
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 # Set the working directory in the container
 WORKDIR /app
@@ -16,5 +24,6 @@ COPY . .
 # Expose the port that FastAPI will run on
 EXPOSE 8000
 
+USER daemon
 # Run the FastAPI application using Uvicorn
 CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
