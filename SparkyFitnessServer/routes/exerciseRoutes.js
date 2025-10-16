@@ -270,7 +270,7 @@ router.put('/:id', authenticateToken, authorizeAccess('exercise_list'), upload.a
 
     const updatedExercise = await exerciseService.updateExercise(req.userId, id, {
       ...exerciseData,
-      images: allImages,
+      ...((allImages.length > 0 || !!exerciseData.images) ? { images: allImages } : { }),
     });
     res.status(200).json(updatedExercise);
   } catch (error) {

@@ -136,7 +136,7 @@ const FoodDatabaseManager: React.FC = () => {
     }
   };
 
-  const togglePublicSharing = async (foodId: string, currentState: boolean) => {
+  const handleShareFood = async (foodId: string, currentState: boolean) => {
     try {
       await togglePublicSharing(foodId, currentState);
 
@@ -487,7 +487,7 @@ const FoodDatabaseManager: React.FC = () => {
                             size="sm"
                             variant="ghost"
                             onClick={() =>
-                              togglePublicSharing(
+                              handleShareFood(
                                 food.id,
                                 food.shared_with_public || false,
                               )

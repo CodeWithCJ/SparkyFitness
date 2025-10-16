@@ -149,9 +149,12 @@ export const deleteExercise = async (id: string, userId: string): Promise<void> 
 };
 
 export const updateExerciseShareStatus = async (id: string, sharedWithPublic: boolean): Promise<Exercise> => {
+    const payload = new FormData();
+    payload.append('exerciseData', JSON.stringify({ shared_with_public: sharedWithPublic }));
   return apiCall(`/exercises/${id}`, {
     method: 'PUT',
-    body: { shared_with_public: sharedWithPublic },
+    body: payload,
+    isFormData: true,
   });
 };
 
