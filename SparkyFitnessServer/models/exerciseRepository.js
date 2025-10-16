@@ -42,7 +42,7 @@ async function getExerciseOwnerId(id) {
   }
 }
 
-async function getOrCreateActiveCaloriesExercise(userId) {
+async function getOrCreateActiveCaloriesExercise(userId, source = 'Health Data') {
   const exerciseName = "Active Calories";
   const client = await getPool().connect();
   let exercise = null;
@@ -65,9 +65,9 @@ async function getOrCreateActiveCaloriesExercise(userId) {
     let newExercise = null;
     try {
       const result = await insertClient.query(
-        `INSERT INTO exercises (user_id, name, category, calories_per_hour, description, is_custom, shared_with_public)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-        [userId, exerciseName, 'Cardio', 600, 'Automatically logged active calories from a health tracking shortcut.', true, false]
+        `INSERT INTO exercises (user_id, name, category, calories_per_hour, description, is_custom, shared_with_public, source)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        [userId, exerciseName, 'Cardio', 600, 'Automatically logged active calories from a health tracking shortcut.', true, false, source]
       );
       newExercise = result.rows[0];
     } catch (createError) {

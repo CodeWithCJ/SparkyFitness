@@ -10,7 +10,7 @@ async function processHealthData(healthDataArray, userId) {
   const errors = [];
 
   for (const dataEntry of healthDataArray) {
-    const { value, type, date, timestamp } = dataEntry; // Added timestamp
+    const { value, type, date, timestamp, source } = dataEntry; // Added source
 
     if (value === undefined || value === null || !type || !date) { // Check for undefined/null value
       errors.push({ error: "Missing required fields: value, type, date in one of the entries", entry: dataEntry });
@@ -80,7 +80,8 @@ async function processHealthData(healthDataArray, userId) {
             errors.push({ error: "Invalid value for active_calories. Must be a non-negative number.", entry: dataEntry });
             break;
           }
-          const exerciseId = await exerciseRepository.getOrCreateActiveCaloriesExercise(userId);
+          const exerciseSource = source || 'Health Data';
+          const exerciseId = await exerciseRepository.getOrCreateActiveCaloriesExercise(userId, exerciseSource);
           result = await exerciseRepository.upsertExerciseEntryData(userId, exerciseId, activeCaloriesValue, parsedDate);
           processedResults.push({ type, status: 'success', data: result });
           break;
