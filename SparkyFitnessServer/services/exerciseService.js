@@ -89,7 +89,7 @@ async function createExerciseEntry(authenticatedUserId, entryData) {
     if (!entryData.calories_burned && entryData.exercise_id && entryData.duration_minutes !== null && entryData.duration_minutes !== undefined) {
       const exercise = await exerciseRepository.getExerciseById(entryData.exercise_id);
       if (exercise) {
-        const caloriesPerHour = await calorieCalculationService.estimateCaloriesBurnedPerHour(exercise, authenticatedUserId);
+        const caloriesPerHour = await calorieCalculationService.estimateCaloriesBurnedPerHour(exercise, authenticatedUserId, entryData.sets);
         entryData.calories_burned = (caloriesPerHour / 60) * entryData.duration_minutes;
       } else {
         log('warn', `Exercise ${entryData.exercise_id} not found. Cannot auto-calculate calories_burned.`);
@@ -154,7 +154,7 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
     if (updateData.exercise_id && updateData.duration_minutes !== null && updateData.duration_minutes !== undefined && updateData.calories_burned === undefined) {
       const exercise = await exerciseRepository.getExerciseById(updateData.exercise_id);
       if (exercise) {
-        const caloriesPerHour = await calorieCalculationService.estimateCaloriesBurnedPerHour(exercise, authenticatedUserId);
+        const caloriesPerHour = await calorieCalculationService.estimateCaloriesBurnedPerHour(exercise, authenticatedUserId, updateData.sets);
         updateData.calories_burned = (caloriesPerHour / 60) * updateData.duration_minutes;
       } else {
         log('warn', `Exercise ${updateData.exercise_id} not found. Cannot auto-calculate calories_burned.`);
@@ -433,7 +433,7 @@ async function addExternalExerciseToUserExercises(authenticatedUserId, wgerExerc
     log('info', `Raw wger exercise data for exercise ID ${wgerExerciseId}: ${JSON.stringify(wgerExerciseDetails, null, 2)}`);
 
     // Calculate calories_per_hour
-    let caloriesPerHour = 300; // Default value if MET is not available or calculation fails
+    let caloriesPerHour = 0; // Default value if MET is not available or calculation fails
     if (wgerExerciseDetails.met && wgerExerciseDetails.met > 0) {
       let userWeightKg = 70; // Default to 70kg if user weight not found
       const latestMeasurement = await measurementRepository.getLatestMeasurement(authenticatedUserId);
@@ -445,6 +445,8 @@ async function addExternalExerciseToUserExercises(authenticatedUserId, wgerExerc
       // To get calories per hour: (METs * 3.5 * body weight in kg) / 200 * 60
       caloriesPerHour = (wgerExerciseDetails.met * 3.5 * userWeightKg) / 200 * 60;
       caloriesPerHour = Math.round(caloriesPerHour); // Round to nearest whole number
+    } else {
+      caloriesPerHour = await calorieCalculationService.estimateCaloriesBurnedPerHour(wgerExerciseDetails, authenticatedUserId);
     }
 
     // Use the name from translations if available, otherwise fallback to description or ID

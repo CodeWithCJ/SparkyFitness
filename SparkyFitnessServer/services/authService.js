@@ -6,7 +6,8 @@ const { log } = require('../config/logging');
 const { JWT_SECRET } = require('../security/encryption');
 const userRepository = require('../models/userRepository');
 const familyAccessRepository = require('../models/familyAccessRepository');
-const oidcSettingsRepository = require('../models/oidcSettingsRepository');
+const oidcProviderRepository = require('../models/oidcProviderRepository');
+const globalSettingsRepository = require('../models/globalSettingsRepository');
 const adminActivityLogRepository = require('../models/adminActivityLogRepository'); // Import admin activity log repository
 const { getPool } = require('../db/poolManager');
 const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
@@ -30,9 +31,8 @@ async function registerUser(email, password, full_name) {
   }
 }
 
-async function loginUser(email, password) {
+async function loginUser(email, password, loginSettings) {
   try {
-    const loginSettings = await getLoginSettings();
     if (!loginSettings.email.enabled) {
       throw new Error('Email/Password login is disabled.');
     }
@@ -282,47 +282,32 @@ async function deleteFamilyAccessEntry(authenticatedUserId, id) {
 }
 
 async function getLoginSettings() {
-  try {
-    const settings = await oidcSettingsRepository.getOidcSettings();
-    const forceEmailLogin = process.env.SPARKY_FITNESS_FORCE_EMAIL_LOGIN === 'true';
+    try {
+        const globalSettings = await globalSettingsRepository.getGlobalSettings();
+        const forceEmailLogin = process.env.SPARKY_FITNESS_FORCE_EMAIL_LOGIN === 'true';
 
-    // Placeholder for OIDC health check logic
-    // In a real scenario, this would check if the OIDC provider is reachable
-    const isOidcHealthy = settings && settings.issuer_url; // Simplified check
+        let emailEnabled = globalSettings ? globalSettings.enable_email_password_login : true;
+        if (forceEmailLogin) {
+            log('warn', 'SPARKY_FITNESS_FORCE_EMAIL_LOGIN is set, forcing email/password login to be enabled.');
+            emailEnabled = true;
+        }
 
-    let emailEnabled = true; // Default to true if no settings exist
-    if (settings) {
-      emailEnabled = settings.enable_email_password_login;
+        return {
+            oidc: {
+                enabled: globalSettings ? globalSettings.is_oidc_active : false,
+            },
+            email: {
+                enabled: emailEnabled,
+            },
+        };
+    } catch (error) {
+        log('error', 'Error fetching login settings:', error);
+        // In case of error, default to enabling email login as a safe fallback.
+        return {
+            oidc: { enabled: false },
+            email: { enabled: true },
+        };
     }
-
-    // If OIDC is enabled but unhealthy, enable email login as a fallback
-    if (settings && settings.is_active && !isOidcHealthy) {
-      log('warn', 'OIDC is configured but appears unhealthy. Enabling email/password login as a fallback.');
-      emailEnabled = true;
-    }
-
-    // The environment variable is the ultimate override
-    if (forceEmailLogin) {
-      log('warn', 'SPARKY_FITNESS_FORCE_EMAIL_LOGIN is set. Forcing email/password login to be enabled.');
-      emailEnabled = true;
-    }
-
-    return {
-      oidc: {
-        enabled: settings ? settings.is_active : false,
-      },
-      email: {
-        enabled: emailEnabled,
-      },
-    };
-  } catch (error) {
-    log('error', 'Error fetching login settings:', error);
-    // In case of error, default to enabling email login as a safe fallback
-    return {
-      oidc: { enabled: false },
-      email: { enabled: true },
-    };
-  }
 }
 
 module.exports = {
@@ -357,16 +342,17 @@ module.exports = {
   logAdminAction,
 };
 
-async function registerOidcUser(email, fullName, oidcSub) {
-  try {
-    const userId = uuidv4();
-    await userRepository.createOidcUser(userId, email, fullName, oidcSub);
-    await nutrientDisplayPreferenceService.createDefaultNutrientPreferencesForUser(userId);
-    return userId;
-  } catch (error) {
-    log('error', 'Error during OIDC user registration in authService:', error);
-    throw error;
-  }
+async function registerOidcUser(email, fullName, providerId, oidcSub) {
+    try {
+        log('info', `Registering OIDC user: ${email} for provider ${providerId}`);
+        const userId = uuidv4();
+        const newUserId = await userRepository.createOidcUser(userId, email, fullName, providerId, oidcSub);
+        await nutrientDisplayPreferenceService.createDefaultNutrientPreferencesForUser(newUserId);
+        return newUserId;
+    } catch (error) {
+        log('error', 'Error during OIDC user registration in authService:', error);
+        throw error;
+    }
 }
 
 async function forgotPassword(email) {

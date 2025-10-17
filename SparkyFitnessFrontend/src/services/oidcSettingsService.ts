@@ -1,41 +1,61 @@
-import { api } from './api'; // Assuming 'api' is your axios instance or similar
+import { apiCall } from './api';
 
-export interface OidcSettings {
-    id?: number;
-    issuer_url: string;
-    client_id: string;
-    client_secret?: string; // Optional for 'none' auth method
-    redirect_uris: string[];
-    scope: string;
-    token_endpoint_auth_method: string;
-    response_types: string[];
-    is_active: boolean;
-    id_token_signed_response_alg?: string;
-    userinfo_signed_response_alg?: string;
-    request_timeout?: number;
-    auto_register?: boolean;
-    enable_email_password_login?: boolean;
+export interface OidcProvider {
+  id?: number;
+  issuer_url: string;
+  client_id: string;
+  client_secret?: string;
+  redirect_uris: string[];
+  scope: string;
+  token_endpoint_auth_method: string;
+  response_types: string[];
+  is_active: boolean;
+  display_name?: string;
+  logo_url?: string;
+  auto_register?: boolean;
+  id_token_signed_response_alg?: string;
+  userinfo_signed_response_alg?: string;
+  request_timeout?: number;
 }
 
-export const oidcSettingsService = {
-    getSettings: async (): Promise<OidcSettings | null> => {
-        try {
-            const response = await api.get('/admin/oidc-settings');
-            return response; // api.get already returns the data
-        } catch (error) {
-            console.error('Error fetching OIDC settings:', error);
-            throw error;
-        }
-    },
+const oidcSettingsService = {
+  getProviders: async (): Promise<OidcProvider[]> => {
+    return await apiCall('/admin/oidc-settings');
+  },
 
-    saveSettings: async (settings: OidcSettings): Promise<OidcSettings> => {
-        try {
-            // Correctly pass the settings object as the body of the request
-            const response = await api.put('/admin/oidc-settings', { body: settings });
-            return response;
-        } catch (error) {
-            console.error('Error saving OIDC settings:', error);
-            throw error;
-        }
-    },
+  getProvider: async (id: number): Promise<OidcProvider> => {
+    return await apiCall(`/admin/oidc-settings/${id}`);
+  },
+
+  createProvider: async (provider: OidcProvider): Promise<OidcProvider> => {
+    return await apiCall('/admin/oidc-settings', {
+      method: 'POST',
+      body: provider,
+    });
+  },
+
+  updateProvider: async (id: number, provider: OidcProvider): Promise<OidcProvider> => {
+    return await apiCall(`/admin/oidc-settings/${id}`, {
+      method: 'PUT',
+      body: provider,
+    });
+  },
+
+  deleteProvider: async (id: number): Promise<void> => {
+    await apiCall(`/admin/oidc-settings/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  uploadLogo: async (id: number, logo: File): Promise<{ logoUrl: string }> => {
+    const formData = new FormData();
+    formData.append('logo', logo);
+    return await apiCall(`/admin/oidc-settings/${id}/logo`, {
+      method: 'POST',
+      body: formData,
+      isFormData: true,
+    });
+  },
 };
+
+export { oidcSettingsService };

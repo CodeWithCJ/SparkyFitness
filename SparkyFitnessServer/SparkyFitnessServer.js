@@ -30,6 +30,7 @@ const moodRoutes = require('./routes/moodRoutes'); // Import Mood routes
 const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
 const { router: openidRoutes, initializeOidcClient } = require('./openidRoutes');
 const oidcSettingsRoutes = require('./routes/oidcSettingsRoutes');
+const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
 const versionRoutes = require('./routes/versionRoutes');
 const { applyMigrations } = require('./utils/dbMigrations');
 const waterContainerRoutes = require('./routes/waterContainerRoutes');
@@ -218,6 +219,7 @@ app.use('/external-providers', externalProviderRoutes); // Renamed route for gen
 app.use('/integrations/garmin', garminRoutes); // Add Garmin integration routes
 app.use('/mood', moodRoutes); // Add Mood routes
 app.use('/admin/oidc-settings', oidcSettingsRoutes); // Admin OIDC settings routes
+app.use('/admin/global-settings', globalSettingsRoutes);
 app.use('/version', versionRoutes); // Version routes
 app.use('/admin', adminRoutes); // Add admin routes
 log('debug', 'Registering /openid routes');
@@ -254,10 +256,9 @@ const scheduleBackups = async () => {
 };
 
 applyMigrations().then(async () => {
-  // Initialize OIDC client after migrations are applied
-  await initializeOidcClient();
+  // OIDC clients are now initialized on-demand, so no startup initialization is needed.
 
-  // Schedule backups after migrations and OIDC client initialization
+  // Schedule backups after migrations
   scheduleBackups();
 
   // Set admin user from environment variable if provided

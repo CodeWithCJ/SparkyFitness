@@ -6,11 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from '@/utils/logging';
-import { Exercise } from '@/services/exerciseSearchService';
 import { createExerciseEntry } from '@/services/exerciseEntryService';
 import { useToast } from "@/hooks/use-toast";
 import ExerciseHistoryDisplay from "./ExerciseHistoryDisplay";
 import { WorkoutPresetSet } from "@/types/workout";
+import { ExerciseToLog } from '@/components/ExerciseCard'; // Import ExerciseToLog
 import { Plus, X, Copy, GripVertical, Repeat, Weight, Timer } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, arrayMove, useSortable } from '@dnd-kit/sortable';
@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  exercise: Exercise | null;
+  exercise: ExerciseToLog | null; // Change type to ExerciseToLog
   selectedDate: string;
   onSaveSuccess: () => void;
   initialSets?: WorkoutPresetSet[];
@@ -93,6 +93,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   const [imageUrl, setImageUrl] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(''); // New state for user-provided calories
 
   useEffect(() => {
     if (isOpen && exercise) {
@@ -100,6 +101,12 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
       setNotes(initialNotes ?? '');
       setImageUrl(initialImageUrl ?? '');
       setImageFile(null);
+      // If the exercise has a calories_per_hour, pre-fill the caloriesBurnedInput
+      if (exercise?.calories_per_hour && exercise.duration) {
+        setCaloriesBurnedInput(Math.round((exercise.calories_per_hour / 60) * exercise.duration));
+      } else {
+        setCaloriesBurnedInput('');
+      }
       debug(loggingLevel, `LogExerciseEntryDialog: Opened for exercise ${exercise.name} on ${selectedDate}`);
     }
   }, [isOpen, exercise, selectedDate, loggingLevel, initialSets, initialNotes, initialImageUrl]);
@@ -189,7 +196,8 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         })),
         notes: notes,
         entry_date: selectedDate,
-        calories_burned: 0, // Will be recalculated on the backend
+        calories_burned: caloriesBurnedInput === '' ? null : caloriesBurnedInput, // Use user input or null for backend calculation
+        duration_minutes: sets.reduce((acc, set) => acc + (set.duration || 0), 0),
         imageFile: imageFile,
       };
 
@@ -236,6 +244,16 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
           <Button type="button" variant="outline" onClick={handleAddSet}>
             <Plus className="h-4 w-4 mr-2" /> Add Set
           </Button>
+          <div className="space-y-2">
+            <Label htmlFor="calories-burned">Calories Burned (Optional)</Label>
+            <Input
+              id="calories-burned"
+              type="number"
+              value={caloriesBurnedInput}
+              onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="Enter calories burned"
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="notes">Session Notes</Label>
             <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />

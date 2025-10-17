@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,7 +77,7 @@ const SortableSetItem = React.memo(
       <div
         ref={setNodeRef}
         style={style}
-        className="flex flex-col space-y-2"
+        className="flex flex-col space-y-1"
         {...attributes}
       >
         <div className="flex items-center space-x-2">
@@ -220,6 +221,7 @@ const SortableSetItem = React.memo(
             id={`notes-${setIndex}`}
             value={set.notes ?? ""}
             onChange={(e) => handleSetChange(setIndex, "notes", e.target.value)}
+            className="h-16"
           />
         </div>
       </div>
@@ -240,9 +242,6 @@ const EditExerciseEntryDialog = ({
     entry.id
   );
 
-  const [duration, setDuration] = useState<number | undefined>(
-    entry.duration_minutes
-  );
   const [sets, setSets] = useState<WorkoutPresetSet[]>(
     (entry.sets as WorkoutPresetSet[]) || []
   );
@@ -250,6 +249,8 @@ const EditExerciseEntryDialog = ({
   const [imageUrl, setImageUrl] = useState<string | null>(entry.image_url || null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(entry.calories_burned || '');
+  const [showCaloriesWarning, setShowCaloriesWarning] = useState(false);
 
   useEffect(() => {
     debug(
@@ -257,7 +258,6 @@ const EditExerciseEntryDialog = ({
       "EditExerciseEntryDialog: entry useEffect triggered.",
       entry
     );
-    setDuration(entry.duration_minutes);
     setSets(
       ((entry.sets as WorkoutPresetSet[]) || []).map(set => ({
         ...set,
@@ -267,7 +267,16 @@ const EditExerciseEntryDialog = ({
     setNotes(entry.notes || "");
     setImageUrl(entry.image_url || null);
     setImageFile(null);
+    setCaloriesBurnedInput(entry.calories_burned || '');
   }, [entry, loggingLevel, weightUnit, convertWeight]);
+
+  useEffect(() => {
+    // When sets change, clear the calories burned input to trigger recalculation
+    if (sets.length > 0) {
+      setCaloriesBurnedInput('');
+      setShowCaloriesWarning(true);
+    }
+  }, [sets]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -372,15 +381,19 @@ const EditExerciseEntryDialog = ({
       const exerciseData = await fetchExerciseDetails(entry.exercise_id);
 
       const caloriesPerHour = exerciseData?.calories_per_hour || 300;
-      const totalDuration =
-        duration ||
-        (sets
-          ? sets.reduce((acc, set) => acc + (set.duration || 0), 0)
-          : 0);
-      const caloriesBurned = (caloriesPerHour / 60) * totalDuration;
+      const totalDurationFromSets = sets.reduce((acc, set) => acc + (set.duration || 0), 0);
+      const totalDuration = totalDurationFromSets;
+
+      let caloriesBurned;
+      if (caloriesBurnedInput !== '' && caloriesBurnedInput !== 0) {
+        caloriesBurned = caloriesBurnedInput;
+      } else {
+        caloriesBurned = (caloriesPerHour / 60) * totalDuration;
+      }
+
       debug(
         loggingLevel,
-        "EditExerciseEntryDialog: Recalculated calories burned:",
+        "EditExerciseEntryDialog: Final calories burned:",
         caloriesBurned
       );
 
@@ -448,7 +461,17 @@ const EditExerciseEntryDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        {showCaloriesWarning && (
+          <Alert variant="default" className="bg-yellow-100 border-yellow-400 text-yellow-700 p-0.25 relative">
+            <AlertDescription>
+              Calories burned will be recalculated on save. Enter a value to override.
+            </AlertDescription>
+            <button onClick={() => setShowCaloriesWarning(false)} className="absolute top-1/2 right-2 -translate-y-1/2">
+              <X className="h-4 w-4" />
+            </button>
+          </Alert>
+        )}
+        <div className="space-y-2">
           <div>
             <Label htmlFor="exercise-name">Exercise</Label>
             <Input
@@ -488,6 +511,17 @@ const EditExerciseEntryDialog = ({
             <Plus className="h-4 w-4 mr-2" /> Add Set
           </Button>
           <ExerciseHistoryDisplay exerciseId={entry.exercise_id} />
+
+          <div>
+            <Label htmlFor="calories-burned">Calories Burned (Optional)</Label>
+            <Input
+              id="calories-burned"
+              type="number"
+              value={caloriesBurnedInput}
+              onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="Enter calories burned to override calculation"
+            />
+          </div>
 
           <div>
             <Label htmlFor="notes">Notes</Label>
