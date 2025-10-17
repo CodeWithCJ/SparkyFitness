@@ -452,6 +452,7 @@ async function addExternalExerciseToUserExercises(authenticatedUserId, wgerExerc
       is_custom: true, // Mark as custom as it's imported by the user
       shared_with_public: false, // Imported exercises are private by default
       source_external_id: wgerExerciseDetails.id.toString(), // Store wger ID
+      source: 'wger', // Explicitly set the source to 'wger'
     };
 
     const newExercise = await exerciseRepository.createExercise(exerciseData);

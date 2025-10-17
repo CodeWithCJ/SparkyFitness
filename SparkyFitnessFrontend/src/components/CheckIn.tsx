@@ -58,6 +58,7 @@ const CheckIn = () => {
   const [displayMeasurementUnit, setDisplayMeasurementUnit] = useState<'cm' | 'inches'>(defaultMeasurementUnit);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [customValues, setCustomValues] = useState<{[key: string]: string}>({});
+  const [customNotes, setCustomNotes] = useState<{[key: string]: string}>({});
 
   const [loading, setLoading] = useState(false);
   const [recentMeasurements, setRecentMeasurements] = useState<CombinedMeasurement[]>([]);
@@ -73,10 +74,8 @@ const CheckIn = () => {
 
   useEffect(() => {
     if (currentUserId) {
-      loadExistingData();
       loadPreferences(); // Load user's default preferences
       loadCustomCategories();
-      fetchAllRecentMeasurements();
     }
 
     const handleRefresh = () => {
@@ -90,7 +89,7 @@ const CheckIn = () => {
     return () => {
       window.removeEventListener('measurementsRefresh', handleRefresh);
       };
-    }, [currentUserId, selectedDate, loadPreferences, formatDateInUserTimezone, parseDateInUserTimezone, convertWeight, convertMeasurement, defaultWeightUnit, defaultMeasurementUnit]);
+    }, [currentUserId, loadPreferences]);
   
     useEffect(() => {
       setDisplayWeightUnit(defaultWeightUnit);
@@ -98,6 +97,13 @@ const CheckIn = () => {
       // Trigger data reload when default units change to ensure values are displayed in the new default unit
       loadExistingData();
     }, [defaultWeightUnit, defaultMeasurementUnit]);
+
+  useEffect(() => {
+    if (currentUserId && customCategories.length > 0) {
+      loadExistingData();
+      fetchAllRecentMeasurements();
+    }
+  }, [currentUserId, selectedDate, customCategories, convertWeight, convertMeasurement, defaultWeightUnit, defaultMeasurementUnit, formatDateInUserTimezone, parseDateInUserTimezone]);
   
     // Effect to re-convert displayed values when display units change
     useEffect(() => {
@@ -280,19 +286,32 @@ const CheckIn = () => {
 
       const customData = await loadExistingCustomMeasurements(selectedDate);
       info(loggingLevel, "Custom measurements loaded for date:", { selectedDate, customData });
-      const newCustomValues: {[key: string]: string} = {};
-      if (customData) {
+      if (customData && customData.length > 0) {
+        const newCustomValues: { [key: string]: string } = {};
+        const newCustomNotes: { [key: string]: string } = {};
         customData.forEach((measurement) => {
-          const isConvertible = shouldConvertCustomMeasurement(measurement.custom_categories.measurement_type);
-          newCustomValues[measurement.category_id] = isConvertible
-            ? (() => {
-                const converted = convertMeasurement(measurement.value, 'cm', displayMeasurementUnit);
-                return typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "";
-              })()
-            : measurement.value.toString();
+          const category = customCategories.find(c => c.id === measurement.category_id);
+          if (category) {
+            const isConvertible = shouldConvertCustomMeasurement(category.measurement_type);
+            if (category.data_type === 'numeric') {
+              newCustomValues[measurement.category_id] = isConvertible
+                ? (() => {
+                    const converted = convertMeasurement(measurement.value, 'cm', displayMeasurementUnit);
+                    return typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "";
+                  })()
+                : measurement.value.toString();
+            } else {
+              newCustomValues[measurement.category_id] = measurement.text_value || '';
+            }
+            newCustomNotes[measurement.category_id] = measurement.notes || '';
+          }
         });
+        setCustomValues(newCustomValues);
+        setCustomNotes(newCustomNotes);
+      } else {
+        setCustomValues({});
+        setCustomNotes({});
       }
-      setCustomValues(newCustomValues);
     } catch (err) {
       error(loggingLevel, 'Error loading existing data:', err);
     }
@@ -302,22 +321,20 @@ const CheckIn = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Only save mood entry if mood is explicitly set or notes are provided
-    if (mood !== null || moodNotes.trim() !== '') {
-      try {
-        // Ensure mood is a number, default to 50 if null
-        const moodToSend = mood === null ? 50 : mood;
-        info(loggingLevel, "Attempting to save mood entry with moodToSend:", moodToSend, "and moodNotes:", moodNotes, "and selectedDate:", selectedDate);
-        await saveMoodEntry(moodToSend, moodNotes, selectedDate);
-        info(loggingLevel, "Mood entry saved successfully.");
-      } catch (err) {
-        error(loggingLevel, 'Error saving mood entry:', err);
-        toast({
-          title: "Error",
-          description: "Failed to save mood entry",
-          variant: "destructive",
-        });
-      }
+    // Always attempt to save the mood entry.
+    // The mood state is initialized to 50, so it will always have a value.
+    try {
+      const moodToSend = mood ?? 50;
+      info(loggingLevel, "Attempting to save mood entry with moodToSend:", moodToSend, "and moodNotes:", moodNotes, "and selectedDate:", selectedDate);
+      await saveMoodEntry(moodToSend, moodNotes, selectedDate);
+      info(loggingLevel, "Mood entry saved successfully.");
+    } catch (err) {
+      error(loggingLevel, 'Error saving mood entry:', err);
+      toast({
+        title: "Error",
+        description: "Failed to save mood entry",
+        variant: "destructive",
+      });
     }
 
     if (!currentUserId) {
@@ -349,10 +366,10 @@ const CheckIn = () => {
       info(loggingLevel, "Standard check-in data saved successfully.");
 
       for (const [categoryId, value] of Object.entries(customValues)) {
-        if (value && parseFloat(value) > 0) {
+        if (value) {
           const category = customCategories.find(c => c.id === categoryId);
           if (category) {
-            const isConvertible = shouldConvertCustomMeasurement(category.measurement_type); // Recalculate here
+            const isConvertible = shouldConvertCustomMeasurement(category.measurement_type);
             const currentTime = new Date();
             let entryHour: number | null = null;
             let entryTimestamp: string;
@@ -366,15 +383,25 @@ const CheckIn = () => {
               entryTimestamp = currentTime.toISOString();
             }
 
-            const customMeasurementData = {
+            const customMeasurementData: any = {
               category_id: categoryId,
-              value: isConvertible && !isNaN(parseFloat(value))
-                ? convertMeasurement(parseFloat(value), displayMeasurementUnit, 'cm')
-                : parseFloat(value), // No conversion if not convertible, or if value is not a number
+              notes: customNotes[categoryId] || '',
               entry_date: selectedDate,
               entry_hour: entryHour,
               entry_timestamp: entryTimestamp,
             };
+
+            if (category.data_type === 'numeric') {
+              if (parseFloat(value) > 0) {
+                customMeasurementData.value = isConvertible && !isNaN(parseFloat(value))
+                  ? convertMeasurement(parseFloat(value), displayMeasurementUnit, 'cm')
+                  : parseFloat(value);
+              } else {
+                continue;
+              }
+            } else {
+              customMeasurementData.text_value = value;
+            }
 
             await saveCustomMeasurement(customMeasurementData);
             info(loggingLevel, `Custom measurement for category ${category.name} saved successfully.`);
@@ -517,8 +544,8 @@ const CheckIn = () => {
                     </Label>
                     <Input
                       id={`custom-${category.id}`}
-                      type="number"
-                      step="0.01"
+                      type={category.data_type === 'numeric' ? 'number' : 'text'}
+                      step={category.data_type === 'numeric' ? "0.01" : undefined}
                       value={customValues[category.id] || ''}
                       onChange={(e) => {
                         setCustomValues(prev => ({
@@ -526,7 +553,20 @@ const CheckIn = () => {
                           [category.id]: e.target.value
                         }));
                       }}
-                      placeholder={`Enter ${category.name.toLowerCase()} in ${isConvertible ? displayMeasurementUnit : category.measurement_type}`}
+                      placeholder={`Enter ${category.name.toLowerCase()}`}
+                    />
+                    <Input
+                      id={`custom-notes-${category.id}`}
+                      type="text"
+                      value={customNotes[category.id] || ''}
+                      onChange={(e) => {
+                        setCustomNotes(prev => ({
+                          ...prev,
+                          [category.id]: e.target.value
+                        }));
+                      }}
+                      placeholder="Notes (optional)"
+                      className="mt-2"
                     />
                   </div>
                 );

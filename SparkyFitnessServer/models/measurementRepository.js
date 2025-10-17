@@ -234,7 +234,7 @@ async function getCustomCategories(userId) {
   const client = await getPool().connect();
   try {
     const result = await client.query(
-      'SELECT id, name, frequency, measurement_type FROM custom_categories WHERE user_id = $1',
+      'SELECT id, name, frequency, measurement_type, data_type FROM custom_categories WHERE user_id = $1',
       [userId]
     );
     return result.rows;
@@ -247,9 +247,9 @@ async function createCustomCategory(categoryData) {
   const client = await getPool().connect();
   try {
     const result = await client.query(
-      `INSERT INTO custom_categories (user_id, name, frequency, measurement_type, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, now(), now()) RETURNING id`,
-      [categoryData.user_id, categoryData.name, categoryData.frequency, categoryData.measurement_type]
+      `INSERT INTO custom_categories (user_id, name, frequency, measurement_type, data_type, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, now(), now()) RETURNING id`,
+      [categoryData.user_id, categoryData.name, categoryData.frequency, categoryData.measurement_type, categoryData.data_type]
     );
     return result.rows[0];
   } finally {
@@ -265,10 +265,11 @@ async function updateCustomCategory(id, userId, updateData) {
         name = COALESCE($1, name),
         frequency = COALESCE($2, frequency),
         measurement_type = COALESCE($3, measurement_type),
+        data_type = COALESCE($4, data_type),
         updated_at = now()
-      WHERE id = $4 AND user_id = $5
+      WHERE id = $5 AND user_id = $6
       RETURNING *`,
-      [updateData.name, updateData.frequency, updateData.measurement_type, id, userId]
+      [updateData.name, updateData.frequency, updateData.measurement_type, updateData.data_type, id, userId]
     );
     return result.rows[0];
   } finally {
@@ -324,7 +325,8 @@ async function getCustomMeasurementEntries(userId, limit, orderBy, filter) {
              json_build_object(
                'name', cc.name,
                'measurement_type', cc.measurement_type,
-               'frequency', cc.frequency
+               'frequency', cc.frequency,
+               'data_type', cc.data_type
              ) AS custom_categories
       FROM custom_measurements cm
       JOIN custom_categories cc ON cm.category_id = cc.id
@@ -374,7 +376,8 @@ async function getCustomMeasurementEntriesByDate(userId, date) {
              json_build_object(
                'name', cc.name,
                'measurement_type', cc.measurement_type,
-               'frequency', cc.frequency
+               'frequency', cc.frequency,
+               'data_type', cc.data_type
              ) AS custom_categories
        FROM custom_measurements cm
        JOIN custom_categories cc ON cm.category_id = cc.id
@@ -416,7 +419,7 @@ async function getCustomMeasurementsByDateRange(userId, categoryId, startDate, e
   }
 }
 
-async function upsertCustomMeasurement(userId, categoryId, value, entryDate, entryHour, entryTimestamp) {
+async function upsertCustomMeasurement(userId, categoryId, value, entryDate, entryHour, entryTimestamp, notes) {
   const client = await getPool().connect();
   try {
     let query;
@@ -441,21 +444,21 @@ async function upsertCustomMeasurement(userId, categoryId, value, entryDate, ent
       const id = existingEntry.rows[0].id;
       query = `
         UPDATE custom_measurements
-        SET value = $1, entry_timestamp = $2, updated_at = now()
-        WHERE id = $3 AND user_id = $4
+        SET value = $1, entry_timestamp = $2, notes = $3, updated_at = now()
+        WHERE id = $4 AND user_id = $5
         RETURNING *
       `;
-      values = [value, entryTimestamp, id, userId];
+      values = [value, entryTimestamp, notes, id, userId];
     } else {
       // Insert new entry
       query = `
-        INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+        INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, notes, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
         RETURNING *
       `;
       // Ensure userId is the first value, then categoryId, then value, etc.
       // Filter out user_id if it somehow made it into the incoming payload for custom measurements
-      const filteredCustomValues = [categoryId, value, entryDate, entryHour, entryTimestamp];
+      const filteredCustomValues = [categoryId, value, entryDate, entryHour, entryTimestamp, notes];
       values = [userId, ...filteredCustomValues];
     }
 

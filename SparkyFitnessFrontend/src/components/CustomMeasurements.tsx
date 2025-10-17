@@ -25,6 +25,10 @@ interface MeasurementValues {
   [categoryId: string]: string;
 }
 
+interface NoteValues {
+  [categoryId: string]: string;
+}
+
 const CustomMeasurements = () => {
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
@@ -34,6 +38,7 @@ const CustomMeasurements = () => {
   const [categories, setCategories] = useState<CustomCategory[]>([]);
   const [measurements, setMeasurements] = useState<CustomMeasurement[]>([]);
   const [values, setValues] = useState<MeasurementValues>({});
+  const [notes, setNotes] = useState<NoteValues>({});
   const [loadingStates, setLoadingStates] = useState<{[key: string]: boolean}>({});
 
   // Get current date and time in user's timezone
@@ -85,6 +90,9 @@ const CustomMeasurements = () => {
       if (data) {
         data.forEach((measurement) => {
           newValues[measurement.category_id] = measurement.value.toString();
+          if (measurement.notes) {
+            setNotes(prev => ({ ...prev, [measurement.category_id]: measurement.notes }));
+          }
         });
       }
       setValues(newValues);
@@ -100,17 +108,22 @@ const CustomMeasurements = () => {
       return;
     }
 
-    const numericValue = parseFloat(values[categoryId]);
-    if (isNaN(numericValue) || numericValue <= 0) {
-      toast.error('Please enter a valid positive number');
-      return;
-    }
-
     const category = categories.find(c => c.id === categoryId);
     if (!category) {
       toast.error('Invalid category');
       return;
     }
+
+    let valueToSave = values[categoryId];
+    if (category.data_type === 'numeric') {
+      const numericValue = parseFloat(values[categoryId]);
+      if (isNaN(numericValue) || numericValue <= 0) {
+        toast.error('Please enter a valid positive number');
+        return;
+      }
+      valueToSave = numericValue;
+    }
+
 
     setLoadingStates(prev => ({ ...prev, [categoryId]: true }));
 
@@ -131,10 +144,11 @@ const CustomMeasurements = () => {
       const measurementData = {
         user_id: activeUserId,
         category_id: categoryId,
-        value: numericValue,
+        value: valueToSave,
         entry_date: currentDate,
         entry_hour: entryHour,
         entry_timestamp: entryTimestamp,
+        notes: notes[categoryId] || null,
       };
 
       await saveCustomMeasurement(measurementData, category.frequency);
@@ -143,6 +157,7 @@ const CustomMeasurements = () => {
       // Clear the input after successful save for 'All' frequency
       if (category.frequency === 'All') {
         setValues(prev => ({ ...prev, [categoryId]: '' }));
+        setNotes(prev => ({ ...prev, [categoryId]: '' }));
       }
     } catch (error) {
       console.error('Error saving measurement:', error);
@@ -190,7 +205,7 @@ const CustomMeasurements = () => {
                         {category.name}
                       </CardTitle>
                       <p className="text-xs text-muted-foreground">
-                        {category.measurement_type} • {category.frequency}
+                        {category.measurement_type} • {category.frequency} • {category.data_type || 'numeric'}
                       </p>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -199,16 +214,16 @@ const CustomMeasurements = () => {
                         <div className="flex gap-2 mt-1">
                           <Input
                             id={`value-${category.id}`}
-                            type="number"
+                            type={category.data_type === 'text' ? 'text' : 'number'}
                             step="0.01"
                             value={values[category.id] || ''}
                             onChange={(e) => setValues(prev => ({ ...prev, [category.id]: e.target.value }))}
                             placeholder="Enter value"
                             className="h-8 text-sm flex-1"
                           />
-                          <Button 
-                            onClick={() => handleSave(category.id)} 
-                            disabled={isLoading || !hasValue}
+                          <Button
+                            onClick={() => handleSave(category.id)}
+                            disabled={isLoading || !values[category.id]}
                             size="sm"
                             variant="default"
                             className="h-8 text-xs px-3 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
@@ -217,6 +232,17 @@ const CustomMeasurements = () => {
                             {isLoading ? 'Saving...' : 'Save'}
                           </Button>
                         </div>
+                      </div>
+                      <div>
+                        <Label htmlFor={`notes-${category.id}`} className="text-xs">Notes (optional)</Label>
+                        <Input
+                          id={`notes-${category.id}`}
+                          type="text"
+                          value={notes[category.id] || ''}
+                          onChange={(e) => setNotes(prev => ({ ...prev, [category.id]: e.target.value }))}
+                          placeholder="Add a note..."
+                          className="h-8 text-sm flex-1 mt-1"
+                        />
                       </div>
                     </CardContent>
                   </Card>
@@ -252,6 +278,11 @@ const CustomMeasurements = () => {
                         <span> at {measurement.entry_hour.toString().padStart(2, '0')}:00</span>
                       )}
                     </div>
+                    {measurement.notes && (
+                      <div className="text-sm text-gray-500 mt-1">
+                        <strong>Notes:</strong> {measurement.notes}
+                      </div>
+                    )}
                   </div>
                   <Button
                     variant="outline"

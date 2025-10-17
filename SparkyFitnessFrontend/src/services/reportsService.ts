@@ -122,13 +122,15 @@ export interface CustomCategory {
   name: string;
   measurement_type: string;
   frequency: string;
+  data_type: string;
 }
 
 export interface CustomMeasurementData {
   category_id: string;
   entry_date: string;
   hour?: number;
-  value: number;
+  value: string | number;
+  notes?: string;
   timestamp: string;
 }
 

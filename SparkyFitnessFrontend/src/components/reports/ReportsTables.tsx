@@ -81,13 +81,15 @@ interface CustomCategory {
   name: string;
   measurement_type: string;
   frequency: string;
+  data_type: string;
 }
 
 interface CustomMeasurementData {
   category_id: string;
   entry_date: string; // Changed from 'date' to 'entry_date'
   hour?: number;
-  value: number;
+  value: string | number;
+  notes?: string;
   timestamp: string;
 }
 
@@ -420,10 +422,10 @@ const ReportsTables = ({
                           {Math.min(...entry.sets.map(s => s.reps))} - {Math.max(...entry.sets.map(s => s.reps))}
                         </TableCell>
                         <TableCell>
-                          {Math.round(convertWeight(entry.sets.reduce((acc, s) => acc + Number(s.weight), 0) / entry.sets.length, 'kg', weightUnit))}
+                          {entry.sets.length > 0 ? Math.round(convertWeight(entry.sets.reduce((acc, s) => acc + Number(s.weight), 0) / entry.sets.length, 'kg', weightUnit)) : 0}
                         </TableCell>
                         <TableCell>
-                          {Math.round(convertWeight(entry.sets.reduce((acc, s) => acc + (Number(s.weight) * Number(s.reps)), 0), 'kg', weightUnit))}
+                          {entry.sets.length > 0 ? Math.round(convertWeight(entry.sets.reduce((acc, s) => acc + (Number(s.weight) * Number(s.reps)), 0), 'kg', weightUnit)) : 0}
                         </TableCell>
                         <TableCell>
                           {entry.sets.reduce((acc, s) => acc + (s.duration || 0), 0)}
@@ -532,6 +534,7 @@ const ReportsTables = ({
                       <TableHead>Date</TableHead>
                       <TableHead>Hour</TableHead>
                       <TableHead>Value ({category.measurement_type})</TableHead>
+                      <TableHead>Notes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -545,7 +548,8 @@ const ReportsTables = ({
                         <TableRow key={index}>
                           <TableCell>{measurement.entry_date && !isNaN(parseISO(measurement.entry_date).getTime()) ? formatDateInUserTimezone(parseISO(measurement.entry_date), dateFormat) : ''}</TableCell>
                           <TableCell>{formattedHour}</TableCell>
-                          <TableCell>{measurement.value}</TableCell>
+                          <TableCell>{String(measurement.value)}</TableCell>
+                          <TableCell>{measurement.notes || '-'}</TableCell>
                         </TableRow>
                       );
                     })}

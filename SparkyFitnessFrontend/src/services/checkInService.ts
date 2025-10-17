@@ -5,12 +5,15 @@ export interface CustomCategory {
   name: string;
   measurement_type: string;
   frequency: string;
+  data_type: 'numeric' | 'text';
 }
 
 export interface CustomMeasurement {
   id: string;
   category_id: string;
   value: number;
+  text_value?: string;
+  notes?: string;
   entry_date: string;
   entry_hour: number | null;
   entry_timestamp: string;
