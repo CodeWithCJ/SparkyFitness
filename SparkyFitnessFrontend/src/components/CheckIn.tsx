@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { toast } from "@/hooks/use-toast";
 import CheckInPreferences from "./CheckInPreferences";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
 import MoodMeter from "./MoodMeter"; // Import MoodMeter component
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { Trash2 } from "lucide-react";
@@ -21,6 +23,7 @@ import {
   updateCheckInMeasurementField,
   loadExistingCheckInMeasurements,
   loadExistingCustomMeasurements,
+  getMostRecentMeasurement,
   saveCheckInMeasurements,
   saveCustomMeasurement,
   CustomCategory,
@@ -58,11 +61,10 @@ const CheckIn = () => {
   const [bodyFatPercentage, setBodyFatPercentage] = useState("");
   const [mood, setMood] = useState<number | null>(50); // Initialize mood to 50
   const [moodNotes, setMoodNotes] = useState<string>(""); // New state for mood notes
-  const [displayWeightUnit, setDisplayWeightUnit] = useState<'kg' | 'lbs'>(defaultWeightUnit);
-  const [displayMeasurementUnit, setDisplayMeasurementUnit] = useState<'cm' | 'inches'>(defaultMeasurementUnit);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [customValues, setCustomValues] = useState<{[key: string]: string}>({});
   const [customNotes, setCustomNotes] = useState<{[key: string]: string}>({});
+  const [useMostRecentForCalculation, setUseMostRecentForCalculation] = useState(false); // New state for checkbox
 
   const [loading, setLoading] = useState(false);
   const [recentMeasurements, setRecentMeasurements] = useState<CombinedMeasurement[]>([]);
@@ -95,12 +97,6 @@ const CheckIn = () => {
       };
     }, [currentUserId, loadPreferences]);
   
-    useEffect(() => {
-      setDisplayWeightUnit(defaultWeightUnit);
-      setDisplayMeasurementUnit(defaultMeasurementUnit);
-      // Trigger data reload when default units change to ensure values are displayed in the new default unit
-      loadExistingData();
-    }, [defaultWeightUnit, defaultMeasurementUnit]);
 
   useEffect(() => {
     if (currentUserId && customCategories.length > 0) {
@@ -109,32 +105,6 @@ const CheckIn = () => {
     }
   }, [currentUserId, selectedDate, customCategories, convertWeight, convertMeasurement, defaultWeightUnit, defaultMeasurementUnit, formatDateInUserTimezone, parseDateInUserTimezone]);
   
-    // Effect to re-convert displayed values when display units change
-    useEffect(() => {
-      // Only re-convert if there's a value to convert
-      if (weight) {
-        const converted = convertWeight(parseFloat(weight), displayWeightUnit === 'kg' ? 'lbs' : 'kg', displayWeightUnit);
-        setWeight(typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "");
-      }
-      if (neck) {
-        const converted = convertMeasurement(parseFloat(neck), displayMeasurementUnit === 'cm' ? 'inches' : 'cm', displayMeasurementUnit);
-        setNeck(typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "");
-      }
-      if (waist) {
-        const converted = convertMeasurement(parseFloat(waist), displayMeasurementUnit === 'cm' ? 'inches' : 'cm', displayMeasurementUnit);
-        setWaist(typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "");
-      }
-      if (hips) {
-        const converted = convertMeasurement(parseFloat(hips), displayMeasurementUnit === 'cm' ? 'inches' : 'cm', displayMeasurementUnit);
-        setHips(typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "");
-      }
-      if (height) {
-        const converted = convertMeasurement(parseFloat(height), displayMeasurementUnit === 'cm' ? 'inches' : 'cm', displayMeasurementUnit);
-        setHeight(typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "");
-      }
-      // Re-load custom values to ensure they are displayed in the correct unit
-      loadExistingData();
-    }, [displayWeightUnit, displayMeasurementUnit]);
   
   
     const loadCustomCategories = async () => {
@@ -185,13 +155,13 @@ const CheckIn = () => {
 
       // Add standard measurements
       standard.forEach(s => {
-        if (s.weight !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.weight, type: 'standard', display_name: 'Weight', display_unit: defaultWeightUnit, entry_hour: null, entry_timestamp: s.entry_date });
-        if (s.neck !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.neck, type: 'standard', display_name: 'Neck', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.entry_date });
-        if (s.waist !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.waist, type: 'standard', display_name: 'Waist', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.entry_date });
-        if (s.hips !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.hips, type: 'standard', display_name: 'Hips', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.entry_date });
-        if (s.steps !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.steps, type: 'standard', display_name: 'Steps', display_unit: 'steps', entry_hour: null, entry_timestamp: s.entry_date });
-        if (s.height !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.height, type: 'standard', display_name: 'Height', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.entry_date });
-        if (s.body_fat_percentage !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.body_fat_percentage, type: 'standard', display_name: 'Body Fat %', display_unit: '%', entry_hour: null, entry_timestamp: s.entry_date });
+        if (s.weight !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.weight, type: 'standard', display_name: 'Weight', display_unit: defaultWeightUnit, entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.neck !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.neck, type: 'standard', display_name: 'Neck', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.waist !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.waist, type: 'standard', display_name: 'Waist', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.hips !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.hips, type: 'standard', display_name: 'Hips', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.steps !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.steps, type: 'standard', display_name: 'Steps', display_unit: 'steps', entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.height !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.height, type: 'standard', display_name: 'Height', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.body_fat_percentage !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.body_fat_percentage, type: 'standard', display_name: 'Body Fat %', display_unit: '%', entry_hour: null, entry_timestamp: s.updated_at });
       });
 
       // Sort by entry_timestamp (or entry_date if timestamp is null) in descending order
@@ -261,19 +231,19 @@ const CheckIn = () => {
         info(loggingLevel, "Existing check-in data loaded:", data);
         // Set internal state in canonical units (kg, cm)
         // Values are loaded in canonical units, then converted for display
-        const convertedWeight = data.weight !== undefined && data.weight !== null ? convertWeight(data.weight, 'kg', displayWeightUnit) : NaN;
+        const convertedWeight = data.weight !== undefined && data.weight !== null ? convertWeight(data.weight, 'kg', defaultWeightUnit) : NaN;
         setWeight(typeof convertedWeight === 'number' && !isNaN(convertedWeight) ? convertedWeight.toFixed(1) : "");
 
-        const convertedNeck = data.neck !== undefined && data.neck !== null ? convertMeasurement(data.neck, 'cm', displayMeasurementUnit) : NaN;
+        const convertedNeck = data.neck !== undefined && data.neck !== null ? convertMeasurement(data.neck, 'cm', defaultMeasurementUnit) : NaN;
         setNeck(typeof convertedNeck === 'number' && !isNaN(convertedNeck) ? convertedNeck.toFixed(1) : "");
 
-        const convertedWaist = data.waist !== undefined && data.waist !== null ? convertMeasurement(data.waist, 'cm', displayMeasurementUnit) : NaN;
+        const convertedWaist = data.waist !== undefined && data.waist !== null ? convertMeasurement(data.waist, 'cm', defaultMeasurementUnit) : NaN;
         setWaist(typeof convertedWaist === 'number' && !isNaN(convertedWaist) ? convertedWaist.toFixed(1) : "");
 
-        const convertedHips = data.hips !== undefined && data.hips !== null ? convertMeasurement(data.hips, 'cm', displayMeasurementUnit) : NaN;
+        const convertedHips = data.hips !== undefined && data.hips !== null ? convertMeasurement(data.hips, 'cm', defaultMeasurementUnit) : NaN;
         setHips(typeof convertedHips === 'number' && !isNaN(convertedHips) ? convertedHips.toFixed(1) : "");
         
-        const convertedHeight = data.height !== undefined && data.height !== null ? convertMeasurement(data.height, 'cm', displayMeasurementUnit) : NaN;
+        const convertedHeight = data.height !== undefined && data.height !== null ? convertMeasurement(data.height, 'cm', defaultMeasurementUnit) : NaN;
         setHeight(typeof convertedHeight === 'number' && !isNaN(convertedHeight) ? convertedHeight.toFixed(1) : "");
 
         setBodyFatPercentage(data.body_fat_percentage?.toString() || "");
@@ -311,18 +281,22 @@ const CheckIn = () => {
         customData.forEach((measurement) => {
           const category = customCategories.find(c => c.id === measurement.category_id);
           if (category) {
-            const isConvertible = shouldConvertCustomMeasurement(category.measurement_type);
-            if (category.data_type === 'numeric') {
-              newCustomValues[measurement.category_id] = isConvertible
-                ? (() => {
-                    const converted = convertMeasurement(measurement.value, 'cm', displayMeasurementUnit);
-                    return typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "";
-                  })()
-                : measurement.value.toString();
-            } else {
-              newCustomValues[measurement.category_id] = measurement.text_value || '';
+            // Only pre-fill input fields for 'Daily' or 'Hourly' frequencies
+            // For 'Unlimited', the input field should remain empty for new entries
+            if (category.frequency !== 'Unlimited') {
+              const isConvertible = shouldConvertCustomMeasurement(category.measurement_type);
+              if (category.data_type === 'numeric') {
+                newCustomValues[measurement.category_id] = isConvertible
+                  ? (() => {
+                      const converted = convertMeasurement(measurement.value, 'cm', defaultMeasurementUnit);
+                      return typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "";
+                    })()
+                  : measurement.value.toString();
+              } else {
+                newCustomValues[measurement.category_id] = measurement.value || '';
+              }
+              newCustomNotes[measurement.category_id] = measurement.notes || '';
             }
-            newCustomNotes[measurement.category_id] = measurement.notes || '';
           }
         });
         setCustomValues(newCustomValues);
@@ -375,61 +349,68 @@ const CheckIn = () => {
       };
 
       // Convert values to canonical units (kg, cm) before saving
-      if (weight) measurementData.weight = convertWeight(parseFloat(weight), displayWeightUnit, 'kg');
-      if (neck) measurementData.neck = convertMeasurement(parseFloat(neck), displayMeasurementUnit, 'cm');
-      if (waist) measurementData.waist = convertMeasurement(parseFloat(waist), displayMeasurementUnit, 'cm');
-      if (hips) measurementData.hips = convertMeasurement(parseFloat(hips), displayMeasurementUnit, 'cm');
+      if (weight) measurementData.weight = convertWeight(parseFloat(weight), defaultWeightUnit, 'kg');
+      if (neck) measurementData.neck = convertMeasurement(parseFloat(neck), defaultMeasurementUnit, 'cm');
+      if (waist) measurementData.waist = convertMeasurement(parseFloat(waist), defaultMeasurementUnit, 'cm');
+      if (hips) measurementData.hips = convertMeasurement(parseFloat(hips), defaultMeasurementUnit, 'cm');
       if (steps) measurementData.steps = parseInt(steps);
-      if (height) measurementData.height = convertMeasurement(parseFloat(height), displayMeasurementUnit, 'cm');
+      if (height) measurementData.height = convertMeasurement(parseFloat(height), defaultMeasurementUnit, 'cm');
       if (bodyFatPercentage) measurementData.body_fat_percentage = parseFloat(bodyFatPercentage);
 
       await saveCheckInMeasurements(measurementData);
       info(loggingLevel, "Standard check-in data saved successfully.");
 
-      for (const [categoryId, value] of Object.entries(customValues)) {
-        if (value) {
-          const category = customCategories.find(c => c.id === categoryId);
-          if (category) {
-            const isConvertible = shouldConvertCustomMeasurement(category.measurement_type);
-            const currentTime = new Date();
-            let entryHour: number | null = null;
-            let entryTimestamp: string;
-
-            if (category.frequency === 'Hourly') {
-              entryHour = currentTime.getHours();
-              const selectedDateTime = new Date();
-              selectedDateTime.setHours(currentTime.getHours(), 0, 0, 0);
-              entryTimestamp = selectedDateTime.toISOString();
-            } else {
-              entryTimestamp = currentTime.toISOString();
-            }
-
-            const customMeasurementData: any = {
-              category_id: categoryId,
-              notes: customNotes[categoryId] || '',
-              entry_date: selectedDate,
-              entry_hour: entryHour,
-              entry_timestamp: entryTimestamp,
-            };
-
-            if (category.data_type === 'numeric') {
-              if (parseFloat(value) > 0) {
-                customMeasurementData.value = isConvertible && !isNaN(parseFloat(value))
-                  ? convertMeasurement(parseFloat(value), displayMeasurementUnit, 'cm')
-                  : parseFloat(value);
-              } else {
-                continue;
-              }
-            } else {
-              customMeasurementData.text_value = value;
-            }
-
-            await saveCustomMeasurement(customMeasurementData);
-            info(loggingLevel, `Custom measurement for category ${category.name} saved successfully.`);
-          } else {
-            warn(loggingLevel, `Custom category not found for ID: ${categoryId}`);
-          }
+      for (const [categoryId, inputValue] of Object.entries(customValues)) {
+        const category = customCategories.find(c => c.id === categoryId);
+        if (!category) {
+          warn(loggingLevel, `Custom category not found for ID: ${categoryId}`);
+          continue;
         }
+
+        // Only save if there's an actual input value (numeric or text)
+        if (!inputValue && !customNotes[categoryId]) {
+          continue;
+        }
+
+        const isConvertible = shouldConvertCustomMeasurement(category.measurement_type);
+        const currentTime = new Date();
+        let entryHour: number | null = null;
+        let entryTimestamp: string;
+
+        if (category.frequency === 'Hourly') {
+          entryHour = currentTime.getHours();
+          const selectedDateTime = new Date();
+          selectedDateTime.setHours(currentTime.getHours(), 0, 0, 0);
+          entryTimestamp = selectedDateTime.toISOString();
+        } else {
+          entryTimestamp = currentTime.toISOString();
+        }
+
+        const customMeasurementData: any = {
+          category_id: categoryId,
+          notes: customNotes[categoryId] || '',
+          entry_date: selectedDate,
+          entry_hour: entryHour,
+          entry_timestamp: entryTimestamp,
+        };
+
+        if (category.data_type === 'numeric') {
+          const numericValue = parseFloat(inputValue);
+          if (!isNaN(numericValue)) {
+            customMeasurementData.value = isConvertible
+              ? convertMeasurement(numericValue, defaultMeasurementUnit, 'cm')
+              : numericValue;
+          } else {
+            // If numeric category and input is not a valid number, set value to null
+            customMeasurementData.value = null;
+          }
+        } else {
+          // For text categories, store the input value directly in 'value'
+          customMeasurementData.value = inputValue;
+        }
+
+        await saveCustomMeasurement(customMeasurementData);
+        info(loggingLevel, `Custom measurement for category ${category.name} saved successfully.`);
       }
 
       info(loggingLevel, "Check-in data saved successfully!");
@@ -455,9 +436,9 @@ const CheckIn = () => {
   const handleCalculateBodyFat = async () => {
     if (!currentUserId) return;
     try {
-      const prefs = await getUserPreferences();
+      const prefs = await getUserPreferences(loggingLevel);
       const userProfile = await userManagementService.getUserProfile(currentUserId);
-      
+
       if (!userProfile) {
         error(loggingLevel, "Error calculating body fat: userProfile is null or undefined.");
         toast({ title: "Error", description: "Could not load user profile for calculation." });
@@ -471,11 +452,28 @@ const CheckIn = () => {
 
       const age = userProfile.date_of_birth ? new Date().getFullYear() - new Date(userProfile.date_of_birth).getFullYear() : 0;
       const gender = userProfile.gender;
-      const weightKg = convertWeight(parseFloat(weight), displayWeightUnit, 'kg');
-      const heightCm = convertMeasurement(parseFloat(height), displayMeasurementUnit, 'cm');
-      const waistCm = convertMeasurement(parseFloat(waist), displayMeasurementUnit, 'cm');
-      const neckCm = convertMeasurement(parseFloat(neck), displayMeasurementUnit, 'cm');
-      const hipsCm = convertMeasurement(parseFloat(hips), displayMeasurementUnit, 'cm');
+
+      let weightKg, heightCm, waistCm, neckCm, hipsCm;
+
+      if (useMostRecentForCalculation) {
+        const recentWeight = await getMostRecentMeasurement('weight');
+        const recentHeight = await getMostRecentMeasurement('height');
+        const recentWaist = await getMostRecentMeasurement('waist');
+        const recentNeck = await getMostRecentMeasurement('neck');
+        const recentHips = await getMostRecentMeasurement('hips');
+
+        weightKg = recentWeight?.weight ?? convertWeight(parseFloat(weight), defaultWeightUnit, 'kg');
+        heightCm = recentHeight?.height ?? convertMeasurement(parseFloat(height), defaultMeasurementUnit, 'cm');
+        waistCm = recentWaist?.waist ?? convertMeasurement(parseFloat(waist), defaultMeasurementUnit, 'cm');
+        neckCm = recentNeck?.neck ?? convertMeasurement(parseFloat(neck), defaultMeasurementUnit, 'cm');
+        hipsCm = recentHips?.hips ?? convertMeasurement(parseFloat(hips), defaultMeasurementUnit, 'cm');
+      } else {
+        weightKg = convertWeight(parseFloat(weight), defaultWeightUnit, 'kg');
+        heightCm = convertMeasurement(parseFloat(height), defaultMeasurementUnit, 'cm');
+        waistCm = convertMeasurement(parseFloat(waist), defaultMeasurementUnit, 'cm');
+        neckCm = convertMeasurement(parseFloat(neck), defaultMeasurementUnit, 'cm');
+        hipsCm = convertMeasurement(parseFloat(hips), defaultMeasurementUnit, 'cm');
+      }
 
       debug(loggingLevel, "Body Fat Calculation Inputs:", {
         age,
@@ -498,8 +496,8 @@ const CheckIn = () => {
           bfp = calculateBodyFatBmi(weightKg, heightCm, age, gender);
         }
       } else { // Default to U.S. Navy
-        if (!gender || isNaN(heightCm) || isNaN(waistCm) || isNaN(neckCm) || isNaN(hipsCm)) {
-          errorMessage = "Gender, height, waist, neck, and hips measurements are required for U.S. Navy Method.";
+        if (!gender || isNaN(heightCm) || isNaN(waistCm) || isNaN(neckCm) || (gender === 'female' && isNaN(hipsCm))) {
+          errorMessage = "Gender, height, waist, neck, and (if female) hips measurements are required for U.S. Navy Method.";
         } else {
           bfp = calculateBodyFatNavy(gender, heightCm, waistCm, neckCm, hipsCm);
         }
@@ -522,10 +520,6 @@ const CheckIn = () => {
     <div className="container mx-auto p-6 space-y-6">
       {/* Preferences Section */}
       <CheckInPreferences
-        weightUnit={displayWeightUnit}
-        measurementUnit={displayMeasurementUnit}
-        setWeightUnit={setDisplayWeightUnit}
-        setMeasurementUnit={setDisplayMeasurementUnit}
         selectedDate={selectedDate}
         onDateChange={(dateString) => {
           setSelectedDate(dateString);
@@ -553,7 +547,7 @@ const CheckIn = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="weight">Weight ({displayWeightUnit})</Label>
+                <Label htmlFor="weight">Weight ({defaultWeightUnit})</Label>
                 <Input
                   id="weight"
                   type="number"
@@ -562,7 +556,7 @@ const CheckIn = () => {
                   onChange={(e) => {
                     setWeight(e.target.value);
                   }}
-                  placeholder={`Enter weight in ${displayWeightUnit}`}
+                  placeholder={`Enter weight in ${defaultWeightUnit}`}
                 />
               </div>
 
@@ -580,7 +574,7 @@ const CheckIn = () => {
               </div>
 
               <div>
-                <Label htmlFor="neck">Neck ({displayMeasurementUnit})</Label>
+                <Label htmlFor="neck">Neck ({defaultMeasurementUnit})</Label>
                 <Input
                   id="neck"
                   type="number"
@@ -589,12 +583,12 @@ const CheckIn = () => {
                   onChange={(e) => {
                     setNeck(e.target.value);
                   }}
-                  placeholder={`Enter neck measurement in ${displayMeasurementUnit}`}
+                  placeholder={`Enter neck measurement in ${defaultMeasurementUnit}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="waist">Waist ({displayMeasurementUnit})</Label>
+                <Label htmlFor="waist">Waist ({defaultMeasurementUnit})</Label>
                 <Input
                   id="waist"
                   type="number"
@@ -603,12 +597,12 @@ const CheckIn = () => {
                   onChange={(e) => {
                     setWaist(e.target.value);
                   }}
-                  placeholder={`Enter waist measurement in ${displayMeasurementUnit}`}
+                  placeholder={`Enter waist measurement in ${defaultMeasurementUnit}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="hips">Hips ({displayMeasurementUnit})</Label>
+                <Label htmlFor="hips">Hips ({defaultMeasurementUnit})</Label>
                 <Input
                   id="hips"
                   type="number"
@@ -617,24 +611,43 @@ const CheckIn = () => {
                   onChange={(e) => {
                     setHips(e.target.value);
                   }}
-                  placeholder={`Enter hips measurement in ${displayMeasurementUnit}`}
+                  placeholder={`Enter hips measurement in ${defaultMeasurementUnit}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="height">Height ({displayMeasurementUnit})</Label>
+                <Label htmlFor="height">Height ({defaultMeasurementUnit})</Label>
                 <Input
                   id="height"
                   type="number"
                   step="0.1"
                   value={height}
                   onChange={(e) => setHeight(e.target.value)}
-                  placeholder={`Enter height in ${displayMeasurementUnit}`}
+                  placeholder={`Enter height in ${defaultMeasurementUnit}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="bodyFat">Body Fat %</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="bodyFat">Body Fat %</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="use-most-recent-toggle"
+                            checked={useMostRecentForCalculation}
+                            onCheckedChange={setUseMostRecentForCalculation}
+                          />
+                          <Label htmlFor="use-most-recent-toggle">Use Recent</Label>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Use most recent Weight, Height, Waist, Neck, and Hips for body fat calculation</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <div className="flex items-center">
                   <Input
                     id="bodyFat"
@@ -654,7 +667,7 @@ const CheckIn = () => {
                 return (
                   <div key={category.id}>
                     <Label htmlFor={`custom-${category.id}`}>
-                      {category.name} ({isConvertible ? displayMeasurementUnit : category.measurement_type})
+                      {category.name} ({isConvertible ? defaultMeasurementUnit : category.measurement_type})
                     </Label>
                     <Input
                       id={`custom-${category.id}`}
@@ -714,20 +727,20 @@ const CheckIn = () => {
                 if (measurement.type === 'custom' && measurement.custom_categories) {
                   const isConvertible = shouldConvertCustomMeasurement(measurement.custom_categories.measurement_type);
                   displayValue = isConvertible
-                    ? convertMeasurement(measurement.value, 'cm', displayMeasurementUnit)
+                    ? (typeof measurement.value === 'number' ? convertMeasurement(measurement.value, 'cm', defaultMeasurementUnit) : measurement.value)
                     : measurement.value;
-                  displayUnit = isConvertible ? displayMeasurementUnit : measurement.custom_categories.measurement_type;
+                  displayUnit = isConvertible ? defaultMeasurementUnit : measurement.custom_categories.measurement_type;
                 } else if (measurement.type === 'standard') {
                   // Apply unit conversion for standard measurements if applicable
                   if (measurement.display_name === 'Weight') {
-                    displayValue = convertWeight(measurement.value, 'kg', displayWeightUnit);
-                    displayUnit = displayWeightUnit;
+                    displayValue = typeof measurement.value === 'number' ? convertWeight(measurement.value, 'kg', defaultWeightUnit) : measurement.value;
+                    displayUnit = defaultWeightUnit;
                   } else if (['Neck', 'Waist', 'Hips'].includes(measurement.display_name)) {
-                    displayValue = convertMeasurement(measurement.value, 'cm', displayMeasurementUnit);
-                    displayUnit = displayMeasurementUnit;
+                    displayValue = typeof measurement.value === 'number' ? convertMeasurement(measurement.value, 'cm', defaultMeasurementUnit) : measurement.value;
+                    displayUnit = defaultMeasurementUnit;
                   } else if (measurement.display_name === 'Height') {
-                    displayValue = convertMeasurement(measurement.value, 'cm', displayMeasurementUnit);
-                    displayUnit = displayMeasurementUnit;
+                    displayValue = typeof measurement.value === 'number' ? convertMeasurement(measurement.value, 'cm', defaultMeasurementUnit) : measurement.value;
+                    displayUnit = defaultMeasurementUnit;
                   }
                 }
                 // Format displayValue to one decimal place if it's a number

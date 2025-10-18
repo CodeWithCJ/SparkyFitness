@@ -14,28 +14,20 @@ import { format } from 'date-fns'; // Import format from date-fns
 
 
 interface CheckInPreferencesProps {
-  weightUnit: 'kg' | 'lbs';
-  measurementUnit: 'cm' | 'inches';
-  setWeightUnit: (unit: 'kg' | 'lbs') => void;
-  setMeasurementUnit: (unit: 'cm' | 'inches') => void;
   selectedDate: string;
   onDateChange: (date: string) => void;
 }
 
 const CheckInPreferences = ({
-  weightUnit,
-  measurementUnit,
-  setWeightUnit,
-  setMeasurementUnit,
   selectedDate,
-  onDateChange
+  onDateChange,
 }: CheckInPreferencesProps) => {
   const {
     formatDate,
     parseDateInUserTimezone,
     loggingLevel
   } = usePreferences();
-  debug(loggingLevel, "CheckInPreferences component rendered.", { selectedDate, weightUnit, measurementUnit });
+  debug(loggingLevel, "CheckInPreferences component rendered.", { selectedDate });
   const date = parseDateInUserTimezone(selectedDate); // Use parseDateInUserTimezone
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,25 +66,7 @@ const CheckInPreferences = ({
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-            {/* Unit Toggles */}
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="weight-unit-toggle"
-                  checked={weightUnit === 'lbs'}
-                  onCheckedChange={(checked) => setWeightUnit(checked ? 'lbs' : 'kg')}
-                />
-                <Label htmlFor="weight-unit-toggle">Weight ({weightUnit})</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="measurement-unit-toggle"
-                  checked={measurementUnit === 'inches'}
-                  onCheckedChange={(checked) => setMeasurementUnit(checked ? 'inches' : 'cm')}
-                />
-                <Label htmlFor="measurement-unit-toggle">Measurements ({measurementUnit})</Label>
-              </div>
-            </div>
+            <div />
 
             {/* Date Navigation */}
             <div className="flex items-center gap-2">

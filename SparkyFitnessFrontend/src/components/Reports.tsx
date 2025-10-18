@@ -15,7 +15,8 @@ import ReportsTables from "./reports/ReportsTables";
 import ExerciseReportsDashboard from "./reports/ExerciseReportsDashboard"; // Import ExerciseReportsDashboard
 import { log, debug, info, warn, error, UserLoggingLevel } from "@/utils/logging";
 import { format, parseISO, addDays } from 'date-fns'; // Import format, parseISO, addDays from date-fns
-import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations'; // Import the new utility function
+import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
+import { calculateSmartYAxisDomain, getChartConfig } from "@/utils/chartUtils";
 import {
   Select,
   SelectContent,
@@ -52,8 +53,6 @@ const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
-  const [showWeightInKg, setShowWeightInKg] = useState(defaultWeightUnit === 'kg');
-  const [showMeasurementsInCm, setShowMeasurementsInCm] = useState(defaultMeasurementUnit === 'cm');
   const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("charts");
 
@@ -87,8 +86,6 @@ const Reports = () => {
       activeUserId,
       startDate,
       endDate,
-      showWeightInKg,
-      showMeasurementsInCm,
       loggingLevel
     });
     
@@ -112,7 +109,7 @@ const Reports = () => {
       window.removeEventListener('measurementsRefresh', handleRefresh);
       window.removeEventListener('exerciseRefresh', handleRefresh); // Clean up exercise refresh listener
       };
-    }, [user, activeUserId, startDate, endDate, loggingLevel, formatDateInUserTimezone, parseDateInUserTimezone, showWeightInKg, showMeasurementsInCm, defaultWeightUnit, defaultMeasurementUnit]); // Added showWeightInKg, showMeasurementsInCm, defaultWeightUnit, defaultMeasurementUnit to dependencies
+    }, [user, activeUserId, startDate, endDate, loggingLevel, formatDateInUserTimezone, parseDateInUserTimezone, defaultWeightUnit, defaultMeasurementUnit]); // Added showWeightInKg, showMeasurementsInCm, defaultWeightUnit, defaultMeasurementUnit to dependencies
 
 
   const loadReports = async () => {
@@ -143,12 +140,12 @@ const Reports = () => {
       // Apply unit conversions to fetchedMeasurementData
       const measurementDataFormatted = fetchedMeasurementData.map(m => ({
         entry_date: m.entry_date,
-        weight: m.weight ? convertWeight(m.weight, 'kg', showWeightInKg ? 'kg' : 'lbs') : undefined,
-        neck: m.neck ? convertMeasurement(m.neck, 'cm', showMeasurementsInCm ? 'cm' : 'inches') : undefined,
-        waist: m.waist ? convertMeasurement(m.waist, 'cm', showMeasurementsInCm ? 'cm' : 'inches') : undefined,
-        hips: m.hips ? convertMeasurement(m.hips, 'cm', showMeasurementsInCm ? 'cm' : 'inches') : undefined,
+        weight: m.weight ? convertWeight(m.weight, 'kg', defaultWeightUnit) : undefined,
+        neck: m.neck ? convertMeasurement(m.neck, 'cm', defaultMeasurementUnit) : undefined,
+        waist: m.waist ? convertMeasurement(m.waist, 'cm', defaultMeasurementUnit) : undefined,
+        hips: m.hips ? convertMeasurement(m.hips, 'cm', defaultMeasurementUnit) : undefined,
         steps: m.steps || undefined,
-        height: m.height ? convertMeasurement(m.height, 'cm', showMeasurementsInCm ? 'cm' : 'inches') : undefined,
+        height: m.height ? convertMeasurement(m.height, 'cm', defaultMeasurementUnit) : undefined,
         body_fat_percentage: m.body_fat_percentage || undefined,
       }));
       setMeasurementData(measurementDataFormatted);
@@ -412,12 +409,12 @@ const Reports = () => {
 
       const csvHeaders = [
         'Date',
-        `Weight (${showWeightInKg ? 'kg' : 'lbs'})`,
-        `Neck (${showMeasurementsInCm ? 'cm' : 'inches'})`,
-        `Waist (${showMeasurementsInCm ? 'cm' : 'inches'})`,
-        `Hips (${showMeasurementsInCm ? 'cm' : 'inches'})`,
+        `Weight (${defaultWeightUnit})`,
+        `Neck (${defaultMeasurementUnit})`,
+        `Waist (${defaultMeasurementUnit})`,
+        `Hips (${defaultMeasurementUnit})`,
         'Steps',
-        `Height (${showMeasurementsInCm ? 'cm' : 'inches'})`,
+        `Height (${defaultMeasurementUnit})`,
         'Body Fat %'
       ];
 
@@ -492,11 +489,12 @@ const Reports = () => {
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
 
-      const csvHeaders = ['Date', 'Hour', 'Value'];
+      const csvHeaders = ['Date', 'Time', 'Value'];
       const csvRows = sortedMeasurements.map(measurement => {
         const timestamp = new Date(measurement.timestamp);
         const hour = timestamp.getHours();
-        const formattedHour = `${hour.toString().padStart(2, '0')}:00`;
+        const minutes = timestamp.getMinutes();
+        const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         
         return [
           measurement.entry_date && !isNaN(parseISO(measurement.entry_date).getTime()) ? formatDateInUserTimezone(parseISO(measurement.entry_date), 'MMM dd, yyyy') : '', // Format date for display
@@ -546,12 +544,12 @@ const Reports = () => {
       }
       if (isConvertibleMeasurement) {
         // Assuming custom measurements are stored in 'cm' if they are convertible
-        const converted = convertMeasurement(parseFloat(value.toString()), 'cm', showMeasurementsInCm ? 'cm' : 'inches');
-        debug(loggingLevel, `Reports: Converted value from ${value} to ${converted} for category.`);
+        const converted = convertMeasurement(numericValue, 'cm', defaultMeasurementUnit);
+        debug(loggingLevel, `Reports: Converted value from ${numericValue} to ${converted} for category.`);
         return converted;
       }
-      debug(loggingLevel, `Reports: Returning original value ${value} for non-convertible category.`);
-      return value;
+      debug(loggingLevel, `Reports: Returning original value ${numericValue} for non-convertible category.`);
+      return numericValue;
     };
 
     if (category.frequency === 'Hourly' || category.frequency === 'All') {
@@ -585,23 +583,15 @@ const Reports = () => {
     }
   };
 
-  const handleWeightUnitToggle = (showInKg: boolean) => {
-    debug(loggingLevel, 'Reports: Weight unit toggle handler called:', {
-      showInKg,
-      currentShowWeightInKg: showWeightInKg,
-      currentWeightUnit: defaultWeightUnit
+  // Helper function to get smart Y-axis domain for custom measurements
+  const getCustomYAxisDomain = (data: any[]) => {
+    const config = getChartConfig('value');
+    return calculateSmartYAxisDomain(data, 'value', {
+      marginPercent: config.marginPercent,
+      minRangeThreshold: config.minRangeThreshold
     });
-    setShowWeightInKg(showInKg);
   };
 
-  const handleMeasurementUnitToggle = (showInCm: boolean) => {
-    debug(loggingLevel, 'Reports: Measurement unit toggle handler called:', {
-      showInCm,
-      currentShowMeasurementsInCm: showMeasurementsInCm,
-      currentMeasurementUnit: defaultMeasurementUnit
-    });
-    setShowMeasurementsInCm(showInCm);
-  };
 
   const handleStartDateChange = (date: string) => {
     debug(loggingLevel, 'Reports: Start date change handler called:', {
@@ -631,12 +621,8 @@ const Reports = () => {
         <ReportsControls
           startDate={startDate}
           endDate={endDate}
-          showWeightInKg={showWeightInKg}
-          showMeasurementsInCm={showMeasurementsInCm}
           onStartDateChange={handleStartDateChange}
           onEndDateChange={handleEndDateChange}
-          onWeightUnitToggle={handleWeightUnitToggle}
-          onMeasurementUnitToggle={handleMeasurementUnitToggle}
         />
       ) : (
         <div>Loading date controls...</div> // Or a loading spinner
@@ -665,8 +651,8 @@ const Reports = () => {
             <NutritionChartsGrid nutritionData={nutritionData} />
             <MeasurementChartsGrid
               measurementData={measurementData}
-              showWeightInKg={showWeightInKg}
-              showMeasurementsInCm={showMeasurementsInCm}
+              showWeightInKg={defaultWeightUnit === 'kg'}
+              showMeasurementsInCm={defaultMeasurementUnit === 'cm'}
             />
 
             {/* Custom Measurements Charts */}
@@ -677,6 +663,7 @@ const Reports = () => {
                   {customCategories.filter(c => c.data_type === 'numeric').map((category) => {
                     const data = customMeasurementsData[category.id] || [];
                     const chartData = formatCustomChartData(category, data);
+                    console.log("chartData", chartData);
                     
                     return (
                       <ZoomableChart key={category.id} title={`${category.name} (${category.measurement_type})`}>
@@ -685,7 +672,7 @@ const Reports = () => {
                             <CardTitle className="flex items-center">
                               <Activity className="w-5 h-5 mr-2" />
                               {category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
-                                ? `${category.name} (${showMeasurementsInCm ? 'cm' : 'inches'})`
+                                ? `${category.name} (${defaultMeasurementUnit})`
                                 : `${category.name} (${category.measurement_type})`}
                           </CardTitle>
                         </CardHeader>
@@ -696,9 +683,10 @@ const Reports = () => {
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="date" />
                                 <YAxis
+                                  domain={getCustomYAxisDomain(chartData) || undefined}
                                   label={{
                                     value: category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
-                                      ? (showMeasurementsInCm ? 'cm' : 'inches')
+                                      ? (defaultMeasurementUnit)
                                       : category.measurement_type,
                                     angle: -90,
                                     position: 'insideLeft',
@@ -710,7 +698,7 @@ const Reports = () => {
                                     if (active && payload && payload.length) {
                                       const data = payload[0].payload;
                                       const unit = category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
-                                        ? (showMeasurementsInCm ? 'cm' : 'inches')
+                                        ? (defaultMeasurementUnit)
                                         : category.measurement_type;
                                       const numericValue = Number(data.value);
 
@@ -760,8 +748,8 @@ const Reports = () => {
               customCategories={customCategories}
               customMeasurementsData={customMeasurementsData}
               prData={exerciseDashboardData?.prData}
-              showWeightInKg={showWeightInKg}
-              showMeasurementsInCm={showMeasurementsInCm}
+              showWeightInKg={defaultWeightUnit === 'kg'}
+              showMeasurementsInCm={defaultMeasurementUnit === 'cm'}
               onExportFoodDiary={exportFoodDiary}
               onExportBodyMeasurements={exportBodyMeasurements}
               onExportCustomMeasurements={exportCustomMeasurements}

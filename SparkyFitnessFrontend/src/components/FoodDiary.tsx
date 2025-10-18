@@ -179,7 +179,7 @@ const FoodDiary = ({
       `Querying food_entries for user: ${currentUserId} and entry_date: ${selectedDate}`,
     ); // Added debug log
     try {
-      const data = await loadFoodEntries(currentUserId, selectedDate); // Use imported loadFoodEntries
+      const data = await loadFoodEntries(currentUserId, selectedDate, loggingLevel); // Use imported loadFoodEntries
       info(loggingLevel, "Food entries loaded successfully:", data);
       debug(loggingLevel, "Raw food entries from API:", data); // Added raw data log
       const processedData = (data || []).map(entry => {

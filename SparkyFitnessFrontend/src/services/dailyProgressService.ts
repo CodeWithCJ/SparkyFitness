@@ -72,7 +72,8 @@ export const getExerciseEntriesForDate = async (date: string): Promise<ExerciseE
 
 export const getCheckInMeasurementsForDate = async (date: string): Promise<CheckInMeasurement | null> => {
   try {
-    const measurement = await apiCall(`/measurements/check-in/${date}`, {
+    const params = new URLSearchParams({ date });
+    const measurement = await apiCall(`/measurements/check-in/latest-on-or-before-date?${params.toString()}`, {
       method: 'GET',
       suppress404Toast: true, // Suppress toast for 404
     });
