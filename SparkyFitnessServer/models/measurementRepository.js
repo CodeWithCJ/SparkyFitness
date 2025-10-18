@@ -177,12 +177,28 @@ async function getCheckInMeasurementsByDate(userId, date) {
   }
 }
 
+async function getLatestCheckInMeasurementsOnOrBeforeDate(userId, date) {
+  const client = await getPool().connect();
+  try {
+    const result = await client.query(
+      `SELECT * FROM check_in_measurements
+       WHERE user_id = $1 AND entry_date <= $2
+       ORDER BY entry_date DESC
+       LIMIT 1`,
+      [userId, date]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
 async function updateCheckInMeasurements(userId, entryDate, updateData) {
   log('info', `[measurementRepository] updateCheckInMeasurements called with: userId=${userId}, entryDate=${entryDate}, updateData=`, updateData);
   const client = await getPool().connect();
   try {
     const fieldsToUpdate = Object.keys(updateData)
-      .filter(key => ['weight', 'neck', 'waist', 'hips', 'steps'].includes(key))
+      .filter(key => ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'].includes(key))
       .map((key, index) => `${key} = $${index + 1}`);
 
     if (fieldsToUpdate.length === 0) {
@@ -396,7 +412,7 @@ async function getCheckInMeasurementsByDateRange(userId, startDate, endDate) {
   const client = await getPool().connect();
   try {
     const result = await client.query(
-      'SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date',
+      'SELECT *, updated_at FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date DESC, updated_at DESC',
       [userId, startDate, endDate]
     );
     log('debug', `[measurementRepository] getCheckInMeasurementsByDateRange returning: ${JSON.stringify(result.rows)}`);
@@ -419,47 +435,59 @@ async function getCustomMeasurementsByDateRange(userId, categoryId, startDate, e
   }
 }
 
-async function upsertCustomMeasurement(userId, categoryId, value, entryDate, entryHour, entryTimestamp, notes) {
+async function upsertCustomMeasurement(userId, categoryId, value, entryDate, entryHour, entryTimestamp, notes, frequency) {
   const client = await getPool().connect();
   try {
     let query;
     let values;
 
-    // Check if an entry already exists for the given user, category, date, and hour (if applicable)
-    let existingEntryQuery = `
-      SELECT id FROM custom_measurements
-      WHERE user_id = $1 AND category_id = $2 AND entry_date = $3
-    `;
-    let existingEntryValues = [userId, categoryId, entryDate];
-
-    if (entryHour !== null) {
-      existingEntryQuery += ` AND entry_hour = $4`;
-      existingEntryValues.push(entryHour);
-    }
-
-    const existingEntry = await client.query(existingEntryQuery, existingEntryValues);
-
-    if (existingEntry.rows.length > 0) {
-      // Update existing entry
-      const id = existingEntry.rows[0].id;
-      query = `
-        UPDATE custom_measurements
-        SET value = $1, entry_timestamp = $2, notes = $3, updated_at = now()
-        WHERE id = $4 AND user_id = $5
-        RETURNING *
-      `;
-      values = [value, entryTimestamp, notes, id, userId];
-    } else {
-      // Insert new entry
+    // For 'Unlimited' and 'All' frequencies, always insert a new entry.
+    // For 'Daily' and 'Hourly', check for existing entries to update.
+    if (frequency === 'Unlimited' || frequency === 'All') {
       query = `
         INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, notes, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
         RETURNING *
       `;
-      // Ensure userId is the first value, then categoryId, then value, etc.
-      // Filter out user_id if it somehow made it into the incoming payload for custom measurements
-      const filteredCustomValues = [categoryId, value, entryDate, entryHour, entryTimestamp, notes];
-      values = [userId, ...filteredCustomValues];
+      values = [userId, categoryId, value, entryDate, entryHour, entryTimestamp, notes];
+    } else {
+      // For 'Daily' and 'Hourly', check if an entry already exists for the given user, category, date, and hour (if applicable)
+      let existingEntryQuery = `
+        SELECT id FROM custom_measurements
+        WHERE user_id = $1 AND category_id = $2 AND entry_date = $3
+      `;
+      let existingEntryValues = [userId, categoryId, entryDate];
+
+      if (frequency === 'Hourly' && entryHour !== null) {
+        existingEntryQuery += ` AND entry_hour = $4`;
+        existingEntryValues.push(entryHour);
+      } else if (frequency === 'Daily') {
+        // For daily, we only care about the date, so entry_hour should not be part of the WHERE clause
+        // and we should ensure we're only looking for entries without an hour or with hour 0
+        existingEntryQuery += ` AND (entry_hour IS NULL OR entry_hour = 0)`;
+      }
+
+      const existingEntry = await client.query(existingEntryQuery, existingEntryValues);
+
+      if (existingEntry.rows.length > 0) {
+        // Update existing entry
+        const id = existingEntry.rows[0].id;
+        query = `
+          UPDATE custom_measurements
+          SET value = $1, entry_timestamp = $2, notes = $3, updated_at = now()
+          WHERE id = $4 AND user_id = $5
+          RETURNING *
+        `;
+        values = [value, entryTimestamp, notes, id, userId];
+      } else {
+        // Insert new entry
+        query = `
+          INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, notes, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
+          RETURNING *
+        `;
+        values = [userId, categoryId, value, entryDate, entryHour, entryTimestamp, notes];
+      }
     }
 
     const result = await client.query(query, values);
@@ -507,6 +535,8 @@ module.exports = {
   deleteCustomMeasurement,
   getCustomMeasurementOwnerId,
   getLatestMeasurement,
+  getLatestCheckInMeasurementsOnOrBeforeDate,
+  getMostRecentMeasurement,
 };
 
 async function getLatestMeasurement(userId) {
@@ -533,6 +563,22 @@ async function getCustomMeasurementOwnerId(id) {
       [id]
     );
     return result.rows[0]?.user_id;
+  } finally {
+    client.release();
+  }
+}
+
+async function getMostRecentMeasurement(userId, measurementType) {
+  const client = await getPool().connect();
+  try {
+    const result = await client.query(
+      `SELECT ${measurementType} FROM check_in_measurements
+       WHERE user_id = $1 AND ${measurementType} IS NOT NULL
+       ORDER BY entry_date DESC, updated_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+    return result.rows[0];
   } finally {
     client.release();
   }

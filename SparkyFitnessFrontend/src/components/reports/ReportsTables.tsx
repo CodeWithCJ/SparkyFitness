@@ -538,7 +538,7 @@ const ReportsTables = ({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
-                      <TableHead>Hour</TableHead>
+                      <TableHead>Time</TableHead>
                       <TableHead>Value ({category.measurement_type})</TableHead>
                       <TableHead>Notes</TableHead>
                     </TableRow>
@@ -548,7 +548,8 @@ const ReportsTables = ({
                       // Extract hour from timestamp
                       const timestamp = parseISO(measurement.timestamp);
                       const hour = timestamp.getHours();
-                      const formattedHour = `${hour.toString().padStart(2, '0')}:00`;
+                      const minutes = timestamp.getMinutes();
+                      const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                       
                       return (
                         <TableRow key={index}>

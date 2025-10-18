@@ -123,7 +123,8 @@ async function processHealthData(healthDataArray, userId) {
             parsedDate,
             entryHour,
             entryTimestamp,
-            dataEntry.notes // Pass notes if available
+            dataEntry.notes, // Pass notes if available
+            category.frequency // Pass the frequency from the category
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
@@ -285,6 +286,16 @@ async function getCheckInMeasurements(authenticatedUserId, targetUserId, date) {
     return measurement || {};
   } catch (error) {
     log('error', `Error fetching check-in measurements for user ${targetUserId} on ${date} by ${authenticatedUserId}:`, error);
+    throw error;
+  }
+}
+
+async function getLatestCheckInMeasurementsOnOrBeforeDate(authenticatedUserId, targetUserId, date) {
+  try {
+    const measurement = await measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(targetUserId, date);
+    return measurement || null;
+  } catch (error) {
+    log('error', `Error fetching latest check-in measurements on or before ${date} for user ${targetUserId} by ${authenticatedUserId}:`, error);
     throw error;
   }
 }
@@ -451,6 +462,7 @@ module.exports = {
   deleteWaterIntake,
   upsertCheckInMeasurements,
   getCheckInMeasurements,
+  getLatestCheckInMeasurementsOnOrBeforeDate,
   updateCheckInMeasurements,
   deleteCheckInMeasurements,
   getCustomCategories,
@@ -463,11 +475,21 @@ module.exports = {
   getCustomMeasurementsByDateRange,
   upsertCustomMeasurementEntry,
   deleteCustomMeasurementEntry,
+  getMostRecentMeasurement,
 };
 
 async function upsertCustomMeasurementEntry(authenticatedUserId, payload) {
   try {
     const { category_id, value, entry_date, entry_hour, entry_timestamp, notes } = payload;
+
+    // Fetch category details to get the frequency
+    const categories = await measurementRepository.getCustomCategories(authenticatedUserId);
+    const category = categories.find(cat => cat.id === category_id);
+
+    if (!category) {
+      throw new Error(`Custom category with ID ${category_id} not found.`);
+    }
+
     const result = await measurementRepository.upsertCustomMeasurement(
       authenticatedUserId,
       category_id,
@@ -475,7 +497,8 @@ async function upsertCustomMeasurementEntry(authenticatedUserId, payload) {
       entry_date,
       entry_hour,
       entry_timestamp,
-      notes
+      notes,
+      category.frequency // Pass the frequency to the repository
     );
     return result;
   } catch (error) {
@@ -493,6 +516,16 @@ async function deleteCustomMeasurementEntry(authenticatedUserId, id) {
     return { message: 'Custom measurement entry deleted successfully.' };
   } catch (error) {
     log('error', `Error deleting custom measurement entry ${id} by ${authenticatedUserId}:`, error);
+    throw error;
+  }
+}
+
+async function getMostRecentMeasurement(userId, measurementType) {
+  try {
+    const measurement = await measurementRepository.getMostRecentMeasurement(userId, measurementType);
+    return measurement;
+  } catch (error) {
+    log('error', `Error fetching most recent ${measurementType} for user ${userId}:`, error);
     throw error;
   }
 }

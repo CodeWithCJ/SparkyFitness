@@ -17,6 +17,7 @@ import {
   ExerciseEntry,
   CheckInMeasurement,
 } from "@/services/dailyProgressService";
+import { getMostRecentMeasurement } from "@/services/checkInService";
 import { FoodEntry } from "@/types/food"; // Import FoodEntry from src/types/food
 import { Skeleton } from "./ui/skeleton";
 import { getUserPreferences } from "@/services/preferenceService";
@@ -241,24 +242,43 @@ const DailyProgress = ({
       // Load BMR
       debug(loggingLevel, "DailyProgress: Fetching user preferences for BMR...");
       try {
-        const prefs = await getUserPreferences();
+        const prefs = await getUserPreferences(loggingLevel);
         if (prefs && currentUserId) {
           setIncludeBmrInNetCalories(prefs.include_bmr_in_net_calories || false);
-          const measurements = await getCheckInMeasurementsForDate(selectedDate);
-          const userProfile = await userManagementService.getUserProfile(currentUserId);
+          const [mostRecentWeight, mostRecentHeight, mostRecentBodyFat, userProfile] = await Promise.all([
+            getMostRecentMeasurement('weight'),
+            getMostRecentMeasurement('height'),
+            getMostRecentMeasurement('body_fat_percentage'),
+            userManagementService.getUserProfile(currentUserId)
+          ]);
+
           const age = userProfile?.date_of_birth ? new Date().getFullYear() - new Date(userProfile.date_of_birth).getFullYear() : 0;
           const gender = userProfile?.gender;
 
-          if (measurements && age && gender && prefs.bmr_algorithm) {
-            const bmrValue = calculateBmr(
-              prefs.bmr_algorithm as BmrAlgorithm,
-              measurements.weight || 0,
-              measurements.height || 0,
+          if (prefs.bmr_algorithm && mostRecentWeight?.weight && mostRecentHeight?.height && age && gender) {
+            try {
+              const bmrValue = calculateBmr(
+                prefs.bmr_algorithm as BmrAlgorithm,
+                mostRecentWeight.weight,
+                mostRecentHeight.height,
+                age,
+                gender,
+                mostRecentBodyFat?.body_fat_percentage
+              );
+              setBmr(bmrValue);
+            } catch (bmrError) {
+              error(loggingLevel, "DailyProgress: Error calculating BMR:", bmrError);
+              setBmr(null);
+            }
+          } else {
+            warn(loggingLevel, "DailyProgress: Missing data for BMR calculation.", {
+              bmr_algorithm: prefs.bmr_algorithm,
+              weight: mostRecentWeight?.weight,
+              height: mostRecentHeight?.height,
               age,
-              gender,
-              measurements.body_fat_percentage
-            );
-            setBmr(bmrValue);
+              gender
+            });
+            setBmr(null);
           }
         }
       } catch (err) {

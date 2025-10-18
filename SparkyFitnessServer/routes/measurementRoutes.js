@@ -198,6 +198,23 @@ router.post('/check-in', authenticateToken, authorizeAccess('checkin'), async (r
   }
 });
 
+// Endpoint to fetch the latest check-in measurements on or before a specific date
+router.get('/check-in/latest-on-or-before-date', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
+  const { date } = req.query;
+  if (!date) {
+    return res.status(400).json({ error: 'Date is required.' });
+  }
+  try {
+    const measurement = await measurementService.getLatestCheckInMeasurementsOnOrBeforeDate(req.userId, req.userId, date);
+    res.status(200).json(measurement);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
 // Endpoint to fetch check-in measurements for a specific user and date
 router.get('/check-in/:date', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
   const { date } = req.params;
@@ -425,6 +442,19 @@ router.get('/custom-measurements-range/:categoryId/:startDate/:endDate', authent
   try {
     const measurements = await measurementService.getCustomMeasurementsByDateRange(req.userId, req.userId, categoryId, startDate, endDate);
     res.status(200).json(measurements);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
+router.get('/most-recent/:measurementType', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
+  const { measurementType } = req.params;
+  try {
+    const measurement = await measurementService.getMostRecentMeasurement(req.userId, measurementType);
+    res.status(200).json(measurement);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });

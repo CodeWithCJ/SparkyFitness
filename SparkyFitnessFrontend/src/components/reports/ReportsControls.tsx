@@ -18,23 +18,15 @@ import { format, parseISO } from 'date-fns'; // Import format and parseISO from 
 interface ReportsControlsProps {
   startDate: string;
   endDate: string;
-  showWeightInKg: boolean;
-  showMeasurementsInCm: boolean;
   onStartDateChange: (date: string) => void;
   onEndDateChange: (date: string) => void;
-  onWeightUnitToggle: (showInKg: boolean) => void;
-  onMeasurementUnitToggle: (showInCm: boolean) => void;
 }
 
 const ReportsControls = ({
   startDate,
   endDate,
-  showWeightInKg,
-  showMeasurementsInCm,
   onStartDateChange,
   onEndDateChange,
-  onWeightUnitToggle,
-  onMeasurementUnitToggle,
 }: ReportsControlsProps) => {
   const { formatDate, parseDateInUserTimezone, formatDateInUserTimezone, loggingLevel } = usePreferences();
   info(loggingLevel, 'ReportsControls: Rendering component.');
@@ -87,45 +79,12 @@ const ReportsControls = ({
     handleEndDateSelect(nextDay);
   };
 
-  const handleWeightUnitChange = (checked: boolean) => {
-    // `checked` is true when the switch is ON (meaning lbs is selected)
-    // `onWeightUnitToggle` expects `true` for kg, `false` for lbs
-    debug(loggingLevel, 'ReportsControls: Weight unit toggle changed. Switch checked:', checked);
-    onWeightUnitToggle(!checked); // Pass true if kg, false if lbs
-  };
-
-  const handleMeasurementUnitChange = (checked: boolean) => {
-    // `checked` is true when the switch is ON (meaning inches is selected)
-    // `onMeasurementUnitToggle` expects `true` for cm, `false` for inches
-    debug(loggingLevel, 'ReportsControls: Measurement unit toggle changed. Switch checked:', checked);
-    onMeasurementUnitToggle(!checked); // Pass true if cm, false if inches
-  };
 
   return (
     <Card>
       <CardContent className="p-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-          {/* Unit Toggles */}
-          <div className="flex flex-row items-center gap-4 md:gap-6">
-            <div className="flex items-center space-x-2">
-              <Label className="text-sm hidden md:block">Weight</Label>
-              <span className={`text-xs ${showWeightInKg ? 'font-bold' : ''}`}>kg</span>
-              <Switch
-                checked={!showWeightInKg}
-                onCheckedChange={handleWeightUnitChange}
-              />
-              <span className={`text-xs ${!showWeightInKg ? 'font-bold' : ''}`}>lbs</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Label className="text-sm hidden md:block">Measurements</Label>
-              <span className={`text-xs ${showMeasurementsInCm ? 'font-bold' : ''}`}>cm</span>
-              <Switch
-                checked={!showMeasurementsInCm}
-                onCheckedChange={handleMeasurementUnitChange}
-              />
-              <span className={`text-xs ${!showMeasurementsInCm ? 'font-bold' : ''}`}>inches</span>
-            </div>
-          </div>
+          <div />
 
           {/* Date Range Controls */}
           <div className="flex flex-col md:flex-row md:items-center gap-4">

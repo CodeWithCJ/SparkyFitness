@@ -42,18 +42,11 @@ export const getCustomMeasurementsForDate = async (userId: string, date: string)
   });
 };
 
-export const saveCustomMeasurement = async (measurementData: any, frequency: string): Promise<CustomMeasurement> => {
-  if (frequency === 'All') {
-    return apiCall('/measurements/custom-entries', {
-      method: 'POST',
-      body: measurementData,
-    });
-  } else {
-    return apiCall('/measurements/custom-entries', {
-      method: 'PUT',
-      body: measurementData,
-    });
-  }
+export const saveCustomMeasurement = async (measurementData: any): Promise<CustomMeasurement> => {
+  return apiCall('/measurements/custom-entries', {
+    method: 'POST', // Always use POST for new entries, backend will handle upsert logic
+    body: measurementData,
+  });
 };
 
 export const deleteCustomMeasurement = async (measurementId: string): Promise<void> => {

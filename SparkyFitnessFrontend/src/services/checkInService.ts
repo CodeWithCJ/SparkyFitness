@@ -11,8 +11,7 @@ export interface CustomCategory {
 export interface CustomMeasurement {
   id: string;
   category_id: string;
-  value: number;
-  text_value?: string;
+  value: string | number;
   entry_date: string;
   entry_hour: number | null;
   entry_timestamp: string;
@@ -35,6 +34,7 @@ export interface CheckInMeasurement {
   steps: number | null;
   height: number | null;
   body_fat_percentage: number | null;
+  updated_at: string; // Add updated_at for sorting
 }
 
 export interface CombinedMeasurement {
@@ -42,7 +42,7 @@ export interface CombinedMeasurement {
   entry_date: string;
   entry_hour: number | null;
   entry_timestamp: string;
-  value: any;
+  value: string | number;
   type: 'custom' | 'standard';
   display_name: string;
   display_unit: string;
@@ -106,4 +106,8 @@ export const saveCustomMeasurement = async (payload: any): Promise<void> => {
     method: 'POST',
     body: payload,
   });
+};
+
+export const getMostRecentMeasurement = async (measurementType: string): Promise<CheckInMeasurement | null> => {
+  return apiCall(`/measurements/most-recent/${measurementType}`);
 };
