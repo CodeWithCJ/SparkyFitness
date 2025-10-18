@@ -2,6 +2,8 @@ const reportRepository = require('../models/reportRepository');
 const measurementRepository = require('../models/measurementRepository'); // For custom categories
 const userRepository = require('../models/userRepository');
 const goalRepository = require('../models/goalRepository'); // Import goalRepository
+const preferenceRepository = require('../models/preferenceRepository');
+const bmrService = require('./bmrService');
 const { log } = require('../config/logging');
 
 async function getReportsData(authenticatedUserId, targetUserId, startDate, endDate) {
@@ -10,15 +12,19 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
     const [
       fetchedNutritionData,
       tabularDataRaw,
-      exerciseEntriesRaw, // New: Fetch exercise entries
+      exerciseEntriesRaw,
       measurementData,
-      customCategoriesResult
+      customCategoriesResult,
+      userProfile,
+      userPreferences
     ] = await Promise.all([
       reportRepository.getNutritionData(targetUserId, startDate, endDate),
       reportRepository.getTabularFoodData(targetUserId, startDate, endDate),
-      reportRepository.getExerciseEntries(targetUserId, startDate, endDate), // New: Fetch exercise entries
+      reportRepository.getExerciseEntries(targetUserId, startDate, endDate),
       reportRepository.getMeasurementData(targetUserId, startDate, endDate),
-      measurementRepository.getCustomCategories(targetUserId) // Reusing from measurementRepository
+      measurementRepository.getCustomCategories(targetUserId),
+      userRepository.getUserProfile(targetUserId),
+      preferenceRepository.getUserPreferences(targetUserId)
     ]);
 
     const customMeasurementsData = {};
@@ -45,7 +51,7 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
         potassium: row.potassium,
         dietary_fiber: row.dietary_fiber,
         sugars: row.sugars,
-  glycemic_index: row.glycemic_index,
+        glycemic_index: row.glycemic_index,
         vitamin_a: row.vitamin_a,
         vitamin_c: row.vitamin_c,
         calcium: row.calcium,
@@ -74,6 +80,38 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
       calcium: parseFloat(item.calcium) || 0,
       iron: parseFloat(item.iron) || 0,
     }));
+
+    // BMR Calculation
+    if (userProfile && userPreferences) {
+      const dob = userProfile.date_of_birth;
+      const age = dob ? new Date().getFullYear() - new Date(dob).getFullYear() : null;
+      const gender = userProfile.gender;
+      const bmrAlgorithm = userPreferences.bmr_algorithm;
+
+      nutritionData.forEach(day => {
+        // Find the most recent measurement on or before the current day
+        const relevantMeasurements = measurementData
+          .filter(m => new Date(m.entry_date) <= new Date(day.date))
+          .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date));
+
+        const latestMeasurement = relevantMeasurements[0];
+        const weight = latestMeasurement?.weight;
+        const height = latestMeasurement?.height;
+        const bodyFat = latestMeasurement?.body_fat_percentage;
+
+        if (weight && height && age && gender && bmrAlgorithm) {
+          try {
+            day.bmr = bmrService.calculateBmr(bmrAlgorithm, weight, height, age, gender, bodyFat);
+          } catch (error) {
+            log('warn', `Could not calculate BMR for user ${targetUserId} on date ${day.date}: ${error.message}`);
+            day.bmr = null;
+          }
+        } else {
+          day.bmr = null;
+        }
+        day.include_bmr_in_net_calories = userPreferences.include_bmr_in_net_calories;
+      });
+    }
 
     const exerciseEntries = exerciseEntriesRaw.map(entry => ({
       ...entry,

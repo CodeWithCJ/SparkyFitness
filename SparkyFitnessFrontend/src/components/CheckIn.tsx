@@ -29,7 +29,9 @@ import {
   CombinedMeasurement,
 } from '@/services/checkInService';
 import { saveMoodEntry, getMoodEntryByDate } from '@/services/moodService'; // Import mood service
-
+import { calculateBodyFatBmi, calculateBodyFatNavy } from '@/services/bodyCompositionService';
+import { getUserPreferences } from '@/services/preferenceService';
+import { userManagementService } from "@/services/userManagementService";
 
 
 const CheckIn = () => {
@@ -52,6 +54,8 @@ const CheckIn = () => {
   const [waist, setWaist] = useState("");
   const [hips, setHips] = useState("");
   const [steps, setSteps] = useState("");
+  const [height, setHeight] = useState("");
+  const [bodyFatPercentage, setBodyFatPercentage] = useState("");
   const [mood, setMood] = useState<number | null>(50); // Initialize mood to 50
   const [moodNotes, setMoodNotes] = useState<string>(""); // New state for mood notes
   const [displayWeightUnit, setDisplayWeightUnit] = useState<'kg' | 'lbs'>(defaultWeightUnit);
@@ -124,6 +128,10 @@ const CheckIn = () => {
         const converted = convertMeasurement(parseFloat(hips), displayMeasurementUnit === 'cm' ? 'inches' : 'cm', displayMeasurementUnit);
         setHips(typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "");
       }
+      if (height) {
+        const converted = convertMeasurement(parseFloat(height), displayMeasurementUnit === 'cm' ? 'inches' : 'cm', displayMeasurementUnit);
+        setHeight(typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "");
+      }
       // Re-load custom values to ensure they are displayed in the correct unit
       loadExistingData();
     }, [displayWeightUnit, displayMeasurementUnit]);
@@ -182,6 +190,8 @@ const CheckIn = () => {
         if (s.waist !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.waist, type: 'standard', display_name: 'Waist', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.entry_date });
         if (s.hips !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.hips, type: 'standard', display_name: 'Hips', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.entry_date });
         if (s.steps !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.steps, type: 'standard', display_name: 'Steps', display_unit: 'steps', entry_hour: null, entry_timestamp: s.entry_date });
+        if (s.height !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.height, type: 'standard', display_name: 'Height', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.entry_date });
+        if (s.body_fat_percentage !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.body_fat_percentage, type: 'standard', display_name: 'Body Fat %', display_unit: '%', entry_hour: null, entry_timestamp: s.entry_date });
       });
 
       // Sort by entry_timestamp (or entry_date if timestamp is null) in descending order
@@ -220,6 +230,8 @@ const CheckIn = () => {
           case 'Waist': fieldToNull = 'waist'; break;
           case 'Hips': fieldToNull = 'hips'; break;
           case 'Steps': fieldToNull = 'steps'; break;
+          case 'Height': fieldToNull = 'height'; break;
+          case 'Body Fat %': fieldToNull = 'body_fat_percentage'; break;
           default:
             warn(loggingLevel, `Unknown standard measurement type for deletion: ${measurement.display_name}`);
             return;
@@ -260,6 +272,11 @@ const CheckIn = () => {
 
         const convertedHips = data.hips !== undefined && data.hips !== null ? convertMeasurement(data.hips, 'cm', displayMeasurementUnit) : NaN;
         setHips(typeof convertedHips === 'number' && !isNaN(convertedHips) ? convertedHips.toFixed(1) : "");
+        
+        const convertedHeight = data.height !== undefined && data.height !== null ? convertMeasurement(data.height, 'cm', displayMeasurementUnit) : NaN;
+        setHeight(typeof convertedHeight === 'number' && !isNaN(convertedHeight) ? convertedHeight.toFixed(1) : "");
+
+        setBodyFatPercentage(data.body_fat_percentage?.toString() || "");
         setSteps(data.steps?.toString() || "");
       } else {
         info(loggingLevel, "No existing check-in data for this date, clearing form.");
@@ -268,6 +285,8 @@ const CheckIn = () => {
         setWaist("");
         setHips("");
         setSteps("");
+        setHeight("");
+        setBodyFatPercentage("");
       }
 
       // Load mood entry for the selected date
@@ -361,6 +380,8 @@ const CheckIn = () => {
       if (waist) measurementData.waist = convertMeasurement(parseFloat(waist), displayMeasurementUnit, 'cm');
       if (hips) measurementData.hips = convertMeasurement(parseFloat(hips), displayMeasurementUnit, 'cm');
       if (steps) measurementData.steps = parseInt(steps);
+      if (height) measurementData.height = convertMeasurement(parseFloat(height), displayMeasurementUnit, 'cm');
+      if (bodyFatPercentage) measurementData.body_fat_percentage = parseFloat(bodyFatPercentage);
 
       await saveCheckInMeasurements(measurementData);
       info(loggingLevel, "Standard check-in data saved successfully.");
@@ -428,6 +449,72 @@ const CheckIn = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCalculateBodyFat = async () => {
+    if (!currentUserId) return;
+    try {
+      const prefs = await getUserPreferences();
+      const userProfile = await userManagementService.getUserProfile(currentUserId);
+      
+      if (!userProfile) {
+        error(loggingLevel, "Error calculating body fat: userProfile is null or undefined.");
+        toast({ title: "Error", description: "Could not load user profile for calculation." });
+        return;
+      }
+      if (!prefs) {
+        error(loggingLevel, "Error calculating body fat: preferences are null or undefined.");
+        toast({ title: "Error", description: "Could not load user preferences for calculation." });
+        return;
+      }
+
+      const age = userProfile.date_of_birth ? new Date().getFullYear() - new Date(userProfile.date_of_birth).getFullYear() : 0;
+      const gender = userProfile.gender;
+      const weightKg = convertWeight(parseFloat(weight), displayWeightUnit, 'kg');
+      const heightCm = convertMeasurement(parseFloat(height), displayMeasurementUnit, 'cm');
+      const waistCm = convertMeasurement(parseFloat(waist), displayMeasurementUnit, 'cm');
+      const neckCm = convertMeasurement(parseFloat(neck), displayMeasurementUnit, 'cm');
+      const hipsCm = convertMeasurement(parseFloat(hips), displayMeasurementUnit, 'cm');
+
+      debug(loggingLevel, "Body Fat Calculation Inputs:", {
+        age,
+        gender,
+        weightKg,
+        heightCm,
+        waistCm,
+        neckCm,
+        hipsCm,
+        bodyFatAlgorithm: prefs.body_fat_algorithm,
+      });
+
+      let bfp = 0;
+      let errorMessage = "";
+
+      if (prefs.body_fat_algorithm === 'BMI Method') {
+        if (isNaN(weightKg) || isNaN(heightCm) || age === 0 || !gender) {
+          errorMessage = "Weight, height, age, and gender are required for BMI Method.";
+        } else {
+          bfp = calculateBodyFatBmi(weightKg, heightCm, age, gender);
+        }
+      } else { // Default to U.S. Navy
+        if (!gender || isNaN(heightCm) || isNaN(waistCm) || isNaN(neckCm) || isNaN(hipsCm)) {
+          errorMessage = "Gender, height, waist, neck, and hips measurements are required for U.S. Navy Method.";
+        } else {
+          bfp = calculateBodyFatNavy(gender, heightCm, waistCm, neckCm, hipsCm);
+        }
+      }
+
+      if (errorMessage) {
+        error(loggingLevel, `Error calculating body fat: ${errorMessage}`);
+        toast({ title: "Error", description: `Failed to calculate body fat: ${errorMessage}`, variant: "destructive" });
+      } else {
+        setBodyFatPercentage(bfp.toFixed(2));
+        toast({ title: "Success", description: "Body fat percentage calculated." });
+      }
+    } catch (err: any) {
+      error(loggingLevel, 'Error calculating body fat:', err);
+      toast({ title: "Error", description: `Failed to calculate body fat: ${err.message || "An unknown error occurred."}`, variant: "destructive" });
     }
   };
 
@@ -534,6 +621,33 @@ const CheckIn = () => {
                 />
               </div>
 
+              <div>
+                <Label htmlFor="height">Height ({displayMeasurementUnit})</Label>
+                <Input
+                  id="height"
+                  type="number"
+                  step="0.1"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  placeholder={`Enter height in ${displayMeasurementUnit}`}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="bodyFat">Body Fat %</Label>
+                <div className="flex items-center">
+                  <Input
+                    id="bodyFat"
+                    type="number"
+                    step="0.1"
+                    value={bodyFatPercentage}
+                    onChange={(e) => setBodyFatPercentage(e.target.value)}
+                    placeholder="Enter body fat percentage"
+                  />
+                  <Button type="button" onClick={handleCalculateBodyFat} className="ml-2">Calculate</Button>
+                </div>
+              </div>
+
               {/* Custom Categories */}
               {customCategories.map((category) => {
                 const isConvertible = shouldConvertCustomMeasurement(category.measurement_type);
@@ -609,6 +723,9 @@ const CheckIn = () => {
                     displayValue = convertWeight(measurement.value, 'kg', displayWeightUnit);
                     displayUnit = displayWeightUnit;
                   } else if (['Neck', 'Waist', 'Hips'].includes(measurement.display_name)) {
+                    displayValue = convertMeasurement(measurement.value, 'cm', displayMeasurementUnit);
+                    displayUnit = displayMeasurementUnit;
+                  } else if (measurement.display_name === 'Height') {
                     displayValue = convertMeasurement(measurement.value, 'cm', displayMeasurementUnit);
                     displayUnit = displayMeasurementUnit;
                   }

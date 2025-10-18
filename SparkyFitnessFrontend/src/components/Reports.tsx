@@ -27,7 +27,7 @@ import {
 import {
   loadReportsData,
   NutritionData,
-  MeasurementData as ReportsMeasurementData, // Alias to avoid naming conflict if needed
+  MeasurementData,
   DailyFoodEntry,
   CustomCategory,
   CustomMeasurementData,
@@ -43,7 +43,7 @@ const Reports = () => {
   const { activeUserId } = useActiveUser();
   const { weightUnit: defaultWeightUnit, measurementUnit: defaultMeasurementUnit, convertWeight, convertMeasurement, formatDateInUserTimezone, parseDateInUserTimezone, loggingLevel, timezone } = usePreferences();
   const [nutritionData, setNutritionData] = useState<NutritionData[]>([]);
-  const [measurementData, setMeasurementData] = useState<ReportsMeasurementData[]>([]);
+  const [measurementData, setMeasurementData] = useState<MeasurementData[]>([]);
   const [tabularData, setTabularData] = useState<DailyFoodEntry[]>([]);
   const [exerciseEntries, setExerciseEntries] = useState<DailyExerciseEntry[]>([]); // New state for exercise entries
   const [exerciseDashboardData, setExerciseDashboardData] = useState<ExerciseDashboardData | null>(null); // New state for exercise dashboard data
@@ -148,6 +148,8 @@ const Reports = () => {
         waist: m.waist ? convertMeasurement(m.waist, 'cm', showMeasurementsInCm ? 'cm' : 'inches') : undefined,
         hips: m.hips ? convertMeasurement(m.hips, 'cm', showMeasurementsInCm ? 'cm' : 'inches') : undefined,
         steps: m.steps || undefined,
+        height: m.height ? convertMeasurement(m.height, 'cm', showMeasurementsInCm ? 'cm' : 'inches') : undefined,
+        body_fat_percentage: m.body_fat_percentage || undefined,
       }));
       setMeasurementData(measurementDataFormatted);
 
@@ -414,7 +416,9 @@ const Reports = () => {
         `Neck (${showMeasurementsInCm ? 'cm' : 'inches'})`,
         `Waist (${showMeasurementsInCm ? 'cm' : 'inches'})`,
         `Hips (${showMeasurementsInCm ? 'cm' : 'inches'})`,
-        'Steps'
+        'Steps',
+        `Height (${showMeasurementsInCm ? 'cm' : 'inches'})`,
+        'Body Fat %'
       ];
 
       const csvRows = measurements
@@ -423,15 +427,19 @@ const Reports = () => {
           measurement.neck ||
           measurement.waist ||
           measurement.hips ||
-          measurement.steps
+          measurement.steps ||
+          (measurement as any).height ||
+          (measurement as any).body_fat_percentage
         )
         .map(measurement => [
           formatDateInUserTimezone(measurement.entry_date, 'MMM dd, yyyy'), // Format date for display
-          measurement.weight ? convertWeight(measurement.weight, 'kg', showWeightInKg ? 'kg' : 'lbs').toFixed(1) : '',
-          measurement.neck ? convertMeasurement(measurement.neck, 'cm', showMeasurementsInCm ? 'cm' : 'inches').toFixed(1) : '',
-          measurement.waist ? convertMeasurement(measurement.waist, 'cm', showMeasurementsInCm ? 'cm' : 'inches').toFixed(1) : '',
-          measurement.hips ? convertMeasurement(measurement.hips, 'cm', showMeasurementsInCm ? 'cm' : 'inches').toFixed(1) : '',
-          measurement.steps || ''
+          measurement.weight ? measurement.weight.toFixed(1) : '',
+          measurement.neck ? measurement.neck.toFixed(1) : '',
+          measurement.waist ? measurement.waist.toFixed(1) : '',
+          measurement.hips ? measurement.hips.toFixed(1) : '',
+          measurement.steps || '',
+          (measurement as any).height ? (measurement as any).height.toFixed(1) : '',
+          (measurement as any).body_fat_percentage ? (measurement as any).body_fat_percentage.toFixed(1) : ''
         ]);
 
       const csvContent = [csvHeaders, ...csvRows].map(row =>

@@ -74,6 +74,8 @@ interface MeasurementData {
   waist?: number;
   hips?: number;
   steps?: number;
+  height?: number;
+  body_fat_percentage?: number;
 }
 
 interface CustomCategory {
@@ -484,6 +486,8 @@ const ReportsTables = ({
                   <TableHead>Waist ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
                   <TableHead>Hips ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
                   <TableHead>Steps</TableHead>
+                  <TableHead>Height ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
+                  <TableHead>Body Fat %</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -495,6 +499,8 @@ const ReportsTables = ({
                     <TableCell>{measurement.waist ? measurement.waist.toFixed(1) : '-'}</TableCell>
                     <TableCell>{measurement.hips ? measurement.hips.toFixed(1) : '-'}</TableCell>
                     <TableCell>{measurement.steps || '-'}</TableCell>
+                    <TableCell>{measurement.height ? measurement.height.toFixed(1) : '-'}</TableCell>
+                    <TableCell>{measurement.body_fat_percentage ? measurement.body_fat_percentage.toFixed(1) : '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

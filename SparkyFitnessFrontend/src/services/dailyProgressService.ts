@@ -28,7 +28,13 @@ export interface ExerciseEntry {
 
 export interface CheckInMeasurement {
   entry_date: string;
+  weight?: number;
+  neck?: number;
+  waist?: number;
+  hips?: number;
   steps?: number;
+  height?: number;
+  body_fat_percentage?: number;
 }
 
 export const getGoalsForDate = async (date: string): Promise<Goals> => {
@@ -74,9 +80,10 @@ export const getCheckInMeasurementsForDate = async (date: string): Promise<Check
   } catch (error: any) { // Explicitly type error as any
     // If it's a 404 and we suppressed the toast, it means no measurement was found.
     // Return null as expected by the component.
-    if (error.message && error.message.includes('not found')) { // Check for specific message from backend
+    if (error.message.includes('404')) {
       return null;
     }
-    throw error; // Re-throw other errors
+    // For other errors, we re-throw them to be handled by the calling component.
+    throw error;
   }
 };

@@ -13,14 +13,15 @@ export interface CustomMeasurement {
   category_id: string;
   value: number;
   text_value?: string;
-  notes?: string;
   entry_date: string;
   entry_hour: number | null;
   entry_timestamp: string;
+  notes?: string;
   custom_categories: {
     name: string;
     measurement_type: string;
     frequency: string;
+    data_type: 'numeric' | 'text';
   };
 }
 
@@ -32,6 +33,8 @@ export interface CheckInMeasurement {
   waist: number | null;
   hips: number | null;
   steps: number | null;
+  height: number | null;
+  body_fat_percentage: number | null;
 }
 
 export interface CombinedMeasurement {
@@ -39,40 +42,32 @@ export interface CombinedMeasurement {
   entry_date: string;
   entry_hour: number | null;
   entry_timestamp: string;
-  value: number;
+  value: any;
   type: 'custom' | 'standard';
   display_name: string;
   display_unit: string;
-  // Optional properties for custom measurements
-  custom_categories?: {
-    name: string;
-    measurement_type: string;
-    frequency: string;
-  };
+  custom_categories?: any;
 }
 
 export const loadCustomCategories = async (): Promise<CustomCategory[]> => {
-  return apiCall(`/measurements/custom-categories`, {
-    method: 'GET',
-  });
+  return apiCall('/measurements/custom-categories');
 };
 
 export const fetchRecentCustomMeasurements = async (): Promise<CustomMeasurement[]> => {
-  return apiCall(`/measurements/custom-entries?limit=20&orderBy=entry_timestamp.desc&filter=value.gt.0`, {
-    method: 'GET',
+  return apiCall('/measurements/custom-entries', {
+    params: { limit: 20, orderBy: 'entry_timestamp.desc' }
   });
 };
 
 export const fetchRecentStandardMeasurements = async (startDate: string, endDate: string): Promise<CheckInMeasurement[]> => {
   return apiCall(`/measurements/check-in-measurements-range/${startDate}/${endDate}`, {
     method: 'GET',
+    suppress404Toast: true,
   });
 };
 
-export const deleteCustomMeasurement = async (measurementId: string): Promise<void> => {
-  await apiCall(`/measurements/custom-entries/${measurementId}`, {
-    method: 'DELETE',
-  });
+export const deleteCustomMeasurement = async (id: string): Promise<void> => {
+  await apiCall(`/measurements/custom-entries/${id}`, { method: 'DELETE' });
 };
 
 export const updateCheckInMeasurementField = async (payload: { id: string, field: string, value: number | null, entry_date: string }): Promise<void> => {
@@ -88,12 +83,14 @@ export const updateCheckInMeasurementField = async (payload: { id: string, field
 export const loadExistingCheckInMeasurements = async (selectedDate: string): Promise<any> => {
   return apiCall(`/measurements/check-in/${selectedDate}`, {
     method: 'GET',
+    suppress404Toast: true,
   });
 };
 
-export const loadExistingCustomMeasurements = async (selectedDate: string): Promise<CustomMeasurement[]> => {
+export const loadExistingCustomMeasurements = async (selectedDate: string): Promise<any> => {
   return apiCall(`/measurements/custom-entries/${selectedDate}`, {
     method: 'GET',
+    suppress404Toast: true,
   });
 };
 

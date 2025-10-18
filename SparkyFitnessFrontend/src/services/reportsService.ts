@@ -29,6 +29,8 @@ export interface MeasurementData {
   waist?: number;
   hips?: number;
   steps?: number;
+  height?: number;
+  body_fat_percentage?: number;
 }
 
 export interface DailyFoodEntry {
