@@ -48,7 +48,7 @@ import {
 import { WorkoutPresetSet, WorkoutPreset } from "@/types/workout";
 
 // Extend Exercise with optional logging fields for pre-population
-interface ExerciseToLog extends Exercise {
+export interface ExerciseToLog extends Exercise { // Export the interface
   sets?: WorkoutPresetSet[];
   reps?: number;
   weight?: number;

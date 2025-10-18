@@ -150,6 +150,23 @@ router.get('/muscle-groups', authenticateToken, authorizeAccess('exercise_list')
   }
 });
 
+router.get('/wger-filters', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+  try {
+    const wgerMuscles = await wgerService.getWgerMuscleIdMap();
+    const wgerEquipment = await wgerService.getWgerEquipmentIdMap();
+    
+    const ourMuscles = await exerciseService.getAvailableMuscleGroups();
+    const ourEquipment = await exerciseService.getAvailableEquipment();
+
+    const uniqueMuscles = Object.keys(wgerMuscles).filter(m => !ourMuscles.includes(m));
+    const uniqueEquipment = Object.keys(wgerEquipment).filter(e => !ourEquipment.includes(e));
+
+    res.status(200).json({ uniqueMuscles, uniqueEquipment });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/names', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
   try {
     const { muscle, equipment } = req.query;

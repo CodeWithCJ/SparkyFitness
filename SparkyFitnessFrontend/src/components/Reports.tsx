@@ -27,7 +27,7 @@ import {
 import {
   loadReportsData,
   NutritionData,
-  MeasurementData as ReportsMeasurementData, // Alias to avoid naming conflict if needed
+  MeasurementData,
   DailyFoodEntry,
   CustomCategory,
   CustomMeasurementData,
@@ -43,7 +43,7 @@ const Reports = () => {
   const { activeUserId } = useActiveUser();
   const { weightUnit: defaultWeightUnit, measurementUnit: defaultMeasurementUnit, convertWeight, convertMeasurement, formatDateInUserTimezone, parseDateInUserTimezone, loggingLevel, timezone } = usePreferences();
   const [nutritionData, setNutritionData] = useState<NutritionData[]>([]);
-  const [measurementData, setMeasurementData] = useState<ReportsMeasurementData[]>([]);
+  const [measurementData, setMeasurementData] = useState<MeasurementData[]>([]);
   const [tabularData, setTabularData] = useState<DailyFoodEntry[]>([]);
   const [exerciseEntries, setExerciseEntries] = useState<DailyExerciseEntry[]>([]); // New state for exercise entries
   const [exerciseDashboardData, setExerciseDashboardData] = useState<ExerciseDashboardData | null>(null); // New state for exercise dashboard data
@@ -148,6 +148,8 @@ const Reports = () => {
         waist: m.waist ? convertMeasurement(m.waist, 'cm', showMeasurementsInCm ? 'cm' : 'inches') : undefined,
         hips: m.hips ? convertMeasurement(m.hips, 'cm', showMeasurementsInCm ? 'cm' : 'inches') : undefined,
         steps: m.steps || undefined,
+        height: m.height ? convertMeasurement(m.height, 'cm', showMeasurementsInCm ? 'cm' : 'inches') : undefined,
+        body_fat_percentage: m.body_fat_percentage || undefined,
       }));
       setMeasurementData(measurementDataFormatted);
 
@@ -414,7 +416,9 @@ const Reports = () => {
         `Neck (${showMeasurementsInCm ? 'cm' : 'inches'})`,
         `Waist (${showMeasurementsInCm ? 'cm' : 'inches'})`,
         `Hips (${showMeasurementsInCm ? 'cm' : 'inches'})`,
-        'Steps'
+        'Steps',
+        `Height (${showMeasurementsInCm ? 'cm' : 'inches'})`,
+        'Body Fat %'
       ];
 
       const csvRows = measurements
@@ -423,15 +427,19 @@ const Reports = () => {
           measurement.neck ||
           measurement.waist ||
           measurement.hips ||
-          measurement.steps
+          measurement.steps ||
+          (measurement as any).height ||
+          (measurement as any).body_fat_percentage
         )
         .map(measurement => [
           formatDateInUserTimezone(measurement.entry_date, 'MMM dd, yyyy'), // Format date for display
-          measurement.weight ? convertWeight(measurement.weight, 'kg', showWeightInKg ? 'kg' : 'lbs').toFixed(1) : '',
-          measurement.neck ? convertMeasurement(measurement.neck, 'cm', showMeasurementsInCm ? 'cm' : 'inches').toFixed(1) : '',
-          measurement.waist ? convertMeasurement(measurement.waist, 'cm', showMeasurementsInCm ? 'cm' : 'inches').toFixed(1) : '',
-          measurement.hips ? convertMeasurement(measurement.hips, 'cm', showMeasurementsInCm ? 'cm' : 'inches').toFixed(1) : '',
-          measurement.steps || ''
+          measurement.weight ? measurement.weight.toFixed(1) : '',
+          measurement.neck ? measurement.neck.toFixed(1) : '',
+          measurement.waist ? measurement.waist.toFixed(1) : '',
+          measurement.hips ? measurement.hips.toFixed(1) : '',
+          measurement.steps || '',
+          (measurement as any).height ? (measurement as any).height.toFixed(1) : '',
+          (measurement as any).body_fat_percentage ? (measurement as any).body_fat_percentage.toFixed(1) : ''
         ]);
 
       const csvContent = [csvHeaders, ...csvRows].map(row =>
@@ -530,14 +538,15 @@ const Reports = () => {
     debug(loggingLevel, `Reports: Formatting custom chart data for category: ${category.name} (${category.frequency})`);
     const isConvertibleMeasurement = ['kg', 'lbs', 'cm', 'inches'].includes(category.measurement_type.toLowerCase());
 
-    const convertValue = (value: number) => {
-      if (isNaN(value)) {
-        debug(loggingLevel, `Reports: convertValue received NaN or invalid value: ${value}. Returning 0.`);
-        return 0; // Return 0 or another sensible default for NaN values
+    const convertValue = (value: string | number) => {
+      const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+      if (isNaN(numericValue)) {
+        debug(loggingLevel, `Reports: convertValue received non-numeric value: ${value}. Returning null.`);
+        return null;
       }
       if (isConvertibleMeasurement) {
         // Assuming custom measurements are stored in 'cm' if they are convertible
-        const converted = convertMeasurement(value, 'cm', showMeasurementsInCm ? 'cm' : 'inches');
+        const converted = convertMeasurement(parseFloat(value.toString()), 'cm', showMeasurementsInCm ? 'cm' : 'inches');
         debug(loggingLevel, `Reports: Converted value from ${value} to ${converted} for category.`);
         return converted;
       }
@@ -551,7 +560,8 @@ const Reports = () => {
         debug(loggingLevel, `Reports: Mapping data point - original value: ${d.value}, converted value: ${convertedValue}`);
         return {
           date: `${d.entry_date} ${d.hour !== null ? String(d.hour).padStart(2, '0') + ':00' : ''}`,
-          value: convertedValue
+          value: convertedValue,
+          notes: d.notes
         };
       });
     } else {
@@ -568,7 +578,8 @@ const Reports = () => {
         debug(loggingLevel, `Reports: Mapping grouped data point - original value: ${d.value}, converted value: ${convertedValue}`);
         return {
           date: d.entry_date,
-          value: convertedValue
+          value: convertedValue,
+          notes: d.notes
         };
       });
     }
@@ -663,7 +674,7 @@ const Reports = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Custom Measurements</h3>
                 <div className="space-y-4">
-                  {customCategories.map((category) => {
+                  {customCategories.filter(c => c.data_type === 'numeric').map((category) => {
                     const data = customMeasurementsData[category.id] || [];
                     const chartData = formatCustomChartData(category, data);
                     
@@ -694,16 +705,29 @@ const Reports = () => {
                                     offset: 10
                                   }}
                                 />
-                                <Tooltip formatter={(value: number, name: string, props: any) => {
-                                  const unit = category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
-                                    ? (showMeasurementsInCm ? 'cm' : 'inches')
-                                    : category.measurement_type;
-                                  if (typeof value === 'number') {
-                                    return [`${value.toFixed(1)} ${unit}`];
-                                  }
-                                  return ['N/A'];
-                                }}
-                                contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
+                                <Tooltip
+                                  content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                      const data = payload[0].payload;
+                                      const unit = category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
+                                        ? (showMeasurementsInCm ? 'cm' : 'inches')
+                                        : category.measurement_type;
+                                      const numericValue = Number(data.value);
+
+                                      return (
+                                        <div className="p-2 bg-background border rounded-md shadow-md">
+                                          <p className="label">{`${label}`}</p>
+                                          {!isNaN(numericValue) ? (
+                                            <p className="intro">{`${numericValue.toFixed(1)} ${unit}`}</p>
+                                          ) : (
+                                            <p className="intro">N/A</p>
+                                          )}
+                                          {data.notes && <p className="desc" style={{ marginTop: '5px' }}>{`Notes: ${data.notes}`}</p>}
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
                                 />
                                 <Line type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} />
                               </LineChart>

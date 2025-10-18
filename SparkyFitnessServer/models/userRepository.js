@@ -37,7 +37,7 @@ async function findUserByEmail(email) {
   const client = await getPool().connect();
   try {
     const result = await client.query(
-      'SELECT id, email, password_hash, role, oidc_sub, is_active FROM auth.users WHERE LOWER(email) = LOWER($1)',
+      'SELECT id, email, password_hash, role, is_active FROM auth.users WHERE LOWER(email) = LOWER($1)',
       [email]
     );
     return result.rows[0];
@@ -223,52 +223,99 @@ async function updateUserRole(userId, role) {
   }
 }
 
-async function createOidcUser(userId, email, fullName, oidcSub) {
-  const client = await getPool().connect();
-  try {
-    await client.query('BEGIN');
+async function createOidcUser(userId, email, fullName, providerId, oidcSub) {
+    const client = await getPool().connect();
+    try {
+        await client.query('BEGIN');
 
-    // Insert into auth.users for OIDC
-    // For OIDC users, password_hash is not used, but the column requires a non-null value.
-    // We insert a placeholder (e.g., an empty string) to satisfy the constraint.
-    await client.query(
-      'INSERT INTO auth.users (id, email, oidc_sub, password_hash, created_at, updated_at) VALUES ($1, $2, $3, $4, now(), now())',
-      [userId, email, oidcSub, '']
-    );
+        // Insert into auth.users for OIDC
+        const userResult = await client.query(
+            `INSERT INTO auth.users (id, email, password_hash, created_at, updated_at)
+             VALUES ($1, $2, '', now(), now()) RETURNING id`,
+            [userId, email]
+        );
+        const newUserId = userResult.rows[0].id;
 
-    // Insert into profiles
-    await client.query(
-      'INSERT INTO profiles (id, full_name, created_at, updated_at) VALUES ($1, $2, now(), now())',
-      [userId, fullName]
-    );
+        // Insert into profiles
+        await client.query(
+            'INSERT INTO profiles (id, full_name, created_at, updated_at) VALUES ($1, $2, now(), now())',
+            [newUserId, fullName]
+        );
 
-    // Insert into user_goals
-    await client.query(
-      'INSERT INTO user_goals (user_id, created_at, updated_at) VALUES ($1, now(), now())',
-      [userId]
-    );
+        // Insert into user_goals
+        await client.query(
+            'INSERT INTO user_goals (user_id, created_at, updated_at) VALUES ($1, now(), now())',
+            [newUserId]
+        );
 
-    await client.query('COMMIT');
-    return userId;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+        // Link the new user to the OIDC provider
+        await client.query(
+            'INSERT INTO user_oidc_links (user_id, oidc_provider_id, oidc_sub) VALUES ($1, $2, $3)',
+            [newUserId, providerId, oidcSub]
+        );
+
+        await client.query('COMMIT');
+        return newUserId;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
-async function updateUserOidcSub(userId, oidcSub) {
-  const client = await getPool().connect();
-  try {
-    const result = await client.query(
-      'UPDATE auth.users SET oidc_sub = $1, updated_at = now() WHERE id = $2 RETURNING id',
-      [oidcSub, userId]
-    );
-    return result.rowCount > 0;
-  } finally {
-    client.release();
-  }
+async function findUserOidcLink(userId, providerId) {
+    const client = await getPool().connect();
+    try {
+        const result = await client.query(
+            'SELECT * FROM user_oidc_links WHERE user_id = $1 AND oidc_provider_id = $2',
+            [userId, providerId]
+        );
+        return result.rows[0];
+    } finally {
+        client.release();
+    }
+}
+
+
+async function createUserOidcLink(userId, providerId, oidcSub) {
+    const client = await getPool().connect();
+    try {
+        await client.query(
+            'INSERT INTO user_oidc_links (user_id, oidc_provider_id, oidc_sub) VALUES ($1, $2, $3)',
+            [userId, providerId, oidcSub]
+        );
+    } finally {
+        client.release();
+    }
+}
+
+async function findUserByOidcSub(oidcSub, providerId) {
+    const client = await getPool().connect();
+    try {
+        const result = await client.query(
+            `SELECT u.id, u.email, u.role, u.is_active
+             FROM auth.users u
+             JOIN user_oidc_links oidc ON u.id = oidc.user_id
+             WHERE oidc.oidc_sub = $1 AND oidc.oidc_provider_id = $2`,
+            [oidcSub, providerId]
+        );
+        return result.rows[0];
+    } finally {
+        client.release();
+    }
+}
+
+async function updateUserOidcLink(linkId, newOidcSub) {
+    const client = await getPool().connect();
+    try {
+        await client.query(
+            'UPDATE user_oidc_links SET oidc_sub = $1, updated_at = NOW() WHERE id = $2',
+            [newOidcSub, linkId]
+        );
+    } finally {
+        client.release();
+    }
 }
 
 async function updatePasswordResetToken(userId, token, expires) {
@@ -417,12 +464,15 @@ module.exports = {
   updateUserEmail,
   getUserRole,
   updateUserRole,
-  updateUserOidcSub,
   updatePasswordResetToken,
   findUserByPasswordResetToken,
+  findUserOidcLink,
+  createUserOidcLink,
+  findUserByOidcSub,
   updateUserLastLogin,
   getAllUsers,
   deleteUser,
   updateUserStatus,
   updateUserFullName,
+  updateUserOidcLink,
 };

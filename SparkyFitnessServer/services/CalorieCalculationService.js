@@ -52,7 +52,15 @@ const MET_VALUES = {
  * @param {string} userId - The ID of the user.
  * @returns {Promise<number>} Estimated calories burned per hour.
  */
-async function estimateCaloriesBurnedPerHour(exercise, userId) {
+async function estimateCaloriesBurnedPerHour(exercise, userId, sets) {
+    // If exercise has a pre-defined calories_per_hour, use it directly for cardio
+    const categoryName = (exercise.category && typeof exercise.category === 'object') ? exercise.category.name : exercise.category;
+    const category = categoryName ? categoryName.toLowerCase() : 'default';
+
+    if (category === 'cardio' && exercise.calories_per_hour) {
+        return exercise.calories_per_hour;
+    }
+
     let userWeightKg = 70; // Default to 70kg if user weight not found
     let userAge = 30; // Default age
     let userGender = 'male'; // Default gender
@@ -82,10 +90,30 @@ async function estimateCaloriesBurnedPerHour(exercise, userId) {
         log('warn', `CalorieCalculationService: Could not fetch user profile for user ${userId}, using defaults. Error: ${error.message}`);
     }
 
-    const category = exercise.category ? exercise.category.toLowerCase() : 'default';
     const level = exercise.level ? exercise.level.toLowerCase() : 'intermediate';
 
-    let met = MET_VALUES[category]?.[level] || MET_VALUES['default'][level];
+    let met;
+    if (category === 'strength' && sets && sets.length > 0) {
+        // Enhanced MET calculation for strength training
+        const totalVolume = sets.reduce((acc, set) => acc + (set.reps * set.weight), 0);
+        const totalReps = sets.reduce((acc, set) => acc + set.reps, 0);
+        if (totalReps > 0) {
+            const avgWeight = totalVolume / totalReps;
+            // Brzycki formula for 1RM estimation
+            const estimated1RM = avgWeight / (1.0278 - 0.0278 * totalReps);
+            // METs for strength training can be estimated based on intensity relative to 1RM
+            // This is a simplified model. For a more accurate one, more research would be needed.
+            const intensity = avgWeight / estimated1RM;
+            if (intensity < 0.4) met = 2.5;
+            else if (intensity < 0.6) met = 3.5;
+            else if (intensity < 0.8) met = 4.5;
+            else met = 5.5;
+        } else {
+            met = MET_VALUES[category]?.[level] || MET_VALUES['default'][level];
+        }
+    } else {
+        met = MET_VALUES[category]?.[level] || MET_VALUES['default'][level];
+    }
 
     // Ensure MET is not too low
     if (met < 1.0) met = 1.0;

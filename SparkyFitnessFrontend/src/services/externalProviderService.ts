@@ -15,7 +15,7 @@ export const getExternalDataProviders = async (): Promise<DataProvider[]> => {
 };
 
 export const getProviderCategory = (provider: DataProvider): ('food' | 'exercise' | 'other')[] => {
-  switch (provider.provider_type.toLowerCase()) { // Use provider.provider_type
+  switch (provider.provider_type.toLowerCase() || provider.provider_name.toLowerCase()) { // Use provider.provider_type
     case 'wger':
     case 'free-exercise-db': // Added free-exercise-db
       return ['exercise'];

@@ -97,26 +97,33 @@ async function processHealthData(healthDataArray, userId) {
           break;
         default:
           // Handle as custom measurement
-          const numericValue = parseFloat(value);
-          if (isNaN(numericValue)) {
-            errors.push({ error: `Invalid numeric value for custom measurement type: ${type}. Value: ${value}`, entry: dataEntry });
-            break;
-          }
-
-          // Get or create custom category
-          categoryId = await getOrCreateCustomCategory(userId, type);
-          if (!categoryId) {
+          // Get or create custom category first to check its data_type
+          const category = await getOrCreateCustomCategory(userId, type);
+          if (!category || !category.id) {
             errors.push({ error: `Failed to get or create custom category for type: ${type}`, entry: dataEntry });
             break;
           }
+          categoryId = category.id;
+
+          let processedValue = value;
+          if (category.data_type === 'numeric') {
+            const numericValue = parseFloat(value);
+            if (isNaN(numericValue)) {
+              errors.push({ error: `Invalid numeric value for custom measurement type: ${type}. Value: ${value}`, entry: dataEntry });
+              break;
+            }
+            processedValue = numericValue;
+          }
+          // If data_type is 'text', we use the value as is.
 
           result = await measurementRepository.upsertCustomMeasurement(
             userId,
             categoryId,
-            numericValue,
+            processedValue,
             parsedDate,
             entryHour,
-            entryTimestamp
+            entryTimestamp,
+            dataEntry.notes // Pass notes if available
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
@@ -155,10 +162,12 @@ async function getOrCreateCustomCategory(userId, categoryName) {
       user_id: userId,
       name: categoryName,
       measurement_type: 'numeric', // Default to numeric for Health Connect data
-      frequency: 'Daily' // Default frequency, can be refined later if needed
+      frequency: 'Daily', // Default frequency, can be refined later if needed
+      data_type: 'numeric' // Default to numeric for new categories from health data
     };
     const newCategory = await measurementRepository.createCustomCategory(newCategoryData);
-    return newCategory.id;
+    // To return the full category object including the id and the default data_type
+    return { id: newCategory.id, ...newCategoryData };
   }
 }
 
@@ -458,14 +467,15 @@ module.exports = {
 
 async function upsertCustomMeasurementEntry(authenticatedUserId, payload) {
   try {
-    const { category_id, value, entry_date, entry_hour, entry_timestamp } = payload;
+    const { category_id, value, entry_date, entry_hour, entry_timestamp, notes } = payload;
     const result = await measurementRepository.upsertCustomMeasurement(
       authenticatedUserId,
       category_id,
       value,
       entry_date,
       entry_hour,
-      entry_timestamp
+      entry_timestamp,
+      notes
     );
     return result;
   } catch (error) {

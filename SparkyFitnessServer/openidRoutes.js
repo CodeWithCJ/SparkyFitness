@@ -1,172 +1,154 @@
 const express = require("express");
 const router = express.Router();
-const { Issuer, Client, generators, JWKS } = require("openid-client"); // Importing openid-client for OpenID Connect
-const oidcSettingsRepository = require('./models/oidcSettingsRepository'); // Import the new repository
-const userRepository = require('./models/userRepository'); // Import userRepository for auto-registration
-const authService = require('./services/authService'); // Import authService for auto-registration
+const { Issuer, generators } = require("openid-client");
+const oidcProviderRepository = require('./models/oidcProviderRepository');
+const userRepository = require('./models/userRepository');
+const authService = require('./services/authService');
 const { log } = require('./config/logging');
 
-const context = {}; // This will hold our dynamically configured issuer and client
+const oidcClientCache = new Map();
 
-// Function to initialize the OIDC client dynamically
-async function initializeOidcClient() {
-  log('info', 'Attempting to initialize OIDC client...');
-  try {
-    const settings = await oidcSettingsRepository.getOidcSettings();
-    log('debug', `OIDC Settings retrieved: ${JSON.stringify(settings ? { ...settings, client_secret: settings.client_secret ? '***REDACTED***' : 'N/A' } : null)}`);
-
-    if (!settings) {
-      log('warn', 'OIDC settings are missing from the database. Client will not be initialized.');
-      context.client = null; // Ensure client is null if not active
-      return;
+async function getOidcClient(providerId) {
+    if (oidcClientCache.has(providerId)) {
+        return oidcClientCache.get(providerId);
     }
 
-    if (!settings.is_active) {
-      log('warn', 'OIDC integration is not active (is_active is false). Client will not be initialized.');
-      context.client = null; // Ensure client is null if not active
-      return;
+    log('info', `OIDC client for provider ${providerId} not in cache. Initializing...`);
+    const provider = await oidcProviderRepository.getOidcProviderById(providerId);
+
+    if (!provider || !provider.is_active) {
+        log('warn', `OIDC provider ${providerId} not found or is inactive.`);
+        return null;
     }
 
-    log('info', `Discovering OIDC issuer from: ${settings.issuer_url}`);
-    let discoveredIssuer;
     try {
-      discoveredIssuer = await Issuer.discover(settings.issuer_url);
-      log('info', 'OIDC Issuer discovered successfully.');
-    } catch (discoverError) {
-      log('error', `Failed to discover OIDC issuer from ${settings.issuer_url}: ${discoverError.message}`);
-      context.client = null;
-      return;
-    }
+        const discoveredIssuer = await Issuer.discover(provider.issuer_url);
+        log('info', 'OIDC Issuer discovered successfully.');
 
-    // To ensure stability and prevent mismatches, we explicitly construct a new Issuer
-    // using the metadata from the discovery endpoint. This makes sure that the issuer
-    // identifier used for token validation is the one advertised by the provider,
-    // not the discovery URL itself.
-    const issuer = new Issuer({
-      issuer: discoveredIssuer.issuer,
-      authorization_endpoint: discoveredIssuer.authorization_endpoint,
-      token_endpoint: discoveredIssuer.token_endpoint,
-      jwks_uri: discoveredIssuer.jwks_uri,
-      userinfo_endpoint: discoveredIssuer.userinfo_endpoint,
-      // Manually carry over other relevant metadata if needed
-      end_session_endpoint: discoveredIssuer.end_session_endpoint,
-    });
+        const issuer = new Issuer({
+            issuer: discoveredIssuer.issuer,
+            authorization_endpoint: discoveredIssuer.authorization_endpoint,
+            token_endpoint: discoveredIssuer.token_endpoint,
+            jwks_uri: discoveredIssuer.jwks_uri,
+            userinfo_endpoint: discoveredIssuer.userinfo_endpoint,
+        });
+        log('info', 'OIDC Issuer configured from discovered metadata:', issuer.issuer);
 
-    context.issuer = issuer;
-    log('info', 'OIDC Issuer configured successfully from discovered metadata:', issuer.issuer);
-    // Explicitly fetch JWKS if not provided by discovery
-    if (!issuer.jwks && issuer.jwks_uri) {
-      log('debug', `JWKS not found in discovery, fetching from jwks_uri: ${issuer.jwks_uri}`);
-      const jwksResponse = await fetch(issuer.jwks_uri);
-      if (!jwksResponse.ok) {
-        throw new Error(`Failed to fetch JWKS from ${issuer.jwks_uri}: ${jwksResponse.statusText}`);
-      }
-      issuer.jwks = await jwksResponse.json();
-      log('debug', 'Successfully fetched JWKS.');
-    }
+        if (!issuer.jwks && issuer.jwks_uri) {
+            log('debug', `JWKS not found in discovery, fetching from jwks_uri: ${issuer.jwks_uri}`);
+            const jwksResponse = await fetch(issuer.jwks_uri);
+            if (!jwksResponse.ok) {
+                throw new Error(`Failed to fetch JWKS from ${issuer.jwks_uri}: ${jwksResponse.statusText}`);
+            }
+            issuer.jwks = await jwksResponse.json();
+            log('debug', 'Successfully fetched JWKS.');
+        }
 
-    log('info', `Registering OIDC client for client_id: ${settings.client_id}`);
-    // Debugging: Log client_secret and issuer.jwks
-    log('info', `Client Secret (decrypted): ${settings.client_secret ? 'Present' : 'Not Present'}`);
-    //log('info', `Issuer JWKS: ${JSON.stringify(issuer.jwks, null, 2)}`);
-    try {
-      const client = new issuer.Client({
-        client_id: settings.client_id,
-        client_secret: settings.client_secret, // Use decrypted secret
-        redirect_uris: settings.redirect_uris,
-        scope: settings.scope, // Ensure scope is passed to client
-        token_endpoint_auth_method: settings.token_endpoint_auth_method,
-        response_types: settings.response_types,
-        id_token_signed_response_alg: settings.id_token_signed_response_alg,
-        userinfo_signed_response_alg: settings.userinfo_signed_response_alg,
-      }); // The issuer's JWKS are discovered and held on the issuer object, no need to pass them here.
-      context.client = client;
-      context.settings = settings; // Store settings in context for auto-registration
-      log('info', 'OpenID Connect Client registered successfully.');
-    } catch (clientError) {
-      log('error', `Error instantiating OIDC client: ${clientError.message}`);
-      context.client = null;
-      return;
+        const client = new issuer.Client({
+            client_id: provider.client_id,
+            client_secret: provider.client_secret,
+            redirect_uris: provider.redirect_uris,
+            response_types: provider.response_types,
+            token_endpoint_auth_method: provider.token_endpoint_auth_method,
+        });
+
+        const clientWrapper = { client, provider };
+        oidcClientCache.set(providerId, clientWrapper);
+        log('info', `OIDC client for provider ${providerId} initialized and cached.`);
+        return clientWrapper;
+    } catch (error) {
+        log('error', `Failed to initialize OIDC client for provider ${providerId}:`, error);
+        return null;
     }
-  } catch (error) {
-    log('error', 'Unhandled error during OpenID Connect setup:', error.message);
-    context.client = null; // Ensure client is null on error
-  }
 }
 
-// Middleware to ensure OIDC client is initialized before handling OIDC routes
-router.use(async (req, res, next) => {
-  if (!context.client) {
-    await initializeOidcClient(); // Attempt to initialize if not already
-  }
-  // If OIDC client is still not initialized after attempt, return a specific status
-  if (!context.client) {
-    log('info', 'OIDC client not initialized. Returning OIDC inactive status.');
-    // For /openid/api/me, return isOidcActive: false
-    if (req.path === '/api/me') {
-      return res.json({ isOidcActive: false });
+function clearOidcClientCache(providerId) {
+    if (providerId) {
+        oidcClientCache.delete(providerId);
+        log('info', `OIDC client cache cleared for provider ${providerId}.`);
+    } else {
+        oidcClientCache.clear();
+        log('info', 'OIDC client cache fully cleared.');
     }
-    // For /openid/login, return isOidcActive: false
-    if (req.path === '/login') {
-      return res.json({ isOidcActive: false });
-    }
-    // For any other OIDC route, return 503 as it's an unexpected access
-    return res.status(503).send('OIDC service unavailable. Configuration error.');
-  }
-  next();
-});
+}
+
+// This middleware is no longer needed as we initialize clients on demand.
+// router.use(async (req, res, next) => { ... });
 
 router.use(express.json());
 
-// Kick off the flow
-router.get("/login", (req, res, next) => {
-  log('debug', 'Received request to /openid/login');
-  if (!context.client) {
-    log('error', 'OIDC service not configured or initialized.');
-    return res.status(503).json({ error: 'OIDC service not configured.' });
-  }
-  const codeVerifier = generators.codeVerifier();
-  const codeChallenge = generators.codeChallenge(codeVerifier);
-  const state = generators.state();
-  const nonce = generators.nonce();
-
-  req.session.codeVerifier = codeVerifier;
-  req.session.state = state;
-  req.session.nonce = nonce;
-  log('debug', `[OIDC Login] Session ID: ${req.session.id}`);
-  log('debug', `[OIDC Login] Session object before save: ${JSON.stringify(req.session, null, 2)}`);
-  log('debug', `[OIDC Login] Storing in session: state=${state}, nonce=${nonce}, codeVerifier=${codeVerifier}`);
-
-  const redirectUri = `${process.env.SPARKY_FITNESS_FRONTEND_URL}/oidc-callback`;
-
-  const authorizationUrl = context.client.authorizationUrl({
-    scope: context.settings.scope,
-    redirect_uri: redirectUri,
-    code_challenge: codeChallenge,
-    code_challenge_method: "S256",
-    state,
-    nonce,
-  });
-
-  req.session.save((err) => {
-    if (err) {
-      log('error', 'Failed to save session before sending OIDC auth URL:', err);
-      return next(err);
+// Get all active providers for the login page
+router.get("/providers", async (req, res) => {
+    try {
+        const providers = await oidcProviderRepository.getOidcProviders();
+        const activeProviders = providers.filter(p => p.is_active).map(({ id, display_name, logo_url }) => ({ id, display_name, logo_url }));
+        res.json(activeProviders);
+    } catch (error) {
+        log('error', 'Error fetching OIDC providers for login page:', error);
+        res.status(500).json({ message: 'Could not retrieve OIDC providers.' });
     }
-    log('info', `Sending OIDC authorization URL to frontend: ${authorizationUrl}`);
-    res.json({ authorizationUrl });
-  });
+});
+
+// Kick off the flow for a specific provider
+router.get("/login/:providerId", async (req, res, next) => {
+    const { providerId } = req.params;
+    log('debug', `Received login request for OIDC provider ${providerId}`);
+
+    const clientWrapper = await getOidcClient(providerId);
+    if (!clientWrapper) {
+        return res.status(503).json({ error: 'OIDC provider not available or configured correctly.' });
+    }
+
+    const { client, provider } = clientWrapper;
+    const codeVerifier = generators.codeVerifier();
+    const codeChallenge = generators.codeChallenge(codeVerifier);
+    const state = generators.state();
+    const nonce = generators.nonce();
+
+    req.session.codeVerifier = codeVerifier;
+    req.session.state = state;
+    req.session.nonce = nonce;
+    req.session.providerId = providerId; // Store providerId for the callback
+    log('debug', `[OIDC Login] Storing in session: providerId=${providerId}, state=${state}, nonce=${nonce}`);
+
+    const redirectUri = (provider.redirect_uris && provider.redirect_uris[0]) || `${process.env.SPARKY_FITNESS_FRONTEND_URL}/oidc-callback`;
+
+    const authorizationUrl = client.authorizationUrl({
+        scope: provider.scope,
+        redirect_uri: redirectUri,
+        code_challenge: codeChallenge,
+        code_challenge_method: "S256",
+        state,
+        nonce,
+    });
+
+    req.session.save((err) => {
+        if (err) {
+            log('error', 'Failed to save session before sending OIDC auth URL:', err);
+            return next(err);
+        }
+        log('info', `Sending OIDC authorization URL to frontend for provider ${providerId}: ${authorizationUrl}`);
+        res.json({ authorizationUrl });
+    });
 });
 
 // Handle the callback from the frontend
 router.post("/callback", async (req, res, next) => {
-  log('debug', 'Received request to /openid/callback from frontend');
-  if (!context.client) {
-    log('error', 'OIDC service not configured or initialized for callback.');
-    return res.status(503).json({ error: 'OIDC service not configured.' });
-  }
-  try {
-    const { code, state } = req.body;
+    const { providerId } = req.session;
+    if (!providerId) {
+        log('error', '[OIDC Callback] providerId not found in session.');
+        return res.status(400).json({ error: 'Session expired or invalid.' });
+    }
+
+    log('debug', `Received OIDC callback for provider ${providerId}`);
+    const clientWrapper = await getOidcClient(providerId);
+    if (!clientWrapper) {
+        return res.status(503).json({ error: 'OIDC provider not available or configured correctly.' });
+    }
+
+    try {
+        const { client, provider } = clientWrapper;
+        const { code, state } = req.body;
     log('debug', `[OIDC Callback] Received request with code: ${code ? 'present' : 'missing'}`);
     log('debug', `[OIDC Callback] Session ID: ${req.session.id}`);
     log('debug', `[OIDC Callback] Session content before callback: ${JSON.stringify(req.session, null, 2)}`);
@@ -180,18 +162,22 @@ router.post("/callback", async (req, res, next) => {
     // Retrieve the redirect_uri that would have been used.
     // IMPORTANT: This must match one of the URIs registered with the OIDC provider.
     // This now points to the FRONTEND callback handler.
-    const redirectUri = `${process.env.SPARKY_FITNESS_FRONTEND_URL}/oidc-callback`;
+    const redirectUri = (provider.redirect_uris && provider.redirect_uris[0]) || `${process.env.SPARKY_FITNESS_FRONTEND_URL}/oidc-callback`;
 
     const params = { code, state };
 
     log('debug', `[OIDC Callback] Session state before callback: ${req.session.state}`);
-    const tokenSet = await context.client.callback(
+    const tokenSet = await client.callback(
       redirectUri,
       params,
       {
         code_verifier: req.session.codeVerifier,
         state: req.session.state,
-        nonce: req.session.nonce
+        nonce: req.session.nonce,
+        response_type: 'code',
+        check: {
+          issuer: provider.issuer_url
+        }
       }
     );
 
@@ -213,9 +199,9 @@ router.post("/callback", async (req, res, next) => {
     let userinfoClaims = {};
 
     // Explicitly fetch user info from the userinfo_endpoint
-    if (context.client.userinfo) {
+    if (client.userinfo) {
       try {
-        userinfoClaims = await context.client.userinfo(tokenSet.access_token);
+        userinfoClaims = await client.userinfo(tokenSet.access_token);
         log('info', 'OIDC DEBUG: Fetched Userinfo Claims:', userinfoClaims);
         // Merge userinfo claims with id_token claims, prioritizing userinfo claims
         claims = { ...claims, ...userinfoClaims };
@@ -232,42 +218,61 @@ router.post("/callback", async (req, res, next) => {
     const oidcSub = claims.sub;
 
     // Auto-registration logic
-    if (context.settings && context.settings.auto_register && userEmail && oidcSub) {
-      log('info', `OIDC callback: Auto-registration enabled for ${userEmail}.`);
-      try {
-        log('info', `OIDC callback: Checking database for user ${userEmail}.`);
-        let user = await userRepository.findUserByEmail(userEmail);
-        log('info', `OIDC callback: Database check completed. User found: ${!!user}`);
+    // Auto-registration logic
+    if (provider.auto_register && userEmail && oidcSub) {
+        log('info', `OIDC callback for provider ${providerId}: Auto-registration enabled for ${userEmail}.`);
+        try {
+            let user = await userRepository.findUserByEmail(userEmail);
 
-        if (!user) {
-          log('info', `OIDC callback: User ${userEmail} not found. Attempting auto-registration.`);
-          const newUserId = await authService.registerOidcUser(userEmail, claims.name || userEmail, oidcSub);
-          log('info', `OIDC callback: Auto-registered new user with ID: ${newUserId}. Refetching user from DB.`);
-          user = await userRepository.findUserByEmail(userEmail);
-          log('info', `OIDC callback: Refetched user successfully. User: ${JSON.stringify(user)}`);
-        } else if (!user.oidc_sub) {
-          log('info', `OIDC callback: User ${userEmail} found, but missing oidc_sub. Updating now.`);
-          await userRepository.updateUserOidcSub(user.id, oidcSub);
-          log('info', `OIDC callback: Updated oidc_sub for existing user: ${userEmail}`);
-        } else {
-          log('info', `OIDC callback: User ${userEmail} found with oidc_sub. Proceeding to session creation.`);
-        }
+            if (!user) {
+                log('info', `OIDC callback: User ${userEmail} not found. Attempting auto-registration.`);
+                const newUserId = await authService.registerOidcUser(userEmail, claims.name || userEmail, providerId, oidcSub);
+                user = await userRepository.findUserById(newUserId);
+                log('info', `OIDC callback: Auto-registered and linked new user with ID: ${newUserId}.`);
+            } else {
+                // User exists, check if they are already linked to this provider
+                const existingLink = await userRepository.findUserOidcLink(user.id, providerId);
+                if (!existingLink) {
+                    log('info', `OIDC callback: User ${userEmail} found. Linking to provider ${providerId}.`);
+                    await userRepository.createUserOidcLink(user.id, providerId, oidcSub);
+                } else if (existingLink.oidc_sub !== oidcSub) {
+                    log('info', `OIDC callback: OIDC sub has changed for user ${userEmail}. Updating link.`);
+                    await userRepository.updateUserOidcLink(existingLink.id, oidcSub);
+                }
+                else {
+                    log('info', `OIDC callback: User ${userEmail} is already linked to provider ${providerId}.`);
+                }
+            }
 
-        if (user && user.id) {
-          // Ensure the role is included in the session user object
-          req.session.user = { ...claims, userId: user.id, role: user.role || 'user' };
-        } else {
-          log('error', `OIDC callback: Failed to create or find a valid user for ${userEmail}. Cannot set session.`);
-          // Fallback to storing claims directly if user object is invalid, and default role
-          req.session.user = { ...claims, role: 'user' };
+            if (user && user.id) {
+                req.session.user = { ...claims, userId: user.id, role: user.role || 'user' };
+            } else {
+                log('error', `OIDC callback: Failed to create or find a valid user for ${userEmail}.`);
+                req.session.user = { ...claims, role: 'user' }; // Fallback
+            }
+        } catch (regError) {
+            log('error', `OIDC callback: Error during auto-registration for ${userEmail}:`, regError);
+            req.session.user = claims; // Fallback
         }
-      } catch (regError) {
-        log('error', `OIDC callback: Error during auto-registration for ${userEmail}:`, regError.message);
-        req.session.user = claims; // Store claims as a fallback
-      }
     } else {
-      log('warn', `OIDC callback: Auto-registration not enabled or required claims (email, sub) are missing. Storing claims directly. Email: ${userEmail}, Sub: ${oidcSub}`);
-      req.session.user = claims;
+        log('info', `OIDC callback: Auto-registration not enabled. Checking for existing user.`);
+        const user = await userRepository.findUserByOidcSub(oidcSub, providerId) || await userRepository.findUserByEmail(userEmail);
+        if (user) {
+            log('info', `OIDC callback: Found existing user with ID: ${user.id}.`);
+            // Ensure the OIDC link exists, even if auto-registration is off.
+            const existingLink = await userRepository.findUserOidcLink(user.id, providerId);
+            if (!existingLink) {
+                log('info', `OIDC callback: User ${userEmail} found. Linking to provider ${providerId}.`);
+                await userRepository.createUserOidcLink(user.id, providerId, oidcSub);
+            } else if (existingLink.oidc_sub !== oidcSub) {
+                log('info', `OIDC callback: OIDC sub has changed for user ${userEmail}. Updating link.`);
+                await userRepository.updateUserOidcLink(existingLink.id, oidcSub);
+            }
+            req.session.user = { ...claims, userId: user.id, role: user.role || 'user' };
+        } else {
+            log('warn', `OIDC callback: No existing user found for ${userEmail} and auto-registration is disabled.`);
+            req.session.user = claims; // Fallback for no user found
+        }
     }
 
     req.session.tokens = tokenSet; // refresh_token if any
@@ -315,6 +320,7 @@ router.get("/api/me", async (req, res) => {
 });
 
 module.exports = {
-  router,
-  initializeOidcClient // Export the initialization function
+    router,
+    getOidcClient,
+    clearOidcClientCache,
 };

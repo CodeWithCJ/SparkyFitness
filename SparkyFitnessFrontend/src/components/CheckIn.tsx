@@ -29,7 +29,9 @@ import {
   CombinedMeasurement,
 } from '@/services/checkInService';
 import { saveMoodEntry, getMoodEntryByDate } from '@/services/moodService'; // Import mood service
-
+import { calculateBodyFatBmi, calculateBodyFatNavy } from '@/services/bodyCompositionService';
+import { getUserPreferences } from '@/services/preferenceService';
+import { userManagementService } from "@/services/userManagementService";
 
 
 const CheckIn = () => {
@@ -52,12 +54,15 @@ const CheckIn = () => {
   const [waist, setWaist] = useState("");
   const [hips, setHips] = useState("");
   const [steps, setSteps] = useState("");
+  const [height, setHeight] = useState("");
+  const [bodyFatPercentage, setBodyFatPercentage] = useState("");
   const [mood, setMood] = useState<number | null>(50); // Initialize mood to 50
   const [moodNotes, setMoodNotes] = useState<string>(""); // New state for mood notes
   const [displayWeightUnit, setDisplayWeightUnit] = useState<'kg' | 'lbs'>(defaultWeightUnit);
   const [displayMeasurementUnit, setDisplayMeasurementUnit] = useState<'cm' | 'inches'>(defaultMeasurementUnit);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [customValues, setCustomValues] = useState<{[key: string]: string}>({});
+  const [customNotes, setCustomNotes] = useState<{[key: string]: string}>({});
 
   const [loading, setLoading] = useState(false);
   const [recentMeasurements, setRecentMeasurements] = useState<CombinedMeasurement[]>([]);
@@ -73,10 +78,8 @@ const CheckIn = () => {
 
   useEffect(() => {
     if (currentUserId) {
-      loadExistingData();
       loadPreferences(); // Load user's default preferences
       loadCustomCategories();
-      fetchAllRecentMeasurements();
     }
 
     const handleRefresh = () => {
@@ -90,7 +93,7 @@ const CheckIn = () => {
     return () => {
       window.removeEventListener('measurementsRefresh', handleRefresh);
       };
-    }, [currentUserId, selectedDate, loadPreferences, formatDateInUserTimezone, parseDateInUserTimezone, convertWeight, convertMeasurement, defaultWeightUnit, defaultMeasurementUnit]);
+    }, [currentUserId, loadPreferences]);
   
     useEffect(() => {
       setDisplayWeightUnit(defaultWeightUnit);
@@ -98,6 +101,13 @@ const CheckIn = () => {
       // Trigger data reload when default units change to ensure values are displayed in the new default unit
       loadExistingData();
     }, [defaultWeightUnit, defaultMeasurementUnit]);
+
+  useEffect(() => {
+    if (currentUserId && customCategories.length > 0) {
+      loadExistingData();
+      fetchAllRecentMeasurements();
+    }
+  }, [currentUserId, selectedDate, customCategories, convertWeight, convertMeasurement, defaultWeightUnit, defaultMeasurementUnit, formatDateInUserTimezone, parseDateInUserTimezone]);
   
     // Effect to re-convert displayed values when display units change
     useEffect(() => {
@@ -117,6 +127,10 @@ const CheckIn = () => {
       if (hips) {
         const converted = convertMeasurement(parseFloat(hips), displayMeasurementUnit === 'cm' ? 'inches' : 'cm', displayMeasurementUnit);
         setHips(typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "");
+      }
+      if (height) {
+        const converted = convertMeasurement(parseFloat(height), displayMeasurementUnit === 'cm' ? 'inches' : 'cm', displayMeasurementUnit);
+        setHeight(typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "");
       }
       // Re-load custom values to ensure they are displayed in the correct unit
       loadExistingData();
@@ -176,6 +190,8 @@ const CheckIn = () => {
         if (s.waist !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.waist, type: 'standard', display_name: 'Waist', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.entry_date });
         if (s.hips !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.hips, type: 'standard', display_name: 'Hips', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.entry_date });
         if (s.steps !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.steps, type: 'standard', display_name: 'Steps', display_unit: 'steps', entry_hour: null, entry_timestamp: s.entry_date });
+        if (s.height !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.height, type: 'standard', display_name: 'Height', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.entry_date });
+        if (s.body_fat_percentage !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.body_fat_percentage, type: 'standard', display_name: 'Body Fat %', display_unit: '%', entry_hour: null, entry_timestamp: s.entry_date });
       });
 
       // Sort by entry_timestamp (or entry_date if timestamp is null) in descending order
@@ -214,6 +230,8 @@ const CheckIn = () => {
           case 'Waist': fieldToNull = 'waist'; break;
           case 'Hips': fieldToNull = 'hips'; break;
           case 'Steps': fieldToNull = 'steps'; break;
+          case 'Height': fieldToNull = 'height'; break;
+          case 'Body Fat %': fieldToNull = 'body_fat_percentage'; break;
           default:
             warn(loggingLevel, `Unknown standard measurement type for deletion: ${measurement.display_name}`);
             return;
@@ -254,6 +272,11 @@ const CheckIn = () => {
 
         const convertedHips = data.hips !== undefined && data.hips !== null ? convertMeasurement(data.hips, 'cm', displayMeasurementUnit) : NaN;
         setHips(typeof convertedHips === 'number' && !isNaN(convertedHips) ? convertedHips.toFixed(1) : "");
+        
+        const convertedHeight = data.height !== undefined && data.height !== null ? convertMeasurement(data.height, 'cm', displayMeasurementUnit) : NaN;
+        setHeight(typeof convertedHeight === 'number' && !isNaN(convertedHeight) ? convertedHeight.toFixed(1) : "");
+
+        setBodyFatPercentage(data.body_fat_percentage?.toString() || "");
         setSteps(data.steps?.toString() || "");
       } else {
         info(loggingLevel, "No existing check-in data for this date, clearing form.");
@@ -262,6 +285,8 @@ const CheckIn = () => {
         setWaist("");
         setHips("");
         setSteps("");
+        setHeight("");
+        setBodyFatPercentage("");
       }
 
       // Load mood entry for the selected date
@@ -280,19 +305,32 @@ const CheckIn = () => {
 
       const customData = await loadExistingCustomMeasurements(selectedDate);
       info(loggingLevel, "Custom measurements loaded for date:", { selectedDate, customData });
-      const newCustomValues: {[key: string]: string} = {};
-      if (customData) {
+      if (customData && customData.length > 0) {
+        const newCustomValues: { [key: string]: string } = {};
+        const newCustomNotes: { [key: string]: string } = {};
         customData.forEach((measurement) => {
-          const isConvertible = shouldConvertCustomMeasurement(measurement.custom_categories.measurement_type);
-          newCustomValues[measurement.category_id] = isConvertible
-            ? (() => {
-                const converted = convertMeasurement(measurement.value, 'cm', displayMeasurementUnit);
-                return typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "";
-              })()
-            : measurement.value.toString();
+          const category = customCategories.find(c => c.id === measurement.category_id);
+          if (category) {
+            const isConvertible = shouldConvertCustomMeasurement(category.measurement_type);
+            if (category.data_type === 'numeric') {
+              newCustomValues[measurement.category_id] = isConvertible
+                ? (() => {
+                    const converted = convertMeasurement(measurement.value, 'cm', displayMeasurementUnit);
+                    return typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "";
+                  })()
+                : measurement.value.toString();
+            } else {
+              newCustomValues[measurement.category_id] = measurement.text_value || '';
+            }
+            newCustomNotes[measurement.category_id] = measurement.notes || '';
+          }
         });
+        setCustomValues(newCustomValues);
+        setCustomNotes(newCustomNotes);
+      } else {
+        setCustomValues({});
+        setCustomNotes({});
       }
-      setCustomValues(newCustomValues);
     } catch (err) {
       error(loggingLevel, 'Error loading existing data:', err);
     }
@@ -302,22 +340,20 @@ const CheckIn = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Only save mood entry if mood is explicitly set or notes are provided
-    if (mood !== null || moodNotes.trim() !== '') {
-      try {
-        // Ensure mood is a number, default to 50 if null
-        const moodToSend = mood === null ? 50 : mood;
-        info(loggingLevel, "Attempting to save mood entry with moodToSend:", moodToSend, "and moodNotes:", moodNotes, "and selectedDate:", selectedDate);
-        await saveMoodEntry(moodToSend, moodNotes, selectedDate);
-        info(loggingLevel, "Mood entry saved successfully.");
-      } catch (err) {
-        error(loggingLevel, 'Error saving mood entry:', err);
-        toast({
-          title: "Error",
-          description: "Failed to save mood entry",
-          variant: "destructive",
-        });
-      }
+    // Always attempt to save the mood entry.
+    // The mood state is initialized to 50, so it will always have a value.
+    try {
+      const moodToSend = mood ?? 50;
+      info(loggingLevel, "Attempting to save mood entry with moodToSend:", moodToSend, "and moodNotes:", moodNotes, "and selectedDate:", selectedDate);
+      await saveMoodEntry(moodToSend, moodNotes, selectedDate);
+      info(loggingLevel, "Mood entry saved successfully.");
+    } catch (err) {
+      error(loggingLevel, 'Error saving mood entry:', err);
+      toast({
+        title: "Error",
+        description: "Failed to save mood entry",
+        variant: "destructive",
+      });
     }
 
     if (!currentUserId) {
@@ -344,15 +380,17 @@ const CheckIn = () => {
       if (waist) measurementData.waist = convertMeasurement(parseFloat(waist), displayMeasurementUnit, 'cm');
       if (hips) measurementData.hips = convertMeasurement(parseFloat(hips), displayMeasurementUnit, 'cm');
       if (steps) measurementData.steps = parseInt(steps);
+      if (height) measurementData.height = convertMeasurement(parseFloat(height), displayMeasurementUnit, 'cm');
+      if (bodyFatPercentage) measurementData.body_fat_percentage = parseFloat(bodyFatPercentage);
 
       await saveCheckInMeasurements(measurementData);
       info(loggingLevel, "Standard check-in data saved successfully.");
 
       for (const [categoryId, value] of Object.entries(customValues)) {
-        if (value && parseFloat(value) > 0) {
+        if (value) {
           const category = customCategories.find(c => c.id === categoryId);
           if (category) {
-            const isConvertible = shouldConvertCustomMeasurement(category.measurement_type); // Recalculate here
+            const isConvertible = shouldConvertCustomMeasurement(category.measurement_type);
             const currentTime = new Date();
             let entryHour: number | null = null;
             let entryTimestamp: string;
@@ -366,15 +404,25 @@ const CheckIn = () => {
               entryTimestamp = currentTime.toISOString();
             }
 
-            const customMeasurementData = {
+            const customMeasurementData: any = {
               category_id: categoryId,
-              value: isConvertible && !isNaN(parseFloat(value))
-                ? convertMeasurement(parseFloat(value), displayMeasurementUnit, 'cm')
-                : parseFloat(value), // No conversion if not convertible, or if value is not a number
+              notes: customNotes[categoryId] || '',
               entry_date: selectedDate,
               entry_hour: entryHour,
               entry_timestamp: entryTimestamp,
             };
+
+            if (category.data_type === 'numeric') {
+              if (parseFloat(value) > 0) {
+                customMeasurementData.value = isConvertible && !isNaN(parseFloat(value))
+                  ? convertMeasurement(parseFloat(value), displayMeasurementUnit, 'cm')
+                  : parseFloat(value);
+              } else {
+                continue;
+              }
+            } else {
+              customMeasurementData.text_value = value;
+            }
 
             await saveCustomMeasurement(customMeasurementData);
             info(loggingLevel, `Custom measurement for category ${category.name} saved successfully.`);
@@ -401,6 +449,72 @@ const CheckIn = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCalculateBodyFat = async () => {
+    if (!currentUserId) return;
+    try {
+      const prefs = await getUserPreferences();
+      const userProfile = await userManagementService.getUserProfile(currentUserId);
+      
+      if (!userProfile) {
+        error(loggingLevel, "Error calculating body fat: userProfile is null or undefined.");
+        toast({ title: "Error", description: "Could not load user profile for calculation." });
+        return;
+      }
+      if (!prefs) {
+        error(loggingLevel, "Error calculating body fat: preferences are null or undefined.");
+        toast({ title: "Error", description: "Could not load user preferences for calculation." });
+        return;
+      }
+
+      const age = userProfile.date_of_birth ? new Date().getFullYear() - new Date(userProfile.date_of_birth).getFullYear() : 0;
+      const gender = userProfile.gender;
+      const weightKg = convertWeight(parseFloat(weight), displayWeightUnit, 'kg');
+      const heightCm = convertMeasurement(parseFloat(height), displayMeasurementUnit, 'cm');
+      const waistCm = convertMeasurement(parseFloat(waist), displayMeasurementUnit, 'cm');
+      const neckCm = convertMeasurement(parseFloat(neck), displayMeasurementUnit, 'cm');
+      const hipsCm = convertMeasurement(parseFloat(hips), displayMeasurementUnit, 'cm');
+
+      debug(loggingLevel, "Body Fat Calculation Inputs:", {
+        age,
+        gender,
+        weightKg,
+        heightCm,
+        waistCm,
+        neckCm,
+        hipsCm,
+        bodyFatAlgorithm: prefs.body_fat_algorithm,
+      });
+
+      let bfp = 0;
+      let errorMessage = "";
+
+      if (prefs.body_fat_algorithm === 'BMI Method') {
+        if (isNaN(weightKg) || isNaN(heightCm) || age === 0 || !gender) {
+          errorMessage = "Weight, height, age, and gender are required for BMI Method.";
+        } else {
+          bfp = calculateBodyFatBmi(weightKg, heightCm, age, gender);
+        }
+      } else { // Default to U.S. Navy
+        if (!gender || isNaN(heightCm) || isNaN(waistCm) || isNaN(neckCm) || isNaN(hipsCm)) {
+          errorMessage = "Gender, height, waist, neck, and hips measurements are required for U.S. Navy Method.";
+        } else {
+          bfp = calculateBodyFatNavy(gender, heightCm, waistCm, neckCm, hipsCm);
+        }
+      }
+
+      if (errorMessage) {
+        error(loggingLevel, `Error calculating body fat: ${errorMessage}`);
+        toast({ title: "Error", description: `Failed to calculate body fat: ${errorMessage}`, variant: "destructive" });
+      } else {
+        setBodyFatPercentage(bfp.toFixed(2));
+        toast({ title: "Success", description: "Body fat percentage calculated." });
+      }
+    } catch (err: any) {
+      error(loggingLevel, 'Error calculating body fat:', err);
+      toast({ title: "Error", description: `Failed to calculate body fat: ${err.message || "An unknown error occurred."}`, variant: "destructive" });
     }
   };
 
@@ -507,6 +621,33 @@ const CheckIn = () => {
                 />
               </div>
 
+              <div>
+                <Label htmlFor="height">Height ({displayMeasurementUnit})</Label>
+                <Input
+                  id="height"
+                  type="number"
+                  step="0.1"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  placeholder={`Enter height in ${displayMeasurementUnit}`}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="bodyFat">Body Fat %</Label>
+                <div className="flex items-center">
+                  <Input
+                    id="bodyFat"
+                    type="number"
+                    step="0.1"
+                    value={bodyFatPercentage}
+                    onChange={(e) => setBodyFatPercentage(e.target.value)}
+                    placeholder="Enter body fat percentage"
+                  />
+                  <Button type="button" onClick={handleCalculateBodyFat} className="ml-2">Calculate</Button>
+                </div>
+              </div>
+
               {/* Custom Categories */}
               {customCategories.map((category) => {
                 const isConvertible = shouldConvertCustomMeasurement(category.measurement_type);
@@ -517,8 +658,8 @@ const CheckIn = () => {
                     </Label>
                     <Input
                       id={`custom-${category.id}`}
-                      type="number"
-                      step="0.01"
+                      type={category.data_type === 'numeric' ? 'number' : 'text'}
+                      step={category.data_type === 'numeric' ? "0.01" : undefined}
                       value={customValues[category.id] || ''}
                       onChange={(e) => {
                         setCustomValues(prev => ({
@@ -526,7 +667,20 @@ const CheckIn = () => {
                           [category.id]: e.target.value
                         }));
                       }}
-                      placeholder={`Enter ${category.name.toLowerCase()} in ${isConvertible ? displayMeasurementUnit : category.measurement_type}`}
+                      placeholder={`Enter ${category.name.toLowerCase()}`}
+                    />
+                    <Input
+                      id={`custom-notes-${category.id}`}
+                      type="text"
+                      value={customNotes[category.id] || ''}
+                      onChange={(e) => {
+                        setCustomNotes(prev => ({
+                          ...prev,
+                          [category.id]: e.target.value
+                        }));
+                      }}
+                      placeholder="Notes (optional)"
+                      className="mt-2"
                     />
                   </div>
                 );
@@ -569,6 +723,9 @@ const CheckIn = () => {
                     displayValue = convertWeight(measurement.value, 'kg', displayWeightUnit);
                     displayUnit = displayWeightUnit;
                   } else if (['Neck', 'Waist', 'Hips'].includes(measurement.display_name)) {
+                    displayValue = convertMeasurement(measurement.value, 'cm', displayMeasurementUnit);
+                    displayUnit = displayMeasurementUnit;
+                  } else if (measurement.display_name === 'Height') {
                     displayValue = convertMeasurement(measurement.value, 'cm', displayMeasurementUnit);
                     displayUnit = displayMeasurementUnit;
                   }

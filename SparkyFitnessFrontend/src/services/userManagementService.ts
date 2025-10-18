@@ -4,76 +4,50 @@ export interface User {
   id: string;
   full_name: string;
   email: string;
-  role: string;
+  role: 'user' | 'admin';
   isActive: boolean;
-  created_at?: string;
-  last_login_at?: string;
+  created_at: string;
+  last_login_at: string;
+}
+
+export interface UserProfile {
+  date_of_birth: string;
+  gender: 'male' | 'female';
+  // Add other profile fields here
 }
 
 export const userManagementService = {
-  getUsers: async (
-    searchTerm: string = '',
-    sortBy: string = 'created_at',
-    sortOrder: 'asc' | 'desc' = 'desc'
-  ): Promise<User[]> => {
-    try {
-      const response = await api.get('/admin/users', {
-        params: { searchTerm, sortBy, sortOrder },
-      });
-      return response.map((user: any) => ({
-        ...user,
-        isActive: user.is_active, // Map backend's is_active to frontend's isActive
-      }));
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      throw error;
-    }
+  getUsers: async (searchTerm: string = ''): Promise<User[]> => {
+    const response = await api.get(`/admin/users?searchTerm=${searchTerm}`);
+    return response.data;
   },
 
+  updateUserFullName: async (userId: string, newFullName: string): Promise<void> => {
+    await api.put(`/admin/users/${userId}/full-name`, { body: { full_name: newFullName } });
+  },
 
   deleteUser: async (userId: string): Promise<void> => {
-    try {
-      await api.delete(`/admin/users/${userId}`);
-    } catch (error) {
-      console.error(`Error deleting user ${userId}:`, error);
-      throw error;
-    }
+    await api.delete(`/admin/users/${userId}`);
   },
 
-
   resetUserPassword: async (userId: string): Promise<void> => {
-    try {
-      await api.post(`/admin/users/${userId}/reset-password`);
-    } catch (error) {
-      console.error(`Error resetting password for user ${userId}:`, error);
-      throw error;
-    }
+    await api.post(`/admin/users/${userId}/reset-password`);
   },
 
   updateUserStatus: async (userId: string, isActive: boolean): Promise<void> => {
-    try {
-      await api.put(`/admin/users/${userId}/status`, { body: { isActive } });
-    } catch (error) {
-      console.error(`Error updating status for user ${userId}:`, error);
-      throw error;
-    }
+    await api.put(`/admin/users/${userId}/status`, { body: { isActive } });
   },
 
-  updateUserRole: async (userId: string, role: string): Promise<void> => {
-    try {
-      await api.put(`/admin/users/${userId}/role`, { body: { role } });
-    } catch (error) {
-      console.error(`Error updating role for user ${userId}:`, error);
-      throw error;
-    }
+  updateUserRole: async (userId: string, role: 'user' | 'admin'): Promise<void> => {
+    await api.put(`/admin/users/${userId}/role`, { body: { role } });
   },
 
-
-  updateUserFullName: async (userId: string, full_name: string): Promise<void> => {
+  getUserProfile: async (userId: string): Promise<UserProfile> => {
     try {
-      await api.put(`/admin/users/${userId}/full-name`, { body: { fullName: full_name } });
+      const response = await api.get(`/auth/profiles`);
+      return response;
     } catch (error) {
-      console.error(`Error updating full name for user ${userId}:`, error);
+      console.error('Error fetching user profile:', error);
       throw error;
     }
   },

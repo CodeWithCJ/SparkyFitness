@@ -102,6 +102,8 @@ export const updateExerciseEntry = async (entryId: string, payload: {
   imageFile?: File | null;
 }): Promise<ExerciseEntry> => {
   const { imageFile, ...entryData } = payload;
+  console.log('updateExerciseEntry payload:', payload);
+  console.log('updateExerciseEntry entryData:', entryData);
   
   if (imageFile) {
     const formData = new FormData();

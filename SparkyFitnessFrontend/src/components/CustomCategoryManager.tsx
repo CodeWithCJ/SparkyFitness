@@ -33,7 +33,8 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
   const [newCategory, setNewCategory] = useState({
     name: '',
     measurement_type: '',
-    frequency: 'Daily'
+    frequency: 'Daily',
+    data_type: 'numeric'
   });
 
   useEffect(() => {
@@ -41,7 +42,7 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
       if (user) {
         try {
           const fetchedCategories = await getCategories(loggingLevel); // Pass loggingLevel
-          onCategoriesChange(fetchedCategories);
+          onCategoriesChange(fetchedCategories || []);
         } catch (error) {
           console.error("Error fetching custom categories:", error);
           toast({
@@ -70,10 +71,13 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
         user_id: user.id,
         name: newCategory.name.trim(),
         measurement_type: newCategory.measurement_type.trim(),
-        frequency: newCategory.frequency
+        frequency: newCategory.frequency,
+        data_type: newCategory.data_type
       }, loggingLevel); // Pass loggingLevel
-      onCategoriesChange([...categories, data]);
-      setNewCategory({ name: '', measurement_type: '', frequency: 'Daily' });
+      // Refetch categories to ensure the new one with the correct ID and all fields is displayed
+      const fetchedCategories = await getCategories(loggingLevel);
+      onCategoriesChange(fetchedCategories || []);
+      setNewCategory({ name: '', measurement_type: '', frequency: 'Daily', data_type: 'numeric' });
       setIsAddDialogOpen(false);
       
       toast({
@@ -104,9 +108,12 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
       const updatedData = await updateCategory(editingCategory.id, {
         name: editingCategory.name.trim(),
         measurement_type: editingCategory.measurement_type.trim(),
-        frequency: editingCategory.frequency
+        frequency: editingCategory.frequency,
+        data_type: editingCategory.data_type
       }, loggingLevel); // Pass loggingLevel
-      onCategoriesChange(categories.map(cat => cat.id === editingCategory.id ? updatedData : cat));
+      // Refetch categories to ensure the updated one is displayed correctly
+      const fetchedCategories = await getCategories(loggingLevel);
+      onCategoriesChange(fetchedCategories || []);
       setEditingCategory(null);
       setIsEditDialogOpen(false);
       
@@ -208,6 +215,21 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
                 />
               </div>
               <div>
+                <Label htmlFor="data_type">Data Type</Label>
+                <Select
+                  value={newCategory.data_type}
+                  onValueChange={(value) => setNewCategory({ ...newCategory, data_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="numeric">Numeric</SelectItem>
+                    <SelectItem value="text">Text</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label htmlFor="frequency">Frequency</Label>
                 <Select
                   value={newCategory.frequency}
@@ -239,7 +261,7 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
               <div>
                 <div className="font-medium">{category.name}</div>
                 <div className="text-sm text-gray-500">
-                  {category.measurement_type} • {category.frequency}
+                  {category.measurement_type} • {category.frequency} • {category.data_type}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -293,6 +315,22 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
                   placeholder="e.g., mg/dL"
                   maxLength={50}
                 />
+              </div>
+              <div>
+                <Label htmlFor="edit-data_type">Data Type</Label>
+                <Select
+                  value={editingCategory.data_type}
+                  onValueChange={(value) => setEditingCategory({ ...editingCategory, data_type: value })}
+                  disabled
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="numeric">Numeric</SelectItem>
+                    <SelectItem value="text">Text</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="edit-frequency">Frequency</Label>

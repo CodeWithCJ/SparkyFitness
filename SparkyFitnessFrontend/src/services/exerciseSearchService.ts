@@ -48,8 +48,12 @@ export const searchExternalExercises = async (query: string, providerId: string,
     providerType: providerType,
   };
 
-  params.equipmentFilter = equipmentFilter.join(',');
-  params.muscleGroupFilter = muscleGroupFilter.join(',');
+  if (equipmentFilter.length > 0) {
+    params.equipmentFilter = equipmentFilter.join(',');
+  }
+  if (muscleGroupFilter.length > 0) {
+    params.muscleGroupFilter = muscleGroupFilter.join(',');
+  }
   if (limit !== undefined) {
     params.limit = limit;
   }

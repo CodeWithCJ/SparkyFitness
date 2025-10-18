@@ -19,6 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import FamilyAccessManager from "./FamilyAccessManager";
 import AIServiceSettings from "./AIServiceSettings";
 import CustomCategoryManager from "./CustomCategoryManager";
+import { CustomCategory } from "@/services/customCategoryService";
 import ExternalProviderSettings from "./ExternalProviderSettings"; // Import ExternalProviderSettings
 import GarminConnectSettings from "./GarminConnectSettings"; // Import GarminConnectSettings
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
@@ -26,9 +27,10 @@ import NutrientDisplaySettings from "./NutrientDisplaySettings"; // Import Nutri
 import WaterContainerManager from "./WaterContainerManager"; // Import WaterContainerManager
 import { parse } from "date-fns"; // Import parse for parsing user-entered date strings
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"; // Import Accordion components
+import CalculationSettings from "@/pages/CalculationSettings";
 
 interface Profile {
-  id: string;
+ id: string;
   full_name: string | null;
   phone_number: string | null; // Changed from 'phone' to 'phone_number' to match DB
   date_of_birth: string | null;
@@ -42,13 +44,6 @@ interface UserPreferences {
   default_weight_unit: string;
   default_measurement_unit: string;
   logging_level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT'; // Add logging level
-}
-
-interface CustomCategory {
-  id: string;
-  name: string;
-  measurement_type: string;
-  frequency: string;
 }
 
 interface SettingsProps {
@@ -739,10 +734,23 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
           <AccordionContent className="p-4 pt-0">
             <NutrientDisplaySettings />
           </AccordionContent>
-        </AccordionItem>
+       </AccordionItem>
 
-        <AccordionItem value="family-access" className="border rounded-lg mb-4">
-          <AccordionTrigger
+       <AccordionItem value="calculation-settings" className="border rounded-lg mb-4">
+         <AccordionTrigger
+           className="flex items-center gap-2 p-4 hover:no-underline"
+           description="Manage BMR and Body Fat calculation preferences"
+         >
+           <SettingsIcon className="h-5 w-5" />
+           Calculation Settings
+         </AccordionTrigger>
+         <AccordionContent className="p-4 pt-0">
+           <CalculationSettings />
+         </AccordionContent>
+       </AccordionItem>
+
+       <AccordionItem value="family-access" className="border rounded-lg mb-4">
+         <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description="Manage access to your data for family members"
           >

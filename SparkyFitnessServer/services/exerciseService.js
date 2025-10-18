@@ -89,7 +89,7 @@ async function createExerciseEntry(authenticatedUserId, entryData) {
     if (!entryData.calories_burned && entryData.exercise_id && entryData.duration_minutes !== null && entryData.duration_minutes !== undefined) {
       const exercise = await exerciseRepository.getExerciseById(entryData.exercise_id);
       if (exercise) {
-        const caloriesPerHour = await calorieCalculationService.estimateCaloriesBurnedPerHour(exercise, authenticatedUserId);
+        const caloriesPerHour = await calorieCalculationService.estimateCaloriesBurnedPerHour(exercise, authenticatedUserId, entryData.sets);
         entryData.calories_burned = (caloriesPerHour / 60) * entryData.duration_minutes;
       } else {
         log('warn', `Exercise ${entryData.exercise_id} not found. Cannot auto-calculate calories_burned.`);
@@ -154,7 +154,7 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
     if (updateData.exercise_id && updateData.duration_minutes !== null && updateData.duration_minutes !== undefined && updateData.calories_burned === undefined) {
       const exercise = await exerciseRepository.getExerciseById(updateData.exercise_id);
       if (exercise) {
-        const caloriesPerHour = await calorieCalculationService.estimateCaloriesBurnedPerHour(exercise, authenticatedUserId);
+        const caloriesPerHour = await calorieCalculationService.estimateCaloriesBurnedPerHour(exercise, authenticatedUserId, updateData.sets);
         updateData.calories_burned = (caloriesPerHour / 60) * updateData.duration_minutes;
       } else {
         log('warn', `Exercise ${updateData.exercise_id} not found. Cannot auto-calculate calories_burned.`);
@@ -275,21 +275,26 @@ async function deleteExercise(authenticatedUserId, id) {
     // Delete associated images and their folder
     if (exercise.images) {
       let imagePaths = [];
-      try {
-        // Attempt to parse as JSON array
-        imagePaths = JSON.parse(exercise.images);
-      } catch (e) {
-        // If parsing fails, assume it's a single image path string
-        imagePaths = [exercise.images];
+      if (Array.isArray(exercise.images)) {
+        imagePaths = exercise.images;
+      } else if (typeof exercise.images === 'string') {
+        try {
+          imagePaths = JSON.parse(exercise.images);
+          if (typeof imagePaths === 'string') { // Handle double-encoded JSON string
+            imagePaths = [imagePaths];
+          }
+        } catch (e) {
+          imagePaths = [exercise.images]; // Treat as a single path string
+        }
       }
 
-      if (imagePaths.length > 0) {
+      if (imagePaths.length > 0 && imagePaths[0]) {
         // Assuming all images for an exercise are in the same folder
         const folderName = imagePaths[0].split('/')[0];
         const exerciseUploadPath = path.join(__dirname, '../uploads/exercises', folderName);
 
         if (fs.existsSync(exerciseUploadPath)) {
-          fs.rmdirSync(exerciseUploadPath, { recursive: true });
+          fs.rmSync(exerciseUploadPath, { recursive: true, force: true });
           log('info', `Deleted exercise image folder: ${exerciseUploadPath}`);
         }
       }
@@ -340,6 +345,7 @@ async function upsertExerciseEntryData(userId, exerciseId, caloriesBurned, date)
 }
 
 async function searchExternalExercises(authenticatedUserId, query, providerId, providerType, equipmentFilter, muscleGroupFilter, limit = 50) {
+  log('info', `[exerciseService] searchExternalExercises called with: query='${query}', providerType='${providerType}', equipmentFilter='${equipmentFilter}', muscleGroupFilter='${muscleGroupFilter}'`);
   try {
     let exercises = [];
     const latestMeasurement = await measurementRepository.getLatestMeasurement(authenticatedUserId);
@@ -351,36 +357,39 @@ async function searchExternalExercises(authenticatedUserId, query, providerId, p
     // If there's no search query but filters are present, and the provider doesn't support filters,
     // return an empty array to avoid returning a large, unfiltered list.
     if (!hasQuery && hasFilters) {
-      if (providerType === 'wger' || providerType === 'nutritionix') {
+      if (providerType === 'nutritionix') {
         log('warn', `External search for provider ${providerType} received filters but no search query. Filters are not supported for this provider without a search query. Returning empty results.`);
         return [];
       }
     }
 
     if (providerType === 'wger') {
-      const wgerSearchResults = await wgerService.searchWgerExercises(query);
+      const muscleIdMap = await wgerService.getWgerMuscleIdMap();
+      const equipmentIdMap = await wgerService.getWgerEquipmentIdMap();
 
-      const detailedExercisesPromises = wgerSearchResults.map(async (wgerExercise) => {
-        const details = await wgerService.getWgerExerciseDetails(wgerExercise.id);
+      const muscleIds = muscleGroupFilter.flatMap(name => muscleIdMap[name] || []).filter(id => id);
+      const equipmentIds = equipmentFilter.flatMap(name => equipmentIdMap[name] || []).filter(id => id);
 
+      const wgerSearchResults = await wgerService.searchWgerExercises(query, muscleIds, equipmentIds, 'en', limit);
+
+      exercises = wgerSearchResults.map(exercise => {
         let caloriesPerHour = 0;
-        if (details.met && details.met > 0) {
-          caloriesPerHour = Math.round((details.met * 3.5 * userWeightKg) / 200 * 60);
+        if (exercise.met && exercise.met > 0) {
+          caloriesPerHour = Math.round((exercise.met * 3.5 * userWeightKg) / 200 * 60);
         }
 
-        const exerciseName = (details.translations && details.translations.length > 0 && details.translations[0].name)
-          ? details.translations[0].name
-          : details.description || `Exercise ID: ${details.id}`;
-
         return {
-          id: details.id.toString(),
-          name: exerciseName,
-          category: details.category ? details.category.name : 'Uncategorized',
+          id: exercise.id.toString(),
+          name: exercise.name,
+          category: exercise.category ? exercise.category.name : 'Uncategorized',
           calories_per_hour: caloriesPerHour,
-          description: details.description || exerciseName,
+          description: exercise.description || exercise.name,
+          force: exercise.force,
+          mechanic: exercise.mechanic,
+          instructions: exercise.instructions,
+          images: exercise.images,
         };
       });
-      exercises = await Promise.all(detailedExercisesPromises);
     } else if (providerType === 'nutritionix') {
       // For Nutritionix, we are not using user demographics for now, as per user feedback.
       const nutritionixSearchResults = await nutritionixService.searchNutritionixExercises(query, providerId);
@@ -421,10 +430,10 @@ async function addExternalExerciseToUserExercises(authenticatedUserId, wgerExerc
       throw new Error('Wger exercise not found.');
     }
 
-    // Attempt to get a more descriptive name from the /exercise/ endpoint if available
+    log('info', `Raw wger exercise data for exercise ID ${wgerExerciseId}: ${JSON.stringify(wgerExerciseDetails, null, 2)}`);
 
     // Calculate calories_per_hour
-    let caloriesPerHour = 300; // Default value if MET is not available or calculation fails
+    let caloriesPerHour = 0; // Default value if MET is not available or calculation fails
     if (wgerExerciseDetails.met && wgerExerciseDetails.met > 0) {
       let userWeightKg = 70; // Default to 70kg if user weight not found
       const latestMeasurement = await measurementRepository.getLatestMeasurement(authenticatedUserId);
@@ -436,6 +445,8 @@ async function addExternalExerciseToUserExercises(authenticatedUserId, wgerExerc
       // To get calories per hour: (METs * 3.5 * body weight in kg) / 200 * 60
       caloriesPerHour = (wgerExerciseDetails.met * 3.5 * userWeightKg) / 200 * 60;
       caloriesPerHour = Math.round(caloriesPerHour); // Round to nearest whole number
+    } else {
+      caloriesPerHour = await calorieCalculationService.estimateCaloriesBurnedPerHour(wgerExerciseDetails, authenticatedUserId);
     }
 
     // Use the name from translations if available, otherwise fallback to description or ID
@@ -443,16 +454,72 @@ async function addExternalExerciseToUserExercises(authenticatedUserId, wgerExerc
       ? wgerExerciseDetails.translations[0].name
       : wgerExerciseDetails.description || `Wger Exercise ${wgerExerciseId}`;
 
+    const { levelMap, forceMap, mechanicMap, createReverseMap, muscleNameMap, equipmentNameMap } = require('../integrations/wger/wgerNameMapping');
+    const wgerLevelName = wgerExerciseDetails.level?.name || 'Intermediate';
+    const mappedLevel = levelMap[wgerLevelName] || 'intermediate';
+
+    const reverseMuscleMap = createReverseMap(muscleNameMap);
+    const reverseEquipmentMap = createReverseMap(equipmentNameMap);
+
+    const wgerForceName = wgerExerciseDetails.force?.name || null;
+    const mappedForce = wgerForceName ? forceMap[wgerForceName.toLowerCase()] : null;
+
+    const wgerMechanicName = wgerExerciseDetails.mechanic?.name || null;
+    const mappedMechanic = wgerMechanicName ? mechanicMap[wgerMechanicName.toLowerCase()] : null;
+
+    const rawDescription = (wgerExerciseDetails.translations && wgerExerciseDetails.translations.length > 0 && wgerExerciseDetails.translations[0].description) || '';
+    
+    // Sanitize and split instructions
+    const instructions = rawDescription
+      .replace(/<li>/g, '\n- ') // Add a marker for list items
+      .replace(/<[^>]*>/g, '') // Remove all other HTML tags
+      .split('\n')
+      .map(s => s.trim())
+      .filter(s => s);
+
     const exerciseData = {
       name: exerciseName,
       category: wgerExerciseDetails.category ? wgerExerciseDetails.category.name : 'general',
       calories_per_hour: caloriesPerHour,
-      description: wgerExerciseDetails.description || exerciseName, // Use the derived exerciseName for description fallback
+      description: instructions[0] || exerciseName, // Use the first instruction as description
       user_id: authenticatedUserId,
       is_custom: true, // Mark as custom as it's imported by the user
       shared_with_public: false, // Imported exercises are private by default
       source_external_id: wgerExerciseDetails.id.toString(), // Store wger ID
+      source: 'wger', // Explicitly set the source to 'wger'
+      level: mappedLevel,
+      force: mappedForce,
+      mechanic: mappedMechanic,
+      equipment: wgerExerciseDetails.equipment?.map(e => reverseEquipmentMap[e.name.toLowerCase()] || e.name) || [],
+      primary_muscles: wgerExerciseDetails.muscles?.map(m => reverseMuscleMap[m.name.toLowerCase()] || m.name) || [],
+      secondary_muscles: wgerExerciseDetails.muscles_secondary?.map(m => reverseMuscleMap[m.name.toLowerCase()] || m.name) || [],
+      instructions: instructions,
+      images: [], // Initialize as empty, will be populated after download
     };
+
+    // Download images and update paths
+    if (wgerExerciseDetails.images && wgerExerciseDetails.images.length > 0) {
+      const exerciseFolderName = exerciseName.replace(/[^a-zA-Z0-9]/g, '_');
+      const localImagePaths = await Promise.all(
+        wgerExerciseDetails.images.map(async (img) => {
+          try {
+            const imageUrl = img.image;
+            if (imageUrl) {
+              const fullPath = await downloadImage(imageUrl, exerciseFolderName);
+              // The frontend expects a path relative to the 'uploads/exercises' directory
+              return fullPath.replace('/uploads/exercises/', '');
+            }
+          } catch (imgError) {
+            log('error', `Failed to download image ${img.image} for exercise ${exerciseName}:`, imgError);
+          }
+          return null;
+        })
+      );
+      exerciseData.images = localImagePaths.filter(p => p !== null);
+    }
+
+
+    log('info', `Mapped exercise data before insert: ${JSON.stringify(exerciseData, null, 2)}`);
 
     const newExercise = await exerciseRepository.createExercise(exerciseData);
     return newExercise;

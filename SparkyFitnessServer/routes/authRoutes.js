@@ -4,6 +4,8 @@ const { authenticateToken, authorizeAccess } = require('../middleware/authMiddle
 const { registerValidation, loginValidation, forgotPasswordValidation, resetPasswordValidation } = require('../validation/authValidation');
 const { validationResult } = require('express-validator');
 const authService = require('../services/authService');
+const oidcProviderRepository = require('../models/oidcProviderRepository');
+const { log } = require('../config/logging');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -52,7 +54,18 @@ router.post('/login', loginValidation, async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
-    const { userId, token, role } = await authService.loginUser(email, password);
+    // Determine the effective login settings, including the fallback.
+    const settings = await authService.getLoginSettings();
+    const providers = await oidcProviderRepository.getOidcProviders();
+    const activeOidcProviders = providers.filter(p => p.is_active);
+    const isOidcFullyEnabled = settings.oidc.enabled && activeOidcProviders.length > 0;
+
+    if (!settings.email.enabled && !isOidcFullyEnabled) {
+        log('warn', 'Login attempt with no methods enabled. Forcing email/password login as a fallback.');
+        settings.email.enabled = true;
+    }
+
+    const { userId, token, role } = await authService.loginUser(email, password, settings);
     res.status(200).json({ message: 'Login successful', userId, token, role });
   } catch (error) {
     if (error.message === 'Invalid credentials.' || error.message === 'Email/Password login is disabled.') {
@@ -63,12 +76,39 @@ router.post('/login', loginValidation, async (req, res, next) => {
 });
 
 router.get('/settings', async (req, res, next) => {
-  try {
-    const settings = await authService.getLoginSettings();
-    res.status(200).json(settings);
-  } catch (error) {
-    next(error);
-  }
+    try {
+        const settings = await authService.getLoginSettings();
+        const providers = await oidcProviderRepository.getOidcProviders();
+        const activeOidcProviders = providers.filter(p => p.is_active);
+
+        // OIDC is considered fully enabled only if the global flag is on AND at least one provider is active.
+        const isOidcFullyEnabled = settings.oidc.enabled && activeOidcProviders.length > 0;
+
+        let warning = null;
+        // Fallback logic: if both email and OIDC are disabled, force email login.
+        if (!settings.email.enabled && !isOidcFullyEnabled) {
+            const warningMessage = 'No login methods were enabled. Email/password login has been temporarily enabled as a fallback. Please review the authentication settings.';
+            log('warn', warningMessage);
+            settings.email.enabled = true;
+            warning = warningMessage;
+        }
+
+        const loginProviders = {
+            email: {
+                enabled: settings.email.enabled,
+            },
+            oidc: {
+                enabled: isOidcFullyEnabled,
+                providers: activeOidcProviders.map(({ id, display_name, logo_url }) => ({ id, display_name, logo_url })),
+            },
+            warning, // Include the warning in the response
+        };
+        
+        res.status(200).json(loginProviders);
+    } catch (error) {
+        log('error', 'Error fetching login providers settings:', error);
+        next(error);
+    }
 });
 
 router.post('/logout', (req, res, next) => {
