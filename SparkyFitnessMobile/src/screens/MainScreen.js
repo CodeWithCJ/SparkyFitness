@@ -15,6 +15,7 @@ import {
   saveStringPreference,
   loadStringPreference,
   getSyncStartDate,
+  readHealthRecords,
 } from '../services/healthConnectService';
 import { syncHealthData as healthConnectSyncData } from '../services/healthConnectService';
 import { saveTimeRange, loadTimeRange } from '../services/storage'; // Import saveTimeRange and loadTimeRange
@@ -88,69 +89,244 @@ const MainScreen = ({ navigation }) => {
     return () => clearInterval(interval); // Clear interval on component unmount
   }, []);
 
-  const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
+// Replace the fetchHealthData function in MainScreen.js with this updated version:
 
-    let startDate = new Date(endDate);
+const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
+  const endDate = new Date();
+  endDate.setHours(23, 59, 59, 999);
 
-    switch (timeRange) { // Use timeRange parameter here
-      case '24h':
-        startDate.setHours(endDate.getHours() - 24, endDate.getMinutes(), endDate.getSeconds(), endDate.getMilliseconds());
-        break;
-      case '7d':
-        startDate.setDate(endDate.getDate() - 7);
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case '30d':
-        startDate.setDate(endDate.getDate() - 30);
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      default:
-        startDate.setHours(0, 0, 0, 0); // Default to beginning of today
-        break;
-    }
+  let startDate = new Date(endDate);
 
-    const newHealthData = {};
+  switch (timeRange) {
+    case '24h':
+      startDate.setHours(endDate.getHours() - 24, endDate.getMinutes(), endDate.getSeconds(), endDate.getMilliseconds());
+      break;
+    case '7d':
+      startDate.setDate(endDate.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+      break;
+    case '30d':
+      startDate.setDate(endDate.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+      break;
+    default:
+      startDate.setHours(0, 0, 0, 0);
+      break;
+  }
 
-    addLog(`[MainScreen] Fetching health data for display from ${startDate.toISOString()} to ${endDate.toISOString()} for range: ${timeRange}`);
+  const newHealthData = {};
 
-    for (const metric of HEALTH_METRICS) {
-      if (currentHealthMetricStates[metric.stateKey]) {
-        let records = [];
-        let aggregatedValue = 0;
+  addLog(`[MainScreen] Fetching health data for display from ${startDate.toISOString()} to ${endDate.toISOString()} for range: ${timeRange}`);
 
-        switch (metric.id) {
-          case 'steps':
-            records = await readStepRecords(startDate, endDate);
-            aggregatedValue = aggregateStepsByDate(records).reduce((sum, record) => sum + record.value, 0);
-            newHealthData[metric.id] = aggregatedValue.toLocaleString();
+  for (const metric of HEALTH_METRICS) {
+    if (currentHealthMetricStates[metric.stateKey]) {
+      let records = [];
+      let displayValue = 'N/A';
+
+      try {
+        // Read records using the generic readHealthRecords function
+        records = await readHealthRecords(metric.recordType, startDate, endDate);
+        
+        if (records.length === 0) {
+          addLog(`[MainScreen] No ${metric.label} records found.`);
+          newHealthData[metric.id] = '0';
+          continue;
+        }
+
+        // Handle different metric types
+        switch (metric.recordType) {
+          case 'Steps':
+            const aggregatedSteps = aggregateStepsByDate(records);
+            const totalSteps = aggregatedSteps.reduce((sum, record) => sum + record.value, 0);
+            displayValue = totalSteps.toLocaleString();
             break;
-          case 'calories':
-            records = await readActiveCaloriesRecords(startDate, endDate);
-            aggregatedValue = aggregateActiveCaloriesByDate(records).reduce((sum, record) => sum + record.value, 0);
-            newHealthData[metric.id] = aggregatedValue.toLocaleString();
+
+          case 'ActiveCaloriesBurned':
+            const aggregatedCalories = aggregateActiveCaloriesByDate(records);
+            const totalCalories = aggregatedCalories.reduce((sum, record) => sum + record.value, 0);
+            displayValue = totalCalories.toLocaleString();
             break;
-          case 'heartRate':
-            records = await readHeartRateRecords(startDate, endDate);
-            aggregatedValue = aggregateHeartRateByDate(records).reduce((sum, record) => sum + record.value, 0);
-            newHealthData[metric.id] = aggregatedValue > 0 ? `${Math.round(aggregatedValue)} bpm` : '0 bpm';
+
+          case 'HeartRate':
+            const aggregatedHeartRate = aggregateHeartRateByDate(records);
+            const avgHeartRate = aggregatedHeartRate.reduce((sum, record) => sum + record.value, 0);
+            displayValue = avgHeartRate > 0 ? `${Math.round(avgHeartRate)} bpm` : '0 bpm';
             break;
-          // Add cases for other health metrics as needed
+
+          case 'Weight':
+            // Get the most recent weight record
+            const latestWeight = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+            displayValue = latestWeight.weight?.inKilograms 
+              ? `${latestWeight.weight.inKilograms.toFixed(1)} kg` 
+              : '0 kg';
+            break;
+
+          case 'BodyFat':
+            // Get the most recent body fat record
+            const latestBodyFat = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+            displayValue = latestBodyFat.percentage?.inPercent 
+              ? `${latestBodyFat.percentage.inPercent.toFixed(1)}%` 
+              : '0%';
+            break;
+
+          case 'BloodPressure':
+            const latestBP = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+            const systolic = latestBP.systolic?.inMillimetersOfMercury;
+            const diastolic = latestBP.diastolic?.inMillimetersOfMercury;
+            displayValue = (systolic && diastolic) 
+              ? `${Math.round(systolic)}/${Math.round(diastolic)} mmHg` 
+              : '0/0 mmHg';
+            break;
+
+          case 'SleepSession':
+            const totalSleepMinutes = records.reduce((sum, record) => {
+              const duration = (new Date(record.endTime).getTime() - new Date(record.startTime).getTime()) / (1000 * 60);
+              return sum + duration;
+            }, 0);
+            const hours = Math.floor(totalSleepMinutes / 60);
+            const minutes = Math.round(totalSleepMinutes % 60);
+            displayValue = `${hours}h ${minutes}m`;
+            break;
+
+          case 'Distance':
+            const totalDistance = records.reduce((sum, record) => 
+              sum + (record.distance?.inMeters || 0), 0);
+            displayValue = `${(totalDistance / 1000).toFixed(2)} km`;
+            break;
+
+          case 'Hydration':
+            const totalHydration = records.reduce((sum, record) => 
+              sum + (record.volume?.inLiters || 0), 0);
+            displayValue = `${totalHydration.toFixed(2)} L`;
+            break;
+
+          case 'Height':
+            const latestHeight = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+            displayValue = latestHeight.height?.inMeters 
+              ? `${(latestHeight.height.inMeters * 100).toFixed(1)} cm` 
+              : '0 cm';
+            break;
+
+          case 'BasalBodyTemperature':
+          case 'BodyTemperature':
+            const latestTemp = records.sort((a, b) => new Date(b.time || b.startTime) - new Date(a.time || a.startTime))[0];
+            displayValue = latestTemp.temperature?.inCelsius 
+              ? `${latestTemp.temperature.inCelsius.toFixed(1)}°C` 
+              : '0°C';
+            break;
+
+          case 'BloodGlucose':
+            const latestGlucose = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+            displayValue = latestGlucose.bloodGlucose?.inMillimolesPerLiter 
+              ? `${latestGlucose.bloodGlucose.inMillimolesPerLiter.toFixed(1)} mmol/L` 
+              : '0 mmol/L';
+            break;
+
+          case 'OxygenSaturation':
+            const latestO2 = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+            displayValue = latestO2.percentage?.inPercent 
+              ? `${latestO2.percentage.inPercent.toFixed(1)}%` 
+              : '0%';
+            break;
+
+          case 'RestingHeartRate':
+            const avgRestingHR = records.reduce((sum, record) => 
+              sum + (record.beatsPerMinute || 0), 0) / records.length;
+            displayValue = avgRestingHR > 0 ? `${Math.round(avgRestingHR)} bpm` : '0 bpm';
+            break;
+
+          case 'Vo2Max':
+            const latestVo2 = records.sort((a, b) => new Date(b.startTime) - new Date(a.startTime))[0];
+            displayValue = latestVo2.vo2Max 
+              ? `${latestVo2.vo2Max.toFixed(1)} ml/min/kg` 
+              : '0 ml/min/kg';
+            break;
+
+          case 'LeanBodyMass':
+          case 'BoneMass':
+            const latestMass = records.sort((a, b) => new Date(b.startTime || b.time) - new Date(a.startTime || a.time))[0];
+            displayValue = latestMass.mass?.inKilograms 
+              ? `${latestMass.mass.inKilograms.toFixed(1)} kg` 
+              : '0 kg';
+            break;
+
+          case 'BasalMetabolicRate':
+            const latestBMR = records.sort((a, b) => new Date(b.startTime) - new Date(a.startTime))[0];
+            displayValue = latestBMR.basalMetabolicRate?.inCalories 
+              ? `${Math.round(latestBMR.basalMetabolicRate.inCalories)} kcal` 
+              : '0 kcal';
+            break;
+
+          case 'FloorsClimbed':
+            const totalFloors = records.reduce((sum, record) => sum + (record.floors || 0), 0);
+            displayValue = totalFloors.toLocaleString();
+            break;
+
+          case 'WheelchairPushes':
+            const totalPushes = records.reduce((sum, record) => sum + (record.count || 0), 0);
+            displayValue = totalPushes.toLocaleString();
+            break;
+
+          case 'ExerciseSession':
+            const totalExerciseMinutes = records.reduce((sum, record) => {
+              const duration = (new Date(record.endTime).getTime() - new Date(record.startTime).getTime()) / (1000 * 60);
+              return sum + duration;
+            }, 0);
+            displayValue = `${Math.round(totalExerciseMinutes)} min`;
+            break;
+
+          case 'ElevationGained':
+            const totalElevation = records.reduce((sum, record) => 
+              sum + (record.elevation?.inMeters || 0), 0);
+            displayValue = `${Math.round(totalElevation)} m`;
+            break;
+
+          case 'Power':
+            const avgPower = records.reduce((sum, record) => 
+              sum + (record.power?.inWatts || 0), 0) / records.length;
+            displayValue = `${Math.round(avgPower)} W`;
+            break;
+
+          case 'Speed':
+            const avgSpeed = records.reduce((sum, record) => 
+              sum + (record.speed?.inMetersPerSecond || 0), 0) / records.length;
+            displayValue = `${avgSpeed.toFixed(2)} m/s`;
+            break;
+
+          case 'RespiratoryRate':
+            const avgRespRate = records.reduce((sum, record) => 
+              sum + (record.rate || 0), 0) / records.length;
+            displayValue = `${Math.round(avgRespRate)} br/min`;
+            break;
+
+          case 'Nutrition':
+            const totalNutrition = records.reduce((sum, record) => 
+              sum + (record.energy?.inCalories || 0), 0);
+            displayValue = `${Math.round(totalNutrition)} kcal`;
+            break;
+
           default:
-            newHealthData[metric.id] = 'N/A'; // Or handle other metrics
+            addLog(`[MainScreen] Unhandled metric type for display: ${metric.recordType}`);
+            displayValue = 'N/A';
             break;
         }
-        console.log(`[MainScreen] Fetched ${metric.label}: ${newHealthData[metric.id]}`);
+
+        newHealthData[metric.id] = displayValue;
+        console.log(`[MainScreen] Fetched ${metric.label}: ${displayValue}`);
+      } catch (error) {
+        addLog(`[MainScreen] Error fetching ${metric.label}: ${error.message}`, 'error', 'ERROR');
+        newHealthData[metric.id] = 'Error';
       }
     }
+  }
 
-    setHealthData(newHealthData);
-    // Re-check server connection status after fetching health data
-    const connectionStatus = await checkServerConnection();
-    setIsConnected(connectionStatus);
-    console.log(`[MainScreen] Displaying health data:`, newHealthData);
-  };
+  setHealthData(newHealthData);
+  
+  // Re-check server connection status after fetching health data
+  const connectionStatus = await checkServerConnection();
+  setIsConnected(connectionStatus);
+  console.log(`[MainScreen] Displaying health data:`, newHealthData);
+};
 
   // Remove toggle functions as they are now handled in SettingsScreen
 
