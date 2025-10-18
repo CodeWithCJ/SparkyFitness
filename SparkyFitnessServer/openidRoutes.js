@@ -22,7 +22,11 @@ async function getOidcClient(providerId) {
     }
 
     try {
-        const discoveredIssuer = await Issuer.discover(provider.issuer_url);
+        const issuerConfig = {
+            timeout: provider.timeout,
+        };
+
+        const discoveredIssuer = await Issuer.discover(provider.issuer_url, issuerConfig);
         log('info', 'OIDC Issuer discovered successfully.');
 
         const issuer = new Issuer({
@@ -50,6 +54,8 @@ async function getOidcClient(providerId) {
             redirect_uris: provider.redirect_uris,
             response_types: provider.response_types,
             token_endpoint_auth_method: provider.token_endpoint_auth_method,
+            id_token_signed_response_alg: provider.signing_algorithm,
+            userinfo_signed_response_alg: provider.profile_signing_algorithm,
         });
 
         const clientWrapper = { client, provider };
@@ -176,7 +182,8 @@ router.post("/callback", async (req, res, next) => {
         nonce: req.session.nonce,
         response_type: 'code',
         check: {
-          issuer: provider.issuer_url
+          issuer: provider.issuer_url,
+          id_token_signed_response_alg: provider.signing_algorithm
         }
       }
     );

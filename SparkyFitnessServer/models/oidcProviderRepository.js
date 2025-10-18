@@ -9,7 +9,8 @@ async function getOidcProviders() {
             `SELECT 
                 id, issuer_url, client_id,
                 redirect_uris, scope, token_endpoint_auth_method, response_types, is_active,
-                display_name, logo_url, auto_register
+                display_name, logo_url, auto_register,
+                signing_algorithm, profile_signing_algorithm, timeout
             FROM oidc_providers
             ORDER BY id ASC`
         );
@@ -27,7 +28,8 @@ async function getOidcProviderById(id) {
                 id, issuer_url, client_id,
                 encrypted_client_secret, client_secret_iv, client_secret_tag,
                 redirect_uris, scope, token_endpoint_auth_method, response_types, is_active,
-                display_name, logo_url, auto_register
+                display_name, logo_url, auto_register,
+                signing_algorithm, profile_signing_algorithm, timeout
             FROM oidc_providers
             WHERE id = $1`,
             [id]
@@ -80,8 +82,9 @@ async function createOidcProvider(providerData) {
                 issuer_url, client_id,
                 encrypted_client_secret, client_secret_iv, client_secret_tag,
                 redirect_uris, scope, token_endpoint_auth_method, response_types, is_active,
-                display_name, logo_url, auto_register
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                display_name, logo_url, auto_register,
+                signing_algorithm, profile_signing_algorithm, timeout
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
             RETURNING id`,
             [
                 providerData.issuer_url,
@@ -97,6 +100,9 @@ async function createOidcProvider(providerData) {
                 providerData.display_name,
                 providerData.logo_url,
                 providerData.auto_register,
+                providerData.signing_algorithm,
+                providerData.profile_signing_algorithm,
+                providerData.timeout,
             ]
         );
         return result.rows[0];
@@ -130,8 +136,9 @@ async function updateOidcProvider(id, providerData) {
                 encrypted_client_secret = $3, client_secret_iv = $4, client_secret_tag = $5,
                 redirect_uris = $6, scope = $7, token_endpoint_auth_method = $8, response_types = $9, is_active = $10,
                 display_name = $11, logo_url = $12, auto_register = $13,
+                signing_algorithm = $14, profile_signing_algorithm = $15, timeout = $16,
                 updated_at = NOW()
-            WHERE id = $14
+            WHERE id = $17
             RETURNING id`,
             [
                 providerData.issuer_url,
@@ -147,6 +154,9 @@ async function updateOidcProvider(id, providerData) {
                 providerData.display_name,
                 providerData.logo_url,
                 providerData.auto_register,
+                providerData.signing_algorithm,
+                providerData.profile_signing_algorithm,
+                providerData.timeout,
                 id,
             ]
         );
