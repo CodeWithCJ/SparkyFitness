@@ -302,6 +302,39 @@ export const transformHealthRecords = (records, metricConfig) => {
             }
             break;
 
+
+          case 'ActiveCaloriesBurned':
+            // Check if this is an aggregated record or raw record
+            if (record.value !== undefined && record.date && record.type === 'active_calories') {
+              // Already aggregated from aggregateActiveCaloriesByDate
+              value = record.value;
+              recordDate = record.date;
+              if (index === 0) {
+                addLog(`[Transform] ActiveCalories (aggregated): ${value} kcal on ${recordDate}`, 'debug');
+              }
+            } else if (record.startTime && record.energy?.inCalories != null) {
+              // Raw record - shouldn't happen if aggregation is working, but handle it
+              value = record.energy.inCalories;
+              recordDate = record.startTime.split('T')[0];
+              if (index === 0) {
+                addLog(`[Transform] ActiveCalories (raw): ${value} kcal on ${recordDate}`, 'debug');
+              }
+            } else if (record.energy?.inKilocalories != null) {
+              value = record.energy.inKilocalories;
+              const dateField = record.startTime || record.time || record.date;
+              recordDate = dateField ? dateField.split('T')[0] : null;
+              if (index === 0 && recordDate) {
+                addLog(`[Transform] ActiveCalories (alt format): ${value} kcal on ${recordDate}`, 'debug');
+              }
+            }
+  
+            if (value == null || isNaN(value) || !recordDate) {
+              if (index === 0) {
+                addLog(`[Transform] ActiveCalories FAILED: value=${value}, date=${recordDate}`, 'warn', 'WARNING');
+              }
+            }
+            break;
+
           case 'BloodPressure':
             if (record.time) {
               const date = record.time.split('T')[0];
@@ -350,9 +383,55 @@ export const transformHealthRecords = (records, metricConfig) => {
             break;
 
           case 'BasalMetabolicRate':
-            if (record.startTime && record.basalMetabolicRate?.inCalories) {
-              value = record.basalMetabolicRate.inCalories;
-              recordDate = record.startTime.split('T')[0];
+            if (index === 0) {
+              console.log('[Transform BMR] Sample record:', JSON.stringify(record));
+              addLog(`[Transform] BMR sample keys: ${Object.keys(record).join(', ')}`, 'debug');
+            }
+            
+            let bmrValue = null;
+            
+            // THE FIX: Check for inKilocaloriesPerDay first
+            if (record.basalMetabolicRate?.inKilocaloriesPerDay != null) {
+              bmrValue = record.basalMetabolicRate.inKilocaloriesPerDay;
+            } else if (record.basalMetabolicRate?.inCalories != null) {
+              bmrValue = record.basalMetabolicRate.inCalories;
+            } else if (record.basalMetabolicRate?.inKilocalories != null) {
+              bmrValue = record.basalMetabolicRate.inKilocalories;
+            } else if (typeof record.basalMetabolicRate === 'number') {
+              bmrValue = record.basalMetabolicRate;
+            } else if (record.bmr != null && typeof record.bmr === 'number') {
+              bmrValue = record.bmr;
+            } else if (record.value != null && typeof record.value === 'number') {
+              bmrValue = record.value;
+            }
+            
+            const bmrDate = record.time || record.startTime || record.timestamp || record.date;
+            let bmrDateStr = null;
+            
+            if (bmrDate) {
+              try {
+                bmrDateStr = typeof bmrDate === 'string' ? bmrDate.split('T')[0] : bmrDate;
+              } catch (e) {
+                addLog(`[Transform] Error parsing BMR date: ${e.message}`, 'warn', 'WARNING');
+              }
+            }
+            
+            const isValidBMR = bmrValue != null && !isNaN(bmrValue) && bmrValue > 0 && bmrValue < 10000;
+            const isValidBMRDate = bmrDateStr != null && bmrDateStr.length > 0;
+            
+            if (isValidBMR && isValidBMRDate) {
+              value = bmrValue;
+              recordDate = bmrDateStr;
+              if (index === 0) {
+                addLog(`[Transform] BMR SUCCESS: ${value} kcal on ${recordDate}`, 'info', 'SUCCESS');
+              }
+            } else {
+              if (index === 0) {
+                const issues = [];
+                if (!isValidBMR) issues.push(`invalid value (${bmrValue})`);
+                if (!isValidBMRDate) issues.push(`invalid date (${bmrDateStr})`);
+                addLog(`[Transform] BMR FAILED: ${issues.join(', ')}`, 'warn', 'WARNING');
+              }
             }
             break;
 
@@ -501,9 +580,52 @@ export const transformHealthRecords = (records, metricConfig) => {
             break;
 
           case 'OxygenSaturation':
-            if (record.time && record.percentage?.inPercent) {
-              value = record.percentage.inPercent;
-              recordDate = record.time.split('T')[0];
+            if (index === 0) {
+              console.log('[Transform O2Sat] Sample record:', JSON.stringify(record));
+              addLog(`[Transform] O2Sat sample keys: ${Object.keys(record).join(', ')}`, 'debug');
+            }
+            
+            let o2Value = null;
+            
+            if (record.percentage?.inPercent != null) {
+              o2Value = record.percentage.inPercent;
+            } else if (typeof record.percentage === 'number') {
+              o2Value = record.percentage;
+            } else if (record.value != null && typeof record.value === 'number') {
+              o2Value = record.value;
+            } else if (record.oxygenSaturation != null && typeof record.oxygenSaturation === 'number') {
+              o2Value = record.oxygenSaturation;
+            } else if (record.spo2 != null && typeof record.spo2 === 'number') {
+              o2Value = record.spo2;
+            }
+            
+            const o2Date = record.time || record.startTime || record.timestamp || record.date;
+            let o2DateStr = null;
+            
+            if (o2Date) {
+              try {
+                o2DateStr = typeof o2Date === 'string' ? o2Date.split('T')[0] : o2Date;
+              } catch (e) {
+                addLog(`[Transform] Error parsing OxygenSaturation date: ${e.message}`, 'warn', 'WARNING');
+              }
+            }
+            
+            const isValidO2 = o2Value != null && !isNaN(o2Value) && o2Value > 0 && o2Value <= 100;
+            const isValidO2Date = o2DateStr != null && o2DateStr.length > 0;
+            
+            if (isValidO2 && isValidO2Date) {
+              value = o2Value;
+              recordDate = o2DateStr;
+              if (index === 0) {
+                addLog(`[Transform] OxygenSaturation SUCCESS: ${value}% on ${recordDate}`, 'info', 'SUCCESS');
+              }
+            } else {
+              if (index === 0) {
+                const issues = [];
+                if (!isValidO2) issues.push(`invalid value (${o2Value})`);
+                if (!isValidO2Date) issues.push(`invalid date (${o2DateStr})`);
+                addLog(`[Transform] OxygenSaturation FAILED: ${issues.join(', ')}`, 'warn', 'WARNING');
+              }
             }
             break;
 
@@ -536,9 +658,50 @@ export const transformHealthRecords = (records, metricConfig) => {
             break;
 
           case 'Vo2Max':
-            if (record.vo2Max) {
-              value = record.vo2Max;
-              recordDate = (record.time || record.startTime)?.split('T')[0];
+            if (index === 0) {
+              console.log('[Transform Vo2Max] Sample record:', JSON.stringify(record));
+              addLog(`[Transform] Vo2Max sample keys: ${Object.keys(record).join(', ')}`, 'debug');
+            }
+            
+            let vo2Value = null;
+            
+            if (record.vo2Max != null && typeof record.vo2Max === 'number') {
+              vo2Value = record.vo2Max;
+            } else if (record.vo2 != null && typeof record.vo2 === 'number') {
+              vo2Value = record.vo2;
+            } else if (record.value != null && typeof record.value === 'number') {
+              vo2Value = record.value;
+            } else if (record.vo2MaxMillilitersPerMinuteKilogram != null) {
+              vo2Value = record.vo2MaxMillilitersPerMinuteKilogram;
+            }
+            
+            const vo2Date = record.time || record.startTime || record.timestamp || record.date;
+            let vo2DateStr = null;
+            
+            if (vo2Date) {
+              try {
+                vo2DateStr = typeof vo2Date === 'string' ? vo2Date.split('T')[0] : vo2Date;
+              } catch (e) {
+                addLog(`[Transform] Error parsing Vo2Max date: ${e.message}`, 'warn', 'WARNING');
+              }
+            }
+            
+            const isValidVo2 = vo2Value != null && !isNaN(vo2Value) && vo2Value > 0 && vo2Value < 100;
+            const isValidVo2Date = vo2DateStr != null && vo2DateStr.length > 0;
+            
+            if (isValidVo2 && isValidVo2Date) {
+              value = vo2Value;
+              recordDate = vo2DateStr;
+              if (index === 0) {
+                addLog(`[Transform] Vo2Max SUCCESS: ${value} ml/min/kg on ${recordDate}`, 'info', 'SUCCESS');
+              }
+            } else {
+              if (index === 0) {
+                const issues = [];
+                if (!isValidVo2) issues.push(`invalid value (${vo2Value})`);
+                if (!isValidVo2Date) issues.push(`invalid date (${vo2DateStr})`);
+                addLog(`[Transform] Vo2Max FAILED: ${issues.join(', ')}`, 'warn', 'WARNING');
+              }
             }
             break;
 
