@@ -312,11 +312,58 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
               : '0 mmol/L';
             break;
 
-          case 'OxygenSaturation':
-            const latestO2 = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
-            displayValue = latestO2.percentage?.inPercent 
-              ? `${latestO2.percentage.inPercent.toFixed(1)}%` 
-              : '0%';
+          case 'OxygenSaturation':  // This is the metric.id
+            addLog(`[MainScreen] Processing ${records.length} OxygenSaturation records`);
+  
+            const extractO2Value = (record) => {
+              if (record.percentage?.inPercent != null) {
+                return record.percentage.inPercent;
+              }
+              if (typeof record.percentage === 'number') {
+                return record.percentage;
+              }
+              if (record.value != null && typeof record.value === 'number') {
+                return record.value;
+              }
+              if (record.oxygenSaturation != null && typeof record.oxygenSaturation === 'number') {
+                return record.oxygenSaturation;
+              }
+              if (record.spo2 != null && typeof record.spo2 === 'number') {
+                return record.spo2;
+              }
+              return null;
+            };
+  
+            const getO2Date = (record) => {
+              return record.time || record.startTime || record.timestamp || record.date;
+            };
+  
+            const validO2 = records
+              .map(r => ({
+                date: getO2Date(r),
+                value: extractO2Value(r),
+                original: r
+              }))
+              .filter(r => {
+                const isValid = r.date && r.value !== null && !isNaN(r.value) && r.value > 0 && r.value <= 100;
+                if (!isValid && r.value !== null) {
+                  console.log('[OxygenSaturation DEBUG] Invalid record filtered:', r);
+                }
+                return isValid;
+              })
+              .sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+            if (validO2.length > 0) {
+              displayValue = `${validO2[0].value.toFixed(1)}%`;
+              addLog(`[MainScreen] OxygenSaturation: ${displayValue}`, 'info', 'SUCCESS');
+            } else {
+              displayValue = '0%';
+              if (records.length > 0) {
+                addLog(`[MainScreen] OxygenSaturation: Had ${records.length} records but none were valid`, 'warn', 'WARNING');
+              } else {
+                addLog(`[MainScreen] No OxygenSaturation records found`, 'warn', 'WARNING');
+              }
+            }
             break;
 
           case 'RestingHeartRate':
@@ -326,11 +373,79 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
             break;
 
           case 'Vo2Max':
-            const latestVo2 = records.sort((a, b) => new Date(b.startTime) - new Date(a.startTime))[0];
-            displayValue = latestVo2.vo2Max 
-              ? `${latestVo2.vo2Max.toFixed(1)} ml/min/kg` 
-              : '0 ml/min/kg';
+            addLog(`[MainScreen] Processing ${records.length} Vo2Max records`);
+            
+            if (records.length > 0) {
+              // Log the first record structure
+              addLog(`[MainScreen] First VO2Max record structure: ${JSON.stringify(Object.keys(records[0]))}`);
+              addLog(`[MainScreen] First VO2Max record full: ${JSON.stringify(records[0])}`);
+            }
+          
+            const extractVo2Value = (record) => {
+              let value = null;
+              
+              if (record.vo2Max != null && typeof record.vo2Max === 'number') {
+                value = record.vo2Max;
+                addLog(`[MainScreen] VO2 extracted from vo2Max: ${value}`, 'debug');
+              } else if (record.vo2 != null && typeof record.vo2 === 'number') {
+                value = record.vo2;
+                addLog(`[MainScreen] VO2 extracted from vo2: ${value}`, 'debug');
+              } else if (record.value != null && typeof record.value === 'number') {
+                value = record.value;
+                addLog(`[MainScreen] VO2 extracted from value: ${value}`, 'debug');
+              } else if (record.vo2MillilitersPerMinuteKilogram != null) {
+                value = record.vo2MillilitersPerMinuteKilogram;
+                addLog(`[MainScreen] VO2 extracted from vo2MillilitersPerMinuteKilogram: ${value}`, 'debug');
+              } else {
+                addLog(`[MainScreen] VO2: Could not extract value. Record keys: ${Object.keys(record).join(', ')}`, 'warn', 'WARNING');
+              }
+              
+              return value;
+            };
+          
+            const getVo2Date = (record) => {
+              const date = record.time || record.startTime || record.timestamp || record.date;
+              if (!date) {
+                addLog(`[MainScreen] VO2: No date found. Record keys: ${Object.keys(record).join(', ')}`, 'warn', 'WARNING');
+              }
+              return date;
+            };
+          
+            const validVo2 = records
+              .map((r, idx) => {
+                const date = getVo2Date(r);
+                const value = extractVo2Value(r);
+                
+                if (idx === 0) {
+                  addLog(`[MainScreen] VO2 Record 0: date=${date}, value=${value}`, 'debug');
+                }
+                
+                return {
+                  date: date,
+                  value: value,
+                  original: r
+                };
+              })
+              .filter(r => {
+                const isValid = r.date && r.value !== null && !isNaN(r.value) && r.value > 0 && r.value < 100;
+                if (!isValid) {
+                  addLog(`[MainScreen] VO2 filtered out: date=${!!r.date}, value=${r.value}, range check=${r.value > 0 && r.value < 100}`, 'debug');
+                }
+                return isValid;
+              })
+              .sort((a, b) => new Date(b.date) - new Date(a.date));
+          
+            addLog(`[MainScreen] Valid VO2Max records after filtering: ${validVo2.length}`);
+          
+            if (validVo2.length > 0) {
+              displayValue = `${validVo2[0].value.toFixed(1)} ml/min/kg`;
+              addLog(`[MainScreen] Vo2Max: ${displayValue}`, 'info', 'SUCCESS');
+            } else {
+              displayValue = '0 ml/min/kg';
+              addLog(`[MainScreen] No valid Vo2Max records found after filtering`, 'warn', 'WARNING');
+            }
             break;
+
 
           case 'LeanBodyMass':
           case 'BoneMass':
@@ -341,10 +456,94 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
             break;
 
           case 'BasalMetabolicRate':
-            const latestBMR = records.sort((a, b) => new Date(b.startTime) - new Date(a.startTime))[0];
-            displayValue = latestBMR.basalMetabolicRate?.inCalories 
-              ? `${Math.round(latestBMR.basalMetabolicRate.inCalories)} kcal` 
-              : '0 kcal';
+            addLog(`[MainScreen] Processing ${records.length} BasalMetabolicRate records`);
+            
+            if (records.length > 0) {
+              // Log the first record structure
+              addLog(`[MainScreen] First BMR record structure: ${JSON.stringify(Object.keys(records[0]))}`);
+              addLog(`[MainScreen] First BMR record full: ${JSON.stringify(records[0])}`);
+            }
+          
+            const extractBMRValue = (record) => {
+              let value = null;
+              
+              if (record.basalMetabolicRate != null) {
+                // Check if it's a direct number
+                if (typeof record.basalMetabolicRate === 'number') {
+                  value = record.basalMetabolicRate;
+                  addLog(`[MainScreen] BMR extracted from basalMetabolicRate (direct): ${value}`, 'debug');
+                }
+                // THE FIX: Check for inKilocaloriesPerDay (this is what Health Connect uses!)
+                else if (record.basalMetabolicRate.inKilocaloriesPerDay != null) {
+                  value = record.basalMetabolicRate.inKilocaloriesPerDay;
+                  addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inKilocaloriesPerDay: ${value}`, 'debug');
+                }
+                // Also check inCalories as fallback
+                else if (record.basalMetabolicRate.inCalories != null) {
+                  value = record.basalMetabolicRate.inCalories;
+                  addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inCalories: ${value}`, 'debug');
+                }
+                else if (record.basalMetabolicRate.inKilocalories != null) {
+                  value = record.basalMetabolicRate.inKilocalories;
+                  addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inKilocalories: ${value}`, 'debug');
+                }
+                else if (typeof record.basalMetabolicRate === 'object' && record.basalMetabolicRate.value != null) {
+                  value = record.basalMetabolicRate.value;
+                  addLog(`[MainScreen] BMR extracted from basalMetabolicRate.value: ${value}`, 'debug');
+                }
+                else {
+                  addLog(`[MainScreen] BMR unknown structure: ${JSON.stringify(record.basalMetabolicRate)}`, 'warn', 'WARNING');
+                }
+              } 
+              else if (record.energy?.inCalories != null) {
+                value = record.energy.inCalories;
+                addLog(`[MainScreen] BMR from energy.inCalories: ${value}`, 'debug');
+              }
+              
+              return value;
+            };
+          
+            const getBMRDate = (record) => {
+              const date = record.time || record.startTime || record.timestamp || record.date;
+              if (!date) {
+                addLog(`[MainScreen] BMR: No date found. Record keys: ${Object.keys(record).join(', ')}`, 'warn', 'WARNING');
+              }
+              return date;
+            };
+          
+            const validBMR = records
+              .map((r, idx) => {
+                const date = getBMRDate(r);
+                const value = extractBMRValue(r);
+                
+                if (idx === 0) {
+                  addLog(`[MainScreen] BMR Record 0: date=${date}, value=${value}`, 'debug');
+                }
+                
+                return {
+                  date: date,
+                  value: value,
+                  original: r
+                };
+              })
+              .filter(r => {
+                const isValid = r.date && r.value !== null && !isNaN(r.value);
+                if (!isValid) {
+                  addLog(`[MainScreen] BMR filtered out: date=${!!r.date}, value=${r.value}, isNaN=${isNaN(r.value)}`, 'debug');
+                }
+                return isValid;
+              })
+              .sort((a, b) => new Date(b.date) - new Date(a.date));
+          
+            addLog(`[MainScreen] Valid BMR records after filtering: ${validBMR.length}`);
+          
+            if (validBMR.length > 0) {
+              displayValue = `${Math.round(validBMR[0].value)} kcal`;
+              addLog(`[MainScreen] BasalMetabolicRate: ${displayValue}`, 'info', 'SUCCESS');
+            } else {
+              displayValue = '0 kcal';
+              addLog(`[MainScreen] No valid BasalMetabolicRate records found after filtering`, 'warn', 'WARNING');
+            }
             break;
 
           case 'FloorsClimbed':
@@ -492,6 +691,137 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
           <Image source={require('../../assets/icons/sync_now.png')} style={styles.metricIcon} />
           <Text style={styles.syncButtonText}>{isSyncing ? "Syncing..." : "Sync Now"}</Text>
           <Text style={styles.syncButtonSubText}>Sync your health data to the server</Text>
+        </TouchableOpacity>
+
+        // In MainScreen.js, add this button right after the "Sync Now" button
+        // (around line 500, inside the ScrollView, before the "Connected to server" section)
+        
+        {/* Diagnostic Test Button - TEMPORARY */}
+        <TouchableOpacity 
+          style={{
+            backgroundColor: '#28a745',
+            borderRadius: 12,
+            padding: 16,
+            alignItems: 'center',
+            marginBottom: 16,
+          }}
+          onPress={async () => {
+            try {
+              addLog('=== DIAGNOSTIC TEST START ===');
+              
+              const testEndDate = new Date();
+              const testStartDate = new Date();
+              testStartDate.setDate(testStartDate.getDate() - 30);
+              
+              addLog(`Testing date range: ${testStartDate.toISOString()} to ${testEndDate.toISOString()}`);
+              
+              // Test Active Calories
+              addLog('--- Testing Active Calories ---');
+              const caloriesRecords = await readHealthRecords('ActiveCaloriesBurned', testStartDate, testEndDate);
+              addLog(`Found ${caloriesRecords.length} ActiveCalories records`);
+              if (caloriesRecords.length > 0) {
+                addLog(`First record: ${JSON.stringify(caloriesRecords[0])}`);
+                addLog(`Last record: ${JSON.stringify(caloriesRecords[caloriesRecords.length - 1])}`);
+              }
+              
+              // Test BMR
+              addLog('--- Testing BMR ---');
+              const bmrRecords = await readHealthRecords('BasalMetabolicRate', testStartDate, testEndDate);
+              addLog(`Found ${bmrRecords.length} BMR records`);
+              if (bmrRecords.length > 0) {
+                addLog(`First record: ${JSON.stringify(bmrRecords[0])}`);
+              }
+              
+              // Test VO2 Max
+              addLog('--- Testing VO2 Max ---');
+              const vo2Records = await readHealthRecords('Vo2Max', testStartDate, testEndDate);
+              addLog(`Found ${vo2Records.length} VO2Max records`);
+              if (vo2Records.length > 0) {
+                addLog(`First record: ${JSON.stringify(vo2Records[0])}`);
+              }
+              
+              addLog('=== DIAGNOSTIC TEST END ===');
+              
+              Alert.alert(
+                'Test Complete', 
+                `Check Logs screen for results:\n\nActive Calories: ${caloriesRecords.length} records\nBMR: ${bmrRecords.length} records\nVO2 Max: ${vo2Records.length} records`
+              );
+            } catch (error) {
+              addLog(`DIAGNOSTIC ERROR: ${error.message}`, 'error', 'ERROR');
+              Alert.alert('Error', error.message);
+            }
+          }}
+        >
+          <Text style={styles.syncButtonText}>🔍 Test Data Reading</Text>
+          <Text style={styles.syncButtonSubText}>Diagnostic - Check Logs after</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={{
+            backgroundColor: '#ff6b6b',
+            borderRadius: 12,
+            padding: 16,
+            alignItems: 'center',
+            marginBottom: 16,
+          }}
+          onPress={async () => {
+            try {
+              addLog('=== ACTIVE CALORIES DIAGNOSTIC ===');
+              
+              // Try different date ranges
+              const now = new Date();
+              
+              // Last 24 hours
+              const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+              addLog(`Testing last 24 hours: ${last24h.toISOString()} to ${now.toISOString()}`);
+              let records = await readHealthRecords('ActiveCaloriesBurned', last24h, now);
+              addLog(`Last 24h: Found ${records.length} records`);
+              
+              // Last 7 days
+              const last7d = new Date(now);
+              last7d.setDate(last7d.getDate() - 7);
+              addLog(`Testing last 7 days: ${last7d.toISOString()} to ${now.toISOString()}`);
+              records = await readHealthRecords('ActiveCaloriesBurned', last7d, now);
+              addLog(`Last 7 days: Found ${records.length} records`);
+              
+              // Last 30 days
+              const last30d = new Date(now);
+              last30d.setDate(last30d.getDate() - 30);
+              addLog(`Testing last 30 days: ${last30d.toISOString()} to ${now.toISOString()}`);
+              records = await readHealthRecords('ActiveCaloriesBurned', last30d, now);
+              addLog(`Last 30 days: Found ${records.length} records`);
+              
+              // Last 90 days
+              const last90d = new Date(now);
+              last90d.setDate(last90d.getDate() - 90);
+              addLog(`Testing last 90 days: ${last90d.toISOString()} to ${now.toISOString()}`);
+              records = await readHealthRecords('ActiveCaloriesBurned', last90d, now);
+              addLog(`Last 90 days: Found ${records.length} records`);
+              
+              if (records.length > 0) {
+                addLog(`First record structure: ${JSON.stringify(records[0])}`);
+                addLog(`Last record structure: ${JSON.stringify(records[records.length - 1])}`);
+              }
+              
+              // Check permission status
+              addLog('Checking if metric is enabled...');
+              const isEnabled = healthMetricStates['isCaloriesSyncEnabled'];
+              addLog(`Active Calories enabled in app: ${isEnabled}`);
+              
+              addLog('=== END ACTIVE CALORIES DIAGNOSTIC ===');
+              
+              Alert.alert(
+                'Active Calories Test', 
+                `24h: ${last24h} records\n7d: ${last7d} records\n30d: ${last30d} records\n90d: ${last90d} records\n\nCheck logs for details.`
+              );
+            } catch (error) {
+              addLog(`DIAGNOSTIC ERROR: ${error.message}`, 'error', 'ERROR');
+              Alert.alert('Error', error.message);
+            }
+          }}
+        >
+          <Text style={styles.syncButtonText}>🔥 Test Active Calories</Text>
+          <Text style={styles.syncButtonSubText}>Specific test for Active Calories</Text>
         </TouchableOpacity>
 
         {/* Connected to server status */}
