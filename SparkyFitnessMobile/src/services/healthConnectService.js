@@ -367,28 +367,69 @@ export const transformHealthRecords = (records, metricConfig) => {
           // Replace the existing 'BodyFat' case with this debug version:
 
           case 'BodyFat':
-            console.log('[TRANSFORM DEBUG] Processing Body Fat record:', record);
-            console.log('[TRANSFORM DEBUG] Record keys:', Object.keys(record));
-            console.log('[TRANSFORM DEBUG] Has time?', !!record.time);
-            console.log('[TRANSFORM DEBUG] Has startTime?', !!record.startTime);
-            console.log('[TRANSFORM DEBUG] Has percentage?', !!record.percentage);
-            console.log('[TRANSFORM DEBUG] Percentage value:', record.percentage);
+            // Log what we're working with
+            if (index === 0) {
+              console.log('[Transform BodyFat] Sample record:', JSON.stringify(record));
+              addLog(`[Transform] BodyFat sample keys: ${Object.keys(record).join(', ')}`, 'debug');
+            }
   
-            // Try to handle both possible structures
-            const dateField = record.time || record.startTime;
-            const percentageValue = record.percentage?.inPercent;
+            // Extract value using multiple strategies
+            let bodyFatValue = null;
   
-            console.log('[TRANSFORM DEBUG] dateField:', dateField);
-            console.log('[TRANSFORM DEBUG] percentageValue:', percentageValue);
+            // Strategy 1: Check percentage.inPercent (most common)
+            if (record.percentage?.inPercent != null) {
+              bodyFatValue = record.percentage.inPercent;
+            }
+            // Strategy 2: Check direct percentage as number
+            else if (typeof record.percentage === 'number') {
+              bodyFatValue = record.percentage;
+            }
+            // Strategy 3: Check value field
+            else if (record.value != null && typeof record.value === 'number') {
+              bodyFatValue = record.value;
+            }
+            // Strategy 4: Check bodyFat field
+            else if (record.bodyFat != null && typeof record.bodyFat === 'number') {
+              bodyFatValue = record.bodyFat;
+            }
+            // Strategy 5: Check bodyFatPercentage
+            else if (record.bodyFatPercentage?.inPercent != null) {
+              bodyFatValue = record.bodyFatPercentage.inPercent;
+            }
   
-            if (dateField && percentageValue !== undefined && percentageValue !== null) {
-              value = percentageValue;
-              recordDate = dateField.split('T')[0];
-              console.log('[TRANSFORM DEBUG] Body Fat transformed - value:', value, 'date:', recordDate);
-              addLog(`[TRANSFORM DEBUG] Body Fat transformed - value: ${value}%, date: ${recordDate}`, 'debug');
+            // Extract date using multiple strategies
+            let bodyFatDate = null;
+            const dateSource = record.time || record.startTime || record.timestamp || record.date;
+  
+            if (dateSource) {
+              try {
+                bodyFatDate = typeof dateSource === 'string' ? dateSource.split('T')[0] : dateSource;
+              } catch (e) {
+                addLog(`[Transform] Error parsing BodyFat date: ${e.message}`, 'warn', 'WARNING');
+              }
+            }
+  
+            // Final validation and assignment
+            const isValidValue = bodyFatValue != null && !isNaN(bodyFatValue) && bodyFatValue >= 0 && bodyFatValue <= 100;
+            const isValidDate = bodyFatDate != null && bodyFatDate.length > 0;
+  
+            if (isValidValue && isValidDate) {
+              value = bodyFatValue;
+              recordDate = bodyFatDate;
+              if (index === 0) {
+                addLog(`[Transform] BodyFat SUCCESS: ${value}% on ${recordDate}`, 'info', 'SUCCESS');
+              }
             } else {
-              console.log('[TRANSFORM DEBUG] Body Fat record FAILED validation');
-              addLog('[TRANSFORM DEBUG] Body Fat record FAILED validation', 'warn', 'WARNING');
+              if (index === 0) {
+                const issues = [];
+                if (!isValidValue) {
+                  issues.push(`invalid value (${bodyFatValue})`);
+                }
+                if (!isValidDate) {
+                  issues.push(`invalid date (${bodyFatDate})`);
+                }
+                addLog(`[Transform] BodyFat FAILED: ${issues.join(', ')}`, 'warn', 'WARNING');
+              }
             }
             break;
 
