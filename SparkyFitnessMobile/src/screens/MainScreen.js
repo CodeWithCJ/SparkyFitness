@@ -161,12 +161,102 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
               : '0 kg';
             break;
 
+          // Replace the entire 'BodyFat' case in the fetchHealthData function in MainScreen.js
+          // This should be around line 150-180 in the switch statement
+
           case 'BodyFat':
-            // Get the most recent body fat record
-            const latestBodyFat = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
-            displayValue = latestBodyFat.percentage?.inPercent 
-              ? `${latestBodyFat.percentage.inPercent.toFixed(1)}%` 
-              : '0%';
+            addLog(`[MainScreen] Processing ${records.length} BodyFat records`);
+            console.log('[BodyFat DEBUG] Raw records:', JSON.stringify(records, null, 2));
+  
+            if (records.length > 0) {
+              // Log the structure of the first record
+              console.log('[BodyFat DEBUG] First record keys:', Object.keys(records[0]));
+              console.log('[BodyFat DEBUG] First record:', records[0]);
+              addLog(`[MainScreen] First BodyFat record structure: ${JSON.stringify(Object.keys(records[0]))}`);
+            }
+  
+            // Helper function to extract body fat value from different possible structures
+            const extractBodyFatValue = (record) => {
+              // Try different possible field names and structures
+              if (record.percentage?.inPercent !== undefined) {
+                return record.percentage.inPercent;
+              }
+              if (record.bodyFatPercentage?.inPercent !== undefined) {
+                return record.bodyFatPercentage.inPercent;
+              }
+              if (record.percentage?.value !== undefined) {
+                return record.percentage.value;
+              }
+              if (typeof record.percentage === 'number') {
+                return record.percentage;
+              }
+              if (typeof record.value === 'number') {
+                return record.value;
+              }
+              if (record.bodyFat !== undefined) {
+                return record.bodyFat;
+              }
+              return null;
+            };
+  
+            // Helper function to get date from record
+            const getRecordDate = (record) => {
+              if (record.time) return record.time;
+              if (record.startTime) return record.startTime;
+              if (record.timestamp) return record.timestamp;
+              if (record.date) return record.date;
+              return null;
+            };
+  
+            // Process and filter records
+            const processedBodyFat = records.map((r, idx) => {
+              const date = getRecordDate(r);
+              const value = extractBodyFatValue(r);
+    
+              console.log(`[BodyFat DEBUG] Record ${idx}:`, {
+                hasDate: !!date,
+                dateValue: date,
+                hasValue: value !== null,
+                extractedValue: value,
+                originalRecord: r
+              });
+    
+              return {
+                date: date,
+                value: value,
+                original: r
+              };
+            });
+  
+            const validBodyFat = processedBodyFat
+              .filter(r => {
+                const isValid = r.date && r.value !== null && !isNaN(r.value);
+                if (!isValid) {
+                  console.log('[BodyFat DEBUG] Filtered out invalid record:', r);
+                  addLog(`[MainScreen] Invalid BodyFat record filtered: date=${!!r.date}, value=${r.value}`);
+                }
+                return isValid;
+              })
+              .sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+            console.log('[BodyFat DEBUG] Valid records after filtering:', validBodyFat.length);
+            addLog(`[MainScreen] Valid BodyFat records after filtering: ${validBodyFat.length}`);
+  
+            if (validBodyFat.length > 0) {
+              const latestValue = validBodyFat[0].value;
+              displayValue = `${latestValue.toFixed(1)}%`;
+              console.log('[BodyFat DEBUG] Final display value:', displayValue);
+              addLog(`[MainScreen] BodyFat display value set to: ${displayValue}`, 'info', 'SUCCESS');
+            } else {
+              displayValue = '0%';
+              console.log('[BodyFat DEBUG] No valid records found, showing 0%');
+              addLog('[MainScreen] No valid BodyFat records found, showing 0%', 'warn', 'WARNING');
+    
+              // If we had records but none were valid, log why
+              if (records.length > 0) {
+                addLog(`[MainScreen] Had ${records.length} BodyFat records but none were valid. Check record structure.`, 'warn', 'WARNING');
+              }
+            }
             break;
 
           case 'BloodPressure':
