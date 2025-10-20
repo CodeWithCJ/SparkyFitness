@@ -42,7 +42,7 @@ jobs:
     - name: Get APK path
       id: apk
       run: |
-        APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+        APK_PATH=$(find SparkyFitnessMobile/android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
         echo "path=$APK_PATH" >> $GITHUB_OUTPUT
         echo "name=$(basename $APK_PATH)" >> $GITHUB_OUTPUT
         
