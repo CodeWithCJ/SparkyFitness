@@ -110,6 +110,10 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
       startDate.setDate(endDate.getDate() - 30);
       startDate.setHours(0, 0, 0, 0);
       break;
+    case '90d':
+      startDate.setDate(endDate.getDate() - 90);
+      startDate.setHours(0, 0, 0, 0);
+      break;
     default:
       startDate.setHours(0, 0, 0, 0);
       break;
@@ -674,6 +678,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
               <Picker.Item label="Last 24 Hours" value="24h" />
               <Picker.Item label="Last 7 Days" value="7d" />
               <Picker.Item label="Last 30 Days" value="30d" />
+              <Picker.Item label="Last 90 Days" value="90d" />
             </Picker>
           </View>
         </View>
@@ -701,203 +706,6 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
           <Text style={styles.syncButtonSubText}>Sync your health data to the server</Text>
         </TouchableOpacity>
 
-        // In MainScreen.js, add this button right after the "Sync Now" button
-        // (around line 500, inside the ScrollView, before the "Connected to server" section)
-        
-        {/* Diagnostic Test Button - TEMPORARY */}
-        <TouchableOpacity 
-          style={{
-            backgroundColor: '#28a745',
-            borderRadius: 12,
-            padding: 16,
-            alignItems: 'center',
-            marginBottom: 16,
-          }}
-          onPress={async () => {
-            try {
-              addLog('=== DIAGNOSTIC TEST START ===');
-              
-              const testEndDate = new Date();
-              const testStartDate = new Date();
-              testStartDate.setDate(testStartDate.getDate() - 30);
-              
-              addLog(`Testing date range: ${testStartDate.toISOString()} to ${testEndDate.toISOString()}`);
-              
-              // Test Active Calories
-              addLog('--- Testing Active Calories ---');
-              const caloriesRecords = await readHealthRecords('ActiveCaloriesBurned', testStartDate, testEndDate);
-              addLog(`Found ${caloriesRecords.length} ActiveCalories records`);
-              if (caloriesRecords.length > 0) {
-                addLog(`First record: ${JSON.stringify(caloriesRecords[0])}`);
-                addLog(`Last record: ${JSON.stringify(caloriesRecords[caloriesRecords.length - 1])}`);
-              }
-              
-              // Test BMR
-              addLog('--- Testing BMR ---');
-              const bmrRecords = await readHealthRecords('BasalMetabolicRate', testStartDate, testEndDate);
-              addLog(`Found ${bmrRecords.length} BMR records`);
-              if (bmrRecords.length > 0) {
-                addLog(`First record: ${JSON.stringify(bmrRecords[0])}`);
-              }
-              
-              // Test VO2 Max
-              addLog('--- Testing VO2 Max ---');
-              const vo2Records = await readHealthRecords('Vo2Max', testStartDate, testEndDate);
-              addLog(`Found ${vo2Records.length} VO2Max records`);
-              if (vo2Records.length > 0) {
-                addLog(`First record: ${JSON.stringify(vo2Records[0])}`);
-              }
-              
-              addLog('=== DIAGNOSTIC TEST END ===');
-              
-              Alert.alert(
-                'Test Complete', 
-                `Check Logs screen for results:\n\nActive Calories: ${caloriesRecords.length} records\nBMR: ${bmrRecords.length} records\nVO2 Max: ${vo2Records.length} records`
-              );
-            } catch (error) {
-              addLog(`DIAGNOSTIC ERROR: ${error.message}`, 'error', 'ERROR');
-              Alert.alert('Error', error.message);
-            }
-          }}
-        >
-          <Text style={styles.syncButtonText}>🔍 Test Data Reading</Text>
-          <Text style={styles.syncButtonSubText}>Diagnostic - Check Logs after</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={{
-            backgroundColor: '#ff6b6b',
-            borderRadius: 12,
-            padding: 16,
-            alignItems: 'center',
-            marginBottom: 16,
-          }}
-          onPress={async () => {
-            try {
-              addLog('=== ACTIVE CALORIES DIAGNOSTIC ===');
-              
-              // Try different date ranges
-              const now = new Date();
-              
-              // Last 24 hours
-              const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-              addLog(`Testing last 24 hours: ${last24h.toISOString()} to ${now.toISOString()}`);
-              let records = await readHealthRecords('ActiveCaloriesBurned', last24h, now);
-              addLog(`Last 24h: Found ${records.length} records`);
-              
-              // Last 7 days
-              const last7d = new Date(now);
-              last7d.setDate(last7d.getDate() - 7);
-              addLog(`Testing last 7 days: ${last7d.toISOString()} to ${now.toISOString()}`);
-              records = await readHealthRecords('ActiveCaloriesBurned', last7d, now);
-              addLog(`Last 7 days: Found ${records.length} records`);
-              
-              // Last 30 days
-              const last30d = new Date(now);
-              last30d.setDate(last30d.getDate() - 30);
-              addLog(`Testing last 30 days: ${last30d.toISOString()} to ${now.toISOString()}`);
-              records = await readHealthRecords('ActiveCaloriesBurned', last30d, now);
-              addLog(`Last 30 days: Found ${records.length} records`);
-              
-              // Last 90 days
-              const last90d = new Date(now);
-              last90d.setDate(last90d.getDate() - 90);
-              addLog(`Testing last 90 days: ${last90d.toISOString()} to ${now.toISOString()}`);
-              records = await readHealthRecords('ActiveCaloriesBurned', last90d, now);
-              addLog(`Last 90 days: Found ${records.length} records`);
-              
-              if (records.length > 0) {
-                addLog(`First record structure: ${JSON.stringify(records[0])}`);
-                addLog(`Last record structure: ${JSON.stringify(records[records.length - 1])}`);
-              }
-              
-              // Check permission status
-              addLog('Checking if metric is enabled...');
-              const isEnabled = healthMetricStates['isCaloriesSyncEnabled'];
-              addLog(`Active Calories enabled in app: ${isEnabled}`);
-              
-              addLog('=== END ACTIVE CALORIES DIAGNOSTIC ===');
-              
-              Alert.alert(
-                'Active Calories Test', 
-                `24h: ${last24h} records\n7d: ${last7d} records\n30d: ${last30d} records\n90d: ${last90d} records\n\nCheck logs for details.`
-              );
-            } catch (error) {
-              addLog(`DIAGNOSTIC ERROR: ${error.message}`, 'error', 'ERROR');
-              Alert.alert('Error', error.message);
-            }
-          }}
-        >
-          <Text style={styles.syncButtonText}>🔥 Test Active Calories</Text>
-          <Text style={styles.syncButtonSubText}>Specific test for Active Calories</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={{
-            backgroundColor: '#28a745',
-            borderRadius: 12,
-            padding: 16,
-            alignItems: 'center',
-            marginBottom: 16,
-          }}
-          onPress={async () => {
-            try {
-              addLog('=== COMPREHENSIVE CALORIES DIAGNOSTIC ===');
-              
-              const endDate = new Date();
-              const startDate = new Date();
-              startDate.setDate(startDate.getDate() - 30);
-              
-              addLog(`Testing date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-              
-              // Test Active Calories
-              addLog('--- Testing Active Calories ---');
-              const activeRecords = await readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
-              addLog(`Active Calories: Found ${activeRecords.length} raw records`);
-              
-              if (activeRecords.length > 0) {
-                addLog(`First active record: ${JSON.stringify(activeRecords[0])}`);
-                const aggregated = aggregateActiveCaloriesByDate(activeRecords);
-                addLog(`Aggregated to ${aggregated.length} daily records`);
-                const total = aggregated.reduce((sum, r) => sum + r.value, 0);
-                addLog(`Total Active Calories: ${total.toFixed(0)} kcal`);
-              }
-              
-              // Test Total Calories
-              addLog('--- Testing Total Calories ---');
-              const totalRecords = await readHealthRecords('TotalCaloriesBurned', startDate, endDate);
-              addLog(`Total Calories: Found ${totalRecords.length} raw records`);
-              
-              if (totalRecords.length > 0) {
-                addLog(`First total record: ${JSON.stringify(totalRecords[0])}`);
-                const aggregated = aggregateTotalCaloriesByDate(totalRecords);
-                addLog(`Aggregated to ${aggregated.length} daily records`);
-                const total = aggregated.reduce((sum, r) => sum + r.value, 0);
-                addLog(`Total Calories Sum: ${total.toFixed(0)} kcal`);
-              }
-              
-              addLog('=== DIAGNOSTIC COMPLETE ===');
-              
-              const message = `Active Calories: ${activeRecords.length} records\nTotal Calories: ${totalRecords.length} records\n\nCheck Logs for detailed results.`;
-              
-              if (activeRecords.length === 0 && totalRecords.length > 0) {
-                Alert.alert(
-                  'Found the Issue!', 
-                  'Your device uses Total Calories instead of Active Calories. Enable "Total Calories" in Settings and disable "Active Calories".',
-                  [{ text: 'OK' }]
-                );
-              } else {
-                Alert.alert('Test Complete', message);
-              }
-            } catch (error) {
-              addLog(`DIAGNOSTIC ERROR: ${error.message}`, 'error', 'ERROR');
-              Alert.alert('Error', error.message);
-            }
-          }}
-        >
-          <Text style={styles.syncButtonText}>🔍 Test Calories (Comprehensive)</Text>
-          <Text style={styles.syncButtonSubText}>Find which calorie type your device uses</Text>
-        </TouchableOpacity>
 
         {/* Connected to server status */}
         {isConnected && (
