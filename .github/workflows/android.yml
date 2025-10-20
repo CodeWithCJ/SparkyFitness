@@ -52,6 +52,8 @@ jobs:
       if: github.event_name != 'pull_request'
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore
+        echo "Keystore created at: $(pwd)/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore"
+        ls -la SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore
         
     - name: Run Gradle to generate codegen (will fail but generates files)
       run: |
@@ -70,7 +72,7 @@ jobs:
     - name: Build Release APK
       if: github.event_name != 'pull_request'
       env:
-        MYAPP_RELEASE_STORE_FILE: sparky-fitness-release-key.keystore
+        MYAPP_RELEASE_STORE_FILE: ${{ github.workspace }}/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore
         MYAPP_RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
         MYAPP_RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
         MYAPP_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
