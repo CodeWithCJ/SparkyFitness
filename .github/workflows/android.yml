@@ -71,14 +71,14 @@ jobs:
         
     - name: Build Release APK
       if: github.event_name != 'pull_request'
-      env:
-        MYAPP_RELEASE_STORE_FILE: ${{ github.workspace }}/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore
-        MYAPP_RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-        MYAPP_RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
-        MYAPP_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
       run: |
         cd SparkyFitnessMobile/android
-        ./gradlew :app:assembleRelease --stacktrace
+        ./gradlew :app:assembleRelease \
+          -PMYAPP_RELEASE_STORE_FILE=${{ github.workspace }}/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore \
+          -PMYAPP_RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }} \
+          -PMYAPP_RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }} \
+          -PMYAPP_RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }} \
+          --stacktrace
         
     - name: Get APK path
       if: github.event_name != 'pull_request'
