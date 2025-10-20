@@ -1,48 +1,64 @@
-name: "Build Android App"
-run-name: ${{ github.actor }}
-on: 
+name: Build Android APK
+
+on:
   push:
-    branches:
-      - main
-  pull_request: 
-    branches:
-      - main
+    branches: [ main ]  # Change to your default branch name if different
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Install Java 
-        uses: actions/setup-java@v2
-        with:
-          java-version: '20'
-          distribution: "adopt"
-          cache: "gradle"
-
-      - name: Change wrapper permissions
-        run: chmod +x ../../SparkyFitnessMobile/android
+    - name: Checkout repository
+      uses: actions/checkout@v4
       
-      - name: Validate Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v1
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with: 
-          node-version: '18'
-
-      - name: Run Yarn Install
-        run: npm install
-
-      - name: Build App
-        run: |
-              cd ../../SparkyFitnessMobile/android
-              ./gradlew assembleRelease
-
-      - name: Upload APK to Artifacts
-        uses: actions/upload-artifact@v4
-        with: 
-            name: app
-            path: ./android/app/build/outputs/apk/release/app-release.apk
-            retention-days: 3
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install npm dependencies
+      run: |
+        cd /SparkyFitnessMobile/android
+        npm install
+        
+    - name: Make gradlew executable
+      run: chmod +x /SparkyFitnessMobile/android/gradlew
+      
+    - name: Build APK
+      run: |
+        cd android
+        ./gradlew assembleRelease
+        
+    - name: Get APK path
+      id: apk
+      run: |
+        APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+        echo "path=$APK_PATH" >> $GITHUB_OUTPUT
+        echo "name=$(basename $APK_PATH)" >> $GITHUB_OUTPUT
+        
+    - name: Upload APK as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release
+        path: ${{ steps.apk.outputs.path }}
+        retention-days: 30
+        
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ steps.apk.outputs.path }}
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
