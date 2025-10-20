@@ -28,11 +28,11 @@ jobs:
         
     - name: Install npm dependencies
       run: |
-        cd /SparkyFitnessMobile/android
+        cd SparkyFitnessMobile/android
         npm install
         
     - name: Make gradlew executable
-      run: chmod +x /SparkyFitnessMobile/android/gradlew
+      run: chmod +x SparkyFitnessMobile/android/gradlew
       
     - name: Build APK
       run: |
