@@ -2,10 +2,10 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main ]  # Change to your default branch name if different
+    branches: [ main ]
     tags:
-      - 'v*'  # Trigger on version tags like v1.0.0
-  workflow_dispatch:  # Allows manual trigger from GitHub UI
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -28,16 +28,26 @@ jobs:
         
     - name: Install npm dependencies
       run: |
-        cd SparkyFitnessMobile/android
+        cd SparkyFitnessMobile
         npm install
+        
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
         
     - name: Make gradlew executable
       run: chmod +x SparkyFitnessMobile/android/gradlew
       
-    - name: Build APK
+    - name: Build Release APK (without clean)
       run: |
         cd SparkyFitnessMobile/android
-        ./gradlew assembleRelease
+        ./gradlew :app:assembleRelease --stacktrace
         
     - name: Get APK path
       id: apk
