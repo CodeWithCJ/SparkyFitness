@@ -37,14 +37,32 @@ jobs:
         path: |
           ~/.gradle/caches
           ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-Wrapper.properties') }}
         restore-keys: |
           ${{ runner.os }}-gradle-
         
     - name: Make gradlew executable
       run: chmod +x SparkyFitnessMobile/android/gradlew
-      
-    - name: Build Release APK (without clean)
+    
+    - name: Create local.properties
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > SparkyFitnessMobile/android/local.properties
+        
+    - name: Run Gradle to generate codegen (will fail but generates files)
+      run: |
+        cd SparkyFitnessMobile/android
+        ./gradlew :app:assembleDebug || true
+        
+    - name: Verify codegen was generated
+      run: |
+        if [ -d "SparkyFitnessMobile/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/" ]; then
+          echo "✅ Codegen directory exists"
+          ls -la SparkyFitnessMobile/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/
+        else
+          echo "❌ Codegen directory NOT found"
+        fi
+        
+    - name: Build Release APK
       run: |
         cd SparkyFitnessMobile/android
         ./gradlew :app:assembleRelease --stacktrace
