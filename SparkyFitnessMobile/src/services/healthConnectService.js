@@ -225,7 +225,7 @@ export const aggregateStepsByDate = (records) => {
   return result;
 };
 
-export const aggregateTotalCaloriesByDate = (records) => {
+export const aggregateTotalCaloriesByDate = async (records) => {
   if (!Array.isArray(records)) {
     addLog(`[HealthConnectService] aggregateTotalCaloriesByDate received non-array records: ${JSON.stringify(records)}`, 'warn', 'WARNING');
     console.warn('aggregateTotalCaloriesByDate received non-array records:', records);
@@ -243,16 +243,47 @@ export const aggregateTotalCaloriesByDate = (records) => {
 
   addLog(`[HealthConnectService] Aggregating ${validRecords.length} total calories records`);
 
+  // Read BMR records to get the baseline
+  let bmrValue = 1691; // Default fallback
+  try {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 90); // Look back 90 days for BMR
+    
+    const bmrRecords = await readHealthRecords('BasalMetabolicRate', startDate, endDate);
+    
+    if (bmrRecords.length > 0) {
+      // Get the most recent BMR
+      const sortedBMR = bmrRecords.sort((a, b) => {
+        const dateA = new Date(a.time || a.startTime);
+        const dateB = new Date(b.time || b.startTime);
+        return dateB - dateA;
+      });
+      
+      const latestBMR = sortedBMR[0];
+      if (latestBMR.basalMetabolicRate?.inKilocaloriesPerDay) {
+        bmrValue = latestBMR.basalMetabolicRate.inKilocaloriesPerDay;
+        addLog(`[HealthConnectService] Using BMR value: ${bmrValue} kcal/day`, 'info');
+      }
+    } else {
+      addLog(`[HealthConnectService] No BMR records found, using default: ${bmrValue} kcal/day`, 'warn', 'WARNING');
+    }
+  } catch (error) {
+    addLog(`[HealthConnectService] Error reading BMR: ${error.message}, using default: ${bmrValue}`, 'warn', 'WARNING');
+  }
+
   const aggregatedData = validRecords.reduce((acc, record) => {
     try {
       const date = record.startTime.split('T')[0];
-      // Convert from calories to kilocalories immediately
-      const kilocalories = record.energy.inCalories / 1000;
-
+      const caloriesValue = record.energy.inCalories;
+      
+      // Detect if value is in calories (>10000) or kilocalories (<10000)
+      const activeKilocalories = caloriesValue > 10000 ? caloriesValue / 1000 : caloriesValue;
+      
       if (!acc[date]) {
         acc[date] = 0;
       }
-      acc[date] += kilocalories;
+      acc[date] += activeKilocalories;
     } catch (error) {
       addLog(`[HealthConnectService] Error processing total calories record: ${error.message}`, 'warn', 'WARNING');
     }
@@ -260,13 +291,14 @@ export const aggregateTotalCaloriesByDate = (records) => {
     return acc;
   }, {});
 
+  // Add BMR to each day's total
   const result = Object.keys(aggregatedData).map(date => ({
     date,
-    value: aggregatedData[date],
+    value: aggregatedData[date] + bmrValue, // Add BMR to active calories
     type: 'total_calories',
   }));
 
-  addLog(`[HealthConnectService] Aggregated total calories data into ${result.length} daily entries`);
+  addLog(`[HealthConnectService] Aggregated total calories data into ${result.length} daily entries (with BMR added)`);
   return result;
 };
 
@@ -943,7 +975,7 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
         dataToTransform = aggregateActiveCaloriesByDate(rawRecords);
         addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw ActiveCaloriesBurned records into ${dataToTransform.length} daily totals`);
       } else if (type === 'TotalCaloriesBurned') {
-        dataToTransform = aggregateTotalCaloriesByDate(rawRecords);
+        dataToTransform = await aggregateTotalCaloriesByDate(rawRecords);
         addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw TotalCaloriesBurned records into ${dataToTransform.length} daily totals`);
 }
 
