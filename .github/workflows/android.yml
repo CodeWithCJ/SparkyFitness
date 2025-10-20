@@ -36,7 +36,7 @@ jobs:
       
     - name: Build APK
       run: |
-        cd android
+        cd SparkyFitnessMobile/android
         ./gradlew assembleRelease
         
     - name: Get APK path
