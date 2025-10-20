@@ -9,6 +9,7 @@ import {
   SleepSessionRecord,
   StepsRecord,
   ActiveCaloriesBurnedRecord,
+  TotalCaloriesBurnedRecord,
   BasalBodyTemperatureRecord,
   BasalMetabolicRateRecord,
   BloodGlucoseRecord,
@@ -178,6 +179,8 @@ export const aggregateHeartRateByDate = (records) => {
   return result;
 };
 
+// The issue is around line 200-240. Here's the corrected section:
+
 export const aggregateStepsByDate = (records) => {
   if (!Array.isArray(records)) {
     addLog(`[HealthConnectService] aggregateStepsByDate received non-array records: ${JSON.stringify(records)}`, 'warn', 'WARNING');
@@ -219,6 +222,51 @@ export const aggregateStepsByDate = (records) => {
   }));
 
   addLog(`[HealthConnectService] Aggregated step data into ${result.length} daily entries`);
+  return result;
+};
+
+export const aggregateTotalCaloriesByDate = (records) => {
+  if (!Array.isArray(records)) {
+    addLog(`[HealthConnectService] aggregateTotalCaloriesByDate received non-array records: ${JSON.stringify(records)}`, 'warn', 'WARNING');
+    console.warn('aggregateTotalCaloriesByDate received non-array records:', records);
+    return [];
+  }
+
+  const validRecords = records.filter(record => 
+    record.startTime && record.energy && typeof record.energy.inCalories === 'number'
+  );
+
+  if (validRecords.length === 0) {
+    addLog(`[HealthConnectService] No valid total calories records to aggregate`);
+    return [];
+  }
+
+  addLog(`[HealthConnectService] Aggregating ${validRecords.length} total calories records`);
+
+  const aggregatedData = validRecords.reduce((acc, record) => {
+    try {
+      const date = record.startTime.split('T')[0];
+      // Convert from calories to kilocalories immediately
+      const kilocalories = record.energy.inCalories / 1000;
+
+      if (!acc[date]) {
+        acc[date] = 0;
+      }
+      acc[date] += kilocalories;
+    } catch (error) {
+      addLog(`[HealthConnectService] Error processing total calories record: ${error.message}`, 'warn', 'WARNING');
+    }
+
+    return acc;
+  }, {});
+
+  const result = Object.keys(aggregatedData).map(date => ({
+    date,
+    value: aggregatedData[date],
+    type: 'total_calories',
+  }));
+
+  addLog(`[HealthConnectService] Aggregated total calories data into ${result.length} daily entries`);
   return result;
 };
 
@@ -266,6 +314,8 @@ export const aggregateActiveCaloriesByDate = (records) => {
   return result;
 };
 
+
+
 export const transformHealthRecords = (records, metricConfig) => {
   if (!Array.isArray(records)) {
     addLog(`[HealthConnectService] transformHealthRecords received non-array records for ${metricConfig.recordType}: ${JSON.stringify(records)}`, 'warn', 'WARNING');
@@ -288,7 +338,7 @@ export const transformHealthRecords = (records, metricConfig) => {
       let value = null;
       let recordDate = null;
 
-      if (['Steps', 'HeartRate', 'ActiveCaloriesBurned'].includes(recordType)) {
+      if (['Steps', 'HeartRate', 'ActiveCaloriesBurned', 'TotalCaloriesBurned'].includes(recordType)) {
         if (record.value !== undefined && record.date) {
           value = record.value;
           recordDate = record.date;
@@ -331,6 +381,38 @@ export const transformHealthRecords = (records, metricConfig) => {
             if (value == null || isNaN(value) || !recordDate) {
               if (index === 0) {
                 addLog(`[Transform] ActiveCalories FAILED: value=${value}, date=${recordDate}`, 'warn', 'WARNING');
+              }
+            }
+            break;
+
+          case 'TotalCaloriesBurned':
+            if (record.value !== undefined && record.date && record.type === 'total_calories') {
+              // Already aggregated and converted to kcal
+              value = record.value;
+              recordDate = record.date;
+              if (index === 0) {
+                addLog(`[Transform] TotalCalories (aggregated): ${value} kcal on ${recordDate}`, 'debug');
+              }
+            } else if (record.startTime && record.energy?.inCalories != null) {
+              // Raw record - convert from calories to kilocalories
+              value = record.energy.inCalories / 1000;
+              recordDate = record.startTime.split('T')[0];
+              if (index === 0) {
+                addLog(`[Transform] TotalCalories (raw): ${value} kcal on ${recordDate}`, 'debug');
+              }
+            } else if (record.energy?.inKilocalories != null) {
+              // Already in kilocalories
+              value = record.energy.inKilocalories;
+              const dateField = record.startTime || record.time || record.date;
+              recordDate = dateField ? dateField.split('T')[0] : null;
+              if (index === 0 && recordDate) {
+                addLog(`[Transform] TotalCalories (already in kcal): ${value} kcal on ${recordDate}`, 'debug');
+              }
+            }
+          
+            if (value == null || isNaN(value) || !recordDate) {
+              if (index === 0) {
+                addLog(`[Transform] TotalCalories FAILED: value=${value}, date=${recordDate}`, 'warn', 'WARNING');
               }
             }
             break;
@@ -860,7 +942,10 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
       } else if (type === 'ActiveCaloriesBurned') {
         dataToTransform = aggregateActiveCaloriesByDate(rawRecords);
         addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw ActiveCaloriesBurned records into ${dataToTransform.length} daily totals`);
-      }
+      } else if (type === 'TotalCaloriesBurned') {
+        dataToTransform = aggregateTotalCaloriesByDate(rawRecords);
+        addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw TotalCaloriesBurned records into ${dataToTransform.length} daily totals`);
+}
 
       const transformed = transformHealthRecords(dataToTransform, metricConfig);
       
