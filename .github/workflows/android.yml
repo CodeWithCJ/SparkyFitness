@@ -1,0 +1,48 @@
+name: "Build Android App"
+run-name: ${{ github.actor }}
+on: 
+  push:
+    branches:
+      - main
+  pull_request: 
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Java 
+        uses: actions/setup-java@v2
+        with:
+          java-version: '20'
+          distribution: "adopt"
+          cache: "gradle"
+
+      - name: Change wrapper permissions
+        run: chmod +x ../../SparkyFitnessMobile/android
+      
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with: 
+          node-version: '18'
+
+      - name: Run Yarn Install
+        run: npm install
+
+      - name: Build App
+        run: |
+              cd ../../SparkyFitnessMobile/android
+              ./gradlew assembleRelease
+
+      - name: Upload APK to Artifacts
+        uses: actions/upload-artifact@v2
+        with: 
+            name: app
+            path: ./android/app/build/outputs/apk/release/app-release.apk
+            retention-days: 3
