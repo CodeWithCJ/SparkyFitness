@@ -121,6 +121,9 @@ export const getSyncStartDate = (duration) => {
     case '30d':
       startDate.setDate(now.getDate() - 30);
       break;
+    case '90d':
+      startDate.setDate(now.getDate() - 90);
+      break;
     default:
       startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;
@@ -292,13 +295,15 @@ export const aggregateTotalCaloriesByDate = async (records) => {
   }, {});
 
   // Add BMR to each day's total
+  // Add BMR × 1.2 (sedentary TDEE) to each day's active calories
+  const sedentaryTDEE = bmrValue * 1.2;
   const result = Object.keys(aggregatedData).map(date => ({
     date,
-    value: aggregatedData[date] + bmrValue, // Add BMR to active calories
+    value: aggregatedData[date] + sedentaryTDEE, // Add sedentary TDEE to active calories
     type: 'total_calories',
   }));
 
-  addLog(`[HealthConnectService] Aggregated total calories data into ${result.length} daily entries (with BMR added)`);
+  addLog(`[HealthConnectService] Aggregated total calories data into ${result.length} daily entries (BMR × 1.2 + active = ${sedentaryTDEE.toFixed(0)} + active)`);
   return result;
 };
 
