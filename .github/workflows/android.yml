@@ -69,23 +69,29 @@ jobs:
         
     - name: Build Release APK
       if: github.event_name != 'pull_request'
+      env:
+        MYAPP_RELEASE_STORE_FILE: sparky-fitness-release-key.keystore
+        MYAPP_RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+        MYAPP_RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+        MYAPP_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
       run: |
         cd SparkyFitnessMobile/android
         ./gradlew :app:assembleRelease --stacktrace
         
     - name: Get APK path
+      if: github.event_name != 'pull_request'
       id: apk
       run: |
         APK_PATH=$(find SparkyFitnessMobile/android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
         echo "path=$APK_PATH" >> $GITHUB_OUTPUT
         echo "name=$(basename $APK_PATH)" >> $GITHUB_OUTPUT
         
-    - name: Upload APK as artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-release
-        path: ${{ steps.apk.outputs.path }}
-        retention-days: 30
+    - name: Get version from package.json
+      if: github.event_name != 'pull_request'
+      id: version
+      run: |
+        VERSION=$(node -p "require('./SparkyFitnessMobile/package.json').version")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
         
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
@@ -94,5 +100,6 @@ jobs:
         files: ${{ steps.apk.outputs.path }}
         draft: false
         prerelease: false
+        generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
