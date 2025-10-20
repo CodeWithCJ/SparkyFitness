@@ -9,6 +9,7 @@ import {
   aggregateStepsByDate,
   readActiveCaloriesRecords,
   aggregateActiveCaloriesByDate,
+  aggregateTotalCaloriesByDate, // ADD THIS LINE
   readHeartRateRecords,
   aggregateHeartRateByDate,
   loadHealthPreference,
@@ -145,6 +146,13 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
             const aggregatedCalories = aggregateActiveCaloriesByDate(records);
             const totalCalories = aggregatedCalories.reduce((sum, record) => sum + record.value, 0);
             displayValue = totalCalories.toLocaleString();
+            break;
+
+          case 'TotalCaloriesBurned':
+            const aggregatedTotalCalories = aggregateTotalCaloriesByDate(records);
+            const totalCaloriesSum = aggregatedTotalCalories.reduce((sum, record) => sum + record.value, 0);
+            // Convert from calories to kilocalories (divide by 1000)
+            displayValue = Math.round(totalCaloriesSum).toLocaleString();
             break;
 
           case 'HeartRate':
@@ -822,6 +830,73 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
         >
           <Text style={styles.syncButtonText}>🔥 Test Active Calories</Text>
           <Text style={styles.syncButtonSubText}>Specific test for Active Calories</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={{
+            backgroundColor: '#28a745',
+            borderRadius: 12,
+            padding: 16,
+            alignItems: 'center',
+            marginBottom: 16,
+          }}
+          onPress={async () => {
+            try {
+              addLog('=== COMPREHENSIVE CALORIES DIAGNOSTIC ===');
+              
+              const endDate = new Date();
+              const startDate = new Date();
+              startDate.setDate(startDate.getDate() - 30);
+              
+              addLog(`Testing date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+              
+              // Test Active Calories
+              addLog('--- Testing Active Calories ---');
+              const activeRecords = await readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
+              addLog(`Active Calories: Found ${activeRecords.length} raw records`);
+              
+              if (activeRecords.length > 0) {
+                addLog(`First active record: ${JSON.stringify(activeRecords[0])}`);
+                const aggregated = aggregateActiveCaloriesByDate(activeRecords);
+                addLog(`Aggregated to ${aggregated.length} daily records`);
+                const total = aggregated.reduce((sum, r) => sum + r.value, 0);
+                addLog(`Total Active Calories: ${total.toFixed(0)} kcal`);
+              }
+              
+              // Test Total Calories
+              addLog('--- Testing Total Calories ---');
+              const totalRecords = await readHealthRecords('TotalCaloriesBurned', startDate, endDate);
+              addLog(`Total Calories: Found ${totalRecords.length} raw records`);
+              
+              if (totalRecords.length > 0) {
+                addLog(`First total record: ${JSON.stringify(totalRecords[0])}`);
+                const aggregated = aggregateTotalCaloriesByDate(totalRecords);
+                addLog(`Aggregated to ${aggregated.length} daily records`);
+                const total = aggregated.reduce((sum, r) => sum + r.value, 0);
+                addLog(`Total Calories Sum: ${total.toFixed(0)} kcal`);
+              }
+              
+              addLog('=== DIAGNOSTIC COMPLETE ===');
+              
+              const message = `Active Calories: ${activeRecords.length} records\nTotal Calories: ${totalRecords.length} records\n\nCheck Logs for detailed results.`;
+              
+              if (activeRecords.length === 0 && totalRecords.length > 0) {
+                Alert.alert(
+                  'Found the Issue!', 
+                  'Your device uses Total Calories instead of Active Calories. Enable "Total Calories" in Settings and disable "Active Calories".',
+                  [{ text: 'OK' }]
+                );
+              } else {
+                Alert.alert('Test Complete', message);
+              }
+            } catch (error) {
+              addLog(`DIAGNOSTIC ERROR: ${error.message}`, 'error', 'ERROR');
+              Alert.alert('Error', error.message);
+            }
+          }}
+        >
+          <Text style={styles.syncButtonText}>🔍 Test Calories (Comprehensive)</Text>
+          <Text style={styles.syncButtonSubText}>Find which calorie type your device uses</Text>
         </TouchableOpacity>
 
         {/* Connected to server status */}
