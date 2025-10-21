@@ -165,14 +165,9 @@ app.get(
 
 let sessionMiddleware; // Declare sessionMiddleware globally
 
-const configureSessionMiddleware = (app, pool) => {
+const configureSessionMiddleware = (pool) => {
   const session = require("express-session");
   const pgSession = require("connect-pg-simple")(session);
-
-  // Trust the first proxy
-  app.set("trust proxy", 1);
-
-  const isProduction = process.env.NODE_ENV === "production";
 
   sessionMiddleware = session({
     store: new pgSession({
@@ -191,24 +186,27 @@ const configureSessionMiddleware = (app, pool) => {
       // secure and sameSite will be set dynamically
     },
   });
-
-  app.use(sessionMiddleware);
-
-  // Dynamically set cookie properties based on protocol
-  app.use((req, res, next) => {
-    if (req.session && req.protocol === "https") {
-      req.session.cookie.secure = true;
-      req.session.cookie.sameSite = "none";
-    } else if (req.session) {
-      req.session.cookie.sameSite = "lax";
-    }
-    // log('debug', `[Session Debug] Request Protocol: ${req.protocol}, Secure: ${req.secure}, Host: ${req.headers.host}`); // Commented out for less verbose logging
-    next();
-  });
 };
 
 // Initial session middleware configuration
-configureSessionMiddleware(app, getRawOwnerPool());
+configureSessionMiddleware(getRawOwnerPool());
+
+// Trust the first proxy
+app.set("trust proxy", 1);
+
+app.use((req, res, next) => sessionMiddleware(req, res, next));
+
+// Dynamically set cookie properties based on protocol
+app.use((req, res, next) => {
+  if (req.session && req.protocol === "https") {
+    req.session.cookie.secure = true;
+    req.session.cookie.sameSite = "none";
+  } else if (req.session) {
+    req.session.cookie.sameSite = "lax";
+  }
+  // log('debug', `[Session Debug] Request Protocol: ${req.protocol}, Secure: ${req.secure}, Host: ${req.headers.host}`); // Commented out for less verbose logging
+  next();
+});
 
 // Apply authentication middleware to all routes except auth
 app.use((req, res, next) => {
