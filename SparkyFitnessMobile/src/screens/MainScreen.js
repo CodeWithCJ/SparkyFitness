@@ -319,8 +319,14 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
 
           case 'BloodGlucose':
             const latestGlucose = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
-            displayValue = latestGlucose.bloodGlucose?.inMillimolesPerLiter 
-              ? `${latestGlucose.bloodGlucose.inMillimolesPerLiter.toFixed(1)} mmol/L` 
+            // Try multiple field access patterns
+            let glucoseValue = latestGlucose.level?.inMillimolesPerLiter 
+              || latestGlucose.bloodGlucose?.inMillimolesPerLiter 
+              || (latestGlucose.level?.inMilligramsPerDeciliter ? latestGlucose.level.inMilligramsPerDeciliter / 18.018 : null)
+              || (latestGlucose.bloodGlucose?.inMilligramsPerDeciliter ? latestGlucose.bloodGlucose.inMilligramsPerDeciliter / 18.018 : null);
+            
+            displayValue = glucoseValue 
+              ? `${glucoseValue.toFixed(1)} mmol/L` 
               : '0 mmol/L';
             break;
 
@@ -603,7 +609,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
           case 'Nutrition':
             const totalNutrition = records.reduce((sum, record) => 
               sum + (record.energy?.inCalories || 0), 0);
-            displayValue = `${Math.round(totalNutrition)} kcal`;
+            displayValue = `${Math.round(totalNutrition / 1000)} kcal`;
             break;
 
           default:
