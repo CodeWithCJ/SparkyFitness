@@ -478,7 +478,7 @@ export const transformHealthRecords = (records, metricConfig) => {
 
           case 'Nutrition':
             if (record.startTime && record.energy?.inCalories) {
-              value = record.energy.inCalories;
+              value = record.energy.inCalories / 1000;
               recordDate = record.startTime.split('T')[0];
             }
             break;
