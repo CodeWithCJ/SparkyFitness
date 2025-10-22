@@ -5,7 +5,7 @@ const exerciseRepository = require('../models/exerciseRepository'); // For activ
 const waterContainerRepository = require('../models/waterContainerRepository'); // Import waterContainerRepository
 const { log } = require('../config/logging');
 
-async function processHealthData(healthDataArray, userId) {
+async function processHealthData(healthDataArray, userId, actingUserId) {
   const processedResults = [];
   const errors = [];
 
@@ -62,7 +62,7 @@ async function processHealthData(healthDataArray, userId) {
             errors.push({ error: "Invalid value for step. Must be an integer.", entry: dataEntry });
             break;
           }
-          result = await measurementRepository.upsertStepData(userId, stepValue, parsedDate);
+          result = await measurementRepository.upsertStepData(userId, actingUserId, stepValue, parsedDate);
           processedResults.push({ type, status: 'success', data: result });
           break;
         case 'water':
@@ -71,7 +71,7 @@ async function processHealthData(healthDataArray, userId) {
             errors.push({ error: "Invalid value for water. Must be an integer.", entry: dataEntry });
             break;
           }
-          result = await measurementRepository.upsertWaterData(userId, waterValue, parsedDate);
+          result = await measurementRepository.upsertWaterData(userId, actingUserId, waterValue, parsedDate);
           processedResults.push({ type, status: 'success', data: result });
           break;
         case 'Active Calories':
@@ -81,8 +81,8 @@ async function processHealthData(healthDataArray, userId) {
             break;
           }
           const exerciseSource = source || 'Health Data';
-          const exerciseId = await exerciseRepository.getOrCreateActiveCaloriesExercise(userId, exerciseSource);
-          result = await exerciseRepository.upsertExerciseEntryData(userId, exerciseId, activeCaloriesValue, parsedDate);
+          const exerciseId = await exerciseRepository.getOrCreateActiveCaloriesExercise(userId, actingUserId, exerciseSource);
+          result = await exerciseRepository.upsertExerciseEntryData(userId, actingUserId, exerciseId, activeCaloriesValue, parsedDate);
           processedResults.push({ type, status: 'success', data: result });
           break;
         case 'weight': // Add case for weight
@@ -92,13 +92,13 @@ async function processHealthData(healthDataArray, userId) {
             break;
           }
           // Assuming upsertCheckInMeasurements can handle individual fields
-          result = await measurementRepository.upsertCheckInMeasurements(userId, parsedDate, { weight: weightValue });
+          result = await measurementRepository.upsertCheckInMeasurements(userId, actingUserId, parsedDate, { weight: weightValue });
           processedResults.push({ type, status: 'success', data: result });
           break;
         default:
           // Handle as custom measurement
           // Get or create custom category first to check its data_type
-          const category = await getOrCreateCustomCategory(userId, type);
+          const category = await getOrCreateCustomCategory(userId, actingUserId, type);
           if (!category || !category.id) {
             errors.push({ error: `Failed to get or create custom category for type: ${type}`, entry: dataEntry });
             break;
@@ -118,6 +118,7 @@ async function processHealthData(healthDataArray, userId) {
 
           result = await measurementRepository.upsertCustomMeasurement(
             userId,
+            actingUserId,
             categoryId,
             processedValue,
             parsedDate,
@@ -150,17 +151,18 @@ async function processHealthData(healthDataArray, userId) {
 }
 
 // Helper function to get or create a custom category
-async function getOrCreateCustomCategory(userId, categoryName) {
+async function getOrCreateCustomCategory(userId, actingUserId, categoryName) {
   // Try to get existing category
   const existingCategories = await measurementRepository.getCustomCategories(userId);
   let category = existingCategories.find(cat => cat.name === categoryName);
 
   if (category) {
-    return category.id;
+    return category;
   } else {
     // Create new category if it doesn't exist
     const newCategoryData = {
       user_id: userId,
+      created_by_user_id: actingUserId, // Use actingUserId for audit
       name: categoryName,
       measurement_type: 'numeric', // Default to numeric for Health Connect data
       frequency: 'Daily', // Default frequency, can be refined later if needed
@@ -182,7 +184,7 @@ async function getWaterIntake(authenticatedUserId, targetUserId, date) {
   }
 }
 
-async function upsertWaterIntake(authenticatedUserId, entryDate, changeDrinks, containerId) {
+async function upsertWaterIntake(authenticatedUserId, actingUserId, entryDate, changeDrinks, containerId) {
   try {
     // 1. Get current water intake for the day
     const currentWaterRecord = await measurementRepository.getWaterIntakeByDate(authenticatedUserId, entryDate);
@@ -208,10 +210,10 @@ async function upsertWaterIntake(authenticatedUserId, entryDate, changeDrinks, c
     const newTotalWaterMl = Math.max(0, currentWaterMl + (changeDrinks * amountPerDrink));
 
     // 4. Upsert the new total water intake
-    const result = await measurementRepository.upsertWaterData(authenticatedUserId, newTotalWaterMl, entryDate);
+    const result = await measurementRepository.upsertWaterData(authenticatedUserId, actingUserId, newTotalWaterMl, entryDate);
     return result;
   } catch (error) {
-    log('error', `Error upserting water intake for user ${authenticatedUserId}:`, error);
+    log('error', `Error upserting water intake for user ${authenticatedUserId} by ${actingUserId}:`, error);
     throw error;
   }
 }
@@ -270,12 +272,12 @@ async function deleteWaterIntake(authenticatedUserId, id) {
   }
 }
 
-async function upsertCheckInMeasurements(authenticatedUserId, entryDate, measurements) {
+async function upsertCheckInMeasurements(authenticatedUserId, actingUserId, entryDate, measurements) {
   try {
-    const result = await measurementRepository.upsertCheckInMeasurements(authenticatedUserId, entryDate, measurements);
+    const result = await measurementRepository.upsertCheckInMeasurements(authenticatedUserId, actingUserId, entryDate, measurements);
     return result;
   } catch (error) {
-    log('error', `Error upserting check-in measurements for user ${authenticatedUserId}:`, error);
+    log('error', `Error upserting check-in measurements for user ${authenticatedUserId} by ${actingUserId}:`, error);
     throw error;
   }
 }
@@ -300,20 +302,16 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(authenticatedUserId, t
   }
 }
 
-async function updateCheckInMeasurements(authenticatedUserId, id, entryDate, updateData) {
-  log('info', `[measurementService] updateCheckInMeasurements called with: id=${id}, authenticatedUserId=${authenticatedUserId}, entryDate=${entryDate}, updateData=`, updateData);
+async function updateCheckInMeasurements(authenticatedUserId, entryDate, updateData) {
+  log('info', `[measurementService] updateCheckInMeasurements called with: authenticatedUserId=${authenticatedUserId}, entryDate=${entryDate}, updateData=`, updateData);
   try {
-    // Verify ownership using entry_date and user_id, not 'id'
+    // Verify ownership using entry_date and user_id
     const existingMeasurement = await measurementRepository.getCheckInMeasurementsByDate(authenticatedUserId, entryDate);
 
     if (!existingMeasurement) {
       log('warn', `[measurementService] Check-in measurement not found for user ${authenticatedUserId} on date: ${entryDate}`);
       throw new Error('Check-in measurement not found.');
     }
-
-    // The 'id' passed from the frontend is the row ID, but we're updating by user_id and entry_date
-    // We don't need to check entryOwnerId against 'id' here, as we're using the composite key for update.
-    // The authorization check is implicitly handled by getCheckInMeasurementsByDate.
 
     const updatedMeasurement = await measurementRepository.updateCheckInMeasurements(authenticatedUserId, entryDate, updateData);
     if (!updatedMeasurement) {
@@ -362,13 +360,14 @@ async function getCustomCategories(authenticatedUserId, targetUserId) {
   }
 }
 
-async function createCustomCategory(authenticatedUserId, categoryData) {
+async function createCustomCategory(authenticatedUserId, actingUserId, categoryData) {
   try {
     categoryData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
+    categoryData.created_by_user_id = actingUserId; // Use actingUserId for audit
     const newCategory = await measurementRepository.createCustomCategory(categoryData);
     return newCategory;
   } catch (error) {
-    log('error', `Error creating custom category for user ${authenticatedUserId}:`, error);
+    log('error', `Error creating custom category for user ${authenticatedUserId} by ${actingUserId}:`, error);
     throw error;
   }
 }
@@ -413,12 +412,13 @@ async function deleteCustomCategory(authenticatedUserId, id) {
   }
 }
 
-async function getCustomMeasurementEntries(authenticatedUserId, targetUserId, limit, orderBy, filter) {
+async function getCustomMeasurementEntries(authenticatedUserId, limit, orderBy, filter) {
   try {
-    const entries = await measurementRepository.getCustomMeasurementEntries(targetUserId, limit, orderBy, filter);
+    // The targetUserId is implicitly the authenticatedUserId for this endpoint
+    const entries = await measurementRepository.getCustomMeasurementEntries(authenticatedUserId, limit, orderBy, filter);
     return entries;
   } catch (error) {
-    log('error', `Error fetching custom measurement entries for user ${targetUserId} by ${authenticatedUserId}:`, error);
+    log('error', `Error fetching custom measurement entries for user ${authenticatedUserId}:`, error);
     throw error;
   }
 }
@@ -478,7 +478,7 @@ module.exports = {
   getMostRecentMeasurement,
 };
 
-async function upsertCustomMeasurementEntry(authenticatedUserId, payload) {
+async function upsertCustomMeasurementEntry(authenticatedUserId, actingUserId, payload) {
   try {
     const { category_id, value, entry_date, entry_hour, entry_timestamp, notes } = payload;
 
@@ -492,6 +492,7 @@ async function upsertCustomMeasurementEntry(authenticatedUserId, payload) {
 
     const result = await measurementRepository.upsertCustomMeasurement(
       authenticatedUserId,
+      actingUserId,
       category_id,
       value,
       entry_date,
@@ -502,7 +503,7 @@ async function upsertCustomMeasurementEntry(authenticatedUserId, payload) {
     );
     return result;
   } catch (error) {
-    log('error', `Error upserting custom measurement entry for user ${authenticatedUserId}:`, error);
+    log('error', `Error upserting custom measurement entry for user ${authenticatedUserId} by ${actingUserId}:`, error);
     throw error;
   }
 }

@@ -1,9 +1,9 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 const format = require('pg-format');
 
 async function createWorkoutPreset(presetData) {
-  const client = await getPool().connect();
+  const client = await getClient(presetData.user_id); // User-specific operation
   try {
     await client.query('BEGIN');
 
@@ -49,7 +49,7 @@ async function createWorkoutPreset(presetData) {
 }
 
 async function getWorkoutPresets(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT
@@ -79,10 +79,10 @@ async function getWorkoutPresets(userId) {
            ), '[]'::json
          ) AS exercises
        FROM workout_presets wp
-       WHERE wp.user_id = $1 OR wp.is_public = TRUE
+       WHERE wp.is_public = TRUE
        GROUP BY wp.id
        ORDER BY wp.name ASC`,
-      [userId]
+      []
     );
     return result.rows;
   } finally {
@@ -91,7 +91,7 @@ async function getWorkoutPresets(userId) {
 }
 
 async function getWorkoutPresetById(presetId) {
-  const client = await getPool().connect();
+  const client = await getClient(presetId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       `SELECT
@@ -132,14 +132,11 @@ async function getWorkoutPresetById(presetId) {
 }
 
 async function updateWorkoutPreset(presetId, userId, updateData) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
 
     const presetCheck = await client.query('SELECT user_id FROM workout_presets WHERE id = $1', [presetId]);
-    if (presetCheck.rows.length === 0 || presetCheck.rows[0].user_id !== userId) {
-      throw new Error('Preset not found or user does not have permission to update it.');
-    }
 
     const result = await client.query(
       `UPDATE workout_presets SET
@@ -147,9 +144,9 @@ async function updateWorkoutPreset(presetId, userId, updateData) {
         description = COALESCE($2, description),
         is_public = COALESCE($3, is_public),
         updated_at = now()
-       WHERE id = $4 AND user_id = $5
+       WHERE id = $4
        RETURNING id`,
-      [updateData.name, updateData.description, updateData.is_public, presetId, userId]
+      [updateData.name, updateData.description, updateData.is_public, presetId]
     );
 
     if (result.rows.length > 0 && updateData.exercises !== undefined) {
@@ -193,12 +190,12 @@ async function updateWorkoutPreset(presetId, userId, updateData) {
 }
 
 async function deleteWorkoutPreset(presetId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
     const result = await client.query(
-      'DELETE FROM workout_presets WHERE id = $1 AND user_id = $2 RETURNING id',
-      [presetId, userId]
+      'DELETE FROM workout_presets WHERE id = $1 RETURNING id',
+      [presetId]
     );
     await client.query('COMMIT');
     return result.rowCount > 0;
@@ -212,7 +209,7 @@ async function deleteWorkoutPreset(presetId, userId) {
 }
 
 async function getWorkoutPresetOwnerId(presetId) {
-  const client = await getPool().connect();
+  const client = await getClient(presetId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'SELECT user_id FROM workout_presets WHERE id = $1',
@@ -225,7 +222,7 @@ async function getWorkoutPresetOwnerId(presetId) {
 }
 
 async function searchWorkoutPresets(searchTerm, userId, limit = null) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     let query = `
       SELECT
@@ -255,11 +252,11 @@ async function searchWorkoutPresets(searchTerm, userId, limit = null) {
           ), '[]'::json
         ) AS exercises
       FROM workout_presets wp
-      WHERE (wp.user_id = $1 OR wp.is_public = TRUE)
-      AND wp.name ILIKE $2
+      WHERE wp.is_public = TRUE
+      AND wp.name ILIKE $1
       GROUP BY wp.id
       ORDER BY wp.name ASC`;
-    const queryParams = [userId, `%${searchTerm}%`];
+    const queryParams = [`%${searchTerm}%`];
 
     if (limit !== null) {
       query += ` LIMIT $3`;

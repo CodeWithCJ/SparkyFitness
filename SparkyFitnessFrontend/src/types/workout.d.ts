@@ -8,6 +8,16 @@ export interface PresetExercise {
   exercise_name: string;
 }
 
+export interface WorkoutPresetSet {
+  set_number: number;
+  reps: number;
+  weight: number;
+  set_type: 'Working Set' | 'Warm-up' | 'Drop Set' | 'Failure' | 'AMRAP' | 'Back-off' | 'Rest-Pause' | 'Cluster' | 'Technique';
+  duration?: number;
+  rest_time?: number;
+  notes?: string;
+}
+
 export interface WorkoutPreset {
   id: string;
   user_id: string;

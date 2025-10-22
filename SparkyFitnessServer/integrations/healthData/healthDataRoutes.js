@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getPool } = require('../../db/poolManager'); // Use getPool for database connections
+const { getClient } = require('../../db/poolManager'); // Use getClient for database connections
 const { log } = require('../../config/logging');
 const measurementService = require('../../services/measurementService'); // Import the new service
 
@@ -13,7 +13,7 @@ router.use('/', async (req, res, next) => {
   }
 
   try {
-    const client = await getPool().connect();
+    const client = await getClient(req.userId); // User-specific operation
     const result = await client.query(
       'SELECT user_id, permissions FROM user_api_keys WHERE api_key = $1 AND is_active = TRUE',
       [apiKey]

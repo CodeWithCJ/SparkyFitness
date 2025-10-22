@@ -1,9 +1,9 @@
-const { getPool } = require('../db/poolManager');
+const { getSystemClient } = require('../db/poolManager');
 const { encrypt, decrypt, ENCRYPTION_KEY } = require('../security/encryption');
 const { log } = require('../config/logging');
 
 async function getOidcProviders() {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System-level operation
     try {
         const result = await client.query(
             `SELECT 
@@ -21,7 +21,7 @@ async function getOidcProviders() {
 }
 
 async function getOidcProviderById(id) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System-level operation
     try {
         const result = await client.query(
             `SELECT 
@@ -64,7 +64,7 @@ async function getOidcProviderById(id) {
 }
 
 async function createOidcProvider(providerData) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System-level operation
     try {
         let encryptedClientSecret = null;
         let clientSecretIv = null;
@@ -112,7 +112,7 @@ async function createOidcProvider(providerData) {
 }
 
 async function updateOidcProvider(id, providerData) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System-level operation
     try {
         const existingProvider = await getOidcProviderById(id);
         if (!existingProvider) {
@@ -167,7 +167,7 @@ async function updateOidcProvider(id, providerData) {
 }
 
 async function deleteOidcProvider(id) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System-level operation
     try {
         await client.query('DELETE FROM oidc_providers WHERE id = $1', [id]);
     } finally {

@@ -1,8 +1,8 @@
-const { getPool } = require('../db/poolManager');
+const { getSystemClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
 async function getGlobalSettings() {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System-level operation
     try {
         const result = await client.query('SELECT * FROM global_settings WHERE id = 1');
         return result.rows[0];
@@ -12,7 +12,7 @@ async function getGlobalSettings() {
 }
 
 async function saveGlobalSettings(settings) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System-level operation
     try {
         const result = await client.query(
             `UPDATE global_settings 

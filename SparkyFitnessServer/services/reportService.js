@@ -192,7 +192,7 @@ async function getNutritionTrendsWithGoals(authenticatedUserId, targetUserId, st
     const nutritionData = await reportRepository.getNutritionData(targetUserId, startDate, endDate);
 
     // Create a map for quick lookup of nutrition data by date
-    const nutritionMap = new Map(nutritionData.map(item => [item.date.toISOString().split('T')[0], item]));
+    const nutritionMap = new Map(nutritionData.map(item => [item.date, item]));
 
     const trendData = [];
     let currentDate = new Date(startDate);

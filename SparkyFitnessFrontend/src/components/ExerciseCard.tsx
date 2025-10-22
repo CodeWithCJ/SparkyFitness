@@ -45,7 +45,8 @@ import {
   updateExercise, // Import updateExercise
   Exercise,
 } from "@/services/exerciseService";
-import { WorkoutPresetSet, WorkoutPreset } from "@/types/workout";
+import { WorkoutPresetSet, WorkoutPreset, PresetExercise } from "@/types/workout"; // Import PresetExercise
+import { getExerciseById } from "@/services/exerciseService"; // Import getExerciseById
 
 // Extend Exercise with optional logging fields for pre-population
 export interface ExerciseToLog extends Exercise { // Export the interface
@@ -56,6 +57,14 @@ export interface ExerciseToLog extends Exercise { // Export the interface
   notes?: string;
   image_url?: string;
   exercise_name?: string; // Added to match PresetExercise
+}
+
+// New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
+interface PresetExerciseToLog extends Exercise {
+  sets: WorkoutPresetSet[];
+  reps: number;
+  weight: number;
+  exercise_name: string;
 }
 import ExerciseSearch from "./ExerciseSearch"; // New import for ExerciseSearch
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"; // New import for tabs
@@ -68,7 +77,7 @@ import LogExerciseEntryDialog from "./LogExerciseEntryDialog"; // Import LogExer
 interface ExerciseCardProps {
   selectedDate: string;
   onExerciseChange: () => void;
-  initialExercisesToLog?: ExerciseToLog[];
+  initialExercisesToLog?: PresetExercise[]; // Change type to PresetExercise[]
   onExercisesLogged: () => void; // New prop to signal that exercises have been logged
 }
 
@@ -177,24 +186,48 @@ const ExerciseCard = ({
 
   // Effect to handle initialExercisesToLog prop
   useEffect(() => {
-    if (initialExercisesToLog && initialExercisesToLog.length > 0) {
-      debug(loggingLevel, "ExerciseCard: Received initial exercises to log:", initialExercisesToLog);
-      // Map PresetExercise to ExerciseToLog, ensuring all fields are present
-      const mappedExercises: ExerciseToLog[] = initialExercisesToLog.map(presetEx => {
-        const { exercise_id, exercise_name, ...rest } = presetEx as any; // Use 'as any' to bypass strict type checking for this mapping
-        return {
-          id: exercise_id,
-          name: exercise_name || '',
-          category: '',
-          calories_per_hour: 0,
-          ...rest,
-        };
-      });
-      setExercisesToLogQueue(mappedExercises);
-      setCurrentExerciseToLog(mappedExercises[0]);
-      setIsLogExerciseDialogOpen(true);
-      setIsAddDialogOpen(false); // Close the add dialog if it's open
-    }
+    const processInitialExercises = async () => {
+      if (initialExercisesToLog && initialExercisesToLog.length > 0) {
+        debug(loggingLevel, "ExerciseCard: Received initial exercises to log:", initialExercisesToLog);
+
+        const fetchedExercises = await Promise.all(initialExercisesToLog.map(async (presetEx) => {
+          try {
+            const fullExercise = await getExerciseById(presetEx.exercise_id);
+            // Create WorkoutPresetSet array based on presetEx.sets, reps, and weight
+            const sets: WorkoutPresetSet[] = Array.from({ length: presetEx.sets }, (_, i) => ({
+              set_number: i + 1,
+              reps: presetEx.reps,
+              weight: presetEx.weight,
+              set_type: 'Working Set', // Default set type
+            }));
+
+            return {
+              ...fullExercise,
+              sets: sets,
+              reps: presetEx.reps,
+              weight: presetEx.weight,
+              exercise_name: presetEx.exercise_name,
+            } as PresetExerciseToLog; // Cast to the new interface
+          } catch (err) {
+            error(loggingLevel, `Failed to fetch full exercise details for ID ${presetEx.exercise_id}:`, err);
+            return null; // Return null for failed fetches
+          }
+        }));
+
+        const validExercisesToLog: PresetExerciseToLog[] = fetchedExercises.filter((ex): ex is PresetExerciseToLog => ex !== null);
+
+        if (validExercisesToLog.length > 0) {
+          setExercisesToLogQueue(validExercisesToLog);
+          setCurrentExerciseToLog(validExercisesToLog[0]);
+          setIsLogExerciseDialogOpen(true);
+          setIsAddDialogOpen(false); // Close the add dialog if it's open
+        } else {
+          warn(loggingLevel, "No valid exercises to log from initialExercisesToLog.");
+        }
+      }
+    };
+
+    processInitialExercises();
   }, [initialExercisesToLog, loggingLevel]);
 
   useEffect(() => {
@@ -277,8 +310,8 @@ const ExerciseCard = ({
   const handleExerciseSelect = (exercise: Exercise, sourceMode: 'internal' | 'external' | 'custom' | 'preset') => {
     debug(loggingLevel, `Exercise selected in search from ${sourceMode}:`, exercise.id);
     // When selecting from search, it's a single exercise, so clear queue and set current
-    setExercisesToLogQueue([{ ...exercise, duration: 0 }]); // Create a new ExerciseToLog from Exercise, add default duration
-    setCurrentExerciseToLog({ ...exercise, duration: 0 });
+    setExercisesToLogQueue([{ ...exercise, duration: 0, sets: [], reps: 0, weight: 0 }]); // Create a new ExerciseToLog from Exercise, add default duration and empty sets
+    setCurrentExerciseToLog({ ...exercise, duration: 0, sets: [], reps: 0, weight: 0 });
     setIsLogExerciseDialogOpen(true);
     setIsAddDialogOpen(false);
   };
@@ -332,8 +365,8 @@ const ExerciseCard = ({
         description: "Exercise added successfully",
       });
       // When adding custom, it's a single exercise, so clear queue and set current
-      setExercisesToLogQueue([{ ...createdExercise, duration: 0 }]); // Add default duration
-      setCurrentExerciseToLog({ ...createdExercise, duration: 0 });
+      setExercisesToLogQueue([{ ...createdExercise, duration: 0, sets: [], reps: 0, weight: 0 }]); // Add default duration and empty sets
+      setCurrentExerciseToLog({ ...createdExercise, duration: 0, sets: [], reps: 0, weight: 0 });
       setIsLogExerciseDialogOpen(true);
       setIsAddDialogOpen(false);
       setNewExerciseName("");

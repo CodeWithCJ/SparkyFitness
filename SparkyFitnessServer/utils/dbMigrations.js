@@ -1,13 +1,25 @@
 const path = require('path');
 const fs = require('fs');
-const { getPool } = require('../db/poolManager');
+const { getSystemClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
 const migrationsDir = path.join(__dirname, '../db/migrations');
 
 async function applyMigrations() {
-  const client = await getPool().connect();
+  const client = await getSystemClient();
   try {
+    // Ensure the sparky_app role exists
+    const appUser = process.env.SPARKY_FITNESS_APP_DB_USER;
+    const appPassword = process.env.SPARKY_FITNESS_APP_DB_PASSWORD;
+    const roleExistsResult = await client.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [appUser]);
+    if (roleExistsResult.rowCount === 0) {
+      log('info', `Creating role: ${appUser}`);
+      await client.query(`CREATE ROLE ${appUser} WITH LOGIN PASSWORD '${appPassword}'`);
+      log('info', `Successfully created role: ${appUser}`);
+    } else {
+      log('info', `Role ${appUser} already exists.`);
+    }
+
     // Ensure the schema_migrations table exists
     await client.query(`
       CREATE SCHEMA IF NOT EXISTS system;

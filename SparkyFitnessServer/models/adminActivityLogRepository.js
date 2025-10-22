@@ -1,7 +1,7 @@
-const { getPool } = require('../db/poolManager');
+const { getSystemClient } = require('../db/poolManager');
 
 async function createAdminActivityLog(adminUserId, targetUserId, actionType, details) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System-level operation
   try {
     const result = await client.query(
       `INSERT INTO admin_activity_logs (admin_user_id, target_user_id, action_type, details, created_at)

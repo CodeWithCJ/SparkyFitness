@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { log } = require('../config/logging');
 const { performBackup, performRestore, applyRetentionPolicy, ensureBackupDirectory, BACKUP_DIR } = require('../services/backupService');
-const { authenticateToken, isAdmin } = require('../middleware/authMiddleware');
+const { authenticate, isAdmin } = require('../middleware/authMiddleware');
 const backupSettingsRepository = require('../models/backupSettingsRepository');
 const multer = require('multer');
 const path = require('path');
@@ -28,7 +28,7 @@ async function ensureTempUploadDirectory() {
 ensureTempUploadDirectory(); // Call once on startup
 
 // Endpoint to trigger a manual backup
-router.post('/manual', authenticateToken, isAdmin, async (req, res) => {
+router.post('/manual', authenticate, isAdmin, async (req, res) => {
   log('info', 'Manual backup initiated by admin.');
   try {
     const result = await performBackup();
@@ -46,7 +46,7 @@ router.post('/manual', authenticateToken, isAdmin, async (req, res) => {
 });
 
 // Endpoint to upload and restore a backup
-router.post('/restore', authenticateToken, isAdmin, upload.single('backupFile'), async (req, res) => {
+router.post('/restore', authenticate, isAdmin, upload.single('backupFile'), async (req, res) => {
   log('info', 'Restore initiated by admin.');
   if (!req.file) {
     return res.status(400).json({ message: 'No backup file uploaded.' });
@@ -84,7 +84,7 @@ router.post('/restore', authenticateToken, isAdmin, upload.single('backupFile'),
 });
 
 // Endpoint to get backup settings (placeholder for now)
-router.get('/settings', authenticateToken, isAdmin, async (req, res) => {
+router.get('/settings', authenticate, isAdmin, async (req, res) => {
   try {
     const backupSettings = await backupSettingsRepository.getBackupSettings();
 
@@ -103,7 +103,7 @@ router.get('/settings', authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
-router.post('/settings', authenticateToken, isAdmin, async (req, res) => {
+router.post('/settings', authenticate, isAdmin, async (req, res) => {
   try {
     const { backupEnabled, backupDays, backupTime, retentionDays } = req.body;
 

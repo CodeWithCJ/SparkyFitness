@@ -1,4 +1,6 @@
 
+import { Food, FoodVariant, FoodEntry } from '@/types/food'; // Import from central types file
+
 // Utility functions for nutrition calculations
 
 export const convertStepsToCalories = (steps: number, weightKg: number = 70): number => {
@@ -39,47 +41,43 @@ export const roundNutritionValue = (value: number): number => {
   return Math.round(value);
 };
 
-import { Food, FoodVariant, FoodEntry } from '@/types/food'; // Import from central types file
-
 export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
-  const variant = entry.food_variants;
+  // Prefer snapshotted data if available, otherwise calculate from variant/food
+  const source = entry.calories ? entry : entry.food_variants || entry.foods?.default_variant;
 
-  if (!variant) {
-    // This should ideally not happen if food_variants is always populated
-    // but as a fallback, return zero nutrition.
+  if (!source) {
+    // Return zero for all nutrients if no source is found
     return {
-      calories: 0, protein: 0, carbs: 0, fat: 0,
-      saturated_fat: 0, polyunsaturated_fat: 0, monounsaturated_fat: 0, trans_fat: 0,
-      cholesterol: 0, sodium: 0, potassium: 0, dietary_fiber: 0, sugars: 0,
-      vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0,
-      water_ml: 0,
+      calories: 0, protein: 0, carbs: 0, fat: 0, saturated_fat: 0,
+      polyunsaturated_fat: 0, monounsaturated_fat: 0, trans_fat: 0,
+      cholesterol: 0, sodium: 0, potassium: 0, dietary_fiber: 0,
+      sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0,
+      glycemic_index: 'None', water_ml: 0
     };
   }
 
-  // Add a debug log to check the glycemic_index of the variant
-  //console.debug("calculateFoodEntryNutrition: variant glycemic_index:", variant.glycemic_index);
-
-  // All nutrient values are now sourced directly from the food_variants object
   const nutrientValuesPerReferenceSize = {
-    calories: isNaN(variant.calories) ? 0 : variant.calories || 0,
-    protein: isNaN(variant.protein) ? 0 : variant.protein || 0,
-    carbs: isNaN(variant.carbs) ? 0 : variant.carbs || 0,
-    fat: isNaN(variant.fat) ? 0 : variant.fat || 0,
-    saturated_fat: isNaN(variant.saturated_fat) ? 0 : variant.saturated_fat || 0,
-    polyunsaturated_fat: isNaN(variant.polyunsaturated_fat) ? 0 : variant.polyunsaturated_fat || 0,
-    monounsaturated_fat: isNaN(variant.monounsaturated_fat) ? 0 : variant.monounsaturated_fat || 0,
-    trans_fat: isNaN(variant.trans_fat) ? 0 : variant.trans_fat || 0,
-    cholesterol: isNaN(variant.cholesterol) ? 0 : variant.cholesterol || 0,
-    sodium: isNaN(variant.sodium) ? 0 : variant.sodium || 0,
-    potassium: isNaN(variant.potassium) ? 0 : variant.potassium || 0,
-    dietary_fiber: isNaN(variant.dietary_fiber) ? 0 : variant.dietary_fiber || 0,
-    sugars: isNaN(variant.sugars) ? 0 : variant.sugars || 0,
-    vitamin_a: isNaN(variant.vitamin_a) ? 0 : variant.vitamin_a || 0,
-    vitamin_c: isNaN(variant.vitamin_c) ? 0 : variant.vitamin_c || 0,
-    calcium: isNaN(variant.calcium) ? 0 : variant.calcium || 0,
-    iron: isNaN(variant.iron) ? 0 : variant.iron || 0,
+    calories: Number(source.calories) || 0,
+    protein: Number(source.protein) || 0,
+    carbs: Number(source.carbs) || 0,
+    fat: Number(source.fat) || 0,
+    saturated_fat: Number(source.saturated_fat) || 0,
+    polyunsaturated_fat: Number(source.polyunsaturated_fat) || 0,
+    monounsaturated_fat: Number(source.monounsaturated_fat) || 0,
+    trans_fat: Number(source.trans_fat) || 0,
+    cholesterol: Number(source.cholesterol) || 0,
+    sodium: Number(source.sodium) || 0,
+    potassium: Number(source.potassium) || 0,
+    dietary_fiber: Number(source.dietary_fiber) || 0,
+    sugars: Number(source.sugars) || 0,
+    vitamin_a: Number(source.vitamin_a) || 0,
+    vitamin_c: Number(source.vitamin_c) || 0,
+    calcium: Number(source.calcium) || 0,
+    iron: Number(source.iron) || 0,
+    glycemic_index: source.glycemic_index,
   };
-  const effectiveReferenceSize = variant.serving_size || 100;
+
+  const effectiveReferenceSize = Number(source.serving_size) || 100;
 
   // Calculate total nutrition: (nutrient_value_per_reference_size / effective_reference_size) * quantity_consumed
   return {
@@ -100,6 +98,7 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     vitamin_c: (nutrientValuesPerReferenceSize.vitamin_c / effectiveReferenceSize) * entry.quantity,
     calcium: (nutrientValuesPerReferenceSize.calcium / effectiveReferenceSize) * entry.quantity,
     iron: (nutrientValuesPerReferenceSize.iron / effectiveReferenceSize) * entry.quantity,
+    glycemic_index: nutrientValuesPerReferenceSize.glycemic_index, // Pass through glycemic_index
     water_ml: (entry.unit === 'ml' || entry.unit === 'liter' || entry.unit === 'oz') ? entry.quantity : 0, // Assuming water is tracked in ml, liter, or oz
   };
 };

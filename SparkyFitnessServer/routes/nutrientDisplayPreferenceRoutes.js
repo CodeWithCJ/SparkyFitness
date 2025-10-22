@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const nutrientDisplayPreferenceService = require('../services/nutrientDisplayPreferenceService');
-const { authenticateToken } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 
 // Get all nutrient display preferences for the logged-in user
-router.get('/', authenticateToken, async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
     try {
         const preferences = await nutrientDisplayPreferenceService.getNutrientDisplayPreferences(req.userId);
         res.json(preferences);
@@ -14,7 +14,7 @@ router.get('/', authenticateToken, async (req, res, next) => {
 });
 
 // Upsert a nutrient display preference
-router.put('/:viewGroup/:platform', authenticateToken, async (req, res, next) => {
+router.put('/:viewGroup/:platform', authenticate, async (req, res, next) => {
     try {
         const { viewGroup, platform } = req.params;
         const { visible_nutrients } = req.body;
@@ -26,7 +26,7 @@ router.put('/:viewGroup/:platform', authenticateToken, async (req, res, next) =>
 });
 
 // Reset a nutrient display preference to default
-router.delete('/:viewGroup/:platform', authenticateToken, async (req, res, next) => {
+router.delete('/:viewGroup/:platform', authenticate, async (req, res, next) => {
     try {
         const { viewGroup, platform } = req.params;
         const defaultPreference = await nutrientDisplayPreferenceService.resetNutrientDisplayPreference(req.userId, viewGroup, platform);

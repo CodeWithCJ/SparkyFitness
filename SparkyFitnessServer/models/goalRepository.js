@@ -1,8 +1,8 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
 async function getGoalByDate(userId, selectedDate) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT calories, protein, carbs, fat, water_goal_ml,
@@ -13,10 +13,10 @@ async function getGoalByDate(userId, selectedDate) {
                protein_percentage, carbs_percentage, fat_percentage,
                breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage
         FROM user_goals
-        WHERE user_id = $1 AND goal_date = $2
+        WHERE goal_date = $1
         ORDER BY updated_at DESC, created_at DESC -- Prioritize most recently updated/created
         LIMIT 1`,
-      [userId, selectedDate]
+      [selectedDate]
     );
     return result.rows[0];
   } finally {
@@ -25,7 +25,7 @@ async function getGoalByDate(userId, selectedDate) {
 }
 
 async function getMostRecentGoalBeforeDate(userId, selectedDate) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT calories, protein, carbs, fat, water_goal_ml,
@@ -36,11 +36,10 @@ async function getMostRecentGoalBeforeDate(userId, selectedDate) {
                protein_percentage, carbs_percentage, fat_percentage,
                breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage
        FROM user_goals
-       WHERE user_id = $1
-         AND (goal_date < $2 OR goal_date IS NULL)
+       WHERE (goal_date < $1 OR goal_date IS NULL)
        ORDER BY goal_date DESC NULLS LAST
        LIMIT 1`,
-      [userId, selectedDate]
+      [selectedDate]
     );
     return result.rows[0];
   } finally {
@@ -49,7 +48,7 @@ async function getMostRecentGoalBeforeDate(userId, selectedDate) {
 }
 
 async function upsertGoal(goalData) {
-  const client = await getPool().connect();
+  const client = await getClient(goalData.user_id); // User-specific operation
   try {
     const result = await client.query(
       `INSERT INTO user_goals (
@@ -113,15 +112,14 @@ async function upsertGoal(goalData) {
 }
 
 async function deleteGoalsInRange(userId, startDate, endDate) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
       `DELETE FROM user_goals
-       WHERE user_id = $1
-         AND goal_date >= $2
-         AND goal_date < $3
+       WHERE goal_date >= $1
+         AND goal_date < $2
          AND goal_date IS NOT NULL`,
-      [userId, startDate, endDate]
+      [startDate, endDate]
     );
     return true;
   } finally {
@@ -130,12 +128,12 @@ async function deleteGoalsInRange(userId, startDate, endDate) {
 }
 
 async function deleteDefaultGoal(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
       `DELETE FROM user_goals
-       WHERE user_id = $1 AND goal_date IS NULL`,
-      [userId]
+       WHERE goal_date IS NULL`,
+      []
     );
     return true;
   } finally {

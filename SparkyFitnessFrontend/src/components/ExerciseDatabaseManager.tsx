@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AddExerciseDialog from "./AddExerciseDialog";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, Share2, Lock, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
@@ -23,6 +24,8 @@ import {
   updateExerciseShareStatus,
   getExerciseDeletionImpact,
   ExerciseDeletionImpact,
+  updateExerciseEntriesSnapshot,
+  ExerciseOwnershipFilter,
 } from '@/services/exerciseService';
 import { Exercise as ExerciseInterface } from '@/services/exerciseSearchService';
 import WorkoutPresetsManager from './WorkoutPresetsManager'; // Import the new component
@@ -41,7 +44,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
   const [totalExercisesCount, setTotalExercisesCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [ownershipFilter, setOwnershipFilter] = useState("all");
+  const [ownershipFilter, setOwnershipFilter] = useState<ExerciseOwnershipFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
@@ -65,7 +68,9 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deletionImpact, setDeletionImpact] = useState<ExerciseDeletionImpact | null>(null);
   const [exerciseToDelete, setExerciseToDelete] = useState<ExerciseInterface | null>(null);
-
+  const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
+  const [syncExerciseId, setSyncExerciseId] = useState<string | null>(null);
+ 
   useEffect(() => {
     if (user?.id) {
       loadExercisesData();
@@ -136,7 +141,12 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
         title: "Success",
         description: "Exercise edited successfully",
       });
-      loadExercisesData();
+      if (user?.id === selectedExercise.user_id) {
+        setSyncExerciseId(selectedExercise.id);
+        setShowSyncConfirmation(true);
+      } else {
+        loadExercisesData();
+      }
       setIsEditDialogOpen(false);
       setSelectedExercise(null);
       setNewExerciseImageFiles([]);
@@ -209,6 +219,64 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
     }
   };
 
+  const handleSyncConfirmation = async () => {
+    if (syncExerciseId) {
+      try {
+        await updateExerciseEntriesSnapshot(syncExerciseId);
+        toast({
+          title: "Success",
+          description: "Past diary entries have been updated.",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update past diary entries.",
+          variant: "destructive",
+        });
+      }
+    }
+    setShowSyncConfirmation(false);
+    loadExercisesData();
+  };
+ 
+  const getExerciseSourceBadge = (exercise: ExerciseInterface, currentUserId: string | undefined) => {
+    if (!exercise.user_id) {
+      return (
+        <Badge variant="outline" className="text-xs w-fit">
+          System
+        </Badge>
+      );
+    }
+
+    if (exercise.user_id === currentUserId) {
+      return (
+        <Badge variant="secondary" className="text-xs w-fit">
+          Private
+        </Badge>
+      );
+    }
+
+    if (exercise.shared_with_public) {
+      return (
+        <Badge
+          variant="outline"
+          className="text-xs w-fit bg-green-50 text-green-700"
+        >
+          Public
+        </Badge>
+      );
+    }
+
+    return (
+      <Badge
+        variant="outline"
+        className="text-xs w-fit bg-blue-50 text-blue-700"
+      >
+        Family
+      </Badge>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Exercises Section */}
@@ -241,7 +309,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Select onValueChange={setOwnershipFilter} defaultValue={ownershipFilter}>
+              <Select onValueChange={(value) => setOwnershipFilter(value as ExerciseOwnershipFilter)} defaultValue={ownershipFilter}>
                 <SelectTrigger className="w-32">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
@@ -250,6 +318,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                   <SelectItem value="own">My Own</SelectItem>
                   <SelectItem value="family">Family</SelectItem>
                   <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="needs-review">Needs Review</SelectItem>
                 </SelectContent>
               </Select>
               <Button className="bg-slate-900 hover:bg-slate-800 text-white" onClick={() => setIsAddExerciseDialogOpen(true)}>
@@ -283,26 +352,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-medium">{exercise.name}</h4>
-                    {exercise.source === 'wger' && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
-                        Wger
-                      </span>
-                    )}
-                    {exercise.source === 'free-exercise-db' && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">
-                        Free Exercise DB
-                      </span>
-                    )}
-                    {exercise.source === 'nutritionix' && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
-                        Nutritionix
-                      </span>
-                    )}
-                    {exercise.is_custom && !exercise.source && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
-                        Custom
-                      </span>
-                    )}
+                    {getExerciseSourceBadge(exercise, user?.id)}
                   </div>
                   <div className="text-sm text-gray-600 mb-1">
                     {exercise.category}
@@ -450,7 +500,17 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
               title: "Preset Loaded",
               description: `Workout preset "${preset.name}" loaded to diary.`,
             });
-            onPresetExercisesSelected(preset.exercises);
+            if (preset.exercises) {
+              onPresetExercisesSelected(preset.exercises.map(e => ({
+                id: e.id || '',
+                exercise_id: e.exercise_id,
+                sets: e.sets.length,
+                reps: e.sets[0]?.reps || 0,
+                weight: e.sets[0]?.weight || 0,
+                exercise_name: e.exercise_name,
+                image_url: e.image_url,
+              })));
+            }
           }} />
         </CardContent>
       </Card>
@@ -757,6 +817,21 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
               </ul>
             </div>
           }
+          warning={
+            deletionImpact.isUsedByOthers
+              ? "This exercise is used in workouts or diaries by other users. Deleting it will affect their data."
+              : undefined
+          }
+          variant={deletionImpact.isUsedByOthers ? "destructive" : "default"}
+        />
+      )}
+      {showSyncConfirmation && (
+        <ConfirmationDialog
+          open={showSyncConfirmation}
+          onOpenChange={setShowSyncConfirmation}
+          onConfirm={handleSyncConfirmation}
+          title="Sync Past Entries?"
+          description="Do you want to update all your past diary entries for this exercise with the new information?"
         />
       )}
     </div>

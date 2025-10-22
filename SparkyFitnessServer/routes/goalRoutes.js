@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const goalService = require('../services/goalService');
 
-router.get('/', authenticateToken, authorizeAccess('goals', (req) => req.userId), async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   const { selectedDate } = req.query;
  
   if (!selectedDate) {
@@ -21,7 +21,7 @@ router.get('/', authenticateToken, authorizeAccess('goals', (req) => req.userId)
   }
 });
 
-router.get('/for-date', authenticateToken, authorizeAccess('goals', (req) => req.userId), async (req, res, next) => {
+router.get('/for-date', authenticate, async (req, res, next) => {
   const { date } = req.query;
  
   if (!date) {
@@ -39,7 +39,7 @@ router.get('/for-date', authenticateToken, authorizeAccess('goals', (req) => req
   }
 });
 
-router.post('/manage-timeline', authenticateToken, authorizeAccess('goals'), async (req, res, next) => {
+router.post('/manage-timeline', authenticate, async (req, res, next) => {
   const authenticatedUserId = req.userId;
   const goalData = req.body;
 
