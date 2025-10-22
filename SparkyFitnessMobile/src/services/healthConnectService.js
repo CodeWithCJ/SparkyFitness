@@ -554,10 +554,57 @@ export const transformHealthRecords = (records, metricConfig) => {
             }
             break;
 
-          case 'BloodGlucose':
-            if (record.time && record.bloodGlucose?.inMillimolesPerLiter) {
-              value = record.bloodGlucose.inMillimolesPerLiter;
-              recordDate = record.time.split('T')[0];
+           case 'BloodGlucose':
+            if (index === 0) {
+              console.log('[Transform BloodGlucose] Sample record:', JSON.stringify(record));
+              addLog(`[Transform] BloodGlucose sample keys: ${Object.keys(record).join(', ')}`, 'debug');
+            }
+            
+            let glucoseValue = null;
+            
+            // Try multiple field access patterns
+            if (record.level?.inMillimolesPerLiter != null) {
+              glucoseValue = record.level.inMillimolesPerLiter;
+            } else if (record.bloodGlucose?.inMillimolesPerLiter != null) {
+              glucoseValue = record.bloodGlucose.inMillimolesPerLiter;
+            } else if (record.level?.inMilligramsPerDeciliter != null) {
+              // Convert mg/dL to mmol/L (divide by 18.018)
+              glucoseValue = record.level.inMilligramsPerDeciliter / 18.018;
+            } else if (record.bloodGlucose?.inMilligramsPerDeciliter != null) {
+              glucoseValue = record.bloodGlucose.inMilligramsPerDeciliter / 18.018;
+            } else if (typeof record.level === 'number') {
+              glucoseValue = record.level;
+            } else if (typeof record.value === 'number') {
+              glucoseValue = record.value;
+            }
+            
+            const glucoseDate = record.time || record.startTime || record.timestamp || record.date;
+            let glucoseDateStr = null;
+            
+            if (glucoseDate) {
+              try {
+                glucoseDateStr = typeof glucoseDate === 'string' ? glucoseDate.split('T')[0] : glucoseDate;
+              } catch (e) {
+                addLog(`[Transform] Error parsing BloodGlucose date: ${e.message}`, 'warn', 'WARNING');
+              }
+            }
+            
+            const isValidGlucose = glucoseValue != null && !isNaN(glucoseValue) && glucoseValue > 0;
+            const isValidGlucoseDate = glucoseDateStr != null && glucoseDateStr.length > 0;
+            
+            if (isValidGlucose && isValidGlucoseDate) {
+              value = glucoseValue;
+              recordDate = glucoseDateStr;
+              if (index === 0) {
+                addLog(`[Transform] BloodGlucose SUCCESS: ${value} mmol/L on ${recordDate}`, 'info', 'SUCCESS');
+              }
+            } else {
+              if (index === 0) {
+                const issues = [];
+                if (!isValidGlucose) issues.push(`invalid value (${glucoseValue})`);
+                if (!isValidGlucoseDate) issues.push(`invalid date (${glucoseDateStr})`);
+                addLog(`[Transform] BloodGlucose FAILED: ${issues.join(', ')}`, 'warn', 'WARNING');
+              }
             }
             break;
 
