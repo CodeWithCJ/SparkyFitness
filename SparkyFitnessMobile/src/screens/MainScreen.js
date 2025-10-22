@@ -603,7 +603,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
           case 'Nutrition':
             const totalNutrition = records.reduce((sum, record) => 
               sum + (record.energy?.inCalories || 0), 0);
-            displayValue = `${Math.round(totalNutrition)} kcal`;
+            displayValue = `${Math.round(totalNutrition / 1000)} kcal`;
             break;
 
           default:
