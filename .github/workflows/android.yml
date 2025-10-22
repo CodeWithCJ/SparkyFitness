@@ -1,0 +1,107 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install npm dependencies
+      run: |
+        cd SparkyFitnessMobile
+        npm install
+        
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-Wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+        
+    - name: Make gradlew executable
+      run: chmod +x SparkyFitnessMobile/android/gradlew
+    
+    - name: Create local.properties
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > SparkyFitnessMobile/android/local.properties
+        
+    - name: Decode and setup keystore
+      if: github.event_name != 'pull_request'
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore
+        echo "Keystore created at: $(pwd)/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore"
+        ls -la SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore
+        
+    - name: Run Gradle to generate codegen (will fail but generates files)
+      run: |
+        cd SparkyFitnessMobile/android
+        ./gradlew :app:assembleDebug || true
+        
+    - name: Verify codegen was generated
+      run: |
+        if [ -d "SparkyFitnessMobile/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/" ]; then
+          echo "✅ Codegen directory exists"
+          ls -la SparkyFitnessMobile/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/
+        else
+          echo "❌ Codegen directory NOT found"
+        fi
+        
+    - name: Build Release APK
+      if: github.event_name != 'pull_request'
+      run: |
+        cd SparkyFitnessMobile/android
+        ./gradlew :app:assembleRelease \
+          -PMYAPP_RELEASE_STORE_FILE=${{ github.workspace }}/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore \
+          -PMYAPP_RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }} \
+          -PMYAPP_RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }} \
+          -PMYAPP_RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }} \
+          --stacktrace
+        
+    - name: Get APK path
+      if: github.event_name != 'pull_request'
+      id: apk
+      run: |
+        APK_PATH=$(find SparkyFitnessMobile/android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+        echo "path=$APK_PATH" >> $GITHUB_OUTPUT
+        echo "name=$(basename $APK_PATH)" >> $GITHUB_OUTPUT
+        
+    - name: Get version from package.json
+      if: github.event_name != 'pull_request'
+      id: version
+      run: |
+        VERSION=$(node -p "require('./SparkyFitnessMobile/package.json').version")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ steps.apk.outputs.path }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
