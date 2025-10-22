@@ -17,8 +17,8 @@ export const loadFoodEntries = async (userId: string, selectedDate: string): Pro
   if (data) {
     data.forEach((entry: any) => {
       console.debug("foodDiaryService: Raw API data for food entry:", {
-        foodName: entry.foods.name,
-        glycemicIndex: entry.food_variants?.glycemic_index,
+        foodName: entry.food_name,
+        glycemicIndex: entry.glycemic_index,
       });
     });
   }

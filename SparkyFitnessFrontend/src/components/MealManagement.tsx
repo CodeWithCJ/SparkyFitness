@@ -15,13 +15,14 @@ import {
 } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Filter } from 'lucide-react';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 import { debug, info, warn, error } from '@/utils/logging';
 import { Meal, MealFood } from '@/types/meal';
-import { getMeals, deleteMeal, getMealById } from '@/services/mealService';
+import { getMeals, deleteMeal, getMealById, MealFilter } from '@/services/mealService';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MealBuilder from './MealBuilder';
 
 // This component is now a standalone library for managing meal templates.
@@ -31,6 +32,7 @@ const MealManagement: React.FC = () => {
   const { loggingLevel } = usePreferences();
   const [meals, setMeals] = useState<Meal[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState<MealFilter>('all');
   const [editingMealId, setEditingMealId] = useState<string | undefined>(undefined);
   const [showMealBuilderDialog, setShowMealBuilderDialog] = useState(false);
   const [viewingMeal, setViewingMeal] = useState<Meal & { foods?: MealFood[] } | null>(null);
@@ -38,7 +40,7 @@ const MealManagement: React.FC = () => {
   const fetchMeals = useCallback(async () => {
     if (!activeUserId) return;
     try {
-      const fetchedMeals = await getMeals(activeUserId);
+      const fetchedMeals = await getMeals(activeUserId, filter);
       setMeals(fetchedMeals || []); // Ensure it's always an array
     } catch (err) {
       error(loggingLevel, 'Failed to fetch meals:', err);
@@ -48,7 +50,7 @@ const MealManagement: React.FC = () => {
         variant: 'destructive',
       });
     }
-  }, [activeUserId, loggingLevel]);
+  }, [activeUserId, loggingLevel, filter]);
 
   useEffect(() => {
     fetchMeals();
@@ -126,13 +128,28 @@ const MealManagement: React.FC = () => {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
+          <div className="flex flex-wrap gap-4 mb-4">
             <Input
               placeholder="Search meals..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full"
+              className="flex-1 min-w-[200px]"
             />
+            <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <Select value={filter} onValueChange={(value: MealFilter) => setFilter(value)}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="mine">My Meals</SelectItem>
+                    <SelectItem value="family">Family</SelectItem>
+                    <SelectItem value="public">Public</SelectItem>
+                    <SelectItem value="needs-review">Needs Review</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
           </div>
 
           {filteredMeals.length === 0 ? (
@@ -217,7 +234,7 @@ const MealManagement: React.FC = () => {
               <ul className="list-disc pl-5 space-y-1">
                 {viewingMeal.foods.map((food, index) => (
                   <li key={index}>
-                    {food.quantity} {food.unit} - {food.name}
+                    {food.quantity} {food.unit} - {food.food_name}
                   </li>
                 ))}
               </ul>

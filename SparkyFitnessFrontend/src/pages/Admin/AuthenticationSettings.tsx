@@ -33,9 +33,9 @@ const AuthenticationSettings: React.FC = () => {
 
     try {
       await globalSettingsService.saveSettings(newSettings);
-      toast({ title: "Settings Saved", description: `Global setting ${id} has been updated.` });
+      toast({ title: "Settings Saved", description: "Login setting has been updated." });
     } catch (error) {
-      toast({ title: "Error", description: "Failed to save settings. Reverting.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to save login settings. Reverting.", variant: "destructive" });
       setSettings(settings); // Revert optimistic update on failure
     }
   };

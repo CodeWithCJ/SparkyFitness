@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const waterContainerService = require('../services/waterContainerService');
 
 // Create a new water container
-router.post('/', authenticateToken, authorizeAccess('water_containers'), async (req, res, next) => {
+router.post('/', authenticate, async (req, res, next) => {
     try {
         const container = await waterContainerService.createWaterContainer(req.userId, req.body);
         res.status(201).json(container);
@@ -14,7 +14,7 @@ router.post('/', authenticateToken, authorizeAccess('water_containers'), async (
 });
 
 // Get all water containers for the logged-in user
-router.get('/', authenticateToken, authorizeAccess('water_containers'), async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
     try {
         const containers = await waterContainerService.getWaterContainersByUserId(req.userId);
         res.status(200).json(containers);
@@ -24,7 +24,7 @@ router.get('/', authenticateToken, authorizeAccess('water_containers'), async (r
 });
 
 // Update a water container
-router.put('/:id', authenticateToken, authorizeAccess('water_containers'), async (req, res, next) => {
+router.put('/:id', authenticate, async (req, res, next) => {
     try {
         const container = await waterContainerService.updateWaterContainer(req.params.id, req.userId, req.body);
         if (!container) {
@@ -37,7 +37,7 @@ router.put('/:id', authenticateToken, authorizeAccess('water_containers'), async
 });
 
 // Delete a water container
-router.delete('/:id', authenticateToken, authorizeAccess('water_containers'), async (req, res, next) => {
+router.delete('/:id', authenticate, async (req, res, next) => {
     try {
         const result = await waterContainerService.deleteWaterContainer(req.params.id, req.userId);
         res.status(200).json(result);
@@ -50,7 +50,7 @@ router.delete('/:id', authenticateToken, authorizeAccess('water_containers'), as
 });
 
 // Set a container as the primary one for quick logging
-router.put('/:id/set-primary', authenticateToken, authorizeAccess('water_containers'), async (req, res, next) => {
+router.put('/:id/set-primary', authenticate, async (req, res, next) => {
     try {
         const container = await waterContainerService.setPrimaryWaterContainer(req.params.id, req.userId);
         if (!container) {
@@ -63,7 +63,7 @@ router.put('/:id/set-primary', authenticateToken, authorizeAccess('water_contain
 });
 
 // Get the primary water container for the logged-in user
-router.get('/primary', authenticateToken, authorizeAccess('water_containers'), async (req, res, next) => {
+router.get('/primary', authenticate, async (req, res, next) => {
     try {
         const primaryContainer = await waterContainerService.getPrimaryWaterContainerByUserId(req.userId);
         if (primaryContainer) {

@@ -1,8 +1,8 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 
 async function createWaterContainer(userId, containerData) {
   const { name, volume, unit, is_primary, servings_per_container } = containerData;
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `INSERT INTO user_water_containers (user_id, name, volume, unit, is_primary, servings_per_container)
@@ -16,7 +16,7 @@ async function createWaterContainer(userId, containerData) {
 }
 
 async function getWaterContainersByUserId(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       'SELECT * FROM user_water_containers WHERE user_id = $1 ORDER BY created_at',
@@ -30,7 +30,7 @@ async function getWaterContainersByUserId(userId) {
 
 async function updateWaterContainer(id, userId, updateData) {
   const { name, volume, unit, is_primary, servings_per_container } = updateData;
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `UPDATE user_water_containers SET
@@ -51,7 +51,7 @@ async function updateWaterContainer(id, userId, updateData) {
 }
 
 async function deleteWaterContainer(id, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       'DELETE FROM user_water_containers WHERE id = $1 AND user_id = $2 RETURNING id',
@@ -64,7 +64,7 @@ async function deleteWaterContainer(id, userId) {
 }
 
 async function setPrimaryWaterContainer(id, userId) {
-    const client = await getPool().connect();
+    const client = await getClient(userId); // User-specific operation
     try {
         await client.query('BEGIN');
         // First, set all containers for this user to not be primary
@@ -88,7 +88,7 @@ async function setPrimaryWaterContainer(id, userId) {
 }
 
 async function getPrimaryWaterContainerByUserId(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       'SELECT * FROM user_water_containers WHERE user_id = $1 AND is_primary = TRUE',
@@ -101,7 +101,7 @@ async function getPrimaryWaterContainerByUserId(userId) {
 }
  
 async function getWaterContainerById(id) {
-  const client = await getPool().connect();
+  const client = await getClient(id); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'SELECT * FROM user_water_containers WHERE id = $1',

@@ -19,6 +19,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import ProfileSwitcher from "@/components/ProfileSwitcher";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
+import GlobalNotificationIcon from "@/components/GlobalNotificationIcon";
 import {
   Home,
   Activity, // Used for Check-In
@@ -403,6 +404,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
               Welcome {isActingOnBehalf ? activeUserName : displayName}
             </span>
 
+            <GlobalNotificationIcon />
             <ThemeToggle />
             <Button
               variant="outline"

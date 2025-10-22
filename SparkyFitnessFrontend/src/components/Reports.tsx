@@ -663,7 +663,6 @@ const Reports = () => {
                   {customCategories.filter(c => c.data_type === 'numeric').map((category) => {
                     const data = customMeasurementsData[category.id] || [];
                     const chartData = formatCustomChartData(category, data);
-                    console.log("chartData", chartData);
                     
                     return (
                       <ZoomableChart key={category.id} title={`${category.name} (${category.measurement_type})`}>

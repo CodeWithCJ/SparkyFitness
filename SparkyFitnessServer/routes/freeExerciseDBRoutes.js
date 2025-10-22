@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/authMiddleware'); // Import authenticateToken
+const { authenticate } = require('../middleware/authMiddleware'); // Import authenticate
 const FreeExerciseDBService = require('../integrations/freeexercisedb/FreeExerciseDBService');
 const exerciseService = require('../services/exerciseService'); // Import exerciseService
 
@@ -35,7 +35,7 @@ router.get('/search', async (req, res) => {
  * @param {string} exerciseId - The ID of the free-exercise-db exercise to add.
  * @returns {object} The newly created exercise in the user's database.
  */
-router.post('/add', authenticateToken, async (req, res, next) => {
+router.post('/add', authenticate, async (req, res, next) => {
     try {
         const { exerciseId } = req.body;
         if (!exerciseId) {

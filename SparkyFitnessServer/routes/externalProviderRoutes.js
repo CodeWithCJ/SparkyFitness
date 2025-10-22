@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const externalProviderService = require('../services/externalProviderService');
 const { log } = require('../config/logging');
 
 router.use(express.json());
 
 // Get all external data providers for the authenticated user
-router.get('/', authenticateToken, async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   try {
     const providers = await externalProviderService.getExternalDataProviders(req.userId);
     res.status(200).json(providers);
@@ -17,7 +17,7 @@ router.get('/', authenticateToken, async (req, res, next) => {
 });
 
 // Get external data providers for a specific user (with authorization)
-router.get('/user/:targetUserId', authenticateToken, authorizeAccess('food_list', (req) => req.params.targetUserId), async (req, res, next) => {
+router.get('/user/:targetUserId', authenticate, async (req, res, next) => {
   const { targetUserId } = req.params;
   if (!targetUserId) {
     return res.status(400).json({ error: "Missing target user ID" });
@@ -34,7 +34,7 @@ router.get('/user/:targetUserId', authenticateToken, authorizeAccess('food_list'
 });
 
 // Create a new external data provider
-router.post('/', authenticateToken, async (req, res, next) => {
+router.post('/', authenticate, async (req, res, next) => {
   try {
     const newProvider = await externalProviderService.createExternalDataProvider(req.userId, req.body);
     res.status(201).json(newProvider);
@@ -44,7 +44,7 @@ router.post('/', authenticateToken, async (req, res, next) => {
 });
 
 // Update an existing external data provider
-router.put('/:id', authenticateToken, async (req, res, next) => {
+router.put('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Provider ID is required.' });
@@ -64,7 +64,7 @@ router.put('/:id', authenticateToken, async (req, res, next) => {
 });
  
 // Delete an external data provider
-router.delete('/:id', authenticateToken, async (req, res, next) => {
+router.delete('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Provider ID is required.' });
@@ -84,7 +84,7 @@ router.delete('/:id', authenticateToken, async (req, res, next) => {
 });
  
 // Get details of a specific external data provider
-router.get('/:id', authenticateToken, async (req, res, next) => {
+router.get('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: "Missing provider ID" });

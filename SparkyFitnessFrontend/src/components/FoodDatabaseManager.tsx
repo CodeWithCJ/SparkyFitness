@@ -41,6 +41,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "@/hooks/use-toast";
+import { info } from "@/utils/logging"; // Import the info function
 import EnhancedCustomFoodForm from "./EnhancedCustomFoodForm";
 import FoodSearchDialog from "./FoodSearchDialog";
 import FoodUnitSelector from "./FoodUnitSelector"; // Import FoodUnitSelector
@@ -59,7 +60,7 @@ import MealPlanCalendar from "./MealPlanCalendar"; // Import MealPlanCalendar
 const FoodDatabaseManager: React.FC = () => {
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
-  const { nutrientDisplayPreferences } = usePreferences();
+  const { nutrientDisplayPreferences, loggingLevel } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
   const quickInfoPreferences = nutrientDisplayPreferences.find(
@@ -170,20 +171,21 @@ const FoodDatabaseManager: React.FC = () => {
     }
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = async (force: boolean = false) => {
     if (!foodToDelete || !activeUserId) return;
+    info(loggingLevel, `confirmDelete called with force: ${force}`);
     try {
-      await deleteFoodService(foodToDelete.id, activeUserId);
+      const result = await deleteFoodService(foodToDelete.id, activeUserId, force);
       toast({
         title: "Success",
-        description: "Food deleted successfully.",
+        description: result.message, // Use the message from the backend
       });
       fetchFoodsData();
-    } catch (error) {
+    } catch (error: any) { // Add type annotation for error
       console.error("Error deleting food:", error);
       toast({
         title: "Error",
-        description: "Failed to delete food.",
+        description: error.message || "Failed to delete food.", // Use error message from backend if available
         variant: "destructive",
       });
     } finally {
@@ -276,7 +278,7 @@ const FoodDatabaseManager: React.FC = () => {
     if (food.user_id === user?.id) {
       return (
         <Badge variant="secondary" className="text-xs w-fit">
-          Your Food
+          Private
         </Badge>
       );
     }
@@ -312,6 +314,8 @@ const FoodDatabaseManager: React.FC = () => {
         return `Family Foods (${totalCount})`;
       case "public":
         return `Public Foods (${totalCount})`;
+      case "needs-review":
+        return `Foods Needing Review (${totalCount})`;
       default:
         return `Foods (${totalCount})`;
     }
@@ -327,6 +331,8 @@ const FoodDatabaseManager: React.FC = () => {
         return "No family foods found";
       case "public":
         return "No public foods found";
+      case "needs-review":
+        return "No foods need your review";
       default:
         return "No foods found";
     }
@@ -379,6 +385,7 @@ const FoodDatabaseManager: React.FC = () => {
                     <SelectItem value="mine">My Foods</SelectItem>
                     <SelectItem value="family">Family</SelectItem>
                     <SelectItem value="public">Public</SelectItem>
+                    <SelectItem value="needs-review">Needs Review</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -637,16 +644,13 @@ const FoodDatabaseManager: React.FC = () => {
       )}
 
       {deletionImpact && foodToDelete && (
-        <ConfirmationDialog
-          open={showDeleteConfirmation}
-          onOpenChange={setShowDeleteConfirmation}
-          onConfirm={confirmDelete}
-          title={`Delete ${foodToDelete.name}?`}
-          description={
+        <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete {foodToDelete.name}?</DialogTitle>
+            </DialogHeader>
             <div>
-              <p>
-                This will permanently delete the food and all associated data:
-              </p>
+              <p>This food is used in:</p>
               <ul className="list-disc pl-5 mt-2">
                 <li>{deletionImpact.foodEntriesCount} diary entries</li>
                 <li>{deletionImpact.mealFoodsCount} meal components</li>
@@ -656,9 +660,32 @@ const FoodDatabaseManager: React.FC = () => {
                   template entries
                 </li>
               </ul>
+              {deletionImpact.otherUserReferences > 0 && (
+                <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded-md">
+                  <p className="font-bold">Warning!</p>
+                  <p>This food is used by other users. You can only hide it.</p>
+                </div>
+              )}
             </div>
-          }
-        />
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>
+                Cancel
+              </Button>
+              {deletionImpact.otherUserReferences > 0 ? (
+                <Button onClick={() => confirmDelete(false)}>Hide</Button>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => confirmDelete(false)}>
+                    Hide
+                  </Button>
+                  <Button variant="destructive" onClick={() => confirmDelete(true)}>
+                    Force Delete
+                  </Button>
+                </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       <FoodSearchDialog

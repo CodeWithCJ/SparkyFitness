@@ -1,11 +1,16 @@
 const externalProviderRepository = require('../models/externalProviderRepository');
 const { log } = require('../config/logging');
+const { checkFamilyAccessPermission } = require('../models/familyAccessRepository');
 
 async function getExternalDataProviders(userId) {
   try {
     const providers = await externalProviderRepository.getExternalDataProviders(userId);
-    log('debug', `externalProviderService: Providers from repository for user ${userId}:`, providers);
-    return providers;
+    const providersWithVisibility = providers.map(p => ({
+      ...p,
+      visibility: p.user_id === userId ? 'private' : 'public',
+    }));
+    log('debug', `externalProviderService: Providers from repository for user ${userId}:`, providersWithVisibility);
+    return providersWithVisibility;
   } catch (error) {
     log('error', `Error fetching external data providers for user ${userId} in externalProviderService:`, error);
     throw error;
@@ -14,8 +19,19 @@ async function getExternalDataProviders(userId) {
 
 async function getExternalDataProvidersForUser(authenticatedUserId, targetUserId) {
   try {
+    // If the authenticated user is the same as the target user, no special permission is needed.
+    if (authenticatedUserId !== targetUserId) {
+      const hasPermission = await checkFamilyAccessPermission(authenticatedUserId, targetUserId, 'share_external_providers');
+      if (!hasPermission) {
+        throw new Error('Forbidden: You do not have permission to access this user\'s external data providers.');
+      }
+    }
     const providers = await externalProviderRepository.getExternalDataProvidersByUserId(targetUserId);
-    return providers;
+    const providersWithVisibility = providers.map(p => ({
+      ...p,
+      visibility: p.user_id === authenticatedUserId ? 'private' : (p.user_id === targetUserId ? 'family' : 'public'),
+    }));
+    return providersWithVisibility;
   } catch (error) {
     log('error', `Error fetching external data providers for target user ${targetUserId} by ${authenticatedUserId} in externalProviderService:`, error);
     throw error;

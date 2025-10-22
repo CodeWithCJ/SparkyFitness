@@ -23,7 +23,8 @@ router.get('/:id', isAdmin, async (req, res) => {
         const provider = await oidcProviderRepository.getOidcProviderById(req.params.id);
         if (provider) {
             // Return all data except the decrypted secret for editing purposes
-            const { client_secret, ...safeProvider } = provider;
+            // The provider object from the repository now includes all fields
+            const { encrypted_client_secret, client_secret_iv, client_secret_tag, ...safeProvider } = provider;
             res.json({ ...safeProvider, client_secret: '*****' }); // Use placeholder
         } else {
             res.status(404).json({ message: 'OIDC provider not found' });

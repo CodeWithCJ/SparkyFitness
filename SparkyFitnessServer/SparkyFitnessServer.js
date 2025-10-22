@@ -3,10 +3,11 @@ const fs = require('fs');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') }); // Load .env from root directory
 const express = require('express');
 const cors = require('cors'); // Added this line
-const { getPool } = require('./db/poolManager');
+const { getRawOwnerPool } = require('./db/poolManager');
 const { log } = require('./config/logging');
 const { getDefaultModel } = require('./ai/config');
-const { authenticateToken } = require('./middleware/authMiddleware');
+const { authenticate } = require('./middleware/authMiddleware');
+const onBehalfOfMiddleware = require('./middleware/onBehalfOfMiddleware'); // Import the new middleware
 const foodRoutes = require('./routes/foodRoutes');
 const mealRoutes = require('./routes/mealRoutes');
 const reportRoutes = require('./routes/reportRoutes');
@@ -36,6 +37,7 @@ const { applyMigrations } = require('./utils/dbMigrations');
 const waterContainerRoutes = require('./routes/waterContainerRoutes');
 const backupRoutes = require('./routes/backupRoutes'); // Import backup routes
 const errorHandler = require('./middleware/errorHandler'); // Import the new error handler
+const reviewRoutes = require('./routes/reviewRoutes');
 const cron = require('node-cron'); // Import node-cron
 const { performBackup, applyRetentionPolicy } = require('./services/backupService'); // Import backup service
 
@@ -167,7 +169,7 @@ const configureSessionMiddleware = (app, pool) => {
 };
 
 // Initial session middleware configuration
-configureSessionMiddleware(app, getPool());
+configureSessionMiddleware(app, getRawOwnerPool());
 
 // Apply authentication middleware to all routes except auth
 app.use((req, res, next) => {
@@ -191,8 +193,11 @@ app.use((req, res, next) => {
     return next();
   }
 
+  // Log all requests that reach the authentication middleware
+  //log('debug', `Attempting authentication for route: ${req.path}`);
+
   // For all other routes, apply JWT token authentication
-  authenticateToken(req, res, next);
+  authenticate(req, res, next);
 });
 
 // Link all routes
@@ -228,6 +233,7 @@ app.use('/water-containers', waterContainerRoutes);
 app.use('/admin/backup', backupRoutes); // Add backup routes
 app.use('/workout-presets', require('./routes/workoutPresetRoutes')); // Add workout preset routes
 app.use('/workout-plan-templates', require('./routes/workoutPlanTemplateRoutes')); // Add workout plan template routes
+app.use('/review', reviewRoutes);
 
 // Temporary debug route to log incoming requests for meal plan templates
 app.use('/meal-plan-templates', (req, res, next) => {

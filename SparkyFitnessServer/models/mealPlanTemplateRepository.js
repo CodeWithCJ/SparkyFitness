@@ -1,9 +1,9 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 const format = require('pg-format');
 
 async function createMealPlanTemplate(planData) {
-    const client = await getPool().connect();
+    const client = await getClient(planData.user_id); // User-specific operation
     try {
         log('info', 'createMealPlanTemplate - planData:', planData);
         await client.query('BEGIN');
@@ -88,7 +88,7 @@ async function createMealPlanTemplate(planData) {
 }
 
 async function getMealPlanTemplatesByUserId(userId) {
-    const client = await getPool().connect();
+    const client = await getClient(userId); // User-specific operation
     try {
         const query = `
             SELECT
@@ -118,10 +118,10 @@ async function getMealPlanTemplatesByUserId(userId) {
                     '[]'::json
                 ) as assignments
             FROM meal_plan_templates t
-            WHERE t.user_id = $1
+            WHERE 1=1
             ORDER BY t.start_date DESC
         `;
-        const result = await client.query(query, [userId]);
+        const result = await client.query(query);
         return result.rows;
     } finally {
         client.release();
@@ -129,22 +129,21 @@ async function getMealPlanTemplatesByUserId(userId) {
 }
 
 async function updateMealPlanTemplate(planId, planData) {
-    const client = await getPool().connect();
+    const client = await getClient(planData.user_id); // User-specific operation
     try {
         await client.query('BEGIN');
 
         const templateResult = await client.query(
             `UPDATE meal_plan_templates SET
                 plan_name = $1, description = $2, start_date = $3, end_date = $4, is_active = $5, updated_at = now()
-             WHERE id = $6 AND user_id = $7 RETURNING *`,
+             WHERE id = $6 RETURNING *`,
             [
                 planData.plan_name ?? '',
                 planData.description ?? '',
                 planData.start_date ?? new Date(),
                 planData.end_date,
                 planData.is_active ?? false,
-                planId,
-                planData.user_id
+                planId
             ]
         );
         const updatedTemplate = templateResult.rows[0];
@@ -210,12 +209,12 @@ async function updateMealPlanTemplate(planId, planData) {
 }
 
 async function deleteMealPlanTemplate(planId, userId) {
-    const client = await getPool().connect();
+    const client = await getClient(userId); // User-specific operation
     try {
         // The assignments table will be cascade deleted due to the foreign key constraint
         const result = await client.query(
-            `DELETE FROM meal_plan_templates WHERE id = $1 AND user_id = $2 RETURNING *`,
-            [planId, userId]
+            `DELETE FROM meal_plan_templates WHERE id = $1 RETURNING *`,
+            [planId]
         );
         return result.rows[0];
     } catch (error) {
@@ -227,11 +226,11 @@ async function deleteMealPlanTemplate(planId, userId) {
 }
 
 async function deactivateAllMealPlanTemplates(userId) {
-    const client = await getPool().connect();
+    const client = await getClient(userId); // User-specific operation
     try {
         await client.query(
-            `UPDATE meal_plan_templates SET is_active = FALSE WHERE user_id = $1`,
-            [userId]
+            `UPDATE meal_plan_templates SET is_active = FALSE`,
+            []
         );
         return true;
     } finally {
@@ -240,7 +239,7 @@ async function deactivateAllMealPlanTemplates(userId) {
 }
 
 async function getMealPlanTemplateOwnerId(templateId) {
-    const client = await getPool().connect();
+    const client = await getClient(templateId); // User-specific operation (RLS will handle access)
     try {
         const result = await client.query(
             `SELECT user_id FROM meal_plan_templates WHERE id = $1`,
@@ -253,7 +252,7 @@ async function getMealPlanTemplateOwnerId(templateId) {
 }
 
 async function getActiveMealPlanForDate(userId, date) {
-    const client = await getPool().connect();
+    const client = await getClient(userId); // User-specific operation
     try {
         const query = `
             SELECT
@@ -283,14 +282,13 @@ async function getActiveMealPlanForDate(userId, date) {
                     '[]'::json
                 ) as assignments
             FROM meal_plan_templates t
-            WHERE t.user_id = $1
-              AND t.is_active = TRUE
-              AND t.start_date <= $2
-              AND (t.end_date IS NULL OR t.end_date >= $2)
+            WHERE t.is_active = TRUE
+              AND t.start_date <= $1
+              AND (t.end_date IS NULL OR t.end_date >= $1)
             ORDER BY t.start_date DESC
             LIMIT 1
         `;
-        const result = await client.query(query, [userId, date]);
+        const result = await client.query(query, [date]);
         return result.rows[0];
     } finally {
         client.release();
@@ -298,7 +296,7 @@ async function getActiveMealPlanForDate(userId, date) {
 }
 
 async function getMealPlanTemplatesByMealId(mealId) {
-    const client = await getPool().connect();
+    const client = await getClient(mealId); // User-specific operation (RLS will handle access)
     try {
         const query = `
             SELECT

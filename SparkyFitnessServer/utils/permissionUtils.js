@@ -1,4 +1,4 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 
 async function canAccessUserData(targetUserId, permissionType, authenticatedUserId) {
   // If accessing own data, always allow
@@ -7,7 +7,7 @@ async function canAccessUserData(targetUserId, permissionType, authenticatedUser
   }
 
   // Check if authenticated user has family access with the required permission
-  const client = await getPool().connect();
+  const client = await getClient(familyUserId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT 1

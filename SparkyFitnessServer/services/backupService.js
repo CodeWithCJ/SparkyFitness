@@ -5,7 +5,7 @@ const fsp = require('fs').promises; // Use fsp for promise-based fs operations
 const zlib = require('zlib');
 const { pipeline } = require('stream/promises');
 const { log } = require('../config/logging');
-const { getPool, endPool, resetPool } = require('../db/poolManager');
+const { getRawOwnerPool, endPool, resetPool } = require('../db/poolManager');
 const backupSettingsRepository = require('../models/backupSettingsRepository');
 const { configureSessionMiddleware } = require('../SparkyFitnessServer'); // Import the session configuration function
 
@@ -198,7 +198,7 @@ async function performRestore(backupFilePath, app) {
     // Reconfigure session middleware with the new pool
     if (app) {
       const { configureSessionMiddleware } = require('../SparkyFitnessServer');
-      configureSessionMiddleware(app, getPool());
+      configureSessionMiddleware(app, getRawOwnerPool());
       log('info', 'Reconfigured session middleware with new database pool.');
     }
 
