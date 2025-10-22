@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const { registerValidation, loginValidation, forgotPasswordValidation, resetPasswordValidation } = require('../validation/authValidation');
 const { validationResult } = require('express-validator');
 const authService = require('../services/authService');
+const oidcProviderRepository = require('../models/oidcProviderRepository');
+const { log } = require('../config/logging');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -52,7 +54,18 @@ router.post('/login', loginValidation, async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
-    const { userId, token, role } = await authService.loginUser(email, password);
+    // Determine the effective login settings, including the fallback.
+    const settings = await authService.getLoginSettings();
+    const providers = await oidcProviderRepository.getOidcProviders();
+    const activeOidcProviders = providers.filter(p => p.is_active);
+    const isOidcFullyEnabled = settings.oidc.enabled && activeOidcProviders.length > 0;
+
+    if (!settings.email.enabled && !isOidcFullyEnabled) {
+        log('warn', 'Login attempt with no methods enabled. Forcing email/password login as a fallback.');
+        settings.email.enabled = true;
+    }
+
+    const { userId, token, role } = await authService.loginUser(email, password, settings);
     res.status(200).json({ message: 'Login successful', userId, token, role });
   } catch (error) {
     if (error.message === 'Invalid credentials.' || error.message === 'Email/Password login is disabled.') {
@@ -63,12 +76,39 @@ router.post('/login', loginValidation, async (req, res, next) => {
 });
 
 router.get('/settings', async (req, res, next) => {
-  try {
-    const settings = await authService.getLoginSettings();
-    res.status(200).json(settings);
-  } catch (error) {
-    next(error);
-  }
+    try {
+        const settings = await authService.getLoginSettings();
+        const providers = await oidcProviderRepository.getOidcProviders();
+        const activeOidcProviders = providers.filter(p => p.is_active);
+
+        // OIDC is considered fully enabled only if the global flag is on AND at least one provider is active.
+        const isOidcFullyEnabled = settings.oidc.enabled && activeOidcProviders.length > 0;
+
+        let warning = null;
+        // Fallback logic: if both email and OIDC are disabled, force email login.
+        if (!settings.email.enabled && !isOidcFullyEnabled) {
+            const warningMessage = 'No login methods were enabled. Email/password login has been temporarily enabled as a fallback. Please review the authentication settings.';
+            log('warn', warningMessage);
+            settings.email.enabled = true;
+            warning = warningMessage;
+        }
+
+        const loginProviders = {
+            email: {
+                enabled: settings.email.enabled,
+            },
+            oidc: {
+                enabled: isOidcFullyEnabled,
+                providers: activeOidcProviders.map(({ id, display_name, logo_url }) => ({ id, display_name, logo_url })),
+            },
+            warning, // Include the warning in the response
+        };
+        
+        res.status(200).json(loginProviders);
+    } catch (error) {
+        log('error', 'Error fetching login providers settings:', error);
+        next(error);
+    }
 });
 
 router.post('/logout', (req, res, next) => {
@@ -111,7 +151,7 @@ router.post('/register', registerValidation, async (req, res, next) => {
   }
 });
 
-router.get('/user', authenticateToken, async (req, res, next) => {
+router.get('/user', authenticate, async (req, res, next) => {
   try {
     const user = await authService.getUser(req.userId);
     // Ensure the role is included in the response
@@ -129,7 +169,7 @@ router.get('/user', authenticateToken, async (req, res, next) => {
   }
 });
 
-router.get('/users/find-by-email', authenticateToken, authorizeAccess('admin'), async (req, res, next) => {
+router.get('/users/find-by-email', authenticate, async (req, res, next) => {
   const { email } = req.query;
 
   if (!email) {
@@ -150,7 +190,7 @@ router.get('/users/find-by-email', authenticateToken, authorizeAccess('admin'), 
   }
 });
 
-router.post('/user/generate-api-key', authenticateToken, authorizeAccess('api_keys'), async (req, res, next) => {
+router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
   const { description } = req.body;
  
   try {
@@ -164,7 +204,7 @@ router.post('/user/generate-api-key', authenticateToken, authorizeAccess('api_ke
   }
 });
 
-router.delete('/user/api-key/:apiKeyId', authenticateToken, authorizeAccess('api_keys'), async (req, res, next) => {
+router.delete('/user/api-key/:apiKeyId', authenticate, async (req, res, next) => {
   const { apiKeyId } = req.params;
  
   try {
@@ -181,7 +221,7 @@ router.delete('/user/api-key/:apiKeyId', authenticateToken, authorizeAccess('api
   }
 });
 
-router.get('/users/accessible-users', authenticateToken, async (req, res, next) => {
+router.get('/users/accessible-users', authenticate, async (req, res, next) => {
   try {
     const accessibleUsers = await authService.getAccessibleUsers(req.userId);
     res.status(200).json(accessibleUsers);
@@ -190,7 +230,7 @@ router.get('/users/accessible-users', authenticateToken, async (req, res, next) 
   }
 });
 
-router.get('/profiles', authenticateToken, authorizeAccess('profile', (req) => req.userId), async (req, res, next) => {
+router.get('/profiles', authenticate, async (req, res, next) => {
   try {
     const profile = await authService.getUserProfile(req.userId, req.userId); // authenticatedUserId is targetUserId
     if (!profile) {
@@ -205,7 +245,7 @@ router.get('/profiles', authenticateToken, authorizeAccess('profile', (req) => r
   }
 });
 
-router.put('/profiles', authenticateToken, authorizeAccess('profile', (req) => req.userId), async (req, res, next) => {
+router.put('/profiles', authenticate, async (req, res, next) => {
   const { full_name, phone_number, date_of_birth, bio, avatar_url, gender } = req.body;
  
   try {
@@ -226,7 +266,7 @@ router.put('/profiles', authenticateToken, authorizeAccess('profile', (req) => r
   }
 });
 
-router.get('/user-api-keys', authenticateToken, authorizeAccess('api_keys'), async (req, res, next) => {
+router.get('/user-api-keys', authenticate, async (req, res, next) => {
   try {
     const apiKeys = await authService.getUserApiKeys(req.userId, req.userId); // authenticatedUserId is targetUserId
     res.status(200).json(apiKeys);
@@ -238,7 +278,7 @@ router.get('/user-api-keys', authenticateToken, authorizeAccess('api_keys'), asy
   }
 });
 
-router.post('/update-password', authenticateToken, async (req, res, next) => {
+router.post('/update-password', authenticate, async (req, res, next) => {
   const { newPassword } = req.body;
  
   if (!newPassword) {
@@ -256,7 +296,7 @@ router.post('/update-password', authenticateToken, async (req, res, next) => {
   }
 });
 
-router.post('/update-email', authenticateToken, async (req, res, next) => {
+router.post('/update-email', authenticate, async (req, res, next) => {
   const { newEmail } = req.body;
  
   if (!newEmail) {
@@ -277,7 +317,7 @@ router.post('/update-email', authenticateToken, async (req, res, next) => {
   }
 });
 
-router.get('/access/can-access-user-data', authenticateToken, async (req, res, next) => {
+router.get('/access/can-access-user-data', authenticate, async (req, res, next) => {
   const { targetUserId, permissionType } = req.query;
  
   if (!targetUserId || !permissionType) {
@@ -292,7 +332,7 @@ router.get('/access/can-access-user-data', authenticateToken, async (req, res, n
   }
 });
 
-router.get('/access/check-family-access', authenticateToken, async (req, res, next) => {
+router.get('/access/check-family-access', authenticate, async (req, res, next) => {
   const { ownerUserId, permission } = req.query;
  
   if (!ownerUserId || !permission) {
@@ -307,43 +347,24 @@ router.get('/access/check-family-access', authenticateToken, async (req, res, ne
   }
 });
 
-router.get('/family-access', authenticateToken, authorizeAccess('family_access', (req) => req.query.owner_user_id), async (req, res, next) => {
-  const { owner_user_id: targetUserId } = req.query;
- 
-  if (!targetUserId) {
-    return res.status(400).json({ error: 'Target User ID is required.' });
-  }
- 
+router.get('/family-access', authenticate, async (req, res, next) => {
   try {
-    const entries = await authService.getFamilyAccessEntries(req.userId, targetUserId);
+    const authenticatedUserId = req.userId;
+    if (!authenticatedUserId) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'Authenticated user ID not found.' });
+    }
+
+    // The RLS policy on the family_access table will ensure that only records
+    // where the authenticated user is either the owner_user_id or the family_user_id are returned.
+    const entries = await authService.getFamilyAccessEntries(authenticatedUserId);
     res.status(200).json(entries);
   } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
-    }
+    log('error', `Error fetching family access entries:`, error);
     next(error);
   }
 });
 
-router.get('/family-access/:targetUserId', authenticateToken, authorizeAccess('family_access', (req) => req.params.targetUserId), async (req, res, next) => {
-  const { targetUserId } = req.params;
- 
-  if (!targetUserId) {
-    return res.status(400).json({ error: 'Target User ID is required.' });
-  }
- 
-  try {
-    const entries = await authService.getFamilyAccessEntries(req.userId, targetUserId);
-    res.status(200).json(entries);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
-    }
-    next(error);
-  }
-});
-
-router.post('/family-access', authenticateToken, authorizeAccess('family_access', (req) => req.body.owner_user_id), async (req, res, next) => {
+router.post('/family-access', authenticate, async (req, res, next) => {
   const entryData = req.body;
  
   if (!entryData.family_user_id || !entryData.family_email || !entryData.access_permissions) {
@@ -361,7 +382,7 @@ router.post('/family-access', authenticateToken, authorizeAccess('family_access'
   }
 });
 
-router.put('/family-access/:id', authenticateToken, authorizeAccess('family_access', (req) => req.body.owner_user_id), async (req, res, next) => {
+router.put('/family-access/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
  
@@ -383,7 +404,7 @@ router.put('/family-access/:id', authenticateToken, authorizeAccess('family_acce
   }
 });
 
-router.delete('/family-access/:id', authenticateToken, authorizeAccess('family_access', (req) => req.body.owner_user_id), async (req, res, next) => {
+router.delete('/family-access/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
  
   if (!id) {
@@ -404,7 +425,7 @@ router.delete('/family-access/:id', authenticateToken, authorizeAccess('family_a
   }
 });
 
-router.post('/profiles/avatar', authenticateToken, upload.single('avatar'), async (req, res, next) => {
+router.post('/profiles/avatar', authenticate, upload.single('avatar'), async (req, res, next) => {
   try {
     if (!req.file) {
       console.error('Multer did not provide a file for upload.');
@@ -424,7 +445,7 @@ router.post('/profiles/avatar', authenticateToken, upload.single('avatar'), asyn
   }
 });
 
-router.get('/profiles/avatar/:filename', authenticateToken, async (req, res, next) => {
+router.get('/profiles/avatar/:filename', authenticate, async (req, res, next) => {
   try {
     const { filename } = req.params;
     const userId = req.userId; // Authenticated user ID

@@ -66,14 +66,80 @@ interface EnhancedFoodSearchProps {
   onFoodSelect: (item: Food | Meal, type: 'food' | 'meal') => void;
   hideDatabaseTab?: boolean;
   hideMealTab?: boolean;
+  mealType?: string;
 }
 
 type FoodDataForBackend = Omit<CSVData, "id">;
+
+const NutrientGrid = ({ food, visibleNutrients }) => {
+  const nutrientDetails: { [key: string]: { label: string; unit: string } } = {
+    calories: { label: "cal", unit: "" },
+    protein: { label: "protein", unit: "g" },
+    carbs: { label: "carbs", unit: "g" },
+    fat: { label: "fat", unit: "g" },
+    dietary_fiber: { label: "fiber", unit: "g" },
+    sugars: { label: "sugar", unit: "g" },
+    sodium: { label: "sodium", unit: "mg" },
+    cholesterol: { label: "cholesterol", unit: "mg" },
+    saturated_fat: { label: "sat fat", unit: "g" },
+    trans_fat: { label: "trans fat", unit: "g" },
+    potassium: { label: "potassium", unit: "mg" },
+    vitamin_a: { label: "vit a", unit: "mcg" },
+    vitamin_c: { label: "vit c", unit: "mg" },
+    iron: { label: "iron", unit: "mg" },
+    calcium: { label: "calcium", unit: "mg" },
+    glycemic_index: { label: "GI", unit: "" },
+  };
+
+  const getGridClass = (cols: number) => {
+      switch (cols) {
+          case 1:
+              return 'sm:grid-cols-1';
+          case 2:
+              return 'sm:grid-cols-2';
+          case 3:
+              return 'sm:grid-cols-3';
+          case 4:
+              return 'sm:grid-cols-4';
+          case 5:
+              return 'sm:grid-cols-5';
+          case 6:
+              return 'sm:grid-cols-6';
+          case 7:
+              return 'sm:grid-cols-7';
+          case 8:
+              return 'sm:grid-cols-8';
+          default:
+              return 'sm:grid-cols-7';
+      }
+  };
+
+
+  return (
+    <div className={`grid grid-cols-2 ${getGridClass(visibleNutrients.length)} gap-2 text-sm text-gray-600`}>
+      {visibleNutrients.map((nutrient) => {
+         const details = nutrientDetails[nutrient];
+         if (!details) return null;
+
+         const digits = nutrient === "calories" ? 0 : 1;
+         const value = nutrient === "glycemic_index"
+             ? food?.glycemic_index || "None"
+             : Number((food?.[nutrient as keyof FoodVariant] as number) || 0).toFixed(digits);
+
+         return (
+           <span key={nutrient}>
+             <strong>{value}{details.unit}</strong> {details.label}
+           </span>
+         );
+      })}
+    </div>
+)};
 
 const EnhancedFoodSearch = ({
   onFoodSelect,
   hideDatabaseTab = false,
   hideMealTab = false,
+  mealType = undefined,
 }: EnhancedFoodSearchProps) => {
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
@@ -159,7 +225,11 @@ const EnhancedFoodSearch = ({
       try {
         if (!term.trim()) {
           // If search term is empty, fetch recent and top foods
-          const data = await apiCall(`/foods?limit=${itemDisplayLimit}`);
+          let query = `/foods?limit=${itemDisplayLimit}`;
+          if (!!mealType) {
+            query += `&mealType=${mealType}`;
+          }
+          const data = await apiCall(query);
           setRecentFoods(data.recentFoods || []);
           setTopFoods(data.topFoods || []);
         } else {
@@ -377,7 +447,7 @@ const EnhancedFoodSearch = ({
     if (!activeUserId) return;
     setLoading(true);
     try {
-      const results = await getMeals(activeUserId, true, term);
+      const results = await getMeals(activeUserId, 'all', term);
       setMeals(results);
     } catch (err) {
       error(loggingLevel, "Error searching meals:", err);
@@ -463,11 +533,11 @@ const EnhancedFoodSearch = ({
   const convertNutritionixToFood = (item: any, nutrientData: any): Food => {
     const defaultVariant: FoodVariant = {
       id: "default", // Assign a default ID for now
-      serving_size: nutrientData.serving_qty,
-      serving_unit: nutrientData.serving_unit,
+      serving_size: item.serving_size,
+      serving_unit: item.serving_unit,
       calories: nutrientData.calories,
       protein: nutrientData.protein,
-      carbs: nutrientData.carbohydrates,
+      carbs: nutrientData.carbs,
       fat: nutrientData.fat,
       saturated_fat: nutrientData.saturated_fat,
       polyunsaturated_fat: nutrientData.polyunsaturated_fat || 0,
@@ -502,16 +572,16 @@ const EnhancedFoodSearch = ({
   const handleNutritionixEdit = async (item: any) => {
     setLoading(true);
     let nutrientData;
-    if (item.id && item.id.startsWith("nix_")) {
+    if (item.brand) {
       // It's a branded item, use nix_item_id to get full details
       nutrientData = await getNutritionixBrandedNutrients(
-        item.id,
+        item.id, // The 'id' for branded items is the nix_item_id
         selectedFoodDataProvider
       );
     } else {
       // It's a common item, use natural language query
       nutrientData = await getNutritionixNutrients(
-        item.name,
+        item.name, // The 'name' for common items is the food_name
         selectedFoodDataProvider
       );
     }
@@ -621,24 +691,6 @@ const EnhancedFoodSearch = ({
     ? quickInfoPreferences.visible_nutrients
     : ["calories", "protein", "carbs", "fat"];
 
-  const nutrientDetails: { [key: string]: { label: string; unit: string } } = {
-    calories: { label: "cal", unit: "" },
-    protein: { label: "protein", unit: "g" },
-    carbs: { label: "carbs", unit: "g" },
-    fat: { label: "fat", unit: "g" },
-    dietary_fiber: { label: "fiber", unit: "g" },
-    sugars: { label: "sugar", unit: "g" },
-    sodium: { label: "sodium", unit: "mg" },
-    cholesterol: { label: "cholesterol", unit: "mg" },
-    saturated_fat: { label: "sat fat", unit: "g" },
-    trans_fat: { label: "trans fat", unit: "g" },
-    potassium: { label: "potassium", unit: "mg" },
-    vitamin_a: { label: "vit a", unit: "mcg" },
-    vitamin_c: { label: "vit c", unit: "mg" },
-    iron: { label: "iron", unit: "mg" },
-    calcium: { label: "calcium", unit: "mg" },
-    glycemic_index: { label: "GI", unit: "" },
-  };
 
   return (
     <div className="space-y-4">
@@ -783,39 +835,7 @@ const EnhancedFoodSearch = ({
                                 </Badge>
                              )}
                            </div>
-                           <div
-                             className={`grid grid-cols-1 sm:grid-cols-${visibleNutrients.length}  gap-2 text-sm   text-gray-600`}
-                           >
-                             {visibleNutrients.map((nutrient) => {
-                                const details = nutrientDetails[nutrient];
-                                if (!details) return null;
-
-                                if (nutrient === "glycemic_index") {
-                                  const giValue = food.default_variant?.glycemic_index || "None";
-                                  return (
-                                    <span key={nutrient}>
-                                      <strong>{giValue}</strong> {details.label}
-                                    </span>
-                                  );
-                                }
-
-                                const value =
-                                  (food.default_variant?.[
-                                    nutrient as keyof FoodVariant
-                                  ] as number) || 0;
-                                return (
-                                  <span key={nutrient}>
-                                    <strong>
-                                      {value.toFixed(
-                                        nutrient === "calories" ? 0 : 1
-                                      )}
-                                      {details.unit}
-                                    </strong>{" "}
-                                    {details.label}
-                                  </span>
-                                );
-                             })}
-                           </div>
+                           <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />
                            <p className="text-xs text-gray-500 mt-1">
                              Per {food.default_variant?.serving_size}
                              {food.default_variant?.serving_unit}
@@ -858,39 +878,7 @@ const EnhancedFoodSearch = ({
                                 </Badge>
                              )}
                            </div>
-                           <div
-                             className={`grid grid-cols-1 sm:grid-cols-${visibleNutrients.length} gap-2 text-sm text-gray-600`}
-                           >
-                             {visibleNutrients.map((nutrient) => {
-                                const details = nutrientDetails[nutrient];
-                                if (!details) return null;
-
-                                if (nutrient === "glycemic_index") {
-                                  const giValue = food.default_variant?.glycemic_index || "None";
-                                  return (
-                                    <span key={nutrient}>
-                                      <strong>{giValue}</strong> {details.label}
-                                    </span>
-                                  );
-                                }
-
-                                const value =
-                                  (food.default_variant?.[
-                                    nutrient as keyof FoodVariant
-                                  ] as number) || 0;
-                                return (
-                                  <span key={nutrient}>
-                                    <strong>
-                                      {value.toFixed(
-                                        nutrient === "calories" ? 0 : 1
-                                      )}
-                                      {details.unit}
-                                    </strong>{" "}
-                                    {details.label}
-                                  </span>
-                                );
-                             })}
-                           </div>
+                           <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />
                            <p className="text-xs text-gray-500 mt-1">
                              Per {food.default_variant?.serving_size}
                              {food.default_variant?.serving_unit}
@@ -968,37 +956,7 @@ const EnhancedFoodSearch = ({
                         </Badge>
                       )}
                     </div>
-                    <div
-                      className={`grid grid-cols-${visibleNutrients.length} gap-2 text-sm text-gray-600`}
-                    >
-                      {visibleNutrients.map((nutrient) => {
-                        const details = nutrientDetails[nutrient];
-                        if (!details) return null;
-
-                        if (nutrient === "glycemic_index") {
-                          const giValue = food.default_variant?.glycemic_index || "None";
-                          return (
-                            <span key={nutrient}>
-                              <strong>{giValue}</strong> {details.label}
-                            </span>
-                          );
-                        }
-
-                        const value =
-                          (food.default_variant?.[
-                            nutrient as keyof FoodVariant
-                          ] as number) || 0;
-                        return (
-                          <span key={nutrient}>
-                            <strong>
-                              {value.toFixed(nutrient === "calories" ? 0 : 1)}
-                              {details.unit}
-                            </strong>{" "}
-                            {details.label}
-                          </span>
-                        );
-                      })}
-                    </div>
+                    <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />
                     <p className="text-xs text-gray-500 mt-1">
                       Per {food.default_variant?.serving_size}
                       {food.default_variant?.serving_unit}
@@ -1071,37 +1029,7 @@ const EnhancedFoodSearch = ({
                         </Badge>
                       )}
                     </div>
-                    <div
-                      className={`grid grid-cols-${visibleNutrients.length} gap-2 text-sm text-gray-600`}
-                    >
-                      {visibleNutrients.map((nutrient) => {
-                        const details = nutrientDetails[nutrient];
-                        if (!details) return null;
-
-                        if (nutrient === "glycemic_index") {
-                          const giValue = food.default_variant?.glycemic_index || "None";
-                          return (
-                            <span key={nutrient}>
-                              <strong>{giValue}</strong> {details.label}
-                            </span>
-                          );
-                        }
-
-                        const value =
-                          (food.default_variant?.[
-                            nutrient as keyof FoodVariant
-                          ] as number) || 0;
-                        return (
-                          <span key={nutrient}>
-                            <strong>
-                              {value.toFixed(nutrient === "calories" ? 0 : 1)}
-                              {details.unit}
-                            </strong>{" "}
-                            {details.label}
-                          </span>
-                        );
-                      })}
-                    </div>
+                    <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />
                     <p className="text-xs text-gray-500 mt-1">
                       Per {food.default_variant?.serving_size}
                       {food.default_variant?.serving_unit}
@@ -1133,49 +1061,16 @@ const EnhancedFoodSearch = ({
                         OpenFoodFacts
                       </Badge>
                     </div>
-                    <div
-                      className={`grid grid-cols-${visibleNutrients.length} gap-2 text-sm text-gray-600`}
-                    >
-                      {visibleNutrients.map((nutrient) => {
-                        const details = nutrientDetails[nutrient];
-                        if (!details) return null;
-
-                        if (nutrient === "glycemic_index") {
-                          // For OpenFoodFacts, GI is not directly available in product.nutriments,
-                          // so we'll display "None" or handle it as a special case.
-                          return (
-                            <span key={nutrient}>
-                              <strong>None</strong> {details.label}
-                            </span>
-                          );
-                        }
-
-                        let value = 0;
-                        switch (nutrient) {
-                          case "calories":
-                            value = product.nutriments["energy-kcal_100g"] || 0;
-                            break;
-                          case "protein":
-                            value = product.nutriments["proteins_100g"] || 0;
-                            break;
-                          case "carbs":
-                            value =
-                              product.nutriments["carbohydrates_100g"] || 0;
-                            break;
-                          case "fat":
-                            value = product.nutriments["fat_100g"] || 0;
-                            break;
-                          case "dietary_fiber":
-                            value = product.nutriments["fiber_100g"] || 0;
-                            break;
-                        }
-                        return (
-                          <span key={nutrient}>
-                            <strong>{Math.round(value)}</strong> {details.label}
-                          </span>
-                        );
-                      })}
-                    </div>
+                    <NutrientGrid food={{
+                        calories: product.nutriments["energy-kcal_100g"] || 0,
+                        protein: product.nutriments["proteins_100g"] || 0,
+                        carbs: product.nutriments["carbohydrates_100g"] || 0,
+                        fat: product.nutriments["fat_100g"] || 0,
+                        dietary_fiber: product.nutriments["fiber_100g"] || 0,
+                        // For OpenFoodFacts, GI is not directly available in product.nutriments,
+                        // so we'll display "None" or handle it as a special case.
+                        glycemic_index: "None"
+                    }} visibleNutrients={visibleNutrients} />
                     <p className="text-xs text-gray-500 mt-1">Per 100g</p>
                   </div>
                   <Button
@@ -1220,34 +1115,7 @@ const EnhancedFoodSearch = ({
                       />
                     )}
                     {item.calories && (
-                      <div
-                        className={`grid grid-cols-${visibleNutrients.length} gap-2 text-sm text-gray-600 mt-1`}
-                      >
-                        {visibleNutrients.map((nutrient) => {
-                          const details = nutrientDetails[nutrient];
-                          if (!details) return null;
-
-                          if (nutrient === "glycemic_index") {
-                            const giValue = item.glycemic_index || "None"; // Assuming item has glycemic_index
-                            return (
-                              <span key={nutrient}>
-                                <strong>{giValue}</strong> {details.label}
-                              </span>
-                            );
-                          }
-
-                          if (item[nutrient] === undefined) return null;
-                          return (
-                            <span key={nutrient}>
-                              <strong>
-                                {Math.round(item[nutrient])}
-                                {details.unit}
-                              </strong>{" "}
-                              {details.label}
-                            </span>
-                          );
-                        })}
-                      </div>
+                      <NutrientGrid food={item} visibleNutrients={visibleNutrients} />
                     )}
                     {item.serving_size && item.serving_unit && (
                       <p className="text-xs text-gray-500 mt-1">
@@ -1294,35 +1162,7 @@ const EnhancedFoodSearch = ({
                       item.protein !== undefined &&
                       item.carbs !== undefined &&
                       item.fat !== undefined && (
-                        <div
-                          className={`grid grid-cols-${visibleNutrients.length} gap-2 text-sm text-gray-600 mt-1`}
-                        >
-                          {visibleNutrients.map((nutrient) => {
-                            const details = nutrientDetails[nutrient];
-                            if (!details) return null;
-
-                            if (nutrient === "glycemic_index") {
-                              const giValue = "None"; // FatSecret does not provide GI
-                              return (
-                                <span key={nutrient}>
-                                  <strong>{giValue}</strong> {details.label}
-                                </span>
-                              );
-                            }
-
-                            if (item[nutrient] === undefined)
-                              return null;
-                            return (
-                              <span key={nutrient}>
-                                <strong>
-                                  {Math.round(item[nutrient])}
-                                  {details.unit}
-                                </strong>{" "}
-                                {details.label}
-                              </span>
-                            );
-                          })}
-                        </div>
+                        <NutrientGrid food={item} visibleNutrients={visibleNutrients} />
                       )}
                     {item.serving_size && item.serving_unit && (
                       <p className="text-xs text-gray-500 mt-1">

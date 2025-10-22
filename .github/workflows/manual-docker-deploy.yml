@@ -1,0 +1,124 @@
+name: Manually Publish Docker Images
+
+on:
+  workflow_dispatch:
+
+jobs:
+  push_to_registries:
+    name: Push Docker image to multiple registries
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Read version from package.json
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+        with:
+          path: SparkyFitnessServer
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Metadata frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            codewithcj/sparkyfitness
+            ghcr.io/${{ github.repository }}-frontend
+          tags: |
+            type=raw,value=${{ steps.package-version.outputs.current-version }}
+
+      - name: Build and push frontend
+        id: push-frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+
+      - name: Generate artifact attestation Frontend
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}-frontend
+          subject-digest: ${{ steps.push-frontend.outputs.digest }}
+          push-to-registry: true
+
+      - name: Metadata server
+        id: meta-server
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            codewithcj/sparkyfitness_server
+            ghcr.io/${{ github.repository }}-server
+          tags: |
+            type=raw,value=${{ steps.package-version.outputs.current-version }}
+
+      - name: Build and push server
+        id: push-server
+        uses: docker/build-push-action@v6
+        with:
+          context: SparkyFitnessServer
+          file: docker/Dockerfile.backend
+          push: true
+          tags: ${{ steps.meta-server.outputs.tags }}
+          labels: ${{ steps.meta-server.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+
+      - name: Generate artifact attestation server
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}-server
+          subject-digest: ${{ steps.push-server.outputs.digest }}
+          push-to-registry: true
+
+      - name: Metadata Garmin Microservice
+        id: meta-garmin
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            codewithcj/sparkyfitness_garmin
+            ghcr.io/${{ github.repository }}-garmin
+          tags: |
+            type=raw,value=${{ steps.package-version.outputs.current-version }}
+
+      - name: Build and push Garmin Microservice
+        id: push-garmin
+        uses: docker/build-push-action@v6
+        with:
+          context: SparkyFitnessGarmin
+          file: docker/Dockerfile.garmin_microservice
+          push: true
+          tags: ${{ steps.meta-garmin.outputs.tags }}
+          labels: ${{ steps.meta-garmin.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+
+      - name: Generate artifact attestation Garmin Microservice
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}-garmin
+          subject-digest: ${{ steps.push-garmin.outputs.digest }}
+          push-to-registry: true

@@ -20,6 +20,7 @@ interface ExternalDataProvider { // Renamed interface
   app_key: string | null;
   is_active: boolean;
   base_url: string | null; // Add base_url field
+  visibility: 'private' | 'public' | 'family';
 }
 
 const ExternalProviderSettings = () => { // Renamed component
@@ -535,8 +536,19 @@ const ExternalProviderSettings = () => { // Renamed component
                       // View Mode
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <div>
+                          <div className="flex items-center gap-2">
                             <h4 className="font-medium">{provider.provider_name}</h4>
+                            {provider.visibility === 'private' && (
+                              <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">Private</span>
+                            )}
+                            {provider.visibility === 'public' && (
+                              <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Public</span>
+                            )}
+                            {provider.visibility === 'family' && (
+                              <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Family</span>
+                            )}
+                          </div>
+                          <div>
                             <p className="text-sm text-muted-foreground">
                               {getProviderTypes().find(t => t.value === provider.provider_type)?.label || provider.provider_type}
                               {provider.provider_type === 'mealie' && provider.base_url && ` - URL: ${provider.base_url}`}

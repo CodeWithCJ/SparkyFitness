@@ -1,11 +1,46 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
+const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware'); // Import the new middleware
 const exerciseService = require('../services/exerciseService');
 const workoutPresetService = require('../services/workoutPresetService'); // Import workoutPresetService
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const { createUploadMiddleware } = require('../middleware/uploadMiddleware');
+
+// Function to sanitize filename
+const sanitizeFilename = (filename) => {
+  return filename.replace(/[^a-zA-Z0-9_.-]/g, '_').substring(0, 50);
+};
+
+// Custom storage for exercise entries
+const exerciseEntryStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const dir = path.join(__dirname, `../uploads/exercise_entries/${today}`);
+    fs.mkdir(dir, { recursive: true }, (err) => {
+      if (err) return cb(err);
+      cb(null, dir);
+    });
+  },
+  filename: (req, file, cb) => {
+    const shortUuid = uuidv4().split('-')[0];
+    const timestamp = Date.now();
+    const sanitizedOriginalName = sanitizeFilename(file.originalname);
+    const newFilename = `${shortUuid}_${timestamp}_${sanitizedOriginalName}`;
+    cb(null, newFilename);
+  }
+});
+
+const upload = createUploadMiddleware(exerciseEntryStorage);
+
+// Apply diary permission check to all exercise entry routes
+router.use(checkPermissionMiddleware('diary'));
 
 // Endpoint to fetch exercise entries for a specific user and date using query parameters
-router.get('/by-date', authenticateToken, authorizeAccess('exercise_log', (req) => req.userId), async (req, res, next) => {
+router.get('/by-date', authenticate, async (req, res, next) => {
   const { selectedDate } = req.query;
   if (!selectedDate) {
     return res.status(400).json({ error: 'Selected date is required.' });
@@ -22,16 +57,40 @@ router.get('/by-date', authenticateToken, authorizeAccess('exercise_log', (req) 
 });
 
 // Endpoint to insert an exercise entry
-router.post('/', authenticateToken, authorizeAccess('exercise_log'), async (req, res, next) => {
+router.post('/', authenticate, upload.single('image'), async (req, res, next) => {
   try {
-    const { exercise_id, duration_minutes, calories_burned, entry_date, notes, sets, reps, weight, workout_plan_assignment_id, image_url } = req.body;
+    let entryData;
+    if (req.is('multipart/form-data')) {
+      // When data is FormData, fields are in req.body
+      entryData = { ...req.body };
+      // 'sets' is sent as a JSON string in FormData, so it needs to be parsed
+      if (entryData.sets && typeof entryData.sets === 'string') {
+        try {
+          entryData.sets = JSON.parse(entryData.sets);
+        } catch (e) {
+          console.error("Error parsing sets from FormData:", e);
+          return res.status(400).json({ error: "Invalid format for sets." });
+        }
+      }
+    } else {
+      // For application/json, the data is the body itself
+      entryData = req.body;
+    }
+    const { exercise_id, duration_minutes, calories_burned, entry_date, notes, sets, reps, weight, workout_plan_assignment_id } = entryData;
 
     const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (exercise_id && !uuidRegex.test(exercise_id)) {
       return res.status(400).json({ error: 'Exercise ID must be a valid UUID.' });
     }
 
-    const newEntry = await exerciseService.createExerciseEntry(req.userId, {
+    let imageUrl = entryData.image_url || null;
+    if (req.file) {
+      // Construct the URL path for the image
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      imageUrl = `/uploads/exercise_entries/${today}/${req.file.filename}`;
+    }
+
+    const newEntry = await exerciseService.createExerciseEntry(req.userId, req.originalUserId || req.userId, {
       exercise_id,
       duration_minutes,
       calories_burned,
@@ -41,7 +100,7 @@ router.post('/', authenticateToken, authorizeAccess('exercise_log'), async (req,
       reps,
       weight,
       workout_plan_assignment_id,
-      image_url,
+      image_url: imageUrl,
     });
     res.status(201).json(newEntry);
   } catch (error) {
@@ -53,7 +112,7 @@ router.post('/', authenticateToken, authorizeAccess('exercise_log'), async (req,
 });
 
 // Endpoint to log a workout from a Workout Preset
-router.post('/from-preset', authenticateToken, authorizeAccess('exercise_log'), async (req, res, next) => {
+router.post('/from-preset', authenticate, async (req, res, next) => {
   try {
     const { workout_preset_id, entry_date } = req.body;
 
@@ -70,15 +129,15 @@ router.post('/from-preset', authenticateToken, authorizeAccess('exercise_log'), 
     const loggedEntries = [];
     for (const presetExercise of workoutPreset.exercises) {
       
-      const newEntry = await exerciseService.createExerciseEntry(req.userId, {
+      const newEntry = await exerciseService.createExerciseEntry(req.userId, req.originalUserId || req.userId, {
         exercise_id: presetExercise.exercise_id,
         duration_minutes: presetExercise.duration || 0, // Provide a default value if null
         calories_burned: null, // Will be calculated by service if not provided
         entry_date,
         notes: presetExercise.notes,
-        sets: presetExercise.sets,
-        reps: presetExercise.reps,
-        weight: presetExercise.weight,
+        sets,
+        reps,
+        weight,
         image_url: presetExercise.image_url,
       });
       loggedEntries.push(newEntry);
@@ -93,12 +152,12 @@ router.post('/from-preset', authenticateToken, authorizeAccess('exercise_log'), 
 });
 
 // Endpoint to log a workout from a Workout Plan
-router.post('/from-plan', authenticateToken, authorizeAccess('exercise_log'), async (req, res, next) => {
+router.post('/from-plan', authenticate, async (req, res, next) => {
   try {
     const { workout_plan_template_id, workout_plan_assignment_id, entry_date, exercises } = req.body;
     const loggedEntries = [];
     for (const exerciseData of exercises) {
-      const newEntry = await exerciseService.createExerciseEntry(req.userId, {
+      const newEntry = await exerciseService.createExerciseEntry(req.userId, req.originalUserId || req.userId, {
         exercise_id: exerciseData.exercise_id,
         duration_minutes: exerciseData.duration_minutes,
         calories_burned: exerciseData.calories_burned,
@@ -119,7 +178,7 @@ router.post('/from-plan', authenticateToken, authorizeAccess('exercise_log'), as
 });
 
 // Endpoint to get history for a specific exercise
-router.get('/history/:exerciseId', authenticateToken, authorizeAccess('exercise_log'), async (req, res, next) => {
+router.get('/history/:exerciseId', authenticate, async (req, res, next) => {
   try {
     const { exerciseId } = req.params;
     const { limit } = req.query;
@@ -135,7 +194,7 @@ router.get('/history/:exerciseId', authenticateToken, authorizeAccess('exercise_
 });
 
 // Endpoint to fetch an exercise entry by ID
-router.get('/:id', authenticateToken, authorizeAccess('exercise_log'), async (req, res, next) => {
+router.get('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
@@ -158,14 +217,33 @@ router.get('/:id', authenticateToken, authorizeAccess('exercise_log'), async (re
 // Endpoint to fetch exercise entries for a specific user and date (path parameters)
 
 // Endpoint to update an exercise entry
-router.put('/:id', authenticateToken, authorizeAccess('exercise_log'), async (req, res, next) => {
+router.put('/:id', authenticate, upload.single('image'), async (req, res, next) => {
   const { id } = req.params;
-  const { exercise_id, duration_minutes, calories_burned, entry_date, notes, sets, reps, weight, workout_plan_assignment_id, image_url } = req.body;
-  const updateData = { exercise_id, duration_minutes, calories_burned, entry_date, notes, sets, reps, weight, workout_plan_assignment_id, image_url };
+  let updateData;
+  if (req.is('multipart/form-data')) {
+    updateData = { ...req.body };
+    if (updateData.sets && typeof updateData.sets === 'string') {
+      try {
+        updateData.sets = JSON.parse(updateData.sets);
+      } catch (e) {
+        console.error("Error parsing sets from FormData:", e);
+        return res.status(400).json({ error: "Invalid format for sets." });
+      }
+    }
+  } else {
+    updateData = req.body;
+  }
+  
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
     return res.status(400).json({ error: 'Exercise Entry ID is required and must be a valid UUID.' });
   }
+
+  if (req.file) {
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    updateData.image_url = `/uploads/exercise_entries/${today}/${req.file.filename}`;
+  }
+
   try {
     const updatedEntry = await exerciseService.updateExerciseEntry(req.userId, id, updateData);
     res.status(200).json(updatedEntry);
@@ -180,7 +258,7 @@ router.put('/:id', authenticateToken, authorizeAccess('exercise_log'), async (re
   }
 });
 
-router.get('/progress/:exerciseId', authenticateToken, authorizeAccess('exercise_log'), async (req, res, next) => {
+router.get('/progress/:exerciseId', authenticate, async (req, res, next) => {
   const { exerciseId } = req.params;
   const { startDate, endDate } = req.query;
 
@@ -206,7 +284,7 @@ router.get('/progress/:exerciseId', authenticateToken, authorizeAccess('exercise
 });
 
 // Endpoint to delete an exercise entry
-router.delete('/:id', authenticateToken, authorizeAccess('exercise_log'), async (req, res, next) => {
+router.delete('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {

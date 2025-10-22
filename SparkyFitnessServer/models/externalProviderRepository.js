@@ -1,13 +1,13 @@
-const { getPool } = require('../db/poolManager');
+const { getClient, getSystemClient } = require('../db/poolManager');
 const { encrypt, decrypt, ENCRYPTION_KEY } = require('../security/encryption');
 const { log } = require('../config/logging');
 
 async function getExternalDataProviders(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT id, provider_name, provider_type, is_active, base_url FROM external_data_providers WHERE user_id = $1 ORDER BY created_at DESC',
-      [userId]
+      'SELECT id, user_id, provider_name, provider_type, is_active, base_url FROM external_data_providers ORDER BY created_at DESC',
+      []
     );
     log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
     return result.rows;
@@ -17,17 +17,17 @@ async function getExternalDataProviders(userId) {
 }
 
 async function getExternalDataProvidersByUserId(targetUserId) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System-level operation
   try {
     const result = await client.query(
       `SELECT
-        id, provider_name, provider_type, is_active, base_url,
+        id, user_id, provider_name, provider_type, is_active, base_url,
         encrypted_app_id, app_id_iv, app_id_tag,
         encrypted_app_key, app_key_iv, app_key_tag,
         token_expires_at, external_user_id,
         encrypted_garth_dump, garth_dump_iv, garth_dump_tag
-      FROM external_data_providers WHERE user_id = $1 ORDER BY created_at DESC`,
-      [targetUserId]
+      FROM external_data_providers ORDER BY created_at DESC`,
+      []
     );
     const providers = await Promise.all(result.rows.map(async (row) => {
       let decryptedAppId = null;
@@ -60,6 +60,7 @@ async function getExternalDataProvidersByUserId(targetUserId) {
         id: row.id,
         provider_name: row.provider_name,
         provider_type: row.provider_type,
+        user_id: row.user_id,
         app_id: decryptedAppId,
         app_key: decryptedAppKey,
         token_expires_at: row.token_expires_at,
@@ -76,7 +77,7 @@ async function getExternalDataProvidersByUserId(targetUserId) {
 }
 
 async function createExternalDataProvider(providerData) {
-  const client = await getPool().connect();
+  const client = await getClient(providerData.user_id); // User-specific operation
   try {
     log('debug', 'createExternalDataProvider: Received providerData:', providerData);
     const {
@@ -149,7 +150,7 @@ async function createExternalDataProvider(providerData) {
 }
 
 async function updateExternalDataProvider(id, userId, updateData) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     let encryptedAppId = updateData.encrypted_app_id || null;
     let appIdIv = updateData.app_id_iv || null;
@@ -193,7 +194,7 @@ async function updateExternalDataProvider(id, userId, updateData) {
         token_expires_at = COALESCE($14, token_expires_at),
         external_user_id = COALESCE($15, external_user_id),
         updated_at = now()
-      WHERE id = $16 AND user_id = $17
+      WHERE id = $16
       RETURNING *`,
       [
         updateData.provider_name,
@@ -212,7 +213,6 @@ async function updateExternalDataProvider(id, userId, updateData) {
         updateData.token_expires_at,
         updateData.external_user_id,
         id,
-        userId,
       ]
     );
     return result.rows[0];
@@ -222,7 +222,7 @@ async function updateExternalDataProvider(id, userId, updateData) {
 }
 
 async function getExternalDataProviderById(providerId) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System-level operation
   try {
     const result = await client.query(
       `SELECT
@@ -282,7 +282,7 @@ async function getExternalDataProviderById(providerId) {
 }
 
 async function getExternalDataProviderByUserIdAndProviderName(userId, providerName) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     log('debug', `Fetching external data provider for user ${userId} and provider ${providerName}`);
     const result = await client.query(
@@ -291,8 +291,8 @@ async function getExternalDataProviderByUserIdAndProviderName(userId, providerNa
         encrypted_app_key, app_key_iv, app_key_tag,
         token_expires_at, external_user_id, is_active, base_url, updated_at,
         encrypted_garth_dump, garth_dump_iv, garth_dump_tag
-      FROM external_data_providers WHERE user_id = $1 AND provider_name = $2`,
-      [userId, providerName]
+      FROM external_data_providers WHERE provider_name = $1`,
+      [providerName]
     );
     const data = result.rows[0];
     if (!data) {
@@ -346,11 +346,11 @@ async function getExternalDataProviderByUserIdAndProviderName(userId, providerNa
 }
 
 async function checkExternalDataProviderOwnership(providerId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const checkOwnership = await client.query(
-      'SELECT 1 FROM external_data_providers WHERE id = $1 AND user_id = $2',
-      [providerId, userId]
+      'SELECT 1 FROM external_data_providers WHERE id = $1',
+      [providerId]
     );
     return checkOwnership.rowCount > 0;
   } finally {
@@ -359,7 +359,7 @@ async function checkExternalDataProviderOwnership(providerId, userId) {
 }
  
 async function deleteExternalDataProvider(id) {
-  const client = await getPool().connect();
+  const client = await getClient(id); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'DELETE FROM external_data_providers WHERE id = $1 RETURNING id',

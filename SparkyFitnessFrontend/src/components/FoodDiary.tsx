@@ -183,16 +183,13 @@ const FoodDiary = ({
       info(loggingLevel, "Food entries loaded successfully:", data);
       debug(loggingLevel, "Raw food entries from API:", data); // Added raw data log
       const processedData = (data || []).map(entry => {
-        debug(loggingLevel, `Processing entry for food: ${entry.foods.name}, raw glycemic_index: ${entry.food_variants?.glycemic_index}`); // Log raw GI
+        debug(loggingLevel, `Processing entry for food: ${entry.food_name}, raw glycemic_index: ${entry.glycemic_index}`); // Log raw GI
         return {
           ...entry,
-          food_variants: entry.food_variants ? {
-            ...entry.food_variants,
-            glycemic_index: normalizeGlycemicIndex(entry.food_variants.glycemic_index)
-          } : entry.food_variants
+          glycemic_index: normalizeGlycemicIndex(entry.glycemic_index)
         };
       });
-      debug(loggingLevel, "Processed food entries with glycemic_index:", processedData.map(entry => ({ food_name: entry.foods.name, glycemic_index: entry.food_variants?.glycemic_index })));
+      debug(loggingLevel, "Processed food entries with glycemic_index:", processedData.map(entry => ({ food_name: entry.food_name, glycemic_index: entry.glycemic_index })));
       setFoodEntries(processedData);
       _calculateDayTotals(processedData);
     } catch (err) {

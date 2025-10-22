@@ -5,12 +5,14 @@ export interface CustomCategory {
   name: string;
   measurement_type: string;
   frequency: string;
+  data_type: string;
 }
 
 export interface CustomMeasurement {
   id: string;
   category_id: string;
-  value: number;
+  value: string | number;
+  notes?: string;
   entry_date: string;
   entry_hour: number | null;
   entry_timestamp: string;
@@ -18,6 +20,7 @@ export interface CustomMeasurement {
     name: string;
     measurement_type: string;
     frequency: string;
+    data_type: string;
   };
 }
 
@@ -39,18 +42,11 @@ export const getCustomMeasurementsForDate = async (userId: string, date: string)
   });
 };
 
-export const saveCustomMeasurement = async (measurementData: any, frequency: string): Promise<CustomMeasurement> => {
-  if (frequency === 'All') {
-    return apiCall('/measurements/custom-entries', {
-      method: 'POST',
-      body: measurementData,
-    });
-  } else {
-    return apiCall('/measurements/custom-entries', {
-      method: 'PUT',
-      body: measurementData,
-    });
-  }
+export const saveCustomMeasurement = async (measurementData: any): Promise<CustomMeasurement> => {
+  return apiCall('/measurements/custom-entries', {
+    method: 'POST', // Always use POST for new entries, backend will handle upsert logic
+    body: measurementData,
+  });
 };
 
 export const deleteCustomMeasurement = async (measurementId: string): Promise<void> => {

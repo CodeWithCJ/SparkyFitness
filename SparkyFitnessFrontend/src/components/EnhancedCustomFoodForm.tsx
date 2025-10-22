@@ -17,11 +17,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "@/hooks/use-toast";
+import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import {
   isUUID,
   saveFood,
   loadFoodVariants, // Also re-add loadFoodVariants as it's used
 } from "@/services/enhancedCustomFoodFormService";
+import { updateFoodEntriesSnapshot } from "@/services/foodService";
 import { Food, FoodVariant, GlycemicIndex } from "@/types/food";
 
 type NumericFoodVariantKeys = Exclude<
@@ -83,6 +85,8 @@ const EnhancedCustomFoodForm = ({
   const [loading, setLoading] = useState(false);
   const [variants, setVariants] = useState<FoodVariant[]>([]);
   const [variantErrors, setVariantErrors] = useState<string[]>([]); // State to hold errors for each variant
+  const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
+  const [syncFoodId, setSyncFoodId] = useState<string | null>(null);
  
   const foodDatabasePreferences = nutrientDisplayPreferences.find(
     (p) => p.view_group === "food_database" && p.platform === platform
@@ -461,6 +465,47 @@ const EnhancedCustomFoodForm = ({
         } successfully with ${variants.length} unit variant(s)`,
       });
 
+      if (food?.id && user?.id === food.user_id) {
+        setSyncFoodId(savedFood.id);
+        setShowSyncConfirmation(true);
+      } else {
+        if (!food || !food.id) {
+          setFormData({
+            name: "",
+            brand: "",
+            is_quick_food: false,
+          });
+          setVariants([
+            {
+              serving_size: 100,
+              serving_unit: "g",
+              calories: 0,
+              protein: 0,
+              carbs: 0,
+              fat: 0,
+              saturated_fat: 0,
+              polyunsaturated_fat: 0,
+              monounsaturated_fat: 0,
+              trans_fat: 0,
+              cholesterol: 0,
+              sodium: 0,
+              potassium: 0,
+              dietary_fiber: 0,
+              sugars: 0,
+              vitamin_a: 0,
+              vitamin_c: 0,
+              calcium: 0,
+              iron: 0,
+              is_default: true,
+              is_locked: false,
+              glycemic_index: sanitizeGlycemicIndexFrontend("None"),
+            },
+          ]);
+          setVariantErrors([null]); // Reset errors for new food
+        }
+        onSave(savedFood);
+      }
+
       if (!food || !food.id) {
         setFormData({
           name: "",
@@ -516,13 +561,34 @@ const EnhancedCustomFoodForm = ({
     }));
   };
 
+  const handleSyncConfirmation = async () => {
+    if (syncFoodId) {
+      try {
+        await updateFoodEntriesSnapshot(syncFoodId);
+        toast({
+          title: "Success",
+          description: "Past diary entries have been updated.",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update past diary entries.",
+          variant: "destructive",
+        });
+      }
+    }
+    setShowSyncConfirmation(false);
+    onSave(food);
+  };
+ 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {food && food.id ? "Edit Food" : "Add Custom Food"}
-        </CardTitle>
-      </CardHeader>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {food && food.id ? "Edit Food" : "Add Custom Food"}
+          </CardTitle>
+        </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info: grid-cols-1 on mobile, sm:grid-cols-2 on small screens and up */}
@@ -1080,6 +1146,16 @@ const EnhancedCustomFoodForm = ({
         </form>
       </CardContent>
     </Card>
+      {showSyncConfirmation && (
+        <ConfirmationDialog
+          open={showSyncConfirmation}
+          onOpenChange={setShowSyncConfirmation}
+          onConfirm={handleSyncConfirmation}
+          title="Sync Past Entries?"
+          description="Do you want to update all your past diary entries for this food with the new nutritional information?"
+        />
+      )}
+    </>
   );
 };
 

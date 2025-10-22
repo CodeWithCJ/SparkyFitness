@@ -16,24 +16,24 @@ const WorkoutConsistencyWidget: React.FC<WorkoutConsistencyWidgetProps> = ({ con
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
-        <span className="text-2xl font-bold">{consistencyData.currentStreak}</span>
-        <span className="text-sm text-muted-foreground">Current Streak (days)</span>
+    <>
+      <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg h-full">
+        <span className="text-3xl font-bold">{consistencyData.currentStreak}</span>
+        <span className="text-sm text-center">Current Streak (days)</span>
       </div>
-      <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
-        <span className="text-2xl font-bold">{consistencyData.longestStreak}</span>
-        <span className="text-sm text-muted-foreground">Longest Streak (days)</span>
+      <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-600 text-white shadow-lg h-full">
+        <span className="text-3xl font-bold">{consistencyData.longestStreak}</span>
+        <span className="text-sm text-center">Longest Streak (days)</span>
       </div>
-      <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
-        <span className="text-2xl font-bold">{consistencyData.weeklyFrequency.toFixed(1)}</span>
-        <span className="text-sm text-muted-foreground">Weekly Frequency</span>
+      <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-emerald-500 to-lime-600 text-white shadow-lg h-full">
+        <span className="text-3xl font-bold">{consistencyData.weeklyFrequency.toFixed(1)}</span>
+        <span className="text-sm text-center">Weekly Frequency</span>
       </div>
-      <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
-        <span className="text-2xl font-bold">{consistencyData.monthlyFrequency.toFixed(1)}</span>
-        <span className="text-sm text-muted-foreground">Monthly Frequency</span>
+      <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-rose-500 to-fuchsia-600 text-white shadow-lg h-full">
+        <span className="text-3xl font-bold">{consistencyData.monthlyFrequency.toFixed(1)}</span>
+        <span className="text-sm text-center">Monthly Frequency</span>
       </div>
-    </div>
+    </>
   );
 };
 

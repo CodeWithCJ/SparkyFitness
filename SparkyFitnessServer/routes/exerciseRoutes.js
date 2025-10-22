@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const exerciseService = require('../services/exerciseService');
 const reportRepository = require('../models/reportRepository');
 const multer = require('multer');
@@ -23,7 +23,7 @@ const upload = multer({ storage: storage });
 
 
 // Endpoint to fetch exercises with search, filter, and pagination
-router.get('/', authenticateToken, authorizeAccess('exercise_list', (req) => req.userId), async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   const { searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, currentPage, itemsPerPage } = req.query;
   const equipmentFilterArray = equipmentFilter ? equipmentFilter.split(',') : [];
   const muscleGroupFilterArray = muscleGroupFilter ? muscleGroupFilter.split(',') : [];
@@ -50,7 +50,7 @@ router.get('/', authenticateToken, authorizeAccess('exercise_list', (req) => req
 });
 
 // Endpoint to get suggested exercises
-router.get('/suggested', authenticateToken, authorizeAccess('exercise_list', (req) => req.userId), async (req, res, next) => {
+router.get('/suggested', authenticate, async (req, res, next) => {
   const { limit } = req.query;
   try {
     const suggestedExercises = await exerciseService.getSuggestedExercises(req.userId, limit);
@@ -64,7 +64,7 @@ router.get('/suggested', authenticateToken, authorizeAccess('exercise_list', (re
 });
 
 // Endpoint to get recent exercises
-router.get('/recent', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.get('/recent', authenticate, async (req, res, next) => {
   const { limit } = req.query;
   try {
     const recentExercises = await exerciseService.getRecentExercises(req.userId, limit);
@@ -78,7 +78,7 @@ router.get('/recent', authenticateToken, authorizeAccess('exercise_list'), async
 });
 
 // Endpoint to get top exercises
-router.get('/top', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.get('/top', authenticate, async (req, res, next) => {
   const { limit } = req.query;
   try {
     const topExercises = await exerciseService.getTopExercises(req.userId, limit);
@@ -92,7 +92,7 @@ router.get('/top', authenticateToken, authorizeAccess('exercise_list'), async (r
 });
 
 // Endpoint to search for exercises
-router.get('/search', authenticateToken, authorizeAccess('exercise_list', (req) => req.userId), async (req, res, next) => {
+router.get('/search', authenticate, async (req, res, next) => {
   const { searchTerm, equipmentFilter, muscleGroupFilter } = req.query;
   const equipmentFilterArray = equipmentFilter ? equipmentFilter.split(',') : [];
   const muscleGroupFilterArray = muscleGroupFilter ? muscleGroupFilter.split(',') : [];
@@ -110,7 +110,7 @@ router.get('/search', authenticateToken, authorizeAccess('exercise_list', (req) 
 });
 
 // Endpoint to search for exercises from Wger
-router.get('/search-external', authenticateToken, authorizeAccess('exercise_list', (req) => req.userId), async (req, res, next) => {
+router.get('/search-external', authenticate, async (req, res, next) => {
   const { query, providerId, providerType, equipmentFilter, muscleGroupFilter } = req.query; // Get providerId and providerType from query
   const equipmentFilterArray = equipmentFilter && equipmentFilter.length > 0 ? equipmentFilter.split(',') : [];
   const muscleGroupFilterArray = muscleGroupFilter && muscleGroupFilter.length > 0 ? muscleGroupFilter.split(',') : [];
@@ -132,7 +132,7 @@ router.get('/search-external', authenticateToken, authorizeAccess('exercise_list
   }
 });
 
-router.get('/equipment', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.get('/equipment', authenticate, async (req, res, next) => {
   try {
     const equipmentTypes = await exerciseService.getAvailableEquipment();
     res.status(200).json(equipmentTypes);
@@ -141,7 +141,7 @@ router.get('/equipment', authenticateToken, authorizeAccess('exercise_list'), as
   }
 });
 
-router.get('/muscle-groups', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.get('/muscle-groups', authenticate, async (req, res, next) => {
   try {
     const muscleGroups = await exerciseService.getAvailableMuscleGroups();
     res.status(200).json(muscleGroups);
@@ -150,7 +150,24 @@ router.get('/muscle-groups', authenticateToken, authorizeAccess('exercise_list')
   }
 });
 
-router.get('/names', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.get('/wger-filters', authenticate, async (req, res, next) => {
+  try {
+    const wgerMuscles = await wgerService.getWgerMuscleIdMap();
+    const wgerEquipment = await wgerService.getWgerEquipmentIdMap();
+    
+    const ourMuscles = await exerciseService.getAvailableMuscleGroups();
+    const ourEquipment = await exerciseService.getAvailableEquipment();
+
+    const uniqueMuscles = Object.keys(wgerMuscles).filter(m => !ourMuscles.includes(m));
+    const uniqueEquipment = Object.keys(wgerEquipment).filter(e => !ourEquipment.includes(e));
+
+    res.status(200).json({ uniqueMuscles, uniqueEquipment });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/names', authenticate, async (req, res, next) => {
   try {
     const { muscle, equipment } = req.query;
     const exerciseNames = await reportRepository.getExerciseNames(req.userId, muscle, equipment);
@@ -161,7 +178,7 @@ router.get('/names', authenticateToken, authorizeAccess('exercise_list'), async 
 });
 
 // Endpoint to add an external exercise to user's exercises
-router.post('/add-external', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.post('/add-external', authenticate, async (req, res, next) => {
   const { wgerExerciseId } = req.body;
   if (!wgerExerciseId) {
     return res.status(400).json({ error: 'Wger exercise ID is required.' });
@@ -175,7 +192,7 @@ router.post('/add-external', authenticateToken, authorizeAccess('exercise_list')
 });
 
 // Endpoint to add a Nutritionix exercise to user's exercises
-router.post('/add-nutritionix-exercise', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.post('/add-nutritionix-exercise', authenticate, async (req, res, next) => {
   const nutritionixExerciseData = req.body;
   if (!nutritionixExerciseData) {
     return res.status(400).json({ error: 'Nutritionix exercise data is required.' });
@@ -190,7 +207,7 @@ router.post('/add-nutritionix-exercise', authenticateToken, authorizeAccess('exe
 
 
 // Endpoint to fetch an exercise by ID
-router.get('/:id', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.get('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
@@ -211,7 +228,7 @@ router.get('/:id', authenticateToken, authorizeAccess('exercise_list'), async (r
 });
 
 // Endpoint to create a new exercise
-router.post('/', authenticateToken, authorizeAccess('exercise_list'), upload.array('images', 10), async (req, res, next) => {
+router.post('/', authenticate, upload.array('images', 10), async (req, res, next) => {
   try {
     const exerciseData = JSON.parse(req.body.exerciseData);
     const imagePaths = req.files ? req.files.map(file => `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`) : [];
@@ -227,7 +244,7 @@ router.post('/', authenticateToken, authorizeAccess('exercise_list'), upload.arr
   }
 });
 // Endpoint to import exercises from CSV (file upload)
-router.post('/import', authenticateToken, authorizeAccess('exercise_list'), upload.single('file'), async (req, res, next) => {
+router.post('/import', authenticate, upload.single('file'), async (req, res, next) => {
   try {
     const result = await exerciseService.importExercisesFromCSV(req.userId, req.file.path);
     res.status(201).json(result);
@@ -237,7 +254,7 @@ router.post('/import', authenticateToken, authorizeAccess('exercise_list'), uplo
 });
 
 // Endpoint to import exercises from JSON (from frontend table)
-router.post('/import-json', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.post('/import-json', authenticate, async (req, res, next) => {
   try {
     const { exercises } = req.body;
     if (!exercises || !Array.isArray(exercises)) {
@@ -254,7 +271,7 @@ router.post('/import-json', authenticateToken, authorizeAccess('exercise_list'),
 });
 
 // Endpoint to update an exercise
-router.put('/:id', authenticateToken, authorizeAccess('exercise_list'), upload.array('images', 10), async (req, res, next) => {
+router.put('/:id', authenticate, upload.array('images', 10), async (req, res, next) => {
   const { id } = req.params;
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
@@ -270,7 +287,7 @@ router.put('/:id', authenticateToken, authorizeAccess('exercise_list'), upload.a
 
     const updatedExercise = await exerciseService.updateExercise(req.userId, id, {
       ...exerciseData,
-      images: allImages,
+      ...((allImages.length > 0 || !!exerciseData.images) ? { images: allImages } : { }),
     });
     res.status(200).json(updatedExercise);
   } catch (error) {
@@ -285,7 +302,7 @@ router.put('/:id', authenticateToken, authorizeAccess('exercise_list'), upload.a
 });
 
 // Endpoint to get deletion impact for an exercise
-router.get('/:id/deletion-impact', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
     const { id } = req.params;
     const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (!id || !uuidRegex.test(id)) {
@@ -306,7 +323,7 @@ router.get('/:id/deletion-impact', authenticateToken, authorizeAccess('exercise_
 });
 
 // Endpoint to delete an exercise
-router.delete('/:id', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.delete('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
@@ -326,5 +343,35 @@ router.delete('/:id', authenticateToken, authorizeAccess('exercise_list'), async
   }
 });
 
+
+router.get(
+  "/needs-review",
+  authenticate,
+  async (req, res, next) => {
+    try {
+      const exercisesNeedingReview = await exerciseService.getExercisesNeedingReview(req.userId);
+      res.status(200).json(exercisesNeedingReview);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/update-snapshot",
+  authenticate,
+  async (req, res, next) => {
+    const { exerciseId } = req.body;
+    if (!exerciseId) {
+      return res.status(400).json({ error: "exerciseId is required." });
+    }
+    try {
+      const result = await exerciseService.updateExerciseEntriesSnapshot(req.userId, exerciseId);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 module.exports = router;

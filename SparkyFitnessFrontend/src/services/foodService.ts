@@ -2,7 +2,7 @@ import { apiCall } from './api';
 
 import { Food, FoodDeletionImpact, FoodSearchResult, FoodVariant, GlycemicIndex } from '@/types/food';
 
-export type FoodFilter = 'all' | 'mine' | 'family' | 'public';
+export type FoodFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
 
 export interface ExternalDataProvider {
   id: string;
@@ -47,7 +47,8 @@ export const searchFoods = async (
   exactMatch: boolean,
   broadMatch: boolean,
   checkCustom: boolean,
-  limit?: number // Make limit optional
+  limit?: number, // Make limit optional
+  mealType?: string
 ): Promise<FoodSearchResult> => {
   const params = new URLSearchParams();
   if (name) {
@@ -59,6 +60,9 @@ export const searchFoods = async (
   }
   if (limit !== undefined) {
     params.append('limit', limit.toString());
+  }
+  if (mealType !== undefined) {
+    params.append('mealType', mealType);
   }
 
   const response = await apiCall(`/foods?${params.toString()}`, {
@@ -104,8 +108,13 @@ export const togglePublicSharing = async (foodId: string, currentState: boolean)
   });
 };
 
-export const deleteFood = async (foodId: string, userId: string): Promise<void> => {
-  return apiCall(`/foods/${foodId}?userId=${userId}`, {
+export const deleteFood = async (foodId: string, userId: string, forceDelete: boolean = false): Promise<{ message: string; status: string }> => {
+  const params = new URLSearchParams();
+  params.append('userId', userId);
+  if (forceDelete) {
+    params.append('forceDelete', 'true');
+  }
+  return apiCall(`/foods/${foodId}?${params.toString()}`, {
     method: 'DELETE',
   });
 };
@@ -128,6 +137,12 @@ export const updateFood = async (id: string, payload: Partial<FoodPayload>): Pro
   return apiCall(`/foods/${id}`, {
     method: 'PUT',
     body: payload,
+  });
+};
+
+export const getFoodById = async (foodId: string): Promise<Food> => {
+  return apiCall(`/foods/${foodId}`, {
+    method: 'GET',
   });
 };
 
@@ -159,6 +174,13 @@ export const searchMealieFoods = async (
     },
   });
   return response;
+};
+
+export const updateFoodEntriesSnapshot = async (foodId: string): Promise<void> => {
+  return apiCall(`/foods/update-snapshot`, {
+    method: 'POST',
+    body: { foodId },
+  });
 };
 
 export const getMealieFoodDetails = async (

@@ -45,10 +45,39 @@ export const createExerciseEntry = async (payload: {
   calories_burned?: number;
   imageFile?: File | null;
 }): Promise<ExerciseEntry> => {
-  return apiCall('/exercise-entries', {
-    method: 'POST',
-    body: payload,
-  });
+  const { imageFile, ...entryData } = payload;
+
+  if (imageFile) {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    
+    // Append other data from the payload to formData
+    Object.keys(entryData).forEach(key => {
+      const value = (entryData as any)[key];
+      if (value !== undefined && value !== null) {
+        if (key === 'sets' && Array.isArray(value)) {
+          // The backend expects 'sets' to be a JSON string if it's part of FormData
+          formData.append(key, JSON.stringify(value));
+        } else if (typeof value === 'object' && !Array.isArray(value)) {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, value);
+        }
+      }
+    });
+
+    return apiCall('/exercise-entries', {
+      method: 'POST',
+      body: formData,
+      isFormData: true, // Explicitly mark as FormData
+    });
+  } else {
+    return apiCall('/exercise-entries', {
+      method: 'POST',
+      body: entryData,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 };
 
 export const logWorkoutPreset = async (workoutPresetId: string, entryDate: string): Promise<ExerciseEntry[]> => {
@@ -62,6 +91,50 @@ export const deleteExerciseEntry = async (entryId: string): Promise<void> => {
   return apiCall(`/exercise-entries/${entryId}`, {
     method: 'DELETE',
   });
+};
+
+export const updateExerciseEntry = async (entryId: string, payload: {
+  duration_minutes?: number;
+  calories_burned?: number;
+  notes?: string;
+  sets?: WorkoutPresetSet[];
+  image_url?: string;
+  imageFile?: File | null;
+}): Promise<ExerciseEntry> => {
+  const { imageFile, ...entryData } = payload;
+  console.log('updateExerciseEntry payload:', payload);
+  console.log('updateExerciseEntry entryData:', entryData);
+  
+  if (imageFile) {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    
+    Object.keys(entryData).forEach(key => {
+      const value = (entryData as any)[key];
+      if (value !== undefined && value !== null) {
+        if (key === 'sets' && Array.isArray(value)) {
+          formData.append(key, JSON.stringify(value));
+        } else if (typeof value === 'object' && !Array.isArray(value)) {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, value);
+        }
+      }
+    });
+
+    return apiCall(`/exercise-entries/${entryId}`, {
+      method: 'PUT',
+      body: formData,
+      isFormData: true,
+    });
+  } else {
+    // If no new image, send as JSON
+    return apiCall(`/exercise-entries/${entryId}`, {
+      method: 'PUT',
+      body: entryData,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 };
 
 export const getExerciseProgressData = async (exerciseId: string, startDate: string, endDate: string, aggregationLevel: string = 'daily'): Promise<ExerciseProgressData[]> => {

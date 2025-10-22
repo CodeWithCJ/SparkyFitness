@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const garminConnectService = require('../integrations/garminconnect/garminConnectService');
 const externalProviderRepository = require('../models/externalProviderRepository');
 const measurementService = require('../services/measurementService'); // Import measurementService
@@ -10,7 +10,7 @@ const moment = require('moment'); // Import moment for date manipulation
 router.use(express.json());
 
 // Endpoint for Garmin direct login
-router.post('/login', authenticateToken, async (req, res, next) => {
+router.post('/login', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
         const { email, password } = req.body;
@@ -30,7 +30,7 @@ router.post('/login', authenticateToken, async (req, res, next) => {
 });
 
 // Endpoint to resume Garmin login (e.g., after MFA)
-router.post('/resume_login', authenticateToken, async (req, res, next) => {
+router.post('/resume_login', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
         const { client_state, mfa_code } = req.body;
@@ -50,7 +50,7 @@ router.post('/resume_login', authenticateToken, async (req, res, next) => {
 });
 
 // Endpoint to manually sync daily summary data from Garmin for the last 3 days
-router.post('/sync/daily_summary', authenticateToken, async (req, res, next) => {
+router.post('/sync/daily_summary', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
         const syncedDates = [];
@@ -108,7 +108,7 @@ router.post('/sync/daily_summary', authenticateToken, async (req, res, next) => 
 });
 
 // Endpoint to manually sync body composition data from Garmin
-router.post('/sync/body_composition', authenticateToken, async (req, res, next) => {
+router.post('/sync/body_composition', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
         const { startDate, endDate } = req.body; // Dates in YYYY-MM-DD format
@@ -157,7 +157,7 @@ router.post('/sync/body_composition', authenticateToken, async (req, res, next) 
 });
 
 // Endpoint to get Garmin connection status and token info
-router.get('/status', authenticateToken, async (req, res, next) => {
+router.get('/status', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
         log('debug', `Garmin /status endpoint called for user: ${userId}`);
@@ -187,7 +187,7 @@ router.get('/status', authenticateToken, async (req, res, next) => {
 });
 
 // Endpoint to unlink Garmin account
-router.post('/unlink', authenticateToken, async (req, res, next) => {
+router.post('/unlink', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
         const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');

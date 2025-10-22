@@ -1,8 +1,8 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
 async function createWeeklyGoalPlan(planData) {
-  const client = await getPool().connect();
+  const client = await getClient(planData.user_id); // User-specific operation
   try {
     const result = await client.query(
       `INSERT INTO weekly_goal_plans (
@@ -25,7 +25,7 @@ async function createWeeklyGoalPlan(planData) {
 }
 
 async function getWeeklyGoalPlansByUserId(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT * FROM weekly_goal_plans WHERE user_id = $1 ORDER BY start_date DESC`,
@@ -38,7 +38,7 @@ async function getWeeklyGoalPlansByUserId(userId) {
 }
 
 async function getActiveWeeklyGoalPlan(userId, date) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT * FROM weekly_goal_plans
@@ -56,7 +56,7 @@ async function getActiveWeeklyGoalPlan(userId, date) {
 }
 
 async function updateWeeklyGoalPlan(planId, planData) {
-  const client = await getPool().connect();
+  const client = await getClient(planData.user_id); // User-specific operation
   try {
     const result = await client.query(
       `UPDATE weekly_goal_plans SET
@@ -80,7 +80,7 @@ async function updateWeeklyGoalPlan(planId, planData) {
 }
 
 async function deactivateAllWeeklyGoalPlans(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
       `UPDATE weekly_goal_plans SET is_active = FALSE WHERE user_id = $1`,
@@ -93,7 +93,7 @@ async function deactivateAllWeeklyGoalPlans(userId) {
 }
 
 async function deleteWeeklyGoalPlan(planId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `DELETE FROM weekly_goal_plans WHERE id = $1 AND user_id = $2 RETURNING *`,

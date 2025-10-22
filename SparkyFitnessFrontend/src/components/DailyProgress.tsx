@@ -17,8 +17,12 @@ import {
   ExerciseEntry,
   CheckInMeasurement,
 } from "@/services/dailyProgressService";
+import { getMostRecentMeasurement } from "@/services/checkInService";
 import { FoodEntry } from "@/types/food"; // Import FoodEntry from src/types/food
 import { Skeleton } from "./ui/skeleton";
+import { getUserPreferences } from "@/services/preferenceService";
+import { calculateBmr, BmrAlgorithm } from "@/services/bmrService";
+import { userManagementService } from "@/services/userManagementService";
 
 const DailyProgress = ({
   selectedDate,
@@ -72,6 +76,8 @@ const DailyProgress = ({
   const [exerciseCalories, setExerciseCalories] = useState(0);
   const [stepsCalories, setStepsCalories] = useState(0);
   const [dailySteps, setDailySteps] = useState(0);
+  const [bmr, setBmr] = useState<number | null>(null);
+  const [includeBmrInNetCalories, setIncludeBmrInNetCalories] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const currentUserId = activeUserId || user?.id;
@@ -232,6 +238,54 @@ const DailyProgress = ({
         setDailySteps(0);
         setStepsCalories(0);
       }
+
+      // Load BMR
+      debug(loggingLevel, "DailyProgress: Fetching user preferences for BMR...");
+      try {
+        const prefs = await getUserPreferences(loggingLevel);
+        if (prefs && currentUserId) {
+          setIncludeBmrInNetCalories(prefs.include_bmr_in_net_calories || false);
+          const [mostRecentWeight, mostRecentHeight, mostRecentBodyFat, userProfile] = await Promise.all([
+            getMostRecentMeasurement('weight'),
+            getMostRecentMeasurement('height'),
+            getMostRecentMeasurement('body_fat_percentage'),
+            userManagementService.getUserProfile(currentUserId)
+          ]);
+
+          const age = userProfile?.date_of_birth ? new Date().getFullYear() - new Date(userProfile.date_of_birth).getFullYear() : 0;
+          const gender = userProfile?.gender;
+
+          if (prefs.bmr_algorithm && mostRecentWeight?.weight && mostRecentHeight?.height && age && gender) {
+            try {
+              const bmrValue = calculateBmr(
+                prefs.bmr_algorithm as BmrAlgorithm,
+                mostRecentWeight.weight,
+                mostRecentHeight.height,
+                age,
+                gender,
+                mostRecentBodyFat?.body_fat_percentage
+              );
+              setBmr(bmrValue);
+            } catch (bmrError) {
+              error(loggingLevel, "DailyProgress: Error calculating BMR:", bmrError);
+              setBmr(null);
+            }
+          } else {
+            warn(loggingLevel, "DailyProgress: Missing data for BMR calculation.", {
+              bmr_algorithm: prefs.bmr_algorithm,
+              weight: mostRecentWeight?.weight,
+              height: mostRecentHeight?.height,
+              age,
+              gender
+            });
+            setBmr(null);
+          }
+        }
+      } catch (err) {
+        error(loggingLevel, "DailyProgress: Error loading BMR data:", err);
+        setBmr(null);
+      }
+
       info(
         loggingLevel,
         "DailyProgress: Goals and intake loaded successfully.",
@@ -325,7 +379,11 @@ const DailyProgress = ({
       totalCaloriesBurned,
     );
   }
-  const netCalories = Math.round(dailyIntake.calories) - totalCaloriesBurned;
+
+  const bmrCalories = includeBmrInNetCalories && bmr ? bmr : 0;
+  const finalTotalCaloriesBurned = totalCaloriesBurned + bmrCalories;
+
+  const netCalories = Math.round(dailyIntake.calories) - finalTotalCaloriesBurned;
   const caloriesRemaining = dailyGoals.calories - netCalories;
   const calorieProgress = Math.max(
     0,
@@ -408,7 +466,7 @@ const DailyProgress = ({
           </div>
 
           {/* Calories Burned Breakdown - More compact */}
-          {(exerciseCalories > 0 || stepsCalories > 0) && (
+          {(exerciseCalories > 0 || stepsCalories > 0 || bmr) && (
             <div className="text-center p-2 bg-blue-50 rounded-lg space-y-1">
               <div className="text-sm font-medium text-blue-700">
                 Calories Burned Breakdown
@@ -424,6 +482,11 @@ const DailyProgress = ({
                   Steps: {dailySteps.toLocaleString()} = {stepsCalories} cal
                 </div>
               )}
+              {bmr && (
+                <div className="text-xs text-blue-600">
+                  BMR: {Math.round(bmr)} cal
+                </div>
+              )}
             </div>
           )}
 
@@ -433,7 +496,7 @@ const DailyProgress = ({
               Net Calories: {Math.round(netCalories)}
             </div>
             <div className="text-xs dark:text-black text-gray-600">
-              {Math.round(dailyIntake.calories)} eaten - {totalCaloriesBurned}{" "}
+              {Math.round(dailyIntake.calories)} eaten - {Math.round(finalTotalCaloriesBurned)}{" "}
               burned
             </div>
           </div>

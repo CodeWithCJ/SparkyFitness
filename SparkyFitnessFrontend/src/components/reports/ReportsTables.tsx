@@ -15,7 +15,7 @@ interface DailyFoodEntry {
   meal_type: string;
   quantity: number;
   unit: string;
-  foods: {
+  foods: { // Keep for backward compatibility or nested scenarios
     name: string;
     brand?: string;
     calories: number;
@@ -38,6 +38,28 @@ interface DailyFoodEntry {
     iron?: number;
     serving_size: number;
   };
+  // Add snapshotted fields
+  food_name?: string;
+  brand_name?: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  serving_size?: number;
+  glycemic_index?: string;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
 }
 
 interface DailyExerciseEntry {
@@ -74,6 +96,8 @@ interface MeasurementData {
   waist?: number;
   hips?: number;
   steps?: number;
+  height?: number;
+  body_fat_percentage?: number;
 }
 
 interface CustomCategory {
@@ -81,13 +105,15 @@ interface CustomCategory {
   name: string;
   measurement_type: string;
   frequency: string;
+  data_type: string;
 }
 
 interface CustomMeasurementData {
   category_id: string;
   entry_date: string; // Changed from 'date' to 'entry_date'
   hour?: number;
-  value: number;
+  value: string | number;
+  notes?: string;
   timestamp: string;
 }
 
@@ -120,13 +146,12 @@ const ReportsTables = ({
   onExportCustomMeasurements,
   onExportExerciseEntries, // Destructure new prop
 }: ReportsTablesProps) => {
-  const { loggingLevel, dateFormat, formatDateInUserTimezone, nutrientDisplayPreferences } = usePreferences();
+  const { loggingLevel, dateFormat, formatDateInUserTimezone, nutrientDisplayPreferences, weightUnit, convertWeight } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const reportTabularPreferences = nutrientDisplayPreferences.find(p => p.view_group === 'report_tabular' && p.platform === platform);
   const visibleNutrients = reportTabularPreferences ? reportTabularPreferences.visible_nutrients : ['calories', 'protein', 'carbs', 'fat'];
   const [exerciseNameFilter, setExerciseNameFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState({ startDate: "", endDate: "" });
   const [setTypeFilter, setSetTypeFilter] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -156,33 +181,35 @@ const ReportsTables = ({
 
   const calculateFoodDayTotal = (entries: DailyFoodEntry[]) => {
     return entries.reduce((total, entry) => {
-      const food = entry.foods;
-      const multiplier = entry.quantity / (food.serving_size || 100);
+      const source = entry.calories ? entry : entry.foods;
+      const multiplier = entry.quantity / (source.serving_size || 100);
       
       return {
-        calories: total.calories + (food.calories || 0) * multiplier,
-        protein: total.protein + (food.protein || 0) * multiplier,
-        carbs: total.carbs + (food.carbs || 0) * multiplier,
-        fat: total.fat + (food.fat || 0) * multiplier,
-        saturated_fat: total.saturated_fat + (food.saturated_fat || 0) * multiplier,
-        polyunsaturated_fat: total.polyunsaturated_fat + (food.polyunsaturated_fat || 0) * multiplier,
-        monounsaturated_fat: total.monounsaturated_fat + (food.monounsaturated_fat || 0) * multiplier,
-        trans_fat: total.trans_fat + (food.trans_fat || 0) * multiplier,
-        cholesterol: total.cholesterol + (food.cholesterol || 0) * multiplier,
-        sodium: total.sodium + (food.sodium || 0) * multiplier,
-        potassium: total.potassium + (food.potassium || 0) * multiplier,
-        dietary_fiber: total.dietary_fiber + (food.dietary_fiber || 0) * multiplier,
-        sugars: total.sugars + (food.sugars || 0) * multiplier,
-        vitamin_a: total.vitamin_a + (food.vitamin_a || 0) * multiplier,
-        vitamin_c: total.vitamin_c + (food.vitamin_c || 0) * multiplier,
-        calcium: total.calcium + (food.calcium || 0) * multiplier,
-        iron: total.iron + (food.iron || 0) * multiplier,
+        calories: total.calories + (source.calories || 0) * multiplier,
+        protein: total.protein + (source.protein || 0) * multiplier,
+        carbs: total.carbs + (source.carbs || 0) * multiplier,
+        fat: total.fat + (source.fat || 0) * multiplier,
+        saturated_fat: total.saturated_fat + (source.saturated_fat || 0) * multiplier,
+        polyunsaturated_fat: total.polyunsaturated_fat + (source.polyunsaturated_fat || 0) * multiplier,
+        monounsaturated_fat: total.monounsaturated_fat + (source.monounsaturated_fat || 0) * multiplier,
+        trans_fat: total.trans_fat + (source.trans_fat || 0) * multiplier,
+        cholesterol: total.cholesterol + (source.cholesterol || 0) * multiplier,
+        sodium: total.sodium + (source.sodium || 0) * multiplier,
+        potassium: total.potassium + (source.potassium || 0) * multiplier,
+        dietary_fiber: total.dietary_fiber + (source.dietary_fiber || 0) * multiplier,
+        sugars: total.sugars + (source.sugars || 0) * multiplier,
+        vitamin_a: total.vitamin_a + (source.vitamin_a || 0) * multiplier,
+        vitamin_c: total.vitamin_c + (source.vitamin_c || 0) * multiplier,
+        calcium: total.calcium + (source.calcium || 0) * multiplier,
+        iron: total.iron + (source.iron || 0) * multiplier,
+        glycemic_index: 'None' // GI is not aggregated
       };
     }, {
       calories: 0, protein: 0, carbs: 0, fat: 0, saturated_fat: 0,
       polyunsaturated_fat: 0, monounsaturated_fat: 0, trans_fat: 0,
       cholesterol: 0, sodium: 0, potassium: 0, dietary_fiber: 0,
-      sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0
+      sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0,
+      glycemic_index: 'None'
     });
   };
 
@@ -222,8 +249,10 @@ const ReportsTables = ({
           vitamin_c: totals.vitamin_c,
           calcium: totals.calcium,
           iron: totals.iron,
+          glycemic_index: 'None',
           serving_size: 100
-        }
+        },
+        food_name: 'Total'
       });
     });
   debug(loggingLevel, `ReportsTables: Generated ${foodDataWithTotals.length} rows for food diary table.`);
@@ -249,17 +278,12 @@ const ReportsTables = ({
     }
     return sortableItems.filter(entry => {
       const entryDate = parseISO(entry.entry_date);
-      const startDate = dateFilter.startDate ? parseISO(dateFilter.startDate) : null;
-      const endDate = dateFilter.endDate ? parseISO(dateFilter.endDate) : null;
-
-      if (startDate && entryDate < startDate) return false;
-      if (endDate && entryDate > endDate) return false;
       if (exerciseNameFilter && !entry.exercises.name.toLowerCase().includes(exerciseNameFilter.toLowerCase())) return false;
       if (setTypeFilter && !entry.sets.some(set => set.set_type.toLowerCase().includes(setTypeFilter.toLowerCase()))) return false;
 
       return true;
     });
-  }, [sortedExerciseEntries, exerciseNameFilter, dateFilter, setTypeFilter, sortConfig]);
+  }, [sortedExerciseEntries, exerciseNameFilter, setTypeFilter, sortConfig]);
 
   const requestSort = (key: string) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -320,8 +344,8 @@ const ReportsTables = ({
               </TableHeader>
               <TableBody>
                 {foodDataWithTotals.map((entry, index) => {
-                  const food = entry.foods;
-                  const multiplier = entry.isTotal ? 1 : entry.quantity / (food.serving_size || 100);
+                  const source = entry.calories ? entry : entry.foods;
+                  const multiplier = entry.isTotal ? 1 : entry.quantity / (source.serving_size || 100);
 
                   return (
                     <TableRow key={index} className={entry.isTotal ? "bg-gray-50 dark:bg-gray-900 font-semibold border-t-2" : ""}>
@@ -330,8 +354,8 @@ const ReportsTables = ({
                       <TableCell className="min-w-[250px]">
                         {!entry.isTotal && (
                           <div>
-                            <div className="font-medium">{food.name}</div>
-                            {food.brand && <div className="text-sm text-gray-500">{food.brand}</div>}
+                            <div className="font-medium">{entry.food_name || entry.foods.name}</div>
+                            {(entry.brand_name || entry.foods.brand) && <div className="text-sm text-gray-500">{entry.brand_name || entry.foods.brand}</div>}
                           </div>
                         )}
                       </TableCell>
@@ -339,15 +363,11 @@ const ReportsTables = ({
                       {visibleNutrients.map(nutrient => {
                         // Special-case glycemic_index because it's a categorical value (string), not numeric
                         if (nutrient === 'glycemic_index') {
-                          // Try multiple fallback locations since different endpoints may return GI in different shapes
-                          const topLevelGi = (entry as any).glycemic_index || (entry as any).glycemicIndex;
-                          const variantGi = (entry as any).food_variants?.glycemic_index || (entry as any).food_variants?.glycemicIndex;
-                          const foodsGi = (food as any).glycemic_index || (food as any).glycemicIndex;
-                          const giValue = entry.isTotal ? '' : (foodsGi || variantGi || topLevelGi || 'None');
+                          const giValue = entry.isTotal ? '' : (entry.glycemic_index || entry.foods?.glycemic_index || 'None');
                           return <TableCell key={nutrient}>{giValue}</TableCell>;
                         }
 
-                        const value = (food[nutrient as keyof typeof food] as number || 0) * multiplier;
+                        const value = (source[nutrient as keyof typeof source] as number || 0) * multiplier;
                         return <TableCell key={nutrient}>{formatNutrientValue(value, nutrient)}</TableCell>
                       })}
                     </TableRow>
@@ -380,16 +400,6 @@ const ReportsTables = ({
               className="max-w-sm"
             />
             <Input
-              type="date"
-              value={dateFilter.startDate}
-              onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })}
-            />
-            <Input
-              type="date"
-              value={dateFilter.endDate}
-              onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })}
-            />
-            <Input
               placeholder="Filter by set type..."
               value={setTypeFilter}
               onChange={(e) => setSetTypeFilter(e.target.value)}
@@ -407,7 +417,7 @@ const ReportsTables = ({
                   <TableHead onClick={() => requestSort('set_number')}>Set</TableHead>
                   <TableHead onClick={() => requestSort('set_type')}>Type</TableHead>
                   <TableHead onClick={() => requestSort('reps')}>Reps</TableHead>
-                  <TableHead onClick={() => requestSort('weight')}>Weight</TableHead>
+                  <TableHead onClick={() => requestSort('weight')}>Weight ({weightUnit})</TableHead>
                   <TableHead>Tonnage</TableHead>
                   <TableHead onClick={() => requestSort('duration')}>Duration (min)</TableHead>
                   <TableHead onClick={() => requestSort('rest_time')}>Rest (s)</TableHead>
@@ -431,15 +441,15 @@ const ReportsTables = ({
                         </TableCell>
                         <TableCell>{entry.exercises.name}</TableCell>
                         <TableCell>{entry.sets.length}</TableCell>
-                        <TableCell>N/A</TableCell>
+                        <TableCell></TableCell>
                         <TableCell>
                           {Math.min(...entry.sets.map(s => s.reps))} - {Math.max(...entry.sets.map(s => s.reps))}
                         </TableCell>
                         <TableCell>
-                          {(entry.sets.reduce((acc, s) => acc + Number(s.weight), 0) / entry.sets.length).toFixed(1)}
+                          {entry.sets.length > 0 ? Math.round(convertWeight(entry.sets.reduce((acc, s) => acc + Number(s.weight), 0) / entry.sets.length, 'kg', weightUnit)) : 0}
                         </TableCell>
                         <TableCell>
-                          {entry.sets.reduce((acc, s) => acc + (Number(s.weight) * Number(s.reps)), 0)}
+                          {entry.sets.length > 0 ? Math.round(convertWeight(entry.sets.reduce((acc, s) => acc + (Number(s.weight) * Number(s.reps)), 0), 'kg', weightUnit)) : 0}
                         </TableCell>
                         <TableCell>
                           {entry.sets.reduce((acc, s) => acc + (s.duration || 0), 0)}
@@ -457,8 +467,8 @@ const ReportsTables = ({
                           <TableCell>{set.set_number}</TableCell>
                           <TableCell>{set.set_type}</TableCell>
                           <TableCell>{set.reps}</TableCell>
-                          <TableCell>{set.weight}</TableCell>
-                          <TableCell>{(Number(set.weight) * Number(set.reps))}</TableCell>
+                          <TableCell>{Math.round(convertWeight(set.weight, 'kg', weightUnit))}</TableCell>
+                          <TableCell>{Math.round(convertWeight(Number(set.weight) * Number(set.reps), 'kg', weightUnit))}</TableCell>
                           <TableCell>{set.duration || '-'}</TableCell>
                           <TableCell>{set.rest_time || '-'}</TableCell>
                           <TableCell colSpan={2}>{set.notes || '-'}</TableCell>
@@ -498,6 +508,8 @@ const ReportsTables = ({
                   <TableHead>Waist ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
                   <TableHead>Hips ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
                   <TableHead>Steps</TableHead>
+                  <TableHead>Height ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
+                  <TableHead>Body Fat %</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -509,6 +521,8 @@ const ReportsTables = ({
                     <TableCell>{measurement.waist ? measurement.waist.toFixed(1) : '-'}</TableCell>
                     <TableCell>{measurement.hips ? measurement.hips.toFixed(1) : '-'}</TableCell>
                     <TableCell>{measurement.steps || '-'}</TableCell>
+                    <TableCell>{measurement.height ? measurement.height.toFixed(1) : '-'}</TableCell>
+                    <TableCell>{measurement.body_fat_percentage ? measurement.body_fat_percentage.toFixed(1) : '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -546,8 +560,9 @@ const ReportsTables = ({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
-                      <TableHead>Hour</TableHead>
+                      <TableHead>Time</TableHead>
                       <TableHead>Value ({category.measurement_type})</TableHead>
+                      <TableHead>Notes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -555,13 +570,15 @@ const ReportsTables = ({
                       // Extract hour from timestamp
                       const timestamp = parseISO(measurement.timestamp);
                       const hour = timestamp.getHours();
-                      const formattedHour = `${hour.toString().padStart(2, '0')}:00`;
+                      const minutes = timestamp.getMinutes();
+                      const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                       
                       return (
                         <TableRow key={index}>
                           <TableCell>{measurement.entry_date && !isNaN(parseISO(measurement.entry_date).getTime()) ? formatDateInUserTimezone(parseISO(measurement.entry_date), dateFormat) : ''}</TableCell>
                           <TableCell>{formattedHour}</TableCell>
-                          <TableCell>{measurement.value}</TableCell>
+                          <TableCell>{String(measurement.value)}</TableCell>
+                          <TableCell>{measurement.notes || '-'}</TableCell>
                         </TableRow>
                       );
                     })}

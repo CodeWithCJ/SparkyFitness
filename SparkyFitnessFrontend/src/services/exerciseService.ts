@@ -55,6 +55,7 @@ export interface Exercise extends ExerciseInterface {
 
 export interface ExerciseDeletionImpact {
     exerciseEntriesCount: number;
+    isUsedByOthers: boolean;
 }
 
 interface ExercisePayload {
@@ -76,11 +77,13 @@ interface ExercisePayload {
   images?: string[];
 }
 
+export type ExerciseOwnershipFilter = 'all' | 'own' | 'family' | 'public' | 'needs-review';
+
 export const loadExercises = async (
   userId: string,
   searchTerm: string = '',
   categoryFilter: string = 'all',
-  ownershipFilter: string = 'all',
+  ownershipFilter: ExerciseOwnershipFilter = 'all',
   currentPage: number = 1,
   itemsPerPage: number = 10
 ): Promise<{ exercises: Exercise[]; totalCount: number }> => {
@@ -149,9 +152,12 @@ export const deleteExercise = async (id: string, userId: string): Promise<void> 
 };
 
 export const updateExerciseShareStatus = async (id: string, sharedWithPublic: boolean): Promise<Exercise> => {
+    const payload = new FormData();
+    payload.append('exerciseData', JSON.stringify({ shared_with_public: sharedWithPublic }));
   return apiCall(`/exercises/${id}`, {
     method: 'PUT',
-    body: { shared_with_public: sharedWithPublic },
+    body: payload,
+    isFormData: true,
   });
 };
 
@@ -164,6 +170,13 @@ export const getExerciseDeletionImpact = async (exerciseId: string): Promise<Exe
 export const getSuggestedExercises = async (limit: number): Promise<{ recentExercises: Exercise[]; topExercises: Exercise[] }> => {
   return apiCall(`/exercises/suggested?limit=${limit}`, {
     method: 'GET',
+  });
+};
+
+export const updateExerciseEntriesSnapshot = async (exerciseId: string): Promise<void> => {
+  return apiCall(`/exercises/update-snapshot`, {
+    method: 'POST',
+    body: { exerciseId },
   });
 };
 

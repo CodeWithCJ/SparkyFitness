@@ -1,3 +1,13 @@
+export interface PresetExercise {
+  id: string;
+  exercise_id: string;
+  sets: number;
+  reps: number;
+  weight: number;
+  image_url?: string;
+  exercise_name: string;
+}
+
 export interface WorkoutPresetSet {
   id?: string;
   set_number: number;

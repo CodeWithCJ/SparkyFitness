@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const weeklyGoalPlanService = require('../services/weeklyGoalPlanService');
 
 // Create a new weekly goal plan
-router.post('/', authenticateToken, authorizeAccess('goals'), async (req, res, next) => {
+router.post('/', authenticate, async (req, res, next) => {
   try {
     const newPlan = await weeklyGoalPlanService.createWeeklyGoalPlan(req.userId, req.body);
     res.status(201).json(newPlan);
@@ -14,7 +14,7 @@ router.post('/', authenticateToken, authorizeAccess('goals'), async (req, res, n
 });
 
 // Get all weekly goal plans for a user
-router.get('/', authenticateToken, authorizeAccess('goals'), async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   try {
     const plans = await weeklyGoalPlanService.getWeeklyGoalPlans(req.userId);
     res.status(200).json(plans);
@@ -24,7 +24,7 @@ router.get('/', authenticateToken, authorizeAccess('goals'), async (req, res, ne
 });
 
 // Get the active weekly goal plan for a user on a specific date
-router.get('/active', authenticateToken, authorizeAccess('goals'), async (req, res, next) => {
+router.get('/active', authenticate, async (req, res, next) => {
   try {
     const { date } = req.query;
     if (!date) {
@@ -38,7 +38,7 @@ router.get('/active', authenticateToken, authorizeAccess('goals'), async (req, r
 });
 
 // Update a weekly goal plan
-router.put('/:id', authenticateToken, authorizeAccess('goals'), async (req, res, next) => {
+router.put('/:id', authenticate, async (req, res, next) => {
   try {
     const updatedPlan = await weeklyGoalPlanService.updateWeeklyGoalPlan(req.params.id, req.userId, req.body);
     if (!updatedPlan) {
@@ -51,7 +51,7 @@ router.put('/:id', authenticateToken, authorizeAccess('goals'), async (req, res,
 });
 
 // Delete a weekly goal plan
-router.delete('/:id', authenticateToken, authorizeAccess('goals'), async (req, res, next) => {
+router.delete('/:id', authenticate, async (req, res, next) => {
   try {
     const deletedPlan = await weeklyGoalPlanService.deleteWeeklyGoalPlan(req.params.id, req.userId);
     if (!deletedPlan) {

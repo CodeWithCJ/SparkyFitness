@@ -64,7 +64,7 @@ const WorkoutHeatmap: React.FC<WorkoutHeatmapProps> = ({ workoutDates }) => {
       {monthsToDisplay.map((monthInfo, monthIndex) => (
         <div key={`${monthInfo.year}-${monthInfo.month}`} className="flex flex-col items-center">
           <h4 className="text-sm font-semibold mb-2">{monthInfo.name} {monthInfo.year}</h4>
-          <div className="grid grid-cols-7 gap-0.5">
+          <div className="grid grid-cols-7 gap-1" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
               <div key={index} className="text-xs text-center text-muted-foreground">
                 {day}
@@ -73,9 +73,11 @@ const WorkoutHeatmap: React.FC<WorkoutHeatmapProps> = ({ workoutDates }) => {
             {generateMonthData(monthInfo.year, monthInfo.month).map((date, dayIndex) => (
               <div
                 key={dayIndex}
-                className={`w-4 h-4 rounded-sm ${getDayColor(date)}`}
+                className={`w-8 h-8 md:w-5 md:h-5 rounded-md flex items-center justify-center text-center text-[10px] md:text-[8px] ${getDayColor(date)}`}
                 title={date ? date.toDateString() + (workoutDates.includes(date.toISOString().split('T')[0]) ? ' (Workout)' : ' (No Workout)') : ''}
-              ></div>
+              >
+                {date ? date.getDate() : ''}
+              </div>
             ))}
           </div>
         </div>

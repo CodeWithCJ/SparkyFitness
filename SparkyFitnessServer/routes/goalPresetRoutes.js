@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const goalPresetService = require('../services/goalPresetService');
 
 // Create a new goal preset
-router.post('/', authenticateToken, authorizeAccess('goals'), async (req, res, next) => {
+router.post('/', authenticate, async (req, res, next) => {
   try {
     const newPreset = await goalPresetService.createGoalPreset(req.userId, req.body);
     res.status(201).json(newPreset);
@@ -14,7 +14,7 @@ router.post('/', authenticateToken, authorizeAccess('goals'), async (req, res, n
 });
 
 // Get all goal presets for a user
-router.get('/', authenticateToken, authorizeAccess('goals'), async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   try {
     const presets = await goalPresetService.getGoalPresets(req.userId);
     res.status(200).json(presets);
@@ -24,7 +24,7 @@ router.get('/', authenticateToken, authorizeAccess('goals'), async (req, res, ne
 });
 
 // Get a specific goal preset by ID
-router.get('/:id', authenticateToken, authorizeAccess('goals'), async (req, res, next) => {
+router.get('/:id', authenticate, async (req, res, next) => {
   try {
     const preset = await goalPresetService.getGoalPreset(req.params.id, req.userId);
     if (!preset) {
@@ -37,7 +37,7 @@ router.get('/:id', authenticateToken, authorizeAccess('goals'), async (req, res,
 });
 
 // Update a goal preset
-router.put('/:id', authenticateToken, authorizeAccess('goals'), async (req, res, next) => {
+router.put('/:id', authenticate, async (req, res, next) => {
   try {
     const updatedPreset = await goalPresetService.updateGoalPreset(req.params.id, req.userId, req.body);
     if (!updatedPreset) {
@@ -50,7 +50,7 @@ router.put('/:id', authenticateToken, authorizeAccess('goals'), async (req, res,
 });
 
 // Delete a goal preset
-router.delete('/:id', authenticateToken, authorizeAccess('goals'), async (req, res, next) => {
+router.delete('/:id', authenticate, async (req, res, next) => {
   try {
     const deletedPreset = await goalPresetService.deleteGoalPreset(req.params.id, req.userId);
     if (!deletedPreset) {

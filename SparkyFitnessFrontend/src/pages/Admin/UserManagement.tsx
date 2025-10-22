@@ -28,10 +28,6 @@ const UserManagement: React.FC = () => {
     try {
       const fetchedUsers = await userManagementService.getUsers(searchTerm); // Fetch without sort parameters
       setUsers(fetchedUsers);
-      toast({
-        title: "Success",
-        description: "User data loaded.",
-      });
     } catch (err: any) {
       setError(err.message || 'Failed to fetch user data.');
       toast({

@@ -4,7 +4,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import ZoomableChart from "../ZoomableChart";
 import WorkoutHeatmap from "./WorkoutHeatmap";
-import WorkoutConsistencyWidget from "./WorkoutConsistencyWidget";
 import MuscleGroupRecoveryTracker from "./MuscleGroupRecoveryTracker";
 import PrProgressionChart from "./PrProgressionChart";
 import ExerciseVarietyScore from "./ExerciseVarietyScore";
@@ -20,6 +19,8 @@ import {
 import { getExerciseProgressData } from '@/services/exerciseEntryService';
 import { getAvailableEquipment, getAvailableMuscleGroups, getAvailableExercises } from '@/services/exerciseSearchService';
 import { addDays, subDays, addMonths, subMonths, addYears, subYears, parseISO } from 'date-fns';
+
+import { formatNumber } from "@/utils/numberFormatting";
 
 // Utility function to calculate total tonnage
 const calculateTotalTonnage = (entries: ExerciseProgressData[]) => {
@@ -71,7 +72,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
   onDrilldown,
 }) => {
   const { user } = useAuth();
-  const { loggingLevel, formatDateInUserTimezone } = usePreferences();
+  const { loggingLevel, formatDateInUserTimezone, weightUnit, convertWeight } = usePreferences();
   const [selectedExercisesForChart, setSelectedExercisesForChart] = useState<string[]>([]);
   const [exerciseProgressData, setExerciseProgressData] = useState<Record<string, ExerciseProgressData[]>>({}); // Store data for multiple exercises
   const [comparisonExerciseProgressData, setComparisonExerciseProgressData] = useState<Record<string, ExerciseProgressData[]>>({}); // New state for comparison data
@@ -92,7 +93,6 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
     "keyStats",
     "heatmap",
     "filtersAggregation",
-    "workoutConsistency",
     "muscleGroupRecovery",
     "prProgression",
     "exerciseVariety",
@@ -205,39 +205,49 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
     switch (widgetId) {
       case "keyStats":
         return (
-          <div key={widgetId} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Key Statistics</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
-                  <span className="text-2xl font-bold">{exerciseDashboardData.keyStats.totalWorkouts}</span>
-                  <span className="text-sm text-muted-foreground">Total Workouts</span>
-                </div>
-                <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
-                  <span className="text-2xl font-bold">{totalTonnage.toFixed(0)} kg</span>
-                  <span className="text-sm text-muted-foreground">Total Tonnage Lifted</span>
-                </div>
-                <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
-                  <span className="text-2xl font-bold">{exerciseDashboardData.keyStats.totalVolume.toFixed(0)} kg</span>
-                  <span className="text-sm text-muted-foreground">Total Volume Lifted</span>
-                </div>
-                <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
-                  <span className="text-2xl font-bold">{exerciseDashboardData.keyStats.totalReps}</span>
-                  <span className="text-sm text-muted-foreground">Total Reps</span>
-                </div>
-              </CardContent>
-            </Card>
-            <Card key="workoutConsistency">
-              <CardHeader>
-                <CardTitle>Workout Consistency</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <WorkoutConsistencyWidget consistencyData={exerciseDashboardData.consistencyData} />
-              </CardContent>
-            </Card>
-          </div>
+          <Card key={widgetId}>
+            <CardHeader>
+              <CardTitle>Overall Performance Snapshot</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg h-full">
+                <span className="text-3xl font-bold">{formatNumber(exerciseDashboardData.keyStats.totalWorkouts)}</span>
+                <span className="text-sm text-center">Total Workouts</span>
+              </div>
+              <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-green-500 to-teal-600 text-white shadow-lg h-full">
+                <span className="text-3xl font-bold">{formatNumber(convertWeight(totalTonnage, 'kg', weightUnit))} {weightUnit}</span>
+                <span className="text-sm text-center">Total Tonnage</span>
+              </div>
+              <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-600 text-white shadow-lg h-full">
+                <span className="text-3xl font-bold">{formatNumber(convertWeight(exerciseDashboardData.keyStats.totalVolume, 'kg', weightUnit))} {weightUnit}</span>
+                <span className="text-sm text-center">Total Volume</span>
+              </div>
+              <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-red-500 to-pink-600 text-white shadow-lg h-full">
+                <span className="text-3xl font-bold">{formatNumber(exerciseDashboardData.keyStats.totalReps)}</span>
+                <span className="text-sm text-center">Total Reps</span>
+              </div>
+              {exerciseDashboardData.consistencyData && (
+                <>
+                  <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg h-full">
+                    <span className="text-3xl font-bold">{exerciseDashboardData.consistencyData.currentStreak}</span>
+                    <span className="text-sm text-center">Current Streak (days)</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-600 text-white shadow-lg h-full">
+                    <span className="text-3xl font-bold">{exerciseDashboardData.consistencyData.longestStreak}</span>
+                    <span className="text-sm text-center">Longest Streak (days)</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-emerald-500 to-lime-600 text-white shadow-lg h-full">
+                    <span className="text-3xl font-bold">{exerciseDashboardData.consistencyData.weeklyFrequency.toFixed(1)}</span>
+                    <span className="text-sm text-center">Weekly Frequency</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-rose-500 to-fuchsia-600 text-white shadow-lg h-full">
+                    <span className="text-3xl font-bold">{exerciseDashboardData.consistencyData.monthlyFrequency.toFixed(1)}</span>
+                    <span className="text-sm text-center">Monthly Frequency</span>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         );
       case "heatmap":
         return (
@@ -254,7 +264,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         );
       case "filtersAggregation":
         return (
-          <Card key="filtersAggregation">
+          <Card key="filtersAggregation" className="lg:col-span-2">
             <CardHeader>
               <CardTitle>Filters & Aggregation</CardTitle>
             </CardHeader>
@@ -345,7 +355,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         return selectedExercisesForChart.length > 0 ? (
           <ZoomableChart key="volumeTrend" title="Volume Trend">
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart onClick={(e) => e && onDrilldown(e.activePayload[0].payload.entry_date)}
+              <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
                 data={
                   selectedExercisesForChart.length > 0
                     ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
@@ -359,7 +369,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
-                <YAxis label={{ value: 'Volume', angle: -90, position: 'insideLeft', offset: 10 }} />
+                <YAxis label={{ value: `Volume (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
                 <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                 <Legend />
                 {selectedExercisesForChart.map((exerciseId, index) => (
@@ -387,7 +397,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         return selectedExercisesForChart.length > 0 ? (
           <ZoomableChart key="maxWeightTrend" title="Max Weight Trend">
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart onClick={(e) => e && onDrilldown(e.activePayload[0].payload.entry_date)}
+              <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
                 data={
                   selectedExercisesForChart.length > 0
                     ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
@@ -401,7 +411,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
-                <YAxis label={{ value: 'Max Weight', angle: -90, position: 'insideLeft', offset: 10 }} />
+                <YAxis label={{ value: `Max Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
                 <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                 <Legend />
                 {selectedExercisesForChart.map((exerciseId, index) => (
@@ -429,13 +439,13 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         return selectedExercisesForChart.length > 0 ? (
           <ZoomableChart key="estimated1RMTrend" title="Estimated 1RM Trend">
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart onClick={(e) => e && onDrilldown(e.activePayload[0].payload.entry_date)}
+              <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
                 data={
                   selectedExercisesForChart.length > 0
                     ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
                         ...d,
                         date: formatDateInUserTimezone(d.entry_date, 'MMM dd, yyyy'),
-                        estimated1RM: Math.max(...d.sets.map(set => set.weight * (1 + (set.reps / 30)))),
+                        estimated1RM: Math.round(Math.max(...d.sets.map(set => set.weight * (1 + (set.reps / 30))))),
                         comparisonEstimated1RM: comparisonExerciseProgressData[selectedExercisesForChart[0]]?.find(compD => compD.entry_date === d.entry_date)?.sets.reduce((max, set) => Math.max(max, set.weight * (1 + (set.reps / 30))), 0) || null,
                       })) || []
                     : []
@@ -443,7 +453,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
-                <YAxis label={{ value: 'Estimated 1RM', angle: -90, position: 'insideLeft', offset: 10 }} />
+                <YAxis label={{ value: `Estimated 1RM (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
                 <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                 <Legend />
                 {selectedExercisesForChart.map((exerciseId, index) => (
@@ -477,7 +487,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               }))}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="range" />
-                <YAxis label={{ value: 'Weight', angle: -90, position: 'insideLeft', offset: 10 }} />
+                <YAxis label={{ value: `Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
                 <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                 <Legend />
                 <Bar dataKey="weight" fill="#8884d8" />
@@ -499,7 +509,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="muscle" />
-                  <YAxis label={{ value: 'Volume', angle: -90, position: 'insideLeft', offset: 10 }} />
+                  <YAxis label={{ value: `Volume (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                   <Legend />
                   <Bar dataKey="volume" fill="#ff7300" />
@@ -531,7 +541,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                         });
                         return Array.from(repWeightMap.entries()).map(([reps, { totalWeight, count }]) => ({
                           reps,
-                          averageWeight: totalWeight / count,
+                          averageWeight: Math.round(totalWeight / count),
                         })).sort((a, b) => a.reps - b.reps);
                       })()
                     : []
@@ -539,7 +549,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               >
                 <CartesianGrid />
                 <XAxis dataKey="reps" name="Reps" />
-                <YAxis label={{ value: 'Average Weight', angle: -90, position: 'insideLeft', offset: 10 }} />
+                <YAxis label={{ value: `Average Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
                 <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                 <Legend />
                 {selectedExercisesForChart.map((exerciseId, index) => (
@@ -596,18 +606,18 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
                   <span className="text-xl font-bold">
-                    {exerciseDashboardData.prData[selectedExercisesForChart[0]].oneRM.toFixed(1)} kg
+                    {convertWeight(exerciseDashboardData.prData[selectedExercisesForChart[0]].oneRM, 'kg', weightUnit).toFixed(1)} {weightUnit}
                   </span>
                   <span className="text-sm text-muted-foreground">Estimated 1RM</span>
                   <span className="text-xs text-muted-foreground">
                     ({exerciseDashboardData.prData[selectedExercisesForChart[0]].reps} reps @{" "}
-                    {exerciseDashboardData.prData[selectedExercisesForChart[0]].weight} kg on{" "}
+                    {convertWeight(exerciseDashboardData.prData[selectedExercisesForChart[0]].weight, 'kg', weightUnit)} {weightUnit} on{" "}
                     {formatDateInUserTimezone(exerciseDashboardData.prData[selectedExercisesForChart[0]].date, 'MMM dd, yyyy')})
                   </span>
                 </div>
                 <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
                   <span className="text-xl font-bold">
-                    {exerciseDashboardData.prData[selectedExercisesForChart[0]].weight.toFixed(1)} kg
+                    {convertWeight(exerciseDashboardData.prData[selectedExercisesForChart[0]].weight, 'kg', weightUnit).toFixed(1)} {weightUnit}
                   </span>
                   <span className="text-sm text-muted-foreground">Max Weight</span>
                   <span className="text-xs text-muted-foreground">
@@ -621,7 +631,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                   </span>
                   <span className="text-sm text-muted-foreground">Max Reps</span>
                   <span className="text-xs text-muted-foreground">
-                    ({exerciseDashboardData.prData[selectedExercisesForChart[0]].weight} kg on{" "}
+                    ({convertWeight(exerciseDashboardData.prData[selectedExercisesForChart[0]].weight, 'kg', weightUnit)} {weightUnit} on{" "}
                     {formatDateInUserTimezone(exerciseDashboardData.prData[selectedExercisesForChart[0]].date, 'MMM dd, yyyy')})
                   </span>
                 </div>

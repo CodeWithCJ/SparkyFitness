@@ -81,8 +81,12 @@ export const searchNutritionixFoods = async (query: string, defaultFoodDataProvi
   };
 
   try {
-    const data: NutritionixInstantSearchResponse = await apiCall(`/foods/nutritionix/search?query=${encodeURIComponent(query)}&providerId=${defaultFoodDataProviderId}`);
-    const commonFoods = (data.common || []).map((item) => ({
+    const data: NutritionixInstantSearchResponse = await apiCall(`${NUTRITIONIX_API_BASE_URL}/search/instant?query=${encodeURIComponent(query)}`, {
+      method: 'GET',
+      headers,
+      externalApi: true,
+    });
+    const commonFoods = (data.common || []).slice(0, 10).map((item) => ({
       id: item.food_name, // Use food_name as a temporary ID for common foods
       name: item.food_name,
       brand: null,
@@ -97,7 +101,7 @@ export const searchNutritionixFoods = async (query: string, defaultFoodDataProvi
       fat: 0,
     }));
 
-    const brandedFoods = (data.branded || []).map((item) => ({
+    const brandedFoods = (data.branded || []).slice(0, 10).map((item) => ({
       id: item.nix_item_id,
       name: item.food_name,
       brand: item.brand_name,
@@ -147,30 +151,36 @@ export const getNutritionixNutrients = async (query: string, defaultFoodDataProv
   };
 
   try {
-    const data: any = await apiCall(`/foods/nutritionix/nutrients?query=${encodeURIComponent(query)}&providerId=${defaultFoodDataProviderId}`);
-    if (data) {
+    const data: any = await apiCall(`${NUTRITIONIX_API_BASE_URL}/natural/nutrients`, {
+      method: 'POST',
+      headers,
+      body: { query },
+      externalApi: true,
+    });
+    if (data && data.foods && data.foods.length > 0) {
+      const food = data.foods[0];
       return {
-        name: data.name,
-        brand: data.brand || null,
-        calories: data.calories,
-        protein: data.protein,
-        carbs: data.carbs,
-        fat: data.fat,
-        saturated_fat: data.saturated_fat,
-        polyunsaturated_fat: data.polyunsaturated_fat,
-        monounsaturated_fat: data.monounsaturated_fat,
-        trans_fat: data.trans_fat,
-        cholesterol: data.cholesterol,
-        sodium: data.sodium,
-        potassium: data.potassium,
-        dietary_fiber: data.dietary_fiber,
-        sugars: data.sugars,
-        vitamin_a: data.vitamin_a,
-        vitamin_c: data.vitamin_c,
-        calcium: data.calcium,
-        iron: data.iron,
-        serving_size: data.serving_size,
-        serving_unit: data.serving_unit,
+        name: food.food_name,
+        brand: food.brand_name || null,
+        calories: food.nf_calories,
+        protein: food.nf_protein,
+        carbs: food.nf_total_carbohydrate,
+        fat: food.nf_total_fat,
+        saturated_fat: food.nf_saturated_fat,
+        polyunsaturated_fat: 0, // Not provided by this endpoint
+        monounsaturated_fat: 0, // Not provided by this endpoint
+        trans_fat: 0, // Not provided by this endpoint
+        cholesterol: food.nf_cholesterol,
+        sodium: food.nf_sodium,
+        potassium: food.nf_potassium,
+        dietary_fiber: food.nf_dietary_fiber,
+        sugars: food.nf_sugars,
+        vitamin_a: 0, // Not provided by this endpoint
+        vitamin_c: 0, // Not provided by this endpoint
+        calcium: 0, // Not provided by this endpoint
+        iron: 0, // Not provided by this endpoint
+        serving_size: food.serving_qty,
+        serving_unit: food.serving_unit,
       };
     }
     return null;
@@ -208,30 +218,36 @@ export const getNutritionixBrandedNutrients = async (nixItemId: string, defaultF
   };
 
   try {
-    const data: any = await apiCall(`/foods/nutritionix/item?nix_item_id=${nixItemId}&providerId=${defaultFoodDataProviderId}`);
-    if (data) {
+    const data: any = await apiCall(`${NUTRITIONIX_API_BASE_URL}/search/item`, {
+      method: 'GET',
+      headers,
+      params: { nix_item_id: nixItemId },
+      externalApi: true,
+    });
+    if (data && data.foods && data.foods.length > 0) {
+      const food = data.foods[0];
       return {
-        name: data.name,
-        brand: data.brand || null,
-        calories: data.calories,
-        protein: data.protein,
-        carbs: data.carbs,
-        fat: data.fat,
-        saturated_fat: data.saturated_fat,
-        polyunsaturated_fat: data.polyunsaturated_fat,
-        monounsaturated_fat: data.monounsaturated_fat,
-        trans_fat: data.trans_fat,
-        cholesterol: data.cholesterol,
-        sodium: data.sodium,
-        potassium: data.potassium,
-        dietary_fiber: data.dietary_fiber,
-        sugars: data.sugars,
-        vitamin_a: data.vitamin_a,
-        vitamin_c: data.vitamin_c,
-        calcium: data.calcium,
-        iron: data.iron,
-        serving_size: data.serving_size,
-        serving_unit: data.serving_unit,
+        name: food.food_name,
+        brand: food.brand_name || null,
+        calories: food.nf_calories,
+        protein: food.nf_protein,
+        carbs: food.nf_total_carbohydrate,
+        fat: food.nf_total_fat,
+        saturated_fat: food.nf_saturated_fat,
+        polyunsaturated_fat: 0, // Not provided by this endpoint
+        monounsaturated_fat: 0, // Not provided by this endpoint
+        trans_fat: 0, // Not provided by this endpoint
+        cholesterol: food.nf_cholesterol,
+        sodium: food.nf_sodium,
+        potassium: food.nf_potassium,
+        dietary_fiber: food.nf_dietary_fiber,
+        sugars: food.nf_sugars,
+        vitamin_a: 0, // Not provided by this endpoint
+        vitamin_c: 0, // Not provided by this endpoint
+        calcium: 0, // Not provided by this endpoint
+        iron: 0, // Not provided by this endpoint
+        serving_size: food.serving_qty,
+        serving_unit: food.serving_unit,
       };
     }
     return null;

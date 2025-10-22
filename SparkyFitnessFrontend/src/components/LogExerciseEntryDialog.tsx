@@ -6,11 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from '@/utils/logging';
-import { Exercise } from '@/services/exerciseSearchService';
 import { createExerciseEntry } from '@/services/exerciseEntryService';
 import { useToast } from "@/hooks/use-toast";
 import ExerciseHistoryDisplay from "./ExerciseHistoryDisplay";
 import { WorkoutPresetSet } from "@/types/workout";
+import { ExerciseToLog } from '@/components/ExerciseCard'; // Import ExerciseToLog
 import { Plus, X, Copy, GripVertical, Repeat, Weight, Timer } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, arrayMove, useSortable } from '@dnd-kit/sortable';
@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  exercise: Exercise | null;
+  exercise: ExerciseToLog | null; // Change type to ExerciseToLog
   selectedDate: string;
   onSaveSuccess: () => void;
   initialSets?: WorkoutPresetSet[];
@@ -28,7 +28,7 @@ interface LogExerciseEntryDialogProps {
   initialImageUrl?: string;
 }
 
-const SortableSetItem = React.memo(({ set, index, handleSetChange, handleDuplicateSet, handleRemoveSet }: { set: WorkoutPresetSet, index: number, handleSetChange: Function, handleDuplicateSet: Function, handleRemoveSet: Function }) => {
+const SortableSetItem = React.memo(({ set, index, handleSetChange, handleDuplicateSet, handleRemoveSet, weightUnit }: { set: WorkoutPresetSet, index: number, handleSetChange: Function, handleDuplicateSet: Function, handleRemoveSet: Function, weightUnit: string }) => {
   const {
     attributes,
     listeners,
@@ -62,7 +62,7 @@ const SortableSetItem = React.memo(({ set, index, handleSetChange, handleDuplica
           </Select>
         </div>
         <div className="md:col-span-1"><Label className="flex items-center"><Repeat className="h-4 w-4 mr-1" style={{ color: '#3b82f6' }} />Reps</Label><Input type="number" value={set.reps ?? ''} onChange={(e) => handleSetChange(index, 'reps', Number(e.target.value))} /></div>
-        <div className="md:col-span-1"><Label className="flex items-center"><Weight className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} />Weight</Label><Input type="number" value={set.weight ?? ''} onChange={(e) => handleSetChange(index, 'weight', Number(e.target.value))} /></div>
+        <div className="md:col-span-1"><Label className="flex items-center"><Weight className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} />Weight ({weightUnit})</Label><Input type="number" value={set.weight ?? ''} onChange={(e) => handleSetChange(index, 'weight', Number(e.target.value))} /></div>
         <div className="md:col-span-1"><Label className="flex items-center"><Timer className="h-4 w-4 mr-1" style={{ color: '#f97316' }} />Duration</Label><Input type="number" value={set.duration ?? ''} onChange={(e) => handleSetChange(index, 'duration', Number(e.target.value))} /></div>
         <div className="md:col-span-1"><Label className="flex items-center"><Timer className="h-4 w-4 mr-1" style={{ color: '#8b5cf6' }} />Rest (s)</Label><Input type="number" value={set.rest_time ?? ''} onChange={(e) => handleSetChange(index, 'rest_time', Number(e.target.value))} /></div>
         <div className="col-span-1 md:col-span-8"><Label>Notes</Label><Textarea value={set.notes ?? ''} onChange={(e) => handleSetChange(index, 'notes', e.target.value)} /></div>
@@ -85,7 +85,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   initialNotes,
   initialImageUrl,
 }) => {
-  const { loggingLevel } = usePreferences();
+  const { loggingLevel, weightUnit, convertWeight } = usePreferences();
   const { toast } = useToast();
 
   const [sets, setSets] = useState<WorkoutPresetSet[]>([]);
@@ -93,6 +93,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   const [imageUrl, setImageUrl] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(''); // New state for user-provided calories
 
   useEffect(() => {
     if (isOpen && exercise) {
@@ -100,11 +101,18 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
       setNotes(initialNotes ?? '');
       setImageUrl(initialImageUrl ?? '');
       setImageFile(null);
+      // If the exercise has a calories_per_hour, pre-fill the caloriesBurnedInput
+      if (exercise?.calories_per_hour && exercise.duration) {
+        setCaloriesBurnedInput(Math.round((exercise.calories_per_hour / 60) * exercise.duration));
+      } else {
+        setCaloriesBurnedInput('');
+      }
       debug(loggingLevel, `LogExerciseEntryDialog: Opened for exercise ${exercise.name} on ${selectedDate}`);
     }
   }, [isOpen, exercise, selectedDate, loggingLevel, initialSets, initialNotes, initialImageUrl]);
 
   const handleSetChange = (index: number, field: keyof WorkoutPresetSet, value: any) => {
+    debug(loggingLevel, `[LogExerciseEntryDialog] handleSetChange: index=${index}, field=${field}, value=${value}, weightUnit=${weightUnit}`);
     setSets(prev => {
       const newSets = [...prev];
       newSets[index] = { ...newSets[index], [field]: value };
@@ -182,11 +190,14 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     try {
       const entryData = {
         exercise_id: exercise.id,
-        sets: sets,
+        sets: sets.map(set => ({
+          ...set,
+          weight: convertWeight(set.weight, weightUnit, 'kg') // Corrected to save as kg
+        })),
         notes: notes,
         entry_date: selectedDate,
-        calories_burned: 0,
-        image_url: imageUrl,
+        calories_burned: caloriesBurnedInput === '' ? null : caloriesBurnedInput, // Use user input or null for backend calculation
+        duration_minutes: sets.reduce((acc, set) => acc + (set.duration || 0), 0),
         imageFile: imageFile,
       };
 
@@ -225,7 +236,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
             <SortableContext items={sets.map((_, index) => `set-${index}`)}>
               <div className="space-y-2">
                 {sets.map((set, index) => (
-                  <SortableSetItem key={`set-${index}`} set={set} index={index} handleSetChange={handleSetChange} handleDuplicateSet={handleDuplicateSet} handleRemoveSet={handleRemoveSet} />
+                  <SortableSetItem key={`set-${index}`} set={set} index={index} handleSetChange={handleSetChange} handleDuplicateSet={handleDuplicateSet} handleRemoveSet={handleRemoveSet} weightUnit={weightUnit} />
                 ))}
               </div>
             </SortableContext>
@@ -234,12 +245,27 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
             <Plus className="h-4 w-4 mr-2" /> Add Set
           </Button>
           <div className="space-y-2">
+            <Label htmlFor="calories-burned">Calories Burned (Optional)</Label>
+            <Input
+              id="calories-burned"
+              type="number"
+              value={caloriesBurnedInput}
+              onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="Enter calories burned"
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="notes">Session Notes</Label>
             <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="image">Upload Image</Label>
-            <Input id="image" type="file" onChange={handleImageUpload} />
+            <Input id="image" type="file" accept="image/*" onChange={handleImageUpload} />
+            {imageFile && (
+              <div className="mt-2">
+                <img src={URL.createObjectURL(imageFile)} alt="Preview" className="h-24 w-24 object-cover rounded-md" />
+              </div>
+            )}
           </div>
         </div>
         {exercise && <ExerciseHistoryDisplay exerciseId={exercise.id} />}

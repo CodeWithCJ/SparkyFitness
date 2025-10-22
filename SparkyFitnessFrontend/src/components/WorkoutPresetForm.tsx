@@ -25,7 +25,7 @@ interface WorkoutPresetFormProps {
   initialPreset?: WorkoutPreset | null;
 }
 
-const SortableSetItem = React.memo(({ set, exerciseIndex, setIndex, onSetChange, onDuplicateSet, onRemoveSet }: { set: WorkoutPresetSet, exerciseIndex: number, setIndex: number, onSetChange: Function, onDuplicateSet: Function, onRemoveSet: Function }) => {
+const SortableSetItem = React.memo(({ set, exerciseIndex, setIndex, onSetChange, onDuplicateSet, onRemoveSet, weightUnit }: { set: WorkoutPresetSet, exerciseIndex: number, setIndex: number, onSetChange: Function, onDuplicateSet: Function, onRemoveSet: Function, weightUnit: string }) => {
   const {
     attributes,
     listeners,
@@ -77,7 +77,7 @@ const SortableSetItem = React.memo(({ set, exerciseIndex, setIndex, onSetChange,
           </div>
           <div className="md:col-span-1">
             <Label htmlFor={`weight-${exerciseIndex}-${set.id}`} className="flex items-center">
-              <Dumbbell className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} /> Weight
+              <Dumbbell className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} /> Weight ({weightUnit})
             </Label>
             <Input id={`weight-${exerciseIndex}-${set.id}`} type="number" value={set.weight ?? ''} onChange={(e) => onSetChange(exerciseIndex, setIndex, 'weight', Number(e.target.value))} />
           </div>
@@ -116,7 +116,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
   onSave,
   initialPreset,
 }) => {
-  const { loggingLevel } = usePreferences();
+  const { loggingLevel, weightUnit, convertWeight } = usePreferences();
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -129,7 +129,15 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
       setName(initialPreset?.name || "");
       setDescription(initialPreset?.description || "");
       setIsPublic(initialPreset?.is_public || false);
-      setExercises(initialPreset?.exercises || []);
+      setExercises(
+        initialPreset?.exercises.map(ex => ({
+          ...ex,
+          sets: ex.sets.map(set => ({
+            ...set,
+            weight: Math.round(convertWeight(set.weight, 'kg', weightUnit))
+          }))
+        })) || []
+      );
     }
   }, [isOpen, initialPreset]);
 
@@ -273,7 +281,18 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
       return;
     }
     debug(loggingLevel, "WorkoutPresetForm: Submitting preset with data:", { name, description, isPublic, exercises });
-    onSave({ name, description, is_public: isPublic, exercises });
+    onSave({
+      name,
+      description,
+      is_public: isPublic,
+      exercises: exercises.map(ex => ({
+        ...ex,
+        sets: ex.sets.map(set => ({
+          ...set,
+          weight: convertWeight(set.weight, weightUnit, 'kg')
+        }))
+      }))
+    });
   };
 
   return (
@@ -346,6 +365,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                             onSetChange={handleSetChange}
                             onDuplicateSet={handleDuplicateSet}
                             onRemoveSet={handleRemoveSet}
+                            weightUnit={weightUnit}
                           />
                         ))}
                       </div>

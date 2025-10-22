@@ -1,48 +1,45 @@
-const path = require("path");
-const fs = require("fs");
-require("dotenv").config({ path: path.resolve(__dirname, "../.env") }); // Load .env from root directory
-const express = require("express");
-const cors = require("cors"); // Added this line
-const { getPool } = require("./db/poolManager");
-const { log } = require("./config/logging");
-const { getDefaultModel } = require("./ai/config");
-const { authenticateToken } = require("./middleware/authMiddleware");
-const foodRoutes = require("./routes/foodRoutes");
-const mealRoutes = require("./routes/mealRoutes");
-const reportRoutes = require("./routes/reportRoutes");
-const preferenceRoutes = require("./routes/preferenceRoutes");
-const nutrientDisplayPreferenceRoutes = require("./routes/nutrientDisplayPreferenceRoutes");
-const chatRoutes = require("./routes/chatRoutes");
-const measurementRoutes = require("./routes/measurementRoutes");
-const goalRoutes = require("./routes/goalRoutes");
-const goalPresetRoutes = require("./routes/goalPresetRoutes");
-const weeklyGoalPlanRoutes = require("./routes/weeklyGoalPlanRoutes");
-const mealPlanTemplateRoutes = require("./routes/mealPlanTemplateRoutes");
-const exerciseRoutes = require("./routes/exerciseRoutes");
-const exerciseEntryRoutes = require("./routes/exerciseEntryRoutes");
-const freeExerciseDBRoutes = require("./routes/freeExerciseDBRoutes"); // Import freeExerciseDB routes
-const healthDataRoutes = require("./integrations/healthData/healthDataRoutes");
-const authRoutes = require("./routes/authRoutes");
-const healthRoutes = require("./routes/healthRoutes");
-const externalProviderRoutes = require("./routes/externalProviderRoutes"); // Renamed import
-const garminRoutes = require("./routes/garminRoutes"); // Import Garmin routes
-const moodRoutes = require("./routes/moodRoutes"); // Import Mood routes
-const adminRoutes = require("./routes/adminRoutes"); // Import admin routes
-const {
-  router: openidRoutes,
-  initializeOidcClient,
-} = require("./openidRoutes");
-const oidcSettingsRoutes = require("./routes/oidcSettingsRoutes");
-const versionRoutes = require("./routes/versionRoutes");
-const { applyMigrations } = require("./utils/dbMigrations");
-const waterContainerRoutes = require("./routes/waterContainerRoutes");
-const backupRoutes = require("./routes/backupRoutes"); // Import backup routes
-const errorHandler = require("./middleware/errorHandler"); // Import the new error handler
-const cron = require("node-cron"); // Import node-cron
-const {
-  performBackup,
-  applyRetentionPolicy,
-} = require("./services/backupService"); // Import backup service
+const path = require('path');
+const fs = require('fs');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') }); // Load .env from root directory
+const express = require('express');
+const cors = require('cors'); // Added this line
+const { getRawOwnerPool } = require('./db/poolManager');
+const { log } = require('./config/logging');
+const { getDefaultModel } = require('./ai/config');
+const { authenticate } = require('./middleware/authMiddleware');
+const onBehalfOfMiddleware = require('./middleware/onBehalfOfMiddleware'); // Import the new middleware
+const foodRoutes = require('./routes/foodRoutes');
+const mealRoutes = require('./routes/mealRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const preferenceRoutes = require('./routes/preferenceRoutes');
+const nutrientDisplayPreferenceRoutes = require('./routes/nutrientDisplayPreferenceRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const measurementRoutes = require('./routes/measurementRoutes');
+const goalRoutes = require('./routes/goalRoutes');
+const goalPresetRoutes = require('./routes/goalPresetRoutes');
+const weeklyGoalPlanRoutes = require('./routes/weeklyGoalPlanRoutes');
+const mealPlanTemplateRoutes = require('./routes/mealPlanTemplateRoutes');
+const exerciseRoutes = require('./routes/exerciseRoutes');
+const exerciseEntryRoutes = require('./routes/exerciseEntryRoutes');
+const freeExerciseDBRoutes = require('./routes/freeExerciseDBRoutes'); // Import freeExerciseDB routes
+const healthDataRoutes = require('./integrations/healthData/healthDataRoutes');
+const authRoutes = require('./routes/authRoutes');
+const healthRoutes = require('./routes/healthRoutes');
+const externalProviderRoutes = require('./routes/externalProviderRoutes'); // Renamed import
+const garminRoutes = require('./routes/garminRoutes'); // Import Garmin routes
+const moodRoutes = require('./routes/moodRoutes'); // Import Mood routes
+const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
+const { router: openidRoutes, initializeOidcClient } = require('./openidRoutes');
+const oidcSettingsRoutes = require('./routes/oidcSettingsRoutes');
+const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
+const versionRoutes = require('./routes/versionRoutes');
+const { applyMigrations } = require('./utils/dbMigrations');
+const waterContainerRoutes = require('./routes/waterContainerRoutes');
+const backupRoutes = require('./routes/backupRoutes'); // Import backup routes
+const errorHandler = require('./middleware/errorHandler'); // Import the new error handler
+const reviewRoutes = require('./routes/reviewRoutes');
+const cron = require('node-cron'); // Import node-cron
+const { performBackup, applyRetentionPolicy } = require('./services/backupService'); // Import backup service
 
 const app = express();
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
@@ -210,7 +207,7 @@ const configureSessionMiddleware = (app, pool) => {
 };
 
 // Initial session middleware configuration
-configureSessionMiddleware(app, getPool());
+configureSessionMiddleware(app, getRawOwnerPool());
 
 // Apply authentication middleware to all routes except auth
 app.use((req, res, next) => {
@@ -234,46 +231,47 @@ app.use((req, res, next) => {
     return next();
   }
 
+  // Log all requests that reach the authentication middleware
+  //log('debug', `Attempting authentication for route: ${req.path}`);
+
   // For all other routes, apply JWT token authentication
-  authenticateToken(req, res, next);
+  authenticate(req, res, next);
 });
 
 // Link all routes
-app.use("/chat", chatRoutes);
-app.use("/foods", foodRoutes);
-app.use("/meals", mealRoutes);
-app.use("/reports", reportRoutes);
-app.use("/user-preferences", preferenceRoutes);
-app.use("/preferences/nutrient-display", nutrientDisplayPreferenceRoutes);
-app.use("/measurements", measurementRoutes);
-app.use("/goals", goalRoutes);
-app.use("/user-goals", goalRoutes);
-app.use("/goal-presets", goalPresetRoutes);
-app.use("/weekly-goal-plans", weeklyGoalPlanRoutes);
-app.use("/meal-plan-templates", mealPlanTemplateRoutes);
-app.use("/exercises", exerciseRoutes);
-app.use("/exercise-entries", exerciseEntryRoutes);
-app.use("/freeexercisedb", freeExerciseDBRoutes); // Add freeExerciseDB routes
-app.use("/api/health-data", healthDataRoutes);
-app.use("/auth", authRoutes);
-app.use("/user", authRoutes);
-app.use("/health", healthRoutes);
-app.use("/external-providers", externalProviderRoutes); // Renamed route for generic data providers
-app.use("/integrations/garmin", garminRoutes); // Add Garmin integration routes
-app.use("/mood", moodRoutes); // Add Mood routes
-app.use("/admin/oidc-settings", oidcSettingsRoutes); // Admin OIDC settings routes
-app.use("/version", versionRoutes); // Version routes
-app.use("/admin", adminRoutes); // Add admin routes
-log("debug", "Registering /openid routes");
-app.use("/openid", openidRoutes); // Import OpenID routes
-app.use("/water-containers", waterContainerRoutes);
-app.use("/admin/backup", backupRoutes); // Add backup routes
-app.use("/workout-presets", require("./routes/workoutPresetRoutes")); // Add workout preset routes
-app.use(
-  "/workout-plan-templates",
-  require("./routes/workoutPlanTemplateRoutes")
-); // Add workout plan template routes
-app.use("/onboarding", require("./routes/onboardingRoutes"));
+app.use('/chat', chatRoutes);
+app.use('/foods', foodRoutes);
+app.use('/meals', mealRoutes);
+app.use('/reports', reportRoutes);
+app.use('/user-preferences', preferenceRoutes);
+app.use('/preferences/nutrient-display', nutrientDisplayPreferenceRoutes);
+app.use('/measurements', measurementRoutes);
+app.use('/goals', goalRoutes);
+app.use('/user-goals', goalRoutes);
+app.use('/goal-presets', goalPresetRoutes);
+app.use('/weekly-goal-plans', weeklyGoalPlanRoutes);
+app.use('/meal-plan-templates', mealPlanTemplateRoutes);
+app.use('/exercises', exerciseRoutes);
+app.use('/exercise-entries', exerciseEntryRoutes);
+app.use('/freeexercisedb', freeExerciseDBRoutes); // Add freeExerciseDB routes
+app.use('/api/health-data', healthDataRoutes);
+app.use('/auth', authRoutes);
+app.use('/user', authRoutes);
+app.use('/health', healthRoutes);
+app.use('/external-providers', externalProviderRoutes); // Renamed route for generic data providers
+app.use('/integrations/garmin', garminRoutes); // Add Garmin integration routes
+app.use('/mood', moodRoutes); // Add Mood routes
+app.use('/admin/oidc-settings', oidcSettingsRoutes); // Admin OIDC settings routes
+app.use('/admin/global-settings', globalSettingsRoutes);
+app.use('/version', versionRoutes); // Version routes
+app.use('/admin', adminRoutes); // Add admin routes
+log('debug', 'Registering /openid routes');
+app.use('/openid', openidRoutes); // Import OpenID routes
+app.use('/water-containers', waterContainerRoutes);
+app.use('/admin/backup', backupRoutes); // Add backup routes
+app.use('/workout-presets', require('./routes/workoutPresetRoutes')); // Add workout preset routes
+app.use('/workout-plan-templates', require('./routes/workoutPlanTemplateRoutes')); // Add workout plan template routes
+app.use('/review', reviewRoutes);
 
 // Temporary debug route to log incoming requests for meal plan templates
 app.use(
@@ -308,36 +306,20 @@ const scheduleBackups = async () => {
   log("info", "Backup scheduler initialized.");
 };
 
-applyMigrations()
-  .then(async () => {
-    // Initialize OIDC client after migrations are applied
-    await initializeOidcClient();
+applyMigrations().then(async () => {
+  // OIDC clients are now initialized on-demand, so no startup initialization is needed.
 
-    // Schedule backups after migrations and OIDC client initialization
-    scheduleBackups();
+  // Schedule backups after migrations
+  scheduleBackups();
 
-    // Set admin user from environment variable if provided
-    if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
-      const userRepository = require("./models/userRepository");
-      const adminUser = await userRepository.findUserByEmail(
-        process.env.SPARKY_FITNESS_ADMIN_EMAIL
-      );
-      if (adminUser && adminUser.id) {
-        const success = await userRepository.updateUserRole(
-          adminUser.id,
-          "admin"
-        );
-        if (success) {
-          log(
-            "info",
-            `User ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} set as admin.`
-          );
-        } else {
-          log(
-            "warn",
-            `Failed to set user ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} as admin.`
-          );
-        }
+  // Set admin user from environment variable if provided
+  if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
+    const userRepository = require('./models/userRepository');
+    const adminUser = await userRepository.findUserByEmail(process.env.SPARKY_FITNESS_ADMIN_EMAIL);
+    if (adminUser && adminUser.id) {
+      const success = await userRepository.updateUserRole(adminUser.id, 'admin');
+      if (success) {
+        log('info', `User ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} set as admin.`);
       } else {
         log(
           "warn",

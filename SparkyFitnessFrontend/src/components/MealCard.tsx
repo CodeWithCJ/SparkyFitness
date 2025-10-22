@@ -47,6 +47,7 @@ interface MealTotals {
   vitamin_c?: number;
   iron?: number;
   calcium?: number;
+  glycemic_index?: GlycemicIndex; // Add glycemic_index to MealTotals
 }
 
 interface MealCardProps {
@@ -191,6 +192,7 @@ const MealCard = ({
                     </DialogDescription>
                   </DialogHeader>
                   <EnhancedFoodSearch
+                    mealType={meal.type}
                     onFoodSelect={(item, type) => {
                       if (type === 'food') {
                         debug(
@@ -205,7 +207,7 @@ const MealCard = ({
                           "MealCard: Meal selected in search:",
                           item,
                         );
-                        onFoodSelect(item as any, meal.type);
+                        onFoodSelect(item as Meal, meal.type);
                       }
                     }}
                   />
@@ -215,7 +217,7 @@ const MealCard = ({
               <Button
                 size="default"
                 onClick={() => onCopyClick(meal.type)}
-                title="Copy food entries from this meal to clipboard"
+                title="Copy to another date"
               >
                 <ClipboardCopy className="w-4 h-4" />
               </Button>
@@ -237,82 +239,34 @@ const MealCard = ({
           ) : (
             <div className="space-y-3">
               {meal.entries.map((entry) => {
-                const food = entry.foods;
                 const entryNutrition = getEntryNutrition(entry);
                 const isFromMealPlan = !!entry.meal_plan_template_id; // Corrected property name
-                // Determine glycemic index from several possible locations.
-                // GI may be stored at the food level or on variants (default_variant, selected variant, or returned as entry.food_variants).
-                const giValue: GlycemicIndex | undefined | null =
-                  food.glycemic_index ??
-                  food.default_variant?.glycemic_index ??
-                  (entry.variant_id ? food.variants?.find((v) => v.id === entry.variant_id)?.glycemic_index : undefined) ??
-                  (entry.food_variants as FoodVariant | undefined)?.glycemic_index ??
-                  null;
+                // Determine glycemic index directly from the entryNutrition object
+                const giValue: GlycemicIndex | undefined | null = entryNutrition.glycemic_index ?? null;
 
                 const validGiValues: GlycemicIndex[] = ['Very Low', 'Low', 'Medium', 'High', 'Very High'];
 
                 debug(
                   loggingLevel,
-                  `MealCard: Rendering entry for food: ${food.name}, GI Value: ${giValue}, quickInfoNutrients includes GI: ${quickInfoNutrients.includes('glycemic_index')}, giValue is valid: ${giValue != null && validGiValues.includes(giValue as GlycemicIndex)}`,
+                  `MealCard: Rendering entry for food: ${entry.food_name}, GI Value: ${giValue}, quickInfoNutrients includes GI: ${quickInfoNutrients.includes('glycemic_index')}, giValue is valid: ${giValue != null && validGiValues.includes(giValue as GlycemicIndex)}`,
                 );
 
-                // Handle case where food data is missing
-                if (!food) {
-                  warn(
-                    loggingLevel,
-                    "MealCard: Missing food data for entry:",
-                    entry.id,
-                  );
-                  return (
-                    <div
-                      key={entry.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg gap-4"
-                    >
-                      <div className="flex-1">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                          <span className="font-medium text-red-600">
-                            Food data missing
-                          </span>
-                          <span className="text-sm text-gray-500">
-                            {entry.quantity} {entry.unit}
-                          </span>
-                        </div>
-                        <div className="text-sm text-red-500">
-                          This food entry has missing data. Please remove and
-                          re-add.
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            debug(
-                              loggingLevel,
-                              "MealCard: Remove missing food entry button clicked:",
-                              entry.id,
-                            );
-                            onRemoveEntry(entry.id);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                }
+                // The food object is no longer directly available as a nested property.
+                // All necessary food details are now flattened directly onto the entry object.
+                // Therefore, the 'food data missing' check is no longer relevant in this form.
+                // If an entry itself is missing, it would be filtered out earlier or handled by the API.
 
                 return (
                   <div
-                    key={entry.id}
+                    key={`food-${entry.food_id || entry.id}`}
                     className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4"
                   >
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                        <span className="font-medium">{food.name}</span>
-                        {food.brand && (
+                        <span className="font-medium">{entry.food_name}</span>
+                        {entry.brand_name && (
                           <Badge variant="secondary" className="text-xs w-fit">
-                            {food.brand}
+                            {entry.brand_name}
                           </Badge>
                         )}
                         <span className="text-sm text-gray-500">
@@ -343,7 +297,7 @@ const MealCard = ({
                           return (
                             <div key={nutrient} className="whitespace-nowrap">
                               <span className={`font-medium ${details.color}`}>
-                                {value.toFixed(nutrient === "calories" ? 0 : 1)}
+                                {typeof value === 'number' ? value.toFixed(nutrient === "calories" ? 0 : 1) : value}
                                 {details.unit}
                               </span>{" "}
                               {details.label}
@@ -369,23 +323,25 @@ const MealCard = ({
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
-                      {food.user_id === user?.id && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            debug(
-                              loggingLevel,
-                              "MealCard: Edit food details button clicked:",
-                              food.id,
-                            );
-                            handleEditFood(entry);
-                          }}
-                          title="Edit food details"
-                        >
-                          <Settings className="w-4 h-4" />
-                        </Button>
-                      )}
+                      {/* The food.user_id check is no longer directly applicable here as the food object is flattened.
+                          If editing food details is still desired, it needs to be re-evaluated how to get the food object
+                          or if the food_entries table should contain user_id for the food itself.
+                          For now, this button is removed to prevent errors. */}
+                      {/* <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          debug(
+                            loggingLevel,
+                            "MealCard: Edit food details button clicked:",
+                            entry.food_id,
+                          );
+                          handleEditFood(entry);
+                        }}
+                        title="Edit food details"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </Button> */}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -421,7 +377,7 @@ const MealCard = ({
                     return (
                       <div key={nutrient} className="text-center">
                         <div className={`font-bold ${details.color}`}>
-                          {value.toFixed(nutrient === "calories" ? 0 : 1)}
+                          {typeof value === 'number' ? value.toFixed(nutrient === "calories" ? 0 : 1) : value}
                           {details.unit}
                         </div>
                         <div className="text-xs text-gray-500">
@@ -450,11 +406,15 @@ const MealCard = ({
                 Edit the nutritional information for this food in your database.
               </DialogDescription>
             </DialogHeader>
-            <EnhancedCustomFoodForm
+            {/* The EnhancedCustomFoodForm expects a 'food' object, but editingFoodEntry now has flattened properties.
+                This part needs to be re-evaluated if editing food details is still desired.
+                For now, commenting out to prevent errors. */}
+            {/* <EnhancedCustomFoodForm
               food={editingFoodEntry.foods}
               onSave={handleSaveFood}
               visibleNutrients={foodDatabaseVisibleNutrients}
-            />
+            /> */}
+            <p className="text-red-500">Editing food details is temporarily unavailable due to schema changes.</p>
           </DialogContent>
         </Dialog>
       )}

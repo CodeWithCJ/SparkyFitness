@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { ChatbotVisibilityProvider } from "@/contexts/ChatbotVisibilityContext";
 import { WaterContainerProvider } from "@/contexts/WaterContainerContext"; // Import WaterContainerProvider
+import { ActiveUserProvider } from "@/contexts/ActiveUserContext"; // Import ActiveUserProvider
 import AppContent from "@/components/AppContent";
 import DraggableChatbotButton from "@/components/DraggableChatbotButton";
 import AboutDialog from "@/components/AboutDialog";
@@ -46,24 +47,26 @@ const App = () => {
       <PreferencesProvider>
         <ChatbotVisibilityProvider>
           <WaterContainerProvider> {/* Wrap with WaterContainerProvider */}
-            <AppSetup
-              setLatestRelease={setLatestRelease}
-              setShowNewReleaseDialog={setShowNewReleaseDialog}
-            />
-            <Routes>
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="*" element={<AppContent onShowAboutDialog={() => setShowAboutDialog(true)} />} />
-            </Routes>
-            <DraggableChatbotButton />
-            <AboutDialog isOpen={showAboutDialog} onClose={() => setShowAboutDialog(false)} version={appVersion} />
-            <NewReleaseDialog
-              isOpen={showNewReleaseDialog}
-              onClose={() => setShowNewReleaseDialog(false)}
-              releaseInfo={latestRelease}
-              onDismissForVersion={handleDismissRelease}
-            />
-            <Toaster /> {/* Render the Toaster component */}
+            <ActiveUserProvider> {/* Wrap with ActiveUserProvider */}
+              <AppSetup
+                setLatestRelease={setLatestRelease}
+                setShowNewReleaseDialog={setShowNewReleaseDialog}
+              />
+              <Routes>
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="*" element={<AppContent onShowAboutDialog={() => setShowAboutDialog(true)} />} />
+              </Routes>
+              <DraggableChatbotButton />
+              <AboutDialog isOpen={showAboutDialog} onClose={() => setShowAboutDialog(false)} version={appVersion} />
+              <NewReleaseDialog
+                isOpen={showNewReleaseDialog}
+                onClose={() => setShowNewReleaseDialog(false)}
+                releaseInfo={latestRelease}
+                onDismissForVersion={handleDismissRelease}
+              />
+              <Toaster /> {/* Render the Toaster component */}
+            </ActiveUserProvider>
           </WaterContainerProvider>
         </ChatbotVisibilityProvider>
       </PreferencesProvider>

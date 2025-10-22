@@ -1,9 +1,9 @@
-const { getPool } = require('../db/poolManager');
+const { getClient, getSystemClient } = require('../db/poolManager');
 const { encrypt, decrypt, ENCRYPTION_KEY } = require('../security/encryption');
 const { log } = require('../config/logging');
 
 async function upsertAiServiceSetting(settingData) {
-  const client = await getPool().connect();
+  const client = await getClient(settingData.user_id); // User-specific operation
   try {
     let encryptedApiKey = settingData.encrypted_api_key || null;
     let apiKeyIv = settingData.api_key_iv || null;
@@ -26,12 +26,12 @@ async function upsertAiServiceSetting(settingData) {
           api_key_iv = COALESCE($8, api_key_iv),
           api_key_tag = COALESCE($9, api_key_tag),
           updated_at = now()
-        WHERE id = $10 AND user_id = $11 RETURNING *`,
+        WHERE id = $10 RETURNING *`,
         [
           settingData.service_name, settingData.service_type, settingData.custom_url,
           settingData.system_prompt, settingData.is_active, settingData.model_name,
           encryptedApiKey, apiKeyIv, apiKeyTag,
-          settingData.id, settingData.user_id
+          settingData.id
         ]
       );
       return result.rows[0];
@@ -56,11 +56,11 @@ async function upsertAiServiceSetting(settingData) {
 }
 
 async function getAiServiceSettingById(id, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT encrypted_api_key, api_key_iv, api_key_tag, service_type, custom_url, model_name FROM ai_service_settings WHERE id = $1 AND user_id = $2',
-      [id, userId]
+      'SELECT encrypted_api_key, api_key_iv, api_key_tag, service_type, custom_url, model_name FROM ai_service_settings WHERE id = $1',
+      [id]
     );
     const setting = result.rows[0];
     if (!setting) return null;
@@ -80,11 +80,11 @@ async function getAiServiceSettingById(id, userId) {
 }
 
 async function deleteAiServiceSetting(id, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'DELETE FROM ai_service_settings WHERE id = $1 AND user_id = $2 RETURNING id',
-      [id, userId]
+      'DELETE FROM ai_service_settings WHERE id = $1 RETURNING id',
+      [id]
     );
     return result.rowCount > 0;
   } finally {
@@ -93,11 +93,11 @@ async function deleteAiServiceSetting(id, userId) {
 }
 
 async function getAiServiceSettingsByUserId(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT * FROM ai_service_settings WHERE user_id = $1 ORDER BY created_at DESC',
-      [userId]
+      'SELECT * FROM ai_service_settings ORDER BY created_at DESC',
+      []
     );
     return result.rows;
   } finally {
@@ -106,11 +106,11 @@ async function getAiServiceSettingsByUserId(userId) {
 }
 
 async function getActiveAiServiceSetting(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT * FROM ai_service_settings WHERE user_id = $1 AND is_active = TRUE ORDER BY created_at DESC LIMIT 1',
-      [userId]
+      'SELECT * FROM ai_service_settings WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 1',
+      []
     );
     const setting = result.rows[0];
     if (!setting) return null;
@@ -130,13 +130,12 @@ async function getActiveAiServiceSetting(userId) {
 }
 
 async function clearOldChatHistory(userId) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System-level operation
   try {
     await client.query(`
       DELETE FROM sparky_chat_history
-      WHERE user_id = $1
-      AND created_at < NOW() - INTERVAL '7 days'
-    `, [userId]);
+      WHERE created_at < NOW() - INTERVAL '7 days'
+    `, []);
     return true;
   } finally {
     client.release();
@@ -144,11 +143,11 @@ async function clearOldChatHistory(userId) {
 }
 
 async function getChatHistoryByUserId(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT content, message_type, created_at FROM sparky_chat_history WHERE user_id = $1 ORDER BY created_at ASC LIMIT 5',
-      [userId]
+      'SELECT content, message_type, created_at FROM sparky_chat_history ORDER BY created_at ASC LIMIT 5',
+      []
     );
     return result.rows;
   } finally {
@@ -157,7 +156,7 @@ async function getChatHistoryByUserId(userId) {
 }
 
 async function getChatHistoryEntryById(id) {
-  const client = await getPool().connect();
+  const client = await getClient(id); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'SELECT * FROM sparky_chat_history WHERE id = $1',
@@ -170,7 +169,7 @@ async function getChatHistoryEntryById(id) {
 }
 
 async function getChatHistoryEntryOwnerId(id) {
-  const client = await getPool().connect();
+  const client = await getClient(id); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'SELECT user_id FROM sparky_chat_history WHERE id = $1',
@@ -183,7 +182,7 @@ async function getChatHistoryEntryOwnerId(id) {
 }
 
 async function updateChatHistoryEntry(id, userId, updateData) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `UPDATE sparky_chat_history SET
@@ -194,9 +193,9 @@ async function updateChatHistoryEntry(id, userId, updateData) {
         message = COALESCE($5, message),
         response = COALESCE($6, response),
         updated_at = now()
-      WHERE id = $7 AND user_id = $8
+      WHERE id = $7
       RETURNING *`,
-      [updateData.content, updateData.message_type, updateData.metadata, updateData.session_id, updateData.message, updateData.response, id, userId]
+      [updateData.content, updateData.message_type, updateData.metadata, updateData.session_id, updateData.message, updateData.response, id]
     );
     return result.rows[0];
   } finally {
@@ -205,11 +204,11 @@ async function updateChatHistoryEntry(id, userId, updateData) {
 }
 
 async function deleteChatHistoryEntry(id, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'DELETE FROM sparky_chat_history WHERE id = $1 AND user_id = $2 RETURNING id',
-      [id, userId]
+      'DELETE FROM sparky_chat_history WHERE id = $1 RETURNING id',
+      [id]
     );
     return result.rowCount > 0;
   } finally {
@@ -218,11 +217,11 @@ async function deleteChatHistoryEntry(id, userId) {
 }
 
 async function clearAllChatHistory(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
-      'DELETE FROM sparky_chat_history WHERE user_id = $1',
-      [userId]
+      'DELETE FROM sparky_chat_history',
+      []
     );
     return true;
   } finally {
@@ -231,7 +230,7 @@ async function clearAllChatHistory(userId) {
 }
 
 async function saveChatHistory(historyData) {
-  const client = await getPool().connect();
+  const client = await getClient(historyData.user_id); // User-specific operation
   try {
     await client.query(
       `INSERT INTO sparky_chat_history (user_id, content, message_type, metadata, created_at)

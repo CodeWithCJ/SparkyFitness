@@ -1,5 +1,5 @@
 import { apiCall } from './api';
-import { AuthResponse } from '../types'; // Import AuthResponse type
+import { AuthResponse, LoginSettings } from '../types/auth';
 
 export const registerUser = async (email: string, password: string, fullName: string): Promise<AuthResponse> => {
   const response = await apiCall('/auth/register', {
@@ -47,9 +47,9 @@ export const logoutUser = async (): Promise<void> => {
   }
 };
 
-export const initiateOidcLogin = async () => {
+export const initiateOidcLogin = async (providerId: number) => {
   try {
-    const response = await apiCall('/openid/login');
+    const response = await apiCall(`/openid/login/${providerId}`);
     if (response.authorizationUrl) {
       window.location.href = response.authorizationUrl;
     } else {
@@ -60,32 +60,37 @@ export const initiateOidcLogin = async () => {
   }
 };
 
+export const getOidcProviders = async (): Promise<any[]> => {
+  try {
+    const response = await apiCall('/openid/providers');
+    return response;
+  } catch (error) {
+    console.error('Error fetching OIDC providers:', error);
+    return [];
+  }
+};
+
 export const checkOidcAvailability = async (): Promise<boolean> => {
   try {
-    const response = await apiCall('/openid/login');
-    // If the backend explicitly states OIDC is not active, return false.
-    if (response && response.isOidcActive === false) {
-      console.info('OIDC is explicitly disabled by backend configuration.');
-      return false;
-    }
-    // If the response contains an authorizationUrl, OIDC is considered available.
-    // The backend should only return this if OIDC is active and configured.
-    return !!response.authorizationUrl;
+    const response = await apiCall('/openid/providers');
+    return response && response.length > 0;
   } catch (error: any) {
-    // This catch block will now primarily handle actual network errors or unexpected backend responses
-    // that are not explicitly signaling OIDC is disabled.
     console.warn('OIDC availability check failed due to an error:', error.message);
     return false;
   }
 };
 
-export const getLoginSettings = async (): Promise<{ oidc: { enabled: boolean }, email: { enabled: boolean } }> => {
+export const getLoginSettings = async (): Promise<LoginSettings> => {
   try {
     const response = await apiCall('/auth/settings');
-    return response;
+    return response as LoginSettings;
   } catch (error) {
     console.error('Error fetching login settings:', error);
     // Fallback to a safe default (email enabled) if the API call fails
-    return { oidc: { enabled: false }, email: { enabled: true } };
+    return {
+      email: { enabled: true },
+      oidc: { enabled: false, providers: [] },
+      warning: 'Could not load login settings from server. Defaulting to email login.'
+    };
   }
 };

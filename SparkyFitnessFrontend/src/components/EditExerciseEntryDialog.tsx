@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,11 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast"; // Import toast
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from '@/utils/logging';
-import {
-  fetchExerciseDetails,
-  updateExerciseEntry,
-  ExerciseEntry,
-} from '@/services/editExerciseEntryService';
+import { fetchExerciseDetails } from '@/services/editExerciseEntryService';
+import { updateExerciseEntry, ExerciseEntry } from '@/services/exerciseEntryService';
 import { WorkoutPresetSet } from "@/types/workout";
 import {
   DndContext,
@@ -38,6 +36,7 @@ import {
   Dumbbell,
   Timer,
   Plus,
+  XCircle,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ExerciseHistoryDisplay from "./ExerciseHistoryDisplay";
@@ -57,12 +56,14 @@ const SortableSetItem = React.memo(
     handleSetChange,
     handleDuplicateSet,
     handleRemoveSet,
+    weightUnit,
   }: {
     set: WorkoutPresetSet;
     setIndex: number;
     handleSetChange: Function;
     handleDuplicateSet: Function;
     handleRemoveSet: Function;
+    weightUnit: string;
   }) => {
     const { attributes, listeners, setNodeRef, transform, transition } =
       useSortable({ id: `set-${setIndex}` });
@@ -76,7 +77,7 @@ const SortableSetItem = React.memo(
       <div
         ref={setNodeRef}
         style={style}
-        className="flex flex-col space-y-2"
+        className="flex flex-col space-y-1"
         {...attributes}
       >
         <div className="flex items-center space-x-2">
@@ -141,7 +142,7 @@ const SortableSetItem = React.memo(
                   className="h-4 w-4 mr-1"
                   style={{ color: "#ef4444" }}
                 />{" "}
-                Weight
+                Weight ({weightUnit})
               </Label>
               <Input
                 id={`weight-${setIndex}`}
@@ -220,6 +221,7 @@ const SortableSetItem = React.memo(
             id={`notes-${setIndex}`}
             value={set.notes ?? ""}
             onChange={(e) => handleSetChange(setIndex, "notes", e.target.value)}
+            className="h-16"
           />
         </div>
       </div>
@@ -233,22 +235,22 @@ const EditExerciseEntryDialog = ({
   onOpenChange,
   onSave,
 }: EditExerciseEntryDialogProps) => {
-  const { loggingLevel } = usePreferences();
+  const { loggingLevel, weightUnit, convertWeight } = usePreferences();
   debug(
     loggingLevel,
     "EditExerciseEntryDialog: Component rendered for entry:",
     entry.id
   );
 
-  const [duration, setDuration] = useState<number | undefined>(
-    entry.duration_minutes
-  );
   const [sets, setSets] = useState<WorkoutPresetSet[]>(
     (entry.sets as WorkoutPresetSet[]) || []
   );
   const [notes, setNotes] = useState(entry.notes || "");
-  const [imageUrl, setImageUrl] = useState(entry.image_url || "");
+  const [imageUrl, setImageUrl] = useState<string | null>(entry.image_url || null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(entry.calories_burned || '');
+  const [showCaloriesWarning, setShowCaloriesWarning] = useState(false);
 
   useEffect(() => {
     debug(
@@ -256,17 +258,45 @@ const EditExerciseEntryDialog = ({
       "EditExerciseEntryDialog: entry useEffect triggered.",
       entry
     );
-    setDuration(entry.duration_minutes);
-    setSets((entry.sets as WorkoutPresetSet[]) || []);
+    setSets(
+      ((entry.sets as WorkoutPresetSet[]) || []).map(set => ({
+        ...set,
+        weight: Math.round(convertWeight(set.weight, 'kg', weightUnit))
+      }))
+    );
     setNotes(entry.notes || "");
-    setImageUrl(entry.image_url || "");
-  }, [entry, loggingLevel]);
+    setImageUrl(entry.image_url || null);
+    setImageFile(null);
+    setCaloriesBurnedInput(entry.calories_burned || '');
+  }, [entry, loggingLevel, weightUnit, convertWeight]);
+
+  useEffect(() => {
+    // When sets change, clear the calories burned input to trigger recalculation
+    if (sets.length > 0) {
+      setCaloriesBurnedInput('');
+      setShowCaloriesWarning(true);
+    }
+  }, [sets]);
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      setImageFile(file);
+      setImageUrl(URL.createObjectURL(file)); // Show preview of new image
+    }
+  };
+
+  const handleClearImage = () => {
+    setImageFile(null);
+    setImageUrl(null);
+  };
 
   const handleSetChange = (
     setIndex: number,
     field: keyof WorkoutPresetSet,
     value: any
   ) => {
+    debug(loggingLevel, `[EditExerciseEntryDialog] handleSetChange: index=${setIndex}, field=${field}, value=${value}, weightUnit=${weightUnit}`);
     setSets((prev) =>
       prev.map((set, sIndex) => {
         if (sIndex !== setIndex) {
@@ -351,15 +381,19 @@ const EditExerciseEntryDialog = ({
       const exerciseData = await fetchExerciseDetails(entry.exercise_id);
 
       const caloriesPerHour = exerciseData?.calories_per_hour || 300;
-      const totalDuration =
-        duration ||
-        (sets
-          ? sets.reduce((acc, set) => acc + (set.duration || 0), 0)
-          : 0);
-      const caloriesBurned = (caloriesPerHour / 60) * totalDuration;
+      const totalDurationFromSets = sets.reduce((acc, set) => acc + (set.duration || 0), 0);
+      const totalDuration = totalDurationFromSets;
+
+      let caloriesBurned;
+      if (caloriesBurnedInput !== '' && caloriesBurnedInput !== 0) {
+        caloriesBurned = caloriesBurnedInput;
+      } else {
+        caloriesBurned = (caloriesPerHour / 60) * totalDuration;
+      }
+
       debug(
         loggingLevel,
-        "EditExerciseEntryDialog: Recalculated calories burned:",
+        "EditExerciseEntryDialog: Final calories burned:",
         caloriesBurned
       );
 
@@ -367,7 +401,11 @@ const EditExerciseEntryDialog = ({
         duration_minutes: totalDuration,
         calories_burned: caloriesBurned,
         notes: notes,
-        sets: sets,
+        sets: sets.map(set => ({
+          ...set,
+          weight: convertWeight(set.weight, weightUnit, 'kg')
+        })),
+        imageFile: imageFile,
         image_url: imageUrl,
       });
 
@@ -380,8 +418,8 @@ const EditExerciseEntryDialog = ({
         title: "Success",
         description: "Exercise entry updated successfully.",
       });
-      onSave();
       onOpenChange(false);
+      onSave();
     } catch (err) {
       error(
         loggingLevel,
@@ -423,7 +461,17 @@ const EditExerciseEntryDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        {showCaloriesWarning && (
+          <Alert variant="default" className="bg-yellow-100 border-yellow-400 text-yellow-700 p-0.25 relative">
+            <AlertDescription>
+              Calories burned will be recalculated on save. Enter a value to override.
+            </AlertDescription>
+            <button onClick={() => setShowCaloriesWarning(false)} className="absolute top-1/2 right-2 -translate-y-1/2">
+              <X className="h-4 w-4" />
+            </button>
+          </Alert>
+        )}
+        <div className="space-y-2">
           <div>
             <Label htmlFor="exercise-name">Exercise</Label>
             <Input
@@ -444,7 +492,7 @@ const EditExerciseEntryDialog = ({
                 items={sets.map((_, i) => `set-${i}`)}
               >
                 <div className="space-y-2">
-                  {sets.map((set, setIndex) => (
+                   {sets.map((set, setIndex) => (
                     <SortableSetItem
                       key={`set-${setIndex}`}
                       set={set}
@@ -452,6 +500,7 @@ const EditExerciseEntryDialog = ({
                       handleSetChange={handleSetChange}
                       handleDuplicateSet={handleDuplicateSet}
                       handleRemoveSet={handleRemoveSet}
+                      weightUnit={weightUnit}
                     />
                   ))}
                 </div>
@@ -462,6 +511,17 @@ const EditExerciseEntryDialog = ({
             <Plus className="h-4 w-4 mr-2" /> Add Set
           </Button>
           <ExerciseHistoryDisplay exerciseId={entry.exercise_id} />
+
+          <div>
+            <Label htmlFor="calories-burned">Calories Burned (Optional)</Label>
+            <Input
+              id="calories-burned"
+              type="number"
+              value={caloriesBurnedInput}
+              onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="Enter calories burned to override calculation"
+            />
+          </div>
 
           <div>
             <Label htmlFor="notes">Notes</Label>
@@ -481,14 +541,25 @@ const EditExerciseEntryDialog = ({
           </div>
 
           <div>
-            <Label htmlFor="imageUrl">Image URL</Label>
-            <Input
-              id="imageUrl"
-              type="text"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="Optional image URL"
-            />
+            <Label htmlFor="image">Image</Label>
+            <Input id="image" type="file" accept="image/*" onChange={handleImageUpload} />
+            {(imageUrl || imageFile) && (
+              <div className="mt-2 relative w-24 h-24">
+                <img
+                  src={imageFile ? URL.createObjectURL(imageFile) : imageUrl || ""}
+                  alt="Exercise"
+                  className="h-full w-full object-cover rounded-md"
+                />
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={handleClearImage}
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 

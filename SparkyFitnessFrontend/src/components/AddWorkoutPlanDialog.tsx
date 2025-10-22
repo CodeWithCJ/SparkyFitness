@@ -25,6 +25,8 @@ import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import AddExerciseDialog from "@/components/AddExerciseDialog";
 import ExerciseHistoryDisplay from "./ExerciseHistoryDisplay";
+import { usePreferences } from "@/contexts/PreferencesContext";
+import { debug } from "@/utils/logging";
 
 interface AddWorkoutPlanDialogProps {
   isOpen: boolean;
@@ -44,7 +46,7 @@ const daysOfWeek = [
   { id: 6, name: "Saturday" },
 ];
 
-const SortableSetItem = React.memo(({ set, assignmentIndex, setIndex, handleSetChangeInPlan, handleDuplicateSetInPlan, handleRemoveSetInPlan }: { set: WorkoutPresetSet, assignmentIndex: number, setIndex: number, handleSetChangeInPlan: Function, handleDuplicateSetInPlan: Function, handleRemoveSetInPlan: Function }) => {
+const SortableSetItem = React.memo(({ set, assignmentIndex, setIndex, handleSetChangeInPlan, handleDuplicateSetInPlan, handleRemoveSetInPlan, weightUnit }: { set: WorkoutPresetSet, assignmentIndex: number, setIndex: number, handleSetChangeInPlan: Function, handleDuplicateSetInPlan: Function, handleRemoveSetInPlan: Function, weightUnit: string }) => {
   const {
     attributes,
     listeners,
@@ -96,7 +98,7 @@ const SortableSetItem = React.memo(({ set, assignmentIndex, setIndex, handleSetC
           </div>
           <div className="md:col-span-1">
             <Label htmlFor={`weight-${assignmentIndex}-${setIndex}`} className="flex items-center">
-              <Dumbbell className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} /> Weight
+              <Dumbbell className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} /> Weight ({weightUnit})
             </Label>
             <Input id={`weight-${assignmentIndex}-${setIndex}`} type="number" value={set.weight ?? ''} onChange={(e) => handleSetChangeInPlan(assignmentIndex, setIndex, 'weight', Number(e.target.value))} />
           </div>
@@ -132,6 +134,7 @@ const SortableSetItem = React.memo(({ set, assignmentIndex, setIndex, handleSetC
 
 const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onClose, onSave, initialData, onUpdate }) => {
   const { user } = useAuth();
+  const { weightUnit, loggingLevel, convertWeight } = usePreferences();
   const [planName, setPlanName] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -142,6 +145,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
   const [selectedDayForAssignment, setSelectedDayForAssignment] = useState<number | null>(null);
+  const [copiedAssignment, setCopiedAssignment] = useState<WorkoutPlanAssignment | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -155,7 +159,15 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
         setStartDate(initialData.start_date ? new Date(initialData.start_date).toISOString().split('T')[0] : '');
         setEndDate(initialData.end_date ? new Date(initialData.end_date).toISOString().split('T')[0] : '');
         setIsActive(initialData.is_active);
-        setAssignments(initialData.assignments || []);
+        setAssignments(
+          initialData.assignments?.map(a => ({
+            ...a,
+            sets: a.sets?.map(s => ({
+              ...s,
+              weight: Math.round(convertWeight(s.weight, 'kg', weightUnit))
+            })) || []
+          })) || []
+        );
       } else {
         setPlanName("");
         setDescription("");
@@ -206,6 +218,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
   };
 
   const handleSetChangeInPlan = useCallback((assignmentIndex: number, setIndex: number, field: keyof WorkoutPresetSet, value: any) => {
+    debug(loggingLevel, `[AddWorkoutPlanDialog] handleSetChangeInPlan: assignmentIndex=${assignmentIndex}, setIndex=${setIndex}, field=${field}, value=${value}, weightUnit=${weightUnit}`);
     setAssignments(prev =>
       prev.map((assignment, aIndex) => {
         if (aIndex !== assignmentIndex || !assignment.sets) {
@@ -222,7 +235,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
         };
       })
     );
-  }, []);
+  }, [loggingLevel, weightUnit, convertWeight]);
 
   const handleAddSetInPlan = useCallback((assignmentIndex: number) => {
     setAssignments(prev =>
@@ -354,6 +367,29 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
     }
   };
 
+  const handleCopyAssignment = (assignment: WorkoutPlanAssignment) => {
+    setCopiedAssignment({ ...assignment });
+    toast({
+      title: "Copied!",
+      description: `${assignment.exercise_name || `Preset: ${workoutPresets.find(p => p.id === assignment.workout_preset_id)?.name}` } copied to clipboard.`,
+    });
+  };
+
+  const handlePasteAssignment = (dayOfWeek: number) => {
+    if (copiedAssignment) {
+      const newAssignment: WorkoutPlanAssignment = {
+        ...copiedAssignment,
+        day_of_week: dayOfWeek,
+        template_id: '', // Reset template_id for the new assignment
+      };
+      setAssignments((prev) => [...prev, newAssignment]);
+      toast({
+        title: "Pasted!",
+        description: `Pasted ${newAssignment.exercise_name || `Preset: ${workoutPresets.find(p => p.id === newAssignment.workout_preset_id)?.name}`} to the new day.`,
+      });
+    }
+  };
+
   const handleSave = () => {
     if (planName.trim() === "" || startDate.trim() === "") {
       toast({
@@ -374,7 +410,13 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
       start_date: startDate,
       end_date: endDate || null,
       is_active: isActive,
-      assignments: assignmentsToSave,
+      assignments: assignmentsToSave.map(a => ({
+        ...a,
+        sets: a.sets?.map(s => ({
+          ...s,
+          weight: convertWeight(s.weight, weightUnit, 'kg')
+        })) || []
+      })),
     };
 
     if (initialData && onUpdate) {
@@ -458,7 +500,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
             </Label>
           </div>
           <p className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mt-2" role="alert">
-            <span className="font-bold">Note:</span> Saving an active plan updates future exercise entries. Deleting a plan removes future entries, but past entries remain in your log.
+            <span className="font-bold">Note:</span> Note: Updating an active plan adjusts upcoming exercise entries. Deleting a plan clears future ones, while previous entries stay in your log.
           </p>
 
           <div className="space-y-4">
@@ -499,17 +541,27 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
                                     return null;
                                   })()}
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => handleRemoveAssignment(originalIndex)}>
-                                  <X className="h-4 w-4" />
-                                </Button>
+                                <div>
+                                  <Button variant="ghost" size="icon" onClick={() => handleCopyAssignment(assignment)}>
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => handleRemoveAssignment(originalIndex)}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                             ) : (
                               <>
                                 <div className="flex items-center justify-between">
                                   <h4 className="font-semibold">{assignment.exercise_name}</h4>
-                                  <Button variant="ghost" size="icon" onClick={() => handleRemoveAssignment(originalIndex)}>
-                                    <X className="h-4 w-4" />
-                                  </Button>
+                                  <div>
+                                    <Button variant="ghost" size="icon" onClick={() => handleCopyAssignment(assignment)}>
+                                      <Copy className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveAssignment(originalIndex)}>
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </div>
                                 <SortableContext items={assignment.sets.map((_, index) => `set-${originalIndex}-${index}`)}>
                                   <div className="space-y-2">
@@ -522,6 +574,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
                                         handleSetChangeInPlan={handleSetChangeInPlan}
                                         handleDuplicateSetInPlan={handleDuplicateSetInPlan}
                                         handleRemoveSetInPlan={handleRemoveSetInPlan}
+                                        weightUnit={weightUnit}
                                       />
                                     ))}
                                   </div>
@@ -542,6 +595,11 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
                       }}>
                         <Plus className="h-4 w-4 mr-2" /> Add Exercise/Preset
                       </Button>
+                      {copiedAssignment && (
+                        <Button variant="outline" size="sm" onClick={() => handlePasteAssignment(day.id)}>
+                          <Copy className="h-4 w-4 mr-2" /> Paste Exercise
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

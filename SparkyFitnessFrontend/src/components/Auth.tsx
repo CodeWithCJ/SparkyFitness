@@ -19,11 +19,11 @@ import {
   registerUser,
   loginUser,
   initiateOidcLogin,
-  checkOidcAvailability,
+  getOidcProviders,
   getLoginSettings,
 } from "@/services/authService";
 import { useAuth } from "@/hooks/useAuth";
-import { AuthResponse } from "../types"; // Import AuthResponse type
+import { AuthResponse, LoginSettings, OidcProvider } from "../types/auth";
 import useToggle from "@/hooks/use-toggle";
 import PasswordToggle from "./PasswordToggle";
 
@@ -38,26 +38,39 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [loginSettings, setLoginSettings] = useState({ oidc: { enabled: false }, email: { enabled: true } });
+  const [loginSettings, setLoginSettings] = useState<LoginSettings>({
+    email: { enabled: true },
+    oidc: { enabled: false, providers: [] },
+    warning: null,
+  });
+  const [oidcProviders, setOidcProviders] = useState<OidcProvider[]>([]);
   const { isToggled: showPassword, toggleHandler: passwordToggleHandler } = useToggle();
 
   useEffect(() => {
-    const fetchLoginSettings = async () => {
+    const fetchAuthSettings = async () => {
       try {
         const settings = await getLoginSettings();
         setLoginSettings(settings);
 
-        // If only OIDC is enabled, redirect immediately
-        if (settings.oidc.enabled && !settings.email.enabled) {
-          initiateOidcLogin();
+        if (settings.oidc.enabled) {
+          const providers = await getOidcProviders();
+          setOidcProviders(providers);
+
+          // If only OIDC is enabled and there is only one provider, redirect immediately
+          if (!settings.email.enabled && providers.length === 1) {
+            initiateOidcLogin(providers[0].id);
+          }
         }
       } catch (err) {
-        error(loggingLevel, "Auth: Failed to fetch login settings:", err);
-        // Fallback to default settings
-        setLoginSettings({ oidc: { enabled: false }, email: { enabled: true } });
+        error(loggingLevel, "Auth: Failed to fetch login settings or OIDC providers:", err);
+        setLoginSettings({
+          email: { enabled: true },
+          oidc: { enabled: false, providers: [] },
+          warning: 'Could not load login settings from server. Defaulting to email login.'
+        });
       }
     };
-    fetchLoginSettings();
+    fetchAuthSettings();
   }, [loggingLevel]);
 
   const validatePassword = (pwd: string) => {
@@ -163,6 +176,12 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {loginSettings.warning && (
+            <div className="mb-4 p-3 rounded-md bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">
+              <p className="font-semibold">Warning</p>
+              <p>{loginSettings.warning}</p>
+            </div>
+          )}
           {loginSettings.email.enabled ? (
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
@@ -248,13 +267,19 @@ const Auth = () => {
                         </span>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      className="w-full dark:bg-gray-800 dark:hover:bg-gray-600"
-                      onClick={initiateOidcLogin}
-                    >
-                      Sign In with OIDC
-                    </Button>
+                    {oidcProviders.map((provider) => (
+                      <Button
+                        key={provider.id}
+                        variant="outline"
+                        className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
+                        onClick={() => initiateOidcLogin(provider.id)}
+                      >
+                        {provider.logo_url && (
+                          <img src={provider.logo_url} alt={`${provider.display_name} logo`} className="h-5 w-5 mr-2" />
+                        )}
+                        {provider.display_name || "Sign In with OIDC"}
+                      </Button>
+                    ))}
                   </>
                 )}
               </TabsContent>
@@ -328,14 +353,20 @@ const Auth = () => {
             </Tabs>
           ) : (
             <div>
-              {loginSettings.oidc.enabled ? (
-                <Button
-                  variant="outline"
-                  className="w-full dark:bg-gray-800 dark:hover:bg-gray-600"
-                  onClick={initiateOidcLogin}
-                >
-                  Sign In with OIDC
-                </Button>
+              {loginSettings.oidc.enabled && oidcProviders.length > 0 ? (
+                oidcProviders.map((provider) => (
+                  <Button
+                    key={provider.id}
+                    variant="outline"
+                    className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
+                    onClick={() => initiateOidcLogin(provider.id)}
+                  >
+                    {provider.logo_url && (
+                      <img src={provider.logo_url} alt={`${provider.display_name} logo`} className="h-5 w-5 mr-2" />
+                    )}
+                    {provider.display_name || "Sign In with OIDC"}
+                  </Button>
+                ))
               ) : (
                 <p className="text-center text-red-500">
                   No login methods are currently enabled. Please contact an administrator.

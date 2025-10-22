@@ -68,9 +68,10 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                       fontSize={10}
                       tickFormatter={formatDateForChart} // Apply formatter
                     />
-                    <YAxis 
-                      fontSize={10} 
+                    <YAxis
+                      fontSize={10}
                       domain={getYAxisDomain(measurementData.filter(d => d.weight), 'weight') || undefined}
+                      tickFormatter={(value) => value.toFixed(1)}
                     />
                     <Tooltip
                       labelFormatter={(value) => formatDateForChart(value as string)} // Apply formatter

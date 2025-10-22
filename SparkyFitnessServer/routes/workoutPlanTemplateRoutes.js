@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const workoutPlanTemplateService = require('../services/workoutPlanTemplateService');
 
 // Create a new workout plan template
-router.post('/', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.post('/', authenticate, async (req, res, next) => {
   try {
     const { currentClientDate, ...planData } = req.body;
     const newPlan = await workoutPlanTemplateService.createWorkoutPlanTemplate(req.userId, planData, currentClientDate);
@@ -15,7 +15,7 @@ router.post('/', authenticateToken, authorizeAccess('exercise_list'), async (req
 });
 
 // Get all workout plan templates for the authenticated user
-router.get('/', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   try {
     const plans = await workoutPlanTemplateService.getWorkoutPlanTemplatesByUserId(req.userId);
     res.status(200).json(plans);
@@ -25,7 +25,7 @@ router.get('/', authenticateToken, authorizeAccess('exercise_list'), async (req,
 });
 
 // Get a specific workout plan template by ID
-router.get('/:id', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.get('/:id', authenticate, async (req, res, next) => {
   try {
     const plan = await workoutPlanTemplateService.getWorkoutPlanTemplateById(req.userId, req.params.id);
     res.status(200).json(plan);
@@ -41,7 +41,7 @@ router.get('/:id', authenticateToken, authorizeAccess('exercise_list'), async (r
 });
 
 // Update an existing workout plan template
-router.put('/:id', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.put('/:id', authenticate, async (req, res, next) => {
   try {
     const { currentClientDate, ...updateData } = req.body;
     const updatedPlan = await workoutPlanTemplateService.updateWorkoutPlanTemplate(req.userId, req.params.id, updateData, currentClientDate);
@@ -58,7 +58,7 @@ router.put('/:id', authenticateToken, authorizeAccess('exercise_list'), async (r
 });
 
 // Delete a workout plan template
-router.delete('/:id', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.delete('/:id', authenticate, async (req, res, next) => {
   try {
     const result = await workoutPlanTemplateService.deleteWorkoutPlanTemplate(req.userId, req.params.id);
     res.status(200).json(result);
@@ -74,7 +74,7 @@ router.delete('/:id', authenticateToken, authorizeAccess('exercise_list'), async
 });
 
 // Get the active workout plan for a specific date
-router.get('/active/:date', authenticateToken, authorizeAccess('exercise_list'), async (req, res, next) => {
+router.get('/active/:date', authenticate, async (req, res, next) => {
   try {
     const activePlan = await workoutPlanTemplateService.getActiveWorkoutPlanForDate(req.userId, req.params.date);
     res.status(200).json(activePlan);

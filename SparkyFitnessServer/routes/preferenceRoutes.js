@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const preferenceService = require('../services/preferenceService');
 
 // Endpoint to update user preferences
-router.put('/', authenticateToken, authorizeAccess('preferences', (req) => req.userId), async (req, res, next) => {
+router.put('/', authenticate, async (req, res, next) => {
   const preferenceData = req.body;
  
   try {
@@ -22,7 +22,7 @@ router.put('/', authenticateToken, authorizeAccess('preferences', (req) => req.u
 });
 
 // Endpoint to delete user preferences
-router.delete('/', authenticateToken, authorizeAccess('preferences', (req) => req.userId), async (req, res, next) => {
+router.delete('/', authenticate, async (req, res, next) => {
   try {
     const result = await preferenceService.deleteUserPreferences(req.userId, req.userId);
     res.status(200).json(result);
@@ -38,7 +38,7 @@ router.delete('/', authenticateToken, authorizeAccess('preferences', (req) => re
 });
 
 // Endpoint to fetch user preferences
-router.get('/', authenticateToken, authorizeAccess('preferences', (req) => req.userId), async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   try {
     const preferences = await preferenceService.getUserPreferences(req.userId, req.userId);
     res.status(200).json(preferences);
@@ -54,7 +54,7 @@ router.get('/', authenticateToken, authorizeAccess('preferences', (req) => req.u
 });
 
 // Endpoint to upsert user preferences
-router.post('/', authenticateToken, authorizeAccess('preferences'), async (req, res, next) => {
+router.post('/', authenticate, async (req, res, next) => {
   const preferenceData = req.body;
 
   try {

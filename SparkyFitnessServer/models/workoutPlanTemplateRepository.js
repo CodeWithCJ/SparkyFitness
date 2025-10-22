@@ -1,9 +1,9 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 const format = require('pg-format');
 
 async function createWorkoutPlanTemplate(planData) {
-    const client = await getPool().connect();
+    const client = await getClient(planData.user_id); // User-specific operation
     try {
         await client.query('BEGIN');
 
@@ -88,7 +88,7 @@ async function createWorkoutPlanTemplate(planData) {
 }
 
 async function getWorkoutPlanTemplatesByUserId(userId) {
-    const client = await getPool().connect();
+    const client = await getClient(userId); // User-specific operation
     try {
         const query = `
             SELECT
@@ -130,7 +130,7 @@ async function getWorkoutPlanTemplatesByUserId(userId) {
 }
 
 async function getWorkoutPlanTemplateById(templateId) {
-    const client = await getPool().connect();
+    const client = await getClient(templateId); // User-specific operation (RLS will handle access)
     try {
         const query = `
             SELECT
@@ -171,7 +171,7 @@ async function getWorkoutPlanTemplateById(templateId) {
 }
 
 async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
-    const client = await getPool().connect();
+    const client = await getClient(userId); // User-specific operation
     try {
         await client.query('BEGIN');
 
@@ -292,7 +292,7 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
 }
 
 async function deleteWorkoutPlanTemplate(templateId, userId) {
-    const client = await getPool().connect();
+    const client = await getClient(userId); // User-specific operation
     try {
         const result = await client.query(
             `DELETE FROM workout_plan_templates WHERE id = $1 AND user_id = $2 RETURNING *`,
@@ -308,7 +308,7 @@ async function deleteWorkoutPlanTemplate(templateId, userId) {
 }
 
 async function getWorkoutPlanTemplateOwnerId(templateId) {
-    const client = await getPool().connect();
+    const client = await getClient(templateId); // User-specific operation (RLS will handle access)
     try {
         const result = await client.query(
             `SELECT user_id FROM workout_plan_templates WHERE id = $1`,
@@ -321,7 +321,7 @@ async function getWorkoutPlanTemplateOwnerId(templateId) {
 }
 
 async function getActiveWorkoutPlanForDate(userId, date) {
-    const client = await getPool().connect();
+    const client = await getClient(userId); // User-specific operation
     try {
         const query = `
             SELECT

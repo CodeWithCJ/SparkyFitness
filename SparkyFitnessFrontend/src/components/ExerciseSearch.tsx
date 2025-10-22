@@ -175,13 +175,26 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        const equipment = await getFreeExerciseDBEquipment();
-        setAvailableEquipment(equipment);
-        debug(loggingLevel, "ExerciseSearch: Fetched available equipment:", equipment);
+        const [equipment, muscleGroups] = await Promise.all([
+          getFreeExerciseDBEquipment(),
+          getFreeExerciseDBMuscleGroups(),
+        ]);
 
-        const muscleGroups = await getFreeExerciseDBMuscleGroups();
-        setAvailableMuscleGroups(muscleGroups);
-        debug(loggingLevel, "ExerciseSearch: Fetched available muscle groups:", muscleGroups);
+        let finalEquipment = [...equipment];
+        let finalMuscleGroups = [...muscleGroups];
+
+        if (searchSource === 'external' && selectedProviderType === 'wger') {
+          const { uniqueMuscles, uniqueEquipment } = await apiCall('/exercises/wger-filters');
+          finalEquipment = [...new Set([...finalEquipment, ...uniqueEquipment])];
+          finalMuscleGroups = [...new Set([...finalMuscleGroups, ...uniqueMuscles])];
+        }
+
+        setAvailableEquipment(finalEquipment);
+        debug(loggingLevel, "ExerciseSearch: Fetched available equipment:", finalEquipment);
+
+        setAvailableMuscleGroups(finalMuscleGroups);
+        debug(loggingLevel, "ExerciseSearch: Fetched available muscle groups:", finalMuscleGroups);
+
       } catch (err) {
         error(loggingLevel, "ExerciseSearch: Error fetching equipment types or muscle groups:", err);
         toast({
@@ -236,9 +249,10 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
     setCurrentImageIndex((prevIndex) => (prevIndex - 1 + (exercises[0]?.images?.length || 1)) % (exercises[0]?.images?.length || 1));
   };
 
-  const handleSpeakInstructions = (instructions: string[]) => {
+  const handleSpeakInstructions = (instructions: string | string[]) => {
     if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(instructions.join('. '));
+      const textToSpeak = Array.isArray(instructions) ? instructions.join('. ') : instructions;
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
       window.speechSynthesis.speak(utterance);
     } else {
       toast({
@@ -497,7 +511,7 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleSpeakInstructions(exercise.instructions || [])}
+                        onClick={() => handleSpeakInstructions(exercise.instructions)}
                         className="ml-2"
                       >
                         <Volume2 className="h-4 w-4" />

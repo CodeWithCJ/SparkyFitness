@@ -1,319 +1,340 @@
-import React, { useState, useEffect } from 'react';
-import { oidcSettingsService, type OidcSettings } from '../../services/oidcSettingsService';
+import React, { useState, useEffect, useCallback } from 'react';
+import { oidcSettingsService, type OidcProvider } from '../../services/oidcSettingsService';
 import { toast } from '@/hooks/use-toast';
-import { ClipboardCopy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { PlusCircle, Edit, Trash2, ClipboardCopy } from 'lucide-react';
 
 const OidcSettings: React.FC = () => {
-  const [settings, setSettings] = useState<OidcSettings | null>(null);
+  const [providers, setProviders] = useState<OidcProvider[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [displayClientSecret, setDisplayClientSecret] = useState<string>('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<OidcProvider | null>(null);
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const fetchedSettings = await oidcSettingsService.getSettings();
-        // Initialize with empty values if no settings are found, to allow configuration
-        const settingsForState: OidcSettings = {
-          issuer_url: fetchedSettings?.issuer_url || '',
-          client_id: fetchedSettings?.client_id || '',
-          client_secret: undefined, // Start with undefined, will be set by handleChange if user types
-          redirect_uris: fetchedSettings?.redirect_uris || [],
-          scope: fetchedSettings?.scope || 'openid profile email',
-          token_endpoint_auth_method: fetchedSettings?.token_endpoint_auth_method || 'client_secret_post',
-          response_types: fetchedSettings?.response_types || ['code'],
-          is_active: fetchedSettings?.is_active || false,
-          id_token_signed_response_alg: fetchedSettings?.id_token_signed_response_alg || 'RS256',
-          userinfo_signed_response_alg: fetchedSettings?.userinfo_signed_response_alg || 'none',
-          request_timeout: fetchedSettings?.request_timeout || 30000,
-          auto_register: fetchedSettings?.auto_register || false,
-        };
-
-        if (fetchedSettings && fetchedSettings.client_secret) {
-          setDisplayClientSecret('*****'); // Show placeholder if secret exists
-        } else {
-          setDisplayClientSecret('');
-        }
-        setSettings(settingsForState); // Set the constructed object
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch OIDC settings.');
-        toast({
-          title: "Error",
-          description: "Failed to load OIDC settings.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSettings();
-  }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    if (id === 'client_secret') {
-      setDisplayClientSecret(value); // Update display value as user types
-      // If the user types, send the new value. If they leave it as '*****', send undefined.
-      setSettings(prev => ({ ...prev!, [id]: value === '*****' ? undefined : value }));
-    } else if (id === 'redirect_uris') {
-      setSettings(prev => ({ ...prev!, [id]: value.split(',').map(uri => uri.trim()) }));
-    } else if (id === 'request_timeout') {
-      setSettings(prev => ({ ...prev!, [id]: parseInt(value, 10) }));
-    } else {
-      setSettings(prev => ({ ...prev!, [id]: value }));
-    }
-  };
-
-  const handleSwitchChange = (checked: boolean) => {
-    setSettings(prev => ({ ...prev!, is_active: checked }));
-  };
-
-  const handleSave = async () => {
-    if (!settings) return;
-    setLoading(true);
+  const fetchProviders = useCallback(async () => {
     try {
-      await oidcSettingsService.saveSettings(settings);
-      toast({
-        title: "Success",
-        description: "OIDC settings saved successfully.",
-      });
+      setLoading(true);
+      const fetchedProviders = await oidcSettingsService.getProviders();
+      setProviders(fetchedProviders);
     } catch (err: any) {
-      setError(err.message || 'Failed to save OIDC settings.');
-      toast({
-        title: "Error",
-        description: "Failed to save OIDC settings.",
-        variant: "destructive",
-      });
+      setError(err.message || 'Failed to fetch OIDC providers.');
+      toast({ title: "Error", description: "Failed to load OIDC providers.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchProviders();
+  }, [fetchProviders]);
+
+  const handleAddNew = () => {
+    setSelectedProvider({
+      issuer_url: '',
+      client_id: '',
+      redirect_uris: [],
+      scope: 'openid profile email',
+      token_endpoint_auth_method: 'client_secret_post',
+      response_types: ['code'],
+      is_active: true,
+      signing_algorithm: 'RS256',
+      profile_signing_algorithm: 'none',
+      timeout: 30000,
+      auto_register: false,
+    });
+    setIsDialogOpen(true);
   };
 
-  if (loading) {
-    return <div>Loading OIDC settings...</div>;
-  }
+  const handleEdit = (provider: OidcProvider) => {
+    setSelectedProvider(provider);
+    setIsDialogOpen(true);
+  };
 
-  if (error) {
-    return <div className="text-red-500">Error: {error}</div>;
-  }
+  const handleDelete = async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this provider?')) {
+      try {
+        await oidcSettingsService.deleteProvider(id);
+        toast({ title: "Success", description: "OIDC provider deleted successfully." });
+        fetchProviders();
+      } catch (err: any) {
+        toast({ title: "Error", description: "Failed to delete OIDC provider.", variant: "destructive" });
+      }
+    }
+  };
 
-  if (!settings) {
-    return <div>No OIDC settings found. Please configure.</div>;
-  }
+  const handleSave = async (provider: OidcProvider) => {
+    try {
+      if (provider.id) {
+        await oidcSettingsService.updateProvider(provider.id, provider);
+        toast({ title: "Success", description: "OIDC provider updated successfully." });
+      } else {
+        await oidcSettingsService.createProvider(provider);
+        toast({ title: "Success", description: "OIDC provider created successfully." });
+      }
+      setIsDialogOpen(false);
+      fetchProviders();
+    } catch (err: any) {
+      toast({ title: "Error", description: "Failed to save OIDC provider.", variant: "destructive" });
+    }
+  };
+
+  const handleToggleChange = async (provider: OidcProvider, field: 'is_active' | 'auto_register') => {
+    const updatedProvider = { ...provider, [field]: !(provider[field] || false) };
+    try {
+      await oidcSettingsService.updateProvider(updatedProvider.id!, updatedProvider);
+      toast({ title: "Success", description: `Provider ${field === 'is_active' ? 'status' : 'auto-register'} updated.` });
+      fetchProviders();
+    } catch (err: any) {
+      toast({ title: "Error", description: `Failed to update provider.`, variant: "destructive" });
+    }
+  };
+
+  if (loading) return <div>Loading OIDC providers...</div>;
+  if (error) return <div className="text-red-500">Error: {error}</div>;
 
   return (
-    <Card className="w-full mx-auto">
+    <Card>
       <CardHeader>
-        <CardTitle>Authentication Settings</CardTitle>
-        <CardDescription>Manage password, OAuth, and other authentication settings.</CardDescription>
+        <CardTitle>OIDC Authentication Providers</CardTitle>
+        <CardDescription>Manage OIDC providers for user authentication.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="oauth-settings">
-            <AccordionTrigger>OAuth</AccordionTrigger>
-            <AccordionContent>
-              <form onSubmit={handleSave} className="grid grid-cols-4 gap-4 py-4">
-                
-                {/* Enable OIDC Login and Auto Register Switches */}
-                <div className="flex items-center justify-between col-span-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="is_active"
-                      checked={settings.is_active}
-                      onCheckedChange={handleSwitchChange}
-                    />
-                    <Label htmlFor="is_active">Enable OIDC Login</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="auto_register"
-                      checked={settings.auto_register || false}
-                      onCheckedChange={(checked) => setSettings(prev => ({ ...prev!, auto_register: checked }))}
-                    />
-                    <Label htmlFor="auto_register">Auto Register New Users</Label>
-                  </div>
-                </div>
-
-                {/* Issuer URL */}
-                <div className="grid grid-cols-4 items-center gap-4 col-span-4">
-                  <Label htmlFor="issuer_url" className="text-right col-span-1">
-                    Issuer URL
-                  </Label>
-                  <Input
-                    id="issuer_url"
-                    value={settings.issuer_url}
-                    onChange={handleChange}
-                    className="col-span-3"
-                    autoComplete="url"
+        <div className="flex justify-end mb-4">
+          <Button onClick={handleAddNew}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add New Provider
+          </Button>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Logo</TableHead>
+              <TableHead>Display Name</TableHead>
+              <TableHead>Active</TableHead>
+              <TableHead>Auto Register</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {providers.map((provider) => (
+              <TableRow key={provider.id}>
+                <TableCell>
+                  <img src={provider.logo_url || '/oidc-logo.png'} alt={`${provider.display_name} logo`} className="h-8 w-8 object-contain" />
+                </TableCell>
+                <TableCell>{provider.display_name}</TableCell>
+                <TableCell>
+                  <Switch
+                    checked={provider.is_active}
+                    onCheckedChange={() => handleToggleChange(provider, 'is_active')}
                   />
-                </div>
-
-                {/* Client ID */}
-                <div className="grid grid-cols-4 items-center gap-4 col-span-4">
-                  <Label htmlFor="client_id" className="text-right col-span-1">
-                    Client ID
-                  </Label>
-                  <Input
-                    id="client_id"
-                    value={settings.client_id}
-                    onChange={handleChange}
-                    className="col-span-3"
-                    autoComplete="client-id"
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={provider.auto_register}
+                    onCheckedChange={() => handleToggleChange(provider, 'auto_register')}
                   />
-                </div>
-
-                {/* Client Secret */}
-                <div className="grid grid-cols-4 items-center gap-4 col-span-4">
-                  <Label htmlFor="client_secret" className="text-right col-span-1">
-                    Client Secret
-                  </Label>
-                  <Input
-                    id="client_secret"
-                    type="password"
-                    value={displayClientSecret}
-                    onChange={handleChange}
-                    className="col-span-3"
-                    autoComplete="new-password"
-                  />
-                </div>
-
-                {/* Scope */}
-                <div className="grid grid-cols-4 items-center gap-4 col-span-4">
-                  <Label htmlFor="scope" className="text-right col-span-1">
-                    Scope
-                  </Label>
-                  <Input
-                    id="scope"
-                    value={settings.scope || ''}
-                    onChange={handleChange}
-                    className="col-span-3"
-                    autoComplete="off"
-                  />
-                </div>
-
-                {/* Redirect URIs */}
-                <div className="grid grid-cols-4 items-center gap-4 col-span-4">
-                  <Label htmlFor="redirect_uris" className="text-right col-span-1">
-                    Redirect URIs (comma-separated)
-                  </Label>
-                  <Input
-                    id="redirect_uris"
-                    value={settings.redirect_uris ? settings.redirect_uris.join(', ') : ''}
-                    onChange={handleChange}
-                    className="col-span-3"
-                    autoComplete="off"
-                  />
-                </div>
-
-                {/* ID Token Signed Alg */}
-                <div className="grid grid-cols-4 items-center gap-4 col-span-4">
-                  <Label htmlFor="id_token_signed_response_alg" className="text-right col-span-1">
-                    ID Token Signed Alg
-                  </Label>
-                  <Input
-                    id="id_token_signed_response_alg"
-                    value={settings.id_token_signed_response_alg || ''}
-                    onChange={handleChange}
-                    className="col-span-3"
-                    autoComplete="off"
-                  />
-                </div>
-
-                {/* Userinfo Signed Alg */}
-                <div className="grid grid-cols-4 items-center gap-4 col-span-4">
-                  <Label htmlFor="userinfo_signed_response_alg" className="text-right col-span-1">
-                    Userinfo Signed Alg
-                  </Label>
-                  <Input
-                    id="userinfo_signed_response_alg"
-                    value={settings.userinfo_signed_response_alg || ''}
-                    onChange={handleChange}
-                    className="col-span-3"
-                    autoComplete="off"
-                  />
-                </div>
-
-                {/* Request Timeout */}
-                <div className="grid grid-cols-4 items-center gap-4 col-span-4">
-                  <Label htmlFor="request_timeout" className="text-right col-span-1">
-                    Request Timeout (ms)
-                  </Label>
-                  <Input
-                    id="request_timeout"
-                    type="number"
-                    value={settings.request_timeout || ''}
-                    onChange={handleChange}
-                    className="col-span-3"
-                    autoComplete="off"
-                  />
-                </div>
-
-                <p id="oidc-key-length-note" className="text-base font-semibold text-red-700 bg-red-100 p-3 rounded-lg mb-4 border border-red-300 col-span-4">
-                  IMPORTANT NOTE: If you encounter an "Invalid key length" error when configuring OIDC providers, ensure your encryption and JWT authentication keys in the server's environment variables are 64 hex characters or 44 Base64 characters.
-                </p>
-
-                {/* Redirect URI Information */}
-                <div className="col-span-4 text-sm text-muted-foreground mt-2">
-                  <p>
-                    The Redirect URI (Callback URL) for your OIDC provider should be: <code className="font-mono bg-gray-100 p-1 rounded">[Your App Base URL]/oidc-callback</code>
-                  </p>
-                  <p className="mt-1">
-                    For example: <code className="font-mono bg-gray-100 p-1 rounded">https://fit.domain.com/oidc-callback</code>
-                  </p>
-                  <p className="mt-1">
-                    Ensure your OIDC provider allows <code>localhost</code> or your local IP for development.
-                  </p>
-                  <p className="mt-2">
-                    If using a proxy like Nginx Proxy Manager, ensure the following headers are configured:
-                  </p>
-                  <div className="relative group">
-                    <pre id="proxy-config-code" className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">
-                      <code>
-                        proxy_set_header Host $host;<br/>
-                        proxy_set_header X-Real-IP $remote_addr;<br/>
-                        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;<br/>
-                        proxy_set_header X-Forwarded-Proto $scheme;<br/>
-                        add_header X-Content-Type-Options "nosniff";<br/>
-                        proxy_set_header X-Forwarded-Ssl on;
-                      </code>
-                    </pre>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => {
-                        const codeBlock = document.getElementById('proxy-config-code');
-                        if (codeBlock) {
-                          // Replace <br/> with newlines for proper copying
-                          const textToCopy = codeBlock.innerText.replace(/<br\/>/g, '\n');
-                          navigator.clipboard.writeText(textToCopy);
-                          toast({ title: "Copied!", description: "Proxy configuration copied to clipboard." });
-                        }
-                      }}
-                    >
-                      <ClipboardCopy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex justify-end gap-2 mt-4 col-span-4">
-                  <Button variant="outline" type="button">Reset to default</Button>
-                  <Button type="submit" disabled={loading}>Save</Button>
-                </div>
-              </form>
-            </AccordionContent>
-          </AccordionItem>
-          {/* TODO: Add Password Login settings section */}
-        </Accordion>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(provider)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDelete(provider.id!)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {isDialogOpen && selectedProvider && (
+          <ProviderDialog
+            provider={selectedProvider}
+            onSave={handleSave}
+            onClose={() => setIsDialogOpen(false)}
+          />
+        )}
       </CardContent>
     </Card>
+  );
+};
+
+const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: OidcProvider) => void; onClose: () => void; }> = ({ provider, onSave, onClose }) => {
+  const [editedProvider, setEditedProvider] = useState<OidcProvider>(provider);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+
+  const handleResetToDefaults = () => {
+    setEditedProvider(prev => ({
+      ...prev,
+      scope: 'openid profile email',
+      token_endpoint_auth_method: 'client_secret_post',
+      response_types: ['code'],
+      signing_algorithm: 'RS256',
+      profile_signing_algorithm: 'none',
+      timeout: 30000,
+    }));
+    toast({ title: "Defaults Restored", description: "OIDC provider fields have been reset to their default values." });
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    if (id === 'redirect_uris') {
+      setEditedProvider(prev => ({ ...prev, [id]: value.split(',').map(uri => uri.trim()) }));
+    } else {
+      setEditedProvider(prev => ({ ...prev, [id]: value }));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setLogoFile(e.target.files[0]);
+    }
+  };
+
+  const handleSwitchChange = (id: string, checked: boolean) => {
+    setEditedProvider(prev => ({ ...prev, [id]: checked }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    let providerToSave = { ...editedProvider };
+
+    if (logoFile && providerToSave.id) {
+      try {
+        const uploadResponse = await oidcSettingsService.uploadLogo(providerToSave.id, logoFile);
+        providerToSave.logo_url = uploadResponse.logoUrl;
+      } catch (err) {
+        toast({ title: "Error", description: "Failed to upload logo.", variant: "destructive" });
+        return; // Stop the save process if logo upload fails
+      }
+    }
+    onSave(providerToSave);
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[800px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>{editedProvider.id ? 'Edit' : 'Add'} OIDC Provider</DialogTitle>
+            <DialogDescription>Fill in the details for the OIDC provider.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-y-auto p-4">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="display_name">Display Name</Label>
+                <Input id="display_name" value={editedProvider.display_name || ''} onChange={handleChange} />
+              </div>
+              <div className="flex items-center justify-between pt-4">
+                <div className="flex items-center space-x-2">
+                    <Switch id="is_active" checked={editedProvider.is_active} onCheckedChange={(c) => handleSwitchChange('is_active', c)} />
+                    <Label htmlFor="is_active">Active</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Switch id="auto_register" checked={editedProvider.auto_register || false} onCheckedChange={(c) => handleSwitchChange('auto_register', c)} />
+                    <Label htmlFor="auto_register">Auto Register</Label>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="logo_file">Logo File</Label>
+                <Input id="logo_file" type="file" onChange={handleFileChange} />
+              </div>
+              <div>
+                <Label htmlFor="logo_url">Logo URL</Label>
+                <Input id="logo_url" value={editedProvider.logo_url || ''} onChange={handleChange} readOnly placeholder="Will be set on upload" />
+              </div>
+              <div>
+                <Label htmlFor="issuer_url">Issuer URL</Label>
+                <Input id="issuer_url" value={editedProvider.issuer_url} onChange={handleChange} />
+              </div>
+              <div>
+                <Label htmlFor="client_id">Client ID</Label>
+                <Input id="client_id" value={editedProvider.client_id} onChange={handleChange} autoComplete="off" />
+              </div>
+              <div>
+                <Label htmlFor="client_secret">Client Secret</Label>
+                <Input id="client_secret" type="password" onChange={handleChange} placeholder="Leave unchanged if *****" autoComplete="new-password" />
+              </div>
+              <div>
+                <Label htmlFor="scope">Scope</Label>
+                <Input id="scope" value={editedProvider.scope} onChange={handleChange} />
+              </div>
+              <div>
+                <Label htmlFor="redirect_uris">Redirect URI</Label>
+                <Input id="redirect_uris" value={editedProvider.redirect_uris.join(', ')} onChange={handleChange} placeholder="e.g., https://app.example.com/oidc-callback" />
+              </div>
+              <div>
+                <Label htmlFor="token_endpoint_auth_method">Token Endpoint Auth Method</Label>
+                <select
+                  id="token_endpoint_auth_method"
+                  value={editedProvider.token_endpoint_auth_method}
+                  onChange={(e) => setEditedProvider(prev => ({ ...prev, token_endpoint_auth_method: e.target.value }))}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="client_secret_post">client_secret_post</option>
+                  <option value="client_secret_basic">client_secret_basic</option>
+                  <option value="none">none</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="signing_algorithm">ID Token Signed Alg</Label>
+                <Input id="signing_algorithm" value={editedProvider.signing_algorithm || ''} onChange={handleChange} />
+              </div>
+              <div>
+                <Label htmlFor="profile_signing_algorithm">Userinfo Signed Alg</Label>
+                <Input id="profile_signing_algorithm" value={editedProvider.profile_signing_algorithm || ''} onChange={handleChange} />
+              </div>
+              <div>
+                <Label htmlFor="timeout">Request Timeout (ms)</Label>
+                <Input id="timeout" type="number" value={editedProvider.timeout || ''} onChange={handleChange} />
+              </div>
+            </div>
+            <div className="text-sm text-muted-foreground mt-4">
+              <p>The Redirect URI for your OIDC provider should be: <code className="font-mono bg-gray-100 p-1 rounded">[Your App Base URL]/oidc-callback</code></p>
+              <p className="mt-1">Example: <code className="font-mono bg-gray-100 p-1 rounded">https://fit.domain.com/oidc-callback</code></p>
+              <p className="mt-1">Ensure your OIDC provider allows localhost or your local IP for development.</p>
+              <p className="mt-2">If using a proxy like Nginx Proxy Manager, ensure the following headers are configured:</p>
+              <div className="relative group mt-2">
+                <pre id="proxy-config-code" className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">
+                  <code>
+                    proxy_set_header Host $host;{'\n'}
+                    proxy_set_header X-Real-IP $remote_addr;{'\n'}
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;{'\n'}
+                    proxy_set_header X-Forwarded-Proto $scheme;{'\n'}
+                    add_header X-Content-Type-Options "nosniff";{'\n'}
+                    proxy_set_header X-Forwarded-Ssl on;
+                  </code>
+                </pre>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => {
+                    const codeBlock = document.getElementById('proxy-config-code');
+                    if (codeBlock) {
+                      navigator.clipboard.writeText(codeBlock.innerText);
+                      toast({ title: "Copied!", description: "Proxy configuration copied to clipboard." });
+                    }
+                  }}
+                >
+                  <ClipboardCopy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="pt-4 border-t">
+            <Button type="button" variant="outline" onClick={handleResetToDefaults}>Reset to Defaults</Button>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit">Save</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

@@ -43,8 +43,11 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
   const config: RequestInit = {
     ...options,
     headers,
-    credentials: 'include', // Send cookies with all API requests
   };
+
+  if (!options?.externalApi) {
+    config.credentials = 'include'; // Send cookies only with internal API requests
+  }
 
   if (options?.body) {
     debug(userLoggingLevel, `API Call: Request body for ${endpoint}:`, options.body);
