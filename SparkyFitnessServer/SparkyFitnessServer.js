@@ -44,124 +44,162 @@ const { performBackup, applyRetentionPolicy } = require('./services/backupServic
 const app = express();
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
 
-console.log(`DEBUG: SPARKY_FITNESS_FRONTEND_URL is: ${process.env.SPARKY_FITNESS_FRONTEND_URL}`);
+console.log(
+  `DEBUG: SPARKY_FITNESS_FRONTEND_URL is: ${process.env.SPARKY_FITNESS_FRONTEND_URL}`
+);
 
 // Use cors middleware to allow requests from your frontend
-app.use(cors({
-  origin: process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-provider-id', 'x-api-key'],
-  credentials: true // Allow cookies to be sent from the frontend
-}));
+app.use(
+  cors({
+    origin: process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "x-provider-id",
+      "x-api-key",
+    ],
+    credentials: true, // Allow cookies to be sent from the frontend
+  })
+);
 
 // Middleware to parse JSON bodies for all incoming requests
 // Increased limit to 50mb to accommodate image uploads
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: "50mb" }));
 
 // Serve static files from the 'uploads' directory
 // This middleware will first try to serve the file if it exists locally.
 // If the file is not found, it will fall through to the next middleware,
 // which will handle on-demand downloading.
-const UPLOADS_BASE_DIR = path.join(__dirname, 'uploads');
-console.log('SparkyFitnessServer UPLOADS_BASE_DIR:', UPLOADS_BASE_DIR);
-app.use('/uploads', express.static(UPLOADS_BASE_DIR));
+const UPLOADS_BASE_DIR = path.join(__dirname, "uploads");
+console.log("SparkyFitnessServer UPLOADS_BASE_DIR:", UPLOADS_BASE_DIR);
+app.use("/uploads", express.static(UPLOADS_BASE_DIR));
 
 // On-demand image serving route
-app.get('/uploads/exercises/:exerciseId/:imageFileName', async (req, res, next) => {
-  const { exerciseId, imageFileName } = req.params;
-  const localImagePath = path.join(__dirname, 'uploads/exercises', exerciseId, imageFileName);
+app.get(
+  "/uploads/exercises/:exerciseId/:imageFileName",
+  async (req, res, next) => {
+    const { exerciseId, imageFileName } = req.params;
+    const localImagePath = path.join(
+      __dirname,
+      "uploads/exercises",
+      exerciseId,
+      imageFileName
+    );
 
-  // Check if the file already exists locally
-  if (fs.existsSync(localImagePath)) {
-    return res.sendFile(localImagePath);
+    // Check if the file already exists locally
+    if (fs.existsSync(localImagePath)) {
+      return res.sendFile(localImagePath);
+    }
+
+    // If not found, attempt to re-download
+    try {
+      const exerciseRepository = require("./models/exerciseRepository");
+      const freeExerciseDBService = require("./integrations/freeexercisedb/FreeExerciseDBService"); // Import service
+
+      // Use getExerciseBySourceAndSourceId since exerciseId in the URL is actually the source_id
+      const exercise = await exerciseRepository.getExerciseBySourceAndSourceId(
+        "free-exercise-db",
+        exerciseId
+      );
+
+      if (!exercise) {
+        return res.status(404).send("Exercise not found.");
+      }
+
+      // Find the original image path from the exercise's images array
+      // The imageFileName is expected to be the last part of the originalRelativeImagePath
+      const originalRelativeImagePath = exercise.images.find((img) =>
+        img.endsWith(imageFileName)
+      );
+      log(
+        "debug",
+        `[SparkyFitnessServer] Original relative image path from DB: ${originalRelativeImagePath}`
+      );
+
+      if (!originalRelativeImagePath) {
+        return res.status(404).send("Image not found for this exercise.");
+      }
+
+      let externalImageUrl;
+      // Determine the external image URL based on the source
+      if (exercise.source === "free-exercise-db") {
+        // Use the originalRelativeImagePath directly as it contains the full path needed by getExerciseImageUrl
+        externalImageUrl = freeExerciseDBService.getExerciseImageUrl(
+          originalRelativeImagePath
+        );
+        log(
+          "debug",
+          `[SparkyFitnessServer] External image URL constructed: ${externalImageUrl}`
+        );
+      } else {
+        // Handle other sources here if needed
+        return res
+          .status(404)
+          .send("Unsupported exercise source for image download.");
+      }
+
+      // Download the image
+      const { downloadImage } = require("./utils/imageDownloader");
+      const downloadedLocalPath = await downloadImage(
+        externalImageUrl,
+        exerciseId
+      );
+
+      // Serve the newly downloaded image
+      // downloadedLocalPath already starts with /uploads/exercises/..., so we just need to resolve it from the base directory
+      const finalImagePath = path.join(__dirname, downloadedLocalPath);
+      log("info", `Serving image from: ${finalImagePath}`);
+      res.sendFile(finalImagePath);
+    } catch (error) {
+      log(
+        "error",
+        `Error serving or re-downloading image for exercise ${exerciseId}, image ${imageFileName}:`,
+        error
+      );
+      res.status(500).send("Error serving image.");
+    }
   }
-
-  // If not found, attempt to re-download
-  try {
-    const exerciseRepository = require('./models/exerciseRepository');
-    const freeExerciseDBService = require('./integrations/freeexercisedb/FreeExerciseDBService'); // Import service
-
-    // Use getExerciseBySourceAndSourceId since exerciseId in the URL is actually the source_id
-    const exercise = await exerciseRepository.getExerciseBySourceAndSourceId('free-exercise-db', exerciseId);
-
-    if (!exercise) {
-      return res.status(404).send('Exercise not found.');
-    }
-
-    // Find the original image path from the exercise's images array
-    // The imageFileName is expected to be the last part of the originalRelativeImagePath
-    const originalRelativeImagePath = exercise.images.find(img => img.endsWith(imageFileName));
-    log('debug', `[SparkyFitnessServer] Original relative image path from DB: ${originalRelativeImagePath}`);
-
-    if (!originalRelativeImagePath) {
-      return res.status(404).send('Image not found for this exercise.');
-    }
-
-    let externalImageUrl;
-    // Determine the external image URL based on the source
-    if (exercise.source === 'free-exercise-db') {
-      // Use the originalRelativeImagePath directly as it contains the full path needed by getExerciseImageUrl
-      externalImageUrl = freeExerciseDBService.getExerciseImageUrl(originalRelativeImagePath);
-      log('debug', `[SparkyFitnessServer] External image URL constructed: ${externalImageUrl}`);
-    } else {
-      // Handle other sources here if needed
-      return res.status(404).send('Unsupported exercise source for image download.');
-    }
-
-    // Download the image
-    const { downloadImage } = require('./utils/imageDownloader');
-    const downloadedLocalPath = await downloadImage(externalImageUrl, exerciseId);
-
-    // Serve the newly downloaded image
-    // downloadedLocalPath already starts with /uploads/exercises/..., so we just need to resolve it from the base directory
-    const finalImagePath = path.join(__dirname, downloadedLocalPath);
-    log('info', `Serving image from: ${finalImagePath}`);
-    res.sendFile(finalImagePath);
-
-  } catch (error) {
-    log('error', `Error serving or re-downloading image for exercise ${exerciseId}, image ${imageFileName}:`, error);
-    res.status(500).send('Error serving image.');
-  }
-});
+);
 
 let sessionMiddleware; // Declare sessionMiddleware globally
 
 const configureSessionMiddleware = (app, pool) => {
-  const session = require('express-session');
-  const pgSession = require('connect-pg-simple')(session);
+  const session = require("express-session");
+  const pgSession = require("connect-pg-simple")(session);
 
   // Trust the first proxy
-  app.set('trust proxy', 1);
+  app.set("trust proxy", 1);
 
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction = process.env.NODE_ENV === "production";
 
   sessionMiddleware = session({
     store: new pgSession({
       pool: pool, // Connection pool
-      tableName: 'session' // Use a table named 'session'
+      tableName: "session", // Use a table named 'session'
     }),
-    name: 'sparky.sid',
-    secret: process.env.SESSION_SECRET ?? 'sparky_secret',
+    name: "sparky.sid",
+    secret: process.env.SESSION_SECRET ?? "sparky_secret",
     resave: false,
     saveUninitialized: true,
     proxy: true, // Trust the proxy in all environments (like Vite dev server)
     cookie: {
-      path: '/', // Ensure cookie is sent for all paths
+      path: "/", // Ensure cookie is sent for all paths
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 // 1 day
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
       // secure and sameSite will be set dynamically
-    }
+    },
   });
 
   app.use(sessionMiddleware);
 
   // Dynamically set cookie properties based on protocol
   app.use((req, res, next) => {
-    if (req.session && req.protocol === 'https') {
+    if (req.session && req.protocol === "https") {
       req.session.cookie.secure = true;
-      req.session.cookie.sameSite = 'none';
+      req.session.cookie.sameSite = "none";
     } else if (req.session) {
-      req.session.cookie.sameSite = 'lax';
+      req.session.cookie.sameSite = "lax";
     }
     // log('debug', `[Session Debug] Request Protocol: ${req.protocol}, Secure: ${req.secure}, Host: ${req.headers.host}`); // Commented out for less verbose logging
     next();
@@ -175,21 +213,21 @@ configureSessionMiddleware(app, getRawOwnerPool());
 app.use((req, res, next) => {
   // Routes that do not require authentication (e.g., login, register, OIDC flows, health checks)
   const publicRoutes = [
-    '/auth/login',
-    '/auth/register',
-    '/auth/settings',
-    '/auth/forgot-password', // Allow password reset request to be public
-    '/auth/reset-password', // Allow password reset to be public
-    '/api/health-data',
-    '/health',
-    '/openid', // All OIDC routes are handled by session, not JWT token
-    '/openid/api/me', // Explicitly allow /openid/api/me as a public route for session check
-    '/version', // Allow version endpoint to be public
+    "/auth/login",
+    "/auth/register",
+    "/auth/settings",
+    "/auth/forgot-password", // Allow password reset request to be public
+    "/auth/reset-password", // Allow password reset to be public
+    "/api/health-data",
+    "/health",
+    "/openid", // All OIDC routes are handled by session, not JWT token
+    "/openid/api/me", // Explicitly allow /openid/api/me as a public route for session check
+    "/version", // Allow version endpoint to be public
   ];
 
   // Check if the current request path starts with any of the public routes
-  if (publicRoutes.some(route => req.path.startsWith(route))) {
-    log('debug', `Skipping authentication for public route: ${req.path}`);
+  if (publicRoutes.some((route) => req.path.startsWith(route))) {
+    log("debug", `Skipping authentication for public route: ${req.path}`);
     return next();
   }
 
@@ -236,29 +274,36 @@ app.use('/workout-plan-templates', require('./routes/workoutPlanTemplateRoutes')
 app.use('/review', reviewRoutes);
 
 // Temporary debug route to log incoming requests for meal plan templates
-app.use('/meal-plan-templates', (req, res, next) => {
-  log('debug', `[DEBUG ROUTE] Original URL: ${req.originalUrl}, Path: ${req.path}`);
-  next();
-}, mealPlanTemplateRoutes);
+app.use(
+  "/meal-plan-templates",
+  (req, res, next) => {
+    log(
+      "debug",
+      `[DEBUG ROUTE] Original URL: ${req.originalUrl}, Path: ${req.path}`
+    );
+    next();
+  },
+  mealPlanTemplateRoutes
+);
 
-console.log('DEBUG: Attempting to start server...');
+console.log("DEBUG: Attempting to start server...");
 
 // Function to schedule backups
 const scheduleBackups = async () => {
   // For now, a placeholder. In a later step, we will fetch backup preferences from the DB.
   // Example: Schedule a backup every day at 2 AM
-  cron.schedule('0 2 * * *', async () => {
-    log('info', 'Scheduled backup initiated.');
+  cron.schedule("0 2 * * *", async () => {
+    log("info", "Scheduled backup initiated.");
     const result = await performBackup();
     if (result.success) {
-      log('info', `Scheduled backup completed successfully: ${result.path}`);
+      log("info", `Scheduled backup completed successfully: ${result.path}`);
       // Apply retention policy after successful backup
       await applyRetentionPolicy(7); // Keep 7 days of backups for now
     } else {
-      log('error', `Scheduled backup failed: ${result.error}`);
+      log("error", `Scheduled backup failed: ${result.error}`);
     }
   });
-  log('info', 'Backup scheduler initialized.');
+  log("info", "Backup scheduler initialized.");
 };
 
 applyMigrations().then(async () => {
@@ -276,21 +321,22 @@ applyMigrations().then(async () => {
       if (success) {
         log('info', `User ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} set as admin.`);
       } else {
-        log('warn', `Failed to set user ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} as admin.`);
+        log(
+          "warn",
+          `Admin user with email ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} not found.`
+        );
       }
-    } else {
-      log('warn', `Admin user with email ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} not found.`);
     }
-  }
 
-  app.listen(PORT, () => {
-    console.log(`DEBUG: Server started and listening on port ${PORT}`); // Direct console log
-    log('info', `SparkyFitnessServer listening on port ${PORT}`);
+    app.listen(PORT, () => {
+      console.log(`DEBUG: Server started and listening on port ${PORT}`); // Direct console log
+      log("info", `SparkyFitnessServer listening on port ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    log("error", "Failed to apply migrations and start server:", error);
+    process.exit(1);
   });
-}).catch(error => {
-  log('error', 'Failed to apply migrations and start server:', error);
-  process.exit(1);
-});
 
 module.exports = { configureSessionMiddleware };
 
@@ -300,5 +346,10 @@ app.use(errorHandler);
 // Catch-all for 404 Not Found - MUST be placed after all routes and error handlers
 app.use((req, res, next) => {
   // For any unhandled routes, return a JSON 404 response
-  res.status(404).json({ error: "Not Found", message: `The requested URL ${req.originalUrl} was not found on this server.` });
+  res
+    .status(404)
+    .json({
+      error: "Not Found",
+      message: `The requested URL ${req.originalUrl} was not found on this server.`,
+    });
 });

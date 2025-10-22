@@ -32,7 +32,6 @@ const AppContent: React.FC<AppContentProps> = ({ onShowAboutDialog }) => {
   const { hasPermission, isActingOnBehalf } = useActiveUser(); // Use useActiveUser
 
   if (loading) {
-    // Optionally, render a loading spinner or skeleton screen here
     return (
       <ThemeProvider loggingLevel={loggingLevel}>
         <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">

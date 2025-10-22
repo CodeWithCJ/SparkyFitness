@@ -1,0 +1,69 @@
+const express = require("express");
+const router = express.Router();
+const { authenticateToken } = require("../middleware/authMiddleware");
+const onboardingService = require("../services/onboardingService");
+
+router.use(express.json());
+
+/**
+ * @route   POST /api/onboarding
+ * @desc    Submit user onboarding data
+ * @access  Private
+ */
+router.post("/", authenticateToken, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    const onboardingData = req.body;
+
+    const {
+      sex,
+      primaryGoal,
+      currentWeight,
+      height,
+      birthDate,
+      activityLevel,
+      targetWeight,
+    } = onboardingData;
+
+    if (
+      !sex ||
+      !primaryGoal ||
+      !currentWeight ||
+      !height ||
+      !birthDate ||
+      !activityLevel ||
+      !targetWeight
+    ) {
+      return res.status(400).json({
+        error: "Missing one or more required onboarding fields.",
+        details:
+          "Ensure sex, primaryGoal, currentWeight, height, birthDate, activityLevel, and targetWeight are provided.",
+      });
+    }
+
+    await onboardingService.processOnboardingData(userId, onboardingData);
+
+    res.status(201).json({ message: "Onboarding completed successfully." });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/onboarding/status
+ * @desc    Check if the current user has completed onboarding
+ * @access  Private
+ */
+router.get("/status", authenticateToken, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+
+    const isComplete = await onboardingService.checkOnboardingStatus(userId);
+
+    res.status(200).json({ onboardingComplete: isComplete });
+  } catch (error) {
+    next(error);
+  }
+});
+
+module.exports = router;
