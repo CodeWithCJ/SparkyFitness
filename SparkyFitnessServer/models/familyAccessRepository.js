@@ -1,8 +1,16 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 
-async function checkFamilyAccessPermission(familyUserId, ownerUserId, permission) {
-  const client = await getPool().connect();
+async function checkFamilyAccessPermission(familyUserId, ownerUserId, requiredPermissions) {
+  const client = await getClient(familyUserId); // User-specific operation
   try {
+    // Ensure requiredPermissions is an array
+    const permissionsArray = Array.isArray(requiredPermissions) ? requiredPermissions : [requiredPermissions];
+
+    // Construct the WHERE clause for permissions dynamically
+    const permissionChecks = permissionsArray.map((_, index) =>
+      `(access_permissions->>$${3 + index})::boolean = TRUE`
+    ).join(' OR ');
+
     const result = await client.query(
       `SELECT 1
        FROM family_access
@@ -10,8 +18,8 @@ async function checkFamilyAccessPermission(familyUserId, ownerUserId, permission
          AND owner_user_id = $2
          AND is_active = TRUE
          AND (access_end_date IS NULL OR access_end_date > NOW())
-         AND (access_permissions->>$3)::boolean = TRUE`,
-      [familyUserId, ownerUserId, permission]
+         AND (${permissionChecks})`,
+      [familyUserId, ownerUserId, ...permissionsArray]
     );
     return result.rowCount > 0;
   } finally {
@@ -20,7 +28,7 @@ async function checkFamilyAccessPermission(familyUserId, ownerUserId, permission
 }
 
 async function getFamilyAccessEntriesByOwner(ownerUserId) {
-  const client = await getPool().connect();
+  const client = await getClient(ownerUserId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT fa.id, fa.owner_user_id, fa.family_user_id, fa.family_email, fa.access_permissions,
@@ -41,12 +49,13 @@ async function getFamilyAccessEntriesByOwner(ownerUserId) {
 }
 
 async function getFamilyAccessEntriesByUserId(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT fa.id, fa.owner_user_id, fa.family_user_id, fa.family_email, fa.access_permissions,
               fa.access_start_date, fa.access_end_date, fa.is_active, fa.status,
-              p_owner.full_name AS owner_full_name, p_family.full_name AS family_full_name
+              p_owner.full_name AS owner_full_name, p_family.full_name AS family_full_name,
+              au.email as owner_email
        FROM family_access fa
        LEFT JOIN profiles p_owner ON fa.owner_user_id = p_owner.id
        LEFT JOIN auth.users au ON au.id = fa.owner_user_id
@@ -62,7 +71,7 @@ async function getFamilyAccessEntriesByUserId(userId) {
 }
 
 async function createFamilyAccessEntry(ownerUserId, familyUserId, familyEmail, accessPermissions, accessEndDate, status) {
-  const client = await getPool().connect();
+  const client = await getClient(ownerUserId); // User-specific operation
   try {
     const result = await client.query(
       `INSERT INTO family_access (owner_user_id, family_user_id, family_email, access_permissions, access_end_date, status, created_at, updated_at)
@@ -76,7 +85,7 @@ async function createFamilyAccessEntry(ownerUserId, familyUserId, familyEmail, a
 }
 
 async function updateFamilyAccessEntry(id, ownerUserId, accessPermissions, accessEndDate, isActive, status) {
-  const client = await getPool().connect();
+  const client = await getClient(ownerUserId); // User-specific operation
   try {
     const result = await client.query(
       `UPDATE family_access SET
@@ -96,7 +105,7 @@ async function updateFamilyAccessEntry(id, ownerUserId, accessPermissions, acces
 }
 
 async function deleteFamilyAccessEntry(id, ownerUserId) {
-  const client = await getPool().connect();
+  const client = await getClient(ownerUserId); // User-specific operation
   try {
     const result = await client.query(
       'DELETE FROM family_access WHERE id = $1 AND owner_user_id = $2 RETURNING id',

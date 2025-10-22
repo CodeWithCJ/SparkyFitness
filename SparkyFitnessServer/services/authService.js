@@ -9,7 +9,7 @@ const familyAccessRepository = require('../models/familyAccessRepository');
 const oidcProviderRepository = require('../models/oidcProviderRepository');
 const globalSettingsRepository = require('../models/globalSettingsRepository');
 const adminActivityLogRepository = require('../models/adminActivityLogRepository'); // Import admin activity log repository
-const { getPool } = require('../db/poolManager');
+const { getClient, getSystemClient } = require('../db/poolManager');
 const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
 const emailService = require('./emailService');
 
@@ -193,7 +193,7 @@ async function updateUserEmail(authenticatedUserId, newEmail) {
 
 async function canAccessUserData(targetUserId, permissionType, authenticatedUserId) {
   try {
-    const client = await getPool().connect();
+    const client = await getClient(authenticatedUserId); // User-specific operation
     const result = await client.query(
       `SELECT public.can_access_user_data($1, $2, $3) AS can_access`,
       [targetUserId, permissionType, authenticatedUserId]
@@ -216,17 +216,14 @@ async function checkFamilyAccess(authenticatedUserId, ownerUserId, permission) {
   }
 }
 
-async function getFamilyAccessEntries(authenticatedUserId, targetUserId) {
+async function getFamilyAccessEntries(authenticatedUserId) {
   try {
-    let entries;
-    if (authenticatedUserId === targetUserId) {
-      entries = await familyAccessRepository.getFamilyAccessEntriesByUserId(targetUserId);
-    } else {
-      entries = await familyAccessRepository.getFamilyAccessEntriesByOwner(targetUserId);
-    }
+    // The RLS policy on the family_access table will ensure that only records
+    // where the authenticated user is either the owner_user_id or the family_user_id are returned.
+    const entries = await familyAccessRepository.getFamilyAccessEntriesByUserId(authenticatedUserId);
     return entries;
   } catch (error) {
-    log('error', `Error fetching family access entries for user ${targetUserId} in authService:`, error);
+    log('error', `Error fetching family access entries for user ${authenticatedUserId} in authService:`, error);
     throw error;
   }
 }

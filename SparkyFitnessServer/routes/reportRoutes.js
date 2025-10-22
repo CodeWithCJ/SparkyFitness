@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
+const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware'); // Import the new middleware
 const reportService = require('../services/reportService');
 
 // New endpoint for reports
-router.get('/', authenticateToken, authorizeAccess('reports', (req) => req.query.userId), async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   const { userId: targetUserId, startDate, endDate } = req.query;
  
   if (!targetUserId || !startDate || !endDate) {
@@ -23,7 +24,7 @@ router.get('/', authenticateToken, authorizeAccess('reports', (req) => req.query
 });
 
 // Endpoint to fetch mini nutrition trends for a specific user and date range
-router.get('/mini-nutrition-trends', authenticateToken, authorizeAccess('reports', (req) => req.query.userId), async (req, res, next) => {
+router.get('/mini-nutrition-trends', authenticate, async (req, res, next) => {
   const { userId: targetUserId, startDate, endDate } = req.query;
  
   if (!targetUserId || !startDate || !endDate) {
@@ -41,7 +42,7 @@ router.get('/mini-nutrition-trends', authenticateToken, authorizeAccess('reports
   }
 });
 
-router.get('/nutrition-trends-with-goals', authenticateToken, authorizeAccess('reports', (req) => req.query.userId), async (req, res, next) => {
+router.get('/nutrition-trends-with-goals', authenticate, async (req, res, next) => {
   const { userId: targetUserId, startDate, endDate } = req.query;
  
   if (!targetUserId || !startDate || !endDate) {
@@ -59,7 +60,7 @@ router.get('/nutrition-trends-with-goals', authenticateToken, authorizeAccess('r
   }
 });
 
-router.get('/exercise-dashboard', authenticateToken, authorizeAccess('reports', (req) => req.query.userId), async (req, res, next) => {
+router.get('/exercise-dashboard', authenticate, async (req, res, next) => {
   const { userId: targetUserId, startDate, endDate, equipment, muscle, exercise } = req.query;
 
   if (!targetUserId || !startDate || !endDate) {

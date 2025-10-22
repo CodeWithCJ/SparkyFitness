@@ -1,7 +1,7 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 
 async function createOrUpdateMoodEntry(userId, moodValue, notes, entryDate) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `INSERT INTO mood_entries (user_id, mood_value, notes, entry_date)
@@ -20,7 +20,7 @@ async function createOrUpdateMoodEntry(userId, moodValue, notes, entryDate) {
 }
 
 async function getMoodEntriesByUserId(userId, startDate, endDate) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT id, user_id, mood_value, notes, entry_date, created_at, updated_at
@@ -36,7 +36,7 @@ async function getMoodEntriesByUserId(userId, startDate, endDate) {
 }
 
 async function getMoodEntryById(moodEntryId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT id, user_id, mood_value, notes, entry_date, created_at, updated_at
@@ -51,7 +51,7 @@ async function getMoodEntryById(moodEntryId, userId) {
 }
 
 async function updateMoodEntry(moodEntryId, userId, moodValue, notes) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `UPDATE mood_entries
@@ -69,7 +69,7 @@ async function updateMoodEntry(moodEntryId, userId, moodValue, notes) {
 }
 
 async function deleteMoodEntry(moodEntryId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `DELETE FROM mood_entries WHERE id = $1 AND user_id = $2 RETURNING id`,
@@ -84,7 +84,7 @@ async function deleteMoodEntry(moodEntryId, userId) {
 const { log } = require('../config/logging');
 
 async function getMoodEntryByDate(userId, entryDate) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     log('debug', `Fetching mood entry for user ${userId} on date ${entryDate}`);
     const result = await client.query(

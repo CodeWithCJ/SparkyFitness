@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
+const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware'); // Import the new middleware
 const measurementService = require('../services/measurementService');
 const waterContainerRepository = require('../models/waterContainerRepository'); // Import waterContainerRepository
 const { log } = require('../config/logging');
@@ -73,7 +74,7 @@ router.post('/health-data', express.text({ type: '*/*' }), async (req, res, next
   }
 
   try {
-    const result = await measurementService.processHealthData(healthDataArray, req.userId);
+    const result = await measurementService.processHealthData(healthDataArray, req.userId, req.originalUserId || req.userId);
     res.status(200).json(result);
   } catch (error) {
     if (error.message.startsWith('{') && error.message.endsWith('}')) {
@@ -85,7 +86,7 @@ router.post('/health-data', express.text({ type: '*/*' }), async (req, res, next
 });
 
 // Endpoint to fetch water intake for a specific user and date
-router.get('/water-intake/:date', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
+router.get('/water-intake/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { date } = req.params;
   if (!date) {
     return res.status(400).json({ error: 'Date is required.' });
@@ -102,14 +103,14 @@ router.get('/water-intake/:date', authenticateToken, authorizeAccess('checkin', 
 });
 
 // Endpoint to upsert water intake
-router.post('/water-intake', authenticateToken, authorizeAccess('checkin'), async (req, res, next) => {
+router.post('/water-intake', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { entry_date, change_drinks, container_id } = req.body;
   if (!entry_date || change_drinks === undefined || container_id === undefined) {
     return res.status(400).json({ error: 'Entry date, change_drinks, and container_id are required.' });
   }
  
   try {
-    const result = await measurementService.upsertWaterIntake(req.userId, entry_date, change_drinks, container_id);
+    const result = await measurementService.upsertWaterIntake(req.userId, req.originalUserId || req.userId, entry_date, change_drinks, container_id);
     res.status(200).json(result);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -120,7 +121,7 @@ router.post('/water-intake', authenticateToken, authorizeAccess('checkin'), asyn
 });
 
 // Endpoint to fetch water intake by ID
-router.get('/water-intake/entry/:id', authenticateToken, async (req, res, next) => {
+router.get('/water-intake/entry/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Water Intake Entry ID is required.' });
@@ -140,7 +141,7 @@ router.get('/water-intake/entry/:id', authenticateToken, async (req, res, next) 
 });
 
 // Endpoint to update water intake
-router.put('/water-intake/:id', authenticateToken, authorizeAccess('checkin'), async (req, res, next) => {
+router.put('/water-intake/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
   if (!id) {
@@ -161,7 +162,7 @@ router.put('/water-intake/:id', authenticateToken, authorizeAccess('checkin'), a
 });
 
 // Endpoint to delete water intake
-router.delete('/water-intake/:id', authenticateToken, authorizeAccess('checkin'), async (req, res, next) => {
+router.delete('/water-intake/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Water Intake Entry ID is required.' });
@@ -182,13 +183,13 @@ router.delete('/water-intake/:id', authenticateToken, authorizeAccess('checkin')
 
 
 // Endpoint to upsert check-in measurements
-router.post('/check-in', authenticateToken, authorizeAccess('checkin'), async (req, res, next) => {
+router.post('/check-in', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { entry_date, ...measurements } = req.body;
   if (!entry_date) {
     return res.status(400).json({ error: 'Entry date is required.' });
   }
   try {
-    const result = await measurementService.upsertCheckInMeasurements(req.userId, entry_date, measurements);
+    const result = await measurementService.upsertCheckInMeasurements(req.userId, req.originalUserId || req.userId, entry_date, measurements);
     res.status(200).json(result);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -199,7 +200,7 @@ router.post('/check-in', authenticateToken, authorizeAccess('checkin'), async (r
 });
 
 // Endpoint to fetch the latest check-in measurements on or before a specific date
-router.get('/check-in/latest-on-or-before-date', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
+router.get('/check-in/latest-on-or-before-date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { date } = req.query;
   if (!date) {
     return res.status(400).json({ error: 'Date is required.' });
@@ -216,7 +217,7 @@ router.get('/check-in/latest-on-or-before-date', authenticateToken, authorizeAcc
 });
 
 // Endpoint to fetch check-in measurements for a specific user and date
-router.get('/check-in/:date', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
+router.get('/check-in/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { date } = req.params;
   if (!date) {
     return res.status(400).json({ error: 'Date is required.' });
@@ -233,7 +234,7 @@ router.get('/check-in/:date', authenticateToken, authorizeAccess('checkin', (req
 });
 
 // Endpoint to update check-in measurements
-router.put('/check-in/:id', authenticateToken, async (req, res, next) => {
+router.put('/check-in/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { id } = req.params; // Keep 'id' for route matching, but it's not used for lookup in service
   const { entry_date, ...updateData } = req.body;
   if (!entry_date) {
@@ -251,7 +252,7 @@ router.put('/check-in/:id', authenticateToken, async (req, res, next) => {
     }
 
     // If ownership is confirmed, proceed with the update
-    const updatedMeasurement = await measurementService.updateCheckInMeasurements(req.userId, id, entry_date, updateData);
+    const updatedMeasurement = await measurementService.updateCheckInMeasurements(req.userId, req.originalUserId || req.userId, entry_date, updateData);
     res.status(200).json(updatedMeasurement);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -266,7 +267,7 @@ router.put('/check-in/:id', authenticateToken, async (req, res, next) => {
 });
 
 // Endpoint to delete check-in measurements
-router.delete('/check-in/:id', authenticateToken, authorizeAccess('checkin'), async (req, res, next) => {
+router.delete('/check-in/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Check-in Measurement ID is required.' });
@@ -286,7 +287,7 @@ router.delete('/check-in/:id', authenticateToken, authorizeAccess('checkin'), as
 });
 
 // Endpoint to fetch custom categories for a user
-router.get('/custom-categories', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
+router.get('/custom-categories', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
     const categories = await measurementService.getCustomCategories(req.userId, req.userId);
     res.status(200).json(categories);
@@ -299,9 +300,9 @@ router.get('/custom-categories', authenticateToken, authorizeAccess('checkin', (
 });
 
 // Endpoint to create a new custom category
-router.post('/custom-categories', authenticateToken, authorizeAccess('checkin'), async (req, res, next) => {
+router.post('/custom-categories', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
-    const newCategory = await measurementService.createCustomCategory(req.userId, { ...req.body, user_id: req.userId });
+    const newCategory = await measurementService.createCustomCategory(req.userId, req.originalUserId || req.userId, { ...req.body, user_id: req.userId });
     res.status(201).json(newCategory);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -312,9 +313,9 @@ router.post('/custom-categories', authenticateToken, authorizeAccess('checkin'),
 });
 
 // Endpoint to upsert a custom measurement entry
-router.post('/custom-entries', authenticateToken, authorizeAccess('checkin'), async (req, res, next) => {
+router.post('/custom-entries', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
-    const newEntry = await measurementService.upsertCustomMeasurementEntry(req.userId, req.body);
+    const newEntry = await measurementService.upsertCustomMeasurementEntry(req.userId, req.originalUserId || req.userId, req.body);
     res.status(201).json(newEntry);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -325,7 +326,7 @@ router.post('/custom-entries', authenticateToken, authorizeAccess('checkin'), as
 });
 
 // Endpoint to delete a custom measurement entry
-router.delete('/custom-entries/:id', authenticateToken, authorizeAccess('checkin'), async (req, res, next) => {
+router.delete('/custom-entries/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Custom Measurement Entry ID is required.' });
@@ -345,7 +346,7 @@ router.delete('/custom-entries/:id', authenticateToken, authorizeAccess('checkin
 });
 
 // Endpoint to update a custom category
-router.put('/custom-categories/:id', authenticateToken, authorizeAccess('checkin'), async (req, res, next) => {
+router.put('/custom-categories/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
   if (!id) {
@@ -366,7 +367,7 @@ router.put('/custom-categories/:id', authenticateToken, authorizeAccess('checkin
 });
 
 // Endpoint to delete a custom category
-router.delete('/custom-categories/:id', authenticateToken, authorizeAccess('checkin'), async (req, res, next) => {
+router.delete('/custom-categories/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Category ID is required.' });
@@ -385,22 +386,8 @@ router.delete('/custom-categories/:id', authenticateToken, authorizeAccess('chec
   }
 });
 
-// Endpoint to fetch custom measurement entries
-router.get('/custom-entries', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
-  const { limit, orderBy, filter } = req.query;
-  try {
-    const entries = await measurementService.getCustomMeasurementEntries(req.userId, req.userId, limit, orderBy, filter);
-    res.status(200).json(entries);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
-    }
-    next(error);
-  }
-});
-
 // Endpoint to fetch custom measurement entries for a specific user and date
-router.get('/custom-entries/:date', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
+router.get('/custom-entries/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { date } = req.params;
   if (!date) {
     return res.status(400).json({ error: 'Date is required.' });
@@ -416,8 +403,22 @@ router.get('/custom-entries/:date', authenticateToken, authorizeAccess('checkin'
   }
 });
 
+// Endpoint to fetch custom measurement entries
+router.get('/custom-entries', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
+  const { limit, orderBy, filter } = req.query;
+  try {
+    const entries = await measurementService.getCustomMeasurementEntries(req.userId, limit, orderBy, filter);
+    res.status(200).json(entries);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
 // Endpoint to fetch check-in measurements for a specific user and date range
-router.get('/check-in-measurements-range/:startDate/:endDate', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
+router.get('/check-in-measurements-range/:startDate/:endDate', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { startDate, endDate } = req.params;
   if (!startDate || !endDate) {
     return res.status(400).json({ error: 'Start date and end date are required.' });
@@ -434,7 +435,7 @@ router.get('/check-in-measurements-range/:startDate/:endDate', authenticateToken
 });
 
 // Endpoint to fetch custom measurements for a specific user, category, and date range
-router.get('/custom-measurements-range/:categoryId/:startDate/:endDate', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
+router.get('/custom-measurements-range/:categoryId/:startDate/:endDate', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { categoryId, startDate, endDate } = req.params;
   if (!categoryId || !startDate || !endDate) {
     return res.status(400).json({ error: 'Category ID, start date, and end date are required.' });
@@ -450,7 +451,7 @@ router.get('/custom-measurements-range/:categoryId/:startDate/:endDate', authent
   }
 });
 
-router.get('/most-recent/:measurementType', authenticateToken, authorizeAccess('checkin', (req) => req.userId), async (req, res, next) => {
+router.get('/most-recent/:measurementType', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { measurementType } = req.params;
   try {
     const measurement = await measurementService.getMostRecentMeasurement(req.userId, measurementType);

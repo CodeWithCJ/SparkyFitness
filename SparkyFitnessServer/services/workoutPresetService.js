@@ -7,7 +7,7 @@ async function createWorkoutPreset(userId, presetData) {
   // Validate and resolve exercise_ids
   for (const ex of presetData.exercises) {
     ex.exercise_id = await resolveExerciseIdToUuid(ex.exercise_id); // Resolve to UUID
-    const exercise = await exerciseRepository.getExerciseById(ex.exercise_id);
+    const exercise = await exerciseRepository.getExerciseById(ex.exercise_id, userId);
     if (!exercise) {
       throw new Error(`Exercise with ID ${ex.exercise_id} not found.`);
     }
@@ -47,7 +47,7 @@ async function updateWorkoutPreset(userId, presetId, updateData) {
   if (updateData.exercises) {
     for (const ex of updateData.exercises) {
       ex.exercise_id = await resolveExerciseIdToUuid(ex.exercise_id); // Resolve to UUID
-      const exercise = await exerciseRepository.getExerciseById(ex.exercise_id);
+      const exercise = await exerciseRepository.getExerciseById(ex.exercise_id, userId);
       if (!exercise) {
         throw new Error(`Exercise with ID ${ex.exercise_id} not found.`);
       }

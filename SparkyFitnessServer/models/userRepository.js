@@ -1,7 +1,7 @@
-const { getPool } = require('../db/poolManager');
+const { getClient, getSystemClient } = require('../db/poolManager');
 
 async function createUser(userId, email, hashedPassword, full_name) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for user creation
   try {
     await client.query('BEGIN'); // Start transaction for atomicity
 
@@ -34,7 +34,7 @@ async function createUser(userId, email, hashedPassword, full_name) {
 }
 
 async function findUserByEmail(email) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for finding user by email (authentication)
   try {
     const result = await client.query(
       'SELECT id, email, password_hash, role, is_active FROM auth.users WHERE LOWER(email) = LOWER($1)',
@@ -47,7 +47,7 @@ async function findUserByEmail(email) {
 }
 
 async function findUserById(userId) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for finding user by ID (authentication/admin)
   try {
     const result = await client.query(
       'SELECT id, email, role, created_at FROM auth.users WHERE id = $1',
@@ -60,7 +60,7 @@ async function findUserById(userId) {
 }
 
 async function findUserIdByEmail(email) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for finding user ID by email (authentication)
   try {
     const result = await client.query(
       'SELECT id FROM auth.users WHERE LOWER(email) = LOWER($1)',
@@ -73,7 +73,7 @@ async function findUserIdByEmail(email) {
 }
 
 async function generateApiKey(userId, newApiKey, description) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `INSERT INTO user_api_keys (user_id, api_key, description, permissions, created_at, updated_at)
@@ -87,7 +87,7 @@ async function generateApiKey(userId, newApiKey, description) {
 }
 
 async function deleteApiKey(apiKeyId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       'DELETE FROM user_api_keys WHERE id = $1 AND user_id = $2 RETURNING id',
@@ -100,7 +100,7 @@ async function deleteApiKey(apiKeyId, userId) {
 }
 
 async function getAccessibleUsers(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT
@@ -124,7 +124,7 @@ async function getAccessibleUsers(userId) {
 }
 
 async function getUserProfile(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT id, full_name, phone_number, TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth, bio, avatar_url, gender FROM profiles WHERE id = $1`,
@@ -137,7 +137,7 @@ async function getUserProfile(userId) {
 }
 
 async function updateUserProfile(userId, full_name, phone_number, date_of_birth, bio, avatar_url, gender) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `UPDATE profiles
@@ -159,7 +159,7 @@ async function updateUserProfile(userId, full_name, phone_number, date_of_birth,
 }
 
 async function getUserApiKeys(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       'SELECT id, description, api_key, created_at, last_used_at, is_active FROM user_api_keys WHERE user_id = $1 ORDER BY created_at DESC',
@@ -172,7 +172,7 @@ async function getUserApiKeys(userId) {
 }
 
 async function updateUserPassword(userId, hashedPassword) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       'UPDATE auth.users SET password_hash = $1, updated_at = now() WHERE id = $2 RETURNING id',
@@ -185,7 +185,7 @@ async function updateUserPassword(userId, hashedPassword) {
 }
 
 async function updateUserEmail(userId, newEmail) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       'UPDATE auth.users SET email = $1, updated_at = now() WHERE id = $2 RETURNING id',
@@ -198,7 +198,7 @@ async function updateUserEmail(userId, newEmail) {
 }
 
 async function getUserRole(userId) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for getting user role (admin check)
   try {
     const result = await client.query(
       'SELECT role FROM auth.users WHERE id = $1',
@@ -211,7 +211,7 @@ async function getUserRole(userId) {
 }
 
 async function updateUserRole(userId, role) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for updating user role (admin operation)
   try {
     const result = await client.query(
       'UPDATE auth.users SET role = $1, updated_at = now() WHERE id = $2 RETURNING id',
@@ -224,7 +224,7 @@ async function updateUserRole(userId, role) {
 }
 
 async function createOidcUser(userId, email, fullName, providerId, oidcSub) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System client for OIDC user creation
     try {
         await client.query('BEGIN');
 
@@ -265,7 +265,7 @@ async function createOidcUser(userId, email, fullName, providerId, oidcSub) {
 }
 
 async function findUserOidcLink(userId, providerId) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System client for finding OIDC link (authentication)
     try {
         const result = await client.query(
             'SELECT * FROM user_oidc_links WHERE user_id = $1 AND oidc_provider_id = $2',
@@ -279,7 +279,7 @@ async function findUserOidcLink(userId, providerId) {
 
 
 async function createUserOidcLink(userId, providerId, oidcSub) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System client for creating OIDC link
     try {
         await client.query(
             'INSERT INTO user_oidc_links (user_id, oidc_provider_id, oidc_sub) VALUES ($1, $2, $3)',
@@ -291,7 +291,7 @@ async function createUserOidcLink(userId, providerId, oidcSub) {
 }
 
 async function findUserByOidcSub(oidcSub, providerId) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System client for finding user by OIDC sub (authentication)
     try {
         const result = await client.query(
             `SELECT u.id, u.email, u.role, u.is_active
@@ -307,7 +307,7 @@ async function findUserByOidcSub(oidcSub, providerId) {
 }
 
 async function updateUserOidcLink(linkId, newOidcSub) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System client for updating OIDC link
     try {
         await client.query(
             'UPDATE user_oidc_links SET oidc_sub = $1, updated_at = NOW() WHERE id = $2',
@@ -319,7 +319,7 @@ async function updateUserOidcLink(linkId, newOidcSub) {
 }
 
 async function updatePasswordResetToken(userId, token, expires) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for password reset token management
   try {
     const result = await client.query(
       'UPDATE auth.users SET password_reset_token = $1, password_reset_expires = $2, updated_at = now() WHERE id = $3 RETURNING id',
@@ -332,7 +332,7 @@ async function updatePasswordResetToken(userId, token, expires) {
 }
 
 async function findUserByPasswordResetToken(token) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for password reset token lookup
   try {
     const result = await client.query(
       'SELECT id, email, password_hash, password_reset_expires FROM auth.users WHERE password_reset_token = $1 AND to_timestamp(password_reset_expires / 1000) > NOW()',
@@ -345,7 +345,7 @@ async function findUserByPasswordResetToken(token) {
 }
 
 async function updateUserLastLogin(userId) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for updating last login
   try {
     await client.query(
       'UPDATE auth.users SET last_login_at = now() WHERE id = $1',
@@ -357,7 +357,7 @@ async function updateUserLastLogin(userId) {
 }
 
 async function getAllUsers(limit, offset, searchTerm) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for getting all users (admin operation)
   try {
     let query = `
       SELECT
@@ -391,7 +391,7 @@ async function getAllUsers(limit, offset, searchTerm) {
 }
 
 async function deleteUser(userId) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for deleting user (admin operation)
   try {
     await client.query('BEGIN');
 
@@ -423,7 +423,7 @@ async function deleteUser(userId) {
 }
 
 async function updateUserStatus(userId, isActive) {
-  const client = await getPool().connect();
+  const client = await getSystemClient(); // System client for updating user status (admin operation)
   try {
     const result = await client.query(
       'UPDATE auth.users SET is_active = $1, updated_at = now() WHERE id = $2 RETURNING id',
@@ -436,7 +436,7 @@ async function updateUserStatus(userId, isActive) {
 }
 
 async function updateUserFullName(userId, fullName) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       'UPDATE profiles SET full_name = $1, updated_at = now() WHERE id = $2 RETURNING id',

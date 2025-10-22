@@ -147,7 +147,7 @@ export function getChartConfig(dataKey: string) {
   if (nutritionMetrics.includes(dataKey.toLowerCase())) {
     return {
       useSmartScaling: true,
-      excludeIncompleteDay: true,
+      excludeIncompleteDay: false,
       marginPercent: 0.1,
       minRangeThreshold: 0.3
     };

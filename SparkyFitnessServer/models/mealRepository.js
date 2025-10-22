@@ -1,11 +1,11 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 const format = require('pg-format');
 
 // --- Meal Template CRUD Operations ---
 
 async function createMeal(mealData) {
-  const client = await getPool().connect();
+  const client = await getClient(mealData.user_id); // User-specific operation
   try {
     await client.query('BEGIN');
 
@@ -39,17 +39,13 @@ async function createMeal(mealData) {
 }
 
 async function getMeals(userId, isPublic = false) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     let query = `
       SELECT id, user_id, name, description, is_public, created_at, updated_at
       FROM meals
-      WHERE user_id = $1`;
-    const queryParams = [userId];
-
-    if (isPublic) {
-      query += ` OR is_public = TRUE`;
-    }
+      WHERE is_public = TRUE`;
+   const queryParams = [];
     query += ` ORDER BY name ASC`;
 
     const result = await client.query(query, queryParams);
@@ -60,15 +56,14 @@ async function getMeals(userId, isPublic = false) {
 }
 
 async function searchMeals(searchTerm, userId, limit = null) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     let query = `
       SELECT id, user_id, name, description, is_public
       FROM meals
-      WHERE (user_id = $1 OR is_public = TRUE)
-      AND name ILIKE $2
-      ORDER BY name ASC`;
-    const queryParams = [userId, `%${searchTerm}%`];
+      WHERE name ILIKE $1
+     ORDER BY name ASC`;
+   const queryParams = [`%${searchTerm}%`];
 
     if (limit !== null) {
       query += ` LIMIT $3`;
@@ -99,7 +94,7 @@ async function searchMeals(searchTerm, userId, limit = null) {
 }
 
 async function getMealById(mealId) {
-  const client = await getPool().connect();
+  const client = await getClient(mealId); // User-specific operation (RLS will handle access)
   try {
     const mealResult = await client.query(
       `SELECT id, user_id, name, description, is_public, created_at, updated_at
@@ -128,7 +123,7 @@ async function getMealById(mealId) {
 }
 
 async function updateMeal(mealId, userId, updateData) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
 
@@ -138,9 +133,9 @@ async function updateMeal(mealId, userId, updateData) {
         description = COALESCE($2, description),
         is_public = COALESCE($3, is_public),
         updated_at = now()
-       WHERE id = $4 AND user_id = $5
+       WHERE id = $4
        RETURNING id, user_id, name, description, is_public`,
-      [updateData.name, updateData.description, updateData.is_public, mealId, userId]
+      [updateData.name, updateData.description, updateData.is_public, mealId]
     );
     const updatedMeal = result.rows[0];
 
@@ -173,13 +168,13 @@ async function updateMeal(mealId, userId, updateData) {
 }
 
 async function deleteMeal(mealId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
     // meal_foods will be cascade deleted due to ON DELETE CASCADE on meal_id
     const result = await client.query(
-      'DELETE FROM meals WHERE id = $1 AND user_id = $2 RETURNING id',
-      [mealId, userId]
+      'DELETE FROM meals WHERE id = $1 RETURNING id',
+      [mealId]
     );
     await client.query('COMMIT');
     return result.rowCount > 0;
@@ -195,7 +190,7 @@ async function deleteMeal(mealId, userId) {
 // --- Meal Plan CRUD Operations ---
 
 async function createMealPlanEntry(planData) {
-  const client = await getPool().connect();
+  const client = await getClient(planData.user_id); // User-specific operation
   try {
     const result = await client.query(
       `INSERT INTO meal_plans (user_id, meal_id, food_id, variant_id, quantity, unit, plan_date, meal_type, is_template, template_name, day_of_week, meal_plan_template_id, created_at, updated_at)
@@ -216,7 +211,7 @@ async function createMealPlanEntry(planData) {
 }
 
 async function getMealPlanEntries(userId, startDate, endDate) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT
@@ -229,9 +224,9 @@ async function getMealPlanEntries(userId, startDate, endDate) {
        LEFT JOIN meals m ON mp.meal_id = m.id
        LEFT JOIN foods f ON mp.food_id = f.id
        LEFT JOIN food_variants fv ON mp.variant_id = fv.id
-       WHERE mp.user_id = $1 AND mp.plan_date BETWEEN $2 AND $3
+       WHERE mp.plan_date BETWEEN $1 AND $2
        ORDER BY mp.plan_date, mp.meal_type`,
-      [userId, startDate, endDate]
+      [startDate, endDate]
     );
     return result.rows;
   } finally {
@@ -240,7 +235,7 @@ async function getMealPlanEntries(userId, startDate, endDate) {
 }
 
 async function updateMealPlanEntry(planId, userId, updateData) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `UPDATE meal_plans SET
@@ -256,13 +251,13 @@ async function updateMealPlanEntry(planId, userId, updateData) {
         day_of_week = COALESCE($10, day_of_week),
         meal_plan_template_id = COALESCE($11, meal_plan_template_id),
         updated_at = now()
-       WHERE id = $12 AND user_id = $13
+       WHERE id = $12
        RETURNING *`,
       [
         updateData.meal_id, updateData.food_id, updateData.variant_id,
         updateData.quantity, updateData.unit, updateData.plan_date, updateData.meal_type,
         updateData.is_template, updateData.template_name, updateData.day_of_week,
-        updateData.meal_plan_template_id, planId, userId
+        updateData.meal_plan_template_id, planId
       ]
     );
     return result.rows[0];
@@ -275,11 +270,11 @@ async function updateMealPlanEntry(planId, userId, updateData) {
 }
 
 async function deleteMealPlanEntry(planId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'DELETE FROM meal_plans WHERE id = $1 AND user_id = $2 RETURNING id',
-      [planId, userId]
+      'DELETE FROM meal_plans WHERE id = $1 RETURNING id',
+      [planId]
     );
     return result.rowCount > 0;
   } catch (error) {
@@ -291,7 +286,7 @@ async function deleteMealPlanEntry(planId, userId) {
 }
 
 async function getMealPlanEntryById(planId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT
@@ -302,8 +297,8 @@ async function getMealPlanEntryById(planId, userId) {
        FROM meal_plans mp
        LEFT JOIN meals m ON mp.meal_id = m.id
        LEFT JOIN foods f ON mp.food_id = f.id
-       WHERE mp.id = $1 AND mp.user_id = $2`,
-      [planId, userId]
+       WHERE mp.id = $1`,
+      [planId]
     );
     return result.rows[0];
   } finally {
@@ -314,7 +309,7 @@ async function getMealPlanEntryById(planId, userId) {
 // --- Helper for logging meal plan to food entries ---
 
 async function createFoodEntryFromMealPlan(entryData) {
-  const client = await getPool().connect();
+  const client = await getClient(entryData.user_id); // User-specific operation
   try {
     const result = await client.query(
       `INSERT INTO food_entries (user_id, food_id, meal_type, quantity, unit, entry_date, variant_id, meal_plan_id, created_at)
@@ -334,11 +329,11 @@ async function createFoodEntryFromMealPlan(entryData) {
 }
 
 async function deleteMealPlanEntriesByTemplateId(templateId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'DELETE FROM meal_plans WHERE meal_plan_template_id = $1 AND user_id = $2 RETURNING id',
-      [templateId, userId]
+      'DELETE FROM meal_plans WHERE meal_plan_template_id = $1 RETURNING id',
+      [templateId]
     );
     return result.rowCount;
   } catch (error) {
@@ -370,14 +365,14 @@ module.exports = {
 };
 
 async function getRecentMeals(userId, limit = null) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     let query = `
       SELECT id, user_id, name, description, is_public, created_at, updated_at
       FROM meals
-      WHERE user_id = $1 OR is_public = TRUE
+      WHERE is_public = TRUE
       ORDER BY updated_at DESC`;
-    const queryParams = [userId];
+    const queryParams = [];
 
     if (limit !== null) {
       query += ` LIMIT $2`;
@@ -407,7 +402,7 @@ async function getRecentMeals(userId, limit = null) {
 }
 
 async function getTopMeals(userId, limit = null) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     // For "top meals", we'll use a simple heuristic: meals with more foods,
     // or more recently created public meals. This can be refined later.
@@ -416,10 +411,10 @@ async function getTopMeals(userId, limit = null) {
              COUNT(mf.id) AS food_count
       FROM meals m
       LEFT JOIN meal_foods mf ON m.id = mf.meal_id
-      WHERE m.user_id = $1 OR m.is_public = TRUE
+      WHERE m.is_public = TRUE
       GROUP BY m.id
       ORDER BY food_count DESC, m.created_at DESC`;
-    const queryParams = [userId];
+    const queryParams = [];
 
     if (limit !== null) {
       query += ` LIMIT $2`;
@@ -449,7 +444,7 @@ async function getTopMeals(userId, limit = null) {
 }
 
 async function getMealOwnerId(mealId) {
-  const client = await getPool().connect();
+  const client = await getClient(mealId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'SELECT user_id FROM meals WHERE id = $1',
@@ -461,8 +456,92 @@ async function getMealOwnerId(mealId) {
   }
 }
 
+async function getMealsNeedingReview(userId) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      `SELECT DISTINCT ON (fe.meal_id)
+          fe.meal_id,
+          m.name AS meal_name,
+          m.updated_at AS meal_updated_at,
+          fe.created_at AS entry_created_at,
+          m.user_id AS meal_owner_id
+       FROM food_entries fe
+       JOIN meals m ON fe.meal_id = m.id
+       WHERE fe.user_id = $1
+         AND m.updated_at > fe.created_at -- Meal has been updated since the entry was created
+         AND NOT EXISTS (
+             SELECT 1 FROM user_ignored_updates uiu
+             WHERE uiu.user_id = $1
+               AND uiu.variant_id = fe.meal_id -- Using meal_id as variant_id for meals
+               AND uiu.ignored_at_timestamp = m.updated_at
+         )
+       ORDER BY fe.meal_id, fe.created_at DESC`,
+      [userId]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function updateMealEntriesSnapshot(userId, mealId, newSnapshotData) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      `UPDATE food_entries
+       SET
+          meal_name = $1
+       WHERE user_id = $2 AND meal_id = $3
+       RETURNING id`,
+      [
+        newSnapshotData.meal_name,
+        userId,
+        mealId,
+      ]
+    );
+    return result.rowCount;
+  } finally {
+    client.release();
+  }
+}
+
+async function clearUserIgnoredUpdate(userId, variantId) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    await client.query(
+      `DELETE FROM user_ignored_updates
+       WHERE user_id = $1 AND variant_id = $2`,
+      [userId, variantId]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+async function getMealDeletionImpact(mealId) {
+  const client = await getClient(mealId); // User-specific operation (RLS will handle access)
+  try {
+    const queries = [
+      // Check if meal is used in any meal_foods (which are then logged as food_entries)
+      client.query("SELECT COUNT(*) FROM meal_foods WHERE meal_id = $1", [mealId]),
+      // Check if meal is used in any meal_plan_templates
+      client.query("SELECT COUNT(*) FROM meal_plan_template_assignments WHERE meal_id = $1", [mealId]),
+    ];
+
+    const results = await Promise.all(queries);
+
+    return {
+      foodEntriesCount: parseInt(results[0].rows[0].count, 10), // Represents usage in food_entries via meal_foods
+      mealPlanTemplatesCount: parseInt(results[1].rows[0].count, 10),
+    };
+  } finally {
+    client.release();
+  }
+}
+
 async function getMealPlanOwnerId(mealPlanId) {
-  const client = await getPool().connect();
+  const client = await getClient(mealPlanId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'SELECT user_id FROM meal_plans WHERE id = $1',

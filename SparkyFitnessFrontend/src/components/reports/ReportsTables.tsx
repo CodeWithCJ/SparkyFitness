@@ -15,7 +15,7 @@ interface DailyFoodEntry {
   meal_type: string;
   quantity: number;
   unit: string;
-  foods: {
+  foods: { // Keep for backward compatibility or nested scenarios
     name: string;
     brand?: string;
     calories: number;
@@ -38,6 +38,28 @@ interface DailyFoodEntry {
     iron?: number;
     serving_size: number;
   };
+  // Add snapshotted fields
+  food_name?: string;
+  brand_name?: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  serving_size?: number;
+  glycemic_index?: string;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
 }
 
 interface DailyExerciseEntry {
@@ -159,33 +181,35 @@ const ReportsTables = ({
 
   const calculateFoodDayTotal = (entries: DailyFoodEntry[]) => {
     return entries.reduce((total, entry) => {
-      const food = entry.foods;
-      const multiplier = entry.quantity / (food.serving_size || 100);
+      const source = entry.calories ? entry : entry.foods;
+      const multiplier = entry.quantity / (source.serving_size || 100);
       
       return {
-        calories: total.calories + (food.calories || 0) * multiplier,
-        protein: total.protein + (food.protein || 0) * multiplier,
-        carbs: total.carbs + (food.carbs || 0) * multiplier,
-        fat: total.fat + (food.fat || 0) * multiplier,
-        saturated_fat: total.saturated_fat + (food.saturated_fat || 0) * multiplier,
-        polyunsaturated_fat: total.polyunsaturated_fat + (food.polyunsaturated_fat || 0) * multiplier,
-        monounsaturated_fat: total.monounsaturated_fat + (food.monounsaturated_fat || 0) * multiplier,
-        trans_fat: total.trans_fat + (food.trans_fat || 0) * multiplier,
-        cholesterol: total.cholesterol + (food.cholesterol || 0) * multiplier,
-        sodium: total.sodium + (food.sodium || 0) * multiplier,
-        potassium: total.potassium + (food.potassium || 0) * multiplier,
-        dietary_fiber: total.dietary_fiber + (food.dietary_fiber || 0) * multiplier,
-        sugars: total.sugars + (food.sugars || 0) * multiplier,
-        vitamin_a: total.vitamin_a + (food.vitamin_a || 0) * multiplier,
-        vitamin_c: total.vitamin_c + (food.vitamin_c || 0) * multiplier,
-        calcium: total.calcium + (food.calcium || 0) * multiplier,
-        iron: total.iron + (food.iron || 0) * multiplier,
+        calories: total.calories + (source.calories || 0) * multiplier,
+        protein: total.protein + (source.protein || 0) * multiplier,
+        carbs: total.carbs + (source.carbs || 0) * multiplier,
+        fat: total.fat + (source.fat || 0) * multiplier,
+        saturated_fat: total.saturated_fat + (source.saturated_fat || 0) * multiplier,
+        polyunsaturated_fat: total.polyunsaturated_fat + (source.polyunsaturated_fat || 0) * multiplier,
+        monounsaturated_fat: total.monounsaturated_fat + (source.monounsaturated_fat || 0) * multiplier,
+        trans_fat: total.trans_fat + (source.trans_fat || 0) * multiplier,
+        cholesterol: total.cholesterol + (source.cholesterol || 0) * multiplier,
+        sodium: total.sodium + (source.sodium || 0) * multiplier,
+        potassium: total.potassium + (source.potassium || 0) * multiplier,
+        dietary_fiber: total.dietary_fiber + (source.dietary_fiber || 0) * multiplier,
+        sugars: total.sugars + (source.sugars || 0) * multiplier,
+        vitamin_a: total.vitamin_a + (source.vitamin_a || 0) * multiplier,
+        vitamin_c: total.vitamin_c + (source.vitamin_c || 0) * multiplier,
+        calcium: total.calcium + (source.calcium || 0) * multiplier,
+        iron: total.iron + (source.iron || 0) * multiplier,
+        glycemic_index: 'None' // GI is not aggregated
       };
     }, {
       calories: 0, protein: 0, carbs: 0, fat: 0, saturated_fat: 0,
       polyunsaturated_fat: 0, monounsaturated_fat: 0, trans_fat: 0,
       cholesterol: 0, sodium: 0, potassium: 0, dietary_fiber: 0,
-      sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0
+      sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0,
+      glycemic_index: 'None'
     });
   };
 
@@ -225,8 +249,10 @@ const ReportsTables = ({
           vitamin_c: totals.vitamin_c,
           calcium: totals.calcium,
           iron: totals.iron,
+          glycemic_index: 'None',
           serving_size: 100
-        }
+        },
+        food_name: 'Total'
       });
     });
   debug(loggingLevel, `ReportsTables: Generated ${foodDataWithTotals.length} rows for food diary table.`);
@@ -318,8 +344,8 @@ const ReportsTables = ({
               </TableHeader>
               <TableBody>
                 {foodDataWithTotals.map((entry, index) => {
-                  const food = entry.foods;
-                  const multiplier = entry.isTotal ? 1 : entry.quantity / (food.serving_size || 100);
+                  const source = entry.calories ? entry : entry.foods;
+                  const multiplier = entry.isTotal ? 1 : entry.quantity / (source.serving_size || 100);
 
                   return (
                     <TableRow key={index} className={entry.isTotal ? "bg-gray-50 dark:bg-gray-900 font-semibold border-t-2" : ""}>
@@ -328,8 +354,8 @@ const ReportsTables = ({
                       <TableCell className="min-w-[250px]">
                         {!entry.isTotal && (
                           <div>
-                            <div className="font-medium">{food.name}</div>
-                            {food.brand && <div className="text-sm text-gray-500">{food.brand}</div>}
+                            <div className="font-medium">{entry.food_name || entry.foods.name}</div>
+                            {(entry.brand_name || entry.foods.brand) && <div className="text-sm text-gray-500">{entry.brand_name || entry.foods.brand}</div>}
                           </div>
                         )}
                       </TableCell>
@@ -337,15 +363,11 @@ const ReportsTables = ({
                       {visibleNutrients.map(nutrient => {
                         // Special-case glycemic_index because it's a categorical value (string), not numeric
                         if (nutrient === 'glycemic_index') {
-                          // Try multiple fallback locations since different endpoints may return GI in different shapes
-                          const topLevelGi = (entry as any).glycemic_index || (entry as any).glycemicIndex;
-                          const variantGi = (entry as any).food_variants?.glycemic_index || (entry as any).food_variants?.glycemicIndex;
-                          const foodsGi = (food as any).glycemic_index || (food as any).glycemicIndex;
-                          const giValue = entry.isTotal ? '' : (foodsGi || variantGi || topLevelGi || 'None');
+                          const giValue = entry.isTotal ? '' : (entry.glycemic_index || entry.foods?.glycemic_index || 'None');
                           return <TableCell key={nutrient}>{giValue}</TableCell>;
                         }
 
-                        const value = (food[nutrient as keyof typeof food] as number || 0) * multiplier;
+                        const value = (source[nutrient as keyof typeof source] as number || 0) * multiplier;
                         return <TableCell key={nutrient}>{formatNutrientValue(value, nutrient)}</TableCell>
                       })}
                     </TableRow>

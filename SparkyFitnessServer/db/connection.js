@@ -1,3 +1,3 @@
 const poolManager = require('./poolManager');
 
-module.exports = poolManager.getPool();
+module.exports = poolManager.getRawOwnerPool();

@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate, authorize } = require('../middleware/authMiddleware');
 const chatService = require('../services/chatService');
 
-router.post('/', authenticateToken, async (req, res, next) => {
+router.post('/', authenticate, async (req, res, next) => {
   const { messages, service_config, action, service_data } = req.body;
 
   try {
@@ -33,7 +33,7 @@ router.post('/', authenticateToken, async (req, res, next) => {
   }
 });
 
-router.post('/clear-old-history', authenticateToken, async (req, res, next) => {
+router.post('/clear-old-history', authenticate, async (req, res, next) => {
   try {
     const result = await chatService.clearOldChatHistory(req.userId);
     res.status(200).json(result);
@@ -42,7 +42,7 @@ router.post('/clear-old-history', authenticateToken, async (req, res, next) => {
   }
 });
 
-router.get('/ai-service-settings', authenticateToken, authorizeAccess('ai_service_settings', (req) => req.userId), async (req, res, next) => {
+router.get('/ai-service-settings', authenticate, authorize('ai_service_settings'), async (req, res, next) => {
   try {
     const settings = await chatService.getAiServiceSettings(req.userId, req.userId);
     res.status(200).json(settings);
@@ -54,7 +54,7 @@ router.get('/ai-service-settings', authenticateToken, authorizeAccess('ai_servic
   }
 });
 
-router.get('/ai-service-settings/active', authenticateToken, authorizeAccess('ai_service_settings', (req) => req.userId), async (req, res, next) => {
+router.get('/ai-service-settings/active', authenticate, authorize('ai_service_settings'), async (req, res, next) => {
   try {
     const setting = await chatService.getActiveAiServiceSetting(req.userId, req.userId);
     res.status(200).json(setting);
@@ -69,7 +69,7 @@ router.get('/ai-service-settings/active', authenticateToken, authorizeAccess('ai
   }
 });
 
-router.delete('/ai-service-settings/:id', authenticateToken, authorizeAccess('ai_service_settings'), async (req, res, next) => {
+router.delete('/ai-service-settings/:id', authenticate, authorize('ai_service_settings'), async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'AI Service ID is required.' });
@@ -88,7 +88,7 @@ router.delete('/ai-service-settings/:id', authenticateToken, authorizeAccess('ai
   }
 });
 
-router.get('/sparky-chat-history', authenticateToken, authorizeAccess('chat_history', (req) => req.userId), async (req, res, next) => {
+router.get('/sparky-chat-history', authenticate, authorize('chat_history'), async (req, res, next) => {
   try {
     const history = await chatService.getSparkyChatHistory(req.userId, req.userId);
     res.status(200).json(history);
@@ -100,7 +100,7 @@ router.get('/sparky-chat-history', authenticateToken, authorizeAccess('chat_hist
   }
 });
 
-router.get('/sparky-chat-history/entry/:id', authenticateToken, authorizeAccess('chat_history'), async (req, res, next) => {
+router.get('/sparky-chat-history/entry/:id', authenticate, authorize('chat_history'), async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Chat History Entry ID is required.' });
@@ -119,7 +119,7 @@ router.get('/sparky-chat-history/entry/:id', authenticateToken, authorizeAccess(
   }
 });
 
-router.put('/sparky-chat-history/:id', authenticateToken, authorizeAccess('chat_history'), async (req, res, next) => {
+router.put('/sparky-chat-history/:id', authenticate, authorize('chat_history'), async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
   if (!id) {
@@ -139,7 +139,7 @@ router.put('/sparky-chat-history/:id', authenticateToken, authorizeAccess('chat_
   }
 });
 
-router.delete('/sparky-chat-history/:id', authenticateToken, authorizeAccess('chat_history'), async (req, res, next) => {
+router.delete('/sparky-chat-history/:id', authenticate, authorize('chat_history'), async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Chat History Entry ID is required.' });
@@ -158,7 +158,7 @@ router.delete('/sparky-chat-history/:id', authenticateToken, authorizeAccess('ch
   }
 });
 
-router.post('/clear-all-history', authenticateToken, authorizeAccess('chat_history'), async (req, res, next) => {
+router.post('/clear-all-history', authenticate, authorize('chat_history'), async (req, res, next) => {
   try {
     const result = await chatService.clearAllSparkyChatHistory(req.userId);
     res.status(200).json(result);
@@ -170,7 +170,7 @@ router.post('/clear-all-history', authenticateToken, authorizeAccess('chat_histo
   }
 });
 
-router.post('/save-history', authenticateToken, authorizeAccess('chat_history'), async (req, res, next) => {
+router.post('/save-history', authenticate, authorize('chat_history'), async (req, res, next) => {
   const { content, messageType, metadata } = req.body;
   if (!content || !messageType) {
     return res.status(400).json({ error: 'Content and message type are required.' });
@@ -186,7 +186,7 @@ router.post('/save-history', authenticateToken, authorizeAccess('chat_history'),
   }
 });
 
-router.post('/food-options', authenticateToken, async (req, res, next) => {
+router.post('/food-options', authenticate, async (req, res, next) => {
   const { foodName, unit, service_config } = req.body; // Destructure service_config
   try {
     const { content } = await chatService.processFoodOptionsRequest(foodName, unit, req.userId, service_config); // Pass service_config

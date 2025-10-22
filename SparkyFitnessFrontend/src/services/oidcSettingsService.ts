@@ -13,9 +13,9 @@ export interface OidcProvider {
   display_name?: string;
   logo_url?: string;
   auto_register?: boolean;
-  id_token_signed_response_alg?: string;
-  userinfo_signed_response_alg?: string;
-  request_timeout?: number;
+  signing_algorithm?: string;
+  profile_signing_algorithm?: string;
+  timeout?: number;
 }
 
 const oidcSettingsService = {

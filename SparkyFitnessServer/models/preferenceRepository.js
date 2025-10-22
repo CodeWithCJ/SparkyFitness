@@ -1,7 +1,7 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 
 async function updateUserPreferences(userId, preferenceData) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `UPDATE user_preferences SET
@@ -35,7 +35,7 @@ async function updateUserPreferences(userId, preferenceData) {
 }
 
 async function deleteUserPreferences(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       'DELETE FROM user_preferences WHERE user_id = $1 RETURNING user_id',
@@ -48,7 +48,7 @@ async function deleteUserPreferences(userId) {
 }
 
 async function getUserPreferences(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT * FROM user_preferences WHERE user_id = $1`,
@@ -61,7 +61,7 @@ async function getUserPreferences(userId) {
 }
 
 async function upsertUserPreferences(preferenceData) {
-  const client = await getPool().connect();
+  const client = await getClient(preferenceData.user_id); // User-specific operation
   try {
     const result = await client.query(
       `INSERT INTO user_preferences (

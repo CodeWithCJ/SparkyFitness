@@ -30,10 +30,12 @@ const FamilyAccessManager = () => {
   const [editingAccess, setEditingAccess] = useState<FamilyAccess | null>(null);
   const [formData, setFormData] = useState({
     family_email: '',
-    calorie: false,
-    checkin: false,
-    reports: false,
-    food_list: false,
+    can_manage_diary: false,
+    can_view_food_library: false,
+    can_view_exercise_library: false,
+    can_manage_checkin: false,
+    can_view_reports: false,
+    share_external_providers: false,
     access_end_date: '',
   });
 
@@ -56,13 +58,22 @@ const FamilyAccessManager = () => {
     fetchFamilyAccess();
   }, [user]);
 
+  const rulesICreated = familyAccess.filter(
+    (access) => user && access.owner_user_id === user.id
+  );
+  const rulesGivenToMe = familyAccess.filter(
+    (access) => user && access.family_user_id === user.id && access.owner_user_id !== user.id
+  );
+
   const resetForm = () => {
     setFormData({
       family_email: '',
-      calorie: false,
-      checkin: false,
-      reports: false,
-      food_list: false,
+      can_manage_diary: false,
+      can_view_food_library: false,
+      can_view_exercise_library: false,
+      can_manage_checkin: false,
+      can_view_reports: false,
+      share_external_providers: false,
       access_end_date: '',
     });
     setEditingAccess(null);
@@ -76,10 +87,12 @@ const FamilyAccessManager = () => {
   const openEditDialog = (access: FamilyAccess) => {
     setFormData({
       family_email: access.family_email,
-      calorie: access.access_permissions.calorie,
-      checkin: access.access_permissions.checkin,
-      reports: access.access_permissions.reports,
-      food_list: access.access_permissions.food_list,
+      can_manage_diary: access.access_permissions.can_manage_diary,
+      can_view_food_library: access.access_permissions.can_view_food_library,
+      can_view_exercise_library: access.access_permissions.can_view_exercise_library,
+      can_manage_checkin: access.access_permissions.can_manage_checkin, // Add new permission
+      can_view_reports: access.access_permissions.can_view_reports, // Add new permission
+      share_external_providers: access.access_permissions.share_external_providers,
       access_end_date: access.access_end_date ? access.access_end_date.split('T')[0] : '',
     });
     setEditingAccess(access);
@@ -90,7 +103,7 @@ const FamilyAccessManager = () => {
     if (!user || !formData.family_email) return;
 
     // Check if at least one permission is selected
-    if (!formData.calorie && !formData.checkin && !formData.reports && !formData.food_list) {
+    if (!formData.can_manage_diary && !formData.can_view_food_library && !formData.can_view_exercise_library && !formData.can_manage_checkin && !formData.can_view_reports && !formData.share_external_providers) {
       toast({
         title: "Error",
         description: "Please select at least one permission",
@@ -137,10 +150,12 @@ const FamilyAccessManager = () => {
         family_user_id: familyUserId,
         family_email: formData.family_email,
         access_permissions: {
-          calorie: formData.calorie,
-          checkin: formData.checkin,
-          reports: formData.reports,
-          food_list: formData.food_list,
+          can_manage_diary: formData.can_manage_diary,
+          can_view_food_library: formData.can_view_food_library,
+          can_view_exercise_library: formData.can_view_exercise_library,
+          can_manage_checkin: formData.can_manage_checkin, // Add new permission
+          can_view_reports: formData.can_view_reports, // Add new permission
+          share_external_providers: formData.share_external_providers,
         },
         access_end_date: formData.access_end_date || null,
         status: status,
@@ -276,43 +291,63 @@ const FamilyAccessManager = () => {
                 <div className="space-y-3 mt-3">
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="calorie"
-                      checked={formData.calorie}
+                      id="can_manage_diary"
+                      checked={formData.can_manage_diary}
                       onCheckedChange={(checked) =>
-                        setFormData(prev => ({ ...prev, calorie: !!checked }))
+                        setFormData(prev => ({ ...prev, can_manage_diary: !!checked }))
                       }
                     />
-                    <Label htmlFor="calorie">Manage Food Diary</Label>
+                    <Label htmlFor="can_manage_diary">Can Manage Diary</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="food_list"
-                      checked={formData.food_list}
+                      id="can_view_food_library"
+                      checked={formData.can_view_food_library}
                       onCheckedChange={(checked) =>
-                        setFormData(prev => ({ ...prev, food_list: !!checked }))
+                        setFormData(prev => ({ ...prev, can_view_food_library: !!checked }))
                       }
                     />
-                    <Label htmlFor="food_list">Food List (Read Only)</Label>
+                    <Label htmlFor="can_view_food_library">Can Use My Food & Meal Library</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="checkin"
-                      checked={formData.checkin}
+                      id="can_view_exercise_library"
+                      checked={formData.can_view_exercise_library}
                       onCheckedChange={(checked) =>
-                        setFormData(prev => ({ ...prev, checkin: !!checked }))
+                        setFormData(prev => ({ ...prev, can_view_exercise_library: !!checked }))
                       }
                     />
-                    <Label htmlFor="checkin">Check-in & Measurements</Label>
+                    <Label htmlFor="can_view_exercise_library">Can Use My Exercise & Workout Library</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="reports"
-                      checked={formData.reports}
+                      id="can_manage_checkin"
+                      checked={formData.can_manage_checkin}
                       onCheckedChange={(checked) =>
-                        setFormData(prev => ({ ...prev, reports: !!checked }))
+                        setFormData(prev => ({ ...prev, can_manage_checkin: !!checked }))
                       }
                     />
-                    <Label htmlFor="reports">Reports & Analytics</Label>
+                    <Label htmlFor="can_manage_checkin">Can Manage Check-in Data</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="can_view_reports"
+                      checked={formData.can_view_reports}
+                      onCheckedChange={(checked) =>
+                        setFormData(prev => ({ ...prev, can_view_reports: !!checked }))
+                      }
+                    />
+                    <Label htmlFor="can_view_reports">Can View Reports</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="share_external_providers"
+                      checked={formData.share_external_providers}
+                      onCheckedChange={(checked) =>
+                        setFormData(prev => ({ ...prev, share_external_providers: !!checked }))
+                      }
+                    />
+                    <Label htmlFor="share_external_providers">Share External Data Providers</Label>
                   </div>
                 </div>
               </div>
@@ -343,83 +378,195 @@ const FamilyAccessManager = () => {
         </Dialog>
       </div>
 
-      {familyAccess.length > 0 ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Family Member</TableHead>
-              <TableHead>Permissions</TableHead>
-              <TableHead>End Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {familyAccess.map((access) => (
-              <TableRow key={access.id}>
-                <TableCell>{access.family_email}</TableCell>
-                <TableCell>
-                  <div className="flex gap-1 flex-wrap">
-                    {access.access_permissions.calorie && (
-                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                        Manage Food
-                      </span>
-                    )}
-                    {access.access_permissions.food_list && (
-                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                        Food List
-                      </span>
-                    )}
-                    {access.access_permissions.checkin && (
-                      <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">
-                        Check-in
-                      </span>
-                    )}
-                    {access.access_permissions.reports && (
-                      <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                        Reports
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {access.access_end_date ?
-                    new Date(access.access_end_date).toLocaleDateString() :
-                    'No end date'
-                  }
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={access.is_active}
-                      onCheckedChange={() => handleToggleActive(access)}
-                    />
-                    {getStatusBadge(access.status, access.is_active)}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditDialog(access)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(access.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      ) : (
+      {rulesICreated.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Rules I Created</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Family Member</TableHead>
+                  <TableHead>Permissions</TableHead>
+                  <TableHead>End Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rulesICreated.map((access) => (
+                  <TableRow key={access.id}>
+                    <TableCell>{access.family_email}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 flex-wrap">
+                        {access.access_permissions.can_manage_diary && (
+                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            Manages Diary
+                          </span>
+                        )}
+                        {access.access_permissions.can_view_food_library && (
+                          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                            Food Library
+                          </span>
+                        )}
+                        {access.access_permissions.can_view_exercise_library && (
+                          <span className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded">
+                            Exercise Library
+                          </span>
+                        )}
+                        {access.access_permissions.can_manage_checkin && (
+                          <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                            Manages Check-in
+                          </span>
+                        )}
+                        {access.access_permissions.can_view_reports && (
+                          <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">
+                            Views Reports
+                          </span>
+                        )}
+                        {access.access_permissions.share_external_providers && (
+                          <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
+                            Shares External Providers
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {access.access_end_date ?
+                        new Date(access.access_end_date).toLocaleDateString() :
+                        'No end date'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={access.is_active}
+                          onCheckedChange={() => handleToggleActive(access)}
+                        />
+                        {getStatusBadge(access.status, access.is_active)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDialog(access)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(access.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {rulesGivenToMe.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Rules Given to Me</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Granted By</TableHead>
+                  <TableHead>Permissions</TableHead>
+                  <TableHead>End Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rulesGivenToMe.map((access) => (
+                  <TableRow key={access.id}>
+                    <TableCell>{access.owner_email || 'N/A'}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 flex-wrap">
+                        {access.access_permissions.can_manage_diary && (
+                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            Manages Diary
+                          </span>
+                        )}
+                        {access.access_permissions.can_view_food_library && (
+                          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                            Food Library
+                          </span>
+                        )}
+                        {access.access_permissions.can_view_exercise_library && (
+                          <span className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded">
+                            Exercise Library
+                          </span>
+                        )}
+                        {access.access_permissions.can_manage_checkin && (
+                          <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                            Manages Check-in
+                          </span>
+                        )}
+                        {access.access_permissions.can_view_reports && (
+                          <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">
+                            Views Reports
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {access.access_end_date ?
+                        new Date(access.access_end_date).toLocaleDateString() :
+                        'No end date'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={access.is_active}
+                          onCheckedChange={() => handleToggleActive(access)}
+                          disabled={true}
+                        />
+                        {getStatusBadge(access.status, access.is_active)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDialog(access)}
+                          disabled={true}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(access.id)}
+                          disabled={true}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {familyAccess.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
           <p>No family access granted yet</p>

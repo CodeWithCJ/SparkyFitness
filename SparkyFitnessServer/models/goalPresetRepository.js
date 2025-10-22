@@ -1,8 +1,8 @@
-const { getPool } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
 async function createGoalPreset(presetData) {
-  const client = await getPool().connect();
+  const client = await getClient(presetData.user_id); // User-specific operation
   try {
     log('debug', 'createGoalPreset: Received presetData:', {
       protein: presetData.protein,
@@ -41,7 +41,7 @@ async function createGoalPreset(presetData) {
 }
 
 async function getGoalPresetsByUserId(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT * FROM goal_presets WHERE user_id = $1 ORDER BY preset_name`,
@@ -54,7 +54,7 @@ async function getGoalPresetsByUserId(userId) {
 }
 
 async function getGoalPresetById(presetId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT * FROM goal_presets WHERE id = $1 AND user_id = $2`,
@@ -67,7 +67,7 @@ async function getGoalPresetById(presetId, userId) {
 }
 
 async function updateGoalPreset(presetId, presetData) {
-  const client = await getPool().connect();
+  const client = await getClient(presetData.user_id); // User-specific operation
   try {
     log('debug', 'updateGoalPreset: Received presetData:', {
       protein: presetData.protein,
@@ -107,7 +107,7 @@ async function updateGoalPreset(presetId, presetData) {
 }
 
 async function deleteGoalPreset(presetId, userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `DELETE FROM goal_presets WHERE id = $1 AND user_id = $2 RETURNING *`,

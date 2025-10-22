@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const { authenticate, isAdmin } = require('../middleware/authMiddleware');
 const authService = require('../services/authService');
 const userRepository = require('../models/userRepository'); // Import userRepository
 const { log } = require('../config/logging');
@@ -8,8 +8,8 @@ const { logAdminAction } = require('../services/authService'); // Import logAdmi
 
 // Middleware to ensure only admins can access these routes
 // This will be enhanced later to prioritize SPARKY_FITNESS_ADMIN_EMAIL
-router.use(authenticateToken);
-router.use(authorizeAccess('admin')); // Placeholder for now, will be refined
+router.use(authenticate);
+router.use(isAdmin);
 
 router.get('/users', async (req, res, next) => {
   try {

@@ -1,9 +1,9 @@
-const { getPool } = require('../db/poolManager');
+const { getSystemClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
 class BackupSettingsRepository {
   async getBackupSettings() {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System-level operation
     try {
       const result = await client.query('SELECT * FROM backup_settings LIMIT 1');
       if (result.rows.length === 0) {
@@ -21,7 +21,7 @@ class BackupSettingsRepository {
   }
 
   async createDefaultBackupSettings() {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System-level operation
     try {
       const result = await client.query(
         `INSERT INTO backup_settings (backup_enabled, backup_days, backup_time, retention_days)
@@ -43,7 +43,7 @@ class BackupSettingsRepository {
   }
 
   async updateBackupSettings({ backup_enabled, backup_days, backup_time, retention_days }) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System-level operation
     try {
       const result = await client.query(
         `UPDATE backup_settings
@@ -70,7 +70,7 @@ class BackupSettingsRepository {
   }
 
   async updateLastBackupStatus(status, timestamp) {
-    const client = await getPool().connect();
+    const client = await getSystemClient(); // System-level operation
     try {
       log('info', `Attempting to update last backup status to: ${status} at ${timestamp}`);
       const result = await client.query(

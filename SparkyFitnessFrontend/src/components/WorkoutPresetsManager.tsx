@@ -19,7 +19,7 @@ interface WorkoutPresetsManagerProps {
   onUsePreset: (preset: WorkoutPreset) => void;
 }
 
-const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = ({ }) => {
+const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = ({ onUsePreset }) => {
   const { user } = useAuth();
   const { loggingLevel } = usePreferences(); // Destructure loggingLevel
   const [presets, setPresets] = useState<WorkoutPreset[]>([]);
@@ -145,6 +145,18 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = ({ }) => {
                 )}
               </div>
               <div className="flex items-center space-x-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={() => onUsePreset(preset)}>
+                        Use
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Use this preset</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>

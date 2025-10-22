@@ -124,7 +124,7 @@ const NutrientGrid = ({ food, visibleNutrients }) => {
          const digits = nutrient === "calories" ? 0 : 1;
          const value = nutrient === "glycemic_index"
              ? food?.glycemic_index || "None"
-             : ((food?.[nutrient as keyof FoodVariant] as number) || 0).toFixed(digits);
+             : Number((food?.[nutrient as keyof FoodVariant] as number) || 0).toFixed(digits);
 
          return (
            <span key={nutrient}>
@@ -447,7 +447,7 @@ const EnhancedFoodSearch = ({
     if (!activeUserId) return;
     setLoading(true);
     try {
-      const results = await getMeals(activeUserId, true, term);
+      const results = await getMeals(activeUserId, 'all', term);
       setMeals(results);
     } catch (err) {
       error(loggingLevel, "Error searching meals:", err);
