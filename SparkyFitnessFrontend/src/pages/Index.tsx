@@ -2,14 +2,13 @@ import SparkyChat from "@/components/SparkyChat";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from "@/utils/logging";
 import { apiCall } from "@/services/api";
-
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import FoodDiary from "@/components/FoodDiary";
 import FoodDatabaseManager from "@/components/FoodDatabaseManager";
 import ExerciseDatabaseManager from "@/components/ExerciseDatabaseManager";
-import { PresetExercise } from "@/types/workout"; // Import PresetExercise
+import { ExerciseInPreset } from "@/types/workout"; // Import PresetExercise
 import Reports from "@/components/Reports";
 import AddComp from "@/components/AddComp";
 import CheckIn from "@/components/CheckIn";
@@ -37,10 +36,9 @@ import AuthenticationSettings from "@/pages/Admin/AuthenticationSettings";
 import BackupSettings from "@/pages/Admin/BackupSettings";
 import UserManagement from "@/pages/Admin/UserManagement"; // Import UserManagement
 import axios from "axios";
+import StartPage from "@/components/Onboarding/StartPage";
+import { getOnboardingStatus } from "@/services/onboardingService";
 
-import { API_BASE_URL } from "@/services/api";
-
-// Define an interface for AddComp items, matching what AddComp expects
 interface AddCompItem {
   value: string;
   label: string;
@@ -52,7 +50,7 @@ interface IndexProps {
 }
 
 const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const {
     isActingOnBehalf,
     hasPermission,
@@ -62,17 +60,22 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
   const { loggingLevel } = usePreferences();
   debug(loggingLevel, "Index: Component rendered.");
 
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+
   const [appVersion, setAppVersion] = useState("Loading...");
-  const [isAddCompOpen, setIsAddCompOpen] = useState(false); // Renamed from showAddComp
-  const [exercisesToLogFromPreset, setExercisesToLogFromPreset] = useState<PresetExercise[] | undefined>(undefined);
+  const [isAddCompOpen, setIsAddCompOpen] = useState(false);
+  const [exercisesToLogFromPreset, setExercisesToLogFromPreset] = useState<
+    ExerciseInPreset[] | undefined
+  >(undefined);
 
   useEffect(() => {
     const fetchVersion = async () => {
       try {
         const response = await axios.get("/api/version/current");
         setAppVersion(response.data.version);
-      } catch (error) {
-        console.error("Error fetching app version for footer:", error);
+      } catch (err) {
+        console.error("Error fetching app version for footer:", err);
         setAppVersion("Error");
       }
     };
@@ -81,18 +84,17 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
 
   const { formatDateInUserTimezone } = usePreferences();
   const [selectedDate, setSelectedDate] = useState(
-    formatDateInUserTimezone(new Date(), "yyyy-MM-dd"),
+    formatDateInUserTimezone(new Date(), "yyyy-MM-dd")
   );
   const [activeTab, setActiveTab] = useState<string>("");
   const [foodDiaryRefreshTrigger, setFoodDiaryRefreshTrigger] = useState(0);
 
-  // Listen for global foodDiaryRefresh events
   useEffect(() => {
     debug(loggingLevel, "Index: Setting up foodDiaryRefresh event listener.");
     const handleRefresh = () => {
       info(
         loggingLevel,
-        "Index: Received foodDiaryRefresh event, triggering refresh.",
+        "Index: Received foodDiaryRefresh event, triggering refresh."
       );
       setFoodDiaryRefreshTrigger((prev) => prev + 1);
     };
@@ -101,7 +103,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
     return () => {
       debug(
         loggingLevel,
-        "Index: Cleaning up foodDiaryRefresh event listener.",
+        "Index: Cleaning up foodDiaryRefresh event listener."
       );
       window.removeEventListener("foodDiaryRefresh", handleRefresh);
     };
@@ -115,8 +117,8 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
         title: "Success",
         description: "Signed out successfully",
       });
-    } catch (error) {
-      error(loggingLevel, "Index: Sign out error:", error);
+    } catch (err) {
+      error(loggingLevel, "Index: Sign out error:", err);
       toast({
         title: "Error",
         description: "Failed to sign out",
@@ -128,76 +130,70 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
   const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
-    const fetchDisplayName = async () => {
-      if (!loading && user?.id) {
-        try {
-          const profile = await apiCall(`/auth/profiles`, {
-            suppress404Toast: true,
-          });
-          setDisplayName(profile?.full_name || user.email || "");
-        } catch (err) {
-          if (err.message && err.message.includes("404")) {
-            setDisplayName(user.email || "");
-          } else {
-            error(
-              loggingLevel,
-              "Index: Error fetching profile for display name:",
-              err,
-            );
-            setDisplayName(user.email || "");
-          }
+    const checkOnboardingStatus = async () => {
+      if (authLoading || !user) {
+        if (!authLoading && !user) {
+          setIsCheckingStatus(false);
         }
-      } else if (!loading && !user) {
-        setDisplayName("");
+        return;
+      }
+
+      setIsCheckingStatus(true);
+      try {
+        const profile = await apiCall(`/auth/profiles`, {
+          suppress404Toast: true,
+        });
+        setDisplayName(profile?.full_name || user.email || "");
+
+        const { onboardingComplete } = await getOnboardingStatus();
+
+        setNeedsOnboarding(!onboardingComplete);
+      } catch (err) {
+        error(
+          loggingLevel,
+          "Index: Error fetching profile or onboarding status:",
+          err
+        );
+        setNeedsOnboarding(false);
+      } finally {
+        setIsCheckingStatus(false);
       }
     };
-    fetchDisplayName();
-  }, [user, loading, loggingLevel]);
 
-  // Define items for the AddComp semicircle
+    checkOnboardingStatus();
+  }, [user, authLoading, loggingLevel]);
+
   const addCompItems: AddCompItem[] = useMemo(() => {
     const items: AddCompItem[] = [];
     if (!isActingOnBehalf) {
-      // If user is acting on their own behalf
       items.push(
         { value: "checkin", label: "Check-In", icon: Activity },
         { value: "foods", label: "Foods", icon: Utensils },
         { value: "exercises", label: "Exercises", icon: Dumbbell },
-        { value: "goals", label: "Goals", icon: Target },
+        { value: "goals", label: "Goals", icon: Target }
       );
     } else {
-      // If acting on behalf, filter by permissions
       if (hasWritePermission("checkin")) {
         items.push({ value: "checkin", label: "Check-In", icon: Activity });
       }
-      // Assuming 'foods', 'exercises', 'goals' would also be permission-based if acting on behalf
-      // For now, I'll keep them out for acting on behalf as per the original commented structure
-      // You can add permission checks here if needed for these items.
     }
     return items;
   }, [isActingOnBehalf, hasWritePermission]);
 
-  // Memoize available mobile tabs
   const availableMobileTabs = useMemo(() => {
     debug(loggingLevel, "Index: Calculating available tabs in mobile view.", {
       isActingOnBehalf,
       hasPermission,
       hasWritePermission,
-      isAddCompOpen, // Include isAddCompOpen in dependencies for icon change
+      isAddCompOpen,
     });
-
     const mobileTabs = [];
-
     if (!isActingOnBehalf) {
       mobileTabs.push(
         { value: "home", label: "Diary", icon: Home },
         { value: "reports", label: "Reports", icon: BarChart3 },
-        {
-          value: "Add",
-          label: "Add",
-          icon: isAddCompOpen ? X : Home, // Dynamic icon based on state
-        },
-        { value: "settings", label: "Settings", icon: SettingsIcon },
+        { value: "Add", label: "Add", icon: isAddCompOpen ? X : Home },
+        { value: "settings", label: "Settings", icon: SettingsIcon }
       );
     } else {
       if (hasWritePermission("calorie")) {
@@ -218,20 +214,9 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
         });
       }
     }
-
     if (user?.role === "admin") {
-      mobileTabs.push({
-        value: "admin",
-        label: "Admin",
-        icon: Shield,
-      });
+      mobileTabs.push({ value: "admin", label: "Admin", icon: Shield });
     }
-
-    info(
-      loggingLevel,
-      "Index: Available tabs calculated in mobile view:",
-      mobileTabs.map((tab) => tab.value),
-    );
     return mobileTabs;
   }, [
     isActingOnBehalf,
@@ -248,9 +233,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
       hasPermission,
       hasWritePermission,
     });
-
     const tabs = [];
-
     if (!isActingOnBehalf) {
       tabs.push(
         { value: "home", label: "Diary", icon: Home },
@@ -259,7 +242,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
         { value: "foods", label: "Foods", icon: Utensils },
         { value: "exercises", label: "Exercises", icon: Dumbbell },
         { value: "goals", label: "Goals", icon: Target },
-        { value: "settings", label: "Settings", icon: SettingsIcon },
+        { value: "settings", label: "Settings", icon: SettingsIcon }
       );
     } else {
       if (hasWritePermission("calorie")) {
@@ -272,20 +255,9 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
         tabs.push({ value: "reports", label: "Reports", icon: BarChart3 });
       }
     }
-
     if (user?.role === "admin") {
-      tabs.push({
-        value: "admin",
-        label: "Admin",
-        icon: Shield,
-      });
+      tabs.push({ value: "admin", label: "Admin", icon: Shield });
     }
-
-    info(
-      loggingLevel,
-      "Index: Available tabs calculated:",
-      tabs.map((tab) => tab.value),
-    );
     return tabs;
   }, [
     isActingOnBehalf,
@@ -295,59 +267,32 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
     user?.role,
   ]);
 
-  // Set the active tab to "home" (Diary) by default, or the first available tab if "home" is not available
   useEffect(() => {
-    debug(
-      loggingLevel,
-      "Index: availableTabs or activeTab useEffect triggered.",
-      { availableTabs, activeTab },
-    );
     if (user && availableTabs.length > 0 && !activeTab) {
-      info(
-        loggingLevel,
-        "Index: Setting initial active tab to 'home' (Diary) for logged-in user.",
-      );
       setActiveTab("home");
     } else if (availableTabs.length === 0 && activeTab) {
-      warn(loggingLevel, "Index: No available tabs, clearing active tab.");
       setActiveTab("");
     }
-  }, [availableTabs, activeTab, loggingLevel]);
+  }, [availableTabs, activeTab, user]);
 
   useEffect(() => {
-    debug(
-      loggingLevel,
-      "Index: availableMobileTabs or activeTab useEffect triggered.",
-      { availableMobileTabs, activeTab },
-    );
     if (user && availableMobileTabs.length > 0 && !activeTab) {
-      info(
-        loggingLevel,
-        "Index: Setting initial active tab to 'home' (Diary) for logged-in user on mobile.",
-      );
       setActiveTab("home");
     } else if (availableMobileTabs.length === 0 && activeTab) {
-      warn(
-        loggingLevel,
-        "Index: No available tabs, clearing active tab on mobile.",
-      );
       setActiveTab("");
     }
-  }, [availableMobileTabs, activeTab, loggingLevel]);
+  }, [availableMobileTabs, activeTab, user]);
 
-  // Handler for navigation from AddComp
   const handleNavigateFromAddComp = useCallback(
     (value: string) => {
       info(loggingLevel, `Index: Navigating to ${value} from AddComp.`);
       setActiveTab(value);
-      setIsAddCompOpen(false); // Close the semicircle after navigating
+      setIsAddCompOpen(false);
     },
-    [loggingLevel],
+    [loggingLevel]
   );
 
-  // Get the appropriate grid class based on the number of tabs
   const getGridClass = (count: number) => {
-    debug(loggingLevel, "Index: Getting grid class for tab count:", count);
     switch (count) {
       case 1:
         return "grid-cols-1";
@@ -373,16 +318,21 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
   const gridClass = getGridClass(availableTabs.length);
   const mobileGridClass = getGridClass(availableMobileTabs.length);
 
-  debug(loggingLevel, "Index: Calculated grid class:", gridClass);
+  if (isCheckingStatus) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-xl text-white">Loading...</p>
+      </div>
+    );
+  }
 
-  info(
-    loggingLevel,
-    "Index: User logged in, rendering main application layout.",
-  );
+  if (needsOnboarding) {
+    return <StartPage onOnboardingComplete={() => setNeedsOnboarding(false)} />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-        {/* Header with logo, title, profile switcher, welcome message, theme toggle, and sign out button */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
             <img
@@ -395,14 +345,10 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            {/* Compact Profile Switcher */}
             <ProfileSwitcher />
-
-            {/* Welcome Message */}
             <span className="text-sm text-muted-foreground hidden sm:inline">
               Welcome {isActingOnBehalf ? activeUserName : displayName}
             </span>
-
             <ThemeToggle />
             <Button
               variant="outline"
@@ -422,17 +368,14 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
           value={activeTab}
           onValueChange={(value) => {
             if (value === "Add") {
-              setIsAddCompOpen((prev) => !prev); // Toggle the state
-              // Do NOT set activeTab, keep current tab active
+              setIsAddCompOpen((prev) => !prev);
             } else {
-              debug(loggingLevel, "Index: Tab changed to:", value);
-              setIsAddCompOpen(false); // Close AddComp when another tab is selected
+              setIsAddCompOpen(false);
               setActiveTab(value);
             }
           }}
           className="space-y-6"
         >
-          {/* Desktop/Tablet Navigation */}
           <TabsList className={`hidden sm:grid w-full gap-1 ${gridClass}`}>
             {availableTabs.map(({ value, label, icon: Icon }) => (
               <TabsTrigger
@@ -441,12 +384,11 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
                 className="flex items-center gap-2 hover:bg-slate-200 dark:hover:bg-slate-900"
               >
                 <Icon className="h-4 w-4" />
-                <span>{label} </span>
+                <span>{label}</span>
               </TabsTrigger>
             ))}
           </TabsList>
 
-          {/* Mobile Navigation - Increased icon sizes */}
           <TabsList
             className={`grid w-full gap-1 fixed bottom-0 left-0 right-0 sm:hidden bg-background border-t py-2 px-2 h-14 z-50 ${mobileGridClass}`}
           >
@@ -462,14 +404,13 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
           </TabsList>
 
           <div className="pb-16 sm:pb-0">
-            {/* Render all possible TabsContent components, and let activeTab control visibility */}
             <TabsContent value="home" className="space-y-6">
               <FoodDiary
                 selectedDate={selectedDate}
                 onDateChange={setSelectedDate}
                 refreshTrigger={foodDiaryRefreshTrigger}
                 initialExercisesToLog={exercisesToLogFromPreset}
-                onExercisesLogged={() => setExercisesToLogFromPreset(undefined)} // Clear after logging
+                onExercisesLogged={() => setExercisesToLogFromPreset(undefined)}
               />
             </TabsContent>
             <TabsContent value="checkin" className="space-y-6">
@@ -482,7 +423,9 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
               <FoodDatabaseManager />
             </TabsContent>
             <TabsContent value="exercises" className="space-y-6">
-              <ExerciseDatabaseManager onPresetExercisesSelected={setExercisesToLogFromPreset} />
+              <ExerciseDatabaseManager
+                onPresetExercisesSelected={setExercisesToLogFromPreset}
+              />
             </TabsContent>
             <TabsContent value="goals" className="space-y-6">
               <GoalsSettings />
@@ -492,7 +435,6 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
             </TabsContent>
             {user?.role === "admin" && (
               <TabsContent value="admin" className="space-y-6">
-                {/* Admin sub-navigation or direct content */}
                 <div className="flex flex-col space-y-4">
                   <AuthenticationSettings />
                   <BackupSettings />
@@ -500,14 +442,11 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
                 </div>
               </TabsContent>
             )}
-            {/* The "Add" tab does not have a content component */}
           </div>
         </Tabs>
 
-        {/* Sparky AI Chat Popup */}
         <SparkyChat />
       </div>
-      {/* Footer with Version Info */}
 
       <AddComp
         isVisible={isAddCompOpen}
