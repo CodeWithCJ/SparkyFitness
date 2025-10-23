@@ -128,22 +128,21 @@ async function getExerciseEntries(userId, startDate, endDate, equipment, muscle,
          ee.duration_minutes,
          ee.calories_burned,
          ee.notes,
-         e.id AS exercise_id,
-         e.name AS exercise_name,
-         e.category AS exercise_category,
-         e.calories_per_hour AS exercise_calories_per_hour,
-         e.equipment AS exercise_equipment,
-         e.primary_muscles AS exercise_primary_muscles,
-         e.secondary_muscles AS exercise_secondary_muscles,
-         e.instructions AS exercise_instructions,
-         e.images AS exercise_images,
-         e.source AS exercise_source,
-         e.source_id AS exercise_source_id,
-         e.user_id AS exercise_user_id,
-         e.is_custom AS exercise_is_custom,
-         e.level AS exercise_level,
-         e.force AS exercise_force,
-         e.mechanic AS exercise_mechanic,
+         ee.exercise_id,
+         ee.exercise_name,
+         ee.category AS exercise_category,
+         ee.calories_per_hour AS exercise_calories_per_hour,
+         ee.equipment AS exercise_equipment,
+         ee.primary_muscles AS exercise_primary_muscles,
+         ee.secondary_muscles AS exercise_secondary_muscles,
+         ee.instructions AS exercise_instructions,
+         ee.images AS exercise_images,
+         ee.source AS exercise_source,
+         ee.source_id AS exercise_source_id,
+         ee.user_id AS exercise_user_id,
+         ee.level AS exercise_level,
+         ee.force AS exercise_force,
+         ee.mechanic AS exercise_mechanic,
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
@@ -154,20 +153,23 @@ async function getExerciseEntries(userId, startDate, endDate, equipment, muscle,
            ), '[]'::json
          ) AS sets
        FROM exercise_entries ee
-       JOIN exercises e ON ee.exercise_id = e.id
        WHERE ee.user_id = $1 AND ee.entry_date BETWEEN $2 AND $3`;
 
     const params = [userId, startDate, endDate];
     let paramIndex = 4;
 
     if (equipment) {
-      query += ` AND e.equipment::jsonb @> '["${equipment}"]'`;
+      query += ` AND ee.equipment ILIKE $${paramIndex}`;
+      params.push(`%${equipment}%`);
+      paramIndex++;
     }
     if (muscle) {
-      query += ` AND e.primary_muscles::jsonb @> '["${muscle}"]'`;
+      query += ` AND ee.primary_muscles ILIKE $${paramIndex}`;
+      params.push(`%${muscle}%`);
+      paramIndex++;
     }
     if (exercise) {
-      query += ` AND e.name = $${paramIndex}`;
+      query += ` AND ee.exercise_name = $${paramIndex}`;
       params.push(exercise);
       paramIndex++;
     }
@@ -184,20 +186,24 @@ async function getExerciseEntries(userId, startDate, endDate, equipment, muscle,
 async function getExerciseNames(userId, muscle, equipment) {
   const client = await getClient(userId); // User-specific operation
   try {
-    let query = `SELECT DISTINCT id, name FROM exercises WHERE user_id = $1`;
+    let query = `SELECT DISTINCT exercise_id as id, exercise_name as name FROM exercise_entries WHERE user_id = $1`;
     const params = [userId];
     let paramIndex = 2;
 
     if (muscle) {
-      query += ` AND primary_muscles::jsonb @> '["${muscle}"]'`;
+      query += ` AND primary_muscles ILIKE $${paramIndex}`;
+      params.push(`%${muscle}%`);
+      paramIndex++;
     }
     if (equipment) {
-      query += ` AND equipment::jsonb @> '["${equipment}"]'`;
+      query += ` AND equipment ILIKE $${paramIndex}`;
+      params.push(`%${equipment}%`);
+      paramIndex++;
     }
     query += ` ORDER BY name`;
 
     const result = await client.query(query, params);
-    return result.rows; // Return the full objects { id, name }
+    return result.rows;
   } finally {
     client.release();
   }

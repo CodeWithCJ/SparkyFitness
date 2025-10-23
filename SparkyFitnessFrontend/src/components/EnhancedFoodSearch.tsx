@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Search, Plus, Loader2, Edit, Camera, BookText } from "lucide-react";
+import { Search, Plus, Loader2, Edit, Camera, BookText, Share2, Users } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import EnhancedCustomFoodForm from "./EnhancedCustomFoodForm";
 import BarcodeScanner from "./BarcodeScanner";
@@ -824,11 +824,21 @@ const EnhancedFoodSearch = ({
                                 {food.brand}
                               </Badge>
                             )}
-                            {food.is_custom && (
-                              <Badge variant="outline" className="text-xs">
-                                Custom
-                               </Badge>
-                             )}
+                           {food.user_id === activeUserId && (
+                             <Badge variant="outline" className="text-xs">
+                               Private
+                             </Badge>
+                           )}
+                           {food.shared_with_public && (
+                             <Badge variant="outline" className="text-xs">
+                               <Share2 className="h-3 w-3 mr-1" /> Public
+                             </Badge>
+                           )}
+                           {food.user_id !== activeUserId && !food.shared_with_public && (
+                             <Badge variant="outline" className="text-xs">
+                               Family
+                             </Badge>
+                           )}
                              {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
                                 <Badge variant="outline" className="text-xs">
                                   GI: {food.default_variant.glycemic_index}
@@ -867,11 +877,21 @@ const EnhancedFoodSearch = ({
                                 {food.brand}
                               </Badge>
                             )}
-                            {food.is_custom && (
-                              <Badge variant="outline" className="text-xs">
-                                Custom
-                               </Badge>
-                             )}
+                           {food.user_id === activeUserId && (
+                             <Badge variant="outline" className="text-xs">
+                               Private
+                             </Badge>
+                           )}
+                           {food.shared_with_public && (
+                             <Badge variant="outline" className="text-xs">
+                               <Share2 className="h-3 w-3 mr-1" /> Public
+                             </Badge>
+                           )}
+                           {food.user_id !== activeUserId && !food.shared_with_public && (
+                             <Badge variant="outline" className="text-xs">
+                               Family
+                             </Badge>
+                           )}
                              {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
                                 <Badge variant="outline" className="text-xs">
                                   GI: {food.default_variant.glycemic_index}
@@ -1018,9 +1038,19 @@ const EnhancedFoodSearch = ({
                           {food.brand}
                         </Badge>
                       )}
-                      {food.is_custom && (
+                      {food.user_id === activeUserId && (
                         <Badge variant="outline" className="text-xs">
-                          Custom
+                          Private
+                        </Badge>
+                      )}
+                      {food.shared_with_public && (
+                        <Badge variant="outline" className="text-xs">
+                          <Share2 className="h-3 w-3 mr-1" /> Public
+                        </Badge>
+                      )}
+                      {food.user_id !== activeUserId && !food.shared_with_public && (
+                        <Badge variant="outline" className="text-xs">
+                          Family
                         </Badge>
                       )}
                       {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (

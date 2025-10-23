@@ -33,6 +33,7 @@ const { router: openidRoutes, initializeOidcClient } = require('./openidRoutes')
 const oidcSettingsRoutes = require('./routes/oidcSettingsRoutes');
 const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
 const versionRoutes = require('./routes/versionRoutes');
+const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboarding routes
 const { applyMigrations } = require('./utils/dbMigrations');
 const waterContainerRoutes = require('./routes/waterContainerRoutes');
 const backupRoutes = require('./routes/backupRoutes'); // Import backup routes
@@ -272,6 +273,7 @@ app.use('/admin/backup', backupRoutes); // Add backup routes
 app.use('/workout-presets', require('./routes/workoutPresetRoutes')); // Add workout preset routes
 app.use('/workout-plan-templates', require('./routes/workoutPlanTemplateRoutes')); // Add workout plan template routes
 app.use('/review', reviewRoutes);
+app.use('/onboarding', onboardingRoutes); // Add onboarding routes
 
 // Temporary debug route to log incoming requests for meal plan templates
 app.use(
@@ -327,12 +329,13 @@ applyMigrations().then(async () => {
         );
       }
     }
+  } // Closing the if block for SPARKY_FITNESS_ADMIN_EMAIL
 
-    app.listen(PORT, () => {
-      console.log(`DEBUG: Server started and listening on port ${PORT}`); // Direct console log
-      log("info", `SparkyFitnessServer listening on port ${PORT}`);
-    });
-  })
+  app.listen(PORT, () => {
+    console.log(`DEBUG: Server started and listening on port ${PORT}`); // Direct console log
+    log("info", `SparkyFitnessServer listening on port ${PORT}`);
+  });
+})
   .catch((error) => {
     log("error", "Failed to apply migrations and start server:", error);
     process.exit(1);

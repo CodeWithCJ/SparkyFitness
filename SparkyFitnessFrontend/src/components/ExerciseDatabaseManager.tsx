@@ -11,7 +11,7 @@ import AddExerciseDialog from "./AddExerciseDialog";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Share2, Lock, XCircle } from "lucide-react";
+import { Plus, Edit, Trash2, Share2, Lock, XCircle, Users } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -256,25 +256,17 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
       );
     }
 
-    if (exercise.shared_with_public) {
+    if (exercise.user_id !== currentUserId && !exercise.shared_with_public) {
       return (
         <Badge
           variant="outline"
-          className="text-xs w-fit bg-green-50 text-green-700"
+          className="text-xs w-fit bg-blue-50 text-blue-700"
         >
-          Public
+          Family
         </Badge>
       );
     }
-
-    return (
-      <Badge
-        variant="outline"
-        className="text-xs w-fit bg-blue-50 text-blue-700"
-      >
-        Family
-      </Badge>
-    );
+    return null; // No badge from getExerciseSourceBadge if it's public and not owned by user
   };
 
   return (
@@ -352,7 +344,13 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-medium">{exercise.name}</h4>
-                    {getExerciseSourceBadge(exercise, user?.id)}
+                    {exercise.tags && exercise.tags.map(tag => (
+                        <Badge key={tag} variant="outline" className="text-xs">
+                            {tag === 'public' && <Share2 className="h-3 w-3 mr-1" />}
+                            {tag === 'family' && <Users className="h-3 w-3 mr-1" />}
+                            {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                        </Badge>
+                    ))}
                   </div>
                   <div className="text-sm text-gray-600 mb-1">
                     {exercise.category}
@@ -387,39 +385,43 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                   )}
                 </div>
                 <div className="flex items-center space-x-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setSelectedExercise(exercise);
-                      setEditExerciseName(exercise.name);
-                      setEditExerciseCategory(exercise.category);
-                      setEditExerciseCalories(exercise.calories_per_hour);
-                      setEditExerciseDescription(exercise.description || "");
-                      setEditExerciseLevel(exercise.level?.toLowerCase() || "");
-                      setEditExerciseForce(exercise.force?.toLowerCase() || "");
-                      setEditExerciseMechanic(exercise.mechanic?.toLowerCase() || "");
-                      setEditExerciseEquipment(Array.isArray(exercise.equipment) ? exercise.equipment : []);
-                      setEditExercisePrimaryMuscles(Array.isArray(exercise.primary_muscles) ? exercise.primary_muscles : []);
-                      setEditExerciseSecondaryMuscles(Array.isArray(exercise.secondary_muscles) ? exercise.secondary_muscles : []);
-                      setEditExerciseInstructions(Array.isArray(exercise.instructions) ? exercise.instructions : []);
-                      setEditExerciseImages(Array.isArray(exercise.images) ? exercise.images : []);
-                      setNewExerciseImageFiles([]);
-                      setNewExerciseImageUrls([]);
-                      setIsEditDialogOpen(true);
-                    }}
-                    className="h-8 w-8"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDeleteRequest(exercise)}
-                    className="h-8 w-8 hover:bg-gray-200 dark:hover:bg-gray-800"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {exercise.user_id === user?.id && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedExercise(exercise);
+                          setEditExerciseName(exercise.name);
+                          setEditExerciseCategory(exercise.category);
+                          setEditExerciseCalories(exercise.calories_per_hour);
+                          setEditExerciseDescription(exercise.description || "");
+                          setEditExerciseLevel(exercise.level?.toLowerCase() || "");
+                          setEditExerciseForce(exercise.force?.toLowerCase() || "");
+                          setEditExerciseMechanic(exercise.mechanic?.toLowerCase() || "");
+                          setEditExerciseEquipment(Array.isArray(exercise.equipment) ? exercise.equipment : []);
+                          setEditExercisePrimaryMuscles(Array.isArray(exercise.primary_muscles) ? exercise.primary_muscles : []);
+                          setEditExerciseSecondaryMuscles(Array.isArray(exercise.secondary_muscles) ? exercise.secondary_muscles : []);
+                          setEditExerciseInstructions(Array.isArray(exercise.instructions) ? exercise.instructions : []);
+                          setEditExerciseImages(Array.isArray(exercise.images) ? exercise.images : []);
+                          setNewExerciseImageFiles([]);
+                          setNewExerciseImageUrls([]);
+                          setIsEditDialogOpen(true);
+                        }}
+                        className="h-8 w-8"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteRequest(exercise)}
+                        className="h-8 w-8 hover:bg-gray-200 dark:hover:bg-gray-800"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
                   {exercise.user_id === user?.id && (
                     <Button
                       variant="ghost"

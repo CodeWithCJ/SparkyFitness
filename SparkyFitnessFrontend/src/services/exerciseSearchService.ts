@@ -22,6 +22,7 @@ export interface Exercise {
   shared_with_public?: boolean;
   created_at?: string;
   updated_at?: string;
+  tags?: string[];
 }
 
 export const searchExercises = async (query: string, equipmentFilter: string[] = [], muscleGroupFilter: string[] = []): Promise<Exercise[]> => {
