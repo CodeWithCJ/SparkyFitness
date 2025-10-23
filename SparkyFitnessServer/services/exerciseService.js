@@ -1,5 +1,8 @@
 const { getClient, getSystemClient } = require('../db/poolManager'); // Import the database connection pool
 const exerciseRepository = require('../models/exerciseRepository');
+// Require concrete exercise and exerciseEntry modules directly to avoid circular export issues
+const exerciseDb = require('../models/exercise');
+const exerciseEntryDb = require('../models/exerciseEntry');
 const userRepository = require('../models/userRepository');
 const preferenceRepository = require('../models/preferenceRepository');
 const { v4: uuidv4 } = require('uuid'); // New import for UUID generation
@@ -24,8 +27,8 @@ async function getExercisesWithPagination(authenticatedUserId, targetUserId, sea
     const offset = ((parseInt(currentPage, 10) || 1) - 1) * limit;
 
     const [exercises, totalCount] = await Promise.all([
-      exerciseRepository.getExercisesWithPagination(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, limit, offset),
-      exerciseRepository.countExercises(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter)
+      exerciseDb.getExercisesWithPagination(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, limit, offset),
+      exerciseDb.countExercises(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter)
     ]);
     const taggedExercises = await Promise.all(
         exercises.map(async (exercise) => {
@@ -57,7 +60,7 @@ async function getExercisesWithPagination(authenticatedUserId, targetUserId, sea
 
 async function searchExercises(authenticatedUserId, name, targetUserId, equipmentFilter, muscleGroupFilter) {
   try {
-    const exercises = await exerciseRepository.searchExercises(name, targetUserId, equipmentFilter, muscleGroupFilter);
+  const exercises = await exerciseDb.searchExercises(name, targetUserId, equipmentFilter, muscleGroupFilter);
     const taggedExercises = await Promise.all(
       exercises.map(async (exercise) => {
         const tags = [];
@@ -87,7 +90,7 @@ async function searchExercises(authenticatedUserId, name, targetUserId, equipmen
 
 async function getAvailableEquipment() {
   try {
-    const equipment = await exerciseRepository.getDistinctEquipment();
+  const equipment = await exerciseDb.getDistinctEquipment();
     return equipment;
   } catch (error) {
     log('error', `Error fetching available equipment:`, error);
@@ -97,7 +100,7 @@ async function getAvailableEquipment() {
 
 async function getAvailableMuscleGroups() {
   try {
-    const muscleGroups = await exerciseRepository.getDistinctMuscleGroups();
+  const muscleGroups = await exerciseDb.getDistinctMuscleGroups();
     return muscleGroups;
   } catch (error) {
     log('error', `Error fetching available muscle groups:`, error);
@@ -113,7 +116,7 @@ async function createExercise(authenticatedUserId, exerciseData) {
     if (exerciseData.images && Array.isArray(exerciseData.images)) {
       exerciseData.images = JSON.stringify(exerciseData.images);
     }
-    const newExercise = await exerciseRepository.createExercise(exerciseData);
+  const newExercise = await exerciseDb.createExercise(exerciseData);
     return newExercise;
   } catch (error) {
     log('error', `Error creating exercise for user ${authenticatedUserId}:`, error);
@@ -128,7 +131,7 @@ async function createExerciseEntry(authenticatedUserId, actingUserId, entryData)
     entryData.exercise_id = resolvedExerciseId;
 
     // Fetch exercise details to create the snapshot
-    const exercise = await exerciseRepository.getExerciseById(entryData.exercise_id, authenticatedUserId);
+    const exercise = await exerciseDb.getExerciseById(entryData.exercise_id, authenticatedUserId);
     if (!exercise) {
       throw new Error("Exercise not found for snapshot.");
     }
@@ -155,8 +158,8 @@ async function createExerciseEntry(authenticatedUserId, actingUserId, entryData)
       image_url: entryData.image_url || null,
     };
 
-    // The exerciseRepository.createExerciseEntry function already handles inserting sets into exercise_entry_sets
-    const newEntry = await exerciseRepository.createExerciseEntry(authenticatedUserId, snapshotEntryData);
+  // Use exerciseEntry module to create the entry (handles sets and snapshot inserts)
+  const newEntry = await exerciseEntryDb.createExerciseEntry(authenticatedUserId, snapshotEntryData, actingUserId);
     return newEntry;
   } catch (error) {
     log('error', `Error creating exercise entry for user ${authenticatedUserId} by ${actingUserId}:`, error);
@@ -166,11 +169,11 @@ async function createExerciseEntry(authenticatedUserId, actingUserId, entryData)
 
 async function getExerciseEntryById(authenticatedUserId, id) {
   try {
-    const entryOwnerId = await exerciseRepository.getExerciseEntryOwnerId(id);
+    const entryOwnerId = await exerciseEntryDb.getExerciseEntryOwnerId(id, authenticatedUserId);
     if (!entryOwnerId) {
       throw new Error('Exercise entry not found.');
     }
-    const entry = await exerciseRepository.getExerciseEntryById(id);
+    const entry = await exerciseEntryDb.getExerciseEntryById(id, authenticatedUserId);
     return entry;
   } catch (error) {
     log('error', `Error fetching exercise entry ${id} by user ${authenticatedUserId}:`, error);
@@ -180,7 +183,7 @@ async function getExerciseEntryById(authenticatedUserId, id) {
 
 async function updateExerciseEntry(authenticatedUserId, id, updateData) {
   try {
-    const existingEntry = await exerciseRepository.getExerciseEntryById(id);
+    const existingEntry = await exerciseEntryDb.getExerciseEntryById(id, authenticatedUserId);
     if (!existingEntry) {
       throw new Error('Exercise entry not found.');
     }
@@ -201,7 +204,7 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
  
     // If calories_burned is not provided, calculate it using the calorieCalculationService
     if (updateData.exercise_id && updateData.duration_minutes !== null && updateData.duration_minutes !== undefined && updateData.calories_burned === undefined) {
-      const exercise = await exerciseRepository.getExerciseById(updateData.exercise_id, authenticatedUserId);
+  const exercise = await exerciseDb.getExerciseById(updateData.exercise_id, authenticatedUserId);
       if (exercise) {
         const caloriesPerHour = await calorieCalculationService.estimateCaloriesBurnedPerHour(exercise, authenticatedUserId, updateData.sets);
         updateData.calories_burned = (caloriesPerHour / 60) * updateData.duration_minutes;
@@ -214,7 +217,7 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
       updateData.calories_burned = existingEntry.calories_burned || 0;
     }
 
-    const updatedEntry = await exerciseRepository.updateExerciseEntry(id, authenticatedUserId, {
+    const updatedEntry = await exerciseEntryDb.updateExerciseEntry(id, authenticatedUserId, {
       ...updateData,
       duration_minutes: updateData.duration_minutes || 0,
       sets: updateData.sets || null,
@@ -235,7 +238,7 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
 
 async function deleteExerciseEntry(authenticatedUserId, id) {
   try {
-    const entry = await exerciseRepository.getExerciseEntryById(id, authenticatedUserId);
+    const entry = await exerciseEntryDb.getExerciseEntryById(id, authenticatedUserId);
     if (!entry) {
       throw new Error('Exercise entry not found.');
     }
@@ -253,7 +256,7 @@ async function deleteExerciseEntry(authenticatedUserId, id) {
       }
     }
 
-    const success = await exerciseRepository.deleteExerciseEntry(id, authenticatedUserId);
+    const success = await exerciseEntryDb.deleteExerciseEntry(id, authenticatedUserId);
     if (!success) {
       throw new Error('Exercise entry not found or not authorized to delete.');
     }
@@ -266,15 +269,15 @@ async function deleteExerciseEntry(authenticatedUserId, id) {
 
 async function getExerciseById(authenticatedUserId, id) {
   try {
-    const exerciseOwnerId = await exerciseRepository.getExerciseOwnerId(id, authenticatedUserId);
+    const exerciseOwnerId = await exerciseDb.getExerciseOwnerId(id, authenticatedUserId);
     if (!exerciseOwnerId) {
-      const publicExercise = await exerciseRepository.getExerciseById(id);
+      const publicExercise = await exerciseDb.getExerciseById(id);
       if (publicExercise && !publicExercise.is_custom) {
         return publicExercise;
       }
       throw new Error('Exercise not found.');
     }
-    const exercise = await exerciseRepository.getExerciseById(id, authenticatedUserId);
+    const exercise = await exerciseDb.getExerciseById(id, authenticatedUserId);
     return exercise;
   } catch (error) {
     log('error', `Error fetching exercise ${id} by user ${authenticatedUserId}:`, error);
@@ -284,7 +287,7 @@ async function getExerciseById(authenticatedUserId, id) {
 
 async function updateExercise(authenticatedUserId, id, updateData) {
   try {
-    const exerciseOwnerId = await exerciseRepository.getExerciseOwnerId(id, authenticatedUserId);
+    const exerciseOwnerId = await exerciseDb.getExerciseOwnerId(id, authenticatedUserId);
     if (!exerciseOwnerId) {
       throw new Error('Exercise not found.');
     }
@@ -295,7 +298,7 @@ async function updateExercise(authenticatedUserId, id, updateData) {
     if (updateData.images && Array.isArray(updateData.images)) {
       updateData.images = JSON.stringify(updateData.images);
     }
-    const updatedExercise = await exerciseRepository.updateExercise(id, authenticatedUserId, updateData);
+    const updatedExercise = await exerciseDb.updateExercise(id, authenticatedUserId, updateData);
     if (!updatedExercise) {
       throw new Error('Exercise not found or not authorized to update.');
     }
@@ -309,7 +312,7 @@ async function updateExercise(authenticatedUserId, id, updateData) {
 async function deleteExercise(authenticatedUserId, exerciseId, forceDelete = false) {
   log("info", `deleteExercise: Attempting to delete exercise ${exerciseId} by user ${authenticatedUserId}. Force delete: ${forceDelete}`);
   try {
-    const exerciseOwnerId = await exerciseRepository.getExerciseOwnerId(exerciseId, authenticatedUserId);
+    const exerciseOwnerId = await exerciseDb.getExerciseOwnerId(exerciseId, authenticatedUserId);
     if (!exerciseOwnerId) {
       log("warn", `deleteExercise: Exercise ${exerciseId} not found for user ${authenticatedUserId}.`);
       throw new Error("Exercise not found.");
@@ -321,7 +324,7 @@ async function deleteExercise(authenticatedUserId, exerciseId, forceDelete = fal
       );
     }
 
-    const deletionImpact = await exerciseRepository.getExerciseDeletionImpact(exerciseId, authenticatedUserId);
+  const deletionImpact = await exerciseDb.getExerciseDeletionImpact(exerciseId, authenticatedUserId);
     log("info", `deleteExercise: Deletion impact for exercise ${exerciseId}: ${JSON.stringify(deletionImpact)}`);
 
     const {
@@ -339,7 +342,7 @@ async function deleteExercise(authenticatedUserId, exerciseId, forceDelete = fal
     // Scenario 1: No references at all
     if (totalReferences === 0) {
       log("info", `deleteExercise: Exercise ${exerciseId} has no references. Performing hard delete.`);
-      const success = await exerciseRepository.deleteExerciseAndDependencies(exerciseId, authenticatedUserId);
+      const success = await exerciseDb.deleteExerciseAndDependencies(exerciseId, authenticatedUserId);
       if (!success) {
         throw new Error("Exercise not found or not authorized to delete.");
       }
@@ -350,7 +353,7 @@ async function deleteExercise(authenticatedUserId, exerciseId, forceDelete = fal
     if (otherUserReferences === 0) {
       if (forceDelete) {
         log("info", `deleteExercise: Exercise ${exerciseId} has references only by current user. Force deleting.`);
-        const success = await exerciseRepository.deleteExerciseAndDependencies(exerciseId, authenticatedUserId);
+        const success = await exerciseDb.deleteExerciseAndDependencies(exerciseId, authenticatedUserId);
         if (!success) {
           throw new Error("Exercise not found or not authorized to delete.");
         }
@@ -385,7 +388,9 @@ async function getExerciseEntriesByDate(authenticatedUserId, targetUserId, selec
       log('error', 'getExerciseEntriesByDate: targetUserId is undefined. Returning empty array.');
       return [];
     }
-    const entries = await exerciseRepository.getExerciseEntriesByDate(targetUserId, selectedDate);
+  // Use the exerciseEntryDb directly to avoid circular dependency where exerciseRepository
+  // may not have fully exported its properties yet at runtime.
+  const entries = await exerciseEntryDb.getExerciseEntriesByDate(targetUserId, selectedDate);
     if (!entries || entries.length === 0) {
       return [];
     }
@@ -398,7 +403,7 @@ async function getExerciseEntriesByDate(authenticatedUserId, targetUserId, selec
 
 async function getOrCreateActiveCaloriesExercise(userId) {
   try {
-    const exerciseId = await exerciseRepository.getOrCreateActiveCaloriesExercise(userId);
+    const exerciseId = await exerciseDb.getOrCreateActiveCaloriesExercise(userId);
     return exerciseId;
   } catch (error) {
     log('error', `Error getting or creating active calories exercise for user ${userId}:`, error);
@@ -408,7 +413,7 @@ async function getOrCreateActiveCaloriesExercise(userId) {
 
 async function upsertExerciseEntryData(userId, exerciseId, caloriesBurned, date) {
   try {
-    const entry = await exerciseRepository.upsertExerciseEntryData(userId, exerciseId, caloriesBurned, date);
+    const entry = await exerciseEntryDb.upsertExerciseEntryData(userId, exerciseId, caloriesBurned, date);
     return entry;
   } catch (error) {
     log('error', `Error upserting exercise entry data for user ${userId}, exercise ${exerciseId}:`, error);
@@ -593,7 +598,7 @@ async function addExternalExerciseToUserExercises(authenticatedUserId, wgerExerc
 
     log('info', `Mapped exercise data before insert: ${JSON.stringify(exerciseData, null, 2)}`);
 
-    const newExercise = await exerciseRepository.createExercise(exerciseData);
+  const newExercise = await exerciseDb.createExercise(exerciseData);
     return newExercise;
   } catch (error) {
     log('error', `Error adding external exercise ${wgerExerciseId} for user ${authenticatedUserId}:`, error);
@@ -618,7 +623,7 @@ async function addNutritionixExerciseToUserExercises(authenticatedUserId, nutrit
       source: 'nutritionix',
     };
 
-    const newExercise = await exerciseRepository.createExercise(exerciseData);
+  const newExercise = await exerciseDb.createExercise(exerciseData);
     return newExercise;
   } catch (error) {
     log('error', `Error adding Nutritionix exercise for user ${authenticatedUserId}:`, error);
@@ -667,7 +672,7 @@ async function addFreeExerciseDBExerciseToUserExercises(authenticatedUserId, fre
       shared_with_public: false, // Imported exercises are private by default
     };
 
-    const newExercise = await exerciseRepository.createExercise(exerciseData);
+  const newExercise = await exerciseDb.createExercise(exerciseData);
     return newExercise;
   } catch (error) {
     log('error', `Error adding Free-Exercise-DB exercise ${freeExerciseDBId} for user ${authenticatedUserId}:`, error);
@@ -679,8 +684,8 @@ async function getSuggestedExercises(authenticatedUserId, limit) {
   try {
     const preferences = await preferenceRepository.getUserPreferences(authenticatedUserId);
     const displayLimit = preferences?.item_display_limit || limit;
-    const recentExercises = await exerciseRepository.getRecentExercises(authenticatedUserId, displayLimit);
-    const topExercises = await exerciseRepository.getTopExercises(authenticatedUserId, displayLimit);
+  const recentExercises = await exerciseDb.getRecentExercises(authenticatedUserId, displayLimit);
+  const topExercises = await exerciseDb.getTopExercises(authenticatedUserId, displayLimit);
     return { recentExercises, topExercises };
   } catch (error) {
     log('error', `Error fetching suggested exercises for user ${authenticatedUserId}:`, error);
@@ -692,7 +697,7 @@ async function getRecentExercises(authenticatedUserId, limit) {
   try {
     const preferences = await preferenceRepository.getUserPreferences(authenticatedUserId);
     const displayLimit = preferences?.item_display_limit || limit;
-    const recentExercises = await exerciseRepository.getRecentExercises(authenticatedUserId, displayLimit);
+  const recentExercises = await exerciseDb.getRecentExercises(authenticatedUserId, displayLimit);
     const taggedExercises = await Promise.all(
       recentExercises.map(async (exercise) => {
         const tags = [];
@@ -724,7 +729,7 @@ async function getTopExercises(authenticatedUserId, limit) {
   try {
     const preferences = await preferenceRepository.getUserPreferences(authenticatedUserId);
     const displayLimit = preferences?.item_display_limit || limit;
-    const topExercises = await exerciseRepository.getTopExercises(authenticatedUserId, displayLimit);
+  const topExercises = await exerciseDb.getTopExercises(authenticatedUserId, displayLimit);
     const taggedExercises = await Promise.all(
       topExercises.map(async (exercise) => {
         const tags = [];
@@ -754,7 +759,8 @@ async function getTopExercises(authenticatedUserId, limit) {
 
 async function getExerciseProgressData(authenticatedUserId, exerciseId, startDate, endDate) {
   try {
-    const progressData = await exerciseRepository.getExerciseProgressData(authenticatedUserId, exerciseId, startDate, endDate);
+    // getExerciseProgressData is implemented in the exerciseEntry module
+    const progressData = await exerciseEntryDb.getExerciseProgressData(authenticatedUserId, exerciseId, startDate, endDate);
     return progressData;
   } catch (error) {
     log('error', `Error fetching exercise progress data for user ${authenticatedUserId}, exercise ${exerciseId}:`, error);
@@ -765,7 +771,8 @@ async function getExerciseProgressData(authenticatedUserId, exerciseId, startDat
 async function getExerciseHistory(authenticatedUserId, exerciseId, limit) {
   try {
     const resolvedExerciseId = await resolveExerciseIdToUuid(exerciseId);
-    const history = await exerciseRepository.getExerciseHistory(authenticatedUserId, resolvedExerciseId, limit);
+    // getExerciseHistory is implemented in the exerciseEntry module
+    const history = await exerciseEntryDb.getExerciseHistory(authenticatedUserId, resolvedExerciseId, limit);
     return history;
   } catch (error) {
     log('error', `Error fetching exercise history for user ${authenticatedUserId}, exercise ${exerciseId}:`, error);
@@ -846,13 +853,13 @@ async function importExercisesFromCSV(authenticatedUserId, filePath) {
           exerciseData.images = [];
         }
 
-        const existingExercise = await exerciseRepository.searchExercises(exerciseName, authenticatedUserId, [], []);
+        const existingExercise = await exerciseDb.searchExercises(exerciseName, authenticatedUserId, [], []);
         if (existingExercise && existingExercise.length > 0) {
           // Assuming the first match is the one to update
-          await exerciseRepository.updateExercise(existingExercise[0].id, authenticatedUserId, exerciseData);
+          await exerciseDb.updateExercise(existingExercise[0].id, authenticatedUserId, exerciseData);
           updatedCount++;
         } else {
-          await exerciseRepository.createExercise(exerciseData);
+          await exerciseDb.createExercise(exerciseData);
           createdCount++;
         }
       } catch (rowError) {
@@ -883,13 +890,13 @@ async function importExercisesFromCSV(authenticatedUserId, filePath) {
 async function getExerciseDeletionImpact(authenticatedUserId, exerciseId) {
   log("info", `getExerciseDeletionImpact: Checking deletion impact for exercise ${exerciseId} by user ${authenticatedUserId}`);
   try {
-    const exerciseOwnerId = await exerciseRepository.getExerciseOwnerId(exerciseId, authenticatedUserId);
+  const exerciseOwnerId = await exerciseDb.getExerciseOwnerId(exerciseId, authenticatedUserId);
     if (!exerciseOwnerId) {
       log("warn", `getExerciseDeletionImpact: Exercise ${exerciseId} not found for user ${authenticatedUserId}.`);
       throw new Error("Exercise not found.");
     }
     // No need to check permission here, as exerciseRepository.getExerciseDeletionImpact handles it
-    return await exerciseRepository.getExerciseDeletionImpact(exerciseId, authenticatedUserId);
+  return await exerciseDb.getExerciseDeletionImpact(exerciseId, authenticatedUserId);
   } catch (error) {
     log(
       "error",
@@ -934,7 +941,7 @@ module.exports = {
 
 async function getExercisesNeedingReview(authenticatedUserId) {
   try {
-    const exercisesNeedingReview = await exerciseRepository.getExercisesNeedingReview(authenticatedUserId);
+  const exercisesNeedingReview = await exerciseDb.getExercisesNeedingReview(authenticatedUserId);
     return exercisesNeedingReview;
   } catch (error) {
     log("error", `Error getting exercises needing review for user ${authenticatedUserId}:`, error);
@@ -945,7 +952,7 @@ async function getExercisesNeedingReview(authenticatedUserId) {
 async function updateExerciseEntriesSnapshot(authenticatedUserId, exerciseId) {
   try {
     // Fetch the latest exercise details
-    const exercise = await exerciseRepository.getExerciseById(exerciseId, authenticatedUserId);
+    const exercise = await exerciseDb.getExerciseById(exerciseId, authenticatedUserId);
     if (!exercise) {
       throw new Error("Exercise not found.");
     }
@@ -957,10 +964,10 @@ async function updateExerciseEntriesSnapshot(authenticatedUserId, exerciseId) {
     };
 
     // Update all relevant exercise entries for the authenticated user
-    await exerciseRepository.updateExerciseEntriesSnapshot(authenticatedUserId, exerciseId, newSnapshotData);
+  await exerciseDb.updateExerciseEntriesSnapshot(authenticatedUserId, exerciseId, newSnapshotData);
 
     // Clear any ignored updates for this exercise for this user
-    await exerciseRepository.clearUserIgnoredUpdate(authenticatedUserId, exerciseId);
+  await exerciseDb.clearUserIgnoredUpdate(authenticatedUserId, exerciseId);
 
     return { message: "Exercise entries updated successfully." };
   } catch (error) {
@@ -1031,25 +1038,25 @@ async function importExercisesFromJson(authenticatedUserId, exercisesArray) {
         newExerciseData.images = [];
       }
  
-      const existingExercise = await exerciseRepository.searchExercises(exerciseName, authenticatedUserId, [], []);
+      const existingExercise = await exerciseDb.searchExercises(exerciseName, authenticatedUserId, [], []);
       if (existingExercise && existingExercise.length > 0) {
         // Check for exact duplicate before updating
         const isDuplicate = existingExercise.some(
           (ex) => ex.name.toLowerCase() === exerciseName.toLowerCase()
         );
- 
+
         if (isDuplicate) {
           duplicates.push({ name: exerciseName, reason: 'Exercise with this name already exists.' });
           failedCount++;
           failedRows.push({ row: exerciseData, reason: 'Duplicate exercise name.' });
           continue;
         }
- 
+
         // Assuming the first match is the one to update
-        await exerciseRepository.updateExercise(existingExercise[0].id, authenticatedUserId, newExerciseData);
+        await exerciseDb.updateExercise(existingExercise[0].id, authenticatedUserId, newExerciseData);
         updatedCount++;
       } else {
-        await exerciseRepository.createExercise(newExerciseData);
+        await exerciseDb.createExercise(newExerciseData);
         createdCount++;
       }
     } catch (rowError) {

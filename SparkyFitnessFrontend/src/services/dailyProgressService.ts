@@ -72,12 +72,13 @@ export const getExerciseEntriesForDate = async (date: string): Promise<ExerciseE
 
 export const getCheckInMeasurementsForDate = async (date: string): Promise<CheckInMeasurement | null> => {
   try {
-    const params = new URLSearchParams({ date });
-    const measurement = await apiCall(`/measurements/check-in/latest-on-or-before-date?${params.toString()}`, {
+    // For daily metrics like steps we must fetch the measurement for the exact date only.
+    // Use the exact-date endpoint so older measurements (e.g. previous-days' steps) are not reused.
+    const measurement = await apiCall(`/measurements/check-in/${encodeURIComponent(date)}`, {
       method: 'GET',
-      suppress404Toast: true, // Suppress toast for 404
+      suppress404Toast: true,
     });
-    return measurement; // Will be null if 404
+    return measurement || null; // Normalize to null when not found
   } catch (error: any) { // Explicitly type error as any
     // If it's a 404 and we suppressed the toast, it means no measurement was found.
     // Return null as expected by the component.
