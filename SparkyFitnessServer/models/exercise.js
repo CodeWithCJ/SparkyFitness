@@ -82,7 +82,7 @@ async function getOrCreateActiveCaloriesExercise(userId, source = 'Health Data')
 async function getExercisesWithPagination(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, limit, offset) {
   const client = await getClient(targetUserId);
   try {
-    let whereClauses = ['1=1'];
+    let whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -145,7 +145,7 @@ async function getExercisesWithPagination(targetUserId, searchTerm, categoryFilt
 async function countExercises(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter) {
   const client = await getClient(targetUserId);
   try {
-    let whereClauses = ['1=1'];
+    let whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -250,7 +250,7 @@ async function getDistinctMuscleGroups() {
 async function searchExercises(name, userId, equipmentFilter, muscleGroupFilter) {
   const client = await getClient(userId);
   try {
-    let whereClauses = ['1=1'];
+    let whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -281,7 +281,7 @@ async function searchExercises(name, userId, equipmentFilter, muscleGroupFilter)
               primary_muscles, secondary_muscles, instructions, category, images,
               calories_per_hour, description, user_id, is_custom, shared_with_public
        FROM exercises
-       WHERE ${whereClauses.join(' AND ')} LIMIT 50`; // Added a limit to prevent too many results
+  WHERE ${whereClauses.join(' AND ')} LIMIT 50`; // Added a limit to prevent too many results
     const result = await client.query(finalQuery, queryParams);
     return result.rows.map(row => {
       // Helper function to safely parse JSONB fields into arrays
@@ -368,8 +368,9 @@ async function updateExercise(id, userId, updateData) {
         secondary_muscles = COALESCE($12, secondary_muscles),
         instructions = COALESCE($13, instructions),
         images = COALESCE($14, images),
+        is_quick_exercise = COALESCE($15, is_quick_exercise),
         updated_at = now()
-      WHERE id = $15
+      WHERE id = $16
       RETURNING *`,
       [
         updateData.name,
@@ -386,6 +387,7 @@ async function updateExercise(id, userId, updateData) {
         updateData.secondary_muscles ? JSON.stringify(updateData.secondary_muscles) : null,
         updateData.instructions ? JSON.stringify(updateData.instructions) : null,
         updateData.images ? JSON.stringify(updateData.images) : null,
+        typeof updateData.is_quick_exercise === 'boolean' ? updateData.is_quick_exercise : null,
         id,
       ]
     );
@@ -420,6 +422,7 @@ async function getRecentExercises(userId, limit) {
       FROM exercise_entries ee
       JOIN exercises e ON ee.exercise_id = e.id
       WHERE ee.user_id = $1
+        AND e.is_quick_exercise = FALSE
       GROUP BY e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
                e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
                e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
@@ -469,6 +472,7 @@ async function getTopExercises(userId, limit) {
       FROM exercise_entries ee
       JOIN exercises e ON ee.exercise_id = e.id
       WHERE ee.user_id = $1
+        AND e.is_quick_exercise = FALSE
       GROUP BY e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
                e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
                e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
@@ -620,7 +624,7 @@ async function deleteExerciseAndDependencies(exerciseId, userId) {
       USING workout_plan_templates wpt
       WHERE wpta.template_id = wpt.id
         AND wpta.exercise_id = $1
-        AND wp.user_id = $2
+        AND wpt.user_id = $2
     `, [exerciseId, userId]);
 log("info", `Deleted workout plan exercises for exercise ${exerciseId} in plans by user ${userId}`);
 

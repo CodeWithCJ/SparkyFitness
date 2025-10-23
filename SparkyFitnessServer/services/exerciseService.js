@@ -359,13 +359,19 @@ async function deleteExercise(authenticatedUserId, exerciseId, forceDelete = fal
         }
         return { message: "Exercise and all its references deleted permanently.", status: "force_deleted" };
       } else {
-        throw new Error("Exercise is in use and cannot be deleted without force delete.");
+        // Hide the exercise (mark as quick/hidden) so it won't appear in searches but existing references remain
+        log("info", `deleteExercise: Exercise ${exerciseId} has references only by current user. Hiding as quick exercise.`);
+        await exerciseDb.updateExercise(exerciseId, exerciseOwnerId, { is_quick_exercise: true });
+        return { message: "Exercise hidden (marked as quick exercise). Existing references remain.", status: "hidden" };
       }
     }
 
     // Scenario 3: References by other users
     if (otherUserReferences > 0) {
-        throw new Error("This exercise is used by other users and cannot be deleted.");
+        // If other users reference this exercise, hide it (mark as quick exercise) so it's removed from searches
+        log("info", `deleteExercise: Exercise ${exerciseId} has references by other users. Hiding as quick exercise.`);
+        await exerciseDb.updateExercise(exerciseId, exerciseOwnerId, { is_quick_exercise: true });
+        return { message: "Exercise hidden (marked as quick exercise). Existing references remain.", status: "hidden" };
     }
 
     // Fallback for any unhandled cases (should not be reached)
