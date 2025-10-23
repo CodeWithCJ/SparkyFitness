@@ -119,8 +119,8 @@ async function createExerciseEntry(userId, entryData, createdByUserId) {
       await client.query(setsQuery);
     }
 
-    await client.query('COMMIT');
-    return getExerciseEntryById(newEntryId, userId); // Refetch to get full data
+  await client.query('COMMIT');
+  return getExerciseEntryById(newEntryId, userId); // Refetch to get full data
   } catch (error) {
     await client.query('ROLLBACK');
     log('error', `Error creating exercise entry with snapshot:`, error);
@@ -215,8 +215,8 @@ async function updateExerciseEntry(id, userId, updateData) {
       }
     }
 
-    await client.query('COMMIT');
-    return getExerciseEntryById(id); // Refetch to get full data
+  await client.query('COMMIT');
+  return getExerciseEntryById(id, userId); // Refetch to get full data
   } finally {
     client.release();
   }

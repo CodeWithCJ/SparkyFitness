@@ -584,32 +584,27 @@ const ExerciseCard = ({
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="dark:text-slate-300">Exercise</CardTitle>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DialogTrigger asChild>
-                    <Button size="default" onClick={handleOpenAddDialog}>
-                      <Plus className="w-4 h-4 mr-1" />
-                      <Dumbbell className="w-4 h-4" />
-                    </Button>
-                  </DialogTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Add Exercise</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <DialogContent className="sm:max-w-[625px] overflow-y-auto max-h-[90vh]">
-              <AddExerciseDialog
-                open={isAddDialogOpen}
-                onOpenChange={setIsAddDialogOpen}
-                onExerciseAdded={handleExerciseSelect} // Use handleExerciseSelect for single exercises
-                onWorkoutPresetSelected={handleWorkoutPresetSelected} // Handle preset selection
-                mode="diary" // Indicate that it's opened from the diary
-              />
-            </DialogContent>
-          </Dialog>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="default" onClick={handleOpenAddDialog}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  <Dumbbell className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Add Exercise</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {/* Render the AddExerciseDialog directly. It manages its own Dialog/Content and headers. */}
+          <AddExerciseDialog
+            open={isAddDialogOpen}
+            onOpenChange={setIsAddDialogOpen}
+            onExerciseAdded={handleExerciseSelect}
+            onWorkoutPresetSelected={handleWorkoutPresetSelected}
+            mode="diary"
+          />
         </div>
       </CardHeader>
       <CardContent>
@@ -685,6 +680,12 @@ const ExerciseCard = ({
                           />
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl">
+                          <DialogHeader>
+                            <DialogTitle>{entry.exercises?.name || 'Exercise Image'}</DialogTitle>
+                            <DialogDescription>
+                              Preview of the exercise image.
+                            </DialogDescription>
+                          </DialogHeader>
                           <img
                             src={entry.image_url ? entry.image_url : (entry.exercises?.images && entry.exercises.images.length > 0 ? (entry.exercises.source ? `/uploads/exercises/${entry.exercises.images[0]}` : entry.exercises.images[0]) : '')}
                             alt={entry.exercises?.name || 'Exercise'}

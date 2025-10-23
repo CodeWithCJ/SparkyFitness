@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Edit, Save, X, Database } from "lucide-react"; // Changed icon
+import { Plus, Trash2, Edit, Save, X, Database, Users, Share2, Lock } from "lucide-react";
 import { apiCall } from '@/services/api';
+import { toggleProviderPublicSharing } from '@/services/externalProviderService';
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
@@ -20,7 +21,9 @@ interface ExternalDataProvider { // Renamed interface
   app_key: string | null;
   is_active: boolean;
   base_url: string | null; // Add base_url field
+  user_id?: string;
   visibility: 'private' | 'public' | 'family';
+  shared_with_public?: boolean;
 }
 
 const ExternalProviderSettings = () => { // Renamed component
@@ -52,7 +55,9 @@ const ExternalProviderSettings = () => { // Renamed component
 
     setLoading(true);
     try {
-      const data = await apiCall(`/external-providers/user/${user.id}`, { // Corrected API endpoint
+      // Use the authenticated user's provider view which returns all providers
+      // visible to them (owner + family + public) — backend RLS will filter rows.
+      const data = await apiCall('/external-providers', {
         method: 'GET',
         suppress404Toast: true,
       });
@@ -538,13 +543,20 @@ const ExternalProviderSettings = () => { // Renamed component
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <h4 className="font-medium">{provider.provider_name}</h4>
-                            {provider.visibility === 'private' && (
-                              <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">Private</span>
+                            {/* Show Private badge for owners. If owner has shared_with_public true, also show Family badge (like foods). */}
+                            {(provider.visibility === 'private' || provider.user_id === user?.id) && (
+                              <>
+                                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">Private</span>
+                                {provider.shared_with_public && (
+                                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded ml-2">Public</span>
+                                )}
+                              </>
                             )}
-                            {provider.visibility === 'public' && (
+                            {/* For non-owners, show Public or Family as appropriate */}
+                            {provider.user_id !== user?.id && provider.visibility === 'public' && (
                               <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Public</span>
                             )}
-                            {provider.visibility === 'family' && (
+                            {provider.user_id !== user?.id && provider.visibility === 'family' && (
                               <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Family</span>
                             )}
                           </div>
@@ -562,21 +574,45 @@ const ExternalProviderSettings = () => { // Renamed component
                               onCheckedChange={(checked) => handleToggleActive(provider.id, checked)}
                               disabled={loading}
                             />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => startEditing(provider)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteProvider(provider.id)}
-                              disabled={loading}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {provider.visibility === 'private' ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => startEditing(provider)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteProvider(provider.id)}
+                                  disabled={loading}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      const newState = !provider.shared_with_public;
+                                      await toggleProviderPublicSharing(provider.id, newState);
+                                      toast({ title: 'Success', description: newState ? 'Provider shared publicly' : 'Provider made private' });
+                                      loadProviders();
+                                    } catch (err: any) {
+                                      toast({ title: 'Error', description: err.message || 'Failed to update provider sharing', variant: 'destructive' });
+                                    }
+                                  }}
+                                >
+                                  {/* When provider is public, show a lock icon (indicates shared/locked), otherwise show Share icon */}
+                                  {provider.shared_with_public ? <Lock className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                                </Button>
+                              </>
+                            ) : (
+                              // For public or family-shared providers we don't allow edit/delete from the UI
+                              <div className="text-xs text-muted-foreground px-2 py-1 rounded">Read-only</div>
+                            )}
                           </div>
                         </div>
                       </div>

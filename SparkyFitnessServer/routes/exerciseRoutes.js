@@ -325,18 +325,29 @@ router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
 // Endpoint to delete an exercise
 router.delete('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
+  const { forceDelete } = req.query; // Get forceDelete from query parameters
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
     return res.status(400).json({ error: 'Exercise ID is required and must be a valid UUID.' });
   }
   try {
-    const result = await exerciseService.deleteExercise(req.userId, id);
-    res.status(200).json({ message: result.message });
+    const result = await exerciseService.deleteExercise(req.userId, id, forceDelete === "true");
+    // Based on the result status, return appropriate messages and status codes
+    if (result.status === "deleted") {
+      res.status(200).json({ message: result.message });
+    } else if (result.status === "force_deleted") {
+      res.status(200).json({ message: result.message });
+    } else if (result.status === "hidden") {
+      res.status(200).json({ message: result.message });
+    } else {
+      // Fallback for unexpected status
+      res.status(500).json({ error: "An unexpected error occurred during deletion." });
+    }
   } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
+    if (error.message.startsWith("Forbidden")) {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message === 'Exercise not found or not authorized to delete.') {
+    if (error.message === "Exercise not found." || error.message === "Exercise not found or not authorized to delete.") {
       return res.status(404).json({ error: error.message });
     }
     next(error);
