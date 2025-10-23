@@ -531,19 +531,120 @@ async function getExerciseBySourceAndSourceId(source, sourceId) {
   }
 }
 
-async function getExerciseDeletionImpact(exerciseId) {
-    const client = await getSystemClient();
-    try {
-        const result = await client.query(
-            'SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1',
-            [exerciseId]
-        );
-        return {
-            exerciseEntriesCount: parseInt(result.rows[0].count, 10),
-        };
-    } finally {
-        client.release();
+async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
+  const client = await getClient(authenticatedUserId);
+  const systemClient = await getSystemClient();
+  try {
+    const publicExerciseResult = await systemClient.query(
+      "SELECT shared_with_public FROM exercises WHERE id = $1",
+      [exerciseId]
+    );
+    const isPubliclyShared = publicExerciseResult.rows[0]?.shared_with_public || false;
+
+    const exerciseOwnerResult = await systemClient.query(
+      "SELECT user_id FROM exercises WHERE id = $1",
+      [exerciseId]
+    );
+    const exerciseOwnerId = exerciseOwnerResult.rows[0]?.user_id;
+
+    const currentUserReferencesQueries = [
+      client.query("SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2", [exerciseId, authenticatedUserId]),
+      client.query("SELECT COUNT(*) FROM workout_plan_template_assignments wpta JOIN workout_plan_templates wpt ON wpta.template_id = wpt.id WHERE wpta.exercise_id = $1 AND wpt.user_id = $2", [exerciseId, authenticatedUserId]),
+      client.query("SELECT COUNT(*) FROM workout_preset_exercises wpe JOIN workout_presets wp ON wpe.workout_preset_id = wp.id WHERE wpe.exercise_id = $1 AND wp.user_id = $2", [exerciseId, authenticatedUserId]),
+    ];
+    const currentUserReferencesResults = await Promise.all(currentUserReferencesQueries);
+    const currentUserExerciseEntriesCount = parseInt(currentUserReferencesResults[0].rows[0].count, 10);
+    const currentUserWorkoutPlansCount = parseInt(currentUserReferencesResults[1].rows[0].count, 10);
+    const currentUserWorkoutPresetsCount = parseInt(currentUserReferencesResults[2].rows[0].count, 10);
+
+    const currentUserReferences =
+      currentUserExerciseEntriesCount +
+      currentUserWorkoutPlansCount +
+      currentUserWorkoutPresetsCount;
+
+    const otherUserReferencesQueries = [
+      systemClient.query("SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id != $2", [exerciseId, authenticatedUserId]),
+      systemClient.query("SELECT COUNT(*) FROM workout_plan_template_assignments wpta JOIN workout_plan_templates wpt ON wpta.template_id = wpt.id WHERE wpta.exercise_id = $1 AND wpt.user_id != $2", [exerciseId, authenticatedUserId]),
+      systemClient.query("SELECT COUNT(*) FROM workout_preset_exercises wpe JOIN workout_presets wp ON wpe.workout_preset_id = wp.id WHERE wpe.exercise_id = $1 AND wp.user_id != $2", [exerciseId, authenticatedUserId]),
+    ];
+    const otherUserReferencesResults = await Promise.all(otherUserReferencesQueries);
+    const otherUserExerciseEntriesCount = parseInt(otherUserReferencesResults[0].rows[0].count, 10);
+    const otherUserWorkoutPlansCount = parseInt(otherUserReferencesResults[1].rows[0].count, 10);
+    const otherUserWorkoutPresetsCount = parseInt(otherUserReferencesResults[2].rows[0].count, 10);
+
+    const otherUserReferences =
+      otherUserExerciseEntriesCount +
+      otherUserWorkoutPlansCount +
+      otherUserWorkoutPresetsCount;
+
+    let familySharedUsers = [];
+    if (exerciseOwnerId === authenticatedUserId) {
+      const familyAccessResult = await client.query(
+        `SELECT fa.family_user_id
+         FROM family_access fa
+         WHERE fa.owner_user_id = $1
+           AND fa.is_active = TRUE
+           AND (fa.access_end_date IS NULL OR fa.access_end_date > NOW())
+           AND (fa.access_permissions->>'diary')::boolean = TRUE`,
+        [authenticatedUserId]
+      );
+      familySharedUsers = familyAccessResult.rows.map(row => row.family_user_id);
     }
+
+    return {
+      exerciseEntriesCount: currentUserExerciseEntriesCount + otherUserExerciseEntriesCount,
+      workoutPlansCount: currentUserWorkoutPlansCount + otherUserWorkoutPlansCount,
+      workoutPresetsCount: currentUserWorkoutPresetsCount + otherUserWorkoutPresetsCount,
+      totalReferences: currentUserReferences + otherUserReferences,
+      currentUserReferences: currentUserReferences,
+      otherUserReferences: otherUserReferences,
+      isPubliclyShared: isPubliclyShared,
+      familySharedUsers: familySharedUsers,
+    };
+  } finally {
+    client.release();
+    systemClient.release();
+  }
+}
+
+async function deleteExerciseAndDependencies(exerciseId, userId) {
+  const client = await getClient(userId);
+  try {
+    await client.query("BEGIN");
+
+    await client.query("DELETE FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2", [exerciseId, userId]);
+    log("info", `Deleted exercise entries for exercise ${exerciseId} by user ${userId}`);
+
+    await client.query(`
+      DELETE FROM workout_plan_template_assignments wpta
+      USING workout_plan_templates wpt
+      WHERE wpta.template_id = wpt.id
+        AND wpta.exercise_id = $1
+        AND wp.user_id = $2
+    `, [exerciseId, userId]);
+log("info", `Deleted workout plan exercises for exercise ${exerciseId} in plans by user ${userId}`);
+
+    await client.query(`
+      DELETE FROM workout_preset_exercises wpe
+      USING workout_presets wp
+      WHERE wpe.workout_preset_id = wp.id
+        AND wpe.exercise_id = $1
+        AND wp.user_id = $2
+    `, [exerciseId, userId]);
+    log("info", `Deleted workout preset exercises for exercise ${exerciseId} in presets by user ${userId}`);
+
+    const result = await client.query("DELETE FROM exercises WHERE id = $1 AND user_id = $2 RETURNING id", [exerciseId, userId]);
+    log("info", `Deleted exercise ${exerciseId} by user ${userId}`);
+
+    await client.query("COMMIT");
+    return result.rowCount > 0;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    log("error", `Error deleting exercise and dependencies for exercise ${exerciseId} by user ${userId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 module.exports = {
@@ -562,4 +663,5 @@ module.exports = {
   getTopExercises,
   getExerciseBySourceAndSourceId,
   getExerciseDeletionImpact,
+  deleteExerciseAndDependencies,
 };

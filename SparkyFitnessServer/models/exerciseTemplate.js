@@ -3,6 +3,7 @@ const format = require('pg-format');
 const { log } = require('../config/logging');
 const workoutPresetRepository = require('./workoutPresetRepository');
 const { getExerciseById } = require('./exercise');
+const exerciseService = require('../services/exerciseService');
 
 async function createExerciseEntriesFromTemplate(templateId, userId, currentClientDate = null) {
   log('info', `createExerciseEntriesFromTemplate called for templateId: ${templateId}, userId: ${userId}`);
@@ -68,29 +69,22 @@ async function createExerciseEntriesFromTemplate(templateId, userId, currentClie
       for (const assignment of template.assignments) {
         if (assignment.day_of_week === currentDayOfWeek) {
           const processExercise = async (exerciseId, sets, notes) => {
-            const exerciseDetails = await getExerciseById(exerciseId);
+            const exerciseDetails = await getExerciseById(exerciseId, userId);
+            log('info', `createExerciseEntriesFromTemplate - Fetched exerciseDetails for ${exerciseId}:`, exerciseDetails);
             const durationMinutes = sets?.reduce((acc, set) => acc + (set.duration || 0), 0) || 30;
             const caloriesPerHour = exerciseDetails.calories_per_hour || 0;
             const caloriesBurned = (caloriesPerHour / 60) * durationMinutes;
 
-            log('info', `createExerciseEntriesFromTemplate - Assignment day_of_week (${assignment.day_of_week}) matches currentDayOfWeek (${currentDayOfWeek}) for date ${entryDate}. Adding to entriesToInsert.`);
-            const entryResult = await client.query(
-              `INSERT INTO exercise_entries (user_id, exercise_id, entry_date, notes, workout_plan_assignment_id, duration_minutes, calories_burned)
-               VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-              [userId, exerciseId, entryDate, notes, assignment.id, durationMinutes, caloriesBurned]
-            );
-            const newEntryId = entryResult.rows[0].id;
-
-            if (sets && sets.length > 0) {
-              const setsValues = sets.map(set => [
-                newEntryId, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
-              ]);
-              const setsQuery = format(
-                `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
-                setsValues
-              );
-              await client.query(setsQuery);
-            }
+            log('info', `createExerciseEntriesFromTemplate - Assignment day_of_week (${assignment.day_of_week}) matches currentDayOfWeek (${currentDayOfWeek}) for date ${entryDate}. Creating exercise entry.`);
+            await exerciseService.createExerciseEntry(userId, userId, {
+              exercise_id: exerciseId,
+              duration_minutes: durationMinutes,
+              calories_burned: caloriesBurned,
+              entry_date: entryDate,
+              notes: notes,
+              sets: sets,
+              workout_plan_assignment_id: assignment.id,
+            });
           };
 
           if (assignment.exercise_id) {
@@ -99,7 +93,7 @@ async function createExerciseEntriesFromTemplate(templateId, userId, currentClie
             await processExercise(assignment.exercise_id, sets, null);
           } else if (assignment.workout_preset_id) {
             log('info', `createExerciseEntriesFromTemplate - Found workout_preset_id ${assignment.workout_preset_id} for date ${entryDate}.`);
-            const preset = await workoutPresetRepository.getWorkoutPresetById(assignment.workout_preset_id);
+            const preset = await workoutPresetRepository.getWorkoutPresetById(assignment.workout_preset_id, userId);
             if (preset && preset.exercises) {
               for (const exercise of preset.exercises) {
                 log('info', `Adding exercise ${exercise.exercise_id} from preset ${preset.id} to entriesToInsert.`);

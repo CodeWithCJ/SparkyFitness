@@ -15,7 +15,7 @@ async function createWorkoutPlanTemplate(userId, planData, currentClientDate = n
                 }
             }
             if (assignment.exercise_id) {
-                const exercise = await exerciseRepository.getExerciseById(assignment.exercise_id);
+                const exercise = await exerciseRepository.getExerciseById(assignment.exercise_id, userId);
                 if (!exercise) {
                     throw new Error(`Exercise with ID ${assignment.exercise_id} not found.`);
                 }
@@ -43,7 +43,7 @@ async function getWorkoutPlanTemplatesByUserId(userId) {
 }
 
 async function getWorkoutPlanTemplateById(userId, templateId) {
-    const template = await workoutPlanTemplateRepository.getWorkoutPlanTemplateById(templateId);
+    const template = await workoutPlanTemplateRepository.getWorkoutPlanTemplateById(templateId, userId);
     if (!template) {
         throw new Error('Workout plan template not found.');
     }
@@ -56,7 +56,7 @@ async function getWorkoutPlanTemplateById(userId, templateId) {
 
 async function updateWorkoutPlanTemplate(userId, templateId, updateData, currentClientDate = null) {
     log('info', `updateWorkoutPlanTemplate service - received updateData for template ${templateId}:`, updateData);
-    const ownerId = await workoutPlanTemplateRepository.getWorkoutPlanTemplateOwnerId(templateId);
+    const ownerId = await workoutPlanTemplateRepository.getWorkoutPlanTemplateOwnerId(templateId, userId);
     if (ownerId !== userId) {
         throw new Error('Forbidden: You do not have permission to update this workout plan template.');
     }
@@ -70,7 +70,7 @@ async function updateWorkoutPlanTemplate(userId, templateId, updateData, current
                 }
             }
             if (assignment.exercise_id) {
-                const exercise = await exerciseRepository.getExerciseById(assignment.exercise_id);
+                const exercise = await exerciseRepository.getExerciseById(assignment.exercise_id, userId);
                 if (!exercise) {
                     throw new Error(`Exercise with ID ${assignment.exercise_id} not found.`);
                 }
@@ -99,7 +99,7 @@ async function updateWorkoutPlanTemplate(userId, templateId, updateData, current
 
 async function deleteWorkoutPlanTemplate(userId, templateId) {
     log('info', `deleteWorkoutPlanTemplate service - received templateId: ${templateId} for user: ${userId}`);
-    const ownerId = await workoutPlanTemplateRepository.getWorkoutPlanTemplateOwnerId(templateId);
+    const ownerId = await workoutPlanTemplateRepository.getWorkoutPlanTemplateOwnerId(templateId, userId);
     if (ownerId !== userId) {
         throw new Error('Forbidden: You do not have permission to delete this workout plan template.');
     }

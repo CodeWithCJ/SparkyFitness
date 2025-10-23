@@ -129,8 +129,8 @@ async function getWorkoutPlanTemplatesByUserId(userId) {
     }
 }
 
-async function getWorkoutPlanTemplateById(templateId) {
-    const client = await getClient(templateId); // User-specific operation (RLS will handle access)
+async function getWorkoutPlanTemplateById(templateId, userId) {
+    const client = await getClient(userId); // User-specific operation (RLS will handle access)
     try {
         const query = `
             SELECT
@@ -307,8 +307,8 @@ async function deleteWorkoutPlanTemplate(templateId, userId) {
     }
 }
 
-async function getWorkoutPlanTemplateOwnerId(templateId) {
-    const client = await getClient(templateId); // User-specific operation (RLS will handle access)
+async function getWorkoutPlanTemplateOwnerId(templateId, userId) {
+    const client = await getClient(userId); // User-specific operation (RLS will handle access)
     try {
         const result = await client.query(
             `SELECT user_id FROM workout_plan_templates WHERE id = $1`,

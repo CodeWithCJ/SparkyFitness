@@ -306,52 +306,75 @@ async function updateExercise(authenticatedUserId, id, updateData) {
   }
 }
 
-async function deleteExercise(authenticatedUserId, id) {
+async function deleteExercise(authenticatedUserId, exerciseId, forceDelete = false) {
+  log("info", `deleteExercise: Attempting to delete exercise ${exerciseId} by user ${authenticatedUserId}. Force delete: ${forceDelete}`);
   try {
-    const exercise = await exerciseRepository.getExerciseById(id, authenticatedUserId); // Get exercise details
-    if (!exercise) {
-      throw new Error('Exercise not found.');
+    const exerciseOwnerId = await exerciseRepository.getExerciseOwnerId(exerciseId, authenticatedUserId);
+    if (!exerciseOwnerId) {
+      log("warn", `deleteExercise: Exercise ${exerciseId} not found for user ${authenticatedUserId}.`);
+      throw new Error("Exercise not found.");
     }
-    if (exercise.user_id !== authenticatedUserId) {
-      throw new Error('Forbidden: You do not have permission to delete this exercise.');
+    if (exerciseOwnerId !== authenticatedUserId) {
+      log("warn", `deleteExercise: User ${authenticatedUserId} forbidden from deleting exercise ${exerciseId} owned by ${exerciseOwnerId}.`);
+      throw new Error(
+        "Forbidden: You do not have permission to delete this exercise."
+      );
     }
 
-    const success = await exerciseRepository.deleteExercise(id, authenticatedUserId);
-    if (!success) {
-      throw new Error('Exercise not found or not authorized to delete.');
-    }
+    const deletionImpact = await exerciseRepository.getExerciseDeletionImpact(exerciseId, authenticatedUserId);
+    log("info", `deleteExercise: Deletion impact for exercise ${exerciseId}: ${JSON.stringify(deletionImpact)}`);
 
-    // Delete associated images and their folder
-    if (exercise.images) {
-      let imagePaths = [];
-      if (Array.isArray(exercise.images)) {
-        imagePaths = exercise.images;
-      } else if (typeof exercise.images === 'string') {
-        try {
-          imagePaths = JSON.parse(exercise.images);
-          if (typeof imagePaths === 'string') { // Handle double-encoded JSON string
-            imagePaths = [imagePaths];
-          }
-        } catch (e) {
-          imagePaths = [exercise.images]; // Treat as a single path string
-        }
+    const {
+      exerciseEntriesCount,
+      workoutPlansCount,
+      workoutPresetsCount,
+      currentUserReferences,
+      otherUserReferences,
+      isPubliclyShared,
+      familySharedUsers,
+    } = deletionImpact;
+
+    const totalReferences = exerciseEntriesCount + workoutPlansCount + workoutPresetsCount;
+
+    // Scenario 1: No references at all
+    if (totalReferences === 0) {
+      log("info", `deleteExercise: Exercise ${exerciseId} has no references. Performing hard delete.`);
+      const success = await exerciseRepository.deleteExerciseAndDependencies(exerciseId, authenticatedUserId);
+      if (!success) {
+        throw new Error("Exercise not found or not authorized to delete.");
       }
+      return { message: "Exercise deleted permanently.", status: "deleted" };
+    }
 
-      if (imagePaths.length > 0 && imagePaths[0]) {
-        // Assuming all images for an exercise are in the same folder
-        const folderName = imagePaths[0].split('/')[0];
-        const exerciseUploadPath = path.join(__dirname, '../uploads/exercises', folderName);
-
-        if (fs.existsSync(exerciseUploadPath)) {
-          fs.rmSync(exerciseUploadPath, { recursive: true, force: true });
-          log('info', `Deleted exercise image folder: ${exerciseUploadPath}`);
+    // Scenario 2: References only by the current user
+    if (otherUserReferences === 0) {
+      if (forceDelete) {
+        log("info", `deleteExercise: Exercise ${exerciseId} has references only by current user. Force deleting.`);
+        const success = await exerciseRepository.deleteExerciseAndDependencies(exerciseId, authenticatedUserId);
+        if (!success) {
+          throw new Error("Exercise not found or not authorized to delete.");
         }
+        return { message: "Exercise and all its references deleted permanently.", status: "force_deleted" };
+      } else {
+        throw new Error("Exercise is in use and cannot be deleted without force delete.");
       }
     }
 
-    return { message: 'Exercise deleted successfully.' };
+    // Scenario 3: References by other users
+    if (otherUserReferences > 0) {
+        throw new Error("This exercise is used by other users and cannot be deleted.");
+    }
+
+    // Fallback for any unhandled cases (should not be reached)
+    log("warn", `deleteExercise: Unhandled deletion scenario for exercise ${exerciseId}.`);
+    throw new Error("Could not delete exercise due to an unknown issue.");
+
   } catch (error) {
-    log('error', `Error deleting exercise ${id} by ${authenticatedUserId}:`, error);
+    log(
+      "error",
+      `Error deleting exercise ${exerciseId} by user ${authenticatedUserId} in exerciseService:`,
+      error
+    );
     throw error;
   }
 }
@@ -857,19 +880,24 @@ async function importExercisesFromCSV(authenticatedUserId, filePath) {
   };
 }
  
-async function getExerciseDeletionImpact(exerciseId) {
-    const client = await getSystemClient(); // System-level operation
-    try {
-        const result = await client.query(
-            'SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1',
-            [exerciseId]
-        );
-        return {
-            exerciseEntriesCount: parseInt(result.rows[0].count, 10),
-        };
-    } finally {
-        client.release();
+async function getExerciseDeletionImpact(authenticatedUserId, exerciseId) {
+  log("info", `getExerciseDeletionImpact: Checking deletion impact for exercise ${exerciseId} by user ${authenticatedUserId}`);
+  try {
+    const exerciseOwnerId = await exerciseRepository.getExerciseOwnerId(exerciseId, authenticatedUserId);
+    if (!exerciseOwnerId) {
+      log("warn", `getExerciseDeletionImpact: Exercise ${exerciseId} not found for user ${authenticatedUserId}.`);
+      throw new Error("Exercise not found.");
     }
+    // No need to check permission here, as exerciseRepository.getExerciseDeletionImpact handles it
+    return await exerciseRepository.getExerciseDeletionImpact(exerciseId, authenticatedUserId);
+  } catch (error) {
+    log(
+      "error",
+      `Error getting exercise deletion impact for exercise ${exerciseId} by user ${authenticatedUserId} in exerciseService:`,
+      error
+    );
+    throw error;
+  }
 }
 
 module.exports = {

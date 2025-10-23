@@ -38,7 +38,7 @@ async function createWorkoutPreset(presetData) {
 
     await client.query('COMMIT');
     // Refetch the created preset to get the full nested structure
-    return getWorkoutPresetById(newPreset.id);
+    return getWorkoutPresetById(newPreset.id, presetData.user_id);
   } catch (error) {
     await client.query('ROLLBACK');
     log('error', `Error creating workout preset:`, error);
@@ -79,10 +79,10 @@ async function getWorkoutPresets(userId) {
            ), '[]'::json
          ) AS exercises
        FROM workout_presets wp
-       WHERE wp.is_public = TRUE
+       WHERE wp.is_public = TRUE OR wp.user_id = $1
        GROUP BY wp.id
        ORDER BY wp.name ASC`,
-      []
+      [userId]
     );
     return result.rows;
   } finally {
@@ -90,8 +90,8 @@ async function getWorkoutPresets(userId) {
   }
 }
 
-async function getWorkoutPresetById(presetId) {
-  const client = await getClient(presetId); // User-specific operation (RLS will handle access)
+async function getWorkoutPresetById(presetId, userId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       `SELECT
@@ -179,7 +179,7 @@ async function updateWorkoutPreset(presetId, userId, updateData) {
 
     await client.query('COMMIT');
     // Refetch the updated preset to get the full nested structure
-    return getWorkoutPresetById(presetId);
+    return getWorkoutPresetById(presetId, userId);
   } catch (error) {
     await client.query('ROLLBACK');
     log('error', `Error updating workout preset ${presetId}:`, error);
@@ -208,8 +208,8 @@ async function deleteWorkoutPreset(presetId, userId) {
   }
 }
 
-async function getWorkoutPresetOwnerId(presetId) {
-  const client = await getClient(presetId); // User-specific operation (RLS will handle access)
+async function getWorkoutPresetOwnerId(userId, presetId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'SELECT user_id FROM workout_presets WHERE id = $1',
