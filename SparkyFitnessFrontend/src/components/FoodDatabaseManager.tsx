@@ -283,25 +283,17 @@ const FoodDatabaseManager: React.FC = () => {
       );
     }
 
-    if (food.shared_with_public) {
+    if (food.user_id !== user?.id && !food.shared_with_public) {
       return (
         <Badge
           variant="outline"
-          className="text-xs w-fit bg-green-50 text-green-700"
+          className="text-xs w-fit bg-blue-50 text-blue-700"
         >
-          Public
+          Family
         </Badge>
       );
     }
-
-    return (
-      <Badge
-        variant="outline"
-        className="text-xs w-fit bg-blue-50 text-blue-700"
-      >
-        Family
-      </Badge>
-    );
+    return null; // No badge from getFoodSourceBadge if it's public and not owned by user
   };
 
   const getFilterTitle = () => {

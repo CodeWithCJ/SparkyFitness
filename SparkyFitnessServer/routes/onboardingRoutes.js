@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { authenticateToken } = require("../middleware/authMiddleware");
+const { authenticate } = require("../middleware/authMiddleware");
 const onboardingService = require("../services/onboardingService");
 
 router.use(express.json());
@@ -10,7 +10,7 @@ router.use(express.json());
  * @desc    Submit user onboarding data
  * @access  Private
  */
-router.post("/", authenticateToken, async (req, res, next) => {
+router.post("/", authenticate, async (req, res, next) => {
   try {
     const userId = req.userId;
     const onboardingData = req.body;
@@ -54,7 +54,7 @@ router.post("/", authenticateToken, async (req, res, next) => {
  * @desc    Check if the current user has completed onboarding
  * @access  Private
  */
-router.get("/status", authenticateToken, async (req, res, next) => {
+router.get("/status", authenticate, async (req, res, next) => {
   try {
     const userId = req.userId;
 

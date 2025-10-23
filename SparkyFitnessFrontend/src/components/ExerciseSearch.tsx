@@ -13,6 +13,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, Loader2, Search, ChevronLeft, ChevronRight, Volume2, XCircle } from "lucide-react"; // Added Loader2, Search, ChevronLeft, ChevronRight, Volume2, XCircle
 import { useToast } from "@/hooks/use-toast";
 import { getExternalDataProviders, DataProvider, getProviderCategory } from '@/services/externalProviderService'; // New import
+import { Badge } from "@/components/ui/badge";
+import { Share2, Users } from "lucide-react";
 import BodyMapFilter from './BodyMapFilter'; // Import BodyMapFilter
 import { Textarea } from "@/components/ui/textarea"; // New import
 import { Label } from "@/components/ui/label"; // New import
@@ -374,7 +376,16 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
               {exercises.map((exercise) => (
                 <div key={exercise.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
-                    <div className="font-medium">{exercise.name}</div>
+                    <div className="font-medium flex items-center gap-2">
+                        {exercise.name}
+                        {exercise.tags && exercise.tags.map(tag => (
+                            <Badge key={tag} variant="outline" className="text-xs">
+                                {tag === 'public' && <Share2 className="h-3 w-3 mr-1" />}
+                                {tag === 'family' && <Users className="h-3 w-3 mr-1" />}
+                                {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                            </Badge>
+                        ))}
+                    </div>
                     <div className="text-sm text-gray-500">
                       {exercise.category} • {exercise.calories_per_hour} cal/hour
                     </div>

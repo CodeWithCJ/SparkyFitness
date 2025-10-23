@@ -14,6 +14,9 @@ const fs = require('fs'); // Import file system module
 const path = require('path'); // Import path module
 const { isValidUuid, resolveExerciseIdToUuid } = require('../utils/uuidUtils'); // Import uuidUtils
 const papa = require('papaparse');
+const {
+  checkFamilyAccessPermission,
+} = require("../models/familyAccessRepository");
 
 async function getExercisesWithPagination(authenticatedUserId, targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, currentPage, itemsPerPage) {
   try {
@@ -24,7 +27,28 @@ async function getExercisesWithPagination(authenticatedUserId, targetUserId, sea
       exerciseRepository.getExercisesWithPagination(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, limit, offset),
       exerciseRepository.countExercises(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter)
     ]);
-    return { exercises, totalCount };
+    const taggedExercises = await Promise.all(
+        exercises.map(async (exercise) => {
+            const tags = [];
+            const isOwner = exercise.user_id === authenticatedUserId;
+
+            if (isOwner) {
+                tags.push("private");
+            }
+            
+            if (exercise.shared_with_public) {
+                tags.push("public");
+            }
+
+            if (!isOwner && !exercise.shared_with_public) {
+                // If not owned and not public, it must be visible due to family access
+                tags.push("family");
+            }
+
+            return { ...exercise, tags };
+        })
+    );
+    return { exercises: taggedExercises, totalCount };
   } catch (error) {
     log('error', `Error fetching exercises with pagination for user ${authenticatedUserId} and target ${targetUserId}:`, error);
     throw error;
@@ -34,7 +58,27 @@ async function getExercisesWithPagination(authenticatedUserId, targetUserId, sea
 async function searchExercises(authenticatedUserId, name, targetUserId, equipmentFilter, muscleGroupFilter) {
   try {
     const exercises = await exerciseRepository.searchExercises(name, targetUserId, equipmentFilter, muscleGroupFilter);
-    return exercises;
+    const taggedExercises = await Promise.all(
+      exercises.map(async (exercise) => {
+        const tags = [];
+        const isOwner = exercise.user_id === authenticatedUserId;
+
+        if (isOwner) {
+          tags.push("private");
+        }
+
+        if (exercise.shared_with_public) {
+          tags.push("public");
+        }
+
+        if (!isOwner && !exercise.shared_with_public) {
+            tags.push("family");
+        }
+
+        return { ...exercise, tags };
+      })
+    );
+    return taggedExercises;
   } catch (error) {
     log('error', `Error searching exercises for user ${authenticatedUserId} with name "${name}":`, error);
     throw error;
@@ -191,7 +235,7 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
 
 async function deleteExerciseEntry(authenticatedUserId, id) {
   try {
-    const entry = await exerciseRepository.getExerciseEntryById(id);
+    const entry = await exerciseRepository.getExerciseEntryById(id, authenticatedUserId);
     if (!entry) {
       throw new Error('Exercise entry not found.');
     }
@@ -626,7 +670,27 @@ async function getRecentExercises(authenticatedUserId, limit) {
     const preferences = await preferenceRepository.getUserPreferences(authenticatedUserId);
     const displayLimit = preferences?.item_display_limit || limit;
     const recentExercises = await exerciseRepository.getRecentExercises(authenticatedUserId, displayLimit);
-    return recentExercises;
+    const taggedExercises = await Promise.all(
+      recentExercises.map(async (exercise) => {
+        const tags = [];
+        const isOwner = exercise.user_id === authenticatedUserId;
+
+        if (isOwner) {
+          tags.push("private");
+        }
+        
+        if (exercise.shared_with_public) {
+          tags.push("public");
+        }
+
+        if (!isOwner && !exercise.shared_with_public) {
+            tags.push("family");
+        }
+
+        return { ...exercise, tags };
+      })
+    );
+    return taggedExercises;
   } catch (error) {
     log('error', `Error fetching recent exercises for user ${authenticatedUserId}:`, error);
     throw error;
@@ -638,7 +702,27 @@ async function getTopExercises(authenticatedUserId, limit) {
     const preferences = await preferenceRepository.getUserPreferences(authenticatedUserId);
     const displayLimit = preferences?.item_display_limit || limit;
     const topExercises = await exerciseRepository.getTopExercises(authenticatedUserId, displayLimit);
-    return topExercises;
+    const taggedExercises = await Promise.all(
+      topExercises.map(async (exercise) => {
+        const tags = [];
+        const isOwner = exercise.user_id === authenticatedUserId;
+
+        if (isOwner) {
+          tags.push("private");
+        }
+        
+        if (exercise.shared_with_public) {
+          tags.push("public");
+        }
+
+        if (!isOwner && !exercise.shared_with_public) {
+            tags.push("family");
+        }
+
+        return { ...exercise, tags };
+      })
+    );
+    return taggedExercises;
   } catch (error) {
     log('error', `Error fetching top exercises for user ${authenticatedUserId}:`, error);
     throw error;

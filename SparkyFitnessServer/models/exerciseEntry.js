@@ -63,7 +63,8 @@ async function createExerciseEntry(userId, entryData, createdByUserId) {
 
     // 1. Fetch the exercise details to create the snapshot
     const exerciseSnapshotQuery = await client.query(
-      `SELECT name, calories_per_hour FROM exercises WHERE id = $1`,
+      `SELECT name, calories_per_hour, category, source, source_id, force, level, mechanic, equipment, primary_muscles, secondary_muscles, instructions, images
+       FROM exercises WHERE id = $1`,
       [entryData.exercise_id]
     );
 
@@ -76,8 +77,10 @@ async function createExerciseEntry(userId, entryData, createdByUserId) {
     const entryResult = await client.query(
       `INSERT INTO exercise_entries (
          user_id, exercise_id, duration_minutes, calories_burned, entry_date, notes,
-         workout_plan_assignment_id, image_url, created_by_user_id, exercise_name, calories_per_hour
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+         workout_plan_assignment_id, image_url, created_by_user_id,
+         exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
+         equipment, primary_muscles, secondary_muscles, instructions, images
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING id`,
       [
         userId,
         entryData.exercise_id,
@@ -89,7 +92,18 @@ async function createExerciseEntry(userId, entryData, createdByUserId) {
         entryData.image_url || null,
         createdByUserId,
         snapshot.name, // exercise_name
-        snapshot.calories_per_hour, // calories_per_hour
+        snapshot.calories_per_hour,
+        snapshot.category,
+        snapshot.source,
+        snapshot.source_id,
+        snapshot.force,
+        snapshot.level,
+        snapshot.mechanic,
+        snapshot.equipment,
+        snapshot.primary_muscles,
+        snapshot.secondary_muscles,
+        snapshot.instructions,
+        snapshot.images,
       ]
     );
     const newEntryId = entryResult.rows[0].id;
@@ -106,7 +120,7 @@ async function createExerciseEntry(userId, entryData, createdByUserId) {
     }
 
     await client.query('COMMIT');
-    return getExerciseEntryById(newEntryId); // Refetch to get full data
+    return getExerciseEntryById(newEntryId, userId); // Refetch to get full data
   } catch (error) {
     await client.query('ROLLBACK');
     log('error', `Error creating exercise entry with snapshot:`, error);
@@ -116,23 +130,22 @@ async function createExerciseEntry(userId, entryData, createdByUserId) {
   }
 }
 
-async function getExerciseEntryById(id) {
+async function getExerciseEntryById(id, userId) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT ee.*, e.name as exercise_name,
-              COALESCE(
-                (SELECT json_agg(set_data ORDER BY set_data.set_number)
-                 FROM (
-                   SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes
-                   FROM exercise_entry_sets ees
-                   WHERE ees.exercise_entry_id = ee.id
-                 ) AS set_data
-                ), '[]'::json
-              ) AS sets
-       FROM exercise_entries ee
-       JOIN exercises e ON ee.exercise_id = e.id
-       WHERE ee.id = $1`,
+      `SELECT ee.*,
+               COALESCE(
+                 (SELECT json_agg(set_data ORDER BY set_data.set_number)
+                  FROM (
+                    SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes
+                    FROM exercise_entry_sets ees
+                    WHERE ees.exercise_entry_id = ee.id
+                  ) AS set_data
+                 ), '[]'::json
+               ) AS sets
+        FROM exercise_entries ee
+        WHERE ee.id = $1`,
       [id]
     );
     return result.rows[0];
@@ -141,8 +154,8 @@ async function getExerciseEntryById(id) {
   }
 }
 
-async function getExerciseEntryOwnerId(id) {
-  const client = await getClient(id);
+async function getExerciseEntryOwnerId(id, userId) {
+  const client = await getClient(userId);
   try {
     const entryResult = await client.query(
       'SELECT user_id FROM exercise_entries WHERE id = $1',
@@ -227,12 +240,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
   try {
     const result = await client.query(
       `SELECT
-         ee.id, ee.exercise_id, ee.duration_minutes, ee.calories_burned, ee.entry_date, ee.notes,
-         ee.workout_plan_assignment_id, ee.image_url, e.name AS exercise_name, e.category AS exercise_category,
-         e.calories_per_hour AS exercise_calories_per_hour, e.user_id AS exercise_user_id, e.source AS exercise_source,
-         e.source_id AS exercise_source_id, e.force AS exercise_force, e.level AS exercise_level,
-         e.mechanic AS exercise_mechanic, e.equipment AS exercise_equipment, e.primary_muscles AS exercise_primary_muscles,
-         e.secondary_muscles AS exercise_secondary_muscles, e.instructions AS exercise_instructions, e.images AS exercise_images,
+         ee.*,
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
@@ -243,36 +251,32 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
            ), '[]'::json
          ) AS sets
        FROM exercise_entries ee
-       JOIN exercises e ON ee.exercise_id = e.id
        WHERE ee.user_id = $1 AND ee.entry_date = $2`,
       [userId, selectedDate]
     );
 
     return result.rows.map(row => {
       const {
-        exercise_name, exercise_category, exercise_calories_per_hour, exercise_user_id,
-        exercise_source, exercise_source_id, exercise_force, exercise_level, exercise_mechanic,
-        exercise_equipment, exercise_primary_muscles, exercise_secondary_muscles,
-        exercise_instructions, exercise_images, ...entryData
+        exercise_name, category, calories_per_hour, source, source_id, force, level, mechanic,
+        equipment, primary_muscles, secondary_muscles, instructions, images, ...entryData
       } = row;
 
       return {
         ...entryData,
         exercises: {
           name: exercise_name,
-          category: exercise_category,
-          calories_per_hour: exercise_calories_per_hour,
-          user_id: exercise_user_id,
-          source: exercise_source,
-          source_id: exercise_source_id,
-          force: exercise_force,
-          level: exercise_level,
-          mechanic: exercise_mechanic,
-          equipment: exercise_equipment,
-          primary_muscles: exercise_primary_muscles,
-          secondary_muscles: exercise_secondary_muscles,
-          instructions: exercise_instructions,
-          images: exercise_images,
+          category: category,
+          calories_per_hour: calories_per_hour,
+          source: source,
+          source_id: source_id,
+          force: force,
+          level: level,
+          mechanic: mechanic,
+          equipment: equipment,
+          primary_muscles: primary_muscles,
+          secondary_muscles: secondary_muscles,
+          instructions: instructions,
+          images: images,
         }
       };
     });

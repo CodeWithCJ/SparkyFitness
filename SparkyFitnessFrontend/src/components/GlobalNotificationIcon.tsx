@@ -66,7 +66,7 @@ const GlobalNotificationIcon: React.FC = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Items Needing Review</DialogTitle>
+            <DialogTitle>Items Needing Review (WIP)</DialogTitle>
             <DialogDescription>
               You have {reviewCount} item(s) that require your attention.
             </DialogDescription>
