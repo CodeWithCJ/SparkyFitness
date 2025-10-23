@@ -7,7 +7,8 @@ async function getExternalDataProviders(userId) {
     const providers = await externalProviderRepository.getExternalDataProviders(userId);
     const providersWithVisibility = providers.map(p => ({
       ...p,
-      visibility: p.user_id === userId ? 'private' : 'public',
+      visibility: p.user_id === userId ? 'private' : (p.shared_with_public ? 'public' : 'family'),
+      shared_with_public: !!p.shared_with_public,
     }));
     log('debug', `externalProviderService: Providers from repository for user ${userId}:`, providersWithVisibility);
     return providersWithVisibility;
@@ -19,17 +20,13 @@ async function getExternalDataProviders(userId) {
 
 async function getExternalDataProvidersForUser(authenticatedUserId, targetUserId) {
   try {
-    // If the authenticated user is the same as the target user, no special permission is needed.
-    if (authenticatedUserId !== targetUserId) {
-      const hasPermission = await checkFamilyAccessPermission(authenticatedUserId, targetUserId, 'share_external_providers');
-      if (!hasPermission) {
-        throw new Error('Forbidden: You do not have permission to access this user\'s external data providers.');
-      }
-    }
-    const providers = await externalProviderRepository.getExternalDataProvidersByUserId(targetUserId);
+    // RLS will enforce visibility (owner/family/public). Use the viewer-scoped repository call
+    // to let the DB filter rows. Then map visibility for the response.
+    const providers = await externalProviderRepository.getExternalDataProvidersByUserId(authenticatedUserId, targetUserId);
     const providersWithVisibility = providers.map(p => ({
       ...p,
-      visibility: p.user_id === authenticatedUserId ? 'private' : (p.user_id === targetUserId ? 'family' : 'public'),
+      visibility: p.user_id === authenticatedUserId ? 'private' : (p.shared_with_public ? 'public' : 'family'),
+      shared_with_public: !!p.shared_with_public,
     }));
     return providersWithVisibility;
   } catch (error) {
@@ -54,6 +51,10 @@ async function updateExternalDataProvider(authenticatedUserId, providerId, updat
     const isOwner = await externalProviderRepository.checkExternalDataProviderOwnership(providerId, authenticatedUserId);
     if (!isOwner) {
       throw new Error("Forbidden: You do not have permission to update this external data provider.");
+    }
+    // Only allow owner to set shared_with_public
+    if (updateData.shared_with_public !== undefined) {
+      // no extra checks here - owner can toggle public sharing
     }
     const updatedProvider = await externalProviderRepository.updateExternalDataProvider(providerId, authenticatedUserId, updateData);
     if (!updatedProvider) {
@@ -86,7 +87,7 @@ async function deleteExternalDataProvider(authenticatedUserId, providerId) {
     if (!isOwner) {
       throw new Error("Forbidden: You do not have permission to delete this external data provider.");
     }
-    const success = await externalProviderRepository.deleteExternalDataProvider(providerId);
+  const success = await externalProviderRepository.deleteExternalDataProvider(providerId, authenticatedUserId);
     if (!success) {
       throw new Error('External data provider not found or not authorized to delete.');
     }

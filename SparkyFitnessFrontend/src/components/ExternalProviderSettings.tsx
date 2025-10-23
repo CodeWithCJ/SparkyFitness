@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Edit, Save, X, Database } from "lucide-react"; // Changed icon
+import { Plus, Trash2, Edit, Save, X, Database, Users, Share2 } from "lucide-react"; // Changed icon
 import { apiCall } from '@/services/api';
+import { toggleProviderPublicSharing } from '@/services/externalProviderService';
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
@@ -21,6 +22,7 @@ interface ExternalDataProvider { // Renamed interface
   is_active: boolean;
   base_url: string | null; // Add base_url field
   visibility: 'private' | 'public' | 'family';
+  shared_with_public?: boolean;
 }
 
 const ExternalProviderSettings = () => { // Renamed component
@@ -562,21 +564,44 @@ const ExternalProviderSettings = () => { // Renamed component
                               onCheckedChange={(checked) => handleToggleActive(provider.id, checked)}
                               disabled={loading}
                             />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => startEditing(provider)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteProvider(provider.id)}
-                              disabled={loading}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {provider.visibility === 'private' ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => startEditing(provider)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteProvider(provider.id)}
+                                  disabled={loading}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      const newState = !provider.shared_with_public;
+                                      await toggleProviderPublicSharing(provider.id, newState);
+                                      toast({ title: 'Success', description: newState ? 'Provider shared publicly' : 'Provider made private' });
+                                      loadProviders();
+                                    } catch (err: any) {
+                                      toast({ title: 'Error', description: err.message || 'Failed to update provider sharing', variant: 'destructive' });
+                                    }
+                                  }}
+                                >
+                                  {provider.shared_with_public ? <Users className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                                </Button>
+                              </>
+                            ) : (
+                              // For public or family-shared providers we don't allow edit/delete from the UI
+                              <div className="text-xs text-muted-foreground px-2 py-1 rounded">Read-only</div>
+                            )}
                           </div>
                         </div>
                       </div>

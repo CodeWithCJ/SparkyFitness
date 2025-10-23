@@ -6,7 +6,7 @@ async function getExternalDataProviders(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT id, user_id, provider_name, provider_type, is_active, base_url FROM external_data_providers ORDER BY created_at DESC',
+      'SELECT id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public FROM external_data_providers ORDER BY created_at DESC',
       []
     );
     log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
@@ -16,18 +16,21 @@ async function getExternalDataProviders(userId) {
   }
 }
 
-async function getExternalDataProvidersByUserId(targetUserId) {
-  const client = await getSystemClient(); // System-level operation
+async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
+  // Use a user-scoped client so RLS policies (based on app.user_id) are applied for the viewer
+  const client = await getClient(viewerUserId);
   try {
     const result = await client.query(
       `SELECT
-        id, user_id, provider_name, provider_type, is_active, base_url,
+        id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public,
         encrypted_app_id, app_id_iv, app_id_tag,
-        encrypted_app_key, app_key_iv, app_key_tag,
-        token_expires_at, external_user_id,
-        encrypted_garth_dump, garth_dump_iv, garth_dump_tag
-      FROM external_data_providers ORDER BY created_at DESC`,
-      []
+          encrypted_app_key, app_key_iv, app_key_tag,
+          token_expires_at, external_user_id,
+          encrypted_garth_dump, garth_dump_iv, garth_dump_tag
+        FROM external_data_providers
+        WHERE user_id = $1
+        ORDER BY created_at DESC`,
+        [targetUserId]
     );
     const providers = await Promise.all(result.rows.map(async (row) => {
       let decryptedAppId = null;
@@ -117,19 +120,20 @@ async function createExternalDataProvider(providerData) {
 
     const result = await client.query(
       `INSERT INTO external_data_providers (
-        provider_name, provider_type, user_id, is_active, base_url,
+        provider_name, provider_type, user_id, is_active, base_url, shared_with_public,
         encrypted_app_id, app_id_iv, app_id_tag,
         encrypted_app_key, app_key_iv, app_key_tag,
         token_expires_at, external_user_id,
         encrypted_garth_dump, garth_dump_iv, garth_dump_tag,
         created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, now(), now()) RETURNING id`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, now(), now()) RETURNING id`,
       [
         provider_name,
         provider_type,
         user_id,
         is_active,
         base_url,
+        providerData.shared_with_public || false,
         encryptedAppId,
         appIdIv,
         appIdTag,
@@ -182,25 +186,27 @@ async function updateExternalDataProvider(id, userId, updateData) {
         provider_type = COALESCE($2, provider_type),
         is_active = COALESCE($3, is_active),
         base_url = COALESCE($4, base_url),
-        encrypted_app_id = COALESCE($5, encrypted_app_id),
-        app_id_iv = COALESCE($6, app_id_iv),
-        app_id_tag = COALESCE($7, app_id_tag),
-        encrypted_app_key = COALESCE($8, encrypted_app_key),
-        app_key_iv = COALESCE($9, app_key_iv),
-        app_key_tag = COALESCE($10, app_key_tag),
-        encrypted_garth_dump = COALESCE($11, encrypted_garth_dump),
-        garth_dump_iv = COALESCE($12, garth_dump_iv),
-        garth_dump_tag = COALESCE($13, garth_dump_tag),
-        token_expires_at = COALESCE($14, token_expires_at),
-        external_user_id = COALESCE($15, external_user_id),
+        shared_with_public = COALESCE($5, shared_with_public),
+        encrypted_app_id = COALESCE($6, encrypted_app_id),
+        app_id_iv = COALESCE($7, app_id_iv),
+        app_id_tag = COALESCE($8, app_id_tag),
+        encrypted_app_key = COALESCE($9, encrypted_app_key),
+        app_key_iv = COALESCE($10, app_key_iv),
+        app_key_tag = COALESCE($11, app_key_tag),
+        encrypted_garth_dump = COALESCE($12, encrypted_garth_dump),
+        garth_dump_iv = COALESCE($13, garth_dump_iv),
+        garth_dump_tag = COALESCE($14, garth_dump_tag),
+        token_expires_at = COALESCE($15, token_expires_at),
+        external_user_id = COALESCE($16, external_user_id),
         updated_at = now()
-      WHERE id = $16
+      WHERE id = $17
       RETURNING *`,
       [
         updateData.provider_name,
         updateData.provider_type,
         updateData.is_active,
         updateData.base_url,
+        updateData.shared_with_public,
         encryptedAppId,
         appIdIv,
         appIdTag,
@@ -226,7 +232,7 @@ async function getExternalDataProviderById(providerId) {
   try {
     const result = await client.query(
       `SELECT
-        id, provider_name, provider_type, user_id, is_active, base_url,
+        id, provider_name, provider_type, user_id, is_active, base_url, shared_with_public,
         encrypted_app_id, app_id_iv, app_id_tag,
         encrypted_app_key, app_key_iv, app_key_tag,
         token_expires_at, external_user_id,
@@ -289,7 +295,7 @@ async function getExternalDataProviderByUserIdAndProviderName(userId, providerNa
       `SELECT
         id, provider_name, provider_type, encrypted_app_id, app_id_iv, app_id_tag,
         encrypted_app_key, app_key_iv, app_key_tag,
-        token_expires_at, external_user_id, is_active, base_url, updated_at,
+        token_expires_at, external_user_id, is_active, base_url, shared_with_public, updated_at,
         encrypted_garth_dump, garth_dump_iv, garth_dump_tag
       FROM external_data_providers WHERE provider_name = $1`,
       [providerName]
@@ -358,8 +364,9 @@ async function checkExternalDataProviderOwnership(providerId, userId) {
   }
 }
  
-async function deleteExternalDataProvider(id) {
-  const client = await getClient(id); // User-specific operation (RLS will handle access)
+async function deleteExternalDataProvider(id, userId) {
+  // Use a user-scoped client so RLS will prevent unauthorized deletions
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       'DELETE FROM external_data_providers WHERE id = $1 RETURNING id',
@@ -373,7 +380,7 @@ async function deleteExternalDataProvider(id) {
 
 module.exports = {
   getExternalDataProviders,
-  getExternalDataProvidersByUserId,
+  getExternalDataProvidersByUserId, // now accepts (viewerUserId, targetUserId)
   createExternalDataProvider,
   updateExternalDataProvider,
   getExternalDataProviderById,
