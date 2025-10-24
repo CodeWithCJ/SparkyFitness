@@ -204,7 +204,10 @@ export const aggregateStepsByDate = (records) => {
 
   const aggregatedData = validRecords.reduce((acc, record) => {
     try {
-      const date = record.startTime.split('T')[0];
+      // Use endTime for steps to avoid previous day assignment
+      // If endTime doesn't exist, fall back to startTime
+      const timeToUse = record.endTime || record.startTime;
+      const date = timeToUse.split('T')[0];
       const steps = record.count;
 
       if (!acc[date]) {
