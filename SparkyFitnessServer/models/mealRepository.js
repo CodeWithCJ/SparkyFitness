@@ -43,9 +43,8 @@ async function getMeals(userId, isPublic = false) {
   try {
     let query = `
       SELECT id, user_id, name, description, is_public, created_at, updated_at
-      FROM meals
-      WHERE is_public = TRUE`;
-   const queryParams = [];
+      FROM meals`;
+    const queryParams = [];
     query += ` ORDER BY name ASC`;
 
     const result = await client.query(query, queryParams);
@@ -93,8 +92,8 @@ async function searchMeals(searchTerm, userId, limit = null) {
   }
 }
 
-async function getMealById(mealId) {
-  const client = await getClient(mealId); // User-specific operation (RLS will handle access)
+async function getMealById(mealId, userId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const mealResult = await client.query(
       `SELECT id, user_id, name, description, is_public, created_at, updated_at
@@ -344,25 +343,6 @@ async function deleteMealPlanEntriesByTemplateId(templateId, userId) {
   }
 }
 
-module.exports = {
-  createMeal,
-  getMeals,
-  getMealById,
-  updateMeal,
-  deleteMeal,
-  createMealPlanEntry,
-  getMealPlanEntries,
-  getMealPlanEntryById,
-  updateMealPlanEntry,
-  deleteMealPlanEntry,
-  deleteMealPlanEntriesByTemplateId,
-  createFoodEntryFromMealPlan,
-  getMealOwnerId,
-  getMealPlanOwnerId,
-  searchMeals,
-  getRecentMeals,
-  getTopMeals,
-};
 
 async function getRecentMeals(userId, limit = null) {
   const client = await getClient(userId); // User-specific operation
@@ -370,7 +350,6 @@ async function getRecentMeals(userId, limit = null) {
     let query = `
       SELECT id, user_id, name, description, is_public, created_at, updated_at
       FROM meals
-      WHERE is_public = TRUE
       ORDER BY updated_at DESC`;
     const queryParams = [];
 
@@ -411,7 +390,6 @@ async function getTopMeals(userId, limit = null) {
              COUNT(mf.id) AS food_count
       FROM meals m
       LEFT JOIN meal_foods mf ON m.id = mf.meal_id
-      WHERE m.is_public = TRUE
       GROUP BY m.id
       ORDER BY food_count DESC, m.created_at DESC`;
     const queryParams = [];
@@ -443,8 +421,8 @@ async function getTopMeals(userId, limit = null) {
   }
 }
 
-async function getMealOwnerId(mealId) {
-  const client = await getClient(mealId); // User-specific operation (RLS will handle access)
+async function getMealOwnerId(mealId, userId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'SELECT user_id FROM meals WHERE id = $1',
@@ -519,22 +497,48 @@ async function clearUserIgnoredUpdate(userId, variantId) {
   }
 }
 
-async function getMealDeletionImpact(mealId) {
-  const client = await getClient(mealId); // User-specific operation (RLS will handle access)
+async function getMealDeletionImpact(mealId, userId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
-    const queries = [
-      // Check if meal is used in any meal_foods (which are then logged as food_entries)
-      client.query("SELECT COUNT(*) FROM meal_foods WHERE meal_id = $1", [mealId]),
-      // Check if meal is used in any meal_plan_templates
-      client.query("SELECT COUNT(*) FROM meal_plan_template_assignments WHERE meal_id = $1", [mealId]),
-    ];
+    const result = await client.query(
+      `SELECT mpt.user_id
+       FROM meal_plan_template_assignments mpta
+       JOIN meal_plan_templates mpt ON mpta.template_id = mpt.id
+       WHERE mpta.meal_id = $1`,
+      [mealId]
+    );
 
-    const results = await Promise.all(queries);
-
-    return {
-      foodEntriesCount: parseInt(results[0].rows[0].count, 10), // Represents usage in food_entries via meal_foods
-      mealPlanTemplatesCount: parseInt(results[1].rows[0].count, 10),
+    const usage = {
+      usedByOtherUsers: false,
+      usedByCurrentUser: false,
     };
+
+    for (const row of result.rows) {
+      if (row.user_id !== userId) {
+        usage.usedByOtherUsers = true;
+      } else {
+        usage.usedByCurrentUser = true;
+      }
+    }
+    
+    return usage;
+  } finally {
+    client.release();
+  }
+}
+
+async function deleteMealPlanEntriesByMealId(mealId, userId) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `DELETE FROM meal_plan_template_assignments
+       WHERE meal_id = $1 AND template_id IN (SELECT id FROM meal_plan_templates WHERE user_id = $2)`,
+      [mealId, userId]
+    );
+    return result.rowCount;
+  } catch (error) {
+    log('error', `Error deleting meal plan entries for meal ${mealId}:`, error);
+    throw error;
   } finally {
     client.release();
   }
@@ -552,3 +556,28 @@ async function getMealPlanOwnerId(mealPlanId) {
     client.release();
   }
 }
+
+module.exports = {
+  createMeal,
+  getMeals,
+  getMealById,
+  updateMeal,
+  deleteMeal,
+  createMealPlanEntry,
+  getMealPlanEntries,
+  getMealPlanEntryById,
+  updateMealPlanEntry,
+  deleteMealPlanEntry,
+  deleteMealPlanEntriesByTemplateId,
+  createFoodEntryFromMealPlan,
+  getMealOwnerId,
+  getMealPlanOwnerId,
+  searchMeals,
+  getRecentMeals,
+  getTopMeals,
+  getMealDeletionImpact,
+  deleteMealPlanEntriesByMealId,
+  getMealsNeedingReview,
+  updateMealEntriesSnapshot,
+  clearUserIgnoredUpdate,
+};

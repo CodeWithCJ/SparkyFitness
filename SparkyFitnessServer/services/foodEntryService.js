@@ -182,6 +182,7 @@ async function getFoodEntriesByDateRange(
 
 async function addMealFoodsToDiary(
   authenticatedUserId,
+  actingUserId,
   mealId,
   mealType,
   entryDate

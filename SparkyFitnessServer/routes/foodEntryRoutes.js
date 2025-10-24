@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { authenticate } = require("../middleware/authMiddleware");
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
-const foodService = require("../services/foodService");
+const foodEntryService = require("../services/foodEntryService");
 const { log } = require("../config/logging");
 
 router.use(express.json());
@@ -16,7 +16,7 @@ router.post(
   checkPermissionMiddleware('diary'), // Add permission check
   async (req, res, next) => {
     try {
-      const newEntry = await foodService.createFoodEntry(req.userId, req.originalUserId || req.userId, req.body);
+      const newEntry = await foodEntryService.createFoodEntry(req.userId, req.originalUserId || req.userId, req.body);
       res.status(201).json(newEntry);
     } catch (error) {
       if (error.message.startsWith("Forbidden")) {
@@ -39,7 +39,7 @@ router.post(
           .status(400)
           .json({ error: "mealId, mealType, and entryDate are required." });
       }
-      const createdEntries = await foodService.addMealFoodsToDiary(
+      const createdEntries = await foodEntryService.addMealFoodsToDiary(
         req.userId,
         req.originalUserId || req.userId,
         mealId,
@@ -73,7 +73,7 @@ router.post(
             "sourceDate, sourceMealType, targetDate, and targetMealType are required.",
         });
       }
-      const copiedEntries = await foodService.copyFoodEntries(
+      const copiedEntries = await foodEntryService.copyFoodEntries(
         req.userId,
         req.originalUserId || req.userId,
         sourceDate,
@@ -103,7 +103,7 @@ router.post(
           .status(400)
           .json({ error: "mealType and targetDate are required." });
       }
-      const copiedEntries = await foodService.copyFoodEntriesFromYesterday(
+      const copiedEntries = await foodEntryService.copyFoodEntriesFromYesterday(
         req.userId,
         req.originalUserId || req.userId,
         mealType,
@@ -129,7 +129,7 @@ router.put(
       return res.status(400).json({ error: "Food entry ID is required." });
     }
     try {
-      const updatedEntry = await foodService.updateFoodEntry(
+      const updatedEntry = await foodEntryService.updateFoodEntry(
         req.userId,
         req.originalUserId || req.userId,
         id,
@@ -160,7 +160,7 @@ router.delete(
       return res.status(400).json({ error: "Food entry ID is required." });
     }
     try {
-      await foodService.deleteFoodEntry(req.userId, id, req.userId);
+      await foodEntryService.deleteFoodEntry(req.userId, id, req.userId);
       res.status(200).json({ message: "Food entry deleted successfully." });
     } catch (error) {
       if (error.message.startsWith("Forbidden")) {
@@ -186,7 +186,7 @@ router.get(
       return res.status(400).json({ error: "Selected date is required." });
     }
     try {
-      const entries = await foodService.getFoodEntriesByDate(
+      const entries = await foodEntryService.getFoodEntriesByDate(
         req.userId,
         req.userId,
         selectedDate
@@ -211,7 +211,7 @@ router.get(
       return res.status(400).json({ error: "Date is required." });
     }
     try {
-      const entries = await foodService.getFoodEntriesByDate(
+      const entries = await foodEntryService.getFoodEntriesByDate(
         req.userId,
         req.userId,
         date
@@ -238,7 +238,7 @@ router.get(
         .json({ error: "Start date and end date are required." });
     }
     try {
-      const entries = await foodService.getFoodEntriesByDateRange(
+      const entries = await foodEntryService.getFoodEntriesByDateRange(
         req.userId,
         req.userId,
         startDate,
@@ -264,7 +264,7 @@ router.get(
       return res.status(400).json({ error: "Date is required." });
     }
     try {
-      const summary = await foodService.getDailyNutritionSummary(
+      const summary = await foodEntryService.getDailyNutritionSummary(
         req.userId,
         date
       );

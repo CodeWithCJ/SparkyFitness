@@ -35,6 +35,7 @@ import {
   Share2,
   Users,
   Filter,
+  Lock,
 } from "lucide-react";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -498,9 +499,9 @@ const FoodDatabaseManager: React.FC = () => {
                             }
                           >
                             {food.shared_with_public ? (
-                              <Users className="w-4 h-4" />
-                            ) : (
                               <Share2 className="w-4 h-4" />
+                            ) : (
+                              <Lock className="w-4 h-4" />
                             )}
                           </Button>
                           <Button

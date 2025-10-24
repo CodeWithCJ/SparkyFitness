@@ -15,14 +15,16 @@ import {
 } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Edit, Trash2, Eye, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Filter, Share2, Lock } from 'lucide-react';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 import { debug, info, warn, error } from '@/utils/logging';
-import { Meal, MealFood } from '@/types/meal';
-import { getMeals, deleteMeal, getMealById, MealFilter } from '@/services/mealService';
+import { Meal, MealFood, MealPayload } from '@/types/meal';
+import { getMeals, deleteMeal, getMealById, MealFilter, getMealDeletionImpact, updateMeal } from '@/services/mealService';
+import { MealDeletionImpact } from '@/types/meal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import MealBuilder from './MealBuilder';
 
 // This component is now a standalone library for managing meal templates.
@@ -36,6 +38,8 @@ const MealManagement: React.FC = () => {
   const [editingMealId, setEditingMealId] = useState<string | undefined>(undefined);
   const [showMealBuilderDialog, setShowMealBuilderDialog] = useState(false);
   const [viewingMeal, setViewingMeal] = useState<Meal & { foods?: MealFood[] } | null>(null);
+  const [deletionImpact, setDeletionImpact] = useState<MealDeletionImpact | null>(null);
+  const [mealToDelete, setMealToDelete] = useState<string | null>(null);
 
   const fetchMeals = useCallback(async () => {
     if (!activeUserId) return;
@@ -66,13 +70,13 @@ const MealManagement: React.FC = () => {
     setShowMealBuilderDialog(true);
   };
 
-  const handleDeleteMeal = async (mealId: string) => {
-    if (!activeUserId || !window.confirm('Are you sure you want to delete this meal?')) return;
+  const handleDeleteMeal = async (mealId: string, force: boolean = false) => {
+    if (!activeUserId) return;
     try {
-      await deleteMeal(activeUserId, mealId);
+      const result = await deleteMeal(activeUserId, mealId, force);
       toast({
         title: 'Success',
-        description: 'Meal deleted successfully.',
+        description: result.message,
       });
       fetchMeals();
     } catch (err) {
@@ -80,6 +84,25 @@ const MealManagement: React.FC = () => {
       toast({
         title: 'Error',
         description: `Failed to delete meal: ${err instanceof Error ? err.message : String(err)}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setMealToDelete(null);
+      setDeletionImpact(null);
+    }
+  };
+
+  const openDeleteConfirmation = async (mealId: string) => {
+    if (!activeUserId) return;
+    try {
+      const impact = await getMealDeletionImpact(activeUserId, mealId);
+      setDeletionImpact(impact);
+      setMealToDelete(mealId);
+    } catch (err) {
+      error(loggingLevel, 'Failed to get meal deletion impact:', err);
+      toast({
+        title: 'Error',
+        description: 'Could not check meal usage.',
         variant: 'destructive',
       });
     }
@@ -113,6 +136,91 @@ const MealManagement: React.FC = () => {
       });
     }
   };
+
+  const handleShareMeal = async (mealId: string) => {
+    if (!activeUserId) return;
+    try {
+      const mealToUpdate = await getMealById(activeUserId, mealId);
+      if (!mealToUpdate) {
+        throw new Error('Meal not found.');
+      }
+      const mealPayload: MealPayload = {
+        name: mealToUpdate.name,
+        description: mealToUpdate.description,
+        is_public: true,
+        foods: mealToUpdate.foods?.map(food => ({
+          food_id: food.food_id,
+          food_name: food.food_name,
+          variant_id: food.variant_id,
+          quantity: food.quantity,
+          unit: food.unit,
+          calories: food.calories,
+          protein: food.protein,
+          carbs: food.carbs,
+          fat: food.fat,
+          serving_size: food.serving_size,
+          serving_unit: food.serving_unit,
+        })) || [],
+      };
+      await updateMeal(activeUserId, mealId, mealPayload);
+      toast({
+        title: 'Success',
+        description: 'Meal shared publicly.',
+      });
+      fetchMeals();
+    } catch (err) {
+      error(loggingLevel, 'Failed to share meal:', err);
+      toast({
+        title: 'Error',
+        description: `Failed to share meal: ${err instanceof Error ? err.message : String(err)}`,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleUnshareMeal = async (mealId: string) => {
+    if (!activeUserId) return;
+    try {
+      const mealToUpdate = await getMealById(activeUserId, mealId);
+      if (!mealToUpdate) {
+        throw new Error('Meal not found.');
+      }
+      const mealPayload: MealPayload = {
+        name: mealToUpdate.name,
+        description: mealToUpdate.description,
+        is_public: false,
+        foods: mealToUpdate.foods?.map(food => ({
+          food_id: food.food_id,
+          food_name: food.food_name,
+          variant_id: food.variant_id,
+          quantity: food.quantity,
+          unit: food.unit,
+          calories: food.calories,
+          protein: food.protein,
+          carbs: food.carbs,
+          fat: food.fat,
+          serving_size: food.serving_size,
+          serving_unit: food.serving_unit,
+        })) || [],
+      };
+      await updateMeal(activeUserId, mealId, mealPayload);
+      toast({
+        title: 'Success',
+        description: 'Meal unshared.',
+      });
+      fetchMeals();
+    } catch (err) {
+      error(loggingLevel, 'Failed to unshare meal:', err);
+      toast({
+        title: 'Error',
+        description: `Failed to unshare meal: ${err instanceof Error ? err.message : String(err)}`,
+        variant: 'destructive',
+      });
+    }
+  };
+
+
+
 
   const filteredMeals = meals.filter(meal =>
     meal.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -160,11 +268,36 @@ const MealManagement: React.FC = () => {
                 <Card key={meal.id}>
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold">{meal.name}</h3>
+                      <h3 className="text-lg font-semibold">
+                        {meal.name}
+                        {meal.is_public && <Badge variant="secondary" className="ml-2"><Share2 className="h-3 w-3 mr-1" />Public</Badge>}
+                      </h3>
                       <p className="text-sm text-muted-foreground">{meal.description || 'No description'}</p>
-                      {meal.is_public && <span className="text-xs text-blue-500"> (Public)</span>}
                     </div>
                     <div className="flex space-x-2">
+                      {meal.is_public ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="icon" onClick={() => handleUnshareMeal(meal.id!)}>
+                              <Share2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Unshare Meal</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="icon" onClick={() => handleShareMeal(meal.id!)}>
+                              <Lock className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Share Meal</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="outline" size="icon" onClick={() => handleEditMeal(meal.id!)}>
@@ -177,7 +310,7 @@ const MealManagement: React.FC = () => {
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="outline" size="icon" onClick={() => handleDeleteMeal(meal.id!)}>
+                          <Button variant="outline" size="icon" onClick={() => openDeleteConfirmation(meal.id!)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
@@ -240,6 +373,34 @@ const MealManagement: React.FC = () => {
               </ul>
             ) : (
               <p className="text-muted-foreground">No foods have been added to this meal yet.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!mealToDelete} onOpenChange={(isOpen) => { if (!isOpen) { setMealToDelete(null); setDeletionImpact(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Meal</DialogTitle>
+          </DialogHeader>
+          {deletionImpact && (
+            <div>
+              {deletionImpact.usedByOtherUsers ? (
+                <p>This meal is used in meal plans by other users. You can only hide it, which will prevent it from being used in the future.</p>
+              ) : deletionImpact.usedByCurrentUser ? (
+                <p>This meal is used in your meal plans. Deleting it will remove it from those plans.</p>
+              ) : (
+                <p>Are you sure you want to permanently delete this meal?</p>
+              )}
+            </div>
+          )}
+          <div className="flex justify-end space-x-2 mt-4">
+            <Button variant="outline" onClick={() => { setMealToDelete(null); setDeletionImpact(null); }}>Cancel</Button>
+            {deletionImpact?.usedByOtherUsers ? (
+              <Button variant="destructive" onClick={() => handleDeleteMeal(mealToDelete!)}>Hide</Button>
+            ) : (
+              <Button variant="destructive" onClick={() => handleDeleteMeal(mealToDelete!, deletionImpact?.usedByCurrentUser)}>Delete</Button>
             )}
           </div>
         </DialogContent>
