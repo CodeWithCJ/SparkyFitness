@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Target, Zap } from "lucide-react";
+import { Target, Zap, Utensils, Flame, Flag } from "lucide-react"; // Added Utensils, Flame, Flag
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { usePreferences } from "@/contexts/PreferencesContext";
@@ -73,7 +79,8 @@ const DailyProgress = ({
     fat: 0,
     water_ml: 0,
   });
-  const [exerciseCalories, setExerciseCalories] = useState(0);
+  const [exerciseCalories, setExerciseCalories] = useState(0); // This will now store non-"Active Calories" exercise
+  const [activeCaloriesFromExercise, setActiveCaloriesFromExercise] = useState(0); // New state for "Active Calories"
   const [stepsCalories, setStepsCalories] = useState(0);
   const [dailySteps, setDailySteps] = useState(0);
   const [bmr, setBmr] = useState<number | null>(null);
@@ -189,16 +196,30 @@ const DailyProgress = ({
           loggingLevel,
           `DailyProgress: Fetched ${exerciseData.length} exercise entries.`,
         );
-        const totalExerciseCalories = exerciseData.reduce(
-          (sum, entry) => sum + Number(entry.calories_burned),
-          0,
+
+        let activeCaloriesFromExercise = 0;
+        let otherExerciseCalories = 0;
+
+        exerciseData.forEach(entry => {
+          if (entry.exercises?.name === 'Active Calories') {
+            activeCaloriesFromExercise += Number(entry.calories_burned);
+          } else {
+            otherExerciseCalories += Number(entry.calories_burned);
+          }
+        });
+
+        info(
+          loggingLevel,
+          "DailyProgress: Active Calories from Exercise entries:",
+          activeCaloriesFromExercise,
         );
         info(
           loggingLevel,
-          "DailyProgress: Total exercise calories burned:",
-          totalExerciseCalories,
+          "DailyProgress: Other Exercise Calories:",
+          otherExerciseCalories,
         );
-        setExerciseCalories(totalExerciseCalories);
+        setExerciseCalories(otherExerciseCalories); // Store other exercise calories here
+        setActiveCaloriesFromExercise(activeCaloriesFromExercise); // Set the new state variable
       } catch (err: any) {
         error(
           loggingLevel,
@@ -360,25 +381,34 @@ const DailyProgress = ({
     );
   }
 
-  // Calculate net calories (food calories - exercise calories - steps calories)
-  // Calculate total calories burned: prioritize exerciseCalories if present, otherwise use stepsCalories.
-  // This prevents double-counting when both active calories and steps are recorded.
-  let totalCaloriesBurned = 0;
-  if (exerciseCalories > 0) {
-    totalCaloriesBurned = Math.round(Number(exerciseCalories));
+  // Calculate total calories burned based on user's refined logic:
+  // Sum all exercise calories *except* those explicitly categorized as "Active Calories".
+  // Then, add either the "Active Calories" (if present and greater than 0) or the "stepsCalories" (if "Active Calories" are 0 or not present).
+  let totalCaloriesBurned = Math.round(Number(exerciseCalories)); // This now holds 'otherExerciseCalories'
+
+  let activeOrStepsCaloriesToAdd = 0;
+  if (activeCaloriesFromExercise > 0) {
+    activeOrStepsCaloriesToAdd = Math.round(Number(activeCaloriesFromExercise));
     info(
       loggingLevel,
-      "DailyProgress: Prioritizing Active Calories for total burned:",
-      totalCaloriesBurned,
+      "DailyProgress: Including Active Calories from exercise entries:",
+      activeOrStepsCaloriesToAdd,
     );
   } else {
-    totalCaloriesBurned = Math.round(Number(stepsCalories));
+    activeOrStepsCaloriesToAdd = Math.round(Number(stepsCalories));
     info(
       loggingLevel,
-      "DailyProgress: No Active Calories, using Step Calories for total burned:",
-      totalCaloriesBurned,
+      "DailyProgress: No Active Calories from exercise entries, including Step Calories:",
+      activeOrStepsCaloriesToAdd,
     );
   }
+
+  totalCaloriesBurned += activeOrStepsCaloriesToAdd;
+  info(
+    loggingLevel,
+    "DailyProgress: Total calories burned (Other Exercise + Active/Steps):",
+    totalCaloriesBurned,
+  );
 
   const bmrCalories = includeBmrInNetCalories && bmr ? bmr : 0;
   const finalTotalCaloriesBurned = totalCaloriesBurned + bmrCalories;
@@ -444,19 +474,44 @@ const DailyProgress = ({
           {/* Calorie Breakdown - Compact */}
           <div className="grid grid-cols-3 gap-2 text-center text-sm">
             <div className="space-y-1">
-              <div className="text-lg font-bold text-green-600">
+              <div className="flex items-center justify-center text-lg font-bold text-green-600">
+                <Utensils className="w-4 h-4 mr-1" />
                 {Math.round(dailyIntake.calories)}
               </div>
               <div className="text-xs text-gray-500">eaten</div>
             </div>
-            <div className="space-y-1">
-              <div className="text-lg font-bold text-orange-600">
-                {totalCaloriesBurned}
-              </div>
-              <div className="text-xs text-gray-500">burned</div>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-center text-lg font-bold text-orange-600">
+                      <Flame className="w-4 h-4 mr-1" />
+                      {totalCaloriesBurned}
+                    </div>
+                    <div className="text-xs text-gray-500">burned</div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="bg-black text-white text-xs p-2 rounded-md">
+                  <p>Burned Calories Breakdown:</p>
+                  {exerciseCalories > 0 && (
+                    <p>Other Exercise: {Math.round(exerciseCalories)} cal</p>
+                  )}
+                  {activeCaloriesFromExercise > 0 && (
+                    <p>Active Calories: {Math.round(activeCaloriesFromExercise)} cal</p>
+                  )}
+                  {stepsCalories > 0 && activeCaloriesFromExercise === 0 && (
+                    <p>Steps: {dailySteps.toLocaleString()} = {stepsCalories} cal</p>
+                  )}
+                  {includeBmrInNetCalories && bmr && (
+                    <p>BMR: {Math.round(bmr)} cal</p>
+                  )}
+                  <p>Total: {totalCaloriesBurned} cal</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <div className="space-y-1 ">
-              <div className="text-lg font-bold dark:text-slate-400 text-gray-900">
+              <div className="flex items-center justify-center text-lg font-bold dark:text-slate-400 text-gray-900">
+                <Flag className="w-4 h-4 mr-1" />
                 {dailyGoals.calories}
               </div>
               <div className="text-xs dark:text-slate-400 text-gray-500 ">
@@ -473,10 +528,15 @@ const DailyProgress = ({
               </div>
               {exerciseCalories > 0 && (
                 <div className="text-xs text-blue-600">
-                  Exercise: {Math.round(exerciseCalories)} cal
+                  Other Exercise: {Math.round(exerciseCalories)} cal
                 </div>
               )}
-              {stepsCalories > 0 && (
+              {activeCaloriesFromExercise > 0 && (
+                <div className="text-xs text-blue-600">
+                  Active Calories: {Math.round(activeCaloriesFromExercise)} cal
+                </div>
+              )}
+              {stepsCalories > 0 && activeCaloriesFromExercise === 0 && (
                 <div className="text-xs text-blue-600 flex items-center justify-center gap-1">
                   <Zap className="w-3 h-3" />
                   Steps: {dailySteps.toLocaleString()} = {stepsCalories} cal

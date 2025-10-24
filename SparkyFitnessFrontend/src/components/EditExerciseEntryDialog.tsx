@@ -259,10 +259,15 @@ const EditExerciseEntryDialog = ({
       entry
     );
     setSets(
-      ((entry.sets as WorkoutPresetSet[]) || []).map(set => ({
-        ...set,
-        weight: Math.round(convertWeight(set.weight, 'kg', weightUnit))
-      }))
+      ((entry.sets as WorkoutPresetSet[]) || []).map(set => {
+        debug(loggingLevel, `EditExerciseEntryDialog: Initial set weight (before conversion): ${set.weight}`);
+        const convertedWeight = convertWeight(set.weight, 'kg', weightUnit);
+        debug(loggingLevel, `EditExerciseEntryDialog: Converted weight (after conversion, before rounding): ${convertedWeight}`);
+        return {
+          ...set,
+          weight: convertedWeight
+        };
+      })
     );
     setNotes(entry.notes || "");
     setImageUrl(entry.image_url || null);

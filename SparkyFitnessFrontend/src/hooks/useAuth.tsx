@@ -83,8 +83,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signOut = async () => {
     try {
-      // For OIDC users, the session is managed by cookies, so no token is sent.
-      // For JWT users, the token is sent.
       const token = localStorage.getItem('token');
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -100,12 +98,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (response.ok) {
+        const responseData = await response.json();
         // Clear all local storage items related to authentication
         localStorage.removeItem('userId');
         localStorage.removeItem('userEmail');
         localStorage.removeItem('token');
         localStorage.removeItem('userRole');
+        localStorage.removeItem('authType'); // Clear authType on sign out
         setUser(null);
+
+        if (responseData.redirectUrl) {
+          // If a redirectUrl is provided, it means an OIDC logout is required
+          window.location.href = responseData.redirectUrl;
+        } else {
+          // For local logins or if OIDC redirect is not needed, redirect to home or login
+          window.location.href = '/'; // Or your desired post-logout landing page
+        }
       } else {
         const errorData = await response.json();
         console.error('Logout failed on server:', errorData);
@@ -114,11 +122,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.removeItem('userEmail');
         localStorage.removeItem('token');
         localStorage.removeItem('userRole');
-        localStorage.removeItem('authType'); // Clear authType on sign out
+        localStorage.removeItem('authType');
         setUser(null);
+        window.location.href = '/'; // Redirect even on server-side error to ensure clean state
       }
     } catch (error) {
       console.error('Network error during logout:', error);
+      // On network error, still attempt to clear local state and redirect
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('token');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('authType');
+      setUser(null);
+      window.location.href = '/';
     }
   };
 

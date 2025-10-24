@@ -1,6 +1,10 @@
 const { getSystemClient } = require('../db/poolManager');
 const { encrypt, decrypt, ENCRYPTION_KEY } = require('../security/encryption');
 const { log } = require('../config/logging');
+const fetch = require('node-fetch'); // Import node-fetch
+const NodeCache = require('node-cache'); // Import node-cache for caching discovery documents
+
+const discoveryCache = new NodeCache({ stdTTL: 3600 }); // Cache discovery documents for 1 hour
 
 async function getOidcProviders() {
     const client = await getSystemClient(); // System-level operation
@@ -54,9 +58,37 @@ async function getOidcProviderById(id) {
             }
         }
 
+        // Fetch OIDC discovery document to get end_session_endpoint
+        let endSessionEndpoint = null;
+        if (provider.issuer_url) {
+            const discoveryUrl = `${provider.issuer_url}/.well-known/openid-configuration`;
+            let discoveryDocument = discoveryCache.get(discoveryUrl);
+
+            if (!discoveryDocument) {
+                try {
+                    const discoveryResponse = await fetch(discoveryUrl);
+                    if (discoveryResponse.ok) {
+                        discoveryDocument = await discoveryResponse.json();
+                        discoveryCache.set(discoveryUrl, discoveryDocument);
+                    } else {
+                        log('warn', `Failed to fetch OIDC discovery document from ${discoveryUrl}: ${discoveryResponse.statusText}`);
+                    }
+                } catch (e) {
+                    log('error', `Error fetching OIDC discovery document from ${discoveryUrl}:`, e);
+                }
+            }
+
+            if (discoveryDocument && discoveryDocument.end_session_endpoint) {
+                endSessionEndpoint = discoveryDocument.end_session_endpoint;
+            } else {
+                log('warn', `end_session_endpoint not found in discovery document for ${provider.issuer_url}`);
+            }
+        }
+
         return {
             ...provider,
             client_secret: decryptedClientSecret,
+            end_session_endpoint: endSessionEndpoint, // Add the discovered endpoint
         };
     } finally {
         client.release();

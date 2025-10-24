@@ -446,10 +446,10 @@ const ReportsTables = ({
                           {Math.min(...entry.sets.map(s => s.reps))} - {Math.max(...entry.sets.map(s => s.reps))}
                         </TableCell>
                         <TableCell>
-                          {entry.sets.length > 0 ? Math.round(convertWeight(entry.sets.reduce((acc, s) => acc + Number(s.weight), 0) / entry.sets.length, 'kg', weightUnit)) : 0}
+                          {entry.sets.length > 0 ? convertWeight(entry.sets.reduce((acc, s) => acc + Number(s.weight), 0) / entry.sets.length, 'kg', weightUnit).toFixed(2) : '0.00'}
                         </TableCell>
                         <TableCell>
-                          {entry.sets.length > 0 ? Math.round(convertWeight(entry.sets.reduce((acc, s) => acc + (Number(s.weight) * Number(s.reps)), 0), 'kg', weightUnit)) : 0}
+                          {entry.sets.length > 0 ? convertWeight(entry.sets.reduce((acc, s) => acc + (Number(s.weight) * Number(s.reps)), 0), 'kg', weightUnit).toFixed(2) : '0.00'}
                         </TableCell>
                         <TableCell>
                           {entry.sets.reduce((acc, s) => acc + (s.duration || 0), 0)}
@@ -467,8 +467,8 @@ const ReportsTables = ({
                           <TableCell>{set.set_number}</TableCell>
                           <TableCell>{set.set_type}</TableCell>
                           <TableCell>{set.reps}</TableCell>
-                          <TableCell>{Math.round(convertWeight(set.weight, 'kg', weightUnit))}</TableCell>
-                          <TableCell>{Math.round(convertWeight(Number(set.weight) * Number(set.reps), 'kg', weightUnit))}</TableCell>
+                          <TableCell>{convertWeight(set.weight, 'kg', weightUnit).toFixed(2)}</TableCell>
+                          <TableCell>{convertWeight(Number(set.weight) * Number(set.reps), 'kg', weightUnit).toFixed(2)}</TableCell>
                           <TableCell>{set.duration || '-'}</TableCell>
                           <TableCell>{set.rest_time || '-'}</TableCell>
                           <TableCell colSpan={2}>{set.notes || '-'}</TableCell>
