@@ -227,7 +227,7 @@ async function updateFood(id, userId, foodData) {
         brand = COALESCE($3, brand),
         barcode = COALESCE($4, barcode),
         provider_external_id = COALESCE($5, provider_external_id),
-        shared_with_public = COALESCE($6, shared_with_public),
+        shared_with_public = $6,
         provider_type = COALESCE($7, provider_type),
         is_quick_food = COALESCE($8, is_quick_food),
         updated_at = now()

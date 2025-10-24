@@ -11,7 +11,7 @@ import AddExerciseDialog from "./AddExerciseDialog";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Share2, Lock, XCircle, Users } from "lucide-react";
+import { Plus, Edit, Trash2, Share2, Users, Lock, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -181,11 +181,21 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
   const confirmDelete = async () => {
     if (!exerciseToDelete || !user) return;
     try {
-      await deleteExercise(exerciseToDelete.id, user.id);
-      toast({
-        title: "Success",
-        description: "Exercise deleted successfully.",
-      });
+      // Decide whether to force delete based on deletionImpact
+      const shouldForce = deletionImpact && !deletionImpact.isUsedByOthers && deletionImpact.exerciseEntriesCount > 0;
+      const response = await deleteExercise(exerciseToDelete.id, user.id, shouldForce);
+      // Interpret server response status for user feedback
+      if (response && response.status) {
+        if (response.status === 'deleted' || response.status === 'force_deleted') {
+          toast({ title: 'Success', description: 'Exercise deleted successfully.' });
+        } else if (response.status === 'hidden') {
+          toast({ title: 'Success', description: 'Exercise hidden (marked as quick). Historical entries remain.' });
+        } else {
+          toast({ title: 'Success', description: response.message || 'Exercise delete operation completed.' });
+        }
+      } else {
+        toast({ title: 'Success', description: 'Exercise deleted successfully.' });
+      }
       loadExercisesData();
     } catch (err) {
       error(loggingLevel, "Error deleting exercise:", err);
@@ -810,21 +820,29 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
           open={showDeleteConfirmation}
           onOpenChange={setShowDeleteConfirmation}
           onConfirm={confirmDelete}
-          title={`Delete ${exerciseToDelete.name}?`}
+          title={deletionImpact.isUsedByOthers ? `Delete ${exerciseToDelete.name}?` : `Delete ${exerciseToDelete.name}?`}
           description={
             <div>
-              <p>This will permanently delete the exercise and all associated data:</p>
-              <ul className="list-disc pl-5 mt-2">
-                <li>{deletionImpact.exerciseEntriesCount} diary entries</li>
-              </ul>
+              {deletionImpact.isUsedByOthers ? (
+                <>
+                  <p>This exercise is used by other users. Deleting it will affect their data and is not allowed; it will be hidden instead.</p>
+                  <ul className="list-disc pl-5 mt-2">
+                    <li>{deletionImpact.exerciseEntriesCount} diary entries (across users)</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <p>This will permanently delete the exercise and all associated data for your account.</p>
+                  <ul className="list-disc pl-5 mt-2">
+                    <li>{deletionImpact.exerciseEntriesCount} diary entries</li>
+                  </ul>
+                </>
+              )}
             </div>
           }
-          warning={
-            deletionImpact.isUsedByOthers
-              ? "This exercise is used in workouts or diaries by other users. Deleting it will affect their data."
-              : undefined
-          }
-          variant={deletionImpact.isUsedByOthers ? "destructive" : "default"}
+          warning={deletionImpact.isUsedByOthers ? "This exercise is used in workouts or diaries by other users. Deleting it will affect their data. It will be hidden instead." : undefined}
+          variant={deletionImpact.isUsedByOthers ? "destructive" : "destructive"}
+          confirmLabel={!deletionImpact.isUsedByOthers && deletionImpact.exerciseEntriesCount > 0 ? 'Force Delete' : 'Confirm'}
         />
       )}
       {showSyncConfirmation && (

@@ -15,15 +15,19 @@ export const getMealById = async (userId: string, mealId: string): Promise<Meal>
   return await apiCall(`/meals/${mealId}`, { method: 'GET' });
 };
 
-export const updateMeal = async (userId: string, mealId: string, mealData: MealPayload): Promise<Meal> => {
+export const updateMeal = async (userId: string, mealId: string, mealData: Partial<MealPayload>): Promise<Meal> => {
   return await apiCall(`/meals/${mealId}`, { method: 'PUT', body: mealData });
 };
 
-export const deleteMeal = async (userId: string, mealId: string): Promise<void> => {
-  await apiCall(`/meals/${mealId}`, { method: 'DELETE' });
+export const deleteMeal = async (userId: string, mealId: string, force: boolean = false): Promise<{ message: string }> => {
+  const params = new URLSearchParams();
+  if (force) {
+    params.append('force', 'true');
+  }
+  return await apiCall(`/meals/${mealId}?${params.toString()}`, { method: 'DELETE' });
 };
 
-export const getMealDeletionImpact = async (mealId: string): Promise<MealDeletionImpact> => {
+export const getMealDeletionImpact = async (userId: string, mealId: string): Promise<MealDeletionImpact> => {
   return await apiCall(`/meals/${mealId}/deletion-impact`, { method: 'GET' });
 };
 

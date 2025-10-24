@@ -92,36 +92,40 @@ async function getMealPlanTemplatesByUserId(userId) {
     try {
         const query = `
             SELECT
-                t.*,
-                COALESCE(
-                    (
-                        SELECT json_agg(
-                            json_build_object(
-                                'id', a.id,
-                                'day_of_week', a.day_of_week,
-                                'meal_type', a.meal_type,
-                                'item_type', a.item_type,
-                                'meal_id', a.meal_id,
-                                'meal_name', m.name,
-                                'food_id', a.food_id,
-                                'food_name', f.name,
-                                'variant_id', a.variant_id,
-                                'quantity', a.quantity,
-                                'unit', a.unit
-                            )
-                        )
-                        FROM meal_plan_template_assignments a
-                        LEFT JOIN meals m ON a.meal_id = m.id
-                        LEFT JOIN foods f ON a.food_id = f.id
-                        WHERE a.template_id = t.id
-                    ),
-                    '[]'::json
-                ) as assignments
+                t.*
             FROM meal_plan_templates t
-            WHERE 1=1
+            WHERE t.user_id = $1
             ORDER BY t.start_date DESC
         `;
-        const result = await client.query(query);
+        const result = await client.query(query, [userId]);
+        return result.rows;
+    } finally {
+        client.release();
+    }
+}
+
+async function getMealPlanTemplateAssignments(templateId, userId) {
+    const client = await getClient(userId); // User-specific operation
+    try {
+        const query = `
+            SELECT
+                a.id,
+                a.day_of_week,
+                a.meal_type,
+                a.item_type,
+                a.meal_id,
+                m.name as meal_name,
+                a.food_id,
+                f.name as food_name,
+                a.variant_id,
+                a.quantity,
+                a.unit
+            FROM meal_plan_template_assignments a
+            LEFT JOIN meals m ON a.meal_id = m.id
+            LEFT JOIN foods f ON a.food_id = f.id
+            WHERE a.template_id = $1
+        `;
+        const result = await client.query(query, [templateId]);
         return result.rows;
     } finally {
         client.release();
@@ -346,4 +350,5 @@ module.exports = {
     getMealPlanTemplateOwnerId,
     getActiveMealPlanForDate,
     getMealPlanTemplatesByMealId,
+    getMealPlanTemplateAssignments,
 };

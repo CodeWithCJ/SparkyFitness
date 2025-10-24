@@ -2,6 +2,9 @@ console.log('DEBUG: Loading measurementService.js');
 const measurementRepository = require('../models/measurementRepository');
 const userRepository = require('../models/userRepository');
 const exerciseRepository = require('../models/exerciseRepository'); // For active calories
+// require concrete modules to avoid circular export issues for exercise functions used at runtime
+const exerciseDb = require('../models/exercise');
+const exerciseEntryDb = require('../models/exerciseEntry');
 const waterContainerRepository = require('../models/waterContainerRepository'); // Import waterContainerRepository
 const { log } = require('../config/logging');
 
@@ -81,8 +84,8 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             break;
           }
           const exerciseSource = source || 'Health Data';
-          const exerciseId = await exerciseRepository.getOrCreateActiveCaloriesExercise(userId, actingUserId, exerciseSource);
-          result = await exerciseRepository.upsertExerciseEntryData(userId, actingUserId, exerciseId, activeCaloriesValue, parsedDate);
+          const exerciseId = await exerciseDb.getOrCreateActiveCaloriesExercise(userId, exerciseSource);
+          result = await exerciseEntryDb.upsertExerciseEntryData(userId, actingUserId, exerciseId, activeCaloriesValue, parsedDate);
           processedResults.push({ type, status: 'success', data: result });
           break;
         case 'weight': // Add case for weight

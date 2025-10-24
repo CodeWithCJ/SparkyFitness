@@ -27,7 +27,12 @@ async function createMealPlanTemplate(userId, planData, currentClientDate = null
 
 async function getMealPlanTemplates(userId) {
     try {
-        return await mealPlanTemplateRepository.getMealPlanTemplatesByUserId(userId);
+        const templates = await mealPlanTemplateRepository.getMealPlanTemplatesByUserId(userId);
+        const templatesWithAssignments = await Promise.all(templates.map(async (template) => {
+            const assignments = await mealPlanTemplateRepository.getMealPlanTemplateAssignments(template.id, userId);
+            return { ...template, assignments };
+        }));
+        return templatesWithAssignments;
     } catch (error) {
         log('error', `Error fetching meal plan templates for user ${userId}:`, error);
         throw new Error('Failed to fetch meal plan templates.');
@@ -48,12 +53,15 @@ async function updateMealPlanTemplate(planId, userId, planData, currentClientDat
         }
         const updatedPlan = await mealPlanTemplateRepository.updateMealPlanTemplate(planId, { ...planData, user_id: userId });
         log('info', 'updateMealPlanTemplate service - updatedPlan:', updatedPlan);
+        
+
         if (updatedPlan.is_active) {
             log('info', `updateMealPlanTemplate service - Updated plan is active, creating food entries from template ${updatedPlan.id}`);
             await foodRepository.createFoodEntriesFromTemplate(updatedPlan.id, userId, currentClientDate);
         } else {
             log('info', `updateMealPlanTemplate service - Updated plan is not active, skipping food entry creation.`);
         }
+        
         return updatedPlan;
     } catch (error) {
         log('error', `Error updating meal plan template ${planId} for user ${userId}: ${error.message}`, error);

@@ -122,8 +122,8 @@ router.get('/:id', authenticate, async (req, res, next) => {
 // Update an existing meal template
 router.put('/:id', authenticate, async (req, res, next) => {
   try {
-    const updatedMeal = await mealService.updateMeal(req.userId, req.params.id, req.body);
-    res.status(200).json(updatedMeal);
+    const { confirmationMessage, ...updatedMeal } = await mealService.updateMeal(req.userId, req.params.id, req.body);
+    res.status(200).json({ ...updatedMeal, confirmationMessage });
   } catch (error) {
     log('error', `Error updating meal ${req.params.id}:`, error);
     if (error.message === 'Meal not found.') {
@@ -143,6 +143,23 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     res.status(200).json({ message: 'Meal deleted successfully.' });
   } catch (error) {
     log('error', `Error deleting meal ${req.params.id}:`, error);
+    if (error.message === 'Meal not found.') {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
+// Get the deletion impact for a meal
+router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
+  try {
+    const deletionImpact = await mealService.getMealDeletionImpact(req.userId, req.params.id);
+    res.status(200).json(deletionImpact);
+  } catch (error) {
+    log('error', `Error getting meal deletion impact for meal ${req.params.id}:`, error);
     if (error.message === 'Meal not found.') {
       return res.status(404).json({ error: error.message });
     }

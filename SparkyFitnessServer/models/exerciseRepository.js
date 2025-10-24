@@ -77,4 +77,6 @@ module.exports = {
   getExercisesNeedingReview,
   updateExerciseEntriesSnapshot,
   clearUserIgnoredUpdate,
+  deleteExerciseAndDependencies: exerciseDb.deleteExerciseAndDependencies,
+  getExerciseDeletionImpact: exerciseDb.getExerciseDeletionImpact,
 };

@@ -55,10 +55,19 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({ template, o
         setIsMealSelectionOpen(false);
     };
 
-    const handleFoodSelected = (food: Food) => {
-      setSelectedFood(food);
-      setIsFoodSelectionOpen(false);
-      setIsFoodUnitSelectorOpen(true);
+    const handleFoodSelected = (item: Food | Meal, type: 'food' | 'meal') => {
+        if (currentDay === null || currentMealType === null) return;
+
+        setIsFoodSelectionOpen(false);
+
+        if (type === 'meal') {
+            const meal = item as Meal;
+            setAssignments(prev => [...prev, { item_type: 'meal', day_of_week: currentDay, meal_type: currentMealType, meal_id: meal.id, meal_name: meal.name }]);
+        } else {
+            const food = item as Food;
+            setSelectedFood(food);
+            setIsFoodUnitSelectorOpen(true);
+        }
     };
   
     const handleFoodUnitSelected = (food: Food, quantity: number, unit: string, selectedVariant: FoodVariant) => {
@@ -158,8 +167,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({ template, o
                                                       ))}
                                                   </div>
                                                   <div className="flex space-x-2 mt-2">
-                                                      <Button variant="outline" size="sm" onClick={() => handleAddMeal(dayIndex, mealType)}>Add Meal</Button>
-                                                      <Button variant="outline" size="sm" onClick={() => handleAddFood(dayIndex, mealType)}>Add Food</Button>
+                                                      <Button variant="outline" size="sm" onClick={() => handleAddFood(dayIndex, mealType)}>Add Food or Meal</Button>
                                                   </div>
                                             </div>
                                         ))}
@@ -192,7 +200,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({ template, o
             <FoodSearchDialog
               open={isFoodSelectionOpen}
               onOpenChange={setIsFoodSelectionOpen}
-              onFoodSelect={handleFoodSelected}
+              onFoodSelect={(item, type) => handleFoodSelected(item, type)}
               title="Add Food to Meal Plan"
               description="Search for a food to add to this day's meal plan."
             />

@@ -55,7 +55,9 @@ export interface Exercise extends ExerciseInterface {
 
 export interface ExerciseDeletionImpact {
     exerciseEntriesCount: number;
-    isUsedByOthers: boolean;
+  // server returns counts; normalize to a boolean for backward compatible UI use
+  isUsedByOthers: boolean;
+  otherUserReferences?: number;
 }
 
 interface ExercisePayload {
@@ -145,8 +147,13 @@ export const updateExercise = async (id: string, payload: Partial<ExercisePayloa
   }
 };
 
-export const deleteExercise = async (id: string, userId: string): Promise<void> => {
-  return apiCall(`/exercises/${id}?userId=${userId}`, {
+export const deleteExercise = async (id: string, userId: string, forceDelete: boolean = false): Promise<{ message?: string; status?: string } | void> => {
+  const params = new URLSearchParams();
+  params.append('userId', userId);
+  if (forceDelete) {
+    params.append('forceDelete', 'true');
+  }
+  return apiCall(`/exercises/${id}?${params.toString()}`, {
     method: 'DELETE',
   });
 };
@@ -162,10 +169,16 @@ export const updateExerciseShareStatus = async (id: string, sharedWithPublic: bo
 };
 
 export const getExerciseDeletionImpact = async (exerciseId: string): Promise<ExerciseDeletionImpact> => {
-    const response = await apiCall(`/exercises/${exerciseId}/deletion-impact`, {
-        method: 'GET',
-    });
-    return response;
+  const response = await apiCall(`/exercises/${exerciseId}/deletion-impact`, {
+    method: 'GET',
+  });
+  // Normalize shape: server may return counts; build isUsedByOthers based on otherUserReferences
+  const otherUserRefs = response.otherUserReferences ?? (response.otherUserReferencesCount ?? 0);
+  return {
+    exerciseEntriesCount: response.exerciseEntriesCount ?? 0,
+    isUsedByOthers: (otherUserRefs || 0) > 0,
+    otherUserReferences: otherUserRefs || 0,
+  } as ExerciseDeletionImpact;
 };
 export const getSuggestedExercises = async (limit: number): Promise<{ recentExercises: Exercise[]; topExercises: Exercise[] }> => {
   return apiCall(`/exercises/suggested?limit=${limit}`, {

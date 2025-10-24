@@ -18,6 +18,7 @@ interface ConfirmationDialogProps {
   description: React.ReactNode;
   warning?: React.ReactNode;
   variant?: 'default' | 'destructive';
+  confirmLabel?: string;
 }
 
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
@@ -28,6 +29,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   description,
   warning,
   variant = 'default',
+  confirmLabel,
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,7 +53,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
             variant={variant === 'destructive' ? 'destructive' : 'default'}
             onClick={onConfirm}
           >
-            Confirm
+            {confirmLabel || 'Confirm'}
           </Button>
         </DialogFooter>
       </DialogContent>
