@@ -16,7 +16,8 @@ router.post('/', authenticate, async (req, res, next) => {
 // Get all workout presets for the authenticated user
 router.get('/', authenticate, async (req, res, next) => {
   try {
-    const presets = await workoutPresetService.getWorkoutPresets(req.userId);
+    const { page = 1, limit = 10 } = req.query;
+    const presets = await workoutPresetService.getWorkoutPresets(req.userId, parseInt(page, 10), parseInt(limit, 10));
     res.status(200).json(presets);
   } catch (error) {
     next(error);

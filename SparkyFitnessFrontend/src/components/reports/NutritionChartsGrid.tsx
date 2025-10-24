@@ -97,78 +97,81 @@ const NutritionChartsGrid = ({ nutritionData }: NutritionChartsGridProps) => {
         
         return (
           <ZoomableChart key={chart.key} title={`${chart.label} (${chart.unit})`}>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">{chart.label} ({chart.unit})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="date"
-                        fontSize={10}
-                        tickFormatter={formatDateForChart} // Apply formatter
-                      />
-                      <YAxis
-                        fontSize={10}
-                        domain={yAxisDomain || undefined}
-                        tickFormatter={(value: number) => {
-                          if (chart.unit === 'g') {
-                            return value.toFixed(1);
-                          } else if (chart.unit === 'mg') {
-                            return value.toFixed(2);
-                          } else if (chart.unit === 'cal' || chart.unit === 'μg') {
-                            return Math.round(value).toString();
-                          } else {
-                            return Math.round(value).toString(); // Default to rounding for other units
+            {(isMaximized, zoomLevel) => (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">{chart.label} ({chart.unit})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
+                    <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height={isMaximized ? `${100 * zoomLevel}%` : "100%"}>
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="date"
+                          fontSize={10}
+                          tickFormatter={formatDateForChart} // Apply formatter
+                          tickCount={isMaximized ? Math.max(chartData.length, 10) : undefined} // More ticks when maximized
+                        />
+                        <YAxis
+                          fontSize={10}
+                          domain={yAxisDomain || undefined}
+                          tickFormatter={(value: number) => {
+                            if (chart.unit === 'g') {
+                              return value.toFixed(1);
+                            } else if (chart.unit === 'mg') {
+                              return value.toFixed(2);
+                            } else if (chart.unit === 'cal' || chart.unit === 'μg') {
+                              return Math.round(value).toString();
+                            } else {
+                              return Math.round(value).toString(); // Default to rounding for other units
+                            }
+                          }}
+                        />
+                      <Tooltip
+                        labelFormatter={(value) => formatDateForChart(value as string)} // Apply formatter
+                        formatter={(value: number | string | null | undefined) => {
+                          if (value === null || value === undefined) {
+                            return ['N/A'];
                           }
-                        }}
-                      />
-                    <Tooltip
-                      labelFormatter={(value) => formatDateForChart(value as string)} // Apply formatter
-                      formatter={(value: number | string | null | undefined) => {
-                        if (value === null || value === undefined) {
-                          return ['N/A'];
-                        }
-                        let numValue: number;
-                        if (typeof value === 'string') {
-                          numValue = parseFloat(value); // Parse string to number
-                        } else if (typeof value === 'number') {
-                          numValue = value;
-                        } else {
-                          return ['N/A']; // Should not happen if types are correct
-                        }
+                          let numValue: number;
+                          if (typeof value === 'string') {
+                            numValue = parseFloat(value); // Parse string to number
+                          } else if (typeof value === 'number') {
+                            numValue = value;
+                          } else {
+                            return ['N/A']; // Should not happen if types are correct
+                          }
 
-                        let formattedValue: string;
-                        if (chart.unit === 'g') {
-                          formattedValue = numValue.toFixed(1);
-                        } else if (chart.unit === 'mg') {
-                          formattedValue = numValue.toFixed(2);
-                        } else if (chart.unit === 'cal' || chart.unit === 'μg') {
-                          formattedValue = Math.round(numValue).toString();
-                        }
-                        else {
-                          formattedValue = Math.round(numValue).toString();
-                        }
-                        return [`${formattedValue} ${chart.unit}`];
-                      }}
-                      contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey={chart.key}
-                      stroke={chart.color}
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </ZoomableChart>
+                          let formattedValue: string;
+                          if (chart.unit === 'g') {
+                            formattedValue = numValue.toFixed(1);
+                          } else if (chart.unit === 'mg') {
+                            formattedValue = numValue.toFixed(2);
+                          } else if (chart.unit === 'cal' || chart.unit === 'μg') {
+                            formattedValue = Math.round(numValue).toString();
+                          }
+                          else {
+                            formattedValue = Math.round(numValue).toString();
+                          }
+                          return [`${formattedValue} ${chart.unit}`];
+                        }}
+                        contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey={chart.key}
+                        stroke={chart.color}
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+            )}
+          </ZoomableChart>
         );
       })}
     </div>

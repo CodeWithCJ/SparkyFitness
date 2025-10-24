@@ -360,7 +360,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                   selectedExercisesForChart.length > 0
                     ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
                         ...d,
-                        date: formatDateInUserTimezone(d.entry_date, 'MMM dd, yyyy'),
+                        date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
                         volume: d.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0),
                         comparisonVolume: comparisonExerciseProgressData[selectedExercisesForChart[0]]?.find(compD => compD.entry_date === d.entry_date)?.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0) || null,
                       })) || []
@@ -402,7 +402,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                   selectedExercisesForChart.length > 0
                     ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
                         ...d,
-                        date: formatDateInUserTimezone(d.entry_date, 'MMM dd, yyyy'),
+                        date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
                         maxWeight: Math.max(...d.sets.map(set => set.weight)),
                         comparisonMaxWeight: comparisonExerciseProgressData[selectedExercisesForChart[0]]?.find(compD => compD.entry_date === d.entry_date)?.sets.reduce((max, set) => Math.max(max, set.weight), 0) || null,
                       })) || []
@@ -444,7 +444,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                   selectedExercisesForChart.length > 0
                     ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
                         ...d,
-                        date: formatDateInUserTimezone(d.entry_date, 'MMM dd, yyyy'),
+                        date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
                         estimated1RM: Math.round(Math.max(...d.sets.map(set => set.weight * (1 + (set.reps / 30))))),
                         comparisonEstimated1RM: comparisonExerciseProgressData[selectedExercisesForChart[0]]?.find(compD => compD.entry_date === d.entry_date)?.sets.reduce((max, set) => Math.max(max, set.weight * (1 + (set.reps / 30))), 0) || null,
                       })) || []
@@ -573,7 +573,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                   selectedExercisesForChart.length > 0
                     ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
                         ...d,
-                        date: formatDateInUserTimezone(d.entry_date, 'MMM dd, yyyy'),
+                        date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
                         timeUnderTension: d.sets.reduce((sum, set) => sum + (set.duration || 0), 0)
                       })) || []
                     : []

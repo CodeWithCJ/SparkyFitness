@@ -42,6 +42,13 @@ export interface WorkoutPreset {
   exercises: WorkoutPresetExercise[];
 }
 
+export interface PaginatedWorkoutPresets {
+  presets: WorkoutPreset[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface WorkoutPlanAssignment {
   id?: string;
   template_id: string;

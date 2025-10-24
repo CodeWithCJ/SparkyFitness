@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Maximize2, Minimize2, ZoomIn, ZoomOut } from "lucide-react";
 
 interface ZoomableChartProps {
-  children: React.ReactNode;
+  children: ((isMaximized: boolean, zoomLevel: number) => React.ReactNode) | React.ReactNode;
   title: string;
 }
 
@@ -56,27 +56,20 @@ const ZoomableChart = ({ children, title }: ZoomableChartProps) => {
             <Maximize2 className="h-3 w-3" />
           </Button>
         </div>
-        <div 
-          style={{ 
-            transform: `scale(${zoomLevel})`, 
-            transformOrigin: 'top left',
-            transition: 'transform 0.2s ease-in-out'
-          }}
-        >
-          {children}
+        <div className="w-full h-full">
+          {typeof children === 'function' ? children(false, zoomLevel) : children}
         </div>
       </div>
 
       <Dialog open={isMaximized} onOpenChange={setIsMaximized}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-6">
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-6 flex flex-col">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
-              View a maximized and zoomable version of the chart.
+              Maximized view of the chart. Use the controls to zoom or minimize.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">{title}</h3>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -110,17 +103,8 @@ const ZoomableChart = ({ children, title }: ZoomableChartProps) => {
               </Button>
             </div>
           </div>
-          <div 
-            className="w-full h-full overflow-auto"
-            style={{ 
-              transform: `scale(${zoomLevel})`, 
-              transformOrigin: 'top left',
-              transition: 'transform 0.2s ease-in-out'
-            }}
-          >
-            <div style={{ height: '600px' }}>
-              {children}
-            </div>
+          <div className="w-full h-[calc(100%-110px)] overflow-auto">
+            {typeof children === 'function' ? children(true, zoomLevel) : children}
           </div>
         </DialogContent>
       </Dialog>

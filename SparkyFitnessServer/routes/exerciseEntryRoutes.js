@@ -128,17 +128,29 @@ router.post('/from-preset', authenticate, async (req, res, next) => {
 
     const loggedEntries = [];
     for (const presetExercise of workoutPreset.exercises) {
-      
+      // Fetch the full exercise details to get calories_per_hour and default images
+      const fullExercise = await exerciseService.getExerciseById(req.userId, presetExercise.exercise_id);
+      if (!fullExercise) {
+        console.warn(`Exercise with ID ${presetExercise.exercise_id} not found for preset. Skipping.`);
+        continue;
+      }
+
+      let totalDurationMinutes = 0;
+      if (presetExercise.sets && presetExercise.sets.length > 0) {
+        totalDurationMinutes = presetExercise.sets.reduce((sum, set) => sum + (set.duration || 0), 0);
+      }
+
+      // Calculate calories burned based on total duration and exercise's calories_per_hour
+      const caloriesPerHour = fullExercise.calories_per_hour || 0;
+      const calculatedCaloriesBurned = (caloriesPerHour / 60) * totalDurationMinutes;
+
       const newEntry = await exerciseService.createExerciseEntry(req.userId, req.originalUserId || req.userId, {
         exercise_id: presetExercise.exercise_id,
-        duration_minutes: presetExercise.duration || 0, // Provide a default value if null
-        calories_burned: null, // Will be calculated by service if not provided
+        duration_minutes: totalDurationMinutes,
+        calories_burned: calculatedCaloriesBurned,
         entry_date,
-        notes: presetExercise.notes,
-        sets,
-        reps,
-        weight,
-        image_url: presetExercise.image_url,
+        notes: workoutPreset.description,
+        sets: presetExercise.sets,        
       });
       loggedEntries.push(newEntry);
     }

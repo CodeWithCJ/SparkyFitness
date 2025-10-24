@@ -577,7 +577,7 @@ const ReportsTables = ({
                         <TableRow key={index}>
                           <TableCell>{measurement.entry_date && !isNaN(parseISO(measurement.entry_date).getTime()) ? formatDateInUserTimezone(parseISO(measurement.entry_date), dateFormat) : ''}</TableCell>
                           <TableCell>{formattedHour}</TableCell>
-                          <TableCell>{String(measurement.value)}</TableCell>
+                          <TableCell>{typeof measurement.value === 'number' ? measurement.value.toFixed(2) : String(measurement.value)}</TableCell>
                           <TableCell>{measurement.notes || '-'}</TableCell>
                         </TableRow>
                       );
