@@ -164,7 +164,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
             ...a,
             sets: a.sets?.map(s => ({
               ...s,
-              weight: Math.round(convertWeight(s.weight, 'kg', weightUnit))
+              weight: parseFloat(convertWeight(s.weight, 'kg', weightUnit).toFixed(2))
             })) || []
           })) || []
         );
@@ -194,10 +194,10 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
     if (!user?.id) return;
     try {
       const [presets, { exercises: fetchedExercises }] = await Promise.all([
-        getWorkoutPresets(),
+        getWorkoutPresets(1, 1000), // Fetch all presets for selection
         loadExercises(user.id),
       ]);
-      setWorkoutPresets(presets);
+      setWorkoutPresets(presets.presets);
       setExercises(fetchedExercises);
     } catch (error) {
       toast({

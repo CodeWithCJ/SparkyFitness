@@ -111,21 +111,40 @@ router.get('/settings', async (req, res, next) => {
     }
 });
 
-router.post('/logout', (req, res, next) => {
-  // Destroy the session for OIDC users
-  if (req.session) {
-    req.session.destroy((err) => {
-      if (err) {
-        return next(err);
+router.post('/logout', async (req, res, next) => {
+  const providerId = req.session?.providerId;
+
+  req.session.destroy(async (err) => {
+    if (err) {
+      return next(err);
+    }
+
+    res.clearCookie('sparky.sid');
+
+    // If OIDC user, return end_session_endpoint for frontend to redirect
+    if (providerId) {
+      try {
+        const provider = await oidcProviderRepository.getOidcProviderById(providerId);
+
+        if (provider && provider.end_session_endpoint) {
+          const frontendUrl = process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:3000'; // Fallback for development
+          const endSessionUrl = `${provider.end_session_endpoint}?post_logout_redirect_uri=${frontendUrl}/`;
+          return res.status(200).json({
+            message: 'Logout successful.',
+            redirectUrl: endSessionUrl
+          });
+        } else {
+          // Fallback if end_session_endpoint is not discovered
+          console.warn(`OIDC end_session_endpoint not found for providerId: ${providerId}. Proceeding with local logout.`);
+        }
+      } catch (oidcError) {
+        // If OIDC provider lookup fails, proceed with local logout
+        console.error('Error fetching OIDC provider for logout:', oidcError);
       }
-      // Clear the session cookie from the client
-      res.clearCookie('sparky.sid'); // Ensure this matches the session name in SparkyFitnessServer.js
-      res.status(200).json({ message: 'Logout successful.' });
-    });
-  } else {
-    // For JWT users, simply acknowledge logout (client-side token removal is sufficient)
+    }
+
     res.status(200).json({ message: 'Logout successful.' });
-  }
+  });
 });
 
 // Authentication Endpoints

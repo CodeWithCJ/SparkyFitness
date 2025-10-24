@@ -134,7 +134,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
           ...ex,
           sets: ex.sets.map(set => ({
             ...set,
-            weight: Math.round(convertWeight(set.weight, 'kg', weightUnit))
+            weight: parseFloat(convertWeight(set.weight, 'kg', weightUnit).toFixed(2))
           }))
         })) || []
       );
