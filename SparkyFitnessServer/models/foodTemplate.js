@@ -128,21 +128,28 @@ async function createFoodEntriesFromTemplate(
     const foodEntriesToInsert = [];
     const mealIds = new Set();
     const foodIds = new Set();
+    const variantIds = new Set();
 
-    // Collect all meal_ids and food_ids from assignments
     assignments.forEach(assignment => {
         if (assignment.item_type === "meal") {
             mealIds.add(assignment.meal_id);
+            foodIds.add(assignment.meal_id);
         } else if (assignment.item_type === "food") {
             foodIds.add(assignment.food_id);
+            if (assignment.variant_id) {
+                variantIds.add(assignment.variant_id);
+            }
         }
     });
 
-    // Fetch all meal foods in a single query
     const mealFoodsMap = new Map();
     if (mealIds.size > 0) {
         const mealFoodsResult = await client.query(
-            `SELECT meal_id, food_id, variant_id, quantity, unit FROM meal_foods WHERE meal_id = ANY($1::uuid[])`,
+            `SELECT mf.meal_id, mf.food_id, mf.variant_id, mf.quantity, mf.unit, f.name as food_name, f.brand as brand_name, fv.*
+             FROM meal_foods mf
+             JOIN foods f ON mf.food_id = f.id
+             JOIN food_variants fv ON mf.variant_id = fv.id
+             WHERE mf.meal_id = ANY($1::uuid[])`,
             [Array.from(mealIds)]
         );
         mealFoodsResult.rows.forEach(row => {
@@ -150,13 +157,34 @@ async function createFoodEntriesFromTemplate(
                 mealFoodsMap.set(row.meal_id, []);
             }
             mealFoodsMap.get(row.meal_id).push(row);
+            foodIds.add(row.food_id);
+            if (row.variant_id) {
+                variantIds.add(row.variant_id);
+            }
         });
     }
 
-    // Fetch all existing food entries for the relevant period to avoid duplicates
+    const foodsMap = new Map();
+    if (foodIds.size > 0) {
+        const foodsResult = await client.query(`SELECT * FROM foods WHERE id = ANY($1::uuid[])`, [Array.from(foodIds)]);
+        foodsResult.rows.forEach(row => foodsMap.set(row.id, row));
+    }
+
+    const mealsMap = new Map();
+    if (mealIds.size > 0) {
+        const mealsResult = await client.query(`SELECT * FROM meals WHERE id = ANY($1::uuid[])`, [Array.from(mealIds)]);
+        mealsResult.rows.forEach(row => mealsMap.set(row.id, row));
+    }
+
+    const variantsMap = new Map();
+    if (variantIds.size > 0) {
+        const variantsResult = await client.query(`SELECT * FROM food_variants WHERE id = ANY($1::uuid[])`, [Array.from(variantIds)]);
+        variantsResult.rows.forEach(row => variantsMap.set(row.id, row));
+    }
+
     const existingFoodEntries = new Set();
     const existingEntriesQuery = `
-        SELECT food_id, meal_type, entry_date, variant_id
+        SELECT food_id, meal_id, meal_type, entry_date, variant_id
         FROM food_entries
         WHERE user_id = $1
           AND meal_plan_template_id = $2
@@ -165,52 +193,62 @@ async function createFoodEntriesFromTemplate(
     `;
     const existingEntriesResult = await client.query(existingEntriesQuery, [userId, templateId, currentDate, lastDate]);
     existingEntriesResult.rows.forEach(entry => {
-        existingFoodEntries.add(`${entry.food_id}-${entry.meal_type}-${entry.entry_date.toISOString().split('T')[0]}-${entry.variant_id}`);
+        const key = `${entry.food_id || entry.meal_id}-${entry.meal_type}-${entry.entry_date.toISOString().split('T')[0]}-${entry.variant_id}`;
+        existingFoodEntries.add(key);
     });
 
     while (currentDate <= lastDate) {
         const dayOfWeek = currentDate.getDay();
-        const assignmentsForDay = assignments.filter(
-            (a) => a.day_of_week === dayOfWeek
-        );
+        const assignmentsForDay = assignments.filter(a => a.day_of_week === dayOfWeek);
 
         for (const assignment of assignmentsForDay) {
-            let foodsToProcess = [];
-
             if (assignment.item_type === "meal") {
-                foodsToProcess = mealFoodsMap.get(assignment.meal_id) || [];
-            } else if (assignment.item_type === "food") {
-                foodsToProcess.push({
-                    food_id: assignment.food_id,
-                    variant_id: assignment.variant_id,
-                    quantity: assignment.quantity,
-                    unit: assignment.unit,
+                const mealFoods = mealFoodsMap.get(assignment.meal_id) || [];
+                if (mealFoods.length === 0) continue;
+
+                const entryKey = `${assignment.meal_id}-${assignment.meal_type}-${currentDate.toISOString().split('T')[0]}-null`;
+                if (existingFoodEntries.has(entryKey)) continue;
+
+                let totalCalories = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
+                mealFoods.forEach(foodItem => {
+                    const variant = variantsMap.get(foodItem.variant_id);
+                    if (variant) {
+                        const multiplier = foodItem.quantity / variant.serving_size;
+                        totalCalories += (variant.calories || 0) * multiplier;
+                        totalProtein += (variant.protein || 0) * multiplier;
+                        totalCarbs += (variant.carbs || 0) * multiplier;
+                        totalFat += (variant.fat || 0) * multiplier;
+                    }
                 });
-            }
 
-            for (const foodItem of foodsToProcess) {
-                const entryKey = `${foodItem.food_id}-${assignment.meal_type}-${currentDate.toISOString().split('T')[0]}-${foodItem.variant_id}`;
-
-                if (!existingFoodEntries.has(entryKey)) {
+                const meal = mealsMap.get(assignment.meal_id);
+                if (meal) {
                     foodEntriesToInsert.push([
-                        userId,
-                        foodItem.food_id,
-                        assignment.meal_type,
-                        foodItem.quantity,
-                        foodItem.unit,
-                        currentDate,
-                        foodItem.variant_id,
-                        templateId,
+                        userId, null, assignment.meal_type, 1, 'meal', currentDate, null, templateId,
+                        meal.name, 'Meal', 1, 'meal',
+                        totalCalories, totalProtein, totalCarbs, totalFat,
+                        null, null, null, null, null, null, null, null, null, null, null, null, null, assignment.meal_id, userId
                     ]);
-                    existingFoodEntries.add(entryKey); // Add to set to prevent duplicates within the same batch
-                } else {
-                    log(
-                        "info",
-                        `Skipping duplicate food entry for template ${templateId}, day ${
-                            currentDate.toISOString().split("T")[0]
-                        }: ${entryKey}`
-                    );
                 }
+                existingFoodEntries.add(entryKey);
+
+            } else if (assignment.item_type === "food") {
+                const food = foodsMap.get(assignment.food_id);
+                const variant = variantsMap.get(assignment.variant_id);
+                if (!food || !variant) continue;
+
+                const entryKey = `${assignment.food_id}-${assignment.meal_type}-${currentDate.toISOString().split('T')[0]}-${assignment.variant_id}`;
+                if (existingFoodEntries.has(entryKey)) continue;
+
+                foodEntriesToInsert.push([
+                    userId, assignment.food_id, assignment.meal_type, assignment.quantity, assignment.unit, currentDate, assignment.variant_id, templateId,
+                    food.name, food.brand, variant.serving_size, variant.serving_unit,
+                    variant.calories, variant.protein, variant.carbs, variant.fat,
+                    variant.saturated_fat, variant.polyunsaturated_fat, variant.monounsaturated_fat, variant.trans_fat,
+                    variant.cholesterol, variant.sodium, variant.potassium, variant.dietary_fiber, variant.sugars,
+                    variant.vitamin_a, variant.vitamin_c, variant.calcium, variant.iron, null, userId
+                ]);
+                existingFoodEntries.add(entryKey);
             }
         }
         currentDate.setDate(currentDate.getDate() + 1);
@@ -218,7 +256,14 @@ async function createFoodEntriesFromTemplate(
 
     if (foodEntriesToInsert.length > 0) {
         const insertQuery = format(
-            `INSERT INTO food_entries (user_id, food_id, meal_type, quantity, unit, entry_date, variant_id, meal_plan_template_id) VALUES %L`,
+            `INSERT INTO food_entries (
+                user_id, food_id, meal_type, quantity, unit, entry_date, variant_id, meal_plan_template_id,
+                food_name, brand_name, serving_size, serving_unit,
+                calories, protein, carbs, fat,
+                saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
+                cholesterol, sodium, potassium, dietary_fiber, sugars,
+                vitamin_a, vitamin_c, calcium, iron, meal_id, created_by_user_id
+            ) VALUES %L`,
             foodEntriesToInsert
         );
         await client.query(insertQuery);
