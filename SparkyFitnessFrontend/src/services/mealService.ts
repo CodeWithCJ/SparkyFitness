@@ -8,7 +8,15 @@ export const createMeal = async (userId: string, mealData: MealPayload): Promise
 };
 
 export const getMeals = async (userId: string, filter: MealFilter = 'all', searchTerm: string = ""): Promise<Meal[]> => {
-  return await apiCall(`/meals`, { method: 'GET', params: { filter, search: searchTerm } });
+  let url = `/meals`;
+  const params: { [key: string]: any } = { filter };
+
+  if (searchTerm) {
+    url = `/meals/search`;
+    params.searchTerm = searchTerm;
+  }
+
+  return await apiCall(url, { method: 'GET', params });
 };
 
 export const getMealById = async (userId: string, mealId: string): Promise<Meal> => {

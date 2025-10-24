@@ -17,19 +17,36 @@ async function createMeal(userId, mealData) {
   }
 }
 
-async function getMeals(userId, isPublic = false, isRecent = false, isTop = false, limit = null) {
+async function getMeals(userId, filter = 'all', searchTerm = "") {
   try {
     let meals;
-    if (isRecent) {
-      meals = await mealRepository.getRecentMeals(userId, limit);
-    } else if (isTop) {
-      meals = await mealRepository.getTopMeals(userId, limit);
+    if (searchTerm) {
+      meals = await mealRepository.searchMeals(searchTerm, userId);
     } else {
-      meals = await mealRepository.getMeals(userId, isPublic);
+      switch (filter) {
+        case 'all':
+          meals = await mealRepository.getMeals(userId, 'all'); // Get all meals (user's and public)
+          break;
+        case 'mine':
+          meals = await mealRepository.getMeals(userId, 'mine'); // Get only user's meals
+          break;
+        case 'family':
+          meals = await mealRepository.getFamilyMeals(userId);
+          break;
+        case 'public':
+          meals = await mealRepository.getPublicMeals(userId);
+          break;
+        case 'needs-review':
+          meals = await mealRepository.getMealsNeedingReview(userId);
+          break;
+        default:
+          meals = await mealRepository.getMeals(userId, 'all');
+          break;
+      }
     }
     return meals;
   } catch (error) {
-    log('error', `Error in mealService.getMeals for user ${userId}:`, error);
+    log('error', `Error in mealService.getMeals for user ${userId} with filter ${filter} and searchTerm ${searchTerm}:`, error);
     throw error;
   }
 }
@@ -351,7 +368,7 @@ module.exports = {
   logMealPlanEntryToDiary,
   logDayMealPlanToDiary,
   searchMeals,
-  getMealsNeedingReview, // New export
-  updateMealEntriesSnapshot, // New export
+  getMealsNeedingReview,
+  updateMealEntriesSnapshot,
   getMealDeletionImpact,
 };

@@ -78,8 +78,8 @@ router.post('/', authenticate, async (req, res, next) => {
 // Get all meal templates for the user (and public ones)
 router.get('/', authenticate, async (req, res, next) => {
   try {
-    const isPublic = req.query.is_public === 'true';
-    const meals = await mealService.getMeals(req.userId, isPublic);
+    const { filter, search } = req.query;
+    const meals = await mealService.getMeals(req.userId, filter, search);
     res.status(200).json(meals);
   } catch (error) {
     log('error', `Error getting meals:`, error);

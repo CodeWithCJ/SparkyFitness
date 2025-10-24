@@ -38,13 +38,25 @@ async function createMeal(mealData) {
   }
 }
 
-async function getMeals(userId, isPublic = false) {
+async function getMeals(userId, filter = 'all') {
   const client = await getClient(userId); // User-specific operation
   try {
     let query = `
       SELECT id, user_id, name, description, is_public, created_at, updated_at
-      FROM meals`;
+      FROM meals
+      WHERE 1=1`; // Start with a true condition to easily append AND clauses
     const queryParams = [];
+
+    if (filter === 'mine') {
+      query += ` AND user_id = $1`;
+      queryParams.push(userId);
+    } else if (filter === 'all') {
+      // 'all' means user's own meals and public meals
+      query += ` AND (user_id = $1 OR is_public = TRUE)`;
+      queryParams.push(userId);
+    }
+    // For 'family' and 'public' filters, separate functions will be called in mealService
+
     query += ` ORDER BY name ASC`;
 
     const result = await client.query(query, queryParams);
@@ -60,9 +72,9 @@ async function searchMeals(searchTerm, userId, limit = null) {
     let query = `
       SELECT id, user_id, name, description, is_public
       FROM meals
-      WHERE name ILIKE $1
-     ORDER BY name ASC`;
-   const queryParams = [`%${searchTerm}%`];
+      WHERE name ILIKE '%' || $1 || '%'
+      ORDER BY name ASC`;
+   const queryParams = [searchTerm];
 
     if (limit !== null) {
       query += ` LIMIT $3`;
@@ -557,6 +569,42 @@ async function getMealPlanOwnerId(mealPlanId) {
   }
 }
 
+async function getPublicMeals(userId) {
+  const client = await getClient(userId); // User-specific operation for RLS
+  try {
+    const result = await client.query(
+      `SELECT id, user_id, name, description, is_public, created_at, updated_at
+       FROM meals
+       WHERE is_public = TRUE
+       ORDER BY name ASC`
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function getFamilyMeals(userId) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    // This query assumes a mechanism for defining "family" meals,
+    // e.g., meals shared by users in the same family group.
+    // For now, let's assume it fetches meals shared with the user via family access.
+    // This might need to be refined based on actual family sharing implementation.
+    const result = await client.query(
+      `SELECT m.id, m.user_id, m.name, m.description, m.is_public, m.created_at, m.updated_at
+       FROM meals m
+       JOIN family_access fa ON m.user_id = fa.owner_user_id
+       WHERE fa.family_user_id = $1 AND fa.is_active = TRUE AND (fa.access_permissions->>'food_list')::boolean = TRUE
+       ORDER BY m.name ASC`,
+      [userId]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   createMeal,
   getMeals,
@@ -575,6 +623,8 @@ module.exports = {
   searchMeals,
   getRecentMeals,
   getTopMeals,
+  getPublicMeals, // New export
+  getFamilyMeals, // New export
   getMealDeletionImpact,
   deleteMealPlanEntriesByMealId,
   getMealsNeedingReview,
