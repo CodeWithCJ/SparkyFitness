@@ -105,7 +105,7 @@ const LogScreen = ({ navigation }) => {
               <Text style={[styles.logStatus, { color: item.status === 'SUCCESS' ? '#28a745' : item.status === 'WARNING' ? '#ffc107' : '#dc3545' }]}>
                 {item.status}
               </Text>
-              <Text style={styles.logMessage}>{item.message}</Text>
+              <Text style={styles.logMessage} numberOfLines={0}>{item.message}</Text>
               <View style={styles.logDetails}>
                 {item.details && item.details.map((detail, index) => (
                   <Text key={index} style={styles.logDetailTag}>{detail}</Text>
