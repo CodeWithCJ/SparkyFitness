@@ -252,6 +252,7 @@ const styles = StyleSheet.create({
     elevation: 2,
     flexDirection: 'row',
     alignItems: 'flex-start',
+    width: '100%',
   },
   logIconContainer: {
     marginRight: 12,
@@ -267,6 +268,8 @@ const styles = StyleSheet.create({
   },
   logContent: {
     flex: 1,
+    flexShrink: 1,
+    width: '100%',
   },
   logStatus: {
     fontSize: 16,
@@ -277,6 +280,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555',
     marginBottom: 4,
+    flexWrap: 'wrap',
+    width: '100%',
+  },
   },
   logDetails: {
     flexDirection: 'row',
