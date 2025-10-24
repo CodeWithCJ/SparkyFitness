@@ -59,7 +59,8 @@ router.post('/restore', authenticate, isAdmin, upload.single('backupFile'), asyn
   try {
     // Move the uploaded file to the designated backup directory for processing
     const finalBackupPath = path.join(BACKUP_DIR, originalFileName);
-    await fs.rename(uploadedFilePath, finalBackupPath);
+    await fs.copyFile(uploadedFilePath, finalBackupPath);
+    await fs.unlink(uploadedFilePath);
     log('info', `Moved uploaded file to: ${finalBackupPath}`);
 
     // Perform restore

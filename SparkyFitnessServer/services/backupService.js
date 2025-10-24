@@ -74,18 +74,19 @@ async function performBackup(isManual = false) {
     const gzip = zlib.createGzip();
     const output = fs.createWriteStream(dbBackupPath);
 
-    await pipeline(pgDump.stdout, gzip, output);
+    await Promise.all([
+      pipeline(pgDump.stdout, gzip, output),
+      new Promise((resolve, reject) => {
+        pgDump.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`pg_dump process exited with code ${code}`));
+          }
+        });
+        pgDump.on('error', (err) => reject(err));
+      })]);
 
-    await new Promise((resolve, reject) => {
-      pgDump.on('close', (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`pg_dump process exited with code ${code}`));
-        }
-      });
-      pgDump.on('error', (err) => reject(err));
-    });
     log('info', `Database backup created: ${dbBackupPath}`);
 
     log('info', 'Starting uploads folder backup...');
@@ -141,7 +142,7 @@ async function applyRetentionPolicy() {
   log('info', 'Retention policy applied successfully.');
 }
 
-async function performRestore(backupFilePath, app) {
+async function performRestore(backupFilePath) {
   log('info', `Starting restore process from ${backupFilePath}`);
 
   let tempRestoreDir; // Declare tempRestoreDir outside the try block
@@ -196,11 +197,9 @@ async function performRestore(backupFilePath, app) {
     log('info', 'Reinitialized database connection pool.');
 
     // Reconfigure session middleware with the new pool
-    if (app) {
-      const { configureSessionMiddleware } = require('../SparkyFitnessServer');
-      configureSessionMiddleware(app, getRawOwnerPool());
-      log('info', 'Reconfigured session middleware with new database pool.');
-    }
+    const { configureSessionMiddleware } = require('../SparkyFitnessServer');
+    configureSessionMiddleware(getRawOwnerPool());
+    log('info', 'Reconfigured session middleware with new database pool.');
 
     log('warn', `Wiping current uploads directory: ${UPLOADS_BASE_DIR}...`);
     await fsp.rm(UPLOADS_BASE_DIR, { recursive: true, force: true });
