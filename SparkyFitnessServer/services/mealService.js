@@ -37,9 +37,9 @@ async function getMeals(userId, isPublic = false, isRecent = false, isTop = fals
 async function getMealById(userId, mealId) {
   try {
     log('info', `Attempting to retrieve meal with ID: ${mealId} for user: ${userId}`);
-    const meal = await mealRepository.getMealById(mealId);
+    const meal = await mealRepository.getMealById(mealId, userId);
     if (!meal) {
-      log('warn', `Meal with ID: ${mealId} not found in repository.`);
+      log('warn', `Meal with ID: ${mealId} not found in repository for user ${userId}.`);
       throw new Error('Meal not found.');
     }
     log('info', `Meal found: ${meal.name}, User ID: ${meal.user_id}, Is Public: ${meal.is_public}`);
@@ -58,7 +58,7 @@ async function getMealById(userId, mealId) {
 
 async function updateMeal(userId, mealId, updateData) {
   try {
-    const meal = await mealRepository.getMealById(mealId);
+    const meal = await mealRepository.getMealById(mealId, userId);
     if (!meal) {
       throw new Error('Meal not found.');
     }
@@ -67,6 +67,21 @@ async function updateMeal(userId, mealId, updateData) {
       throw new Error('Forbidden: You do not have permission to update this meal.');
     }
     const updatedMeal = await mealRepository.updateMeal(mealId, userId, updateData);
+
+    let confirmationMessage = null;
+    if (updateData.is_public) {
+        const mealWithFoods = await mealRepository.getMealById(mealId, userId);
+        const foodIds = mealWithFoods.foods.map(f => f.food_id);
+
+        if (foodIds.length > 0) {
+            log('info', `Updating ${foodIds.length} foods to be public as part of sharing meal ${mealId}`);
+            const updatePromises = foodIds.map(foodId =>
+                foodRepository.updateFood(foodId, userId, { shared_with_public: true })
+            );
+            await Promise.all(updatePromises);
+            confirmationMessage = `Meal shared successfully. ${foodIds.length} associated foods have also been made public.`;
+        }
+    }
 
     // After updating the meal, re-sync any meal plan templates that use this meal
     const affectedTemplates = await mealPlanTemplateRepository.getMealPlanTemplatesByMealId(mealId);
@@ -79,7 +94,7 @@ async function updateMeal(userId, mealId, updateData) {
         }
     }
 
-    return updatedMeal;
+    return { ...updatedMeal, confirmationMessage };
   } catch (error) {
     log('error', `Error in mealService.updateMeal for user ${userId}, meal ${mealId}:`, error);
     throw error;
@@ -88,7 +103,7 @@ async function updateMeal(userId, mealId, updateData) {
 
 async function deleteMeal(userId, mealId) {
   try {
-    const meal = await mealRepository.getMealById(mealId);
+    const meal = await mealRepository.getMealById(mealId, userId);
     if (!meal) {
       throw new Error('Meal not found.');
     }
@@ -99,17 +114,22 @@ async function deleteMeal(userId, mealId) {
 
     // Check if this meal is used in any meal plans or food entries by other users
     // Assuming a getMealDeletionImpact function exists in mealRepository
-    const deletionImpact = await mealRepository.getMealDeletionImpact(mealId);
-    const isUsedByOthers = deletionImpact.mealPlanTemplatesCount > 0 || deletionImpact.foodEntriesCount > 0;
+    const deletionImpact = await mealRepository.getMealDeletionImpact(mealId, userId);
 
-    if (isUsedByOthers) {
-      // If used by others, perform a soft delete (e.g., set is_public to false or add an is_archived flag)
-      // For now, we'll set is_public to false as a proxy for soft delete if a dedicated flag doesn't exist.
-      // A proper 'is_archived' column should be added to the meals table in a migration.
+    if (deletionImpact.usedByOtherUsers) {
+      // Soft delete (hide) if used by other users
       await mealRepository.updateMeal(mealId, userId, { is_public: false });
-      return { message: "Meal archived successfully (used by others)." };
+      return { message: "Meal hidden successfully." };
+    } else if (deletionImpact.usedByCurrentUser) {
+      // Force delete if used only by the current user
+      await mealRepository.deleteMealPlanEntriesByMealId(mealId, userId); // Assuming this function exists
+      const success = await mealRepository.deleteMeal(mealId, userId);
+      if (!success) {
+        throw new Error('Failed to delete meal.');
+      }
+      return { message: "Meal and associated meal plan entries deleted permanently." };
     } else {
-      // If not used by others, perform a hard delete
+      // Hard delete if not used by anyone
       const success = await mealRepository.deleteMeal(mealId, userId);
       if (!success) {
         throw new Error('Failed to delete meal.');
@@ -118,6 +138,24 @@ async function deleteMeal(userId, mealId) {
     }
   } catch (error) {
     log('error', `Error in mealService.deleteMeal for user ${userId}, meal ${mealId}:`, error);
+    throw error;
+  }
+}
+
+async function getMealDeletionImpact(userId, mealId) {
+  try {
+    const meal = await mealRepository.getMealById(mealId, userId);
+    if (!meal) {
+      throw new Error('Meal not found.');
+    }
+    // Authorization check: User can only get deletion impact for their own meals or public meals
+    if (meal.user_id !== userId && !meal.is_public) {
+      throw new Error('Forbidden: You do not have permission to access this meal.');
+    }
+    const deletionImpact = await mealRepository.getMealDeletionImpact(mealId, userId);
+    return deletionImpact;
+  } catch (error) {
+    log('error', `Error in mealService.getMealDeletionImpact for user ${userId}, meal ${mealId}:`, error);
     throw error;
   }
 }
@@ -193,7 +231,7 @@ async function logMealPlanEntryToDiary(userId, mealPlanId, targetDate) {
 
     if (mealPlanEntry.meal_id) {
       // If it's a meal template, expand its foods
-      const meal = await mealRepository.getMealById(mealPlanEntry.meal_id);
+      const meal = await mealRepository.getMealById(mealPlanEntry.meal_id, userId);
       if (!meal) {
         throw new Error('Associated meal template not found.');
       }
@@ -276,7 +314,7 @@ async function getMealsNeedingReview(authenticatedUserId) {
 async function updateMealEntriesSnapshot(authenticatedUserId, mealId) {
   try {
     // Fetch the latest meal details
-    const meal = await mealRepository.getMealById(mealId);
+    const meal = await mealRepository.getMealById(mealId, authenticatedUserId);
     if (!meal) {
       throw new Error("Meal not found.");
     }
@@ -315,4 +353,5 @@ module.exports = {
   searchMeals,
   getMealsNeedingReview, // New export
   updateMealEntriesSnapshot, // New export
+  getMealDeletionImpact,
 };

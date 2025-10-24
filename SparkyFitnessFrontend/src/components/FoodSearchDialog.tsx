@@ -1,15 +1,17 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import EnhancedFoodSearch from "./EnhancedFoodSearch";
 import { Food } from '@/types/food';
+import { Meal } from '@/types/meal';
 
 interface FoodSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onFoodSelect: (food: Food) => void;
+  onFoodSelect: (item: Food | Meal, type: 'food' | 'meal') => void;
   title?: string;
   description?: string;
   hideDatabaseTab?: boolean;
   hideMealTab?: boolean;
+  mealType?: string;
 }
 
 const FoodSearchDialog = ({
@@ -19,7 +21,8 @@ const FoodSearchDialog = ({
   title = "Search and Add Food",
   description = "Search for foods to add to your database.",
   hideDatabaseTab = false,
-  hideMealTab = false
+  hideMealTab = false,
+  mealType = undefined,
 }: FoodSearchDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -30,7 +33,7 @@ const FoodSearchDialog = ({
             {description}
           </DialogDescription>
         </DialogHeader>
-        <EnhancedFoodSearch onFoodSelect={onFoodSelect} hideDatabaseTab={hideDatabaseTab} hideMealTab={hideMealTab} />
+        <EnhancedFoodSearch onFoodSelect={onFoodSelect} hideDatabaseTab={hideDatabaseTab} hideMealTab={hideMealTab} mealType={mealType} />
       </DialogContent>
     </Dialog>
   );

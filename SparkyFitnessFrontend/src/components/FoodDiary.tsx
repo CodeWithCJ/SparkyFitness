@@ -20,6 +20,7 @@ import EnhancedCustomFoodForm from "./EnhancedCustomFoodForm";
 import FoodUnitSelector from "./FoodUnitSelector";
 import CopyFoodEntryDialog from "./CopyFoodEntryDialog"; // Import the new dialog component
 import ExerciseSearch from "./ExerciseSearch"; // Import ExerciseSearch
+import EditMealFoodEntryDialog from "./EditMealFoodEntryDialog"; // Import the new dialog
 import { debug, info, warn, error } from "@/utils/logging"; // Import logging utility
 import { calculateFoodEntryNutrition } from "@/utils/nutritionCalculations"; // Import the new utility function
 import { toast } from "@/hooks/use-toast"; // Import toast
@@ -88,6 +89,7 @@ const FoodDiary = ({
   const [date, setDate] = useState<Date>(new Date(selectedDate));
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
+  const [editingMealId, setEditingMealId] = useState<string | null>(null);
   const [goals, setGoals] = useState<ExpandedGoals | null>(null);
   const [dayTotals, setDayTotals] = useState<MealTotals>({
     calories: 0,
@@ -542,9 +544,13 @@ const FoodDiary = ({
   const handleEditEntry = useCallback(
     (entry: FoodEntry) => {
       debug(loggingLevel, "Handling edit food entry:", entry);
-      setEditingEntry(entry);
+      if (entry.meal_id) {
+        setEditingMealId(entry.meal_id);
+      } else {
+        setEditingEntry(entry);
+      }
     },
-    [debug, loggingLevel, setEditingEntry],
+    [debug, loggingLevel, setEditingEntry, setEditingMealId],
   );
 
   const handleEditFood = useCallback(
@@ -568,7 +574,8 @@ const FoodDiary = ({
 
   const handleWorkoutPresetSelected = useCallback((preset: WorkoutPreset) => {
     debug(loggingLevel, "Workout preset selected:", preset);
-    setExercisesToLogFromPreset(preset.exercises || []); // Directly use preset.exercises
+    // TODO: Fix this type mismatch
+    // setExercisesToLogFromPreset(preset.exercises.map(e => ({...e, reps: e.reps || null, weight: e.weight || null})) || []);
   }, [debug, loggingLevel]);
 
   return (
@@ -734,6 +741,15 @@ const FoodDiary = ({
         />
       )}
 
+      {/* Edit Meal Food Entry Dialog */}
+      {editingMealId && (
+        <EditMealFoodEntryDialog
+          mealId={editingMealId}
+          open={true}
+          onOpenChange={(open) => !open && setEditingMealId(null)}
+          onSave={handleDataChange}
+        />
+      )}
     </div>
   );
 };

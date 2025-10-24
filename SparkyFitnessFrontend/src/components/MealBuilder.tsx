@@ -207,6 +207,11 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
           />
           <Label htmlFor="isPublic">Share with Public</Label>
         </div>
+        {isPublic && (
+          <p className="text-sm text-muted-foreground mt-2">
+            Note: All foods in this meal will be marked as public.
+          </p>
+        )}
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Foods in Meal</h3>
@@ -248,9 +253,15 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
         <FoodSearchDialog
           open={showFoodSearchDialog}
           onOpenChange={setShowFoodSearchDialog}
-          onFoodSelect={(food) => {
+          onFoodSelect={(item, type) => {
             setShowFoodSearchDialog(false);
-            handleAddFoodToMeal(food);
+            if (type === 'food') {
+              handleAddFoodToMeal(item as Food);
+            } else {
+              // Handle meal selection if needed, though current task is about foods
+              // For now, we'll just log a warning or ignore
+              warn(loggingLevel, 'Meal selected in FoodSearchDialog, but MealBuilder expects Food.');
+            }
           }}
           title="Add Food to Meal"
           description="Search for a food to add to this meal."

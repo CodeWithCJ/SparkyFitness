@@ -8,39 +8,69 @@ async function createFoodEntry(entryData, createdByUserId) {
   try {
     await client.query("BEGIN");
 
-    // 1. Fetch the food and variant details to create the snapshot
-    const foodSnapshotQuery = await client.query(
-      `SELECT f.name, f.brand, fv.*
-       FROM foods f
-       JOIN food_variants fv ON f.id = fv.food_id
-       WHERE f.id = $1 AND fv.id = $2`,
-      [entryData.food_id, entryData.variant_id]
-    );
+    let snapshot;
+    if (entryData.meal_id) {
+      // If it's an aggregated meal, use the provided snapshot data directly
+      snapshot = {
+        name: entryData.food_name,
+        brand: entryData.brand_name,
+        serving_size: entryData.serving_size,
+        serving_unit: entryData.serving_unit,
+        calories: entryData.calories,
+        protein: entryData.protein,
+        carbs: entryData.carbs,
+        fat: entryData.fat,
+        saturated_fat: entryData.saturated_fat,
+        polyunsaturated_fat: entryData.polyunsaturated_fat,
+        monounsaturated_fat: entryData.monounsaturated_fat,
+        trans_fat: entryData.trans_fat,
+        cholesterol: entryData.cholesterol,
+        sodium: entryData.sodium,
+        potassium: entryData.potassium,
+        dietary_fiber: entryData.dietary_fiber,
+        sugars: entryData.sugars,
+        vitamin_a: entryData.vitamin_a,
+        vitamin_c: entryData.vitamin_c,
+        calcium: entryData.calcium,
+        iron: entryData.iron,
+        glycemic_index: entryData.glycemic_index,
+      };
+    } else {
+      // Otherwise, fetch the food and variant details to create the snapshot
+      const foodSnapshotQuery = await client.query(
+        `SELECT f.name, f.brand, fv.*
+         FROM foods f
+         JOIN food_variants fv ON f.id = fv.food_id
+         WHERE f.id = $1 AND fv.id = $2`,
+        [entryData.food_id, entryData.variant_id]
+      );
 
-    if (foodSnapshotQuery.rows.length === 0) {
-      throw new Error("Food or variant not found for snapshotting.");
+      if (foodSnapshotQuery.rows.length === 0) {
+        throw new Error("Food or variant not found for snapshotting.");
+      }
+      snapshot = foodSnapshotQuery.rows[0];
     }
-    const snapshot = foodSnapshotQuery.rows[0];
 
-    // 2. Insert the food entry with the snapshot data
+    // Insert the food entry with the snapshot data
     const result = await client.query(
       `INSERT INTO food_entries (
-         user_id, food_id, meal_type, quantity, unit, entry_date, variant_id, meal_plan_template_id,
+         user_id, food_id, meal_id, meal_type, quantity, unit, entry_date, variant_id, meal_plan_template_id,
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
          potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, updated_by_user_id
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33
        ) RETURNING *`,
       [
         entryData.user_id,
-        entryData.food_id,
+        entryData.food_id, // Can be null for aggregated meals
+        entryData.meal_id, // New meal_id field
         entryData.meal_type,
         entryData.quantity,
         entryData.unit,
         entryData.entry_date,
-        entryData.variant_id,
+        entryData.variant_id, // Can be null for aggregated meals
         entryData.meal_plan_template_id,
         createdByUserId, // created_by_user_id
         snapshot.name, // food_name
@@ -85,7 +115,7 @@ async function getFoodEntryById(entryId, userId) {
   try {
     const result = await client.query(
       `SELECT
-        fe.id, fe.food_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
+        fe.id, fe.food_id, fe.meal_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat, fe.cholesterol, fe.sodium,
         fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index,
@@ -201,7 +231,7 @@ async function getFoodEntriesByDate(userId, selectedDate) {
   try {
     const result = await client.query(
       `SELECT
-        fe.id, fe.food_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
+        fe.id, fe.food_id, fe.meal_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat, fe.cholesterol, fe.sodium,
         fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index
@@ -221,7 +251,7 @@ async function getFoodEntriesByDateAndMealType(userId, date, mealType) {
   try {
     const result = await client.query(
       `SELECT
-        fe.id, fe.food_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
+        fe.id, fe.food_id, fe.meal_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat, fe.cholesterol, fe.sodium,
         fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index
@@ -241,7 +271,7 @@ async function getFoodEntriesByDateRange(userId, startDate, endDate) {
   try {
     const result = await client.query(
       `SELECT
-        fe.id, fe.food_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
+        fe.id, fe.food_id, fe.meal_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat,
         fe.cholesterol, fe.sodium, fe.potassium, fe.dietary_fiber, fe.sugars,

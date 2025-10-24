@@ -86,6 +86,7 @@ const MealCard = ({
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
   debug(loggingLevel, "MealCard: Component rendered for meal:", meal.name);
+  debug(loggingLevel, "MealCard: meal.entries:", meal.entries); // Add this debug log
   const [editingFoodEntry, setEditingFoodEntry] = useState<FoodEntry | null>(
     null,
   );
@@ -258,7 +259,7 @@ const MealCard = ({
 
                 return (
                   <div
-                    key={`food-${entry.food_id || entry.id}`}
+                    key={entry.id}
                     className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4"
                   >
                     <div className="flex-1">
