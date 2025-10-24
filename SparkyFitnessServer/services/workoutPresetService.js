@@ -22,8 +22,8 @@ async function createWorkoutPreset(userId, presetData) {
   return workoutPresetRepository.createWorkoutPreset(presetData);
 }
 
-async function getWorkoutPresets(userId) {
-  return workoutPresetRepository.getWorkoutPresets(userId);
+async function getWorkoutPresets(userId, page, limit) {
+  return workoutPresetRepository.getWorkoutPresets(userId, page, limit);
 }
 
 async function getWorkoutPresetById(userId, presetId) {

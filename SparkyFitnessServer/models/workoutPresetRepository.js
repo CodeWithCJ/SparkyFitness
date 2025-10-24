@@ -48,9 +48,17 @@ async function createWorkoutPreset(presetData) {
   }
 }
 
-async function getWorkoutPresets(userId) {
+async function getWorkoutPresets(userId, page = 1, limit = 10) {
   const client = await getClient(userId); // User-specific operation
   try {
+    const offset = (page - 1) * limit;
+
+    const totalResult = await client.query(
+      `SELECT COUNT(*) FROM workout_presets WHERE is_public = TRUE OR user_id = $1`,
+      [userId]
+    );
+    const total = parseInt(totalResult.rows[0].count, 10);
+
     const result = await client.query(
       `SELECT
          wp.id, wp.user_id, wp.name, wp.description, wp.is_public, wp.created_at, wp.updated_at,
@@ -81,10 +89,16 @@ async function getWorkoutPresets(userId) {
        FROM workout_presets wp
        WHERE wp.is_public = TRUE OR wp.user_id = $1
        GROUP BY wp.id
-       ORDER BY wp.name ASC`,
-      [userId]
+       ORDER BY wp.name ASC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
     );
-    return result.rows;
+    return {
+      presets: result.rows,
+      total,
+      page,
+      limit
+    };
   } finally {
     client.release();
   }

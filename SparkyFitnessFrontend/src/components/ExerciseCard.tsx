@@ -588,7 +588,6 @@ const ExerciseCard = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button size="default" onClick={handleOpenAddDialog}>
-                  <Plus className="w-4 h-4 mr-1" />
                   <Dumbbell className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>

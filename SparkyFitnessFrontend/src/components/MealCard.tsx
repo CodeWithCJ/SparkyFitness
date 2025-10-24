@@ -181,7 +181,6 @@ const MealCard = ({
                     }
                     title="Add a new food item"
                   >
-                    <Plus className="w-4 h-4 mr-1" />
                     <Utensils className="w-4 h-4" />
                   </Button>
                 </DialogTrigger>
