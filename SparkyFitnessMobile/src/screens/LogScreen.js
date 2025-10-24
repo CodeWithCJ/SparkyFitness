@@ -283,7 +283,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     width: '100%',
   },
-  },
   logDetails: {
     flexDirection: 'row',
     flexWrap: 'wrap',
