@@ -8,7 +8,7 @@ interface WorkoutHeatmapProps {
 }
 
 const WorkoutHeatmap: React.FC<WorkoutHeatmapProps> = ({ workoutDates }) => {
-  const { loggingLevel } = usePreferences();
+  const { loggingLevel, formatDateInUserTimezone } = usePreferences();
   info(loggingLevel, 'WorkoutHeatmap: Rendering component.');
 
   const today = new Date();
@@ -37,7 +37,7 @@ const WorkoutHeatmap: React.FC<WorkoutHeatmapProps> = ({ workoutDates }) => {
   const getDayColor = (date: Date | null) => {
     if (!date) return 'bg-gray-100 dark:bg-gray-800'; // Empty cell color
 
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = formatDateInUserTimezone(date, 'yyyy-MM-dd');
     const hasWorkout = workoutDates.includes(dateString);
 
     if (hasWorkout) {
@@ -74,7 +74,7 @@ const WorkoutHeatmap: React.FC<WorkoutHeatmapProps> = ({ workoutDates }) => {
               <div
                 key={dayIndex}
                 className={`w-8 h-8 md:w-5 md:h-5 rounded-md flex items-center justify-center text-center text-[10px] md:text-[8px] ${getDayColor(date)}`}
-                title={date ? date.toDateString() + (workoutDates.includes(date.toISOString().split('T')[0]) ? ' (Workout)' : ' (No Workout)') : ''}
+                title={date ? formatDateInUserTimezone(date, 'yyyy-MM-dd') + (workoutDates.includes(formatDateInUserTimezone(date, 'yyyy-MM-dd')) ? ' (Workout)' : ' (No Workout)') : ''}
               >
                 {date ? date.getDate() : ''}
               </div>

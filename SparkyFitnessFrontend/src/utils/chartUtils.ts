@@ -24,9 +24,10 @@ export function calculateSmartYAxisDomain(
     marginPercent?: number; // Default: 10% margin
     useZeroBaseline?: boolean; // Force zero baseline
     minRangeThreshold?: number; // If range is small relative to max, use zero baseline
+    forceMin?: number; // Force a specific minimum value for the Y-axis
   } = {}
 ): [number, number] | [number, string] | undefined {
-  const { marginPercent = 0.1, useZeroBaseline = false, minRangeThreshold = 0.3 } = options;
+  const { marginPercent = 0.1, useZeroBaseline = false, minRangeThreshold = 0.3, forceMin } = options;
 
   if (!data || data.length === 0) {
     return undefined;
@@ -51,21 +52,21 @@ export function calculateSmartYAxisDomain(
     return value === 0 ? [0, 1] : [value * 0.95, value * 1.05];
   }
 
-  // Force zero baseline if requested
-  if (useZeroBaseline) {
-    return [0, max * (1 + marginPercent)];
-  }
-
-  // Use zero baseline if the range is small compared to the maximum value
-  // This handles cases where data naturally spans a large range
-  if (range / Math.abs(max) < minRangeThreshold && min >= 0) {
-    return [0, max * (1 + marginPercent)];
-  }
-
   // Use min-max with margin for better visibility of trends
   const margin = range * marginPercent;
-  const domainMin = Math.max(0, min - margin); // Don't go below zero for positive data
-  const domainMax = max + margin;
+  let domainMin = min - margin;
+  let domainMax = max + margin;
+
+  if (forceMin !== undefined) {
+    domainMin = forceMin;
+  } else if (useZeroBaseline) {
+    domainMin = Math.min(0, domainMin); // Ensure it starts at 0 or below if useZeroBaseline is true
+  } else {
+    // If not using zero baseline, and min is positive, ensure domainMin doesn't go negative
+    if (min >= 0 && domainMin < 0) {
+      domainMin = 0;
+    }
+  }
 
   return [domainMin, domainMax];
 }
@@ -139,8 +140,10 @@ export function getChartConfig(dataKey: string) {
     return {
       useSmartScaling: true,
       excludeIncompleteDay: false,
+      useZeroBaseline: false, // Explicitly set to false for weight charts
       marginPercent: 0.05, // Smaller margin for body measurements
-      minRangeThreshold: 0.2 // More likely to use min-max scaling
+      minRangeThreshold: 0.2, // More likely to use min-max scaling
+      forceMin: undefined // Will be set dynamically in MeasurementChartsGrid
     };
   }
 
