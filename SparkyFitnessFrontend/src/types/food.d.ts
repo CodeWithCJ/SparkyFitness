@@ -62,7 +62,8 @@ export type GlycemicIndex = 'None' | 'Very Low' | 'Low' | 'Medium' | 'High' | 'V
 export interface FoodEntry {
   id: string;
   user_id: string;
-  food_id: string;
+  food_id?: string; // Make optional as it might be a meal_id
+  meal_id?: string; // New field for aggregated meals
   meal_type: string;
   quantity: number;
   unit: string;

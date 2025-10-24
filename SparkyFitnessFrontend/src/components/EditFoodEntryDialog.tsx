@@ -48,6 +48,13 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
       return;
     }
 
+    if (entry.meal_id) {
+      // This is an aggregated meal entry, editing is not supported in the same way.
+      // We can disable the form or show a message.
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       // Fetch latest food details
@@ -323,7 +330,14 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
         </DialogHeader>
 
         {loading ? (
-          <div>Loading units...</div>
+          <div>Loading...</div>
+        ) : entry.meal_id ? (
+          <div className="text-center py-8">
+            <p className="text-lg font-semibold">This is an aggregated meal entry.</p>
+            <p className="text-sm text-gray-600">Editing aggregated meals is not supported in this dialog.</p>
+            <p className="text-sm text-gray-600">To edit the meal, please go to the Meal Management page.</p>
+            <Button className="mt-4" onClick={() => onOpenChange(false)}>Close</Button>
+          </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">

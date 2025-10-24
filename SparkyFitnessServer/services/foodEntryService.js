@@ -193,21 +193,111 @@ async function addMealFoodsToDiary(
       throw new Error("Meal not found.");
     }
 
-    const createdFoodEntries = [];
+    let totalCalories = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+    let totalSaturatedFat = 0;
+    let totalPolyunsaturatedFat = 0;
+    let totalMonounsaturatedFat = 0;
+    let totalTransFat = 0;
+    let totalCholesterol = 0;
+    let totalSodium = 0;
+    let totalPotassium = 0;
+    let totalDietaryFiber = 0;
+    let totalSugars = 0;
+    let totalVitaminA = 0;
+    let totalVitaminC = 0;
+    let totalCalcium = 0;
+    let totalIron = 0;
+    let totalCarbsForGI = 0;
+    let weightedGIAccumulator = 0;
+
     for (const foodItem of meal.foods) {
-      const newEntry = await foodRepository.createFoodEntry({
-        user_id: authenticatedUserId,
-        created_by_user_id: actingUserId, // Use actingUserId for audit
-        food_id: foodItem.food_id,
-        meal_type: mealType,
-        quantity: foodItem.quantity,
-        unit: foodItem.unit,
-        entry_date: entryDate,
-        variant_id: foodItem.variant_id,
-      }, authenticatedUserId); // Pass authenticatedUserId as the RLS user
-      createdFoodEntries.push(newEntry);
+      const food = await foodRepository.getFoodById(foodItem.food_id, authenticatedUserId);
+      if (!food) {
+        log("warn", `Food with ID ${foodItem.food_id} not found for meal ${mealId}. Skipping.`);
+        continue;
+      }
+
+      const variant = await foodRepository.getFoodVariantById(foodItem.variant_id, authenticatedUserId);
+      if (!variant) {
+        log("warn", `Food variant with ID ${foodItem.variant_id} not found for food ${foodItem.food_id} in meal ${mealId}. Skipping.`);
+        continue;
+      }
+
+      // Assuming foodItem.quantity and foodItem.unit are already normalized to a base unit or serving size
+      // For simplicity, we'll assume foodItem.quantity is in terms of variant.serving_size
+      // If units need conversion, that logic would go here.
+      const multiplier = foodItem.quantity / variant.serving_size;
+
+      totalCalories += (variant.calories || 0) * multiplier;
+      totalProtein += (variant.protein || 0) * multiplier;
+      totalCarbs += (variant.carbs || 0) * multiplier;
+      totalFat += (variant.fat || 0) * multiplier;
+      totalSaturatedFat += (variant.saturated_fat || 0) * multiplier;
+      totalPolyunsaturatedFat += (variant.polyunsaturated_fat || 0) * multiplier;
+      totalMonounsaturatedFat += (variant.monounsaturated_fat || 0) * multiplier;
+      totalTransFat += (variant.trans_fat || 0) * multiplier;
+      totalCholesterol += (variant.cholesterol || 0) * multiplier;
+      totalSodium += (variant.sodium || 0) * multiplier;
+      totalPotassium += (variant.potassium || 0) * multiplier;
+      totalDietaryFiber += (variant.dietary_fiber || 0) * multiplier;
+      totalSugars += (variant.sugars || 0) * multiplier;
+      totalVitaminA += (variant.vitamin_a || 0) * multiplier;
+      totalVitaminC += (variant.vitamin_c || 0) * multiplier;
+      totalCalcium += (variant.calcium || 0) * multiplier;
+      totalIron += (variant.iron || 0) * multiplier;
+
+      // For weighted average GI
+      if (variant.glycemic_index && variant.carbs) {
+        const giValue = getGlycemicIndexValue(variant.glycemic_index);
+        if (giValue !== null) {
+          weightedGIAccumulator += giValue * (variant.carbs * multiplier);
+          totalCarbsForGI += (variant.carbs * multiplier);
+        }
+      }
     }
-    return createdFoodEntries;
+
+    const aggregatedGlycemicIndex = totalCarbsForGI > 0 ? weightedGIAccumulator / totalCarbsForGI : null;
+
+    const newEntry = await foodRepository.createFoodEntry({
+      user_id: authenticatedUserId,
+      created_by_user_id: actingUserId,
+      meal_id: mealId, // Link to the meal
+      food_id: null, // No specific food_id for aggregated meal
+      meal_type: mealType,
+      quantity: 1, // One aggregated meal entry
+      unit: 'meal', // Unit is 'meal'
+      entry_date: entryDate,
+      variant_id: null, // No variant for aggregated meal
+
+      // Snapshot data for the aggregated meal
+      food_name: meal.name,
+      brand_name: 'Meal',
+      serving_size: 1,
+      serving_unit: 'meal',
+      calories: totalCalories,
+      protein: totalProtein,
+      carbs: totalCarbs,
+      fat: totalFat,
+      saturated_fat: totalSaturatedFat,
+      polyunsaturated_fat: totalPolyunsaturatedFat,
+      monounsaturated_fat: totalMonounsaturatedFat,
+      trans_fat: totalTransFat,
+      cholesterol: totalCholesterol,
+      sodium: totalSodium,
+      potassium: totalPotassium,
+      dietary_fiber: totalDietaryFiber,
+      sugars: totalSugars,
+      vitamin_a: totalVitaminA,
+      vitamin_c: totalVitaminC,
+      calcium: totalCalcium,
+      iron: totalIron,
+      glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
+    }, authenticatedUserId);
+
+    return [newEntry]; // Return as an array for consistency with previous behavior
   } catch (error) {
     log(
       "error",
@@ -216,6 +306,28 @@ async function addMealFoodsToDiary(
     );
     throw error;
   }
+}
+
+// Helper function to convert GlycemicIndex category to a numerical value for calculation
+function getGlycemicIndexValue(category) {
+  switch (category) {
+    case 'Very Low': return 10; // Example values, adjust as needed
+    case 'Low': return 30;
+    case 'Medium': return 60;
+    case 'High': return 80;
+    case 'Very High': return 100;
+    default: return null;
+  }
+}
+
+// Helper function to convert numerical GI back to category
+function getGlycemicIndexCategory(value) {
+  if (value === null) return 'None';
+  if (value <= 20) return 'Very Low';
+  if (value <= 50) return 'Low';
+  if (value <= 70) return 'Medium';
+  if (value <= 90) return 'High';
+  return 'Very High';
 }
 
 async function copyFoodEntries(
