@@ -112,8 +112,8 @@ async function processWithingsMeasures(userId, createdByUserId, measuregrps) {
     }
 }
 
-async function processWithingsHeartData(userId, createdByUserId, heartSeries) {
-    if (!heartSeries || heartSeries.length === 0) {
+async function processWithingsHeartData(userId, createdByUserId, heartSeries = []) {
+    if (heartSeries.length === 0) {
         log('info', `No Withings heart data to process for user ${userId}.`);
         return;
     }
@@ -136,8 +136,8 @@ async function processWithingsHeartData(userId, createdByUserId, heartSeries) {
     }
 }
 
-async function processWithingsSleepData(userId, createdByUserId, sleepSeries) {
-    if (!sleepSeries || sleepSeries.length === 0) {
+async function processWithingsSleepData(userId, createdByUserId, sleepSeries = []) {
+    if (sleepSeries.length === 0) {
         log('info', `No Withings sleep data to process for user ${userId}.`);
         return;
     }
@@ -208,8 +208,8 @@ async function upsertCustomMeasurementLogic(userId, createdByUserId, customMeasu
     );
 }
 
-async function processWithingsWorkouts(userId, createdByUserId, workouts) {
-    if (!workouts || workouts.length === 0) {
+async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
+    if (workouts.length === 0) {
         log('info', `No Withings workout data to process for user ${userId}.`);
         return;
     }
@@ -263,6 +263,7 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts) {
         195: "Climbing",
         196: "Ice Skating",
         272: "MultiSport",
+        306: "Indoor Walking",
         307: "Indoor Running",
         308: "Indoor Cycling",
     };
@@ -298,18 +299,22 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts) {
             }
 
             if (!exercise) {
+                const durationSeconds = workout.enddate - workout.startdate;
                 // Create a new exercise if it doesn't exist
                 const newExerciseData = {
                     user_id: userId,
                     name: exerciseName,
                     category: 'Cardio', // Default category, can be refined
-                    calories_per_hour: workout.data.calories ? (workout.data.calories / (workout.data.duration / 3600)) : 300, // Estimate if possible
+                    calories_per_hour: (workout.data.calories && durationSeconds > 0) ? Math.round(workout.data.calories / (durationSeconds / 3600)) : 300, // Estimate if possible, round to nearest integer
                     description: `Automatically created from Withings workout category ${workoutCategory}.`,
                     is_custom: true,
                     shared_with_public: false,
                     source: 'Withings',
                     source_id: exerciseSourceId, // Corrected variable name
                 };
+                log('debug', `Withings workout.data.calories: ${workout.data.calories}, durationSeconds: ${durationSeconds}`);
+                log('debug', `Withings workout raw data: ${JSON.stringify(workout.data)}`);
+                log('debug', `New exercise data before creation: ${JSON.stringify(newExerciseData)}`);
                 exercise = await exerciseRepository.createExercise(newExerciseData);
                 log('info', `Created new exercise for Withings workout category ${workoutCategory}: ${exercise.name}`);
             }
@@ -328,6 +333,15 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts) {
                 calories_burned: caloriesBurned,
                 entry_date: entryDate,
                 notes: `Logged from Withings workout: ${exercise.name}. Distance: ${workout.data.distance || 0}m, Steps: ${workout.data.steps || 0}.`,
+                sets: [{
+                    set_number: 1,
+                    set_type: 'Working Set',
+                    reps: 1,
+                    weight: 0,
+                    duration: durationMinutes,
+                    rest_time: 0,
+                    notes: ''
+                }]
             };
 
             await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, createdByUserId, 'Withings'); // Pass 'Withings' as entrySource

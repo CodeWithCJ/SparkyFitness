@@ -71,12 +71,12 @@ async function getWaterIntakeByDate(userId, date) {
   }
 }
 
-async function getWaterIntakeEntryById(id) {
-  const client = await getClient(id); // User-specific operation (RLS will handle access)
+async function getWaterIntakeEntryById(id, userId) {
+  const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT * FROM water_intake WHERE id = $1 AND user_id = current_setting(\'app.user_id\')::uuid',
-      [id]
+      'SELECT * FROM water_intake WHERE id = $1 AND user_id = $2',
+      [id, userId]
     );
     return result.rows[0];
   } finally {
@@ -84,12 +84,12 @@ async function getWaterIntakeEntryById(id) {
   }
 }
 
-async function getWaterIntakeEntryOwnerId(id) {
-  const client = await getClient(id); // User-specific operation (RLS will handle access)
+async function getWaterIntakeEntryOwnerId(id, userId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const entryResult = await client.query(
-      'SELECT user_id FROM water_intake WHERE id = $1',
-      [id]
+      'SELECT user_id FROM water_intake WHERE id = $1 AND user_id = $2',
+      [id, userId]
     );
     return entryResult.rows[0]?.user_id;
   } finally {
@@ -199,9 +199,9 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(userId, date) {
   }
 }
 
-async function updateCheckInMeasurements(userId, updatedByUserId, entryDate, updateData) {
-  log('info', `[measurementRepository] updateCheckInMeasurements called with: userId=${userId}, entryDate=${entryDate}, updateData=`, updateData);
-  const client = await getClient(updatedByUserId); // User-specific operation, using updatedByUserId for RLS context
+async function updateCheckInMeasurements(userId, actingUserId, entryDate, updateData) {
+  log('info', `[measurementRepository] updateCheckInMeasurements called with: userId=${userId}, actingUserId=${actingUserId}, entryDate=${entryDate}, updateData=`, updateData);
+  const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
     const fieldsToUpdate = Object.keys(updateData)
       .filter(key => ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'].includes(key))
@@ -217,7 +217,7 @@ async function updateCheckInMeasurements(userId, updatedByUserId, entryDate, upd
       .filter(key => ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'].includes(key))
       .map(key => updateData[key]);
     
-    const values = [...updateValues, updatedByUserId, userId, entryDate];
+    const values = [...updateValues, actingUserId, userId, entryDate];
 
     const query = `
       UPDATE check_in_measurements
@@ -313,13 +313,13 @@ async function deleteCustomCategory(id, userId) {
   }
 }
 
-async function getCheckInMeasurementOwnerId(id) { // This function is problematic if 'id' is not the primary key
+async function getCheckInMeasurementOwnerId(id, userId) { // This function is problematic if 'id' is not the primary key
   log('warn', `[measurementRepository] getCheckInMeasurementOwnerId called with id: ${id}. This function might be problematic if 'id' is not the primary key for check_in_measurements.`);
-  const client = await getClient(id); // User-specific operation (RLS will handle access)
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      'SELECT user_id FROM check_in_measurements WHERE id = $1',
-      [id]
+      'SELECT user_id FROM check_in_measurements WHERE id = $1 AND user_id = $2',
+      [id, userId]
     );
     return result.rows[0]?.user_id;
   } finally {
@@ -327,12 +327,12 @@ async function getCheckInMeasurementOwnerId(id) { // This function is problemati
   }
 }
 
-async function getCustomCategoryOwnerId(id) {
-  const client = await getClient(id); // User-specific operation (RLS will handle access)
+async function getCustomCategoryOwnerId(id, userId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      'SELECT user_id FROM custom_categories WHERE id = $1',
-      [id]
+      'SELECT user_id FROM custom_categories WHERE id = $1 AND user_id = $2',
+      [id, userId]
     );
     return result.rows[0]?.user_id;
   } finally {
@@ -431,47 +431,66 @@ async function getCheckInMeasurementsByDateRange(userId, startDate, endDate) {
   }
 }
 
-async function getCustomMeasurementsByDateRange(userId, categoryId, startDate, endDate) {
+async function getCustomMeasurementsByDateRange(userId, categoryId, startDate, endDate, source = null) {
   const client = await getClient(userId); // User-specific operation
   try {
-    const result = await client.query(
-      'SELECT category_id, entry_date AS date, entry_hour AS hour, value, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4 ORDER BY entry_date, entry_timestamp',
-      [userId, categoryId, startDate, endDate]
-    );
+    let query = 'SELECT category_id, entry_date AS date, entry_hour AS hour, value, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4';
+    const queryParams = [userId, categoryId, startDate, endDate];
+
+    if (source) {
+      query += ' AND source = $5';
+      queryParams.push(source);
+    }
+
+    query += ' ORDER BY entry_date, entry_timestamp';
+
+    const result = await client.query(query, queryParams);
     return result.rows;
   } finally {
     client.release();
   }
 }
 
-async function upsertCustomMeasurement(userId, createdByUserId, categoryId, value, entryDate, entryHour, entryTimestamp, notes, frequency) {
+async function upsertCustomMeasurement(userId, createdByUserId, categoryId, value, entryDate, entryHour, entryTimestamp, notes, frequency, source = 'manual') {
   const client = await getClient(createdByUserId); // User-specific operation, using createdByUserId for RLS context
   try {
     let query;
     let values;
 
+    // Normalize entry_hour and entry_timestamp for 'Daily' frequency to prevent duplicates
+    let normalizedEntryHour = entryHour;
+    let normalizedEntryTimestamp = entryTimestamp;
+
+    if (frequency === 'Daily') {
+      normalizedEntryHour = 0; // Set hour to 0 for daily measurements
+      // Normalize timestamp to the beginning of the day
+      const dateObj = new Date(entryDate);
+      dateObj.setUTCHours(0, 0, 0, 0);
+      normalizedEntryTimestamp = dateObj.toISOString();
+    }
+
     // For 'Unlimited' and 'All' frequencies, always insert a new entry.
     // For 'Daily' and 'Hourly', check for existing entries to update.
     if (frequency === 'Unlimited' || frequency === 'All') {
       query = `
-        INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, notes, created_by_user_id, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
+        INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, notes, created_by_user_id, created_at, updated_at, source)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now(), $9)
         RETURNING *
       `;
-      values = [userId, categoryId, value, entryDate, entryHour, entryTimestamp, notes, createdByUserId];
+      values = [userId, categoryId, value, entryDate, normalizedEntryHour, normalizedEntryTimestamp, notes, createdByUserId, source];
     } else {
-      // For 'Daily' and 'Hourly', check if an entry already exists for the given user, category, date, and hour (if applicable)
+      // For 'Daily' and 'Hourly', check if an entry already exists for the given user, category, date, hour (if applicable) and source
       let existingEntryQuery = `
         SELECT id FROM custom_measurements
-        WHERE user_id = $1 AND category_id = $2 AND entry_date = $3
+        WHERE user_id = $1 AND category_id = $2 AND entry_date = $3 AND source = $4
       `;
-      let existingEntryValues = [userId, categoryId, entryDate];
+      let existingEntryValues = [userId, categoryId, entryDate, source];
 
-      if (frequency === 'Hourly' && entryHour !== null) {
+      if (frequency === 'Hourly' && normalizedEntryHour !== null) {
         existingEntryQuery += ` AND entry_hour = $${existingEntryValues.length + 1}`;
-        existingEntryValues.push(entryHour);
+        existingEntryValues.push(normalizedEntryHour);
       } else if (frequency === 'Daily') {
-        // For daily, we only care about the date, so entry_hour should not be part of the WHERE clause
+        // For daily, we only care about the date and source, so entry_hour should not be part of the WHERE clause
         // and we should ensure we're only looking for entries without an hour or with hour 0
         existingEntryQuery += ` AND (entry_hour IS NULL OR entry_hour = 0)`;
       }
@@ -483,19 +502,19 @@ async function upsertCustomMeasurement(userId, createdByUserId, categoryId, valu
         const id = existingEntry.rows[0].id;
         query = `
           UPDATE custom_measurements
-          SET value = $1, entry_timestamp = $2, notes = $3, updated_by_user_id = $4, updated_at = now()
-          WHERE id = $5
+          SET value = $1, entry_timestamp = $2, notes = $3, updated_by_user_id = $4, updated_at = now(), source = $5
+          WHERE id = $6
           RETURNING *
         `;
-        values = [value, entryTimestamp, notes, createdByUserId, id];
+        values = [value, normalizedEntryTimestamp, notes, createdByUserId, source, id];
       } else {
         // Insert new entry
         query = `
-          INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, notes, created_by_user_id, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
+          INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, notes, created_by_user_id, created_at, updated_at, source)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now(), $9)
           RETURNING *
         `;
-        values = [userId, categoryId, value, entryDate, entryHour, entryTimestamp, notes, createdByUserId];
+        values = [userId, categoryId, value, entryDate, normalizedEntryHour, normalizedEntryTimestamp, notes, createdByUserId, source];
       }
     }
 

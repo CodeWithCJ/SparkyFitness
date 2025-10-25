@@ -73,14 +73,14 @@ router.post('/sync/daily_summary', authenticate, async (req, res, next) => {
 
                 if (summaryData && summaryData.data) {
                     const healthDataArray = [
-                        { type: 'step', value: summaryData.data.totalSteps, date: date, timestamp: new Date(date).toISOString() },
-                        { type: 'Active Calories', value: summaryData.data.activeKilocalories, date: date, timestamp: new Date(date).toISOString() },
-                        { type: 'Floors Climbed', value: summaryData.data.floorsClimbed, date: date, timestamp: new Date(date).toISOString() },
-                        { type: 'Distance (km)', value: summaryData.data.totalDistanceMeters ? (summaryData.data.totalDistanceMeters / 1000) : null, date: date, timestamp: new Date(date).toISOString() }
+                        { type: 'step', value: summaryData.data.totalSteps, date: date, timestamp: new Date(date).toISOString(), source: 'garmin' },
+                        { type: 'Active Calories', value: summaryData.data.activeKilocalories, date: date, timestamp: new Date(date).toISOString(), source: 'garmin' },
+                        { type: 'Floors Climbed', value: summaryData.data.floorsClimbed, date: date, timestamp: new Date(date).toISOString(), source: 'garmin' },
+                        { type: 'Distance (km)', value: summaryData.data.totalDistanceMeters ? (summaryData.data.totalDistanceMeters / 1000) : null, date: date, timestamp: new Date(date).toISOString(), source: 'garmin' }
                     ].filter(entry => entry.value !== null && entry.value !== undefined);
 
                     log('debug', `HealthDataArray for daily summary for user ${userId} on ${date}:`, healthDataArray);
-                    const processedResults = await measurementService.processHealthData(healthDataArray, userId);
+                    const processedResults = await measurementService.processHealthData(healthDataArray, userId, userId);
                     log('info', `Daily summary data processed for user ${userId} on ${date}. Results:`, processedResults);
                     syncedDates.push(date);
                 } else {
@@ -129,23 +129,23 @@ router.post('/sync/body_composition', authenticate, async (req, res, next) => {
                 const entryDate = entry.calendarDate; // Assuming calendarDate is available in bodyCompData entries
                 const entryTimestamp = new Date(entryDate).toISOString(); // Use entryDate for timestamp at midnight
                 return [
-                    { type: 'weight', value: entry.weight, date: entryDate, timestamp: entryTimestamp },
-                    { type: 'Body Fat (%)', value: entry.percentFat, date: entryDate, timestamp: entryTimestamp },
-                    { type: 'Hydration (%)', value: entry.percentHydration, date: entryDate, timestamp: entryTimestamp },
-                    { type: 'Visceral Fat Mass', value: entry.visceralFatMass, date: entryDate, timestamp: entryTimestamp },
-                    { type: 'Bone Mass', value: entry.boneMass, date: entryDate, timestamp: entryTimestamp },
-                    { type: 'Muscle Mass', value: entry.muscleMass, date: entryDate, timestamp: entryTimestamp },
-                    { type: 'Basal Metabolic Rate', value: entry.basalMet, date: entryDate, timestamp: entryTimestamp },
-                    { type: 'Active Metabolic Rate', value: entry.activeMet, date: entryDate, timestamp: entryTimestamp },
-                    { type: 'Physique Rating', value: entry.physiqueRating, date: entryDate, timestamp: entryTimestamp },
-                    { type: 'Metabolic Age', value: entry.metabolicAge, date: entryDate, timestamp: entryTimestamp },
-                    { type: 'Visceral Fat Rating', value: entry.visceralFatRating, date: entryDate, timestamp: entryTimestamp },
-                    { type: 'BMI', value: entry.bmi, date: entryDate, timestamp: entryTimestamp }
+                    { type: 'weight', value: entry.weight, date: entryDate, timestamp: entryTimestamp, source: 'garmin' },
+                    { type: 'Body Fat (%)', value: entry.percentFat, date: entryDate, timestamp: entryTimestamp, source: 'garmin' },
+                    { type: 'Hydration (%)', value: entry.percentHydration, date: entryDate, timestamp: entryTimestamp, source: 'garmin' },
+                    { type: 'Visceral Fat Mass', value: entry.visceralFatMass, date: entryDate, timestamp: entryTimestamp, source: 'garmin' },
+                    { type: 'Bone Mass', value: entry.boneMass, date: entryDate, timestamp: entryTimestamp, source: 'garmin' },
+                    { type: 'Muscle Mass', value: entry.muscleMass, date: entryDate, timestamp: entryTimestamp, source: 'garmin' },
+                    { type: 'Basal Metabolic Rate', value: entry.basalMet, date: entryDate, timestamp: entryTimestamp, source: 'garmin' },
+                    { type: 'Active Metabolic Rate', value: entry.activeMet, date: entryDate, timestamp: entryTimestamp, source: 'garmin' },
+                    { type: 'Physique Rating', value: entry.physiqueRating, date: entryDate, timestamp: entryTimestamp, source: 'garmin' },
+                    { type: 'Metabolic Age', value: entry.metabolicAge, date: entryDate, timestamp: entryTimestamp, source: 'garmin' },
+                    { type: 'Visceral Fat Rating', value: entry.visceralFatRating, date: entryDate, timestamp: entryTimestamp, source: 'garmin' },
+                    { type: 'BMI', value: entry.bmi, date: entryDate, timestamp: entryTimestamp, source: 'garmin' }
                 ].filter(item => item.value !== null && item.value !== undefined);
             }).flat(); // Flatten the array of arrays
 
             log('debug', `HealthDataArray for body composition for user ${userId} from ${startDate} to ${endDate}:`, healthDataArray);
-            const processedResults = await measurementService.processHealthData(healthDataArray, userId);
+            const processedResults = await measurementService.processHealthData(healthDataArray, userId, userId);
             log('info', `Body composition data processed for user ${userId} from ${startDate} to ${endDate}. Results:`, processedResults);
         } else {
             log('warn', `No body composition data received for user ${userId} from ${startDate} to ${endDate}.`);

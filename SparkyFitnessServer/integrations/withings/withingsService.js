@@ -95,6 +95,10 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
         log('info', 'Withings token exchange response:', JSON.stringify(response.data, null, 2));
         const { access_token, refresh_token, expires_in, scope, userid } = response.data.body;
 
+        if (!access_token || !refresh_token) {
+            throw new Error('Missing access_token or refresh_token in Withings API response.');
+        }
+
         // Encrypt tokens
         const encryptedAccessToken = await encrypt(access_token, ENCRYPTION_KEY);
         const encryptedRefreshToken = await encrypt(refresh_token, ENCRYPTION_KEY);
@@ -300,7 +304,7 @@ async function fetchAndProcessHeartData(userId, createdByUserId, startDate, endD
                 enddate: endDate      // Unix timestamp
             }
         });
-        const heartSeries = response.data.body.series;
+        const heartSeries = response.data.body.series || [];
         await withingsDataProcessor.processWithingsHeartData(userId, createdByUserId, heartSeries);
         return heartSeries;
     } catch (error) {
@@ -331,7 +335,7 @@ async function fetchAndProcessSleepData(userId, createdByUserId, startDate, endD
                 enddate: endDate      // Unix timestamp
             }
         });
-        const sleepSeries = response.data.body.series;
+        const sleepSeries = response.data.body.series || [];
         await withingsDataProcessor.processWithingsSleepData(userId, createdByUserId, sleepSeries);
         return sleepSeries;
     } catch (error) {
@@ -362,7 +366,7 @@ async function fetchAndProcessWorkoutsData(userId, createdByUserId, startDateYMD
                 enddateymd: endDateYMD
             }
         });
-        const workouts = response.data.body.series;
+        const workouts = response.data.body.series || [];
         await withingsDataProcessor.processWithingsWorkouts(userId, createdByUserId, workouts);
         return workouts;
     } catch (error) {
