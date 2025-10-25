@@ -100,7 +100,7 @@ async function deleteApiKey(apiKeyId, userId) {
 }
 
 async function getAccessibleUsers(userId) {
-  const client = await getClient(userId); // User-specific operation
+  const client = await getSystemClient(); // System client for bypassing RLS
   try {
     const result = await client.query(
       `SELECT

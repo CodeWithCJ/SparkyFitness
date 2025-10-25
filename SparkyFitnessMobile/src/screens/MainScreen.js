@@ -3,6 +3,7 @@ import { View, Text, Button, StyleSheet, Switch, Alert, TouchableOpacity, Image,
 import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native'; // Import useFocusEffect
+import axios from 'axios'; // Import axios for API calls
 import {
   initHealthConnect,
   readStepRecords,
@@ -28,6 +29,7 @@ const MainScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [healthMetricStates, setHealthMetricStates] = useState({}); // State to hold enabled status for all metrics
   const [healthData, setHealthData] = useState({}); // State to hold fetched data for all metrics
+  const [withingsDisplayData, setWithingsDisplayData] = useState({}); // State to hold fetched Withings data
   const [syncDuration, setSyncDuration] = useState(1); // This will be replaced by selectedTimeRange
   const [isSyncing, setIsSyncing] = useState(false);
   const [isHealthConnectInitialized, setIsHealthConnectInitialized] = useState(false);
@@ -628,11 +630,75 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
   }
 
   setHealthData(newHealthData);
+
+  // Fetch Withings data from backend
+  await fetchWithingsData(startDate, endDate);
   
   // Re-check server connection status after fetching health data
   const connectionStatus = await checkServerConnection();
   setIsConnected(connectionStatus);
-  console.log(`[MainScreen] Displaying health data:`, newHealthData);
+  console.log(`[MainScreen] Displaying Health Connect data:`, newHealthData);
+  console.log(`[MainScreen] Displaying Withings data:`, withingsDisplayData);
+};
+
+const fetchWithingsData = async (startDate, endDate) => {
+  try {
+    const activeConfig = await api.getActiveServerConfig();
+    if (!activeConfig || !activeConfig.url || !activeConfig.apiKey) {
+      addLog('[MainScreen] No active server config found for Withings data.', 'warn');
+      setWithingsDisplayData({});
+      return;
+    }
+
+    const response = await axios.get(`${activeConfig.url}/integrations/withings/data`, {
+      headers: {
+        Authorization: `Bearer ${activeConfig.apiKey}`,
+      },
+      params: {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+      },
+    });
+
+    const { data } = response.data;
+    const newWithingsDisplayData = {};
+
+    // Process weight
+    if (data.weight !== null) {
+      newWithingsDisplayData['withingsWeight'] = `${data.weight.toFixed(1)} kg`;
+    }
+
+    // Process blood pressure (assuming latest for display)
+    if (data.bloodPressure && data.bloodPressure.length > 0) {
+      const latestBP = data.bloodPressure.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+      newWithingsDisplayData['withingsBloodPressure'] = `${Math.round(latestBP.value)} mmHg`; // Assuming value is systolic/diastolic combined or just systolic
+    }
+
+    // Process heart rate (assuming latest for display)
+    if (data.heartRate && data.heartRate.length > 0) {
+      const latestHR = data.heartRate.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+      newWithingsDisplayData['withingsHeartRate'] = `${Math.round(latestHR.value)} bpm`;
+    }
+
+    // Process sleep (assuming total sleep duration for display)
+    if (data.sleep && data.sleep.length > 0) {
+      const totalSleepSeconds = data.sleep.reduce((sum, record) => {
+        if (record.custom_categories.name === 'Total Sleep Duration') {
+          return sum + record.value;
+        }
+        return sum;
+      }, 0);
+      const hours = Math.floor(totalSleepSeconds / 3600);
+      const minutes = Math.round((totalSleepSeconds % 3600) / 60);
+      newWithingsDisplayData['withingsSleep'] = `${hours}h ${minutes}m`;
+    }
+
+    setWithingsDisplayData(newWithingsDisplayData);
+    addLog('[MainScreen] Withings data fetched and processed for display.', 'info', 'SUCCESS');
+  } catch (error) {
+    addLog(`[MainScreen] Error fetching Withings data: ${error.message}`, 'error', 'ERROR');
+    setWithingsDisplayData({});
+  }
 };
 
   // Remove toggle functions as they are now handled in SettingsScreen
@@ -704,6 +770,25 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
             ))}
           </View>
         </View>
+
+        {/* Withings Data Overview */}
+        {Object.keys(withingsDisplayData).length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Withings Data</Text>
+            <View style={styles.healthMetricsContainer}>
+              {Object.entries(withingsDisplayData).map(([key, value]) => (
+                <View style={styles.metricItem} key={key}>
+                  {/* You might want to map specific icons based on key */}
+                  <Image source={require('../../assets/icons/SparkyFitness.png')} style={styles.metricIcon} />
+                  <View>
+                    <Text style={styles.metricValue}>{value}</Text>
+                    <Text style={styles.metricLabel}>{key.replace('withings', '')}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Sync Now Button */}
         <TouchableOpacity style={styles.syncButtonContainer} onPress={handleSync} disabled={isSyncing || !isHealthConnectInitialized}>

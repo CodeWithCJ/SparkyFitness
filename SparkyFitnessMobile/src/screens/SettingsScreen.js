@@ -11,6 +11,8 @@ import ServerConfig from '../components/ServerConfig';
 import HealthDataSync from '../components/HealthDataSync';
 import SyncFrequency from '../components/SyncFrequency';
 import AppearanceSettings from '../components/AppearanceSettings';
+import axios from 'axios'; // Import axios for API calls
+import { getActiveServerConfig } from '../services/storage'; // Import to get server URL
 
 const SettingsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -31,6 +33,11 @@ const SettingsScreen = ({ navigation }) => {
   const [currentConfigId, setCurrentConfigId] = useState(null); // For editing existing config
   const [appTheme, setAppTheme] = useState('System'); // Default to System
   const [isConnected, setIsConnected] = useState(false); // State for server connection status
+
+  // Withings specific states
+  const [withingsConnected, setWithingsConnected] = useState(false);
+  const [withingsLastSync, setWithingsLastSync] = useState('Never');
+  const [withingsSyncFrequency, setWithingsSyncFrequency] = useState('manual'); // 'hourly', 'daily', 'manual'
 
   const loadConfig = async () => {
     const allConfigs = await getAllServerConfigs();
@@ -90,6 +97,9 @@ const SettingsScreen = ({ navigation }) => {
     const connectionStatus = await checkServerConnection();
     addLog(`[SettingsScreen] Server connection status: ${connectionStatus}`);
     setIsConnected(connectionStatus);
+
+    // Load Withings status
+    await loadWithingsStatus();
   };
 
   useEffect(() => {
@@ -267,6 +277,48 @@ const SettingsScreen = ({ navigation }) => {
             checkServerConnection={checkServerConnection}
           />
 
+          {/* Withings Integration Section */}
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>Withings Integration</Text>
+            <View style={styles.settingItem}>
+              <Text style={styles.settingLabel}>Status:</Text>
+              <Text style={styles.settingValue}>
+                {withingsConnected ? 'Connected' : 'Disconnected'}
+              </Text>
+            </View>
+            {withingsConnected && (
+              <>
+                <View style={styles.settingItem}>
+                  <Text style={styles.settingLabel}>Last Sync:</Text>
+                  <Text style={styles.settingValue}>{withingsLastSync}</Text>
+                </View>
+                <View style={styles.settingItem}>
+                  <Text style={styles.settingLabel}>Sync Frequency:</Text>
+                  <Picker
+                    selectedValue={withingsSyncFrequency}
+                    style={styles.picker}
+                    onValueChange={(itemValue) => handleWithingsSyncFrequencyChange(itemValue)}
+                  >
+                    <Picker.Item label="Manual" value="manual" />
+                    <Picker.Item label="Hourly" value="hourly" />
+                    <Picker.Item label="Daily" value="daily" />
+                  </Picker>
+                </View>
+                <TouchableOpacity style={styles.button} onPress={handleManualWithingsSync}>
+                  <Text style={styles.buttonText}>Sync Withings Now</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.disconnectButton]} onPress={handleDisconnectWithings}>
+                  <Text style={styles.buttonText}>Disconnect Withings</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {!withingsConnected && (
+              <TouchableOpacity style={styles.button} onPress={handleConnectWithings}>
+                <Text style={styles.buttonText}>Connect Withings</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           <HealthDataSync
             healthMetricStates={healthMetricStates}
             handleToggleHealthMetric={handleToggleHealthMetric}
@@ -312,5 +364,112 @@ const SettingsScreen = ({ navigation }) => {
   );
 };
 
+
+const loadWithingsStatus = async () => {
+    try {
+      const activeConfig = await getActiveServerConfig();
+      if (!activeConfig || !activeConfig.url || !activeConfig.apiKey) {
+        addLog('[SettingsScreen] No active server config found for Withings status.', 'warn');
+        return;
+      }
+      const response = await axios.get(`${activeConfig.url}/integrations/withings/status`, {
+        headers: {
+          Authorization: `Bearer ${activeConfig.apiKey}`,
+        },
+      });
+      setWithingsConnected(response.data.connected);
+      setWithingsLastSync(response.data.lastSync ? new Date(response.data.lastSync).toLocaleString() : 'Never');
+      setWithingsSyncFrequency(response.data.syncFrequency || 'manual');
+    } catch (error) {
+      addLog(`[SettingsScreen] Error loading Withings status: ${error.message}`, 'error');
+      setWithingsConnected(false);
+      setWithingsLastSync('Never');
+      setWithingsSyncFrequency('manual');
+    }
+  };
+
+  const handleConnectWithings = async () => {
+    try {
+      const activeConfig = await getActiveServerConfig();
+      if (!activeConfig || !activeConfig.url) {
+        Alert.alert('Error', 'Server URL not configured.');
+        return;
+      }
+      // Redirect to backend to initiate OAuth flow
+      const authUrl = `${activeConfig.url}/integrations/withings/authorize`;
+      // In a real app, you'd use Linking.openURL or a WebView
+      // For now, we'll just log the URL and simulate success
+      console.log('Redirecting to Withings authorization:', authUrl);
+      Alert.alert('Connect Withings', 'Please complete the authorization in your browser. After authorization, return to this app and refresh the settings screen.');
+      // Simulate successful connection for testing
+      // setTimeout(loadWithingsStatus, 5000);
+    } catch (error) {
+      addLog(`[SettingsScreen] Error connecting to Withings: ${error.message}`, 'error');
+      Alert.alert('Error', `Failed to connect to Withings: ${error.message}`);
+    }
+  };
+
+  const handleManualWithingsSync = async () => {
+    try {
+      const activeConfig = await getActiveServerConfig();
+      if (!activeConfig || !activeConfig.url || !activeConfig.apiKey) {
+        Alert.alert('Error', 'Server URL or API Key not configured.');
+        return;
+      }
+      Alert.alert('Syncing', 'Initiating Withings data synchronization...');
+      await axios.post(`${activeConfig.url}/integrations/withings/sync`, {}, {
+        headers: {
+          Authorization: `Bearer ${activeConfig.apiKey}`,
+        },
+      });
+      Alert.alert('Success', 'Withings data sync initiated successfully.');
+      loadWithingsStatus(); // Refresh status after sync
+    } catch (error) {
+      addLog(`[SettingsScreen] Error manually syncing Withings data: ${error.message}`, 'error');
+      Alert.alert('Error', `Failed to sync Withings data: ${error.message}`);
+    }
+  };
+
+  const handleDisconnectWithings = async () => {
+    try {
+      const activeConfig = await getActiveServerConfig();
+      if (!activeConfig || !activeConfig.url || !activeConfig.apiKey) {
+        Alert.alert('Error', 'Server URL or API Key not configured.');
+        return;
+      }
+      Alert.alert('Disconnecting', 'Disconnecting Withings account...');
+      await axios.post(`${activeConfig.url}/integrations/withings/disconnect`, {}, {
+        headers: {
+          Authorization: `Bearer ${activeConfig.apiKey}`,
+        },
+      });
+      Alert.alert('Success', 'Withings account disconnected.');
+      loadWithingsStatus(); // Refresh status after disconnect
+    } catch (error) {
+      addLog(`[SettingsScreen] Error disconnecting Withings account: ${error.message}`, 'error');
+      Alert.alert('Error', `Failed to disconnect Withings account: ${error.message}`);
+    }
+  };
+
+  const handleWithingsSyncFrequencyChange = async (itemValue) => {
+    try {
+      const activeConfig = await getActiveServerConfig();
+      if (!activeConfig || !activeConfig.url || !activeConfig.apiKey) {
+        Alert.alert('Error', 'Server URL or API Key not configured.');
+        return;
+      }
+      setWithingsSyncFrequency(itemValue);
+      await axios.post(`${activeConfig.url}/integrations/withings/sync-frequency`, { frequency: itemValue }, {
+        headers: {
+          Authorization: `Bearer ${activeConfig.apiKey}`,
+        },
+      });
+      Alert.alert('Success', `Withings sync frequency set to ${itemValue}.`);
+      loadWithingsStatus();
+    } catch (error) {
+      addLog(`[SettingsScreen] Error setting Withings sync frequency: ${error.message}`, 'error');
+      Alert.alert('Error', `Failed to set sync frequency: ${error.message}`);
+    }
+  };
 
 export default SettingsScreen;

@@ -27,6 +27,8 @@ const authRoutes = require('./routes/authRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const externalProviderRoutes = require('./routes/externalProviderRoutes'); // Renamed import
 const garminRoutes = require('./routes/garminRoutes'); // Import Garmin routes
+const withingsRoutes = require('./routes/withingsRoutes'); // Import Withings routes
+const withingsDataRoutes = require('./routes/withingsDataRoutes'); // Import Withings Data routes
 const moodRoutes = require('./routes/moodRoutes'); // Import Mood routes
 const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
 const { router: openidRoutes, initializeOidcClient } = require('./openidRoutes');
@@ -41,6 +43,8 @@ const errorHandler = require('./middleware/errorHandler'); // Import the new err
 const reviewRoutes = require('./routes/reviewRoutes');
 const cron = require('node-cron'); // Import node-cron
 const { performBackup, applyRetentionPolicy } = require('./services/backupService'); // Import backup service
+const externalProviderRepository = require('./models/externalProviderRepository'); // Import externalProviderRepository
+const withingsService = require('./integrations/withings/withingsService'); // Import withingsService
 
 const app = express();
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
@@ -67,6 +71,14 @@ app.use(
 // Middleware to parse JSON bodies for all incoming requests
 // Increased limit to 50mb to accommodate image uploads
 app.use(express.json({ limit: "50mb" }));
+
+// Log all incoming requests
+app.use((req, res, next) => {
+  if (req.originalUrl !== '/auth/users/accessible-users') {
+    log('debug', `Incoming request: ${req.method} ${req.originalUrl}`);
+  }
+  next();
+});
 
 // Serve static files from the 'uploads' directory
 // This middleware will first try to serve the file if it exists locally.
@@ -222,10 +234,17 @@ app.use((req, res, next) => {
     "/openid", // All OIDC routes are handled by session, not JWT token
     "/openid/api/me", // Explicitly allow /openid/api/me as a public route for session check
     "/version", // Allow version endpoint to be public
+    "/withings/callback", // Allow Withings OAuth callback
   ];
 
   // Check if the current request path starts with any of the public routes
-  if (publicRoutes.some((route) => req.path.startsWith(route))) {
+  const isPublic = publicRoutes.some((route) => req.path.startsWith(route));
+  
+  if (req.path.includes('withings')) {
+    log('error', `[WITHINGS DEBUG] Path: ${req.path}, IsPublic: ${isPublic}`);
+  }
+
+  if (isPublic) {
     log("debug", `Skipping authentication for public route: ${req.path}`);
     return next();
   }
@@ -259,6 +278,9 @@ app.use('/user', authRoutes);
 app.use('/health', healthRoutes);
 app.use('/external-providers', externalProviderRoutes); // Renamed route for generic data providers
 app.use('/integrations/garmin', garminRoutes); // Add Garmin integration routes
+app.use('/withings', withingsRoutes); // Add Withings integration routes
+log('info', 'Withings routes mounted at /withings');
+app.use('/integrations/withings/data', withingsDataRoutes); // Add Withings Data routes
 app.use('/mood', moodRoutes); // Add Mood routes
 app.use('/admin/oidc-settings', oidcSettingsRoutes); // Admin OIDC settings routes
 app.use('/admin/global-settings', globalSettingsRoutes);
@@ -306,11 +328,57 @@ const scheduleBackups = async () => {
   log("info", "Backup scheduler initialized.");
 };
 
+// Function to schedule Withings data synchronization
+const scheduleWithingsSyncs = async () => {
+  cron.schedule("0 * * * *", async () => { // Run every hour
+    log("info", "Scheduled Withings data sync initiated.");
+    try {
+      const withingsProviders = await externalProviderRepository.getProvidersByType('withings');
+      for (const provider of withingsProviders) {
+        if (provider.is_active && provider.sync_frequency !== 'manual') {
+          const userId = provider.user_id;
+          const createdByUserId = userId; // Assuming the user is the creator for their own data
+          const lastSyncAt = provider.last_sync_at ? new Date(provider.last_sync_at) : new Date(0); // Default to epoch for first sync
+          const now = new Date();
+
+          let shouldSync = false;
+          if (provider.sync_frequency === 'hourly' && (now.getTime() - lastSyncAt.getTime()) >= (60 * 60 * 1000)) {
+            shouldSync = true;
+          } else if (provider.sync_frequency === 'daily' && (now.getDate() !== lastSyncAt.getDate() || now.getMonth() !== lastSyncAt.getMonth() || now.getFullYear() !== lastSyncAt.getFullYear())) {
+            shouldSync = true;
+          }
+
+          if (shouldSync) {
+            log('info', `Initiating Withings sync for user ${userId} (frequency: ${provider.sync_frequency}).`);
+            // Fetch data for the last 24 hours or since last sync
+            const startDate = Math.floor(lastSyncAt.getTime() / 1000);
+            const endDate = Math.floor(now.getTime() / 1000);
+
+            await withingsService.fetchAndProcessMeasuresData(userId, createdByUserId, startDate, endDate);
+            await withingsService.fetchAndProcessHeartData(userId, createdByUserId, startDate, endDate);
+            await withingsService.fetchAndProcessSleepData(userId, createdByUserId, startDate, endDate);
+
+            // Update last_sync_at
+            await externalProviderRepository.updateProviderLastSync(provider.id, now);
+            log('info', `Withings sync completed for user ${userId}.`);
+          }
+        }
+      }
+    } catch (error) {
+      log('error', `Error during scheduled Withings data sync: ${error.message}`);
+    }
+  });
+  log("info", "Withings sync scheduler initialized.");
+};
+
+
 applyMigrations().then(async () => {
   // OIDC clients are now initialized on-demand, so no startup initialization is needed.
 
   // Schedule backups after migrations
   scheduleBackups();
+  // Schedule Withings syncs after migrations
+  scheduleWithingsSyncs();
 
   // Set admin user from environment variable if provided
   if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {

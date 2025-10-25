@@ -16,7 +16,7 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 interface ExternalDataProvider { // Renamed interface
   id: string;
   provider_name: string;
-  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db'; // Added free-exercise-db
+  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings'; // Added withings
   app_id: string | null; // Keep app_id for other providers
   app_key: string | null;
   is_active: boolean;
@@ -24,6 +24,9 @@ interface ExternalDataProvider { // Renamed interface
   user_id?: string;
   visibility: 'private' | 'public' | 'family';
   shared_with_public?: boolean;
+  last_sync_at?: string; // Added for Withings
+  sync_frequency?: 'hourly' | 'daily' | 'manual'; // Added for Withings
+  has_token?: boolean; // Added for Withings connection status
 }
 
 const ExternalProviderSettings = () => { // Renamed component
@@ -33,11 +36,12 @@ const ExternalProviderSettings = () => { // Renamed component
   const [providers, setProviders] = useState<ExternalDataProvider[]>([]);
   const [newProvider, setNewProvider] = useState({
     provider_name: '',
-    provider_type: 'openfoodfacts' as 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db', // Added free-exercise-db
+    provider_type: 'openfoodfacts' as 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings', // Added withings
     app_id: '',
     app_key: '',
     is_active: false,
     base_url: '', // Initialize base_url
+    sync_frequency: 'manual' as 'hourly' | 'daily' | 'manual', // Initialize sync_frequency
   });
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<ExternalDataProvider>>({});
@@ -63,7 +67,7 @@ const ExternalProviderSettings = () => { // Renamed component
       });
       setProviders(data.map((provider: any) => ({
         ...provider,
-        provider_type: provider.provider_type as 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' // Added free-exercise-db
+        provider_type: provider.provider_type as 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings' // Added withings
       })) || []);
     } catch (error: any) {
       console.error('Error loading external data providers:', error);
@@ -118,6 +122,7 @@ const ExternalProviderSettings = () => { // Renamed component
           app_key: newProvider.app_key || null,
           is_active: newProvider.is_active,
           base_url: (newProvider.provider_type === 'mealie' || newProvider.provider_type === 'free-exercise-db') ? newProvider.base_url || null : null, // Set base_url for mealie and free-exercise-db
+          sync_frequency: newProvider.provider_type === 'withings' ? newProvider.sync_frequency : null, // Set sync_frequency for Withings
         }),
       });
 
@@ -132,11 +137,15 @@ const ExternalProviderSettings = () => { // Renamed component
         app_key: '',
         is_active: false,
         base_url: '', // Reset base_url
+        sync_frequency: 'manual', // Reset sync_frequency
       });
       setShowAddForm(false);
       loadProviders();
       if (data && data.is_active && (data.provider_type === 'openfoodfacts' || data.provider_type === 'nutritionix' || data.provider_type === 'fatsecret' || data.provider_type === 'mealie')) { // Only set default for food providers
         setDefaultFoodDataProviderId(data.id);
+      } else if (data && data.is_active && data.provider_type === 'withings') {
+        // For Withings, initiate OAuth flow after adding
+        handleConnectWithings(data.id);
       }
     } catch (error: any) {
       console.error('Error adding external data provider:', error);
@@ -159,6 +168,7 @@ const ExternalProviderSettings = () => { // Renamed component
       app_key: editData.app_key || null,
       is_active: editData.is_active,
       base_url: (editData.provider_type === 'mealie' || editData.provider_type === 'free-exercise-db') ? editData.base_url || null : null, // Set base_url for mealie and free-exercise-db
+      sync_frequency: editData.provider_type === 'withings' ? editData.sync_frequency : null, // Set sync_frequency for Withings
     };
 
     try {
@@ -250,6 +260,77 @@ const ExternalProviderSettings = () => { // Renamed component
     }
   };
 
+  const handleConnectWithings = async (providerId: string) => {
+    setLoading(true);
+    try {
+      const response = await apiCall(`/withings/authorize`, {
+        method: 'GET',
+      });
+      if (response && response.authUrl) {
+        window.location.href = response.authUrl;
+      } else {
+        throw new Error('Failed to get Withings authorization URL.');
+      }
+    } catch (error: any) {
+      console.error('Error connecting to Withings:', error);
+      toast({
+        title: "Error",
+        description: `Failed to connect to Withings: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnectWithings = async (providerId: string) => {
+    if (!confirm('Are you sure you want to disconnect from Withings? This will revoke access and delete all associated tokens.')) return;
+
+    setLoading(true);
+    try {
+      await apiCall(`/withings/disconnect`, {
+        method: 'POST',
+      });
+      toast({
+        title: "Success",
+        description: "Disconnected from Withings successfully."
+      });
+      loadProviders();
+    } catch (error: any) {
+      console.error('Error disconnecting from Withings:', error);
+      toast({
+        title: "Error",
+        description: `Failed to disconnect from Withings: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualSync = async (providerId: string) => {
+    setLoading(true);
+    try {
+      await apiCall(`/withings/sync`, {
+        method: 'POST',
+      });
+      toast({
+        title: "Success",
+        description: "Withings data synchronization initiated."
+      });
+      loadProviders();
+    } catch (error: any) {
+      console.error('Error initiating manual sync:', error);
+      toast({
+        title: "Error",
+        description: `Failed to initiate manual sync: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const startEditing = (provider: ExternalDataProvider) => { // Renamed interface
     setEditingProvider(provider.id);
@@ -260,6 +341,9 @@ const ExternalProviderSettings = () => { // Renamed component
       app_key: provider.app_key || '',
       is_active: provider.is_active,
       base_url: provider.base_url || '', // Set base_url
+      // Add last_sync_at and sync_frequency for Withings
+      last_sync_at: (provider as any).last_sync_at || null,
+      sync_frequency: (provider as any).sync_frequency || 'manual',
     });
   };
 
@@ -275,6 +359,7 @@ const ExternalProviderSettings = () => { // Renamed component
     { value: "wger", label: "Wger (Exercise)" },
     { value: "free-exercise-db", label: "Free Exercise DB" }, // Added Free Exercise DB
     { value: "mealie", label: "Mealie" },
+    { value: "withings", label: "Withings" }, // Added Withings
   ];
 
   return (
@@ -283,7 +368,7 @@ const ExternalProviderSettings = () => { // Renamed component
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" /> {/* Changed icon */}
-            Food & Exercise Data Providers
+            External Data Providers
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -312,7 +397,7 @@ const ExternalProviderSettings = () => { // Renamed component
                   <Label htmlFor="new_provider_type">Provider Type</Label>
                   <Select
                     value={newProvider.provider_type}
-                    onValueChange={(value) => setNewProvider(prev => ({ ...prev, provider_type: value as 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db', app_id: '', app_key: '', base_url: '' }))} // Added free-exercise-db, reset base_url
+                    onValueChange={(value) => setNewProvider(prev => ({ ...prev, provider_type: value as 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings', app_id: '', app_key: '', base_url: '' }))} // Added withings, reset base_url
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -395,6 +480,53 @@ const ExternalProviderSettings = () => { // Renamed component
                   Get your App ID and App Key from the <a href="https://platform.fatsecret.com/my-account/dashboard" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Fatsecret Platform Dashboard</a>.
                 </p>
               )}
+              {newProvider.provider_type === 'withings' && (
+                <>
+                  <div>
+                    <Label htmlFor="new_app_id">Client ID</Label>
+                    <Input
+                      id="new_app_id"
+                      type="text"
+                      value={newProvider.app_id}
+                      onChange={(e) => setNewProvider(prev => ({ ...prev, app_id: e.target.value }))}
+                      placeholder="Enter Withings Client ID"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new_app_key">Client Secret</Label>
+                    <Input
+                      id="new_app_key"
+                      type="password"
+                      value={newProvider.app_key}
+                      onChange={(e) => setNewProvider(prev => ({ ...prev, app_key: e.target.value }))}
+                      placeholder="Enter Withings Client Secret"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground col-span-2">
+                    Withings integration uses OAuth2. You will be redirected to Withings to authorize access after adding the provider.
+                    <br />
+                    In your <a href="https://developer.withings.com/dashboard/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Withings Developer Dashboard</a>, you must set your callback URL to: <strong>`YOUR_SERVER_URL/api/withings/callback`</strong>.
+                  </p>
+                  <div>
+                    <Label htmlFor="new_sync_frequency">Sync Frequency</Label>
+                    <Select
+                      value={newProvider.sync_frequency || 'manual'}
+                      onValueChange={(value) => setNewProvider(prev => ({ ...prev, sync_frequency: value as 'hourly' | 'daily' | 'manual' }))}
+                    >
+                      <SelectTrigger id="new_sync_frequency">
+                        <SelectValue placeholder="Select sync frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Manual</SelectItem>
+                        <SelectItem value="hourly">Hourly</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
 
               <div className="flex items-center space-x-2">
                 <Switch
@@ -421,7 +553,7 @@ const ExternalProviderSettings = () => { // Renamed component
           {providers.length > 0 && (
             <>
               <Separator />
-              <h3 className="text-lg font-medium">Configured Food & Exercise Data Providers</h3>
+              <h3 className="text-lg font-medium">Configured External Data Providers</h3>
               
               <div className="space-y-4">
                 {providers.map((provider) => (
@@ -441,7 +573,7 @@ const ExternalProviderSettings = () => { // Renamed component
                             <Label>Provider Type</Label>
                             <Select
                               value={editData.provider_type || ''}
-                              onValueChange={(value) => setEditData(prev => ({ ...prev, provider_type: value as 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db', app_id: '', app_key: '', base_url: '' }))} // Added free-exercise-db, reset base_url
+                              onValueChange={(value) => setEditData(prev => ({ ...prev, provider_type: value as 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings', app_id: '', app_key: '', base_url: '' }))} // Added withings, reset base_url
                             >
                               <SelectTrigger>
                                 <SelectValue />
@@ -519,6 +651,51 @@ const ExternalProviderSettings = () => { // Renamed component
                             Get your App ID and App Key from the <a href="https://platform.fatsecret.com/my-account/dashboard" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Fatsecret Platform Dashboard</a>.
                           </p>
                         )}
+                        {editData.provider_type === 'withings' && (
+                          <>
+                            <div>
+                              <Label>Client ID</Label>
+                              <Input
+                                type="text"
+                                value={editData.app_id || ''}
+                                onChange={(e) => setEditData(prev => ({ ...prev, app_id: e.target.value }))}
+                                placeholder="Enter Withings Client ID"
+                                autoComplete="off"
+                              />
+                            </div>
+                            <div>
+                              <Label>Client Secret</Label>
+                              <Input
+                                type="password"
+                                value={editData.app_key || ''}
+                                onChange={(e) => setEditData(prev => ({ ...prev, app_key: e.target.value }))}
+                                placeholder="Enter Withings Client Secret"
+                                autoComplete="off"
+                              />
+                            </div>
+                            <p className="text-sm text-muted-foreground col-span-2">
+                              Withings integration uses OAuth2. You will be redirected to Withings to authorize access after adding the provider.
+                              <br />
+                              In your <a href="https://developer.withings.com/dashboard/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Withings Developer Dashboard</a>, you must set your callback URL to: <strong>`YOUR_SERVER_URL/api/withings/callback`</strong>.
+                            </p>
+                            <div>
+                              <Label htmlFor="edit_sync_frequency">Sync Frequency</Label>
+                              <Select
+                                value={editData.sync_frequency || 'manual'}
+                                onValueChange={(value) => setEditData(prev => ({ ...prev, sync_frequency: value as 'hourly' | 'daily' | 'manual' }))}
+                              >
+                                <SelectTrigger id="edit_sync_frequency">
+                                  <SelectValue placeholder="Select sync frequency" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="manual">Manual</SelectItem>
+                                  <SelectItem value="hourly">Hourly</SelectItem>
+                                  <SelectItem value="daily">Daily</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </>
+                        )}
                         <div className="flex items-center space-x-2">
                           <Switch
                             checked={editData.is_active || false}
@@ -565,7 +742,18 @@ const ExternalProviderSettings = () => { // Renamed component
                               {getProviderTypes().find(t => t.value === provider.provider_type)?.label || provider.provider_type}
                               {provider.provider_type === 'mealie' && provider.base_url && ` - URL: ${provider.base_url}`}
                               {(provider.provider_type !== 'mealie' && provider.provider_type !== 'free-exercise-db' && provider.provider_type !== 'wger') && provider.app_id && ` - App ID: ${provider.app_id.substring(0, 4)}...`}
-                              {(provider.provider_type === 'mealie' || provider.provider_type === 'nutritionix' || provider.provider_type === 'fatsecret') && provider.app_key && ` - App Key: ${provider.app_key.substring(0, 4)}...`}
+                              {(provider.provider_type === 'mealie' || provider.provider_type === 'nutritionix' || provider.provider_type === 'fatsecret' || provider.provider_type === 'withings') && provider.app_key && ` - App Key: ${provider.app_key.substring(0, 4)}...`}
+                              {provider.provider_type === 'withings' && (
+                                <>
+                                  {provider.has_token ? (
+                                    <span className="text-green-500"> - Connected</span>
+                                  ) : (
+                                    <span className="text-red-500"> - Not Connected</span>
+                                  )}
+                                  {provider.last_sync_at && ` - Last Sync: ${new Date(provider.last_sync_at).toLocaleString()}`}
+                                  {provider.sync_frequency && ` - Sync: ${provider.sync_frequency}`}
+                                </>
+                              )}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -576,6 +764,36 @@ const ExternalProviderSettings = () => { // Renamed component
                             />
                             {provider.visibility === 'private' ? (
                               <>
+                                {provider.provider_type === 'withings' && provider.is_active && !provider.has_token && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleConnectWithings(provider.id)}
+                                    disabled={loading}
+                                  >
+                                    Connect Withings
+                                  </Button>
+                                )}
+                                {provider.provider_type === 'withings' && provider.is_active && provider.has_token && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleManualSync(provider.id)}
+                                      disabled={loading}
+                                    >
+                                      Sync Now
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleDisconnectWithings(provider.id)}
+                                      disabled={loading}
+                                    >
+                                      Disconnect
+                                    </Button>
+                                  </>
+                                )}
                                 <Button
                                   variant="outline"
                                   size="sm"
