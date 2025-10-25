@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react"; // Import useCallback
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,13 +48,7 @@ const ExternalProviderSettings = () => { // Renamed component
   const [showAddForm, setShowAddForm] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      loadProviders();
-    }
-  }, [user]);
-
-  const loadProviders = async () => {
+  const loadProviders = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -79,7 +73,13 @@ const ExternalProviderSettings = () => { // Renamed component
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast, setDefaultFoodDataProviderId]); // Add dependencies for useCallback
+
+  useEffect(() => {
+    if (user) {
+      loadProviders();
+    }
+  }, [user, loadProviders]);
 
   const handleAddProvider = async () => {
     if (!user || !newProvider.provider_name) {

@@ -209,39 +209,39 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
     fetchFilters();
   }, [loggingLevel, toast]);
 
-  useEffect(() => {
-    debug(loggingLevel, "ExerciseSearch: fetchProviders useEffect triggered. Current searchSource:", searchSource);
-    const fetchProviders = async () => {
-      try {
-        const fetchedProviders = await getExternalDataProviders();
-        debug(loggingLevel, "ExerciseSearch: Fetched providers:", fetchedProviders);
-        const exerciseProviders = fetchedProviders.filter(p => {
-          const categories = getProviderCategory(p); // Changed to categories (plural)
-          debug(loggingLevel, `ExerciseSearch: Filtering provider: ${p.provider_name}, categories: ${categories.join(', ')}, is_active: ${p.is_active}`);
-          return categories.includes('exercise') && p.is_active; // Changed to .includes()
-        });
-        debug(loggingLevel, "ExerciseSearch: Filtered exercise providers:", exerciseProviders);
-        setProviders(exerciseProviders);
-        if (exerciseProviders.length > 0) {
-          setSelectedProviderId(exerciseProviders[0].id); // Auto-select first enabled exercise provider's ID
-          setSelectedProviderType(exerciseProviders[0].provider_type); // Auto-select first enabled exercise provider's Type
-        } else {
-          warn(loggingLevel, "ExerciseSearch: No enabled exercise providers found.");
-        }
-      } catch (err) {
-        error(loggingLevel, "ExerciseSearch: Error fetching external data providers:", err);
-        toast({
-          title: "Error",
-          description: `Failed to load external providers: ${err instanceof Error ? err.message : String(err)}`,
-          variant: "destructive"
-        });
+  const fetchProviders = useCallback(async () => {
+    debug(loggingLevel, "ExerciseSearch: fetchProviders triggered. Current searchSource:", searchSource);
+    try {
+      const fetchedProviders = await getExternalDataProviders();
+      debug(loggingLevel, "ExerciseSearch: Fetched providers:", fetchedProviders);
+      const exerciseProviders = fetchedProviders.filter(p => {
+        const categories = getProviderCategory(p);
+        debug(loggingLevel, `ExerciseSearch: Filtering provider: ${p.provider_name}, categories: ${categories.join(', ')}, is_active: ${p.is_active}`);
+        return categories.includes('exercise') && p.is_active;
+      });
+      debug(loggingLevel, "ExerciseSearch: Filtered exercise providers:", exerciseProviders);
+      setProviders(exerciseProviders);
+      if (exerciseProviders.length > 0) {
+        setSelectedProviderId(exerciseProviders[0].id);
+        setSelectedProviderType(exerciseProviders[0].provider_type);
+      } else {
+        warn(loggingLevel, "ExerciseSearch: No enabled exercise providers found.");
       }
-    };
+    } catch (err) {
+      error(loggingLevel, "ExerciseSearch: Error fetching external data providers:", err);
+      toast({
+        title: "Error",
+        description: `Failed to load external providers: ${err instanceof Error ? err.message : String(err)}`,
+        variant: "destructive"
+      });
+    }
+  }, [loggingLevel, toast, searchSource]); // Dependencies for useCallback
 
+  useEffect(() => {
     if (searchSource === 'external') {
       fetchProviders();
     }
-  }, [searchSource, loggingLevel, toast]);
+  }, [searchSource, fetchProviders]); // Dependencies for useEffect
 
   const handleNextImage = () => {
     setCurrentImageIndex((prevIndex) => (prevIndex + 1) % (exercises[0]?.images?.length || 1));

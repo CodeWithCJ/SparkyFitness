@@ -222,7 +222,7 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts) {
         3: "Hiking",
         4: "Skating",
         5: "BMX",
-        6: "Bicycling",
+        6: "Cycling",
         7: "Swimming",
         8: "Surfing",
         9: "Kitesurfing",
@@ -267,14 +267,27 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts) {
         308: "Indoor Cycling",
     };
 
+    // First, delete all existing Withings exercise entries for the date range to prevent duplicates.
+    // We iterate through the dates covered by the workouts and delete entries for each day,
+    // specifically targeting entries with 'Withings' as their source.
+    const processedDates = new Set();
+    for (const workout of workouts) {
+        const entryDate = new Date(workout.startdate * 1000).toISOString().split('T')[0];
+        if (!processedDates.has(entryDate)) {
+            await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(userId, entryDate, 'Withings');
+            processedDates.add(entryDate);
+        }
+    }
+
     for (const workout of workouts) {
         try {
             const workoutCategory = workout.category;
             const exerciseName = WITHINGS_WORKOUT_CATEGORY_MAPPING[workoutCategory] || `Withings Workout - Category ${workoutCategory}`;
-            const sourceId = `withings-workout-${workoutCategory}`; // Unique identifier for the exercise type
-
-            let exercise = await exerciseRepository.getExerciseBySourceAndSourceId('Withings', sourceId);
-
+            // The sourceId for the exercise definition remains the same, as it identifies the type of exercise.
+            const exerciseSourceId = `withings-workout-${workoutCategory}`;
+ 
+            let exercise = await exerciseRepository.getExerciseBySourceAndSourceId('Withings', exerciseSourceId); // Corrected variable name
+ 
             if (!exercise) {
                 // If not found by source and sourceId, try to find by name (for user-created exercises)
                 const searchResults = await exerciseRepository.searchExercises(exerciseName, userId);
@@ -295,7 +308,7 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts) {
                     is_custom: true,
                     shared_with_public: false,
                     source: 'Withings',
-                    source_id: sourceId,
+                    source_id: exerciseSourceId, // Corrected variable name
                 };
                 exercise = await exerciseRepository.createExercise(newExerciseData);
                 log('info', `Created new exercise for Withings workout category ${workoutCategory}: ${exercise.name}`);
@@ -317,7 +330,7 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts) {
                 notes: `Logged from Withings workout: ${exercise.name}. Distance: ${workout.data.distance || 0}m, Steps: ${workout.data.steps || 0}.`,
             };
 
-            await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, createdByUserId);
+            await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, createdByUserId, 'Withings'); // Pass 'Withings' as entrySource
             log('info', `Logged Withings workout entry for user ${userId}: ${exercise.name} on ${entryDate}.`);
 
         } catch (error) {

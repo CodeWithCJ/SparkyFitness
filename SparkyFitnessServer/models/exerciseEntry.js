@@ -56,7 +56,7 @@ async function upsertExerciseEntryData(userId, createdByUserId, exerciseId, calo
   return result;
 }
 
-async function createExerciseEntry(userId, entryData, createdByUserId) {
+async function createExerciseEntry(userId, entryData, createdByUserId, entrySource = 'Manual') { // Added entrySource parameter
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
@@ -94,8 +94,8 @@ async function createExerciseEntry(userId, entryData, createdByUserId) {
         snapshot.name, // exercise_name
         snapshot.calories_per_hour,
         snapshot.category,
-        snapshot.source,
-        snapshot.source_id,
+        entrySource, // Use entrySource for the entry's source
+        snapshot.source_id, // source_id still comes from the exercise definition
         snapshot.force,
         snapshot.level,
         snapshot.mechanic,
@@ -291,8 +291,10 @@ async function getExerciseProgressData(userId, exerciseId, startDate, endDate) {
     const result = await client.query(
       `SELECT
          ee.entry_date,
-         ee.calories_burned,
          ee.duration_minutes,
+         ee.calories_burned,
+         ee.notes,
+         ee.image_url,
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
@@ -347,6 +349,23 @@ async function getExerciseHistory(userId, exerciseId, limit = 5) {
   }
 }
 
+async function deleteExerciseEntriesByEntrySourceAndDate(userId, entryDate, entrySource) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `DELETE FROM exercise_entries
+       WHERE user_id = $1
+         AND entry_date = $2
+         AND source = $3`,
+      [userId, entryDate, entrySource]
+    );
+    log('info', `Deleted ${result.rowCount} exercise entries with source '${entrySource}' for user ${userId} on ${entryDate}.`);
+    return result.rowCount;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   upsertExerciseEntryData,
   createExerciseEntry,
@@ -357,4 +376,5 @@ module.exports = {
   getExerciseEntriesByDate,
   getExerciseProgressData,
   getExerciseHistory,
+  deleteExerciseEntriesByEntrySourceAndDate,
 };
