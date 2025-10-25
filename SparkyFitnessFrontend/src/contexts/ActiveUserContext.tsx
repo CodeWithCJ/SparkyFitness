@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, warn, error } from '@/utils/logging';
 import { usePreferences } from "@/contexts/PreferencesContext";
@@ -68,9 +68,9 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setAccessibleUsers([]);
       }
     }
-  }, [user, loading, loggingLevel, activeUserId]); // Add activeUserId to dependency array
+  }, [user, loading, loggingLevel]);
 
-  const loadAccessibleUsers = async (initialActiveUserId?: string) => {
+  const loadAccessibleUsers = useCallback(async (initialActiveUserId?: string) => {
     if (!user) {
       warn(loggingLevel, "ActiveUserProvider: Attempted to load accessible users without a user.");
       return;
@@ -123,14 +123,14 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } catch (err) {
       error(loggingLevel, 'ActiveUserProvider: Unexpected error loading accessible users:', err);
     }
-  };
+  }, [user, activeUserId, loggingLevel]);
 
   // Effect to re-load accessible users when the main user changes or on initial load
   useEffect(() => {
     if (user && !loading) {
       loadAccessibleUsers();
     }
-  }, [user, loading, loadAccessibleUsers]); // Depend on user, loading, and loadAccessibleUsers
+  }, [user, loading]); // Remove loadAccessibleUsers from dependency array
 
   const switchToUser = (userId: string | null) => {
     if (!user) {

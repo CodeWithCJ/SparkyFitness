@@ -9,6 +9,7 @@ async function getExternalDataProviders(userId) {
       ...p,
       visibility: p.user_id === userId ? 'private' : (p.shared_with_public ? 'public' : 'family'),
       shared_with_public: !!p.shared_with_public,
+      has_token: p.encrypted_access_token !== null && p.encrypted_access_token !== undefined,
     }));
     log('debug', `externalProviderService: Providers from repository for user ${userId}:`, providersWithVisibility);
     return providersWithVisibility;
@@ -27,6 +28,7 @@ async function getExternalDataProvidersForUser(authenticatedUserId, targetUserId
       ...p,
       visibility: p.user_id === authenticatedUserId ? 'private' : (p.shared_with_public ? 'public' : 'family'),
       shared_with_public: !!p.shared_with_public,
+      has_token: p.encrypted_access_token !== null && p.encrypted_access_token !== undefined,
     }));
     return providersWithVisibility;
   } catch (error) {

@@ -56,7 +56,7 @@ const FamilyAccessManager = () => {
 
   useEffect(() => {
     fetchFamilyAccess();
-  }, [user]);
+  }, [user?.id]);
 
   const rulesICreated = familyAccess.filter(
     (access) => user && access.owner_user_id === user.id

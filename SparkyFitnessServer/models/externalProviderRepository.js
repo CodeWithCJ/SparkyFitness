@@ -6,11 +6,14 @@ async function getExternalDataProviders(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public FROM external_data_providers ORDER BY created_at DESC',
+      'SELECT id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public, encrypted_access_token FROM external_data_providers ORDER BY created_at DESC',
       []
     );
     log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
-    return result.rows;
+    return result.rows.map(row => ({
+      ...row,
+      has_token: !!row.encrypted_access_token // Add has_token property
+    }));
   } finally {
     client.release();
   }
@@ -24,9 +27,10 @@ async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
       `SELECT
         id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public,
         encrypted_app_id, app_id_iv, app_id_tag,
-          encrypted_app_key, app_key_iv, app_key_tag,
-          token_expires_at, external_user_id,
-          encrypted_garth_dump, garth_dump_iv, garth_dump_tag
+        encrypted_app_key, app_key_iv, app_key_tag,
+        token_expires_at, external_user_id,
+        encrypted_garth_dump, garth_dump_iv, garth_dump_tag,
+        encrypted_access_token -- Include encrypted_access_token
         FROM external_data_providers
         WHERE user_id = $1
         ORDER BY created_at DESC`,
@@ -72,6 +76,7 @@ async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
         garth_dump: decryptedGarthDump,
         is_active: row.is_active,
         base_url: row.base_url,
+        has_token: !!row.encrypted_access_token // Add has_token property
       };
     }));
     return providers;
@@ -389,5 +394,45 @@ module.exports = {
   getExternalDataProviderById,
   checkExternalDataProviderOwnership,
   deleteExternalDataProvider,
-  getExternalDataProviderByUserIdAndProviderName, // Add the new function to exports
+  getExternalDataProviderByUserIdAndProviderName,
+  updateProviderLastSync, // Add the new function to exports
+  getProvidersByType, // Add the new function to exports
 };
+
+async function updateProviderLastSync(providerId, lastSyncAt) {
+  const client = await getSystemClient(); // System-level operation as it's updating a provider record directly
+  try {
+    const result = await client.query(
+      `UPDATE external_data_providers
+       SET last_sync_at = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id`,
+      [lastSyncAt, providerId]
+    );
+    return result.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}
+
+async function getProvidersByType(providerType) {
+  const client = await getSystemClient(); // System-level operation to fetch all providers of a type
+  try {
+    const result = await client.query(
+      `SELECT
+        id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public,
+        encrypted_app_id, app_id_iv, app_id_tag,
+        encrypted_app_key, app_key_iv, app_key_tag,
+        token_expires_at, external_user_id,
+        encrypted_access_token, access_token_iv, access_token_tag,
+        encrypted_refresh_token, refresh_token_iv, refresh_token_tag,
+        scope, last_sync_at, sync_frequency
+       FROM external_data_providers
+       WHERE provider_type = $1`,
+      [providerType]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
