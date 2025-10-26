@@ -314,6 +314,7 @@ async function searchExercises(name, userId, equipmentFilter, muscleGroupFilter)
 async function createExercise(exerciseData) {
   const client = await getClient(exerciseData.user_id);
   try {
+    log('debug', `[exerciseRepository] createExercise - incoming exerciseData: ${JSON.stringify(exerciseData)}`);
     const result = await client.query(
       `INSERT INTO exercises (
         source, source_id, name, force, level, mechanic, equipment,
@@ -336,7 +337,7 @@ async function createExercise(exerciseData) {
         exerciseData.instructions ? JSON.stringify(exerciseData.instructions) : null,
         exerciseData.category,
         exerciseData.images ? JSON.stringify(exerciseData.images) : null,
-        exerciseData.calories_per_hour,
+        exerciseData.calories_per_hour || 0, // Ensure calories_per_hour is a number, default to 0
         exerciseData.description,
         exerciseData.is_custom,
         exerciseData.user_id,

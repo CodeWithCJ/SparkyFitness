@@ -792,16 +792,6 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             </p>
             <ExternalProviderSettings />
             <Separator />
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Cloud className="h-5 w-5" /> Garmin Connect
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <GarminConnectSettings />
-              </CardContent>
-            </Card>
           </AccordionContent>
         </AccordionItem>
 

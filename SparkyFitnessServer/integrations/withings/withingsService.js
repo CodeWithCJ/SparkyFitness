@@ -95,6 +95,10 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
         log('info', 'Withings token exchange response:', JSON.stringify(response.data, null, 2));
         const { access_token, refresh_token, expires_in, scope, userid } = response.data.body;
 
+        if (!access_token || !refresh_token) {
+            throw new Error('Missing access_token or refresh_token in Withings API response.');
+        }
+
         // Encrypt tokens
         const encryptedAccessToken = await encrypt(access_token, ENCRYPTION_KEY);
         const encryptedRefreshToken = await encrypt(refresh_token, ENCRYPTION_KEY);
@@ -300,7 +304,7 @@ async function fetchAndProcessHeartData(userId, createdByUserId, startDate, endD
                 enddate: endDate      // Unix timestamp
             }
         });
-        const heartSeries = response.data.body.series;
+        const heartSeries = response.data.body.series || [];
         await withingsDataProcessor.processWithingsHeartData(userId, createdByUserId, heartSeries);
         return heartSeries;
     } catch (error) {
@@ -331,7 +335,7 @@ async function fetchAndProcessSleepData(userId, createdByUserId, startDate, endD
                 enddate: endDate      // Unix timestamp
             }
         });
-        const sleepSeries = response.data.body.series;
+        const sleepSeries = response.data.body.series || [];
         await withingsDataProcessor.processWithingsSleepData(userId, createdByUserId, sleepSeries);
         return sleepSeries;
     } catch (error) {
@@ -362,7 +366,7 @@ async function fetchAndProcessWorkoutsData(userId, createdByUserId, startDateYMD
                 enddateymd: endDateYMD
             }
         });
-        const workouts = response.data.body.series;
+        const workouts = response.data.body.series || [];
         await withingsDataProcessor.processWithingsWorkouts(userId, createdByUserId, workouts);
         return workouts;
     } catch (error) {
@@ -439,6 +443,38 @@ function generateRandomString(length) {
     return result;
 }
 
+async function getStatus(userId) {
+    const client = await getClient(userId);
+    try {
+        const result = await client.query(
+            `SELECT last_sync_at, token_expires_at
+             FROM external_data_providers
+             WHERE user_id = $1 AND provider_type = 'withings'`,
+            [userId]
+        );
+
+        if (result.rows.length === 0) {
+            return {
+                connected: false,
+                lastSyncAt: null,
+                tokenExpiresAt: null,
+            };
+        }
+
+        const { last_sync_at, token_expires_at } = result.rows[0];
+        return {
+            connected: true,
+            lastSyncAt: last_sync_at,
+            tokenExpiresAt: token_expires_at,
+        };
+    } catch (error) {
+        log('error', `Error getting Withings status for user ${userId}: ${error.message}`);
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
 module.exports = {
     getAuthorizationUrl,
     exchangeCodeForTokens,
@@ -447,6 +483,7 @@ module.exports = {
     fetchAndProcessMeasuresData,
     fetchAndProcessHeartData,
     fetchAndProcessSleepData,
-    fetchAndProcessWorkoutsData, // Add this line
-    disconnectWithings
+    fetchAndProcessWorkoutsData,
+    disconnectWithings,
+    getStatus,
 };

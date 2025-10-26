@@ -315,7 +315,8 @@ router.post('/custom-categories', authenticate, checkPermissionMiddleware('check
 // Endpoint to upsert a custom measurement entry
 router.post('/custom-entries', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
-    const newEntry = await measurementService.upsertCustomMeasurementEntry(req.userId, req.originalUserId || req.userId, req.body);
+    const { source, ...restOfBody } = req.body; // Extract source from body
+    const newEntry = await measurementService.upsertCustomMeasurementEntry(req.userId, req.originalUserId || req.userId, { ...restOfBody, source });
     res.status(201).json(newEntry);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {

@@ -442,7 +442,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                             setSelectedExercise(exercise);
                             setEditExerciseName(exercise.name);
                             setEditExerciseCategory(exercise.category);
-                            setEditExerciseCalories(exercise.calories_per_hour);
+                            setEditExerciseCalories(exercise.calories_per_hour ?? 0); // Handle null or undefined
                             setEditExerciseDescription(exercise.description || "");
                             setEditExerciseLevel(exercise.level?.toLowerCase() || "");
                             setEditExerciseForce(exercise.force?.toLowerCase() || "");
