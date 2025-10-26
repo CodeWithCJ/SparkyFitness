@@ -443,6 +443,38 @@ function generateRandomString(length) {
     return result;
 }
 
+async function getStatus(userId) {
+    const client = await getClient(userId);
+    try {
+        const result = await client.query(
+            `SELECT last_sync_at, token_expires_at
+             FROM external_data_providers
+             WHERE user_id = $1 AND provider_type = 'withings'`,
+            [userId]
+        );
+
+        if (result.rows.length === 0) {
+            return {
+                connected: false,
+                lastSyncAt: null,
+                tokenExpiresAt: null,
+            };
+        }
+
+        const { last_sync_at, token_expires_at } = result.rows[0];
+        return {
+            connected: true,
+            lastSyncAt: last_sync_at,
+            tokenExpiresAt: token_expires_at,
+        };
+    } catch (error) {
+        log('error', `Error getting Withings status for user ${userId}: ${error.message}`);
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
 module.exports = {
     getAuthorizationUrl,
     exchangeCodeForTokens,
@@ -451,6 +483,7 @@ module.exports = {
     fetchAndProcessMeasuresData,
     fetchAndProcessHeartData,
     fetchAndProcessSleepData,
-    fetchAndProcessWorkoutsData, // Add this line
-    disconnectWithings
+    fetchAndProcessWorkoutsData,
+    disconnectWithings,
+    getStatus,
 };

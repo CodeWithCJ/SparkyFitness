@@ -21,9 +21,11 @@ router.post('/login', authenticate, async (req, res, next) => {
         log('info', `Garmin login microservice response for user ${userId}:`, result);
         if (result.status === 'success' && result.tokens) {
             log('info', `Garmin login successful for user ${userId}. Handling tokens...`);
-            await garminConnectService.handleGarminTokens(userId, result.tokens);
+            const provider = await garminConnectService.handleGarminTokens(userId, result.tokens);
+            res.status(200).json({ status: 'success', provider: provider });
+        } else {
+            res.status(200).json(result);
         }
-        res.status(200).json(result);
     } catch (error) {
         next(error);
     }
@@ -193,7 +195,7 @@ router.post('/unlink', authenticate, async (req, res, next) => {
         const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
 
         if (provider) {
-            await externalProviderRepository.deleteExternalDataProvider(provider.id);
+            await externalProviderRepository.deleteExternalDataProvider(provider.id, userId);
             res.status(200).json({ success: true, message: "Garmin Connect account unlinked successfully." });
         } else {
             res.status(400).json({ error: "Garmin Connect account not found for this user." });
