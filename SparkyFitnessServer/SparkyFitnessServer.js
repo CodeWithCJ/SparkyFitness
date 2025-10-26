@@ -45,6 +45,7 @@ const cron = require('node-cron'); // Import node-cron
 const { performBackup, applyRetentionPolicy } = require('./services/backupService'); // Import backup service
 const externalProviderRepository = require('./models/externalProviderRepository'); // Import externalProviderRepository
 const withingsService = require('./integrations/withings/withingsService'); // Import withingsService
+const garminConnectService = require('./integrations/garminconnect/garminConnectService'); // Import garminConnectService
 
 const app = express();
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
@@ -371,6 +372,57 @@ const scheduleWithingsSyncs = async () => {
   log("info", "Withings sync scheduler initialized.");
 };
 
+// Function to schedule Garmin data synchronization
+const scheduleGarminSyncs = async () => {
+  cron.schedule("0 * * * *", async () => { // Run every hour
+    log("info", "Scheduled Garmin data sync initiated.");
+    try {
+      const providers = await externalProviderRepository.getProvidersByType('garmin');
+      for (const provider of providers) {
+        if (provider.is_active && provider.sync_frequency === 'hourly') {
+          const userId = provider.user_id;
+          const createdByUserId = userId;
+          const lastSyncAt = provider.last_sync_at ? new Date(provider.last_sync_at) : new Date(0);
+          const now = new Date();
+
+          if ((now.getTime() - lastSyncAt.getTime()) >= (60 * 60 * 1000)) {
+            log('info', `Hourly Garmin sync for user ${userId}`);
+            await garminConnectService.getGarminDailySummary(userId, now.toISOString().split('T')[0]);
+            await externalProviderRepository.updateProviderLastSync(provider.id, now);
+          }
+        }
+      }
+    } catch (error) {
+      log('error', `Error during scheduled Garmin data sync: ${error.message}`);
+    }
+  });
+
+  cron.schedule("0 2 * * *", async () => { // Run every day at 2 AM
+    log("info", "Scheduled daily Garmin data sync initiated.");
+    try {
+      const providers = await externalProviderRepository.getProvidersByType('garmin');
+      for (const provider of providers) {
+        if (provider.is_active && provider.sync_frequency === 'daily') {
+          const userId = provider.user_id;
+          const createdByUserId = userId;
+          const lastSyncAt = provider.last_sync_at ? new Date(provider.last_sync_at) : new Date(0);
+          const now = new Date();
+
+          if (now.getDate() !== lastSyncAt.getDate() || now.getMonth() !== lastSyncAt.getMonth() || now.getFullYear() !== lastSyncAt.getFullYear()) {
+            log('info', `Daily Garmin sync for user ${userId}`);
+            await garminConnectService.getGarminDailySummary(userId, now.toISOString().split('T')[0]);
+            await externalProviderRepository.updateProviderLastSync(provider.id, now);
+          }
+        }
+      }
+    } catch (error) {
+      log('error', `Error during scheduled Garmin data sync: ${error.message}`);
+    }
+  });
+
+  log("info", "Garmin sync scheduler initialized.");
+};
+
 
 applyMigrations().then(async () => {
   // OIDC clients are now initialized on-demand, so no startup initialization is needed.
@@ -379,6 +431,7 @@ applyMigrations().then(async () => {
   scheduleBackups();
   // Schedule Withings syncs after migrations
   scheduleWithingsSyncs();
+  scheduleGarminSyncs();
 
   // Set admin user from environment variable if provided
   if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {

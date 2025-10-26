@@ -177,22 +177,6 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                     <br />
                     In your <a href="https://developer.withings.com/dashboard/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Withings Developer Dashboard</a>, you must set your callback URL to: <strong>`YOUR_SERVER_URL/api/withings/callback`</strong>.
                   </p>
-                  <div>
-                    <Label htmlFor="edit_sync_frequency">Sync Frequency</Label>
-                    <Select
-                      value={editData.sync_frequency || 'manual'}
-                      onValueChange={(value) => setEditData(prev => ({ ...prev, sync_frequency: value as 'hourly' | 'daily' | 'manual' }))}
-                    >
-                      <SelectTrigger id="edit_sync_frequency">
-                        <SelectValue placeholder="Select sync frequency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="manual">Manual</SelectItem>
-                        <SelectItem value="hourly">Hourly</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </>
               )}
               {editData.provider_type === 'garmin' && (
@@ -228,6 +212,24 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                     Sparky Fitness does not store your Garmin email or password. They are used only during login to obtain secure tokens.
                   </p>
                 </>
+              )}
+              {(editData.provider_type === 'withings' || editData.provider_type === 'garmin') && (
+                <div>
+                  <Label htmlFor="edit_sync_frequency">Sync Frequency</Label>
+                  <Select
+                    value={editData.sync_frequency || 'manual'}
+                    onValueChange={(value) => setEditData(prev => ({ ...prev, sync_frequency: value as 'hourly' | 'daily' | 'manual' }))}
+                  >
+                    <SelectTrigger id="edit_sync_frequency">
+                      <SelectValue placeholder="Select sync frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual">Manual</SelectItem>
+                      <SelectItem value="hourly">Hourly</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
               <div className="flex items-center space-x-2">
                 <Switch
@@ -432,6 +434,11 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                   {(provider.provider_type !== 'mealie' && provider.provider_type !== 'free-exercise-db' && provider.provider_type !== 'wger') && provider.app_id && ` - App ID: ${provider.app_id.substring(0, 4)}...`}
                   {(provider.provider_type === 'mealie' || provider.provider_type === 'nutritionix' || provider.provider_type === 'fatsecret' || provider.provider_type === 'withings') && provider.app_key && ` - App Key: ${provider.app_key.substring(0, 4)}...`}
                   {provider.provider_type === 'withings' && (
+                    <>
+                      {provider.sync_frequency && ` - Sync: ${provider.sync_frequency}`}
+                    </>
+                  )}
+                  {provider.provider_type === 'garmin' && (
                     <>
                       {provider.sync_frequency && ` - Sync: ${provider.sync_frequency}`}
                     </>

@@ -138,7 +138,7 @@ const ExternalProviderSettings = () => {
       app_key: editData.app_key || null,
       is_active: editData.is_active,
       base_url: (editData.provider_type === 'mealie' || editData.provider_type === 'free-exercise-db') ? editData.base_url || null : null,
-      sync_frequency: editData.provider_type === 'withings' ? editData.sync_frequency : null,
+      sync_frequency: (editData.provider_type === 'withings' || editData.provider_type === 'garmin') ? editData.sync_frequency : null,
       garmin_connect_status: editData.provider_type === 'garmin' ? editData.garmin_connect_status : null,
       garmin_last_status_check: editData.provider_type === 'garmin' ? editData.garmin_last_status_check : null,
       garmin_token_expires: editData.provider_type === 'garmin' ? editData.garmin_token_expires : null,

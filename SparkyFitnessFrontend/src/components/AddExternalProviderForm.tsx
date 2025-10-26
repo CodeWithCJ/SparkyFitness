@@ -31,9 +31,9 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [newProvider, setNewProvider] = useState({
+  const [newProvider, setNewProvider] = useState<Partial<ExternalDataProvider>>({
     provider_name: '',
-    provider_type: 'openfoodfacts' as ExternalDataProvider['provider_type'],
+    provider_type: 'openfoodfacts',
     app_id: '',
     app_key: '',
     is_active: false,
@@ -125,7 +125,7 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
             app_key: newProvider.app_key || null,
             is_active: newProvider.is_active,
             base_url: (newProvider.provider_type === 'mealie' || newProvider.provider_type === 'free-exercise-db') ? newProvider.base_url || null : null,
-            sync_frequency: newProvider.provider_type === 'withings' ? newProvider.sync_frequency : null,
+            sync_frequency: (newProvider.provider_type === 'withings' || newProvider.provider_type === 'garmin') ? newProvider.sync_frequency : null,
           }),
         });
       }
@@ -301,22 +301,6 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
                 <br />
                 In your <a href="https://developer.withings.com/dashboard/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Withings Developer Dashboard</a>, you must set your callback URL to: <strong>`YOUR_SERVER_URL/api/withings/callback`</strong>.
               </p>
-              <div>
-                <Label htmlFor="new_sync_frequency">Sync Frequency</Label>
-                <Select
-                  value={newProvider.sync_frequency || 'manual'}
-                  onValueChange={(value) => setNewProvider(prev => ({ ...prev, sync_frequency: value as 'hourly' | 'daily' | 'manual' }))}
-                >
-                  <SelectTrigger id="new_sync_frequency">
-                    <SelectValue placeholder="Select sync frequency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">Manual</SelectItem>
-                    <SelectItem value="hourly">Hourly</SelectItem>
-                    <SelectItem value="daily">Daily</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </>
           )}
 
@@ -348,6 +332,25 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
                 Garmin integration uses direct login. Your credentials are sent securely to the backend for authentication with Garmin Connect.
               </p>
             </>
+          )}
+          
+          {(newProvider.provider_type === 'withings' || newProvider.provider_type === 'garmin') && (
+            <div>
+              <Label htmlFor="new_sync_frequency">Sync Frequency</Label>
+              <Select
+                value={newProvider.sync_frequency || 'manual'}
+                onValueChange={(value) => setNewProvider(prev => ({ ...prev, sync_frequency: value as 'hourly' | 'daily' | 'manual' }))}
+              >
+                <SelectTrigger id="new_sync_frequency">
+                  <SelectValue placeholder="Select sync frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="hourly">Hourly</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           )}
 
           <div className="flex items-center space-x-2">
