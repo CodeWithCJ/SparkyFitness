@@ -59,6 +59,10 @@ async function encrypt(text, key) {
 
 async function decrypt(encryptedText, ivString, tagString, key) {
   log('debug', `Decrypting text with key of length: ${key.length}`);
+  if (!encryptedText || !ivString || !tagString) {
+    log('warn', 'Attempted to decrypt null or incomplete data. Returning null.');
+    return null;
+  }
   const iv = Buffer.from(ivString, 'base64');
   const tag = Buffer.from(tagString, 'base64');
   const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(key, 'hex'), iv);

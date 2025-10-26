@@ -13,7 +13,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
   const errors = [];
 
   for (const dataEntry of healthDataArray) {
-    const { value, type, date, timestamp, source } = dataEntry; // Added source
+    const { value, type, date, timestamp, source = 'manual' } = dataEntry; // Added source with default
 
     if (value === undefined || value === null || !type || !date) { // Check for undefined/null value
       errors.push({ error: "Missing required fields: value, type, date in one of the entries", entry: dataEntry });
@@ -128,7 +128,8 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             entryHour,
             entryTimestamp,
             dataEntry.notes, // Pass notes if available
-            category.frequency // Pass the frequency from the category
+            category.frequency, // Pass the frequency from the category
+            source // Pass the source
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
@@ -305,8 +306,8 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(authenticatedUserId, t
   }
 }
 
-async function updateCheckInMeasurements(authenticatedUserId, entryDate, updateData) {
-  log('info', `[measurementService] updateCheckInMeasurements called with: authenticatedUserId=${authenticatedUserId}, entryDate=${entryDate}, updateData=`, updateData);
+async function updateCheckInMeasurements(authenticatedUserId, actingUserId, entryDate, updateData) {
+  log('info', `[measurementService] updateCheckInMeasurements called with: authenticatedUserId=${authenticatedUserId}, actingUserId=${actingUserId}, entryDate=${entryDate}, updateData=`, updateData);
   try {
     // Verify ownership using entry_date and user_id
     const existingMeasurement = await measurementRepository.getCheckInMeasurementsByDate(authenticatedUserId, entryDate);
@@ -316,7 +317,7 @@ async function updateCheckInMeasurements(authenticatedUserId, entryDate, updateD
       throw new Error('Check-in measurement not found.');
     }
 
-    const updatedMeasurement = await measurementRepository.updateCheckInMeasurements(authenticatedUserId, entryDate, updateData);
+    const updatedMeasurement = await measurementRepository.updateCheckInMeasurements(authenticatedUserId, actingUserId, entryDate, updateData);
     if (!updatedMeasurement) {
       log('warn', `[measurementService] Check-in measurement not found or not authorized to update after repository call for user ${authenticatedUserId} on date: ${entryDate}`);
       throw new Error('Check-in measurement not found or not authorized to update.');
@@ -483,7 +484,7 @@ module.exports = {
 
 async function upsertCustomMeasurementEntry(authenticatedUserId, actingUserId, payload) {
   try {
-    const { category_id, value, entry_date, entry_hour, entry_timestamp, notes } = payload;
+    const { category_id, value, entry_date, entry_hour, entry_timestamp, notes, source = 'manual' } = payload;
 
     // Fetch category details to get the frequency
     const categories = await measurementRepository.getCustomCategories(authenticatedUserId);
@@ -502,7 +503,8 @@ async function upsertCustomMeasurementEntry(authenticatedUserId, actingUserId, p
       entry_hour,
       entry_timestamp,
       notes,
-      category.frequency // Pass the frequency to the repository
+      category.frequency, // Pass the frequency to the repository
+      source // Pass the source to the repository
     );
     return result;
   } catch (error) {

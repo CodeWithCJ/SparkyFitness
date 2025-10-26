@@ -94,17 +94,18 @@ async function handleGarminTokens(userId, tokensB64) {
             external_user_id: updateData.external_user_id
         });
         
+        let savedProvider;
         if (provider && provider.id) {
             // Update existing provider entry
-            await externalProviderRepository.updateExternalDataProvider(provider.id, userId, updateData);
+            savedProvider = await externalProviderRepository.updateExternalDataProvider(provider.id, userId, updateData);
             log('info', `Updated Garmin provider entry for user ${userId}.`);
         } else {
             // Create new provider entry
-            await externalProviderRepository.createExternalDataProvider(updateData);
+            savedProvider = await externalProviderRepository.createExternalDataProvider(updateData);
             log('info', `Created new Garmin provider entry for user ${userId}.`);
         }
 
-        return { success: true, message: "Garmin tokens received and stored securely." };
+        return savedProvider; // Return the created or updated provider object
     } catch (error) {
         log('error', `Error handling Garmin tokens for user ${userId}:`, error.message);
         let errorMessage = `Failed to handle Garmin tokens: ${error.message}`;

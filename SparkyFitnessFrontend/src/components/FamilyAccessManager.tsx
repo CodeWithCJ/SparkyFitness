@@ -297,7 +297,7 @@ const FamilyAccessManager = () => {
                         setFormData(prev => ({ ...prev, can_manage_diary: !!checked }))
                       }
                     />
-                    <Label htmlFor="can_manage_diary">Can Manage Diary</Label>
+                    <Label htmlFor="can_manage_diary" className='cursor-pointer'>Can Manage Diary</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -307,7 +307,7 @@ const FamilyAccessManager = () => {
                         setFormData(prev => ({ ...prev, can_view_food_library: !!checked }))
                       }
                     />
-                    <Label htmlFor="can_view_food_library">Can Use My Food & Meal Library</Label>
+                    <Label htmlFor="can_view_food_library" className='cursor-pointer'>Can Use My Food & Meal Library</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -317,7 +317,7 @@ const FamilyAccessManager = () => {
                         setFormData(prev => ({ ...prev, can_view_exercise_library: !!checked }))
                       }
                     />
-                    <Label htmlFor="can_view_exercise_library">Can Use My Exercise & Workout Library</Label>
+                    <Label htmlFor="can_view_exercise_library" className='cursor-pointer'>Can Use My Exercise & Workout Library</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -327,7 +327,7 @@ const FamilyAccessManager = () => {
                         setFormData(prev => ({ ...prev, can_manage_checkin: !!checked }))
                       }
                     />
-                    <Label htmlFor="can_manage_checkin">Can Manage Check-in Data</Label>
+                    <Label htmlFor="can_manage_checkin" className='cursor-pointer'>Can Manage Check-in Data</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -337,7 +337,7 @@ const FamilyAccessManager = () => {
                         setFormData(prev => ({ ...prev, can_view_reports: !!checked }))
                       }
                     />
-                    <Label htmlFor="can_view_reports">Can View Reports</Label>
+                    <Label htmlFor="can_view_reports" className='cursor-pointer'>Can View Reports</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -347,7 +347,7 @@ const FamilyAccessManager = () => {
                         setFormData(prev => ({ ...prev, share_external_providers: !!checked }))
                       }
                     />
-                    <Label htmlFor="share_external_providers">Share External Data Providers</Label>
+                    <Label htmlFor="share_external_providers" className='cursor-pointer'>Share External Data Providers</Label>
                   </div>
                 </div>
               </div>

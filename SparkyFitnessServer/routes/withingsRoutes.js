@@ -112,10 +112,9 @@ router.post('/disconnect', authMiddleware.authenticate, async (req, res) => {
 // Route to get Withings connection status and last sync time
 router.get('/status', authMiddleware.authenticate, async (req, res) => {
     try {
-        const userId = req.user.id;
-        // Retrieve status and last sync time from external_data_providers table
-        // For now, return placeholder
-        res.status(200).json({ connected: true, lastSync: new Date().toISOString(), syncFrequency: 'manual' });
+        const userId = req.userId;
+        const status = await withingsService.getStatus(userId);
+        res.status(200).json(status);
     } catch (error) {
         log('error', `Error getting Withings status: ${error.message}`);
         res.status(500).json({ message: 'Error getting Withings status', error: error.message });

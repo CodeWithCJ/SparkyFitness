@@ -36,7 +36,7 @@ router.get('/withings/data', authenticate, async (req, res) => {
             // Filter for categories that might come from Withings
             // This is a simplified check; a more robust solution might involve tagging categories by source
             if (category.name.includes('Blood Pressure') || category.name.includes('Heart Rate') || category.name.includes('Sleep')) {
-                const entries = await measurementRepository.getCustomMeasurementsByDateRange(userId, category.id, startDate, endDate);
+                const entries = await measurementRepository.getCustomMeasurementsByDateRange(userId, category.id, startDate, endDate, 'withings');
                 
                 if (category.name.includes('Blood Pressure')) {
                     withingsData.bloodPressure.push(...entries);

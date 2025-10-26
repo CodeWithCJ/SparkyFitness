@@ -40,6 +40,14 @@ const authenticate = (req, res, next) => {
       .status(401)
       .json({ error: "Authentication: No token or active session provided." });
   }
+
+  // Final check to ensure userId is set before proceeding
+  if (!req.userId) {
+    log("warn", "Authentication: req.userId is not set after authentication attempts.");
+    return res
+      .status(401)
+      .json({ error: "Authentication: User ID could not be determined." });
+  }
 };
 
 

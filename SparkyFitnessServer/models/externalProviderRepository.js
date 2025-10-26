@@ -25,7 +25,7 @@ async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
   try {
     const result = await client.query(
       `SELECT
-        id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public,
+        id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public, sync_frequency,
         encrypted_app_id, app_id_iv, app_id_tag,
         encrypted_app_key, app_key_iv, app_key_tag,
         token_expires_at, external_user_id,
@@ -76,6 +76,7 @@ async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
         garth_dump: decryptedGarthDump,
         is_active: row.is_active,
         base_url: row.base_url,
+        sync_frequency: row.sync_frequency,
         has_token: !!row.encrypted_access_token // Add has_token property
       };
     }));
@@ -131,8 +132,8 @@ async function createExternalDataProvider(providerData) {
         encrypted_app_key, app_key_iv, app_key_tag,
         token_expires_at, external_user_id,
         encrypted_garth_dump, garth_dump_iv, garth_dump_tag,
-        created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, now(), now()) RETURNING id`,
+        sync_frequency, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, now(), now()) RETURNING id`,
       [
         provider_name,
         provider_type,
@@ -151,6 +152,7 @@ async function createExternalDataProvider(providerData) {
         encrypted_garth_dump,
         garth_dump_iv,
         garth_dump_tag,
+        providerData.sync_frequency || 'manual',
       ]
     );
     return result.rows[0];
@@ -204,6 +206,7 @@ async function updateExternalDataProvider(id, userId, updateData) {
         garth_dump_tag = COALESCE($14, garth_dump_tag),
         token_expires_at = COALESCE($15, token_expires_at),
         external_user_id = COALESCE($16, external_user_id),
+        sync_frequency = COALESCE($18, sync_frequency),
         updated_at = now()
       WHERE id = $17
       RETURNING *`,
@@ -225,6 +228,7 @@ async function updateExternalDataProvider(id, userId, updateData) {
         updateData.token_expires_at,
         updateData.external_user_id,
         id,
+        updateData.sync_frequency
       ]
     );
     return result.rows[0];
@@ -283,6 +287,7 @@ async function getExternalDataProviderById(providerId) {
       shared_with_public: data.shared_with_public,
       is_active: data.is_active,
       base_url: data.base_url,
+      sync_frequency: data.sync_frequency,
       app_id: decryptedAppId,
       app_key: decryptedAppKey,
       token_expires_at: data.token_expires_at,
@@ -347,6 +352,7 @@ async function getExternalDataProviderByUserIdAndProviderName(userId, providerNa
       shared_with_public: data.shared_with_public,
       is_active: data.is_active,
       base_url: data.base_url,
+      sync_frequency: data.sync_frequency,
       app_id: decryptedAppId,
       app_key: decryptedAppKey,
       token_expires_at: data.token_expires_at,

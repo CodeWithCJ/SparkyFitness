@@ -791,16 +791,6 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             <TooltipWarning warningMsg={`If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server's env variables are 64 hex.`} />
             <ExternalProviderSettings />
             <Separator />
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Cloud className="h-5 w-5" /> Garmin Connect
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <GarminConnectSettings />
-              </CardContent>
-            </Card>
           </AccordionContent>
         </AccordionItem>
 
