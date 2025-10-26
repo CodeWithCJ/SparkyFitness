@@ -5,11 +5,13 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  server: {
-    host: "::",
-    port: 8080,
-    proxy: {
+export default defineConfig(({ mode }) => {
+  return {
+    server: {
+      host: "::",
+      port: 8080,
+      allowedHosts: ['localhost', '127.0.0.1'], // Hardcoded for debugging
+      proxy: {
       "/api": {
         target: "http://localhost:3010",
         changeOrigin: true,
@@ -31,7 +33,6 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
-  envDir: "./private", // Specify the directory for .env files
   plugins: [
     react(),
     mode === "development" && componentTagger(),
@@ -64,4 +65,5 @@ export default defineConfig(({ mode }) => ({
       "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
     },
   },
-}));
+  };
+});

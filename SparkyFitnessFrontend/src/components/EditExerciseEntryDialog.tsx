@@ -12,6 +12,7 @@ import { debug, info, warn, error } from '@/utils/logging';
 import { fetchExerciseDetails } from '@/services/editExerciseEntryService';
 import { updateExerciseEntry, ExerciseEntry } from '@/services/exerciseEntryService';
 import { WorkoutPresetSet } from "@/types/workout";
+import ExerciseActivityDetailsEditor, { ActivityDetailKeyValuePair } from './ExerciseActivityDetailsEditor'; // New import
 import {
   DndContext,
   closestCenter,
@@ -235,10 +236,10 @@ const EditExerciseEntryDialog = ({
   onOpenChange,
   onSave,
 }: EditExerciseEntryDialogProps) => {
-  const { loggingLevel, weightUnit, convertWeight } = usePreferences();
+  const { loggingLevel, weightUnit, distanceUnit, convertWeight, convertDistance } = usePreferences();
   debug(
     loggingLevel,
-    "EditExerciseEntryDialog: Component rendered for entry:",
+    "EditExerciseEntry_v2: Component rendered for entry:",
     entry.id
   );
 
@@ -250,13 +251,15 @@ const EditExerciseEntryDialog = ({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(entry.calories_burned || '');
+  const [distanceInput, setDistanceInput] = useState<number | ''>(entry.distance || '');
+  const [avgHeartRateInput, setAvgHeartRateInput] = useState<number | ''>(entry.avg_heart_rate || '');
+  const [activityDetails, setActivityDetails] = useState<ActivityDetailKeyValuePair[]>([]); // New state for activity details
   const [showCaloriesWarning, setShowCaloriesWarning] = useState(false);
-
   useEffect(() => {
     debug(
       loggingLevel,
-      "EditExerciseEntryDialog: entry useEffect triggered.",
-      entry
+      "EditExerciseEntryDialog: entry useEffect triggered. Initializing form fields.",
+      { entry, caloriesBurned: entry.calories_burned, activityDetails: entry.activity_details }
     );
     setSets(
       ((entry.sets as WorkoutPresetSet[]) || []).map(set => ({
@@ -267,12 +270,27 @@ const EditExerciseEntryDialog = ({
     setNotes(entry.notes || "");
     setImageUrl(entry.image_url || null);
     setImageFile(null);
-    setCaloriesBurnedInput(entry.calories_burned || '');
-  }, [entry, loggingLevel, weightUnit, convertWeight]);
+    setCaloriesBurnedInput(entry.calories_burned !== null && entry.calories_burned !== undefined ? Math.round(entry.calories_burned) : '');
+    setDistanceInput(entry.distance ? Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1)) : '');
+    setAvgHeartRateInput(entry.avg_heart_rate || '');
+    // Initialize activity details from entry
+    setActivityDetails(entry.activity_details ? entry.activity_details.map(detail => ({
+      id: detail.id,
+      key: detail.detail_type,
+      value: detail.value, // Use the value directly as it's already parsed in exerciseEntryService.ts
+      provider_name: detail.provider_name,
+      detail_type: detail.detail_type,
+    })) : []);
+  }, [entry, loggingLevel, weightUnit, distanceUnit, convertWeight, convertDistance]);
+
+  useEffect(() => {
+    debug(loggingLevel, "EditExerciseEntryDialog - Current State: notes=", notes, "imageUrl=", imageUrl, "imageFile=", imageFile);
+  }, [notes, imageUrl, imageFile]);
 
   useEffect(() => {
     // When sets change, clear the calories burned input to trigger recalculation
-    if (sets.length > 0) {
+    debug(loggingLevel, "EditExerciseEntryDialog: sets useEffect triggered. Sets changed, clearing caloriesBurnedInput.");
+    if (sets.length > 0 && !entry.calories_burned) {
       setCaloriesBurnedInput('');
       setShowCaloriesWarning(true);
     }
@@ -388,7 +406,7 @@ const EditExerciseEntryDialog = ({
       if (caloriesBurnedInput !== '' && caloriesBurnedInput !== 0) {
         caloriesBurned = caloriesBurnedInput;
       } else {
-        caloriesBurned = (caloriesPerHour / 60) * totalDuration;
+        caloriesBurned = Math.round((caloriesPerHour / 60) * totalDuration);
       }
 
       debug(
@@ -407,6 +425,14 @@ const EditExerciseEntryDialog = ({
         })),
         imageFile: imageFile,
         image_url: imageUrl,
+        distance: distanceInput === '' ? null : convertDistance(Number(distanceInput), distanceUnit, 'km'),
+        avg_heart_rate: avgHeartRateInput === '' ? null : Number(avgHeartRateInput),
+        activity_details: activityDetails.map(detail => ({
+          id: detail.id,
+          provider_name: detail.provider_name,
+          detail_type: detail.key, // Use key as detail_type
+          detail_data: detail.value, // Send the raw value, backend will handle JSONB storage
+        })),
       });
 
       info(
@@ -514,12 +540,63 @@ const EditExerciseEntryDialog = ({
 
           <div>
             <Label htmlFor="calories-burned">Calories Burned (Optional)</Label>
+            <div className="relative">
+              <Input
+                id="calories-burned"
+                type="number"
+                value={caloriesBurnedInput}
+                onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="Enter calories burned to override calculation"
+                className="pr-8"
+              />
+              {caloriesBurnedInput !== '' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setCaloriesBurnedInput('');
+                    setShowCaloriesWarning(true);
+                  }}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {caloriesBurnedInput === '' && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Calories will be automatically calculated on save if left blank.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="distance">Distance ({distanceUnit})</Label>
             <Input
-              id="calories-burned"
+              id="distance"
               type="number"
-              value={caloriesBurnedInput}
-              onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Number(e.target.value))}
-              placeholder="Enter calories burned to override calculation"
+              value={distanceInput}
+              onChange={(e) => setDistanceInput(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder={`Enter distance in ${distanceUnit}`}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="avg-heart-rate">Average Heart Rate (bpm)</Label>
+            <Input
+              id="avg-heart-rate"
+              type="number"
+              value={avgHeartRateInput}
+              onChange={(e) => setAvgHeartRateInput(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="Enter average heart rate"
+            />
+          </div>
+
+          <div>
+            <Label>Custom Activity Details</Label>
+            <ExerciseActivityDetailsEditor
+              initialData={activityDetails}
+              onChange={setActivityDetails}
             />
           </div>
 

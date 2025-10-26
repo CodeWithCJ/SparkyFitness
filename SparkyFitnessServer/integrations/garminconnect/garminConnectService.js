@@ -1,6 +1,10 @@
 const { log } = require('../../config/logging');
 const axios = require('axios');
 const externalProviderRepository = require('../../models/externalProviderRepository');
+const exerciseEntryRepository = require('../../models/exerciseEntry');
+const activityDetailsRepository = require('../../models/activityDetailsRepository');
+const exerciseRepository = require('../../models/exercise');
+const moment = require('moment');
 const { encrypt, decrypt, ENCRYPTION_KEY } = require('../../security/encryption');
 
 const GARMIN_MICROSERVICE_URL = process.env.GARMIN_MICROSERVICE_URL || 'http://localhost:8000'; // Default for local dev
@@ -116,44 +120,26 @@ async function handleGarminTokens(userId, tokensB64) {
     }
 }
 
-async function getGarminDailySummary(userId, date) {
-    try {
-        const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
-        if (!provider || !provider.garth_dump) {
-            throw new Error("Garmin tokens not found for this user.");
-        }
-        const decryptedGarthDump = provider.garth_dump; // This is already decrypted by the repository
-        log('debug', `getGarminDailySummary: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
-        const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/daily_summary`, {
-            user_id: userId,
-            tokens: decryptedGarthDump, // Decrypted, base64 encoded tokens string
-            date: date
-        });
-        return response.data;
-    } catch (error) {
-        log('error', `Error fetching Garmin daily summary for user ${userId} on ${date}:`, error.response ? error.response.data : error.message);
-        throw new Error(`Failed to fetch Garmin daily summary: ${error.response ? error.response.data.detail : error.message}`);
-    }
-}
 
-async function getGarminBodyComposition(userId, startDate, endDate = null) {
+async function syncGarminHealthAndWellness(userId, startDate, endDate, metricTypes) {
     try {
         const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
         if (!provider || !provider.garth_dump) {
             throw new Error("Garmin tokens not found for this user.");
         }
         const decryptedGarthDump = provider.garth_dump; // This is already decrypted by the repository
-        log('debug', `getGarminBodyComposition: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
-        const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/body_composition`, {
+        log('debug', `syncGarminHealthAndWellness: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
+        const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/health_and_wellness`, {
             user_id: userId,
             tokens: decryptedGarthDump, // Decrypted, base64 encoded tokens string
             start_date: startDate,
-            end_date: endDate
+            end_date: endDate,
+            metric_types: metricTypes || [] // Pass an empty array if metricTypes is not provided
         });
         return response.data;
     } catch (error) {
-        log('error', `Error fetching Garmin body composition for user ${userId} from ${startDate} to ${endDate}:`, error.response ? error.response.data : error.message);
-        throw new Error(`Failed to fetch Garmin body composition: ${error.response ? error.response.data.detail : error.message}`);
+        log('error', `Error fetching Garmin health and wellness data for user ${userId} from ${startDate} to ${endDate}:`, error.response ? error.response.data : error.message);
+        throw new Error(`Failed to fetch Garmin health and wellness data: ${error.response ? error.response.data.detail : error.message}`);
     }
 }
 
@@ -161,6 +147,153 @@ module.exports = {
     garminLogin,
     garminResumeLogin,
     handleGarminTokens,
-    getGarminDailySummary,
-    getGarminBodyComposition
+    syncGarminHealthAndWellness,
+    syncGarminActivitiesAndWorkouts
 };
+async function syncGarminActivitiesAndWorkouts(userId, startDate, endDate, activityType) {
+    try {
+        const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
+        if (!provider || !provider.garth_dump) {
+            throw new Error("Garmin tokens not found for this user.");
+        }
+        const decryptedGarthDump = provider.garth_dump;
+        log('debug', `syncGarminActivitiesAndWorkouts: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
+        
+        const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`, {
+            user_id: userId,
+            tokens: decryptedGarthDump,
+            start_date: startDate,
+            end_date: endDate,
+            activity_type: activityType
+        });
+
+        log('debug', `Raw activities and workouts data from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, response.data);
+
+        log('debug', `Raw activities and workouts data from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, response.data);
+
+        const activities = response.data.activities || [];
+        const workouts = response.data.workouts || [];
+        let processedCount = 0;
+        let errorCount = 0;
+        const failedItems = [];
+
+        // Process Activities
+        for (const detailedActivity of activities) {
+            const activity = detailedActivity.activity;
+            if (!activity) {
+                log('warn', `Skipping malformed activity entry for user ${userId}:`, detailedActivity);
+                errorCount++;
+                continue;
+            }
+            try {
+                const exerciseTypeName = activity.activityType.typeKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); // Convert 'motorcycling_v2' to 'Motorcycling V2'
+                let exercise = await exerciseRepository.findExerciseByNameAndUserId(exerciseTypeName, userId);
+                if (!exercise) {
+                    const caloriesPerHour = (activity.calories && activity.duration) ? (activity.calories / (activity.duration / 60)) : 0;
+                    exercise = await exerciseRepository.createExercise({
+                        name: exerciseTypeName,
+                        category: activity.activityType.typeKey, // Keep original typeKey for category
+                        source: 'garmin',
+                        user_id: userId,
+                        is_custom: true,
+                        shared_with_public: false,
+                        calories_per_hour: caloriesPerHour,
+                    });
+                }
+
+                const exerciseEntryData = {
+                    exercise_id: exercise.id,
+                    entry_date: moment(activity.startTimeLocal).format('YYYY-MM-DD'),
+                    duration_minutes: activity.duration ? activity.duration / 60 : 0,
+                    calories_burned: activity.calories,
+                    notes: `Garmin Activity: ${activity.activityName} (${exerciseTypeName})`,
+                    distance: activity.distance, // Already converted to km by the microservice
+                    average_hr: detailedActivity.details && detailedActivity.details.heartRateDTOs ? detailedActivity.details.heartRateDTOs.averageHeartRate : null,
+                    max_hr: detailedActivity.details && detailedActivity.details.heartRateDTOs ? detailedActivity.details.heartRateDTOs.maxHeartRate : null,
+                };
+                log('debug', `exerciseEntryData for activity ${activity.activityId}:`, exerciseEntryData);
+
+                const newEntry = await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, userId, 'garmin');
+
+                await activityDetailsRepository.createActivityDetail(userId, {
+                    exercise_entry_id: newEntry.id,
+                    provider_name: 'garmin',
+                    detail_type: 'full_activity_data',
+                    detail_data: detailedActivity,
+                    created_by_user_id: userId,
+                    updated_by_user_id: userId
+                });
+
+                processedCount++;
+            } catch (error) {
+                log('error', `Failed to process Garmin activity ID ${activity.activityId} for user ${userId}:`, error);
+                errorCount++;
+                failedItems.push({ type: 'activity', id: activity.activityId, error: error.message });
+            }
+        }
+        
+        // Process Workouts
+        for (const workout of workouts) {
+            if (!workout) {
+                log('warn', `Skipping malformed workout entry for user ${userId}:`, workout);
+                errorCount++;
+                continue;
+            }
+            try {
+                let exercise = await exerciseRepository.findExerciseByNameAndUserId(workout.workoutName, userId);
+                if (!exercise) {
+                    exercise = await exerciseRepository.createExercise({
+                        name: workout.workoutName,
+                        category: 'strength_training', // Assuming workouts are strength training
+                        source: 'garmin',
+                        user_id: userId,
+                        is_custom: true,
+                        shared_with_public: false,
+                    });
+                }
+
+                const exerciseEntryData = {
+                    exercise_id: exercise.id,
+                    entry_date: moment(workout.startTimeLocal).format('YYYY-MM-DD'),
+                    duration_minutes: workout.duration ? workout.duration / 60 : 0,
+                    calories_burned: workout.calories,
+                    notes: `Garmin Workout: ${workout.workoutName}`,
+                    sets: workout.sets.map((s, index) => ({
+                        set_number: index + 1,
+                        reps: s.reps,
+                        weight: s.weight,
+                        set_type: s.type.toLowerCase(),
+                    })),
+                };
+
+                const newEntry = await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, userId, 'garmin');
+
+                await activityDetailsRepository.createActivityDetail(userId, {
+                    exercise_entry_id: newEntry.id,
+                    provider_name: 'garmin',
+                    detail_type: 'full_workout_data',
+                    detail_data: workout,
+                    created_by_user_id: userId,
+                    updated_by_user_id: userId
+                });
+
+                processedCount++;
+            } catch (error) {
+                log('error', `Failed to process Garmin workout ID ${workout.workoutId} for user ${userId}:`, error);
+                errorCount++;
+                failedItems.push({ type: 'workout', id: workout.workoutId, error: error.message });
+            }
+        }
+
+        return {
+            message: 'Garmin activities and workouts sync completed.',
+            processedCount,
+            errorCount,
+            failedItems,
+        };
+
+    } catch (error) {
+        log('error', `Error fetching Garmin activities and workouts for user ${userId} from ${startDate} to ${endDate}:`, error.response ? error.response.data : error.message);
+        throw new Error(`Failed to fetch Garmin activities and workouts: ${error.response ? error.response.data.detail : error.message}`);
+    }
+}

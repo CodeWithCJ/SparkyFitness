@@ -38,6 +38,72 @@ def _cleanup_mfa_cache():
 
 
 
+def clean_garmin_data(data):
+    """
+    Recursively remove fields that are None, 0, or specific Garmin internal IDs.
+    """
+    if isinstance(data, dict):
+        cleaned_dict = {}
+        for k, v in data.items():
+            if v is not None and v != 0 and k not in ['ownerId', 'userProfilePk', 'permissionId', 'userRoles', 'equipmentTypeId'] and 'endConditionCompare' not in k:
+                cleaned_value = clean_garmin_data(v)
+                if cleaned_value is not None and cleaned_value != 0:
+                    cleaned_dict[k] = cleaned_value
+        return cleaned_dict if cleaned_dict else None
+    elif isinstance(data, list):
+        cleaned_list = [clean_garmin_data(item) for item in data]
+        return [item for item in cleaned_list if item is not None and item != 0]
+    return data
+
+def safe_convert(value, conversion_func):
+    """Safely apply a conversion function to a value, returning None if the value is None."""
+    return conversion_func(value) if value is not None else None
+
+def grams_to_kg(g):
+    """Convert grams to kilograms."""
+    return g / 1000.0
+
+def meters_to_km(m):
+    """Convert meters to kilometers."""
+    return m / 1000.0
+
+def seconds_to_minutes(s):
+    """Convert seconds to minutes."""
+    return s / 60.0
+
+def convert_activities_units(activities):
+    """Convert units for a list of activities."""
+    for activity in activities:
+        activity['distance'] = safe_convert(activity.get('distance'), meters_to_km)
+        activity['duration'] = safe_convert(activity.get('duration'), seconds_to_minutes)
+        activity['elapsedDuration'] = safe_convert(activity.get('elapsedDuration'), seconds_to_minutes)
+        activity['movingDuration'] = safe_convert(activity.get('movingDuration'), seconds_to_minutes)
+        # Add other activity-level conversions here if needed
+    return activities
+
+def convert_user_summary_units(summary):
+    """Convert units for the user summary."""
+    if summary and 'totalWeight' in summary:
+        summary['totalWeight'] = safe_convert(summary.get('totalWeight'), grams_to_kg)
+    # Add other summary-level conversions here if needed
+    return summary
+
+
+ALL_HEALTH_METRICS = [
+    "daily_summary", "heart_rates", "sleep", "stress", "respiration", "spo2",
+    "intensity_minutes", "training_readiness", "training_status", "max_metrics",
+    "hrv", "lactate_threshold", "endurance_score", "hill_score", "race_predictions",
+    "blood_pressure", "body_battery", "menstrual_data", "menstrual_calendar_data",
+    "pregnancy_summary"
+]
+
+class HealthAndWellnessRequest(BaseModel):
+    user_id: str
+    tokens: str
+    start_date: str
+    end_date: str
+    metric_types: list[str] = [] # Optional: if empty, fetch all
+
 class GarminLoginRequest(BaseModel):
     email: str
     password: str
@@ -49,6 +115,282 @@ class GarminLoginRequest(BaseModel):
 async def read_root():
     return {"message": "Garmin Connect Microservice is running!"}
 
+@app.post("/data/health_and_wellness")
+async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
+    """
+    Retrieves a wide range of health, wellness, and achievement metrics from Garmin.
+    """
+    try:
+        user_id = request_data.user_id
+        tokens_b64 = request_data.tokens
+        start_date = request_data.start_date
+        end_date = request_data.end_date
+        metric_types_to_fetch = request_data.metric_types if request_data.metric_types else ALL_HEALTH_METRICS
+
+        if not user_id or not tokens_b64 or not start_date or not end_date:
+            raise HTTPException(status_code=400, detail="Missing user_id, tokens, start_date, or end_date.")
+
+        garmin = Garmin(is_cn=IS_CN)
+        garmin.login(tokenstore=tokens_b64)
+
+        health_data = {}
+
+        if "daily_summary" in metric_types_to_fetch:
+            try:
+                summary_data = garmin.get_user_summary(start_date)
+                health_data["daily_summary"] = convert_user_summary_units(summary_data)
+            except Exception as e:
+                logger.warning(f"Could not retrieve daily summary for {start_date}: {e}")
+
+        if "heart_rates" in metric_types_to_fetch:
+            try:
+                heart_rate_data = garmin.get_heart_rates(start_date)
+                health_data["heart_rates"] = heart_rate_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve heart rate data for {start_date} to {end_date}: {e}")
+
+        if "sleep" in metric_types_to_fetch:
+            try:
+                sleep_data = garmin.get_sleep_data(start_date)
+                health_data["sleep"] = sleep_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve sleep data for {start_date} to {end_date}: {e}")
+
+        if "stress" in metric_types_to_fetch:
+            try:
+                stress_data = garmin.get_all_day_stress(start_date)
+                health_data["stress"] = stress_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve stress data for {start_date} to {end_date}: {e}")
+
+        if "respiration" in metric_types_to_fetch:
+            try:
+                respiration_data = garmin.get_respiration_data(start_date)
+                health_data["respiration"] = respiration_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve respiration data for {start_date} to {end_date}: {e}")
+
+        if "spo2" in metric_types_to_fetch:
+            try:
+                spo2_data = garmin.get_spo2_data(start_date)
+                health_data["spo2"] = spo2_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve SPO2 data for {start_date} to {end_date}: {e}")
+
+        if "intensity_minutes" in metric_types_to_fetch:
+            try:
+                intensity_minutes_data = garmin.get_intensity_minutes_data(start_date)
+                health_data["intensity_minutes"] = intensity_minutes_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve intensity minutes data for {start_date} to {end_date}: {e}")
+
+        if "training_readiness" in metric_types_to_fetch:
+            try:
+                training_readiness_data = garmin.get_training_readiness(start_date)
+                health_data["training_readiness"] = training_readiness_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve training readiness data for {start_date} to {end_date}: {e}")
+
+        if "training_status" in metric_types_to_fetch:
+            try:
+                training_status_data = garmin.get_training_status(start_date)
+                health_data["training_status"] = training_status_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve training status data for {start_date} to {end_date}: {e}")
+
+        if "max_metrics" in metric_types_to_fetch:
+            try:
+                max_metrics_data = garmin.get_max_metrics(start_date)
+                health_data["max_metrics"] = max_metrics_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve max metrics data for {start_date} to {end_date}: {e}")
+
+        if "hrv" in metric_types_to_fetch:
+            try:
+                hrv_data = garmin.get_hrv_data(start_date)
+                health_data["hrv"] = hrv_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve HRV data for {start_date} to {end_date}: {e}")
+
+        if "lactate_threshold" in metric_types_to_fetch:
+            try:
+                lactate_threshold_data = garmin.get_lactate_threshold()
+                health_data["lactate_threshold"] = lactate_threshold_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve lactate threshold data for {start_date}: {e}")
+
+        if "endurance_score" in metric_types_to_fetch:
+            try:
+                endurance_score_data = garmin.get_endurance_score(start_date, end_date)
+                health_data["endurance_score"] = endurance_score_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve endurance score data for {start_date} to {end_date}: {e}")
+
+        if "hill_score" in metric_types_to_fetch:
+            try:
+                hill_score_data = garmin.get_hill_score(start_date, end_date)
+                health_data["hill_score"] = hill_score_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve hill score data for {start_date} to {end_date}: {e}")
+
+        if "race_predictions" in metric_types_to_fetch:
+            try:
+                race_predictions_data = garmin.get_race_predictions() # Removed start_date, end_date
+                health_data["race_predictions"] = race_predictions_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve race predictions data: {e}")
+
+        if "blood_pressure" in metric_types_to_fetch:
+            try:
+                blood_pressure_data = garmin.get_blood_pressure(start_date, end_date)
+                health_data["blood_pressure"] = blood_pressure_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve blood pressure data for {start_date} to {end_date}: {e}")
+
+        if "body_battery" in metric_types_to_fetch:
+            try:
+                body_battery_data = garmin.get_body_battery(start_date, end_date)
+                health_data["body_battery"] = body_battery_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve body battery data for {start_date} to {end_date}: {e}")
+
+        if "menstrual_data" in metric_types_to_fetch:
+            try:
+                menstrual_data = garmin.get_menstrual_data_for_date(start_date)
+                health_data["menstrual_data"] = menstrual_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve menstrual data for {start_date}: {e}")
+
+        if "menstrual_calendar_data" in metric_types_to_fetch:
+            try:
+                menstrual_calendar_data = garmin.get_menstrual_calendar_data(start_date, end_date)
+                health_data["menstrual_calendar_data"] = menstrual_calendar_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve menstrual calendar data for {start_date} to {end_date}: {e}")
+
+        if "pregnancy_summary" in metric_types_to_fetch:
+            try:
+                pregnancy_summary_data = garmin.get_pregnancy_summary() # Removed start_date, end_date
+                health_data["pregnancy_summary"] = pregnancy_summary_data
+            except Exception as e:
+                logger.warning(f"Could not retrieve pregnancy summary data: {e}")
+
+       
+
+        # Filter out empty or None health data entries
+        filtered_health_data = {}
+        for k, v in health_data.items():
+            if v is not None and (not isinstance(v, (list, dict)) or len(v) > 0):
+                if not contains_none_recursive(v):
+                    filtered_health_data[k] = v
+                else:
+                    logger.warning(f"Filtering out '{k}' due to containing None values.")
+
+        logger.info(f"Successfully retrieved and converted health and wellness data for user {user_id} from {start_date} to {end_date}. Data: {filtered_health_data}")
+        return {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": filtered_health_data}
+
+    except GarthHTTPError as e:
+        logger.error(f"Garmin API error (health_and_wellness): {e}")
+        raise HTTPException(status_code=500, detail=f"Garmin API error: {e}")
+    except GarthException as e:
+        logger.error(f"Error retrieving health and wellness data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve health and wellness data: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error retrieving health and wellness data: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+
+class ActivitiesAndWorkoutsRequest(BaseModel):
+    user_id: str
+    tokens: str
+    start_date: str
+    end_date: str
+    activity_type: str = None
+
+@app.post("/data/activities_and_workouts")
+async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest):
+    """
+    Retrieves detailed activity and workout data from Garmin.
+    """
+    try:
+        user_id = request_data.user_id
+        tokens_b64 = request_data.tokens
+        start_date = request_data.start_date
+        end_date = request_data.end_date
+        activity_type = request_data.activity_type
+
+        if not user_id or not tokens_b64 or not start_date or not end_date:
+            raise HTTPException(status_code=400, detail="Missing user_id, tokens, start_date, or end_date.")
+
+        garmin = Garmin(is_cn=IS_CN)
+        garmin.login(tokenstore=tokens_b64)
+
+        logger.info(f"Fetching activities for user {user_id} from {start_date} to {end_date} with activity type {activity_type}")
+        activities = garmin.get_activities_by_date(start_date, end_date, activity_type)
+        logger.debug(f"Raw activities retrieved: {activities}")
+        converted_activities = convert_activities_units(activities)
+        logger.debug(f"Converted activities: {converted_activities}")
+
+        detailed_activities = []
+        for activity in converted_activities:
+            activity_id = activity["activityId"]
+            try:
+                activity_details = garmin.get_activity_details(activity_id)
+                activity_splits = garmin.get_activity_splits(activity_id)
+                activity_weather = garmin.get_activity_weather(activity_id)
+                activity_hr_in_timezones = garmin.get_activity_hr_in_timezones(activity_id)
+                activity_exercise_sets = garmin.get_activity_exercise_sets(activity_id)
+                activity_gear = garmin.get_activity_gear(activity_id)
+
+                detailed_activities.append({
+                    "activity": activity,
+                    "details": activity_details,
+                    "splits": activity_splits,
+                    "weather": activity_weather,
+                    "hr_in_timezones": activity_hr_in_timezones,
+                    "exercise_sets": activity_exercise_sets,
+                    "gear": activity_gear
+                })
+            except Exception as e:
+                logger.warning(f"Could not retrieve details for activity ID {activity_id}: {e}")
+                # Append activity even if details fail, but without the failed details
+                detailed_activities.append({"activity": activity})
+
+        logger.info(f"Fetching workouts for user {user_id}")
+        workouts = garmin.get_workouts()
+        logger.debug(f"Raw workouts retrieved: {workouts}")
+        detailed_workouts = []
+        for workout in workouts:
+            workout_id = workout["workoutId"]
+            try:
+                workout_details = garmin.get_workout_by_id(workout_id)
+                detailed_workouts.append(workout_details)
+            except Exception as e:
+                logger.warning(f"Could not retrieve details for workout ID {workout_id}: {e}")
+                # Append workout even if details fail, but without the failed details
+                detailed_workouts.append(workout)
+
+        # Filter out empty or None activities and workouts
+        filtered_activities = [activity for activity in detailed_activities if activity.get('activity')]
+        filtered_workouts = [workout for workout in detailed_workouts if workout]
+
+        logger.info(f"Successfully retrieved activities and workouts for user {user_id} from {start_date} to {end_date}. Activities: {filtered_activities}, Workouts: {filtered_workouts}")
+        return {
+            "user_id": user_id,
+            "start_date": start_date,
+            "end_date": end_date,
+            "activities": filtered_activities,
+            "workouts": filtered_workouts
+        }
+
+    except GarthHTTPError as e:
+        logger.error(f"Garmin API error (activities_and_workouts): {e}")
+        raise HTTPException(status_code=500, detail=f"Garmin API error: {e}")
+    except GarthException as e:
+        logger.error(f"Error retrieving activities and workouts: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve activities and workouts: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error retrieving activities and workouts: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 @app.post("/auth/garmin/login")
 async def garmin_login(request_data: GarminLoginRequest):
@@ -119,92 +461,6 @@ async def garmin_resume_login(request: Request):
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 
-@app.post("/data/daily_summary")
-async def get_daily_summary(request: Request):
-    """
-    Retrieves daily summary data (e.g., steps, calories) for a specific date.
-    Requires base64 encoded Garmin tokens in the request body.
-    """
-    try:
-        data = await request.json()
-        user_id = data.get("user_id")
-        tokens_b64 = data.get("tokens")
-        cdate = data.get("date")  # YYYY-MM-DD format
-
-        if not user_id or not tokens_b64 or not cdate:
-            raise HTTPException(status_code=400, detail="Missing user_id, tokens, or date.")
-
-        garmin = Garmin(is_cn=IS_CN)
-        garmin.garth.loads(tokens_b64)  # Load tokens from base64 string
-        garmin.display_name = garmin.garth.profile["displayName"]  # Set display_name after loading tokens
-
-        # The garminconnect library's get_user_summary expects only the date argument.
-        # The display_name is handled internally by the garth session.
-        summary_data = garmin.get_user_summary(cdate)
-        logger.info(f"Successfully retrieved daily summary for user {user_id} on {cdate}.")
-        return {"user_id": user_id, "date": cdate, "data": summary_data}
-
-    except GarthHTTPError as e:
-        logger.error(f"Garmin API error (daily_summary): {e}")
-        raise HTTPException(status_code=500, detail=f"Garmin API error: {e}")
-    except GarthException as e:
-        logger.error(f"Error retrieving daily summary: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve daily summary: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected error retrieving daily summary: {e}")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
-
-
-@app.post("/data/body_composition")
-async def get_body_composition(request: Request):
-    """
-    Retrieves body composition data (e.g., weight) for a specific date or date range.
-    Requires base64 encoded Garmin tokens in the request body.
-    """
-    try:
-        data = await request.json()
-        user_id = data.get("user_id")
-        tokens_b64 = data.get("tokens")
-        start_date = data.get("start_date")  # YYYY-MM-DD format
-        end_date = data.get("end_date")  # YYYY-MM-DD format, optional
-
-        if not user_id or not tokens_b64 or not start_date:
-            raise HTTPException(status_code=400, detail="Missing user_id, tokens, or start_date.")
-
-        garmin = Garmin(is_cn=IS_CN)
-        garmin.garth.loads(tokens_b64)  # Load tokens from base64 string
-
-        # The garminconnect library's get_body_composition expects start_date and optionally end_date.
-        body_comp_data = garmin.get_body_composition(start_date, end_date)
-        logger.info(f"Successfully retrieved body composition for user {user_id} from {start_date} to {end_date}.")
-        return {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": body_comp_data}
-
-    except GarthHTTPError as e:
-        logger.error(f"Garmin API error (body_composition): {e}")
-        raise HTTPException(status_code=500, detail=f"Garmin API error: {e}")
-    except GarthException as e:
-        logger.error(f"Error retrieving body composition: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve body composition: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected error retrieving body composition: {e}")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
-
-        logger.info(f"Successfully obtained Garmin tokens for user {user_id}.")
-
-        # Redirect back to Sparky Fitness backend with tokens
-        # The Node.js backend will then store these tokens securely
-        redirect_url = f"{SPARKY_BACKEND_URL}/api/integrations/garmin/callback?user_id={user_id}&tokens={tokens}"
-        return RedirectResponse(redirect_url)
-
-    except GarthHTTPError as e:
-        logger.error(f"Garmin OAuth error: {e.response.status_code} - {e.response.text}")
-        raise HTTPException(status_code=e.response.status_code, detail=f"Garmin OAuth error: {e.response.text}")
-    except GarthException as e:
-        logger.error(f"Error during Garmin auth callback: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to complete Garmin authentication: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected error during Garmin auth callback: {e}")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=PORT)

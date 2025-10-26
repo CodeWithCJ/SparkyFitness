@@ -57,6 +57,8 @@ export interface ExerciseToLog extends Exercise { // Export the interface
   notes?: string;
   image_url?: string;
   exercise_name?: string; // Added to match PresetExercise
+  distance?: number; // New field
+  avg_heart_rate?: number; // New field
 }
 
 // New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
