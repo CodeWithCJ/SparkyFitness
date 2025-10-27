@@ -974,6 +974,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
                 dinner: goals.dinner_percentage,
                 snacks: goals.snacks_percentage,
               }}
+              totalCalories={goals.calories}
               onPercentagesChange={(newPercentages) => {
                 setGoals((prevGoals) => ({
                   ...prevGoals,

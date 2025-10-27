@@ -24,6 +24,8 @@ services:
       SPARKY_FITNESS_DB_NAME: ${SPARKY_FITNESS_DB_NAME:-sparkyfitness_db}
       SPARKY_FITNESS_DB_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:-changeme_db_password}
       SPARKY_FITNESS_DB_PORT: 5432
+      SPARKY_FITNESS_APP_DB_USER: ${SPARKY_FITNESS_APP_DB_USER:-sparky_app}
+      SPARKY_FITNESS_APP_DB_PASSWORD: ${SPARKY_FITNESS_APP_DB_PASSWORD:-changeme_app_password}
       SPARKY_FITNESS_API_ENCRYPTION_KEY: ${SPARKY_FITNESS_API_ENCRYPTION_KEY:-changeme_replace_with_a_64_character_hex_string}
       # Uncomment the line below and comment the line above to use a file-based secret
       # SPARKY_FITNESS_API_ENCRYPTION_KEY_FILE: /run/secrets/sparkyfitness_api_key
