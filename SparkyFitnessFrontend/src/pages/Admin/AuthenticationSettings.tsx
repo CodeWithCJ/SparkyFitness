@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Info, Lock } from 'lucide-react';
+import { Info, Lock, Clipboard } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { globalSettingsService, type GlobalSettings } from '../../services/globalSettingsService';
 import { toast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import OidcSettings from './OidcSettings';
+import { Button } from '@/components/ui/button';
 
 const AuthenticationSettings: React.FC = () => {
   const [settings, setSettings] = useState<GlobalSettings | null>(null);
@@ -82,7 +83,21 @@ const AuthenticationSettings: React.FC = () => {
           <div className="flex items-start p-4 mt-2 text-sm text-muted-foreground bg-secondary/20 border border-secondary/40 rounded-lg">
             <Info className="h-5 w-5 mr-3 mt-1 flex-shrink-0" />
             <div>
-              <strong>Emergency Fail-Safe:</strong> If you are ever locked out of your account, you can force email/password login to be enabled by setting the following environment variable on your server and restarting it: <code className="font-mono bg-gray-200 dark:bg-gray-700 p-1 rounded">SPARKY_FITNESS_FORCE_EMAIL_LOGIN=true</code>
+              <strong>Emergency Fail-Safe:</strong> If you are ever locked out of your account, you can force email/password login to be enabled by setting the following environment variable on your server and restarting it:
+              <code className="font-mono bg-gray-200 dark:bg-gray-700 p-1 rounded flex items-center">
+                SPARKY_FITNESS_FORCE_EMAIL_LOGIN=true
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-2 h-5 w-5"
+                  onClick={() => {
+                    navigator.clipboard.writeText('SPARKY_FITNESS_FORCE_EMAIL_LOGIN=true');
+                    toast({ title: "Copied!", description: "Environment variable copied to clipboard." });
+                  }}
+                >
+                  <Clipboard className="h-4 w-4" />
+                </Button>
+              </code>
             </div>
           </div>
         </AccordionContent>

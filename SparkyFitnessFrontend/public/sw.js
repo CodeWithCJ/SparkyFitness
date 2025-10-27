@@ -18,6 +18,12 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Bypass caching for Vite development server requests
+  if (event.request.url.includes('localhost:8080') || event.request.url.includes('127.0.0.1:8080')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {

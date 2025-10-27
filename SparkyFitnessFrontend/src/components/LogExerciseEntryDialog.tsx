@@ -12,9 +12,11 @@ import ExerciseHistoryDisplay from "./ExerciseHistoryDisplay";
 import { WorkoutPresetSet } from "@/types/workout";
 import { ExerciseToLog } from '@/components/ExerciseCard'; // Import ExerciseToLog
 import { Plus, X, Copy, GripVertical, Repeat, Weight, Timer } from "lucide-react";
+import ExerciseActivityDetailsEditor, { ActivityDetailKeyValuePair } from './ExerciseActivityDetailsEditor'; // New import
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { excerciseWorkoutSetTypes } from "@/constants/excerciseWorkoutSetTypes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface LogExerciseEntryDialogProps {
@@ -53,11 +55,11 @@ const SortableSetItem = React.memo(({ set, index, handleSetChange, handleDuplica
           <Select value={set.set_type} onValueChange={(value) => handleSetChange(index, 'set_type', value)}>
             <SelectTrigger><SelectValue/></SelectTrigger>
             <SelectContent>
-              <SelectItem value="Working Set">Working Set</SelectItem>
-              <SelectItem value="Warm-up">Warm-up</SelectItem>
-              <SelectItem value="Drop Set">Drop Set</SelectItem>
-              <SelectItem value="Failure">Failure</SelectItem>
-              <SelectItem value="AMRAP">AMRAP</SelectItem>
+              {excerciseWorkoutSetTypes.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -85,7 +87,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   initialNotes,
   initialImageUrl,
 }) => {
-  const { loggingLevel, weightUnit, convertWeight } = usePreferences();
+  const { loggingLevel, weightUnit, distanceUnit, convertWeight, convertDistance } = usePreferences();
   const { toast } = useToast();
 
   const [sets, setSets] = useState<WorkoutPresetSet[]>([]);
@@ -94,6 +96,9 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(''); // New state for user-provided calories
+  const [distanceInput, setDistanceInput] = useState<number | ''>('');
+  const [avgHeartRateInput, setAvgHeartRateInput] = useState<number | ''>('');
+  const [activityDetails, setActivityDetails] = useState<ActivityDetailKeyValuePair[]>([]); // New state for activity details
 
   useEffect(() => {
     if (isOpen && exercise) {
@@ -107,9 +112,11 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
       } else {
         setCaloriesBurnedInput('');
       }
+      setDistanceInput(exercise?.distance ? Number(convertDistance(exercise.distance, 'km', distanceUnit).toFixed(1)) : '');
+      setAvgHeartRateInput(exercise?.avg_heart_rate || '');
       debug(loggingLevel, `LogExerciseEntryDialog: Opened for exercise ${exercise.name} on ${selectedDate}`);
     }
-  }, [isOpen, exercise, selectedDate, loggingLevel, initialSets, initialNotes, initialImageUrl]);
+  }, [isOpen, exercise, selectedDate, loggingLevel, initialSets, initialNotes, initialImageUrl, distanceUnit, convertDistance]);
 
   const handleSetChange = (index: number, field: keyof WorkoutPresetSet, value: any) => {
     debug(loggingLevel, `[LogExerciseEntryDialog] handleSetChange: index=${index}, field=${field}, value=${value}, weightUnit=${weightUnit}`);
@@ -199,6 +206,13 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         calories_burned: caloriesBurnedInput === '' ? null : caloriesBurnedInput, // Use user input or null for backend calculation
         duration_minutes: sets.reduce((acc, set) => acc + (set.duration || 0), 0),
         imageFile: imageFile,
+        distance: distanceInput === '' ? null : convertDistance(Number(distanceInput), distanceUnit, 'km'),
+        avg_heart_rate: avgHeartRateInput === '' ? null : Number(avgHeartRateInput),
+        activity_details: activityDetails.map(detail => ({
+          provider_name: detail.provider_name,
+          detail_type: detail.detail_type,
+          detail_data: detail.value, // Send the raw value, backend will handle JSONB storage
+        })),
       };
 
       await createExerciseEntry(entryData);
@@ -252,6 +266,33 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
               value={caloriesBurnedInput}
               onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Number(e.target.value))}
               placeholder="Enter calories burned"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="distance">Distance ({distanceUnit})</Label>
+            <Input
+              id="distance"
+              type="number"
+              value={distanceInput}
+              onChange={(e) => setDistanceInput(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder={`Enter distance in ${distanceUnit}`}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="avg-heart-rate">Average Heart Rate (bpm)</Label>
+            <Input
+              id="avg-heart-rate"
+              type="number"
+              value={avgHeartRateInput}
+              onChange={(e) => setAvgHeartRateInput(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="Enter average heart rate"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Custom Activity Details</Label>
+            <ExerciseActivityDetailsEditor
+              initialData={activityDetails}
+              onChange={setActivityDetails}
             />
           </div>
           <div className="space-y-2">

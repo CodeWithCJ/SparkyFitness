@@ -3,6 +3,7 @@ const exerciseRepository = require('../models/exerciseRepository');
 // Require concrete exercise and exerciseEntry modules directly to avoid circular export issues
 const exerciseDb = require('../models/exercise');
 const exerciseEntryDb = require('../models/exerciseEntry');
+const activityDetailsRepository = require('../models/activityDetailsRepository'); // New import
 const userRepository = require('../models/userRepository');
 const preferenceRepository = require('../models/preferenceRepository');
 const { v4: uuidv4 } = require('uuid'); // New import for UUID generation
@@ -156,10 +157,26 @@ async function createExerciseEntry(authenticatedUserId, actingUserId, entryData)
       duration_minutes: typeof entryData.duration_minutes === 'number' ? entryData.duration_minutes : 0,
       workout_plan_assignment_id: entryData.workout_plan_assignment_id || null,
       image_url: entryData.image_url || null,
+      distance: entryData.distance || null,
+      avg_heart_rate: entryData.avg_heart_rate || null,
     };
 
   // Use exerciseEntry module to create the entry (handles sets and snapshot inserts)
   const newEntry = await exerciseEntryDb.createExerciseEntry(authenticatedUserId, snapshotEntryData, actingUserId);
+
+   // If activity_details are provided, create them
+   if (entryData.activity_details && entryData.activity_details.length > 0) {
+     for (const detail of entryData.activity_details) {
+       await activityDetailsRepository.createActivityDetail(authenticatedUserId, {
+         exercise_entry_id: newEntry.id,
+         provider_name: detail.provider_name || 'Manual', // Default to Manual if not provided
+         detail_type: detail.detail_type,
+         detail_data: detail.detail_data,
+         created_by_user_id: actingUserId,
+         updated_by_user_id: actingUserId,
+       });
+     }
+   }
     return newEntry;
   } catch (error) {
     log('error', `Error creating exercise entry for user ${authenticatedUserId} by ${actingUserId}:`, error);
@@ -174,12 +191,14 @@ async function getExerciseEntryById(authenticatedUserId, id) {
       throw new Error('Exercise entry not found.');
     }
     const entry = await exerciseEntryDb.getExerciseEntryById(id, authenticatedUserId);
-    return entry;
-  } catch (error) {
-    log('error', `Error fetching exercise entry ${id} by user ${authenticatedUserId}:`, error);
-    throw error;
-  }
-}
+    // Fetch activity details
+    const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(authenticatedUserId, id);
+    return { ...entry, activity_details: activityDetails };
+   } catch (error) {
+     log('error', `Error fetching exercise entry ${id} by user ${authenticatedUserId}:`, error);
+     throw error;
+   }
+ }
 
 async function updateExerciseEntry(authenticatedUserId, id, updateData) {
   try {
@@ -225,10 +244,46 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
       weight: updateData.weight || null,
       workout_plan_assignment_id: updateData.workout_plan_assignment_id || null,
       image_url: updateData.image_url === null ? null : (updateData.image_url || existingEntry.image_url),
+      distance: updateData.distance || null,
+      avg_heart_rate: updateData.avg_heart_rate || null,
     });
     if (!updatedEntry) {
       throw new Error('Exercise entry not found or not authorized to update.');
     }
+    // Handle activity details updates
+   if (updateData.activity_details !== undefined) {
+     const existingActivityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(authenticatedUserId, id);
+     const incomingActivityDetails = updateData.activity_details || [];
+
+     // Identify details to delete
+     for (const existingDetail of existingActivityDetails) {
+       const found = incomingActivityDetails.find(
+         (incomingDetail) => incomingDetail.id === existingDetail.id
+       );
+       if (!found) {
+         await activityDetailsRepository.deleteActivityDetail(authenticatedUserId, existingDetail.id);
+       }
+     }
+
+     // Identify details to create or update
+     for (const incomingDetail of incomingActivityDetails) {
+       if (incomingDetail.id) {
+         // Update existing detail
+         await activityDetailsRepository.updateActivityDetail(authenticatedUserId, incomingDetail.id, {
+           ...incomingDetail,
+           updated_by_user_id: authenticatedUserId,
+         });
+       } else {
+         // Create new detail
+         await activityDetailsRepository.createActivityDetail(authenticatedUserId, {
+           ...incomingDetail,
+           exercise_entry_id: id,
+           created_by_user_id: authenticatedUserId,
+           updated_by_user_id: authenticatedUserId,
+         });
+       }
+     }
+   }
     return updatedEntry;
   } catch (error) {
     log('error', `Error updating exercise entry ${id} by ${authenticatedUserId}:`, error);
@@ -400,7 +455,14 @@ async function getExerciseEntriesByDate(authenticatedUserId, targetUserId, selec
     if (!entries || entries.length === 0) {
       return [];
     }
-    return entries;
+
+    // For each entry, fetch and attach its activity details
+    const entriesWithDetails = await Promise.all(entries.map(async (entry) => {
+      const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(authenticatedUserId, entry.id);
+      return { ...entry, activity_details: activityDetails };
+    }));
+
+    return entriesWithDetails;
   } catch (error) {
     log('error', `Error fetching exercise entries for user ${targetUserId} on ${selectedDate} by ${authenticatedUserId}:`, error);
     throw error;

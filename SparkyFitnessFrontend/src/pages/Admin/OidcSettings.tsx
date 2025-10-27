@@ -265,7 +265,7 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
               </div>
               <div>
                 <Label htmlFor="redirect_uris">Redirect URI</Label>
-                <Input id="redirect_uris" value={editedProvider.redirect_uris.join(', ')} onChange={handleChange} placeholder="e.g., https://app.example.com/oidc-callback" />
+                <Input id="redirect_uris" value={editedProvider.redirect_uris.join(', ')} onChange={handleChange} placeholder={`e.g., ${window.location.origin}/oidc-callback`} />
               </div>
               <div>
                 <Label htmlFor="token_endpoint_auth_method">Token Endpoint Auth Method</Label>
@@ -294,8 +294,22 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
               </div>
             </div>
             <div className="text-sm text-muted-foreground mt-4">
-              <p>The Redirect URI for your OIDC provider should be: <code className="font-mono bg-gray-100 p-1 rounded">[Your App Base URL]/oidc-callback</code></p>
-              <p className="mt-1">Example: <code className="font-mono bg-gray-100 p-1 rounded">https://fit.domain.com/oidc-callback</code></p>
+              <p>The Redirect URI for your OIDC provider should be:  SPARKY_FITNESS_FRONTEND_URL/oidc-callback</p>
+              <div className="flex items-center">
+                <code className="font-mono bg-gray-100 p-1 rounded">{`${window.location.origin}/oidc-callback`}</code>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="ml-2 h-5 w-5"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/oidc-callback`);
+                    toast({ title: "Copied!", description: "Redirect URI copied to clipboard." });
+                  }}
+                >
+                  <ClipboardCopy className="h-4 w-4" />
+                </Button>
+              </div>
               <p className="mt-1">Ensure your OIDC provider allows localhost or your local IP for development.</p>
               <p className="mt-2">If using a proxy like Nginx Proxy Manager, ensure the following headers are configured:</p>
               <div className="relative group mt-2">

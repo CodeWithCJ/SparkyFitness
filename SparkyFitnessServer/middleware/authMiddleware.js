@@ -2,52 +2,77 @@ const jwt = require("jsonwebtoken");
 const { log } = require("../config/logging");
 const { JWT_SECRET } = require("../security/encryption");
 const userRepository = require("../models/userRepository"); // Import userRepository
+const { getClient, getSystemClient } = require("../db/poolManager"); // Import getClient and getSystemClient
 
-const authenticate = (req, res, next) => {
+const tryAuthenticateWithApiKey = async (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const apiKey = authHeader && authHeader.split(" ")[1]; // Bearer API_KEY
+
+  if (!apiKey) {
+    return null; // No API key found
+  }
+
+  let client;
+  try {
+    client = await getSystemClient(); // Use system client for API key validation
+    const result = await client.query(
+      'SELECT user_id FROM user_api_keys WHERE api_key = $1 AND is_active = TRUE',
+      [apiKey]
+    );
+
+    if (result.rows.length > 0) {
+      log("debug", `Authentication: API Key valid. User ID: ${result.rows[0].user_id}`);
+      return result.rows[0].user_id;
+    }
+  } catch (error) {
+    log("error", "Error during API Key authentication:", error);
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+  return null;
+};
+
+const authenticate = async (req, res, next) => {
   // Allow public access to the /api/auth/settings endpoint
   if (req.path === "/settings") {
     return next();
   }
 
-  // Check for JWT token in Authorization header (for traditional login)
+  // 1. Check for JWT token in Authorization header (for traditional login)
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
 
   if (token) {
-    // log("debug", `Authentication: JWT token found. Verifying...`); // Commented out for less verbose logging
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-      if (err) {
-        log("warn", "Authentication: Invalid or expired token.", err.message);
-        return res
-          .status(403)
-          .json({ error: "Authentication: Invalid or expired token." });
-      }
+    try {
+      const user = jwt.verify(token, JWT_SECRET);
       req.userId = user.userId; // Attach userId from JWT payload to request
-      // log("debug", `Authentication: JWT token valid. User ID: ${req.userId}`); // Commented out for less verbose logging
-      next();
-    });
-  } else if (req.session && req.session.user && req.session.user.userId) {
-    // If no JWT token, check for session-based authentication (for OIDC)
-    // log(
-    //   "debug",
-    //   `Authentication: No JWT token found, checking session. User ID from session: ${req.session.user.userId}`
-    // ); // Commented out for less verbose logging
-    req.userId = req.session.user.userId;
-    next();
-  } else {
-    log("warn", "Authentication: No token or active session provided.");
-    return res
-      .status(401)
-      .json({ error: "Authentication: No token or active session provided." });
+      log("debug", `Authentication: JWT token valid. User ID: ${req.userId}`);
+      return next();
+    } catch (err) {
+      log("warn", "Authentication: JWT token invalid or expired.", err.message);
+      // Do not return here, try other authentication methods
+    }
   }
 
-  // Final check to ensure userId is set before proceeding
-  if (!req.userId) {
-    log("warn", "Authentication: req.userId is not set after authentication attempts.");
-    return res
-      .status(401)
-      .json({ error: "Authentication: User ID could not be determined." });
+  // 2. Check for session-based authentication (for OIDC)
+  if (req.session && req.session.user && req.session.user.userId) {
+    req.userId = req.session.user.userId;
+    log("debug", `Authentication: Session valid. User ID: ${req.userId}`);
+    return next();
   }
+
+  // 3. Try to authenticate with API Key
+  const userIdFromApiKey = await tryAuthenticateWithApiKey(req, res, next);
+  if (userIdFromApiKey) {
+    req.userId = userIdFromApiKey;
+    return next();
+  }
+
+  // If no authentication method succeeded
+  log("warn", "Authentication: No token, active session, or valid API key provided.");
+  return res.status(401).json({ error: "Authentication: No token, active session, or valid API key provided." });
 };
 
 

@@ -78,7 +78,7 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
         const clientId = await decrypt(encrypted_app_id, app_id_iv, app_id_tag, ENCRYPTION_KEY);
         const clientSecret = await decrypt(encrypted_app_key, app_key_iv, app_key_tag, ENCRYPTION_KEY);
 
-        const baseUrl = process.env.SPARKY_FITNESS_SERVER_URL || 'http://localhost:3010';
+        const baseUrl = process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
         const constructedRedirectUri = `${baseUrl}/withings/callback`;
 
         const response = await axios.post(`${WITHINGS_API_BASE_URL}/v2/oauth2`, null, {

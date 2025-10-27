@@ -1,6 +1,10 @@
 const { log } = require('../../config/logging');
 const axios = require('axios');
 const externalProviderRepository = require('../../models/externalProviderRepository');
+const exerciseEntryRepository = require('../../models/exerciseEntry');
+const activityDetailsRepository = require('../../models/activityDetailsRepository');
+const exerciseRepository = require('../../models/exercise');
+const moment = require('moment');
 const { encrypt, decrypt, ENCRYPTION_KEY } = require('../../security/encryption');
 
 const GARMIN_MICROSERVICE_URL = process.env.GARMIN_MICROSERVICE_URL || 'http://localhost:8000'; // Default for local dev
@@ -116,44 +120,26 @@ async function handleGarminTokens(userId, tokensB64) {
     }
 }
 
-async function getGarminDailySummary(userId, date) {
-    try {
-        const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
-        if (!provider || !provider.garth_dump) {
-            throw new Error("Garmin tokens not found for this user.");
-        }
-        const decryptedGarthDump = provider.garth_dump; // This is already decrypted by the repository
-        log('debug', `getGarminDailySummary: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
-        const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/daily_summary`, {
-            user_id: userId,
-            tokens: decryptedGarthDump, // Decrypted, base64 encoded tokens string
-            date: date
-        });
-        return response.data;
-    } catch (error) {
-        log('error', `Error fetching Garmin daily summary for user ${userId} on ${date}:`, error.response ? error.response.data : error.message);
-        throw new Error(`Failed to fetch Garmin daily summary: ${error.response ? error.response.data.detail : error.message}`);
-    }
-}
 
-async function getGarminBodyComposition(userId, startDate, endDate = null) {
+async function syncGarminHealthAndWellness(userId, startDate, endDate, metricTypes) {
     try {
         const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
         if (!provider || !provider.garth_dump) {
             throw new Error("Garmin tokens not found for this user.");
         }
         const decryptedGarthDump = provider.garth_dump; // This is already decrypted by the repository
-        log('debug', `getGarminBodyComposition: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
-        const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/body_composition`, {
+        log('debug', `syncGarminHealthAndWellness: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
+        const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/health_and_wellness`, {
             user_id: userId,
             tokens: decryptedGarthDump, // Decrypted, base64 encoded tokens string
             start_date: startDate,
-            end_date: endDate
+            end_date: endDate,
+            metric_types: metricTypes || [] // Pass an empty array if metricTypes is not provided
         });
         return response.data;
     } catch (error) {
-        log('error', `Error fetching Garmin body composition for user ${userId} from ${startDate} to ${endDate}:`, error.response ? error.response.data : error.message);
-        throw new Error(`Failed to fetch Garmin body composition: ${error.response ? error.response.data.detail : error.message}`);
+        log('error', `Error fetching Garmin health and wellness data for user ${userId} from ${startDate} to ${endDate}:`, error.response ? error.response.data : error.message);
+        throw new Error(`Failed to fetch Garmin health and wellness data: ${error.response ? error.response.data.detail : error.message}`);
     }
 }
 
@@ -161,6 +147,32 @@ module.exports = {
     garminLogin,
     garminResumeLogin,
     handleGarminTokens,
-    getGarminDailySummary,
-    getGarminBodyComposition
+    syncGarminHealthAndWellness,
+    fetchGarminActivitiesAndWorkouts
 };
+
+async function fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, activityType) {
+    try {
+        const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
+        if (!provider || !provider.garth_dump) {
+            throw new Error("Garmin tokens not found for this user.");
+        }
+        const decryptedGarthDump = provider.garth_dump;
+        log('debug', `fetchGarminActivitiesAndWorkouts: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
+        
+        const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`, {
+            user_id: userId,
+            tokens: decryptedGarthDump,
+            start_date: startDate,
+            end_date: endDate,
+            activity_type: activityType
+        });
+
+        log('debug', `Raw activities and workouts data from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, response.data);
+        return response.data;
+
+    } catch (error) {
+        log('error', `Error fetching Garmin activities and workouts for user ${userId} from ${startDate} to ${endDate}:`, error.response ? error.response.data : error.message);
+        throw new Error(`Failed to fetch Garmin activities and workouts: ${error.response ? error.response.data.detail : error.message}`);
+    }
+}

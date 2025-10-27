@@ -28,6 +28,7 @@ import WaterContainerManager from "./WaterContainerManager"; // Import WaterCont
 import { parse } from "date-fns"; // Import parse for parsing user-entered date strings
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"; // Import Accordion components
 import CalculationSettings from "@/pages/CalculationSettings";
+import TooltipWarning from "./TooltipWarning";
 
 interface Profile {
  id: string;
@@ -55,6 +56,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   const {
     weightUnit, setWeightUnit,
     measurementUnit, setMeasurementUnit,
+    distanceUnit, setDistanceUnit,
     dateFormat, setDateFormat,
     loggingLevel, setLoggingLevel,
     itemDisplayLimit, setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
@@ -67,6 +69,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   const [avatarObjectURL, setAvatarObjectURL] = useState<string | null>(null); // State to hold the object URL for the avatar
   // Remove local preferences state as it's now managed by PreferencesContext
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
+  const [localLoggingLevel, setLocalLoggingLevel] = useState(loggingLevel);
   const [profileForm, setProfileForm] = useState({
     full_name: '',
     phone: '',
@@ -98,6 +101,10 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
       setNewEmail(user.email || ''); // Initialize newEmail here
     }
   }, [user]); // Removed loadUserPreferencesFromContext from dependency array
+
+  useEffect(() => {
+    setLocalLoggingLevel(loggingLevel);
+  }, [loggingLevel]);
 
   // Effect to fetch avatar image when profile.avatar_url changes
   useEffect(() => {
@@ -289,11 +296,12 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     if (!user) return;
     setLoading(true);
     try {
-      await saveAllPreferences(); // Call the new function from context
+      await saveAllPreferences({ loggingLevel: localLoggingLevel }); // Pass the new logging level directly
       toast({
         title: "Success",
         description: "Preferences updated successfully",
       });
+      window.location.reload();
     } catch (error: any) {
       console.error('Error updating preferences:', error);
       toast({
@@ -642,14 +650,41 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="distance_unit">Distance Unit</Label>
+                <Select
+                  value={distanceUnit}
+                  onValueChange={setDistanceUnit}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="km">Kilometers (km)</SelectItem>
+                    <SelectItem value="miles">Miles (miles)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="distance_unit">Distance Unit</Label>
+                <Select
+                  value={distanceUnit}
+                  onValueChange={setDistanceUnit}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="km">Kilometers (km)</SelectItem>
+                    <SelectItem value="miles">Miles (miles)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label htmlFor="logging_level">Minimum Logging Level</Label>
                 <Select
-                  value={loggingLevel}
-                  onValueChange={setLoggingLevel}
+                  value={localLoggingLevel}
+                  onValueChange={(value) => setLocalLoggingLevel(value as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT')}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -787,9 +822,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             Food & Exercise Data Providers
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
-            <p className="text-sm text-muted-foreground bg-yellow-100 p-2 rounded-md">
-              Note: If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server's env variables are 64 hex.
-            </p>
+            <TooltipWarning warningMsg={`If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server's env variables are 64 hex.`} />
             <ExternalProviderSettings />
             <Separator />
           </AccordionContent>
@@ -804,9 +837,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             AI Service
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
-            <p className="text-sm text-muted-foreground mb-4 bg-yellow-100 p-2 rounded-md">
-              Note: If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server's env variables are 64 hex.
-            </p>
+            <TooltipWarning warningMsg={`If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server's env variables are 64 hex.`} />
             <AIServiceSettings />
           </AccordionContent>
         </AccordionItem>
@@ -825,9 +856,8 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               Generate API keys to securely submit data from external applications like iPhone Shortcuts.
               These keys are tied to your account and can be revoked at any time.
             </p>
-            <p className="text-sm text-muted-foreground bg-blue-100 p-2 rounded-md">
-              Note: Refer to the Wiki page in Github for sample setup instructions for iPhone and Android.
-            </p>
+
+            <TooltipWarning warningMsg = {`Refer to the Wiki page in Github for sample setup instructions for iPhone and Android.`} color="blue" />
             <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 placeholder="Description (e.g., 'iPhone Health Shortcut')"

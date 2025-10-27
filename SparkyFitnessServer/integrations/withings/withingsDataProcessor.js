@@ -275,7 +275,7 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
     for (const workout of workouts) {
         const entryDate = new Date(workout.startdate * 1000).toISOString().split('T')[0];
         if (!processedDates.has(entryDate)) {
-            await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(userId, entryDate, 'Withings');
+            await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(userId, entryDate, entryDate, 'Withings');
             processedDates.add(entryDate);
         }
     }

@@ -192,7 +192,7 @@ const NutrientDisplaySettings: React.FC = () => {
                                                         checked={isChecked}
                                                         onCheckedChange={(checked) => handleCheckboxChange(group.id, platform as 'desktop' | 'mobile', nutrient, !!checked)}
                                                     />
-                                                    <Label htmlFor={`${group.id}-${platform}-${nutrient}`} className="capitalize">{nutrient.replace(/_/g, ' ')}</Label>
+                                                    <Label htmlFor={`${group.id}-${platform}-${nutrient}`} className="capitalize cursor-pointer">{nutrient.replace(/_/g, ' ')}</Label>
                                                 </div>
                                             );
                                         })}
@@ -204,7 +204,7 @@ const NutrientDisplaySettings: React.FC = () => {
                                                 checked={syncState[group.id] || false}
                                                 onCheckedChange={() => handleSyncToggle(group.id, platform as 'desktop' | 'mobile')}
                                             />
-                                            <Label htmlFor={`sync-${group.id}-${platform}`}>Sync with {platform === 'desktop' ? 'Mobile' : 'Desktop'}</Label>
+                                            <Label className='cursor-pointer' htmlFor={`sync-${group.id}-${platform}`}>Sync with {platform === 'desktop' ? 'Mobile' : 'Desktop'}</Label>
                                         </div>
                                         <Button variant="outline" onClick={() => handleSelectAll(group.id, platform as 'desktop' | 'mobile')}>Select All</Button>
                                         <Button variant="outline" onClick={() => handleClearAll(group.id, platform as 'desktop' | 'mobile')}>Clear All</Button>

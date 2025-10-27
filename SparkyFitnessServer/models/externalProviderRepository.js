@@ -9,7 +9,7 @@ async function getExternalDataProviders(userId) {
       'SELECT id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public, encrypted_access_token FROM external_data_providers ORDER BY created_at DESC',
       []
     );
-    log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
+    // log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
     return result.rows.map(row => ({
       ...row,
       has_token: !!row.encrypted_access_token // Add has_token property

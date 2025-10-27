@@ -123,7 +123,7 @@ const CalculationSettings = () => {
           <div className="grid gap-1.5 leading-none">
             <Label
               htmlFor="include-bmr"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
             >
               Include BMR in Net Calories
             </Label>
