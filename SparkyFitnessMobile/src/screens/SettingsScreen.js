@@ -12,7 +12,7 @@ import HealthDataSync from '../components/HealthDataSync';
 import SyncFrequency from '../components/SyncFrequency';
 import AppearanceSettings from '../components/AppearanceSettings';
 import axios from 'axios'; // Import axios for API calls
-import { getActiveServerConfig } from '../services/storage'; // Import to get server URL
+//import { getActiveServerConfig } from '../services/storage'; // Import to get server URL
 
 const SettingsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
