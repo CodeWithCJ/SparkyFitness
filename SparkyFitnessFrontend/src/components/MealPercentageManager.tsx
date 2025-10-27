@@ -163,14 +163,9 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalC
 
       {(Object.keys(percentages) as Array<keyof MealPercentages>).map(meal => (
         <div key={meal} className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor={meal} className="capitalize font-semibold">
-              {meal}
-            </Label>
-            <span className="text-sm font-bold text-red-600">
-              {calculateCalories(percentages[meal])} kcal
-            </span>
-          </div>
+          <Label htmlFor={meal} className="capitalize font-semibold">
+            {meal} ({calculateCalories(percentages[meal])} kcal)
+          </Label>
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => handleLockToggle(meal)}>
               {locks[meal] ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
@@ -185,21 +180,14 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalC
               disabled={locks[meal]}
             />
             <div className="flex items-center gap-2">
-              <div className="flex flex-col items-end gap-1">
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={percentages[meal]}
-                    onChange={(e) => handleSliderChange(meal, parseInt(e.target.value, 10) || 0)}
-                    className="w-20"
-                    disabled={locks[meal]}
-                  />
-                  <span className="text-sm font-medium">%</span>
-                </div>
-                <span className="text-xs font-bold text-red-600 whitespace-nowrap">
-                  {calculateCalories(percentages[meal])} kcal
-                </span>
-              </div>
+              <Input
+                type="number"
+                value={percentages[meal]}
+                onChange={(e) => handleSliderChange(meal, parseInt(e.target.value, 10) || 0)}
+                className="w-20"
+                disabled={locks[meal]}
+              />
+              <span className="text-sm font-medium">%</span>
             </div>
           </div>
         </div>
