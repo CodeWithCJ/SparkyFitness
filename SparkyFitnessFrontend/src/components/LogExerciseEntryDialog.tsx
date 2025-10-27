@@ -16,6 +16,7 @@ import ExerciseActivityDetailsEditor, { ActivityDetailKeyValuePair } from './Exe
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { excerciseWorkoutSetTypes } from "@/constants/excerciseWorkoutSetTypes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface LogExerciseEntryDialogProps {
@@ -54,11 +55,11 @@ const SortableSetItem = React.memo(({ set, index, handleSetChange, handleDuplica
           <Select value={set.set_type} onValueChange={(value) => handleSetChange(index, 'set_type', value)}>
             <SelectTrigger><SelectValue/></SelectTrigger>
             <SelectContent>
-              <SelectItem value="Working Set">Working Set</SelectItem>
-              <SelectItem value="Warm-up">Warm-up</SelectItem>
-              <SelectItem value="Drop Set">Drop Set</SelectItem>
-              <SelectItem value="Failure">Failure</SelectItem>
-              <SelectItem value="AMRAP">AMRAP</SelectItem>
+              {excerciseWorkoutSetTypes.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

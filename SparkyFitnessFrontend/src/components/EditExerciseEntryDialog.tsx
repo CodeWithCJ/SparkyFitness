@@ -12,6 +12,7 @@ import { debug, info, warn, error } from '@/utils/logging';
 import { fetchExerciseDetails } from '@/services/editExerciseEntryService';
 import { updateExerciseEntry, ExerciseEntry } from '@/services/exerciseEntryService';
 import { WorkoutPresetSet } from "@/types/workout";
+import { excerciseWorkoutSetTypes } from "@/constants/excerciseWorkoutSetTypes";
 import ExerciseActivityDetailsEditor, { ActivityDetailKeyValuePair } from './ExerciseActivityDetailsEditor'; // New import
 import {
   DndContext,
@@ -102,15 +103,11 @@ const SortableSetItem = React.memo(
                   <SelectValue placeholder="Set Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Working Set">Working Set</SelectItem>
-                  <SelectItem value="Warm-up">Warm-up</SelectItem>
-                  <SelectItem value="Drop Set">Drop Set</SelectItem>
-                  <SelectItem value="Failure">Failure</SelectItem>
-                  <SelectItem value="AMRAP">AMRAP</SelectItem>
-                  <SelectItem value="Back-off">Back-off</SelectItem>
-                  <SelectItem value="Rest-Pause">Rest-Pause</SelectItem>
-                  <SelectItem value="Cluster">Cluster</SelectItem>
-                  <SelectItem value="Technique">Technique</SelectItem>
+                  {excerciseWorkoutSetTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -274,13 +271,7 @@ const EditExerciseEntryDialog = ({
     setDistanceInput(entry.distance ? Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1)) : '');
     setAvgHeartRateInput(entry.avg_heart_rate || '');
     // Initialize activity details from entry
-    setActivityDetails(entry.activity_details ? entry.activity_details.map(detail => ({
-      id: detail.id,
-      key: detail.detail_type,
-      value: detail.value, // Use the value directly as it's already parsed in exerciseEntryService.ts
-      provider_name: detail.provider_name,
-      detail_type: detail.detail_type,
-    })) : []);
+    setActivityDetails(entry.activity_details || []);
   }, [entry, loggingLevel, weightUnit, distanceUnit, convertWeight, convertDistance]);
 
   useEffect(() => {

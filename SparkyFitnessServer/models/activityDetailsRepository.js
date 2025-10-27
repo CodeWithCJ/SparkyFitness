@@ -1,6 +1,16 @@
 const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
+// Helper function to check if a string is valid JSON
+function isJsonString(str) {
+    try {
+        JSON.parse(str);
+    } catch (e) {
+        return false;
+    }
+    return true;
+}
+
 async function createActivityDetail(userId, detail) {
     const client = await getClient(userId);
     const {
@@ -11,6 +21,17 @@ async function createActivityDetail(userId, detail) {
         created_by_user_id,
         updated_by_user_id
     } = detail;
+
+    let processedDetailData;
+    if (typeof detail_data === 'string') {
+        try {
+            processedDetailData = JSON.parse(detail_data);
+        } catch (e) {
+            processedDetailData = JSON.stringify(detail_data);
+        }
+    } else {
+        processedDetailData = detail_data;
+    }
 
     const query = `
         INSERT INTO exercise_entry_activity_details (
@@ -29,14 +50,14 @@ async function createActivityDetail(userId, detail) {
         exercise_entry_id,
         provider_name,
         detail_type,
-        JSON.stringify(detail_data), // Stringify here
+        processedDetailData,
         created_by_user_id,
         updated_by_user_id
     ];
 
     try {
         const result = await client.query(query, values);
-        log('debug', 'Successfully created activity detail in DB', { result: result.rows[0] });
+        log('debug', `[activityDetailsRepository] Successfully created activity detail in DB for exercise_entry_id: ${exercise_entry_id}, detail_type: ${detail_type}`);
         return result.rows[0];
     } catch (error) {
         log('error', `Failed to create activity detail for exercise_entry_id ${exercise_entry_id}: ${error.message}`, { query, values, error });
@@ -56,7 +77,19 @@ async function getActivityDetailsByEntryId(userId, exerciseEntryId) {
     `;
     try {
         const result = await client.query(query, [exerciseEntryId, userId]);
-        return result.rows;
+        return result.rows.map(row => {
+            // Recursively parse detail_data until it's not a JSON string anymore.
+            // This handles cases where data might be double-stringified.
+            while (typeof row.detail_data === 'string') {
+                try {
+                    row.detail_data = JSON.parse(row.detail_data);
+                } catch (e) {
+                    // If parsing fails, it's just a plain string, so we break the loop.
+                    break;
+                }
+            }
+            return row;
+        });
     } catch (error) {
         log('error', `Failed to get activity details for exercise_entry_id ${exerciseEntryId}: ${error.message}`, { error });
         throw new Error(`Failed to get activity details: ${error.message}`);
@@ -90,7 +123,16 @@ async function updateActivityDetail(userId, id, detail) {
     const values = [
         provider_name,
         detail_type,
-        JSON.stringify(detail_data), // Stringify here
+        (() => {
+            if (typeof detail_data === 'string') {
+                try {
+                    return JSON.parse(detail_data);
+                } catch (e) {
+                    return JSON.stringify(detail_data);
+                }
+            }
+            return detail_data;
+        })(),
         updated_by_user_id,
         id,
         userId
@@ -133,9 +175,30 @@ async function deleteActivityDetail(userId, id) {
     }
 }
 
+async function deleteActivityDetailsByEntryIdAndProvider(userId, exerciseEntryId, providerName) {
+    const client = await getClient(userId);
+    const query = `
+        DELETE FROM exercise_entry_activity_details
+        WHERE exercise_entry_id = $1
+          AND provider_name = $2
+          AND exercise_entry_id IN (SELECT id FROM exercise_entries WHERE user_id = $3);
+    `;
+    try {
+        const result = await client.query(query, [exerciseEntryId, providerName, userId]);
+        log('debug', `Successfully deleted ${result.rowCount} activity details for exercise_entry_id ${exerciseEntryId} and provider ${providerName}.`);
+        return { message: `${result.rowCount} activity details deleted successfully.` };
+    } catch (error) {
+        log('error', `Failed to delete activity details for exercise_entry_id ${exerciseEntryId} and provider ${providerName}: ${error.message}`, { error });
+        throw new Error(`Failed to delete activity details: ${error.message}`);
+    } finally {
+        client.release();
+    }
+}
+
 module.exports = {
     createActivityDetail,
     getActivityDetailsByEntryId,
     updateActivityDetail,
-    deleteActivityDetail
+    deleteActivityDetail,
+    deleteActivityDetailsByEntryIdAndProvider
 };

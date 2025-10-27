@@ -2,6 +2,7 @@ import logging
 import uuid
 import time
 import os
+import json # Import the json module
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from urllib.parse import urlencode, parse_qs
@@ -41,6 +42,7 @@ def _cleanup_mfa_cache():
 def clean_garmin_data(data):
     """
     Recursively remove fields that are None, 0, or specific Garmin internal IDs.
+    Also, attempt to parse strings that are valid JSON.
     """
     if isinstance(data, dict):
         cleaned_dict = {}
@@ -53,6 +55,15 @@ def clean_garmin_data(data):
     elif isinstance(data, list):
         cleaned_list = [clean_garmin_data(item) for item in data]
         return [item for item in cleaned_list if item is not None and item != 0]
+    elif isinstance(data, str):
+        # Attempt to parse string as JSON, handling non-standard escapes
+        try:
+            parsed_json = json.loads(data.replace('""', '"'))
+            # If successfully parsed, recursively clean the parsed object
+            return clean_garmin_data(parsed_json)
+        except json.JSONDecodeError:
+            # If not valid JSON, return the original string
+            return data
     return data
 
 def safe_convert(value, conversion_func):
@@ -277,17 +288,11 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
 
        
 
-        # Filter out empty or None health data entries
-        filtered_health_data = {}
-        for k, v in health_data.items():
-            if v is not None and (not isinstance(v, (list, dict)) or len(v) > 0):
-                if not contains_none_recursive(v):
-                    filtered_health_data[k] = v
-                else:
-                    logger.warning(f"Filtering out '{k}' due to containing None values.")
+        # Clean and filter the data
+        cleaned_health_data = clean_garmin_data(health_data)
 
-        logger.info(f"Successfully retrieved and converted health and wellness data for user {user_id} from {start_date} to {end_date}. Data: {filtered_health_data}")
-        return {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": filtered_health_data}
+        logger.info(f"Successfully retrieved and cleaned health and wellness data for user {user_id} from {start_date} to {end_date}. Data: {cleaned_health_data}")
+        return {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": cleaned_health_data}
 
     except GarthHTTPError as e:
         logger.error(f"Garmin API error (health_and_wellness): {e}")
@@ -343,12 +348,12 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
 
                 detailed_activities.append({
                     "activity": activity,
-                    "details": activity_details,
-                    "splits": activity_splits,
-                    "weather": activity_weather,
-                    "hr_in_timezones": activity_hr_in_timezones,
-                    "exercise_sets": activity_exercise_sets,
-                    "gear": activity_gear
+                    "details": json.dumps(clean_garmin_data(activity_details)) if activity_details else None,
+                    "splits": json.dumps(clean_garmin_data(activity_splits)) if activity_splits else None,
+                    "weather": json.dumps(clean_garmin_data(activity_weather)) if activity_weather else None,
+                    "hr_in_timezones": json.dumps(clean_garmin_data(activity_hr_in_timezones)) if activity_hr_in_timezones else None,
+                    "exercise_sets": json.dumps(clean_garmin_data(activity_exercise_sets)) if activity_exercise_sets else None,
+                    "gear": json.dumps(clean_garmin_data(activity_gear)) if activity_gear else None
                 })
             except Exception as e:
                 logger.warning(f"Could not retrieve details for activity ID {activity_id}: {e}")
@@ -357,7 +362,7 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
 
         logger.info(f"Fetching workouts for user {user_id}")
         workouts = garmin.get_workouts()
-        logger.debug(f"Raw workouts retrieved: {workouts}")
+        print(f"Raw workouts retrieved: {workouts}")
         detailed_workouts = []
         for workout in workouts:
             workout_id = workout["workoutId"]
@@ -369,17 +374,17 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
                 # Append workout even if details fail, but without the failed details
                 detailed_workouts.append(workout)
 
-        # Filter out empty or None activities and workouts
-        filtered_activities = [activity for activity in detailed_activities if activity.get('activity')]
-        filtered_workouts = [workout for workout in detailed_workouts if workout]
+        # Clean and filter the data
+        cleaned_activities = clean_garmin_data(detailed_activities)
+        cleaned_workouts =  clean_garmin_data(detailed_workouts)
 
-        logger.info(f"Successfully retrieved activities and workouts for user {user_id} from {start_date} to {end_date}. Activities: {filtered_activities}, Workouts: {filtered_workouts}")
+        logger.info(f"Successfully retrieved and cleaned activities and workouts for user {user_id} from {start_date} to {end_date}. Activities: {cleaned_activities}, Workouts: {cleaned_workouts}")
         return {
             "user_id": user_id,
             "start_date": start_date,
             "end_date": end_date,
-            "activities": filtered_activities,
-            "workouts": filtered_workouts
+            "activities": cleaned_activities,
+            "workouts": cleaned_workouts
         }
 
     except GarthHTTPError as e:

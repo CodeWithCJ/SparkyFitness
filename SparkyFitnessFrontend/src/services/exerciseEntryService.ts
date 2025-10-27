@@ -34,23 +34,16 @@ export const fetchExerciseEntries = async (selectedDate: string): Promise<Exerci
       instructions: parseJsonArray(entry.exercises.instructions),
       images: parseJsonArray(entry.exercises.images),
     } : entry.exercises,
-    activity_details: entry.activity_details ? entry.activity_details.map((detail: any) => {
-      let parsedValue = detail.detail_data;
-      try {
-        // Attempt to parse if it's a string, otherwise use as is
-        parsedValue = typeof detail.detail_data === 'string' ? JSON.parse(detail.detail_data) : detail.detail_data;
-      } catch (e) {
-        // If parsing fails, keep the original value
-        console.warn(`Failed to parse activity detail value for key ${detail.detail_type}:`, detail.detail_data, e);
-      }
-      return {
-        id: detail.id,
-        key: detail.detail_type,
-        value: parsedValue,
-        provider_name: detail.provider_name,
-        detail_type: detail.detail_type,
-      };
-    }) : [],
+    activity_details: entry.activity_details ? entry.activity_details
+      .map((detail: any) => {
+        return {
+          id: detail.id,
+          key: detail.detail_type,
+          value: typeof detail.detail_data === 'object' ? JSON.stringify(detail.detail_data, null, 2) : detail.detail_data,
+          provider_name: detail.provider_name,
+          detail_type: detail.detail_type,
+        };
+      }) : [],
   }));
  
   console.log('DEBUG', 'fetchExerciseEntries: Parsed entries with activity details:', parsedEntries);

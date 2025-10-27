@@ -424,7 +424,11 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
            ), '[]'::json
           ) AS sets,
           ee.distance,
-          ee.avg_heart_rate
+          ee.avg_heart_rate,
+          (SELECT json_agg(ead)
+           FROM exercise_entry_activity_details ead
+           WHERE ead.exercise_entry_id = ee.id
+          ) AS activity_details
         FROM exercise_entries ee
         WHERE ee.user_id = $1 AND ee.entry_date = $2`,
       [userId, selectedDate]
@@ -533,17 +537,17 @@ async function getExerciseHistory(userId, exerciseId, limit = 5) {
   }
 }
 
-async function deleteExerciseEntriesByEntrySourceAndDate(userId, entryDate, entrySource) {
+async function deleteExerciseEntriesByEntrySourceAndDate(userId, startDate, endDate, entrySource) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
       `DELETE FROM exercise_entries
        WHERE user_id = $1
-         AND entry_date = $2
-         AND source = $3`,
-      [userId, entryDate, entrySource]
+         AND entry_date BETWEEN $2 AND $3
+         AND source = $4`,
+      [userId, startDate, endDate, entrySource]
     );
-    log('info', `Deleted ${result.rowCount} exercise entries with source '${entrySource}' for user ${userId} on ${entryDate}.`);
+    log('info', `[exerciseEntry] Deleted ${result.rowCount} exercise entries with source '${entrySource}' for user ${userId} from ${startDate} to ${endDate}.`);
     return result.rowCount;
   } finally {
     client.release();

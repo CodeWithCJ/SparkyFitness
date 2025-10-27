@@ -11,7 +11,7 @@ async function getExternalDataProviders(userId) {
       shared_with_public: !!p.shared_with_public,
       has_token: p.encrypted_access_token !== null && p.encrypted_access_token !== undefined,
     }));
-    log('debug', `externalProviderService: Providers from repository for user ${userId}:`, providersWithVisibility);
+    // log('debug', `externalProviderService: Providers from repository for user ${userId}:`, providersWithVisibility);
     return providersWithVisibility;
   } catch (error) {
     log('error', `Error fetching external data providers for user ${userId} in externalProviderService:`, error);

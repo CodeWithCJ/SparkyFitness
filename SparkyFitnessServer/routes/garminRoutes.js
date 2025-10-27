@@ -9,6 +9,7 @@ const { log } = require('../config/logging');
 const moment = require('moment'); // Import moment for date manipulation
 const exerciseService = require('../services/exerciseService');
 const activityDetailsRepository = require('../models/activityDetailsRepository');
+const garminService = require('../services/garminService');
 
 router.use(express.json());
 
@@ -60,117 +61,18 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
     try {
         const userId = req.userId;
         const { startDate, endDate, metricTypes } = req.body;
+        log('debug', `[garminRoutes] Sync health_and_wellness received startDate: ${startDate}, endDate: ${endDate}`);
 
         if (!startDate || !endDate) {
             return res.status(400).json({ error: 'startDate and endDate are required.' });
         }
-        // metricTypes is optional, if not provided, the microservice should fetch all available
-
+        
         const healthWellnessData = await garminConnectService.syncGarminHealthAndWellness(userId, startDate, endDate, metricTypes);
         log('debug', `Raw healthWellnessData from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, healthWellnessData);
 
-        const checkInMeasurementsByDate = {};
-        const customMeasurements = [];
-
-        // Access the nested 'data' object from the microservice response
-        const garminData = healthWellnessData.data;
-
-        for (const metricType in garminData) {
-            const mapping = garminMeasurementMapping[metricType];
-            if (!mapping) {
-                log('warn', `No mapping found for Garmin metric type: ${metricType}`);
-                continue;
-            }
-
-            const entries = garminData[metricType];
-            if (!entries) { // If entries is null or undefined, skip
-                continue;
-            }
-
-            const processEntry = (entry) => {
-                // Special handling for Blood Pressure which has systolic and diastolic
-                if (metricType === 'blood_pressure' && entry.systolic && entry.diastolic) {
-                    const entryDate = moment(entry.date || startDate).format('YYYY-MM-DD');
-                    customMeasurements.push({
-                        type: 'Blood Pressure Systolic',
-                        value: entry.systolic,
-                        date: entryDate,
-                        timestamp: moment(entry.date || startDate).toISOString(),
-                        source: 'garmin'
-                    });
-                    customMeasurements.push({
-                        type: 'Blood Pressure Diastolic',
-                        value: entry.diastolic,
-                        date: entryDate,
-                        timestamp: moment(entry.date || startDate).toISOString(),
-                        source: 'garmin'
-                    });
-                } else if (metricType === 'body_battery' && entry.chargeRemaining) {
-                    const entryDate = moment(entry.date || startDate).format('YYYY-MM-DD');
-                    customMeasurements.push({
-                        type: 'Body Battery',
-                        value: entry.chargeRemaining,
-                        date: entryDate,
-                        timestamp: moment(entry.date || startDate).toISOString(),
-                        source: 'garmin'
-                    });
-                }
-                else {
-                    const entryDate = moment(entry.calendarDate || entry.date || entry.startTimeLocal || startDate).format('YYYY-MM-DD');
-                    if (mapping.targetType === 'check_in') {
-                        if (!checkInMeasurementsByDate[entryDate]) {
-                            checkInMeasurementsByDate[entryDate] = {};
-                        }
-                        checkInMeasurementsByDate[entryDate][mapping.field] = entry.value || entry[mapping.field];
-                    } else if (mapping.targetType === 'custom') {
-                        customMeasurements.push({
-                            type: mapping.name,
-                            value: entry.value || entry[mapping.field],
-                            date: entryDate,
-                            timestamp: entry.timestamp || moment(entryDate).toISOString(),
-                            source: 'garmin'
-                        });
-                    }
-                }
-            };
-
-            if (Array.isArray(entries)) {
-                for (const entry of entries) {
-                    processEntry(entry);
-                }
-            } else {
-                // Handle cases where the data might be a single object (e.g., summary data)
-                processEntry(entries);
-            }
-        }
-
-        let processedCount = 0;
-        let errorCount = 0;
-
-        for (const date in checkInMeasurementsByDate) {
-            try {
-                await measurementService.upsertCheckInMeasurements(userId, userId, date, checkInMeasurementsByDate[date]);
-                processedCount++;
-            } catch (error) {
-                log('error', `Failed to upsert check-in measurements for date ${date}:`, error);
-                errorCount++;
-            }
-        }
-
-        if (customMeasurements.length > 0) {
-            try {
-                const result = await measurementService.processHealthData(customMeasurements, userId, userId);
-                processedCount += result.processed.length;
-            } catch (error) {
-                log('error', `Failed to process custom measurements:`, error);
-                errorCount += customMeasurements.length;
-            }
-        }
-
         res.status(200).json({
             message: 'Health and wellness sync completed.',
-            processedCount,
-            errorCount
+            data: healthWellnessData
         });
     } catch (error) {
         next(error);
@@ -182,12 +84,16 @@ router.post('/sync/activities_and_workouts', authenticate, async (req, res, next
     try {
         const userId = req.userId;
         const { startDate, endDate, activityType } = req.body;
+        log('debug', `[garminRoutes] Sync activities_and_workouts received startDate: ${startDate}, endDate: ${endDate}`);
 
         if (!startDate || !endDate) {
             return res.status(400).json({ error: 'startDate and endDate are required.' });
         }
 
-        const result = await garminConnectService.syncGarminActivitiesAndWorkouts(userId, startDate, endDate, activityType);
+        const rawData = await garminConnectService.fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, activityType);
+        log('debug', `Raw activities and workouts data from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, rawData);
+
+        const result = await garminService.processActivitiesAndWorkouts(userId, rawData, startDate, endDate);
         
         res.status(200).json(result);
     } catch (error) {
@@ -201,7 +107,7 @@ router.get('/status', authenticate, async (req, res, next) => {
         const userId = req.userId;
         log('debug', `Garmin /status endpoint called for user: ${userId}`);
         const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
-        log('debug', `Provider data from externalProviderRepository for user ${userId}:`, provider);
+        // log('debug', `Provider data from externalProviderRepository for user ${userId}:`, provider);
 
         if (provider) {
             // For security, do not send raw tokens to the frontend.

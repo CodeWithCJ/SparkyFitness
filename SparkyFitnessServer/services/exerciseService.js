@@ -455,7 +455,14 @@ async function getExerciseEntriesByDate(authenticatedUserId, targetUserId, selec
     if (!entries || entries.length === 0) {
       return [];
     }
-    return entries;
+
+    // For each entry, fetch and attach its activity details
+    const entriesWithDetails = await Promise.all(entries.map(async (entry) => {
+      const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(authenticatedUserId, entry.id);
+      return { ...entry, activity_details: activityDetails };
+    }));
+
+    return entriesWithDetails;
   } catch (error) {
     log('error', `Error fetching exercise entries for user ${targetUserId} on ${selectedDate} by ${authenticatedUserId}:`, error);
     throw error;
