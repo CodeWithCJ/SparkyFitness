@@ -1,7 +1,7 @@
 {
   "name": "sparkyfitnessfrontend",
   "private": true,
-  "version": "0.15.8.1",
+  "version": "0.15.8.2",
   "homepage": "https://github.com/CodeWithCJ/SparkyFitness",
   "type": "module",
   "scripts": {
