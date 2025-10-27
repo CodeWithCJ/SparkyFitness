@@ -13,7 +13,7 @@ function createOwnerPoolInstance() {
     host: process.env.SPARKY_FITNESS_DB_HOST,
     database: process.env.SPARKY_FITNESS_DB_NAME,
     password: process.env.SPARKY_FITNESS_DB_PASSWORD,
-    port: process.env.SPARKY_FITNESS_DB_PORT,
+    port: process.env.SPARKY_FITNESS_DB_PORT || 5432,
   });
 
   newPool.on('error', (err, client) => {

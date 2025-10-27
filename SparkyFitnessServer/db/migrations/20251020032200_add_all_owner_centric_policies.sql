@@ -6,7 +6,7 @@ BEGIN
         DROP POLICY IF EXISTS %1$s_all_policy ON public.%1$s;
         CREATE POLICY %1$s_all_policy ON public.%1$s
         FOR ALL
-        TO sparky_app
+        TO PUBLIC
         USING (user_id = current_setting(''app.user_id'')::uuid)
         WITH CHECK (user_id = current_setting(''app.user_id'')::uuid);
     ', table_name);
@@ -62,7 +62,7 @@ BEGIN
         DROP POLICY IF EXISTS %1$s_all_policy ON public.%1$s;
         CREATE POLICY %1$s_all_policy ON public.%1$s
         FOR ALL
-        TO sparky_app
+        TO PUBLIC
         USING (id = current_setting(''app.user_id'')::uuid)
         WITH CHECK (id = current_setting(''app.user_id'')::uuid);
     ', table_name);

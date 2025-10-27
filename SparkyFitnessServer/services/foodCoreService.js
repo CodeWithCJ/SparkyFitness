@@ -397,24 +397,6 @@ async function getFoodVariantsByFoodId(authenticatedUserId, foodId) {
 
     // Authorization check: Ensure the authenticated user owns the food,
     // or if the food is public, allow access.
-    if (foodOwnerId !== authenticatedUserId) {
-      const food = await foodRepository.getFoodById(foodId, authenticatedUserId);
-      // If the food is not found via RLS, or it's not shared publicly, deny access.
-      // The 'is_custom' check is removed here as publicly shared custom foods should be accessible.
-      if (!food || !food.shared_with_public) {
-        log(
-          "warn",
-          `getFoodVariantsByFoodId: Forbidden - User ${authenticatedUserId} does not own food ${foodId} and it's not a shared public food. Food details: ${JSON.stringify(food)}`
-        );
-        throw new Error(
-          "Forbidden: You do not have permission to access variants for this food."
-        );
-      }
-      log(
-        "info",
-        `getFoodVariantsByFoodId: User ${authenticatedUserId} accessing public food ${foodId} owned by ${foodOwnerId}.`
-      );
-    }
 
     const variants = await foodRepository.getFoodVariantsByFoodId(
       foodId,

@@ -4,7 +4,7 @@ DROP POLICY IF EXISTS meal_plan_template_assignments_all_policy ON public.meal_p
 -- Create a new policy for meal_plan_template_assignments
 CREATE POLICY meal_plan_template_assignments_all_policy ON public.meal_plan_template_assignments
 FOR ALL
-TO sparky_app
+TO PUBLIC
 USING (
     EXISTS (
         SELECT 1

@@ -4,7 +4,7 @@ DROP POLICY IF EXISTS foods_select_policy ON public.foods;
 -- Create the updated policy with sharing logic
 CREATE POLICY foods_select_policy ON public.foods
 FOR SELECT
-TO sparky_app
+TO PUBLIC
 USING (
     -- 1. Owner can always see their own items
     user_id = current_setting('app.user_id')::uuid

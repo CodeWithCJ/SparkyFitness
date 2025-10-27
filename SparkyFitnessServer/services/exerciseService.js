@@ -206,10 +206,6 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
     if (!existingEntry) {
       throw new Error('Exercise entry not found.');
     }
-    // Ensure the authenticated user is the owner of the exercise entry
-    if (existingEntry.user_id !== authenticatedUserId) {
-      throw new Error('Forbidden: You do not have permission to update this exercise entry.');
-    }
 
     // If a new image is being uploaded or the image is being cleared, delete the old one
     // If a new image is being uploaded or the image is being cleared, delete the old one
@@ -297,10 +293,6 @@ async function deleteExerciseEntry(authenticatedUserId, id) {
     if (!entry) {
       throw new Error('Exercise entry not found.');
     }
-    // Ensure the authenticated user is the owner of the exercise entry
-    if (entry.user_id !== authenticatedUserId) {
-      throw new Error('Forbidden: You do not have permission to delete this exercise entry.');
-    }
 
     // If an image is associated with the entry, delete it from the filesystem
     if (entry.image_url) {
@@ -346,9 +338,6 @@ async function updateExercise(authenticatedUserId, id, updateData) {
     if (!exerciseOwnerId) {
       throw new Error('Exercise not found.');
     }
-    if (exerciseOwnerId !== authenticatedUserId) {
-      throw new Error('Forbidden: You do not have permission to update this exercise.');
-    }
     // If images are provided, ensure they are stored as JSON string in the database
     if (updateData.images && Array.isArray(updateData.images)) {
       updateData.images = JSON.stringify(updateData.images);
@@ -371,12 +360,6 @@ async function deleteExercise(authenticatedUserId, exerciseId, forceDelete = fal
     if (!exerciseOwnerId) {
       log("warn", `deleteExercise: Exercise ${exerciseId} not found for user ${authenticatedUserId}.`);
       throw new Error("Exercise not found.");
-    }
-    if (exerciseOwnerId !== authenticatedUserId) {
-      log("warn", `deleteExercise: User ${authenticatedUserId} forbidden from deleting exercise ${exerciseId} owned by ${exerciseOwnerId}.`);
-      throw new Error(
-        "Forbidden: You do not have permission to delete this exercise."
-      );
     }
 
   const deletionImpact = await exerciseDb.getExerciseDeletionImpact(exerciseId, authenticatedUserId);
