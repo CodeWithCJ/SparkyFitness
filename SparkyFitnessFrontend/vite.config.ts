@@ -31,6 +31,14 @@ export default defineConfig(({ mode }) => {
         target: "http://localhost:3010",
         changeOrigin: true,
       },
+      "/withings/authorize": {
+        target: "http://localhost:3010",
+        changeOrigin: true,
+      },
+      "/withings/callback": {
+        target: "http://localhost:3010",
+        changeOrigin: true,
+      },
     },
   },
   plugins: [

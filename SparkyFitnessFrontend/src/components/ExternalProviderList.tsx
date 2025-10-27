@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Trash2, Edit, Lock, Share2, RefreshCw, Link2Off } from "lucide-react";
+import { Trash2, Edit, Lock, Share2, RefreshCw, Link2Off, Clipboard } from "lucide-react";
 import { ExternalDataProvider } from "./ExternalProviderSettings";
 
 interface ExternalProviderListProps {
@@ -175,7 +175,22 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                   <p className="text-sm text-muted-foreground col-span-2">
                     Withings integration uses OAuth2. You will be redirected to Withings to authorize access after adding the provider.
                     <br />
-                    In your <a href="https://developer.withings.com/dashboard/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Withings Developer Dashboard</a>, you must set your callback URL to: <strong>`YOUR_SERVER_URL/api/withings/callback`</strong>.
+                    In your <a href="https://developer.withings.com/dashboard/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Withings Developer Dashboard</a>, you must set your callback URL to:
+                    <strong className="flex items-center">
+                      {`${window.location.origin}/withings/callback`}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="ml-2 h-5 w-5"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigator.clipboard.writeText(`${window.location.origin}/withings/callback`);
+                          toast({ title: "Copied!", description: "Callback URL copied to clipboard." });
+                        }}
+                      >
+                        <Clipboard className="h-4 w-4" />
+                      </Button>
+                    </strong>
                   </p>
                 </>
               )}
