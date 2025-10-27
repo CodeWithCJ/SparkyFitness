@@ -332,6 +332,12 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
         logger.info(f"Fetching activities for user {user_id} from {start_date} to {end_date} with activity type {activity_type}")
         activities = garmin.get_activities_by_date(start_date, end_date, activity_type)
         logger.debug(f"Raw activities retrieved: {activities}")
+
+        # Ensure activityName is set from typeKey if it's missing
+        for activity in activities:
+            if not activity.get('activityName') and activity.get('activityType', {}).get('typeKey'):
+                activity['activityName'] = activity['activityType']['typeKey'].replace('_', ' ').title()
+
         converted_activities = convert_activities_units(activities)
         logger.debug(f"Converted activities: {converted_activities}")
 

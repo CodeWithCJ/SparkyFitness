@@ -18,7 +18,7 @@ async function processActivitiesAndWorkouts(userId, data, startDate, endDate) {
       if (!activity) continue;
 
       try {
-        const exerciseName = activity.activityName || 'Garmin Activity';
+        const exerciseName = activity.activityType?.typeKey ? activity.activityType.typeKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Garmin Activity';
         let exercise = await exerciseRepository.findExerciseByNameAndUserId(exerciseName, userId);
 
         if (!exercise) {
@@ -81,12 +81,13 @@ async function processActivitiesAndWorkouts(userId, data, startDate, endDate) {
                     if (individualStep.type !== 'ExecutableStepDTO' || !individualStep.exerciseName) continue;
 
                     try {
-                        let exercise = await exerciseRepository.findExerciseByNameAndUserId(individualStep.exerciseName, userId);
-
-                        if (!exercise) {
-                            exercise = await exerciseRepository.createExercise({
-                                user_id: userId,
-                                name: individualStep.exerciseName,
+                        const exerciseName = individualStep.exerciseName ? individualStep.exerciseName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Garmin Workout';
+                        let exercise = await exerciseRepository.findExerciseByNameAndUserId(exerciseName, userId);
+ 
+                         if (!exercise) {
+                             exercise = await exerciseRepository.createExercise({
+                                 user_id: userId,
+                                 name: exerciseName,
                                 category: individualStep.category || 'Uncategorized',
                                 source: 'garmin',
                                 is_custom: true,
