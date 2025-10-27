@@ -1,4 +1,4 @@
-const { getPool } = require("../db/poolManager"); 
+const { getClient } = require("../db/poolManager");
 
 /**
  * Saves onboarding data and updates the user's status to complete.
@@ -21,7 +21,7 @@ async function saveOnboardingData(userId, data) {
     addBurnedCalories,
   } = data;
 
-  const client = await getPool().connect();
+  const client = await getClient(userId);
   try {
     await client.query("BEGIN"); 
 
@@ -76,7 +76,7 @@ async function saveOnboardingData(userId, data) {
  * @returns {Promise<object|null>} The database row or null if not found.
  */
 async function getOnboardingStatus(userId) {
-  const client = await getPool().connect();
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       "SELECT onboarding_complete FROM onboarding_status WHERE user_id = $1",
@@ -90,8 +90,31 @@ async function getOnboardingStatus(userId) {
     client.release();
   }
 }
+ 
+/**
+ * Resets the onboarding completion status for a given user to FALSE.
+ * @param {string} userId - The UUID of the user.
+ * @returns {Promise<void>}
+ */
+async function resetOnboardingStatus(userId) {
+  const client = await getClient(userId);
+  try {
+    const query = `
+      UPDATE onboarding_status
+      SET onboarding_complete = FALSE, updated_at = NOW()
+      WHERE user_id = $1;
+    `;
+    await client.query(query, [userId]);
+  } catch (error) {
+    console.error("Error in resetOnboardingStatus repository:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 module.exports = {
   saveOnboardingData,
   getOnboardingStatus,
+  resetOnboardingStatus,
 };

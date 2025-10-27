@@ -6,7 +6,7 @@
 DROP POLICY IF EXISTS family_access_select_policy ON public.family_access;
 CREATE POLICY family_access_select_policy ON public.family_access
 FOR SELECT
-TO sparky_app -- Ensure sparky_app can still read for subqueries in other RLS policies
+TO PUBLIC -- Ensure the app role can still read for subqueries in other RLS policies
 USING (
     owner_user_id = current_setting('app.user_id')::uuid
     OR
@@ -17,7 +17,7 @@ USING (
 DROP POLICY IF EXISTS external_data_providers_select_policy ON public.external_data_providers;
 CREATE POLICY external_data_providers_select_policy ON public.external_data_providers
 FOR SELECT
-TO sparky_app
+TO PUBLIC
 USING (
     -- 1. Owner can always see their own items
     user_id = current_setting('app.user_id')::uuid
@@ -45,7 +45,7 @@ USING (
 DROP POLICY IF EXISTS external_data_providers_modify_policy ON public.external_data_providers;
 CREATE POLICY external_data_providers_modify_policy ON public.external_data_providers
 FOR ALL
-TO sparky_app
+TO PUBLIC
 USING (user_id = current_setting('app.user_id')::uuid)
 WITH CHECK (user_id = current_setting('app.user_id')::uuid);
 
@@ -53,6 +53,6 @@ WITH CHECK (user_id = current_setting('app.user_id')::uuid);
 DROP POLICY IF EXISTS family_access_modify_policy ON public.family_access;
 CREATE POLICY family_access_modify_policy ON public.family_access
 FOR ALL
-TO sparky_app
+TO PUBLIC
 USING (owner_user_id = current_setting('app.user_id')::uuid)
 WITH CHECK (owner_user_id = current_setting('app.user_id')::uuid);

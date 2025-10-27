@@ -8,13 +8,15 @@ const migrationsDir = path.join(__dirname, '../db/migrations');
 async function applyMigrations() {
   const client = await getSystemClient();
   try {
-    // Ensure the sparky_app role exists
+    // The preflightChecks.js script now ensures these variables are set.
     const appUser = process.env.SPARKY_FITNESS_APP_DB_USER;
     const appPassword = process.env.SPARKY_FITNESS_APP_DB_PASSWORD;
+
+    // Ensure the application role exists
     const roleExistsResult = await client.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [appUser]);
     if (roleExistsResult.rowCount === 0) {
       log('info', `Creating role: ${appUser}`);
-      await client.query(`CREATE ROLE ${appUser} WITH LOGIN PASSWORD '${appPassword}'`);
+      await client.query(`CREATE ROLE "${appUser}" WITH LOGIN PASSWORD '${appPassword}'`);
       log('info', `Successfully created role: ${appUser}`);
     } else {
       log('info', `Role ${appUser} already exists.`);
@@ -44,6 +46,8 @@ async function applyMigrations() {
         log('info', `Applying migration: ${file}`);
         const filePath = path.join(migrationsDir, file);
         const sql = fs.readFileSync(filePath, 'utf8');
+        // The grantPermissions.js script now handles dynamic permission granting.
+        // We simply execute the original migration script content.
         await client.query(sql);
         await client.query('INSERT INTO system.schema_migrations (name) VALUES ($1)', [file]);
         log('info', `Successfully applied migration: ${file}`);

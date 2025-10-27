@@ -6,5 +6,5 @@ CREATE POLICY foods_select_policy
     ON public.foods
     AS PERMISSIVE
     FOR SELECT
-    TO sparky_app
+    TO PUBLIC
     USING (user_id = (current_setting('app.user_id'::text))::uuid);

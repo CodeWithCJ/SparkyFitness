@@ -1,5 +1,6 @@
 const workoutPresetRepository = require('../models/workoutPresetRepository');
 const exerciseRepository = require('../models/exerciseRepository');
+const preferenceRepository = require('../models/preferenceRepository');
 const { log } = require('../config/logging');
 const { isValidUuid, resolveExerciseIdToUuid } = require('../utils/uuidUtils'); // Import uuidUtils
 
@@ -76,6 +77,10 @@ async function deleteWorkoutPreset(userId, presetId) {
 }
 
 async function searchWorkoutPresets(searchTerm, userId, limit) {
+  if (limit === null || limit === undefined) {
+    const preferences = await preferenceRepository.getUserPreferences(userId);
+    limit = preferences ? preferences.item_display_limit : 10;
+  }
   return workoutPresetRepository.searchWorkoutPresets(searchTerm, userId, limit);
 }
 

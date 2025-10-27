@@ -13,7 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { saveGoals as saveGoalsService } from '@/services/goalsService';
 import { GoalPreset, createGoalPreset, getGoalPresets, updateGoalPreset, deleteGoalPreset } from '@/services/goalPresetService';
 import { WeeklyGoalPlan, createWeeklyGoalPlan, getWeeklyGoalPlans, updateWeeklyGoalPlan, deleteWeeklyGoalPlan } from '@/services/weeklyGoalPlanService';
-import { PlusCircle, Edit, Trash2, CalendarDays } from "lucide-react";
+import { PlusCircle, Edit, Trash2, CalendarDays, RotateCcw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -23,11 +23,12 @@ import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MealPercentageManager from './MealPercentageManager';
 import { Separator } from "@/components/ui/separator";
+import { resetOnboardingStatus } from "@/services/onboardingService";
 
 import { ExpandedGoals } from '@/types/goals';
 
 const GoalsSettings = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { dateFormat, formatDateInUserTimezone, parseDateInUserTimezone, nutrientDisplayPreferences, water_display_unit, setWaterDisplayUnit } = usePreferences(); // Corrected destructuring
   
   // Helper functions for unit conversion
@@ -354,6 +355,30 @@ const GoalsSettings = () => {
       toast({
         title: "Error",
         description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetOnboarding = async () => {
+    if (!confirm('Are you sure you want to reset your onboarding status? This will restart the onboarding process.')) {
+      return;
+    }
+    setSaving(true);
+    try {
+      await resetOnboardingStatus();
+      toast({
+        title: "Success",
+        description: "Onboarding status has been reset. The page will now reload.",
+      });
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Error resetting onboarding status:', error);
+      toast({
+        title: "Error",
+        description: `Failed to reset onboarding status: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -1087,6 +1112,26 @@ const GoalsSettings = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reset Onboarding */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Reset Onboarding</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Reset your onboarding status to revisit the initial questionnaire. You will be signed out after resetting.
+          </p>
+          <Button
+            onClick={handleResetOnboarding}
+            disabled={saving}
+            variant="destructive"
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reset Onboarding
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };

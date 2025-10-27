@@ -28,8 +28,9 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
     if (!user?.id) return;
     debug(loggingLevel, "WorkoutPresetSelector: Fetching workout presets.");
     try {
-      const presets = await getWorkoutPresets();
-      info(loggingLevel, "WorkoutPresetSelector: Fetched presets:", presets);
+      const paginatedResult = await getWorkoutPresets(1, 20); // Fetching up to 100 presets for now
+      info(loggingLevel, "WorkoutPresetSelector: Fetched presets:", paginatedResult);
+      const presets = paginatedResult.presets;
       setAllPresets(presets);
       // For now, just use a simple slice for recent/top.
       // In a real app, this would involve more sophisticated logic

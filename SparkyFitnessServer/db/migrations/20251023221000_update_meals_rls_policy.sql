@@ -5,7 +5,7 @@ DROP POLICY IF EXISTS meals_all_policy ON public.meals;
 DROP POLICY IF EXISTS meals_select_policy ON public.meals;
 CREATE POLICY meals_select_policy ON public.meals
 FOR SELECT
-TO sparky_app
+TO PUBLIC
 USING (
     -- 1. Owner can always see their own items
     user_id = current_setting('app.user_id')::uuid
@@ -36,6 +36,6 @@ USING (
 DROP POLICY IF EXISTS meals_all_owner_policy ON public.meals;
 CREATE POLICY meals_all_owner_policy ON public.meals
 FOR ALL
-TO sparky_app
+TO PUBLIC
 USING (user_id = current_setting('app.user_id')::uuid)
 WITH CHECK (user_id = current_setting('app.user_id')::uuid);
