@@ -66,4 +66,15 @@ router.get("/status", authenticate, async (req, res, next) => {
   }
 });
 
+router.post("/reset", authenticate, async (req, res) => {
+  try {
+    const userId = req.userId;
+    await onboardingService.resetOnboardingStatus(userId);
+    res.status(200).json({ message: "Onboarding status reset successfully." });
+  } catch (error) {
+    console.error("Error resetting onboarding status:", error);
+    res.status(500).json({ error: "Failed to reset onboarding status." });
+  }
+});
+
 module.exports = router;

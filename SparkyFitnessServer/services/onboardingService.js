@@ -33,11 +33,27 @@ async function checkOnboardingStatus(userId) {
     return statusRecord.onboarding_complete;
   } catch (error) {
     log('error', `Error checking onboarding status for user ${userId}:`, error);
-    return true; 
+    return true;
+  }
+}
+
+/**
+ * Resets the onboarding completion status for a given user.
+ * @param {string} userId - The UUID of the user.
+ * @returns {Promise<void>}
+ */
+async function resetOnboardingStatus(userId) {
+  try {
+    await onboardingRepository.resetOnboardingStatus(userId);
+    log('info', `Successfully reset onboarding status for user: ${userId}`);
+  } catch (error) {
+    log('error', `Error resetting onboarding status for user ${userId}:`, error);
+    throw new Error('Failed to reset onboarding status.');
   }
 }
 
 module.exports = {
   processOnboardingData,
   checkOnboardingStatus,
+  resetOnboardingStatus,
 };

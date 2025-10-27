@@ -49,3 +49,19 @@ export const getOnboardingStatus = async (): Promise<{
     return { onboardingComplete: true };
   }
 };
+
+/**
+ * Resets the user's onboarding completion status on the backend.
+ * @returns {Promise<any>} The response from the server.
+ */
+export const resetOnboardingStatus = async () => {
+  try {
+    const response = await apiCall("/onboarding/reset", {
+      method: "POST",
+    });
+    return response;
+  } catch (error) {
+    console.error("Error resetting onboarding status:", error);
+    throw error;
+  }
+};
