@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { apiCall } from '@/services/api';
 import { useAuth } from "@/hooks/useAuth";
+import TooltipWarning from './TooltipWarning';
 
 const GarminConnectSettings: React.FC<{ onStatusChange: () => void }> = ({ onStatusChange }) => {
   const { user } = useAuth();
@@ -251,6 +252,11 @@ const GarminConnectSettings: React.FC<{ onStatusChange: () => void }> = ({ onSta
 
   return (
     <div className="space-y-4">
+  
+      <TooltipWarning warningMsg={"Garmin Connect integration is tested with few metrics only. Ensure your Docker Compose is updated to include Garmin section."} />
+      <p className="text-sm text-muted-foreground">
+        Sparky Fitness does not store your Garmin email or password. They are used only during login to obtain secure tokens.
+      </p>
       {!garminStatus.isLinked && !showGarminMfaInput && ( // Show login form if not linked and not in MFA
         <form onSubmit={(e) => { e.preventDefault(); handleGarminLogin(); }} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
