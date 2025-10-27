@@ -55,6 +55,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   const {
     weightUnit, setWeightUnit,
     measurementUnit, setMeasurementUnit,
+    distanceUnit, setDistanceUnit,
     dateFormat, setDateFormat,
     loggingLevel, setLoggingLevel,
     itemDisplayLimit, setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
@@ -67,6 +68,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   const [avatarObjectURL, setAvatarObjectURL] = useState<string | null>(null); // State to hold the object URL for the avatar
   // Remove local preferences state as it's now managed by PreferencesContext
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
+  const [localLoggingLevel, setLocalLoggingLevel] = useState(loggingLevel);
   const [profileForm, setProfileForm] = useState({
     full_name: '',
     phone: '',
@@ -98,6 +100,10 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
       setNewEmail(user.email || ''); // Initialize newEmail here
     }
   }, [user]); // Removed loadUserPreferencesFromContext from dependency array
+
+  useEffect(() => {
+    setLocalLoggingLevel(loggingLevel);
+  }, [loggingLevel]);
 
   // Effect to fetch avatar image when profile.avatar_url changes
   useEffect(() => {
@@ -289,11 +295,12 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     if (!user) return;
     setLoading(true);
     try {
-      await saveAllPreferences(); // Call the new function from context
+      await saveAllPreferences({ loggingLevel: localLoggingLevel }); // Pass the new logging level directly
       toast({
         title: "Success",
         description: "Preferences updated successfully",
       });
+      window.location.reload();
     } catch (error: any) {
       console.error('Error updating preferences:', error);
       toast({
@@ -642,14 +649,41 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="distance_unit">Distance Unit</Label>
+                <Select
+                  value={distanceUnit}
+                  onValueChange={setDistanceUnit}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="km">Kilometers (km)</SelectItem>
+                    <SelectItem value="miles">Miles (miles)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="distance_unit">Distance Unit</Label>
+                <Select
+                  value={distanceUnit}
+                  onValueChange={setDistanceUnit}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="km">Kilometers (km)</SelectItem>
+                    <SelectItem value="miles">Miles (miles)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label htmlFor="logging_level">Minimum Logging Level</Label>
                 <Select
-                  value={loggingLevel}
-                  onValueChange={setLoggingLevel}
+                  value={localLoggingLevel}
+                  onValueChange={(value) => setLocalLoggingLevel(value as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT')}
                 >
                   <SelectTrigger>
                     <SelectValue />

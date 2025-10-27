@@ -652,6 +652,31 @@ log("info", `Deleted workout plan exercises for exercise ${exerciseId} in plans 
   }
 }
 
+async function findExerciseByNameAndUserId(name, userId) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT id, source, source_id, name, force, level, mechanic, equipment,
+              primary_muscles, secondary_muscles, instructions, category, images,
+              calories_per_hour, description, user_id, is_custom, shared_with_public,
+              created_at, updated_at
+       FROM exercises WHERE name = $1 AND (user_id = $2 OR shared_with_public = TRUE)`,
+      [name, userId]
+    );
+    const exercise = result.rows[0];
+    if (exercise && exercise.images) {
+      try {
+        exercise.images = JSON.parse(exercise.images);
+      } catch (e) {
+        log('error', `Error parsing images for exercise ${exercise.id}:`, e);
+        exercise.images = []; // Default to empty array on parse error
+      }
+    }
+    return exercise;
+  } finally {
+    client.release();
+  }
+}
 module.exports = {
   getExerciseById,
   getExerciseOwnerId,
@@ -669,4 +694,5 @@ module.exports = {
   getExerciseBySourceAndSourceId,
   getExerciseDeletionImpact,
   deleteExerciseAndDependencies,
+  findExerciseByNameAndUserId,
 };

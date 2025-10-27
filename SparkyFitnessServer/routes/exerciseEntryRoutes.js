@@ -76,7 +76,15 @@ router.post('/', authenticate, upload.single('image'), async (req, res, next) =>
       // For application/json, the data is the body itself
       entryData = req.body;
     }
-    const { exercise_id, duration_minutes, calories_burned, entry_date, notes, sets, reps, weight, workout_plan_assignment_id } = entryData;
+    const { exercise_id, duration_minutes, calories_burned, entry_date, notes, sets, reps, weight, workout_plan_assignment_id, distance, avg_heart_rate, activity_details } = entryData;
+    if (activity_details && typeof activity_details === 'string') {
+      try {
+        entryData.activity_details = JSON.parse(activity_details);
+      } catch (e) {
+        console.error("Error parsing activity_details from FormData:", e);
+        return res.status(400).json({ error: "Invalid format for activity_details." });
+      }
+    }
 
     const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (exercise_id && !uuidRegex.test(exercise_id)) {
@@ -101,6 +109,9 @@ router.post('/', authenticate, upload.single('image'), async (req, res, next) =>
       weight,
       workout_plan_assignment_id,
       image_url: imageUrl,
+      distance,
+      avg_heart_rate,
+      activity_details,
     });
     res.status(201).json(newEntry);
   } catch (error) {
@@ -245,6 +256,18 @@ router.put('/:id', authenticate, upload.single('image'), async (req, res, next) 
   } else {
     updateData = req.body;
   }
+
+  if (updateData.activity_details && typeof updateData.activity_details === 'string') {
+    try {
+      updateData.activity_details = JSON.parse(updateData.activity_details);
+    } catch (e) {
+      console.error("Error parsing activity_details from FormData:", e);
+      return res.status(400).json({ error: "Invalid format for activity_details." });
+    }
+  }
+
+  // Extract new fields from updateData
+  const { distance, avg_heart_rate } = updateData;
   
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
@@ -255,6 +278,11 @@ router.put('/:id', authenticate, upload.single('image'), async (req, res, next) 
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     updateData.image_url = `/uploads/exercise_entries/${today}/${req.file.filename}`;
   }
+
+  // Add new fields to updateData
+  updateData.distance = distance;
+  updateData.avg_heart_rate = avg_heart_rate;
+  // activity_details is already in updateData if present in req.body
 
   try {
     const updatedEntry = await exerciseService.updateExerciseEntry(req.userId, id, updateData);

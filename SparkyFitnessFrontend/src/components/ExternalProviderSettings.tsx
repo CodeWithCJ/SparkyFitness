@@ -357,9 +357,31 @@ const ExternalProviderSettings = () => {
   const handleManualSyncGarmin = async (providerId: string) => {
     setLoading(true);
     try {
-      // Placeholder for Garmin manual sync logic
-      await apiCall(`/integrations/garmin/sync/daily_summary`, {
+      const today = new Date();
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(today.getDate() - 7);
+
+      const startDate = sevenDaysAgo.toISOString().split('T')[0];
+      const endDate = today.toISOString().split('T')[0];
+
+      // Sync health and wellness data
+      await apiCall(`/integrations/garmin/sync/health_and_wellness`, {
         method: 'POST',
+        body: JSON.stringify({
+          startDate,
+          endDate,
+          // metricTypes are now optional, the backend will fetch all available if not provided
+        }),
+      });
+
+      // Sync activities and workouts data
+      await apiCall(`/integrations/garmin/sync/activities_and_workouts`, {
+        method: 'POST',
+        body: JSON.stringify({
+          startDate,
+          endDate,
+          // activityType is optional, the backend will fetch all available if not provided
+        }),
       });
       toast({
         title: "Success",

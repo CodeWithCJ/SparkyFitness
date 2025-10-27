@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getClient } = require('../../db/poolManager'); // Use getClient for database connections
+const { getClient, getSystemClient } = require('../../db/poolManager'); // Use getClient for database connections
 const { log } = require('../../config/logging');
 const measurementService = require('../../services/measurementService'); // Import the new service
 
@@ -13,7 +13,7 @@ router.use('/', async (req, res, next) => {
   }
 
   try {
-    const client = await getClient(req.userId); // User-specific operation
+    const client = await getSystemClient(); // Use system client for API key validation
     const result = await client.query(
       'SELECT user_id, permissions FROM user_api_keys WHERE api_key = $1 AND is_active = TRUE',
       [apiKey]
@@ -58,7 +58,7 @@ router.post('/', async (req, res, next) => {
   log('info', "Incoming health data JSON:", JSON.stringify(healthDataArray, null, 2));
 
   try {
-    const result = await measurementService.processHealthData(healthDataArray, req.userId);
+    const result = await measurementService.processHealthData(healthDataArray, req.userId, req.userId);
     res.status(200).json(result);
   } catch (error) {
     if (error.message.startsWith('{') && error.message.endsWith('}')) {

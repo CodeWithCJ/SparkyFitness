@@ -52,6 +52,7 @@ interface NutrientPreference {
 interface PreferencesContextType {
   weightUnit: 'kg' | 'lbs';
   measurementUnit: 'cm' | 'inches';
+  distanceUnit: 'km' | 'miles'; // Add distance unit
   dateFormat: string;
   autoClearHistory: string; // Add auto_clear_history
   loggingLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT'; // Add logging level
@@ -63,6 +64,7 @@ interface PreferencesContextType {
   water_display_unit: 'ml' | 'oz' | 'liter';
   setWeightUnit: (unit: 'kg' | 'lbs') => void;
   setMeasurementUnit: (unit: 'cm' | 'inches') => void;
+  setDistanceUnit: (unit: 'km' | 'miles') => void; // Add setter for distance unit
   setDateFormat: (format: string) => void;
   setAutoClearHistory: (value: string) => void; // Add setter for auto_clear_history
   setLoggingLevel: (level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT') => void; // Add setter for logging level
@@ -73,11 +75,12 @@ interface PreferencesContextType {
   setWaterDisplayUnit: (unit: 'ml' | 'oz' | 'liter') => void;
   convertWeight: (value: number, from: 'kg' | 'lbs', to: 'kg' | 'lbs') => number;
   convertMeasurement: (value: number, from: 'cm' | 'inches', to: 'cm' | 'inches') => number;
+  convertDistance: (value: number, from: 'km' | 'miles', to: 'km' | 'miles') => number; // Add distance converter
   formatDate: (date: string | Date) => string;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string; // New function for timezone-aware formatting
   parseDateInUserTimezone: (dateString: string) => Date; // New function to parse date string in user's timezone
   loadPreferences: () => Promise<void>;
-  saveAllPreferences: () => Promise<void>; // New function to save all preferences
+  saveAllPreferences: (newPrefs?: Partial<PreferencesContextType>) => Promise<void>; // Allow passing new preferences
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(undefined);
@@ -94,6 +97,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const { user, loading } = useAuth(); // Destructure loading from useAuth
   const [weightUnit, setWeightUnitState] = useState<'kg' | 'lbs'>('kg');
   const [measurementUnit, setMeasurementUnitState] = useState<'cm' | 'inches'>('cm');
+  const [distanceUnit, setDistanceUnitState] = useState<'km' | 'miles'>('km'); // Add state for distance unit
   const [dateFormat, setDateFormatState] = useState<string>('MM/dd/yyyy');
   const [autoClearHistory, setAutoClearHistoryState] = useState<string>('never'); // Add state for auto_clear_history
   const [loggingLevel, setLoggingLevelState] = useState<'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT'>('ERROR'); // Change default to ERROR
@@ -121,6 +125,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         // Load from localStorage when not logged in
         const savedWeightUnit = localStorage.getItem('weightUnit') as 'kg' | 'lbs';
         const savedMeasurementUnit = localStorage.getItem('measurementUnit') as 'cm' | 'inches';
+        const savedDistanceUnit = localStorage.getItem('distanceUnit') as 'km' | 'miles'; // Load distance unit
         const savedDateFormat = localStorage.getItem('dateFormat');
         // auto_clear_history and loggingLevel are not stored in localStorage, defaults to 'never' and 'INFO' respectively
 
@@ -135,6 +140,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (savedDateFormat) {
           setDateFormatState(savedDateFormat);
           debug(loggingLevel, "PreferencesProvider: Loaded dateFormat from localStorage:", savedDateFormat);
+        }
+        if (savedDistanceUnit) {
+          setDistanceUnitState(savedDistanceUnit);
+          debug(loggingLevel, "PreferencesProvider: Loaded distanceUnit from localStorage:", savedDistanceUnit);
         }
       }
     }
@@ -153,6 +162,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         debug(loggingLevel, 'PreferencesContext: Preferences data loaded:', data);
         setWeightUnitState(data.default_weight_unit as 'kg' | 'lbs');
         setMeasurementUnitState(data.default_measurement_unit as 'cm' | 'inches');
+        setDistanceUnitState(data.default_distance_unit as 'km' | 'miles'); // Set distance unit state
         setDateFormatState(data.date_format.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy'));
         setAutoClearHistoryState(data.auto_clear_history || 'never'); // Set auto_clear_history state
         setLoggingLevelState((data.logging_level || 'INFO') as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT'); // Set logging level state
@@ -197,6 +207,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         date_format: 'MM/dd/yyyy',
         default_weight_unit: 'kg',
         default_measurement_unit: 'cm',
+        default_distance_unit: 'km', // Add default distance unit
         system_prompt: 'You are Sparky, a helpful AI assistant for health and fitness tracking. Be friendly, encouraging, and provide accurate information about nutrition, exercise, and wellness.',
         auto_clear_history: 'never',
         logging_level: 'ERROR' as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT', // Add default logging level with type assertion
@@ -230,6 +241,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const updatePreferences = async (updates: Partial<{
     default_weight_unit: string;
     default_measurement_unit: string;
+    default_distance_unit: string; // Add distance unit to updates type
     date_format: string;
     system_prompt: string;
     auto_clear_history: string;
@@ -251,6 +263,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (updates.default_measurement_unit) {
         localStorage.setItem('measurementUnit', updates.default_measurement_unit);
         debug(loggingLevel, "PreferencesProvider: Saved measurementUnit to localStorage:", updates.default_measurement_unit);
+      }
+      if (updates.default_distance_unit) {
+        localStorage.setItem('distanceUnit', updates.default_distance_unit);
+        debug(loggingLevel, "PreferencesProvider: Saved distanceUnit to localStorage:", updates.default_distance_unit);
       }
       if (updates.date_format) {
         localStorage.setItem('dateFormat', updates.date_format);
@@ -303,6 +319,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setMeasurementUnitState(unit);
   };
 
+  const setDistanceUnit = (unit: 'km' | 'miles') => {
+    info(loggingLevel, "PreferencesProvider: Setting distance unit to:", unit);
+    setDistanceUnitState(unit);
+  };
+ 
   const setDateFormat = (format: string) => {
     info(loggingLevel, "PreferencesProvider: Setting date format to:", format);
     setDateFormatState(format.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy'));
@@ -352,7 +373,23 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return numValue;
   };
 
+  const convertDistance = (value: number | string | null | undefined, from: 'km' | 'miles', to: 'km' | 'miles') => {
+    let numValue: number;
+    if (typeof value === 'string') {
+      numValue = parseFloat(value);
+    } else if (value === null || value === undefined) {
+      return NaN;
+    } else {
+      numValue = value;
+    }
 
+    if (isNaN(numValue)) return NaN;
+    if (from === to) return numValue;
+    if (from === 'km' && to === 'miles') return numValue * 0.621371;
+    if (from === 'miles' && to === 'km') return numValue / 0.621371;
+    return numValue;
+  };
+ 
   const formatDate = (date: string | Date) => {
     debug(loggingLevel, "PreferencesProvider: Formatting date using user's timezone preference:", date);
     // Use formatDateInUserTimezone for all formatting to ensure consistency with user's preference
@@ -403,21 +440,25 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setItemDisplayLimitState(limit);
   };
 
-  const saveAllPreferences = async () => {
+  const saveAllPreferences = async (newPrefs?: Partial<PreferencesContextType>) => {
     info(loggingLevel, "PreferencesProvider: Saving all preferences to backend.");
+
+    const prefsToSave = {
+      default_weight_unit: newPrefs?.weightUnit ?? weightUnit,
+      default_measurement_unit: newPrefs?.measurementUnit ?? measurementUnit,
+      default_distance_unit: newPrefs?.distanceUnit ?? distanceUnit,
+      date_format: newPrefs?.dateFormat ?? dateFormat,
+      auto_clear_history: newPrefs?.autoClearHistory ?? autoClearHistory,
+      logging_level: newPrefs?.loggingLevel ?? loggingLevel,
+      default_food_data_provider_id: newPrefs?.defaultFoodDataProviderId ?? defaultFoodDataProviderId,
+      timezone: newPrefs?.timezone ?? timezone,
+      item_display_limit: newPrefs?.itemDisplayLimit ?? itemDisplayLimit,
+      food_display_limit: foodDisplayLimit, // This is not in the context setters, so we use the state value
+      water_display_unit: newPrefs?.water_display_unit ?? waterDisplayUnit,
+    };
+
     try {
-      await updatePreferences({
-        default_weight_unit: weightUnit,
-        default_measurement_unit: measurementUnit,
-        date_format: dateFormat,
-        auto_clear_history: autoClearHistory,
-        logging_level: loggingLevel,
-        default_food_data_provider_id: defaultFoodDataProviderId,
-        timezone: timezone,
-        item_display_limit: itemDisplayLimit,
-        food_display_limit: foodDisplayLimit, // Add foodDisplayLimit to save
-        water_display_unit: waterDisplayUnit,
-      });
+      await updatePreferences(prefsToSave);
       info(loggingLevel, "PreferencesProvider: All preferences saved successfully.");
     } catch (err) {
       error(loggingLevel, 'PreferencesContext: Error saving all preferences:', err);
@@ -453,6 +494,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     <PreferencesContext.Provider value={{
       weightUnit,
       measurementUnit,
+      distanceUnit, // Expose distanceUnit
       dateFormat,
       autoClearHistory, // Expose autoClearHistory
       loggingLevel, // Expose loggingLevel
@@ -464,6 +506,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       water_display_unit: waterDisplayUnit,
       setWeightUnit,
       setMeasurementUnit,
+      setDistanceUnit, // Expose setDistanceUnit
       setDateFormat,
       setAutoClearHistory, // Expose autoClearHistory
       setLoggingLevel, // Expose setLoggingLevel
@@ -474,6 +517,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setWaterDisplayUnit: setWaterDisplayUnitState,
       convertWeight,
       convertMeasurement,
+      convertDistance, // Expose convertDistance
       formatDate,
       formatDateInUserTimezone, // Expose new function
       parseDateInUserTimezone, // Expose new function

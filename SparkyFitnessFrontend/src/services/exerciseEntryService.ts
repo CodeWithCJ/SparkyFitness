@@ -3,8 +3,8 @@ import { getExerciseEntriesForDate as getDailyExerciseEntries } from './dailyPro
 import { Exercise } from './exerciseSearchService'; // Import the comprehensive Exercise interface
 import { parseJsonArray } from './exerciseService'; // Import parseJsonArray
 import { ExerciseProgressData } from './reportsService'; // Import ExerciseProgressData
-
 import { WorkoutPresetSet } from '@/types/workout';
+import { ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor'; // New import
 
 export interface ExerciseEntry {
   id: string;
@@ -15,7 +15,10 @@ export interface ExerciseEntry {
   notes?: string;
   sets: WorkoutPresetSet[];
   image_url?: string;
+  distance?: number;
+  avg_heart_rate?: number;
   exercises: Exercise;
+  activity_details?: ActivityDetailKeyValuePair[]; // New field
 }
 
 export const fetchExerciseEntries = async (selectedDate: string): Promise<ExerciseEntry[]> => {
@@ -30,9 +33,20 @@ export const fetchExerciseEntries = async (selectedDate: string): Promise<Exerci
       secondary_muscles: parseJsonArray(entry.exercises.secondary_muscles),
       instructions: parseJsonArray(entry.exercises.instructions),
       images: parseJsonArray(entry.exercises.images),
-    } : entry.exercises
+    } : entry.exercises,
+    activity_details: entry.activity_details ? entry.activity_details
+      .map((detail: any) => {
+        return {
+          id: detail.id,
+          key: detail.detail_type,
+          value: typeof detail.detail_data === 'object' ? JSON.stringify(detail.detail_data, null, 2) : detail.detail_data,
+          provider_name: detail.provider_name,
+          detail_type: detail.detail_type,
+        };
+      }) : [],
   }));
  
+  console.log('DEBUG', 'fetchExerciseEntries: Parsed entries with activity details:', parsedEntries);
   return parsedEntries;
 };
 
@@ -43,7 +57,10 @@ export const createExerciseEntry = async (payload: {
   sets: WorkoutPresetSet[];
   image_url?: string;
   calories_burned?: number;
+  distance?: number;
+  avg_heart_rate?: number;
   imageFile?: File | null;
+  activity_details?: { provider_name?: string; detail_type: string; detail_data: string; }[]; // New field
 }): Promise<ExerciseEntry> => {
   const { imageFile, ...entryData } = payload;
 
@@ -59,6 +76,11 @@ export const createExerciseEntry = async (payload: {
           // The backend expects 'sets' to be a JSON string if it's part of FormData
           formData.append(key, JSON.stringify(value));
         } else if (typeof value === 'object' && !Array.isArray(value)) {
+          formData.append(key, JSON.stringify(value));
+        } else if (key === 'activity_details' && Array.isArray(value)) {
+          formData.append(key, JSON.stringify(value));
+        }
+        else if (typeof value === 'object' && !Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else {
           formData.append(key, value);
@@ -99,7 +121,10 @@ export const updateExerciseEntry = async (entryId: string, payload: {
   notes?: string;
   sets?: WorkoutPresetSet[];
   image_url?: string;
+  distance?: number;
+  avg_heart_rate?: number;
   imageFile?: File | null;
+  activity_details?: { id?: string; provider_name?: string; detail_type: string; detail_data: string; }[]; // New field
 }): Promise<ExerciseEntry> => {
   const { imageFile, ...entryData } = payload;
   console.log('updateExerciseEntry payload:', payload);
@@ -115,6 +140,11 @@ export const updateExerciseEntry = async (entryId: string, payload: {
         if (key === 'sets' && Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else if (typeof value === 'object' && !Array.isArray(value)) {
+          formData.append(key, JSON.stringify(value));
+        } else if (key === 'activity_details' && Array.isArray(value)) {
+          formData.append(key, JSON.stringify(value));
+        }
+        else if (typeof value === 'object' && !Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else {
           formData.append(key, value);

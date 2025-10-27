@@ -112,7 +112,7 @@ async function getMiniNutritionTrends(userId, startDate, endDate) {
        ORDER BY fe.entry_date`,
       [userId, startDate, endDate]
     );
-    log('debug', `[reportRepository] getMiniNutritionTrends for user ${userId} from ${startDate} to ${endDate}:`, result.rows);
+    // log('debug', `[reportRepository] getMiniNutritionTrends for user ${userId} from ${startDate} to ${endDate}:`, result.rows);
     return result.rows;
   } finally {
     client.release();

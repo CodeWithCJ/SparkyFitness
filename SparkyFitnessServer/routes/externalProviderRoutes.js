@@ -100,4 +100,21 @@ router.get('/:id', authenticate, async (req, res, next) => {
   }
 });
 
+// Garmin Connect data handling
+router.post('/garmin/activities-and-workouts', authenticate, async (req, res, next) => {
+  try {
+    const { userId } = req;
+    const data = req.body;
+    
+    log('info', `Received data from Garmin microservice for user ${userId}.`);
+    
+    // Pass the data to the service layer for processing
+    const result = await externalProviderService.processGarminActivitiesAndWorkouts(userId, data);
+    
+    res.status(200).json({ message: 'Data processed successfully.', result });
+  } catch (error) {
+    log('error', `Error processing Garmin data: ${error.message}`, { error: error.stack });
+    next(error);
+  }
+});
 module.exports = router;
