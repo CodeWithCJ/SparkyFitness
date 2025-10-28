@@ -37,7 +37,7 @@ export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({ chil
       } else {
         // No containers exist, set a default
         setActiveContainer({
-          id: 0, // Placeholder ID for default
+          id: null,
           user_id: '', // Placeholder, not used for non-persisted default
           name: 'Default Container',
           volume: 2000, // Default to 2000ml

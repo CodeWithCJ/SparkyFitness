@@ -418,6 +418,7 @@ const EnhancedFoodSearch = ({
       });
       setShowImportFromCsvDialog(false);
       setLoading(false);
+      window.dispatchEvent(new CustomEvent("foodDatabaseRefresh")); // Dispatch event to refresh food database
     } catch (error) {
       if (error?.status === 409 && error.data?.duplicates) {
         const duplicateList = error.data.duplicates

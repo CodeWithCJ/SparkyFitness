@@ -100,8 +100,8 @@ async function getPrimaryWaterContainerByUserId(userId) {
   }
 }
  
-async function getWaterContainerById(id) {
-  const client = await getClient(id); // User-specific operation (RLS will handle access)
+async function getWaterContainerById(id, userId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'SELECT * FROM user_water_containers WHERE id = $1',

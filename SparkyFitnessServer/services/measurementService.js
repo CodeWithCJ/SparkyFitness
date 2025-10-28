@@ -197,7 +197,7 @@ async function upsertWaterIntake(authenticatedUserId, actingUserId, entryDate, c
     // 2. Determine amount per drink based on container
     let amountPerDrink;
     if (containerId) {
-      const container = await waterContainerRepository.getWaterContainerById(containerId);
+      const container = await waterContainerRepository.getWaterContainerById(containerId, authenticatedUserId);
       if (container) {
         amountPerDrink = Number(container.volume) / Number(container.servings_per_container);
       } else {

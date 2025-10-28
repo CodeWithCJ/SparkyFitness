@@ -168,11 +168,11 @@ const FoodDatabaseManager: React.FC = () => {
       setDeletionImpact(impact);
       setFoodToDelete(food);
       setShowDeleteConfirmation(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching deletion impact:", error);
       toast({
         title: "Error",
-        description: "Could not fetch deletion impact. Please try again.",
+        description: error.message || "Could not fetch deletion impact. Please try again.",
         variant: "destructive",
       });
     }
@@ -700,7 +700,7 @@ const FoodDatabaseManager: React.FC = () => {
               {deletionImpact.otherUserReferences > 0 && (
                 <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded-md">
                   <p className="font-bold">Warning!</p>
-                  <p>This food is used by other users. You can only hide it.</p>
+                  <p>This food is used by other users. You can only hide it. Hiding will prevent other users from adding this food in the future, but it will not affect their existing history, meals, or meal plans.</p>
                 </div>
               )}
             </div>
@@ -708,7 +708,11 @@ const FoodDatabaseManager: React.FC = () => {
               <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>
                 Cancel
               </Button>
-              {deletionImpact.otherUserReferences > 0 ? (
+              {deletionImpact.totalReferences === 0 ? (
+                <Button variant="destructive" onClick={() => confirmDelete(true)}>
+                  Delete
+                </Button>
+              ) : deletionImpact.otherUserReferences > 0 ? (
                 <Button onClick={() => confirmDelete(false)}>Hide</Button>
               ) : (
                 <>
