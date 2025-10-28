@@ -30,7 +30,7 @@ export const syncHealthData = async (data) => {
     if (!response.ok) {
       const errorText = await response.text(); // Read raw response text
       console.log('Server responded with non-OK status:', response.status, errorText); // Use console.log
-      throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 200)}...`); // Log first 200 chars
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
     }
 
     return await response.json();

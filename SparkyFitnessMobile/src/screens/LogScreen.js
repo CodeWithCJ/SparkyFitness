@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Button, StyleSheet, TouchableOpacity, Image, Alert, ScrollView } from 'react-native';
+import { View, Text, FlatList, Button, StyleSheet, TouchableOpacity, Image, Alert, ScrollView, Clipboard } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getLogs, clearLogs, getLogSummary, getLogLevel, setLogLevel } from '../services/LogService';
@@ -84,36 +84,52 @@ const LogScreen = ({ navigation }) => {
     }
   };
 
+  const handleCopyLogToClipboard = (item) => {
+  // Format the log entry as a string
+  let logText = `Status: ${item.status}\n`;
+  logText += `Message: ${item.message}\n`;
+  
+  if (item.details && item.details.length > 0) {
+    logText += `Details: ${item.details.join(', ')}\n`;
+  }
+  
+  logText += `Timestamp: ${new Date(item.timestamp).toLocaleString()}`;
 
-  const renderItem = ({ item }) => (
-    <View style={styles.logItem}>
-      <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
-      <Text>{item.message}</Text>
-    </View>
-  );
+  // Copy to clipboard
+  Clipboard.setString(logText);
+
+  // Show confirmation
+  Alert.alert('Copied', 'Log entry copied to clipboard');
+};
+
+
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={logs}
-        renderItem={({ item }) => (
-          <View style={styles.logItem}>
-            <View style={[styles.logIconContainer, { backgroundColor: item.status === 'SUCCESS' ? '#28a745' : item.status === 'WARNING' ? '#ffc107' : '#dc3545' }]}>
-              <Image source={item.status === 'SUCCESS' ? require('../../assets/icons/success.png') : item.status === 'WARNING' ? require('../../assets/icons/warning.png') : require('../../assets/icons/error.png')} style={styles.logIcon} />
-            </View>
-            <View style={styles.logContent}>
-              <Text style={[styles.logStatus, { color: item.status === 'SUCCESS' ? '#28a745' : item.status === 'WARNING' ? '#ffc107' : '#dc3545' }]}>
-                {item.status}
-              </Text>
-              <Text style={styles.logMessage} ellipsizeMode="clip">{item.message}</Text>
-              <View style={styles.logDetails}>
-                {item.details && item.details.map((detail, index) => (
-                  <Text key={index} style={styles.logDetailTag}>{detail}</Text>
-                ))}
-              </View>
-              <Text style={styles.logTimestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
-            </View>
+  <View style={styles.container}>
+    <FlatList
+      data={logs}
+      renderItem={({ item }) => (
+        <TouchableOpacity 
+          style={styles.logItem}
+          onPress={() => handleCopyLogToClipboard(item)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.logIconContainer, { backgroundColor: item.status === 'SUCCESS' ? '#28a745' : item.status === 'WARNING' ? '#ffc107' : '#dc3545' }]}>
+            <Image source={item.status === 'SUCCESS' ? require('../../assets/icons/success.png') : item.status === 'WARNING' ? require('../../assets/icons/warning.png') : require('../../assets/icons/error.png')} style={styles.logIcon} />
           </View>
+          <View style={styles.logContent}>
+            <Text style={[styles.logStatus, { color: item.status === 'SUCCESS' ? '#28a745' : item.status === 'WARNING' ? '#ffc107' : '#dc3545' }]}>
+              {item.status}
+            </Text>
+            <Text style={styles.logMessage} ellipsizeMode="clip">{item.message}</Text>
+            <View style={styles.logDetails}>
+              {item.details && item.details.map((detail, index) => (
+                <Text key={index} style={styles.logDetailTag}>{detail}</Text>
+              ))}
+            </View>
+            <Text style={styles.logTimestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
+          </View>
+        </TouchableOpacity>
         )}
         keyExtractor={(item, index) => index.toString()}
         ListHeaderComponent={() => (
