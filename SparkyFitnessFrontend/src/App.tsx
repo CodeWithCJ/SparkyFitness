@@ -55,6 +55,7 @@ const App = () => {
               <Routes>
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/withings/callback" element={<div>Loading Withings data...</div>} /> {/* New route for Withings callback */}
                 <Route path="*" element={<AppContent onShowAboutDialog={() => setShowAboutDialog(true)} />} />
               </Routes>
               <DraggableChatbotButton />
