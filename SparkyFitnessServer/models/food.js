@@ -616,10 +616,17 @@ async function createFoodsInBulk(userId, foodDataArray) {
     WHERE (user_id, name, brand) IN (VALUES ${placeholderString})
   `;
 
-  const { rows: existingFoods } = await getClient(userId).query( // User-specific check for duplicates
-    duplicateCheckQuery,
-    flatValues
-  );
+  const clientForDuplicateCheck = await getClient(userId);
+  let existingFoods = [];
+  try {
+    const { rows } = await clientForDuplicateCheck.query( // User-specific check for duplicates
+      duplicateCheckQuery,
+      flatValues
+    );
+    existingFoods = rows;
+  } finally {
+    clientForDuplicateCheck.release();
+  }
 
   if (existingFoods.length > 0) {
     // If duplicates are found, throw an error.
