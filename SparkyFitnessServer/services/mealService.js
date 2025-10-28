@@ -61,10 +61,6 @@ async function getMealById(userId, mealId) {
     }
     log('info', `Meal found: ${meal.name}, User ID: ${meal.user_id}, Is Public: ${meal.is_public}`);
     // Authorization check: User can access their own meals or public meals
-    if (meal.user_id !== userId && !meal.is_public) {
-      log('warn', `Forbidden: User ${userId} attempted to access meal ${mealId} (owner: ${meal.user_id}, public: ${meal.is_public}).`);
-      throw new Error('Forbidden: You do not have permission to access this meal.');
-    }
     log('info', `Access granted for meal ${mealId} to user ${userId}.`);
     return meal;
   } catch (error) {
@@ -80,9 +76,6 @@ async function updateMeal(userId, mealId, updateData) {
       throw new Error('Meal not found.');
     }
     // Authorization check: User can only update their own meals
-    if (meal.user_id !== userId) {
-      throw new Error('Forbidden: You do not have permission to update this meal.');
-    }
     const updatedMeal = await mealRepository.updateMeal(mealId, userId, updateData);
 
     let confirmationMessage = null;
@@ -125,9 +118,6 @@ async function deleteMeal(userId, mealId) {
       throw new Error('Meal not found.');
     }
     // Authorization check: User can only delete their own meals
-    if (meal.user_id !== userId) {
-      throw new Error('Forbidden: You do not have permission to delete this meal.');
-    }
 
     // Check if this meal is used in any meal plans or food entries by other users
     // Assuming a getMealDeletionImpact function exists in mealRepository
@@ -166,9 +156,6 @@ async function getMealDeletionImpact(userId, mealId) {
       throw new Error('Meal not found.');
     }
     // Authorization check: User can only get deletion impact for their own meals or public meals
-    if (meal.user_id !== userId && !meal.is_public) {
-      throw new Error('Forbidden: You do not have permission to access this meal.');
-    }
     const deletionImpact = await mealRepository.getMealDeletionImpact(mealId, userId);
     return deletionImpact;
   } catch (error) {

@@ -1,6 +1,11 @@
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') }); // Load .env from root directory
+
+// Run pre-flight checks for essential environment variables
+const { runPreflightChecks } = require('./utils/preflightChecks');
+runPreflightChecks();
+
 const express = require('express');
 const cors = require('cors'); // Added this line
 const { getRawOwnerPool } = require('./db/poolManager');
@@ -37,6 +42,8 @@ const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
 const versionRoutes = require('./routes/versionRoutes');
 const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboarding routes
 const { applyMigrations } = require('./utils/dbMigrations');
+const { grantPermissions } = require('./db/grantPermissions');
+const { applyRlsPolicies } = require('./utils/applyRlsPolicies');
 const waterContainerRoutes = require('./routes/waterContainerRoutes');
 const backupRoutes = require('./routes/backupRoutes'); // Import backup routes
 const errorHandler = require('./middleware/errorHandler'); // Import the new error handler
@@ -188,7 +195,7 @@ const configureSessionMiddleware = (pool) => {
       tableName: "session", // Use a table named 'session'
     }),
     name: "sparky.sid",
-    secret: process.env.SESSION_SECRET ?? "sparky_secret",
+    secret: process.env.JWT_SECRET,
     resave: false,
     saveUninitialized: true,
     proxy: true, // Trust the proxy in all environments (like Vite dev server)
@@ -424,8 +431,11 @@ const scheduleGarminSyncs = async () => {
 };
 
 
-applyMigrations().then(async () => {
-  // OIDC clients are now initialized on-demand, so no startup initialization is needed.
+applyMigrations()
+  .then(grantPermissions)
+  .then(applyRlsPolicies)
+  .then(async () => {
+    // OIDC clients are now initialized on-demand, so no startup initialization is needed.
 
   // Schedule backups after migrations
   scheduleBackups();

@@ -4,7 +4,7 @@
 DROP POLICY IF EXISTS foods_select_policy ON public.foods;
 CREATE POLICY foods_select_policy ON public.foods
 FOR SELECT
-TO sparky_app
+TO PUBLIC
 USING (
     -- 1. Owner can always see their own items
     user_id = current_setting('app.user_id')::uuid
@@ -30,7 +30,7 @@ USING (
 DROP POLICY IF EXISTS food_variants_select_policy ON public.food_variants;
 CREATE POLICY food_variants_select_policy ON public.food_variants
 FOR SELECT
-TO sparky_app
+TO PUBLIC
 USING (
     EXISTS (
         SELECT 1 FROM public.foods f
@@ -62,7 +62,7 @@ USING (
 DROP POLICY IF EXISTS exercises_select_policy ON public.exercises;
 CREATE POLICY exercises_select_policy ON public.exercises
 FOR SELECT
-TO sparky_app
+TO PUBLIC
 USING (
     -- 1. Owner can always see their own items
     user_id = current_setting('app.user_id')::uuid

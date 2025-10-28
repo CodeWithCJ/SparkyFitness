@@ -273,7 +273,7 @@ async function searchWorkoutPresets(searchTerm, userId, limit = null) {
     const queryParams = [`%${searchTerm}%`];
 
     if (limit !== null) {
-      query += ` LIMIT $3`;
+      query += ` LIMIT $2`;
       queryParams.push(limit);
     }
 

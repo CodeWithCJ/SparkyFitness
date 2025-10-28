@@ -3,7 +3,7 @@ DROP POLICY IF EXISTS external_data_providers_select_policy ON public.external_d
 
 CREATE POLICY external_data_providers_select_policy ON public.external_data_providers
 FOR SELECT
-TO sparky_app
+TO PUBLIC
 USING (
     -- 1. Owner can always see their own items
     user_id = current_setting('app.user_id')::uuid
@@ -34,6 +34,6 @@ USING (
 DROP POLICY IF EXISTS external_data_providers_modify_policy ON public.external_data_providers;
 CREATE POLICY external_data_providers_modify_policy ON public.external_data_providers
 FOR ALL
-TO sparky_app
+TO PUBLIC
 USING (user_id = current_setting('app.user_id')::uuid)
 WITH CHECK (user_id = current_setting('app.user_id')::uuid);

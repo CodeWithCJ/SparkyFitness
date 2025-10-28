@@ -16,6 +16,7 @@ interface MealPercentages {
 interface MealPercentageManagerProps {
   initialPercentages: MealPercentages;
   onPercentagesChange: (percentages: MealPercentages) => void;
+  totalCalories: number;
 }
 
 const distributionTemplates = [
@@ -25,10 +26,15 @@ const distributionTemplates = [
   { name: 'No Snacks', values: { breakfast: 30, lunch: 40, dinner: 30, snacks: 0 } },
 ];
 
-const MealPercentageManager = ({ initialPercentages, onPercentagesChange }: MealPercentageManagerProps) => {
+const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalCalories }: MealPercentageManagerProps) => {
   const [percentages, setPercentages] = useState<MealPercentages>(initialPercentages);
   const [locks, setLocks] = useState({ breakfast: false, lunch: false, dinner: false, snacks: false });
   const [selectedTemplateName, setSelectedTemplateName] = useState<string>('');
+
+  // Calculate calories for a given percentage
+  const calculateCalories = (percentage: number): number => {
+    return Math.round((percentage / 100) * totalCalories);
+  };
 
   useEffect(() => {
     const matchingTemplate = distributionTemplates.find(t =>
@@ -99,7 +105,7 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange }: Meal
     }
   };
 
-  const normalizePercentages = (currentPercentages: MealPercentages, changedMeal: keyof MealPercentages) => {
+  const normalizePercentages = (currentPercentages: MealPercentages, changedMeal?: keyof MealPercentages) => {
     const total = Object.values(currentPercentages).reduce((sum, p) => sum + p, 0);
     if (Math.round(total) !== 100) {
         const diff = 100 - total;
@@ -132,7 +138,7 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange }: Meal
             i++;
         }
     }
-    
+
     return finalPercentages;
   };
 
@@ -157,7 +163,9 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange }: Meal
 
       {(Object.keys(percentages) as Array<keyof MealPercentages>).map(meal => (
         <div key={meal} className="space-y-2">
-          <Label htmlFor={meal} className="capitalize">{meal}</Label>
+          <Label htmlFor={meal} className="capitalize font-semibold">
+            {meal} ({calculateCalories(percentages[meal])} kcal)
+          </Label>
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => handleLockToggle(meal)}>
               {locks[meal] ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
@@ -171,13 +179,16 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange }: Meal
               onValueChange={([value]) => handleSliderChange(meal, value)}
               disabled={locks[meal]}
             />
-            <Input
-              type="number"
-              value={percentages[meal]}
-              onChange={(e) => handleSliderChange(meal, parseInt(e.target.value, 10) || 0)}
-              className="w-20"
-              disabled={locks[meal]}
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                value={percentages[meal]}
+                onChange={(e) => handleSliderChange(meal, parseInt(e.target.value, 10) || 0)}
+                className="w-20"
+                disabled={locks[meal]}
+              />
+              <span className="text-sm font-medium">%</span>
+            </div>
           </div>
         </div>
       ))}

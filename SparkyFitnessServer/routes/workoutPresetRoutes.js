@@ -16,8 +16,9 @@ router.post('/', authenticate, async (req, res, next) => {
 // Get all workout presets for the authenticated user
 router.get('/', authenticate, async (req, res, next) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-    const presets = await workoutPresetService.getWorkoutPresets(req.userId, parseInt(page, 10), parseInt(limit, 10));
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const presets = await workoutPresetService.getWorkoutPresets(req.userId, page, limit);
     res.status(200).json(presets);
   } catch (error) {
     next(error);
@@ -75,7 +76,8 @@ router.delete('/:id', authenticate, async (req, res, next) => {
 // Search workout presets
 router.get('/search', authenticate, async (req, res, next) => {
   try {
-    const { searchTerm, limit } = req.query;
+    const { searchTerm } = req.query;
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
     const presets = await workoutPresetService.searchWorkoutPresets(searchTerm, req.userId, limit);
     res.status(200).json(presets);
   } catch (error) {

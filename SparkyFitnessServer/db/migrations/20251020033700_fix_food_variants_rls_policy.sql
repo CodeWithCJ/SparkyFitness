@@ -2,7 +2,7 @@
 DROP POLICY IF EXISTS food_variants_select_policy ON public.food_variants;
 CREATE POLICY food_variants_select_policy ON public.food_variants
 FOR SELECT
-TO sparky_app
+TO PUBLIC
 USING (
     EXISTS (
         SELECT 1 FROM public.foods f
@@ -39,7 +39,7 @@ USING (
 DROP POLICY IF EXISTS food_variants_all_policy ON public.food_variants;
 CREATE POLICY food_variants_all_policy ON public.food_variants
 FOR ALL
-TO sparky_app
+TO PUBLIC
 USING (
     EXISTS (
         SELECT 1 FROM public.foods f
