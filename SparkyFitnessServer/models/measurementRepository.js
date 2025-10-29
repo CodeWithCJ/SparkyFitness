@@ -290,9 +290,9 @@ async function updateCustomCategory(id, userId, updatedByUserId, updateData) {
         data_type = COALESCE($4, data_type),
         updated_at = now(),
         updated_by_user_id = $5
-      WHERE id = $6
+      WHERE id = $6 AND user_id = $7
       RETURNING *`,
-      [updateData.name, updateData.frequency, updateData.measurement_type, updateData.data_type, updatedByUserId, id]
+      [updateData.name, updateData.frequency, updateData.measurement_type, updateData.data_type, updatedByUserId, id, userId]
     );
     return result.rows[0];
   } finally {
@@ -583,12 +583,12 @@ async function getLatestMeasurement(userId) {
   }
 }
 
-async function getCustomMeasurementOwnerId(id) {
-  const client = await getClient(id); // User-specific operation (RLS will handle access)
+async function getCustomMeasurementOwnerId(id, userId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      'SELECT user_id FROM custom_measurements WHERE id = $1',
-      [id]
+      'SELECT user_id FROM custom_measurements WHERE id = $1 AND user_id = $2',
+      [id, userId]
     );
     return result.rows[0]?.user_id;
   } finally {
