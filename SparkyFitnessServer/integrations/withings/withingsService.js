@@ -50,7 +50,7 @@ async function getAuthorizationUrl(userId, redirectUri) {
         const state = userId; // Use the userId as the state to identify the user on callback
         // Store state in session or database to validate on callback
 
-        return `${WITHINGS_ACCOUNT_BASE_URL}/oauth2_user/authorize2?response_type=code&client_id=${clientId}&scope=${scope}&redirect_uri=${redirectUri}&state=${state}`;
+        return `${WITHINGS_ACCOUNT_BASE_URL}/oauth2_user/authorize2?response_type=code&client_id=${clientId}&scope=${scope}&redirect_uri=${process.env.SPARKY_FITNESS_FRONTEND_URL}/withings/callback&state=${state}`;
     } finally {
         client.release();
     }
@@ -78,8 +78,6 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
         const clientId = await decrypt(encrypted_app_id, app_id_iv, app_id_tag, ENCRYPTION_KEY);
         const clientSecret = await decrypt(encrypted_app_key, app_key_iv, app_key_tag, ENCRYPTION_KEY);
 
-        const baseUrl = process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
-        const constructedRedirectUri = `${baseUrl}/withings/callback`;
 
         const response = await axios.post(`${WITHINGS_API_BASE_URL}/v2/oauth2`, null, {
             params: {
@@ -88,7 +86,7 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
                 client_id: clientId,
                 client_secret: clientSecret,
                 code: code,
-                redirect_uri: constructedRedirectUri
+                redirect_uri: redirectUri
             }
         });
 

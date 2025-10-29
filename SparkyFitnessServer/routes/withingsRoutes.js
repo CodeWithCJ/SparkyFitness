@@ -21,9 +21,9 @@ router.get('/authorize', authMiddleware.authenticate, async (req, res) => {
 });
 
 // Route to handle Withings OAuth callback
-router.get('/callback', async (req, res) => {
+router.post('/callback', async (req, res) => {
     try {
-        const { code, state, error } = req.query;
+        const { code, state, error } = req.body;
 
         if (error) {
             log('error', `Withings OAuth callback error: ${error}`);
@@ -47,11 +47,10 @@ router.get('/callback', async (req, res) => {
         // containing the userId, which can be decrypted/verified here.
         const userId = state; // The userId was passed in the state parameter
 
-        const tokenExchangeResult = await withingsService.exchangeCodeForTokens(userId, code, `${req.protocol}://${req.get('host')}/api/withings/callback`, state);
+        const tokenExchangeResult = await withingsService.exchangeCodeForTokens(userId, code, `${process.env.SPARKY_FITNESS_FRONTEND_URL}/withings/callback`, state);
 
         if (tokenExchangeResult.success) {
-            const frontendUrl = process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
-            res.redirect(`${frontendUrl}`);
+            res.status(200).json({ message: 'Withings account linked successfully.' });
         } else {
             res.status(500).json({ message: 'Failed to connect Withings account.' });
         }

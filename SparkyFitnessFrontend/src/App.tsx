@@ -15,6 +15,8 @@ import { Toaster } from "@/components/ui/toaster"; // Import the Toaster compone
 import { Routes, Route } from 'react-router-dom';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import WithingsCallback from '@/pages/WithingsCallback';
+import ExternalProviderSettings from '@/components/ExternalProviderSettings'; // Import ExternalProviderSettings
 
 const queryClient = new QueryClient();
 
@@ -55,7 +57,8 @@ const App = () => {
               <Routes>
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/withings/callback" element={<div>Loading Withings data...</div>} /> {/* New route for Withings callback */}
+                <Route path="/withings/callback" element={<WithingsCallback />} /> {/* New route for Withings callback */}
+                <Route path="/settings/integrations" element={<ExternalProviderSettings />} /> {/* Route for integrations settings */}
                 <Route path="*" element={<AppContent onShowAboutDialog={() => setShowAboutDialog(true)} />} />
               </Routes>
               <DraggableChatbotButton />

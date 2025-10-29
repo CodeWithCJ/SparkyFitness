@@ -12,6 +12,11 @@ export default defineConfig(({ mode }) => {
       port: 8080,
       allowedHosts: ['localhost', '127.0.0.1'], // Hardcoded for debugging
       proxy: {
+      "/api/withings": { // New proxy rule for Withings API calls
+        target: "http://localhost:3010",
+        changeOrigin: true,
+        // No rewrite needed, as the backend expects /api/withings
+      },
       "/api": {
         target: "http://localhost:3010",
         changeOrigin: true,
@@ -28,14 +33,6 @@ export default defineConfig(({ mode }) => {
         rewrite: (path) => path.replace(/^\/openid/, "/openid"), // Keep the /openid prefix
       },
       "/uploads": {
-        target: "http://localhost:3010",
-        changeOrigin: true,
-      },
-      "/withings/authorize": {
-        target: "http://localhost:3010",
-        changeOrigin: true,
-      },
-      "/withings/callback": {
         target: "http://localhost:3010",
         changeOrigin: true,
       },

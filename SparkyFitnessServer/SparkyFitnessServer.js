@@ -242,7 +242,7 @@ app.use((req, res, next) => {
     "/openid", // All OIDC routes are handled by session, not JWT token
     "/openid/api/me", // Explicitly allow /openid/api/me as a public route for session check
     "/version", // Allow version endpoint to be public
-    "/withings/callback", // Allow Withings OAuth callback
+    // "/withings/callback", // Withings OAuth callback will now be handled by /api/withings/callback
   ];
 
   // Check if the current request path starts with any of the public routes
@@ -286,8 +286,8 @@ app.use('/user', authRoutes);
 app.use('/health', healthRoutes);
 app.use('/external-providers', externalProviderRoutes); // Renamed route for generic data providers
 app.use('/integrations/garmin', garminRoutes); // Add Garmin integration routes
-app.use('/withings', withingsRoutes); // Add Withings integration routes
-log('info', 'Withings routes mounted at /withings');
+app.use('/api/withings', withingsRoutes); // Add Withings integration routes
+log('info', 'Withings routes mounted at /api/withings');
 app.use('/integrations/withings/data', withingsDataRoutes); // Add Withings Data routes
 app.use('/mood', moodRoutes); // Add Mood routes
 app.use('/admin/oidc-settings', oidcSettingsRoutes); // Admin OIDC settings routes
