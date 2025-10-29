@@ -378,14 +378,15 @@ async function createCustomCategory(authenticatedUserId, actingUserId, categoryD
 
 async function updateCustomCategory(authenticatedUserId, id, updateData) {
   try {
-    const categoryOwnerId = await measurementRepository.getCustomCategoryOwnerId(id);
+    const categoryOwnerId = await measurementRepository.getCustomCategoryOwnerId(id, authenticatedUserId);
     if (!categoryOwnerId) {
       throw new Error('Custom category not found.');
     }
     if (categoryOwnerId !== authenticatedUserId) {
       throw new Error('Forbidden: You do not have permission to update this custom category.');
     }
-    const updatedCategory = await measurementRepository.updateCustomCategory(id, authenticatedUserId, updateData);
+    // Ensure `authenticatedUserId` is passed as `updatedByUserId` to the repository
+    const updatedCategory = await measurementRepository.updateCustomCategory(id, authenticatedUserId, authenticatedUserId, updateData);
     if (!updatedCategory) {
       throw new Error('Custom category not found or not authorized to update.');
     }
@@ -515,9 +516,16 @@ async function upsertCustomMeasurementEntry(authenticatedUserId, actingUserId, p
 
 async function deleteCustomMeasurementEntry(authenticatedUserId, id) {
   try {
+    const entryOwnerId = await measurementRepository.getCustomMeasurementOwnerId(id, authenticatedUserId);
+    if (!entryOwnerId) {
+      throw new Error('Custom measurement entry not found.');
+    }
+    if (entryOwnerId !== authenticatedUserId) {
+      throw new Error('Forbidden: You do not have permission to delete this custom measurement entry.');
+    }
     const success = await measurementRepository.deleteCustomMeasurement(id, authenticatedUserId);
     if (!success) {
-      throw new Error('Custom measurement entry not found or not authorized to delete.');
+      throw new Error('Custom measurement entry not found.');
     }
     return { message: 'Custom measurement entry deleted successfully.' };
   } catch (error) {
