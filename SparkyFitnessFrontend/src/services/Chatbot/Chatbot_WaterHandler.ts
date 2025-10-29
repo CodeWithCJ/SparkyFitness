@@ -2,6 +2,7 @@ import { parseISO } from 'date-fns';
 import { CoachResponse } from './Chatbot_types';
 import { debug, info, error, UserLoggingLevel } from '@/utils/logging';
 import { apiCall } from '../api';
+import { getPrimaryWaterContainer } from '../waterContainerService'; // Import getPrimaryWaterContainer
 
 export const processWaterInput = async (
   data: { quantity: number; unit?: 'oz' | 'cup' | 'glass' },
@@ -45,11 +46,15 @@ export const processWaterInput = async (
 
     info(userLoggingLevel, `[${transactionId}] Saving water intake: ${waterMl} ml on ${dateToUse}`);
 
+    const primaryContainer = await getPrimaryWaterContainer();
+    const containerId = primaryContainer?.id || '00000000-0000-0000-0000-000000000001'; // Use primary container ID or a default
+
     await apiCall('/measurements/water-intake', {
       method: 'POST',
       body: {
         entry_date: dateToUse,
-        water_ml: waterMl,
+        change_drinks: waterMl,
+        container_id: containerId,
       },
     });
 
@@ -57,7 +62,7 @@ export const processWaterInput = async (
 
     return {
       action: 'water_added',
-      response: `✅ **Added ${quantity} ${unit}(s) of water to your intake on ${formatDateInUserTimezone(dateToUse, 'PPP')}!**\n\nKeep up the great work!`
+      response: `✅ **Added ${waterMl} ml of water to your intake on ${formatDateInUserTimezone(dateToUse, 'PPP')}!**\n\nKeep up the great work!`
     };
 
   } catch (err) {

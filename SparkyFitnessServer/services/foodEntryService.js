@@ -575,7 +575,14 @@ async function getDailyNutritionSummary(userId, date) {
   try {
     const summary = await foodRepository.getDailyNutritionSummary(userId, date);
     if (!summary) {
-      throw new Error("Nutrition summary not found for this date.");
+      // Return a zero-initialized summary if no entries are found for the date
+      return {
+        total_calories: 0,
+        total_protein: 0,
+        total_carbs: 0,
+        total_fat: 0,
+        total_dietary_fiber: 0,
+      };
     }
     return summary;
   } catch (error) {
