@@ -14,7 +14,7 @@ async function createMealPlanTemplate(userId, planData, currentClientDate = null
         log('info', 'createMealPlanTemplate service - newPlan created:', newPlan);
         if (newPlan.is_active) {
             log('info', `createMealPlanTemplate service - New plan is active, creating food entries from template ${newPlan.id}`);
-            await foodRepository.createFoodEntriesFromTemplate(newPlan.id, userId, currentClientDate);
+            await foodRepository.createFoodEntriesFromTemplate(newPlan.id, userId, planData.currentClientDate || currentClientDate);
         } else {
             log('info', `createMealPlanTemplate service - New plan is not active, skipping food entry creation.`);
         }
@@ -57,7 +57,7 @@ async function updateMealPlanTemplate(planId, userId, planData, currentClientDat
 
         if (updatedPlan.is_active) {
             log('info', `updateMealPlanTemplate service - Updated plan is active, creating food entries from template ${updatedPlan.id}`);
-            await foodRepository.createFoodEntriesFromTemplate(updatedPlan.id, userId, currentClientDate);
+            await foodRepository.createFoodEntriesFromTemplate(updatedPlan.id, userId, planData.currentClientDate || currentClientDate);
         } else {
             log('info', `updateMealPlanTemplate service - Updated plan is not active, skipping food entry creation.`);
         }
