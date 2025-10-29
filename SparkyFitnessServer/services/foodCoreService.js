@@ -1,4 +1,5 @@
 const foodRepository = require("../models/foodRepository");
+const preferenceService = require("./preferenceService");
 const { log } = require("../config/logging");
 
 async function searchFoods(
@@ -8,7 +9,7 @@ async function searchFoods(
   exactMatch,
   broadMatch,
   checkCustom,
-  limit = 10,
+  limitFromRequest = 10, // Renamed to avoid conflict with preference-based limit
   mealType = undefined
 ) {
   try {
@@ -18,6 +19,9 @@ async function searchFoods(
 
     if (!name) {
       // If no search term, return recent and top foods
+      const userPreferences = await preferenceService.getUserPreferences(authenticatedUserId, authenticatedUserId);
+      const limit = userPreferences?.item_display_limit || limitFromRequest;
+
       const recentFoods = await foodRepository.getRecentFoods(
         authenticatedUserId,
         limit,

@@ -16,23 +16,35 @@ async function getFoodDataProviderById(providerId) {
 async function getRecentFoods(userId, limit, mealType) {
   const client = await getClient(userId); // User-specific operation
 
-  const whereClauses = ["fe.user_id = $1"];
-  const queryParams = [userId, limit];
-
-  if (!!mealType) {
-    whereClauses.push("fe.meal_type = $3");
+  const queryParams = [userId];
+  let mealTypeCondition = "";
+  if (mealType) {
     queryParams.push(mealType);
+    mealTypeCondition = `AND fe.meal_type = $${queryParams.length}`;
   }
+  queryParams.push(limit);
 
   try {
     const result = await client.query(
-      `SELECT DISTINCT ON (fe.food_id)
+      `WITH RecentFoodEntries AS (
+        SELECT
+          fe.food_id,
+          MAX(fe.entry_date) AS last_used_date
+        FROM food_entries fe
+        WHERE fe.user_id = $1 ${mealTypeCondition}
+        GROUP BY fe.food_id
+        ORDER BY last_used_date DESC
+        LIMIT $${queryParams.length}
+      )
+      SELECT
         f.id,
         f.name,
         f.brand,
         f.is_custom,
         f.user_id,
         f.shared_with_public,
+        f.provider_external_id,
+        f.provider_type,
         json_build_object(
           'id', fv.id,
           'serving_size', fv.serving_size,
@@ -57,12 +69,11 @@ async function getRecentFoods(userId, limit, mealType) {
           'is_default', fv.is_default,
           'glycemic_index', fv.glycemic_index
         ) AS default_variant
-      FROM food_entries fe
-      JOIN foods f ON fe.food_id = f.id
+      FROM foods f
+      JOIN RecentFoodEntries rfe ON f.id = rfe.food_id
       LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE
-      WHERE ${whereClauses.join(" AND ")} AND f.is_quick_food = FALSE
-      ORDER BY fe.food_id, fe.created_at DESC
-      LIMIT $2`,
+      WHERE f.is_quick_food = FALSE
+      ORDER BY rfe.last_used_date DESC`,
       queryParams
     );
     return result.rows;
@@ -74,23 +85,36 @@ async function getRecentFoods(userId, limit, mealType) {
 async function getTopFoods(userId, limit, mealType) {
   const client = await getClient(userId); // User-specific operation
 
-  const whereClauses = ["fe.user_id = $1"];
-  const queryParams = [userId, limit];
-
-  if (!!mealType) {
-    whereClauses.push("fe.meal_type = $3");
+  const queryParams = [userId];
+  let mealTypeCondition = "";
+  if (mealType) {
     queryParams.push(mealType);
+    mealTypeCondition = `AND fe.meal_type = $${queryParams.length}`;
   }
+  queryParams.push(limit);
 
   try {
     const result = await client.query(
-      `SELECT
+      `WITH TopFoodEntries AS (
+        SELECT
+          fe.food_id,
+          COUNT(fe.food_id) AS usage_count
+        FROM food_entries fe
+        WHERE fe.user_id = $1 ${mealTypeCondition}
+        GROUP BY fe.food_id
+        ORDER BY usage_count DESC
+        LIMIT $${queryParams.length}
+      )
+      SELECT
         f.id,
         f.name,
         f.brand,
         f.is_custom,
         f.user_id,
         f.shared_with_public,
+        f.provider_external_id,
+        f.provider_type,
+        tfe.usage_count,
         json_build_object(
           'id', fv.id,
           'serving_size', fv.serving_size,
@@ -114,15 +138,12 @@ async function getTopFoods(userId, limit, mealType) {
           'iron', fv.iron,
           'is_default', fv.is_default,
           'glycemic_index', fv.glycemic_index
-        ) AS default_variant,
-        COUNT(fe.food_id) AS usage_count
-      FROM food_entries fe
-      JOIN foods f ON fe.food_id = f.id
+        ) AS default_variant
+      FROM foods f
+      JOIN TopFoodEntries tfe ON f.id = tfe.food_id
       LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE
-      WHERE ${whereClauses.join(" AND ")} AND f.is_quick_food = FALSE
-      GROUP BY f.id, fv.id
-      ORDER BY usage_count DESC
-      LIMIT $2`,
+      WHERE f.is_quick_food = FALSE
+      ORDER BY tfe.usage_count DESC`,
       queryParams
     );
     return result.rows;
