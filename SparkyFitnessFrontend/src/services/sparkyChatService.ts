@@ -159,7 +159,13 @@ export const processUserInput = async (
       case 'log_measurements':
         return await processMeasurementInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel);
       case 'log_water':
-        return await processWaterInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel, transactionId);
+        // Map AI's glasses_consumed to quantity for processWaterInput
+        const waterData = parsedResponse.data;
+        if (waterData && waterData.glasses_consumed !== undefined) {
+          waterData.quantity = waterData.glasses_consumed;
+          delete waterData.glasses_consumed; // Remove the old key if necessary
+        }
+        return await processWaterInput(waterData, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel, transactionId);
       case 'ask_question':
       case 'chat':
         return await processChatInput(parsedResponse.data || {}, parsedResponse.response, userLoggingLevel);
@@ -181,7 +187,7 @@ export const processUserInput = async (
 
 export const getTodaysNutrition = async (date: string): Promise<any> => {
   const params = new URLSearchParams({ date });
-  return apiCall(`/foods/nutrition/today?${params.toString()}`, {
+  return apiCall(`/foods/food-entries/nutrition/today?${params.toString()}`, {
     method: 'GET',
   });
 };

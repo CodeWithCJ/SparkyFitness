@@ -49,14 +49,19 @@ export const processExerciseInput = async (data: { exercise_name: string; durati
 
       let newExercise = null;
       try {
+        const formData = new FormData();
+        formData.append('exerciseData', JSON.stringify({
+          name: exercise_name,
+          category: 'cardio',
+          calories_per_hour: estimatedCaloriesPerHour,
+          is_custom: true,
+          source: 'chatbot', // Add the source field
+        }));
+
         newExercise = await apiCall('/exercises', {
           method: 'POST',
-          body: {
-            name: exercise_name,
-            category: 'cardio',
-            calories_per_hour: estimatedCaloriesPerHour,
-            is_custom: true,
-          }
+          body: formData,
+          isFormData: true,
         });
       } catch (err: any) {
         error(userLoggingLevel, '❌ [Nutrition Coach] Error creating exercise:', err);

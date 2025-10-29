@@ -84,6 +84,12 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
         return []; // Return empty array to gracefully handle 400 errors on these endpoints
       }
 
+      // Special handling for 404 errors on exercise search endpoints
+      if (response.status === 404 && endpoint.startsWith('/exercises/search/')) {
+        debug(userLoggingLevel, `Frontend workaround triggered for ${endpoint}: Backend returned 404. Returning empty array.`);
+        return []; // Return empty array to gracefully handle 404 errors on exercise search
+      }
+
       // Suppress toast for 404 errors if suppress404Toast is true
       if (response.status === 404 && options?.suppress404Toast) {
         debug(userLoggingLevel, `API call returned 404 for ${endpoint}, toast suppressed. Returning null.`);
