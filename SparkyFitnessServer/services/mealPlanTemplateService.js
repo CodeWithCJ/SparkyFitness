@@ -71,8 +71,6 @@ async function updateMealPlanTemplate(planId, userId, planData, currentClientDat
 
 async function deleteMealPlanTemplate(planId, userId) {
     try {
-        // Also delete associated food entries
-        await foodRepository.deleteFoodEntriesByTemplateId(planId, userId);
         return await mealPlanTemplateRepository.deleteMealPlanTemplate(planId, userId);
     } catch (error) {
         log('error', `Error deleting meal plan template ${planId} for user ${userId}: ${error.message}`, error);
