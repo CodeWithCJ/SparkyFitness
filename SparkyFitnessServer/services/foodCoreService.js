@@ -35,12 +35,16 @@ async function searchFoods(
       return { recentFoods, topFoods };
     } else {
       // Otherwise, perform a regular search
+      const userPreferences = await preferenceService.getUserPreferences(authenticatedUserId, authenticatedUserId);
+      const limit = userPreferences?.food_display_limit || limitFromRequest; // Use food_display_limit for search results
+
       const foods = await foodRepository.searchFoods(
         name,
         targetUserId || authenticatedUserId,
         exactMatch,
         broadMatch,
-        checkCustom
+        checkCustom,
+        limit // Pass the limit to the repository search function
       );
       return { searchResults: foods };
     }
