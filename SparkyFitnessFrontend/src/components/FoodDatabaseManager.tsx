@@ -64,6 +64,31 @@ import { Food, FoodVariant, FoodDeletionImpact } from "@/types/food";
 import MealManagement from "./MealManagement"; // Import MealManagement
 import MealPlanCalendar from "./MealPlanCalendar"; // Import MealPlanCalendar
 
+const nutrientDetails: {
+  [key: string]: { color: string; label: string; unit: string };
+} = {
+  calories: {
+    color: "text-gray-900 dark:text-gray-100",
+    label: "cal",
+    unit: "",
+  },
+  protein: { color: "text-blue-600", label: "protein", unit: "g" },
+  carbs: { color: "text-orange-600", label: "carbs", unit: "g" },
+  fat: { color: "text-yellow-600", label: "fat", unit: "g" },
+  dietary_fiber: { color: "text-green-600", label: "fiber", unit: "g" },
+  sugar: { color: "text-pink-500", label: "sugar", unit: "g" },
+  sodium: { color: "text-purple-500", label: "sodium", unit: "mg" },
+  cholesterol: { color: "text-indigo-500", label: "cholesterol", unit: "mg" },
+  saturated_fat: { color: "text-red-500", label: "sat fat", unit: "g" },
+  trans_fat: { color: "text-red-700", label: "trans fat", unit: "g" },
+  potassium: { color: "text-teal-500", label: "potassium", unit: "mg" },
+  vitamin_a: { color: "text-yellow-400", label: "vit a", unit: "mcg" },
+  vitamin_c: { color: "text-orange-400", label: "vit c", unit: "mg" },
+  iron: { color: "text-gray-500", label: "iron", unit: "mg" },
+  calcium: { color: "text-blue-400", label: "calcium", unit: "mg" },
+  glycemic_index: { color: "text-purple-600", label: "GI", unit: "" },
+};
+
 const FoodDatabaseManager: React.FC = () => {
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
@@ -72,6 +97,8 @@ const FoodDatabaseManager: React.FC = () => {
   const platform = isMobile ? "mobile" : "desktop";
   const quickInfoPreferences = nutrientDisplayPreferences.find(
     (p) => p.view_group === "quick_info" && p.platform === platform,
+  ) || nutrientDisplayPreferences.find(
+    (p) => p.view_group === "quick_info" && p.platform === "desktop",
   );
   const visibleNutrients = quickInfoPreferences
     ? quickInfoPreferences.visible_nutrients
@@ -444,17 +471,13 @@ const FoodDatabaseManager: React.FC = () => {
                   {foods.map((food) => (
                     <div
                       key={food.id}
-                      className="grid grid-cols-[minmax(150px,_1fr)_80px_80px_80px_80px_80px_auto] items-center gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4"
                     >
-                      {/* Food Name and Badges (first column) */}
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
                           <span className="font-medium">{food.name}</span>
                           {food.brand && (
-                            <Badge
-                              variant="secondary"
-                              className="text-xs w-fit"
-                            >
+                            <Badge variant="secondary" className="text-xs w-fit">
                               {food.brand}
                             </Badge>
                           )}
@@ -474,95 +497,97 @@ const FoodDatabaseManager: React.FC = () => {
                           {food.default_variant?.serving_unit || ""}
                         </div>
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <div className={`grid grid-flow-col-dense gap-x-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400`}>
+                          {visibleNutrients.map((nutrient) => {
+                            const details = nutrientDetails[nutrient];
+                            if (!details) return null;
+                            const value = (food.default_variant?.[nutrient as keyof FoodVariant] as number) || 0;
+                            return (
+                              <div key={nutrient} className="whitespace-nowrap">
+                                <span className={`font-medium ${details.color}`}>
+                                  {typeof value === 'number' ? value.toFixed(nutrient === "calories" ? 0 : 1) : value}
+                                  {details.unit}
+                                </span>{" "}
+                                {details.label}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Action Buttons */}
+                        <div className="flex items-center space-x-2 justify-end">
+                          {/* Share/Lock Button */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    handleShareFood(
+                                      food.id,
+                                      food.shared_with_public || false,
+                                    )
+                                  }
+                                  disabled={!canEdit(food)} // Disable if not editable
+                                >
+                                  {food.shared_with_public ? (
+                                    <Share2 className="w-4 h-4" />
+                                  ) : (
+                                    <Lock className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>
+                                  {canEdit(food)
+                                    ? food.shared_with_public
+                                      ? "Make private"
+                                      : "Share with public"
+                                    : "Not editable"}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
 
-                      {/* Nutrients (next 5 columns) */}
-                      {["calories", "protein", "carbs", "fat", "dietary_fiber"].map((nutrient) => {
-                        const isNutrientVisible = visibleNutrients.includes(nutrient);
-                        const value = isNutrientVisible ? (food.default_variant?.[nutrient as keyof FoodVariant] as number) || 0 : 0;
-                        const label = nutrient.replace(/_/g, " ");
-                        return (
-                          <div key={nutrient} className="text-right text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                            <span className="font-medium">
-                              {typeof value === 'number' ? value.toFixed(0) : value}
-                            </span>{" "}
-                            {label}
-                          </div>
-                        );
-                      })}
+                          {/* Edit Button */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEdit(food)}
+                                  disabled={!canEdit(food)} // Disable if not editable
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{canEdit(food) ? "Edit food" : "Not editable"}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
 
-                      {/* Action Buttons (last column) */}
-                      <div className="flex items-center space-x-2 justify-end">
-                        {/* Share/Lock Button */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() =>
-                                  handleShareFood(
-                                    food.id,
-                                    food.shared_with_public || false,
-                                  )
-                                }
-                                disabled={!canEdit(food)} // Disable if not editable
-                              >
-                                {food.shared_with_public ? (
-                                  <Share2 className="w-4 h-4" />
-                                ) : (
-                                  <Lock className="w-4 h-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>
-                                {canEdit(food)
-                                  ? food.shared_with_public
-                                    ? "Make private"
-                                    : "Share with public"
-                                  : "Not editable"}
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Edit Button */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleEdit(food)}
-                                disabled={!canEdit(food)} // Disable if not editable
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{canEdit(food) ? "Edit food" : "Not editable"}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Delete Button */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleDeleteRequest(food)}
-                                disabled={!canEdit(food)} // Disable if not editable
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{canEdit(food) ? "Delete food" : "Not editable"}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                          {/* Delete Button */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteRequest(food)}
+                                  disabled={!canEdit(food)} // Disable if not editable
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{canEdit(food) ? "Delete food" : "Not editable"}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </div>
                     </div>
                   ))}

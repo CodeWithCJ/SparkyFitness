@@ -86,7 +86,7 @@ const MealCard = ({
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
   debug(loggingLevel, "MealCard: Component rendered for meal:", meal.name);
-  debug(loggingLevel, "MealCard: meal.entries:", meal.entries); // Add this debug log
+  debug(loggingLevel, "MealCard: meal.entries:", meal.entries);
   const [editingFoodEntry, setEditingFoodEntry] = useState<FoodEntry | null>(
     null,
   );
@@ -112,20 +112,31 @@ const MealCard = ({
 
   const quickInfoPreferences = nutrientDisplayPreferences.find(
     (p) => p.view_group === "quick_info" && p.platform === platform,
+  ) || nutrientDisplayPreferences.find(
+    (p) => p.view_group === "quick_info" && p.platform === "desktop",
   );
   const foodDatabasePreferences = nutrientDisplayPreferences.find(
     (p) => p.view_group === "food_database" && p.platform === platform,
+  ) || nutrientDisplayPreferences.find(
+    (p) => p.view_group === "food_database" && p.platform === "desktop",
   );
   const summableNutrients = ["calories", "protein", "carbs", "fat", "dietary_fiber", "sugar", "sodium", "cholesterol", "saturated_fat", "trans_fat", "potassium", "vitamin_a", "vitamin_c", "iron", "calcium"];
   const allDisplayableNutrients = [...summableNutrients, "glycemic_index"];
 
+  const defaultNutrients = ["calories", "protein", "carbs", "fat", "dietary_fiber"];
+
   let quickInfoNutrients = quickInfoPreferences
-    ? [...quickInfoPreferences.visible_nutrients, ...(quickInfoPreferences.visible_nutrients.includes('glycemic_index') ? [] : ['glycemic_index'])]
-    : allDisplayableNutrients;
+    ? quickInfoPreferences.visible_nutrients
+    : defaultNutrients;
 
   let foodDatabaseNutrients = foodDatabasePreferences
-    ? [...foodDatabasePreferences.visible_nutrients, ...(foodDatabasePreferences.visible_nutrients.includes('glycemic_index') ? [] : ['glycemic_index'])]
-    : allDisplayableNutrients;
+    ? foodDatabasePreferences.visible_nutrients
+    : defaultNutrients;
+
+  debug(loggingLevel, "MealCard: isMobile:", isMobile);
+  debug(loggingLevel, "MealCard: platform:", platform);
+  debug(loggingLevel, "MealCard: quickInfoPreferences:", quickInfoPreferences);
+  debug(loggingLevel, "MealCard: foodDatabasePreferences:", foodDatabasePreferences);
 
   const visibleNutrientsForGrid = quickInfoNutrients.filter(nutrient => summableNutrients.includes(nutrient));
   const foodDatabaseVisibleNutrients = foodDatabaseNutrients.filter(nutrient => summableNutrients.includes(nutrient));

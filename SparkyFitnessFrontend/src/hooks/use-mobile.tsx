@@ -13,13 +13,13 @@ export function useIsMobile() {
   React.useEffect(() => {
     info(loggingLevel, "useIsMobile: useEffect triggered for mobile breakpoint listener.");
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      const newIsMobile = window.innerWidth < MOBILE_BREAKPOINT;
+    const onChange = (e: MediaQueryListEvent) => {
+      const newIsMobile = e.matches;
       debug(loggingLevel, "useIsMobile: Media query changed, new isMobile:", newIsMobile);
       setIsMobile(newIsMobile);
     }
     mql.addEventListener("change", onChange)
-    const initialIsMobile = window.innerWidth < MOBILE_BREAKPOINT;
+    const initialIsMobile = mql.matches;
     debug(loggingLevel, "useIsMobile: Initial isMobile state:", initialIsMobile);
     setIsMobile(initialIsMobile);
     return () => {
