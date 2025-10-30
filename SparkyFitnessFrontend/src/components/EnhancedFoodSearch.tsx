@@ -72,23 +72,23 @@ interface EnhancedFoodSearchProps {
 type FoodDataForBackend = Omit<CSVData, "id">;
 
 const NutrientGrid = ({ food, visibleNutrients }) => {
-  const nutrientDetails: { [key: string]: { label: string; unit: string } } = {
-    calories: { label: "cal", unit: "" },
-    protein: { label: "protein", unit: "g" },
-    carbs: { label: "carbs", unit: "g" },
-    fat: { label: "fat", unit: "g" },
-    dietary_fiber: { label: "fiber", unit: "g" },
-    sugars: { label: "sugar", unit: "g" },
-    sodium: { label: "sodium", unit: "mg" },
-    cholesterol: { label: "cholesterol", unit: "mg" },
-    saturated_fat: { label: "sat fat", unit: "g" },
-    trans_fat: { label: "trans fat", unit: "g" },
-    potassium: { label: "potassium", unit: "mg" },
-    vitamin_a: { label: "vit a", unit: "mcg" },
-    vitamin_c: { label: "vit c", unit: "mg" },
-    iron: { label: "iron", unit: "mg" },
-    calcium: { label: "calcium", unit: "mg" },
-    glycemic_index: { label: "GI", unit: "" },
+  const nutrientDetails: { [key: string]: { color: string; label: string; unit: string } } = {
+    calories: { color: "text-gray-900 dark:text-gray-100", label: "cal", unit: "" },
+    protein: { color: "text-blue-600", label: "protein", unit: "g" },
+    carbs: { color: "text-orange-600", label: "carbs", unit: "g" },
+    fat: { color: "text-yellow-600", label: "fat", unit: "g" },
+    dietary_fiber: { color: "text-green-600", label: "fiber", unit: "g" },
+    sugar: { color: "text-pink-500", label: "sugar", unit: "g" },
+    sodium: { color: "text-purple-500", label: "sodium", unit: "mg" },
+    cholesterol: { color: "text-indigo-500", label: "cholesterol", unit: "mg" },
+    saturated_fat: { color: "text-red-500", label: "sat fat", unit: "g" },
+    trans_fat: { color: "text-red-700", label: "trans fat", unit: "g" },
+    potassium: { color: "text-teal-500", label: "potassium", unit: "mg" },
+    vitamin_a: { color: "text-yellow-400", label: "vit a", unit: "mcg" },
+    vitamin_c: { color: "text-orange-400", label: "vit c", unit: "mg" },
+    iron: { color: "text-gray-500", label: "iron", unit: "mg" },
+    calcium: { color: "text-blue-400", label: "calcium", unit: "mg" },
+    glycemic_index: { color: "text-purple-600", label: "GI", unit: "" },
   };
 
   const getGridClass = (cols: number) => {
@@ -127,9 +127,13 @@ const NutrientGrid = ({ food, visibleNutrients }) => {
              : Number((food?.[nutrient as keyof FoodVariant] as number) || 0).toFixed(digits);
 
          return (
-           <span key={nutrient}>
-             <strong>{value}{details.unit}</strong> {details.label}
-           </span>
+           <div key={nutrient} className="whitespace-nowrap">
+             <span className={`font-medium ${details.color}`}>
+               {value}
+               {details.unit}
+             </span>{" "}
+             {details.label}
+           </div>
          );
       })}
     </div>
@@ -686,11 +690,16 @@ const EnhancedFoodSearch = ({
   };
 
   const quickInfoPreferences = nutrientDisplayPreferences.find(
-    (p) => p.view_group === "quick_info" && p.platform === platform
+    (p) => p.view_group === "quick_info" && p.platform === platform,
+  ) || nutrientDisplayPreferences.find(
+    (p) => p.view_group === "quick_info" && p.platform === "desktop",
   );
+
+  const defaultNutrients = ["calories", "protein", "carbs", "fat", "dietary_fiber"];
+
   const visibleNutrients = quickInfoPreferences
     ? quickInfoPreferences.visible_nutrients
-    : ["calories", "protein", "carbs", "fat"];
+    : defaultNutrients;
 
 
   return (
@@ -846,7 +855,7 @@ const EnhancedFoodSearch = ({
                                 </Badge>
                              )}
                            </div>
-                           <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />
+                           {food.default_variant && <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />}
                            <p className="text-xs text-gray-500 mt-1">
                              Per {food.default_variant?.serving_size}
                              {food.default_variant?.serving_unit}
@@ -899,7 +908,7 @@ const EnhancedFoodSearch = ({
                                 </Badge>
                              )}
                            </div>
-                           <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />
+                           {food.default_variant && <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />}
                            <p className="text-xs text-gray-500 mt-1">
                              Per {food.default_variant?.serving_size}
                              {food.default_variant?.serving_unit}
