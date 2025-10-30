@@ -152,8 +152,9 @@ const EnhancedFoodSearch = ({
     setDefaultFoodDataProviderId,
     loggingLevel,
     itemDisplayLimit,
+    foodDisplayLimit, // Add foodDisplayLimit here
     nutrientDisplayPreferences,
-  } = usePreferences(); // Get loggingLevel and itemDisplayLimit
+  } = usePreferences(); // Get loggingLevel, itemDisplayLimit, and foodDisplayLimit
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
   const [searchTerm, setSearchTerm] = useState("");
@@ -238,9 +239,11 @@ const EnhancedFoodSearch = ({
           setTopFoods(data.topFoods || []);
         } else {
           // Otherwise, perform a regular search
-          const data = await apiCall(
-            `/foods?name=${encodeURIComponent(term)}&broadMatch=true`
-          );
+          let query = `/foods?name=${encodeURIComponent(term)}&broadMatch=true&limit=${foodDisplayLimit}`;
+          if (!!mealType) {
+            query += `&mealType=${mealType}`;
+          }
+          const data = await apiCall(query);
           setFoods(data.searchResults || []);
         }
       } catch (err: any) {

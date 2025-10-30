@@ -9,7 +9,7 @@ function sanitizeGlycemicIndex(gi) {
   return gi;
 }
 
-async function searchFoods(name, userId, exactMatch, broadMatch, checkCustom) {
+async function searchFoods(name, userId, exactMatch, broadMatch, checkCustom, limit = 10) {
   const client = await getClient(userId); // User-specific operation
   try {
     let query = `
@@ -58,7 +58,8 @@ async function searchFoods(name, userId, exactMatch, broadMatch, checkCustom) {
       throw new Error("Invalid search parameters.");
     }
 
-    query += " LIMIT 3";
+    query += ` LIMIT $${paramIndex++}`;
+    queryParams.push(limit);
     const result = await client.query(query, queryParams);
     return result.rows;
   } finally {

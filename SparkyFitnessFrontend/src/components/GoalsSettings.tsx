@@ -26,6 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { resetOnboardingStatus } from "@/services/onboardingService";
 
 import { ExpandedGoals } from '@/types/goals';
+import { DEFAULT_GOALS } from '@/constants/goals';
 
 const GoalsSettings = () => {
   const { user, signOut } = useAuth();
@@ -56,15 +57,7 @@ const GoalsSettings = () => {
     }
   };
 
-  const [goals, setGoals] = useState<ExpandedGoals>({
-    calories: 2000, protein: 150, carbs: 250, fat: 67, water_goal_ml: 1920, // Default to 8 glasses * 240ml
-    saturated_fat: 20, polyunsaturated_fat: 10, monounsaturated_fat: 25, trans_fat: 0,
-    cholesterol: 300, sodium: 2300, potassium: 3500, dietary_fiber: 25, sugars: 50,
-    vitamin_a: 900, vitamin_c: 90, calcium: 1000, iron: 18,
-    target_exercise_calories_burned: 0, target_exercise_duration_minutes: 0,
-    protein_percentage: null, carbs_percentage: null, fat_percentage: null,
-    breakfast_percentage: 25, lunch_percentage: 25, dinner_percentage: 25, snacks_percentage: 25
-  });
+  const [goals, setGoals] = useState<ExpandedGoals>(DEFAULT_GOALS); // Initialize with DEFAULT_GOALS
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -99,37 +92,13 @@ const GoalsSettings = () => {
         method: 'GET',
       });
 
-      if (data && data.length > 0) {
-        const goalData = data[0];
-        setGoals({
-          calories: goalData.calories || 2000,
-          protein: goalData.protein || 150,
-          carbs: goalData.carbs || 250,
-          fat: goalData.fat || 67,
-          water_goal_ml: goalData.water_goal_ml || 1920, // Default to 8 glasses * 240ml
-          saturated_fat: goalData.saturated_fat || 20,
-          polyunsaturated_fat: goalData.polyunsaturated_fat || 10,
-          monounsaturated_fat: goalData.monounsaturated_fat || 25,
-          trans_fat: goalData.trans_fat || 0,
-          cholesterol: goalData.cholesterol || 300,
-          sodium: goalData.sodium || 2300,
-          potassium: goalData.potassium || 3500,
-          dietary_fiber: goalData.dietary_fiber || 25,
-          sugars: goalData.sugars || 50,
-          vitamin_a: goalData.vitamin_a || 900,
-          vitamin_c: goalData.vitamin_c || 90,
-          calcium: goalData.calcium || 1000,
-          iron: goalData.iron || 18,
-          target_exercise_calories_burned: goalData.target_exercise_calories_burned || 0,
-          target_exercise_duration_minutes: goalData.target_exercise_duration_minutes || 0,
-          protein_percentage: goalData.protein_percentage || null,
-          carbs_percentage: goalData.carbs_percentage || null,
-          fat_percentage: goalData.fat_percentage || null,
-          breakfast_percentage: goalData.breakfast_percentage || 25,
-          lunch_percentage: goalData.lunch_percentage || 25,
-          dinner_percentage: goalData.dinner_percentage || 25,
-          snacks_percentage: goalData.snacks_percentage || 25
-        });
+      if (data) {
+        // The API now returns the correct goal, including defaults if none are found.
+        // So we can directly set the goals from the API response.
+        setGoals(data);
+      } else {
+        // Fallback to default goals if API returns nothing (shouldn't happen with current backend logic)
+        setGoals(DEFAULT_GOALS);
       }
     } catch (error) {
       console.error('Error loading goals:', error);
@@ -153,17 +122,13 @@ const GoalsSettings = () => {
   };
 
   const handleCreatePresetClick = () => {
+    const presetName = `Preset ${new Date().toLocaleString()}`;
     setCurrentPreset({
-      preset_name: '',
-      calories: 2000, protein: 150, carbs: 250, fat: 67, water_goal_ml: 1920, // Default to 8 glasses * 240ml
-      saturated_fat: 20, polyunsaturated_fat: 10, monounsaturated_fat: 25, trans_fat: 0,
-      cholesterol: 300, sodium: 2300, potassium: 3500, dietary_fiber: 25, sugars: 50,
-      vitamin_a: 900, vitamin_c: 90, calcium: 1000, iron: 18,
-      target_exercise_calories_burned: 0, target_exercise_duration_minutes: 0,
-      protein_percentage: null, carbs_percentage: null, fat_percentage: null,
-      breakfast_percentage: 25, lunch_percentage: 25, dinner_percentage: 25, snacks_percentage: 25
+      ...goals, // Start with today's goals
+      preset_name: presetName,
+      id: undefined, // Ensure it's treated as a new preset
     });
-    setPresetMacroInputType('grams'); // Default to grams for new preset
+    setPresetMacroInputType('grams');
     setIsPresetDialogOpen(true);
   };
 
@@ -931,6 +896,7 @@ const GoalsSettings = () => {
                   dinner: currentPreset.dinner_percentage,
                   snacks: currentPreset.snacks_percentage,
                 }}
+                totalCalories={currentPreset.calories} // Add this line
                 onPercentagesChange={(newPercentages) => {
                   setCurrentPreset(prevPreset => prevPreset ? ({
                     ...prevPreset,

@@ -699,7 +699,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="item_display_limit">Recent/Top Limit</Label>
+                <Label htmlFor="item_display_limit">Search/Recent/Top Limit</Label>
                 <Select
                   value={String(itemDisplayLimit)}
                   onValueChange={(value) => setItemDisplayLimit(Number(value))}
