@@ -33,11 +33,8 @@ async function deleteFoodEntriesByTemplateId(
     let query = `DELETE FROM food_entries WHERE meal_plan_template_id = $1 AND user_id = $2`;
     const params = [templateId, userId];
 
-    if (currentClientDate) {
-      // Only delete from currentClientDate onwards
-      query += ` AND entry_date >= $3`;
-      params.push(currentClientDate);
-    }
+    // Only delete from today onwards
+    query += ` AND entry_date >= CURRENT_DATE`;
 
     const result = await client.query(query, params);
     return result.rowCount;
