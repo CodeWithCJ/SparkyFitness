@@ -19,14 +19,15 @@ async function updateUserPreferences(userId, preferenceData) {
         bmr_algorithm = COALESCE($12, bmr_algorithm),
         body_fat_algorithm = COALESCE($13, body_fat_algorithm),
         include_bmr_in_net_calories = COALESCE($14, include_bmr_in_net_calories),
+        language = COALESCE($15, language),
         updated_at = now()
-      WHERE user_id = $15
+      WHERE user_id = $16
       RETURNING *`,
       [
         preferenceData.date_format, preferenceData.default_weight_unit, preferenceData.default_measurement_unit, preferenceData.default_distance_unit,
         preferenceData.system_prompt, preferenceData.auto_clear_history, preferenceData.logging_level, preferenceData.timezone,
         preferenceData.default_food_data_provider_id, preferenceData.item_display_limit, preferenceData.water_display_unit,
-        preferenceData.bmr_algorithm, preferenceData.body_fat_algorithm, preferenceData.include_bmr_in_net_calories, userId
+        preferenceData.bmr_algorithm, preferenceData.body_fat_algorithm, preferenceData.include_bmr_in_net_calories, preferenceData.language, userId
       ]
     );
     return result.rows[0];
@@ -70,13 +71,13 @@ async function upsertUserPreferences(preferenceData) {
        system_prompt, auto_clear_history, logging_level, timezone,
        default_food_data_provider_id, item_display_limit, water_display_unit,
        bmr_algorithm, body_fat_algorithm, include_bmr_in_net_calories,
-       created_at, updated_at
+       language, created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
        COALESCE($6, ''), COALESCE($7, 'never'), COALESCE($8, 'INFO'), COALESCE($9, 'UTC'),
        $10, COALESCE($11, 10), COALESCE($12, 'ml'),
        COALESCE($13, 'Mifflin-St Jeor'), COALESCE($14, 'U.S. Navy'), COALESCE($15, false),
-       now(), now()
+       COALESCE($16, 'en'), now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
        date_format = COALESCE(EXCLUDED.date_format, user_preferences.date_format),
@@ -93,13 +94,14 @@ async function upsertUserPreferences(preferenceData) {
        bmr_algorithm = COALESCE(EXCLUDED.bmr_algorithm, user_preferences.bmr_algorithm),
        body_fat_algorithm = COALESCE(EXCLUDED.body_fat_algorithm, user_preferences.body_fat_algorithm),
        include_bmr_in_net_calories = COALESCE(EXCLUDED.include_bmr_in_net_calories, user_preferences.include_bmr_in_net_calories),
+       language = COALESCE(EXCLUDED.language, user_preferences.language),
        updated_at = now()
      RETURNING *`,
      [
        preferenceData.user_id, preferenceData.date_format, preferenceData.default_weight_unit, preferenceData.default_measurement_unit, preferenceData.default_distance_unit,
        preferenceData.system_prompt, preferenceData.auto_clear_history, preferenceData.logging_level, preferenceData.timezone,
        preferenceData.default_food_data_provider_id, preferenceData.item_display_limit, preferenceData.water_display_unit,
-       preferenceData.bmr_algorithm, preferenceData.body_fat_algorithm, preferenceData.include_bmr_in_net_calories
+       preferenceData.bmr_algorithm, preferenceData.body_fat_algorithm, preferenceData.include_bmr_in_net_calories, preferenceData.language
      ]
     );
     return result.rows[0];

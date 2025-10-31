@@ -1,0 +1,129 @@
+{
+  "nav": {
+    "diary": "Diary",
+    "checkin": "Check-In",
+    "reports": "Reports",
+    "foods": "Foods",
+    "exercises": "Exercises",
+    "goals": "Goals",
+    "settings": "Settings",
+    "admin": "Admin"
+  },
+  "settings": {
+    "profileInformation": {
+      "title": "Profile Information",
+      "description": "Manage your personal information and profile picture",
+      "changePhoto": "Change Photo",
+      "photoSize": "PNG, JPG up to 5MB",
+      "fullName": "Full Name",
+      "enterFullName": "Enter your full name",
+      "phoneNumber": "Phone Number",
+      "enterPhoneNumber": "Enter your phone number",
+      "dateOfBirth": "Date of Birth",
+      "pickADate": "Pick a date",
+      "gender": "Gender",
+      "selectGender": "Select Gender",
+      "male": "Male",
+      "female": "Female",
+      "other": "Other",
+      "bio": "Bio",
+      "tellAboutYourself": "Tell us about yourself",
+      "saveProfile": "Save Profile",
+      "saving": "Saving..."
+    },
+    "preferences": {
+      "title": "Preferences",
+      "description": "Customize your app settings and display preferences",
+      "dateFormat": "Date Format",
+      "weightUnit": "Weight Unit",
+      "kilograms": "Kilograms (kg)",
+      "pounds": "Pounds (lbs)",
+      "measurementUnit": "Measurement Unit",
+      "centimeters": "Centimeters (cm)",
+      "inches": "Inches (in)",
+      "distanceUnit": "Distance Unit",
+      "kilometers": "Kilometers (km)",
+      "miles": "Miles (miles)",
+      "loggingLevel": "Minimum Logging Level",
+      "debug": "DEBUG (Most Detailed)",
+      "info": "INFO",
+      "warn": "WARN",
+      "error": "ERROR",
+      "silent": "SILENT (No Logs)",
+      "itemDisplayLimit": "Search/Recent/Top Limit",
+      "items": "{{count}} items",
+      "language": "Language",
+      "english": "English",
+      "tamil": "தமிழ்",
+      "savePreferences": "Save Preferences"
+    },
+    "waterTracking": {
+      "title": "Water Tracking",
+      "description": "Configure your water intake tracking settings",
+      "waterDisplayUnit": "Water Display Unit",
+      "milliliters": "Milliliters (ml)",
+      "fluidOunces": "Fluid Ounces (oz)",
+      "cups": "Cups",
+      "saveWaterDisplayUnit": "Save Water Display Unit"
+    },
+    "nutrientDisplay": {
+      "title": "Nutrient Display",
+      "description": "Choose which nutrients to display in food and meal views"
+    },
+    "calculationSettings": {
+      "title": "Calculation Settings",
+      "description": "Manage BMR and Body Fat calculation preferences"
+    },
+    "familyAccess": {
+      "title": "Family Access",
+      "description": "Manage access to your data for family members"
+    },
+    "customCategories": {
+      "title": "Custom Categories",
+      "description": "Create and manage custom measurement categories"
+    },
+    "foodExerciseDataProviders": {
+      "title": "Food & Exercise Data Providers",
+      "description": "Configure external food and exercise data sources and synchronize data with Garmin Connect",
+      "invalidKeyLengthWarning": "If you encounter an \"Invalid key length\" error, ensure your encryption and JWT authentication keys in the server's env variables are 64 hex."
+    },
+    "aiService": {
+      "title": "AI Service",
+      "description": "Manage settings for AI-powered features",
+      "invalidKeyLengthWarning": "If you encounter an \"Invalid key length\" error, ensure your encryption and JWT authentication keys in the server's env variables are 64 hex."
+    },
+    "apiKeyManagement": {
+      "title": "API Key Management",
+      "description": "Generate and manage API keys for external integrations",
+      "infoText": "Generate API keys to securely submit data from external applications like iPhone Shortcuts. These keys are tied to your account and can be revoked at any time.",
+      "wikiWarning": "Refer to the Wiki page in Github for sample setup instructions for iPhone and Android.",
+      "descriptionPlaceholder": "Description (e.g., 'iPhone Health Shortcut')",
+      "generateNewKey": "Generate New Key",
+      "generating": "Generating...",
+      "noApiKeys": "No API keys generated yet.",
+      "noDescription": "No Description",
+      "copied": "Copied!",
+      "apiKeyCopied": "API key copied to clipboard.",
+      "created": "Created:",
+      "lastUsed": "Last Used:",
+      "deleteApiKeyConfirm": "Are you sure you want to delete this API key? This action cannot be undone."
+    },
+    "accountSecurity": {
+      "title": "Account Security",
+      "description": "Change your email or password",
+      "currentEmail": "Current Email",
+      "enterNewEmail": "Enter new email address",
+      "updateEmail": "Update Email",
+      "verifyNewEmail": "You'll need to verify your new email address",
+      "changePassword": "Change Password",
+      "newPassword": "New Password",
+      "enterNewPassword": "Enter new password",
+      "confirmNewPassword": "Confirm New Password",
+      "updatePassword": "Update Password",
+      "updating": "Updating...",
+      "newPasswordsDoNotMatch": "New passwords do not match",
+      "passwordLengthError": "Password must be at least 6 characters long",
+      "enterNewEmailAddress": "Please enter a new email address"
+    }
+  }
+}
