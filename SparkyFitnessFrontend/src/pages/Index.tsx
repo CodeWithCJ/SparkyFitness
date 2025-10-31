@@ -3,12 +3,13 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from "@/utils/logging";
 import { apiCall } from "@/services/api";
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import FoodDiary from "@/components/FoodDiary";
 import FoodDatabaseManager from "@/components/FoodDatabaseManager";
 import ExerciseDatabaseManager from "@/components/ExerciseDatabaseManager";
-import { ExerciseInPreset } from "@/types/workout"; // Import PresetExercise
+import { PresetExercise } from "@/types/workout.d"; // Import PresetExercise
 import Reports from "@/components/Reports";
 import AddComp from "@/components/AddComp";
 import CheckIn from "@/components/CheckIn";
@@ -51,6 +52,7 @@ interface IndexProps {
 }
 
 const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
+  const { t } = useTranslation();
   const { user, signOut, loading: authLoading } = useAuth();
   const {
     isActingOnBehalf,
@@ -67,7 +69,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
   const [appVersion, setAppVersion] = useState("Loading...");
   const [isAddCompOpen, setIsAddCompOpen] = useState(false);
   const [exercisesToLogFromPreset, setExercisesToLogFromPreset] = useState<
-    ExerciseInPreset[] | undefined
+    PresetExercise[] | undefined
   >(undefined);
 
   useEffect(() => {
@@ -191,32 +193,32 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
     const mobileTabs = [];
     if (!isActingOnBehalf) {
       mobileTabs.push(
-        { value: "home", label: "Diary", icon: Home },
-        { value: "reports", label: "Reports", icon: BarChart3 },
+        { value: "home", label: t('nav.diary'), icon: Home },
+        { value: "reports", label: t('nav.reports'), icon: BarChart3 },
         { value: "Add", label: "Add", icon: isAddCompOpen ? X : Home },
-        { value: "settings", label: "Settings", icon: SettingsIcon }
+        { value: "settings", label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
       if (hasWritePermission("calorie")) {
-        mobileTabs.push({ value: "home", label: "Diary", icon: Home });
+        mobileTabs.push({ value: "home", label: t('nav.diary'), icon: Home });
       }
       if (hasWritePermission("checkin")) {
         mobileTabs.push({
           value: "checkin",
-          label: "Check-In",
+          label: t('nav.checkin'),
           icon: Activity,
         });
       }
       if (hasPermission("reports")) {
         mobileTabs.push({
           value: "reports",
-          label: "Reports",
+          label: t('nav.reports'),
           icon: BarChart3,
         });
       }
     }
     if (user?.role === "admin") {
-      mobileTabs.push({ value: "admin", label: "Admin", icon: Shield });
+      mobileTabs.push({ value: "admin", label: t('nav.admin'), icon: Shield });
     }
     return mobileTabs;
   }, [
@@ -237,27 +239,27 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
     const tabs = [];
     if (!isActingOnBehalf) {
       tabs.push(
-        { value: "home", label: "Diary", icon: Home },
-        { value: "checkin", label: "Check-In", icon: Activity },
-        { value: "reports", label: "Reports", icon: BarChart3 },
-        { value: "foods", label: "Foods", icon: Utensils },
-        { value: "exercises", label: "Exercises", icon: Dumbbell },
-        { value: "goals", label: "Goals", icon: Target },
-        { value: "settings", label: "Settings", icon: SettingsIcon }
+        { value: "home", label: t('nav.diary'), icon: Home },
+        { value: "checkin", label: t('nav.checkin'), icon: Activity },
+        { value: "reports", label: t('nav.reports'), icon: BarChart3 },
+        { value: "foods", label: t('nav.foods'), icon: Utensils },
+        { value: "exercises", label: t('nav.exercises'), icon: Dumbbell },
+        { value: "goals", label: t('nav.goals'), icon: Target },
+        { value: "settings", label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
       if (hasWritePermission("calorie")) {
-        tabs.push({ value: "home", label: "Diary", icon: Home });
+        tabs.push({ value: "home", label: t('nav.diary'), icon: Home });
       }
       if (hasWritePermission("checkin")) {
-        tabs.push({ value: "checkin", label: "Check-In", icon: Activity });
+        tabs.push({ value: "checkin", label: t('nav.checkin'), icon: Activity });
       }
       if (hasPermission("reports")) {
-        tabs.push({ value: "reports", label: "Reports", icon: BarChart3 });
+        tabs.push({ value: "reports", label: t('nav.reports'), icon: BarChart3 });
       }
     }
     if (user?.role === "admin") {
-      tabs.push({ value: "admin", label: "Admin", icon: Shield });
+      tabs.push({ value: "admin", label: t('nav.admin'), icon: Shield });
     }
     return tabs;
   }, [

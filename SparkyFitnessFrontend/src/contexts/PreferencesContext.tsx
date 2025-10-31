@@ -62,6 +62,7 @@ interface PreferencesContextType {
   itemDisplayLimit: number;
   nutrientDisplayPreferences: NutrientPreference[];
   water_display_unit: 'ml' | 'oz' | 'liter';
+  language: string;
   setWeightUnit: (unit: 'kg' | 'lbs') => void;
   setMeasurementUnit: (unit: 'cm' | 'inches') => void;
   setDistanceUnit: (unit: 'km' | 'miles') => void; // Add setter for distance unit
@@ -73,6 +74,7 @@ interface PreferencesContextType {
   setItemDisplayLimit: (limit: number) => void;
   loadNutrientDisplayPreferences: () => Promise<void>;
   setWaterDisplayUnit: (unit: 'ml' | 'oz' | 'liter') => void;
+  setLanguage: (language: string) => void;
   convertWeight: (value: number, from: 'kg' | 'lbs', to: 'kg' | 'lbs') => number;
   convertMeasurement: (value: number, from: 'cm' | 'inches', to: 'cm' | 'inches') => number;
   convertDistance: (value: number, from: 'km' | 'miles', to: 'km' | 'miles') => number; // Add distance converter
@@ -107,6 +109,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10); // Add state for foodDisplayLimit
   const [nutrientDisplayPreferences, setNutrientDisplayPreferences] = useState<NutrientPreference[]>([]);
   const [waterDisplayUnit, setWaterDisplayUnitState] = useState<'ml' | 'oz' | 'liter'>('ml');
+  const [language, setLanguageState] = useState<string>('en');
 
   // Log initial state
   useEffect(() => {
@@ -127,6 +130,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         const savedMeasurementUnit = localStorage.getItem('measurementUnit') as 'cm' | 'inches';
         const savedDistanceUnit = localStorage.getItem('distanceUnit') as 'km' | 'miles'; // Load distance unit
         const savedDateFormat = localStorage.getItem('dateFormat');
+        const savedLanguage = localStorage.getItem('language');
         // auto_clear_history and loggingLevel are not stored in localStorage, defaults to 'never' and 'INFO' respectively
 
         if (savedWeightUnit) {
@@ -144,6 +148,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (savedDistanceUnit) {
           setDistanceUnitState(savedDistanceUnit);
           debug(loggingLevel, "PreferencesProvider: Loaded distanceUnit from localStorage:", savedDistanceUnit);
+        }
+        if (savedLanguage) {
+          setLanguageState(savedLanguage);
+          debug(loggingLevel, "PreferencesProvider: Loaded language from localStorage:", savedLanguage);
         }
       }
     }
@@ -171,6 +179,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setItemDisplayLimitState(data.item_display_limit || 10);
         setFoodDisplayLimitState(data.food_display_limit || 10); // Set foodDisplayLimit state
         setWaterDisplayUnitState(data.water_display_unit || 'ml');
+        setLanguageState(data.language || 'en');
         info(loggingLevel, 'PreferencesContext: Preferences states updated from database.');
       } else {
         info(loggingLevel, 'PreferencesContext: No preferences found, creating default preferences.');
@@ -216,6 +225,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         item_display_limit: 10,
         food_display_limit: 10, // Add default foodDisplayLimit
         water_display_unit: waterDisplayUnit, // Set default water display unit
+        language: 'en',
       };
 
 
@@ -251,6 +261,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     item_display_limit: number;
     food_display_limit: number; // Add foodDisplayLimit to updates type
     water_display_unit: 'ml' | 'oz' | 'liter';
+    language: string;
   }>) => {
     debug(loggingLevel, "PreferencesProvider: Attempting to update preferences with:", updates);
     if (!user) {
@@ -271,6 +282,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (updates.date_format) {
         localStorage.setItem('dateFormat', updates.date_format);
         debug(loggingLevel, "PreferencesProvider: Saved dateFormat to localStorage:", updates.date_format);
+      }
+      if (updates.language) {
+        localStorage.setItem('language', updates.language);
+        debug(loggingLevel, "PreferencesProvider: Saved language to localStorage:", updates.language);
       }
       // default_food_data_provider_id, logging_level and item_display_limit are not stored in localStorage
       // food_display_limit is also not stored in localStorage
@@ -455,6 +470,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       item_display_limit: newPrefs?.itemDisplayLimit ?? itemDisplayLimit,
       food_display_limit: foodDisplayLimit, // This is not in the context setters, so we use the state value
       water_display_unit: newPrefs?.water_display_unit ?? waterDisplayUnit,
+      language: newPrefs?.language ?? language,
     };
 
     try {
@@ -504,6 +520,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       foodDisplayLimit, // Expose foodDisplayLimit
       nutrientDisplayPreferences,
       water_display_unit: waterDisplayUnit,
+      language,
       setWeightUnit,
       setMeasurementUnit,
       setDistanceUnit, // Expose setDistanceUnit
@@ -515,6 +532,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setItemDisplayLimit,
       loadNutrientDisplayPreferences,
       setWaterDisplayUnit: setWaterDisplayUnitState,
+      setLanguage: setLanguageState,
       convertWeight,
       convertMeasurement,
       convertDistance, // Expose convertDistance
