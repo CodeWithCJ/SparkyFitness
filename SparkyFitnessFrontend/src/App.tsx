@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { ChatbotVisibilityProvider } from "@/contexts/ChatbotVisibilityContext";
+import LanguageHandler from "@/components/LanguageHandler";
 import { WaterContainerProvider } from "@/contexts/WaterContainerContext"; // Import WaterContainerProvider
 import { ActiveUserProvider } from "@/contexts/ActiveUserContext"; // Import ActiveUserProvider
 import AppContent from "@/components/AppContent";
@@ -21,6 +23,7 @@ import ExternalProviderSettings from '@/components/ExternalProviderSettings'; //
 const queryClient = new QueryClient();
 
 const App = () => {
+  const { t } = useTranslation();
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const [latestRelease, setLatestRelease] = useState(null);
   const [showNewReleaseDialog, setShowNewReleaseDialog] = useState(false);
@@ -39,6 +42,7 @@ const App = () => {
     fetchVersion();
   }, []);
 
+
   const handleDismissRelease = (version: string) => {
     localStorage.setItem('dismissedReleaseVersion', version);
     setShowNewReleaseDialog(false);
@@ -47,6 +51,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider>
+        <LanguageHandler />
         <ChatbotVisibilityProvider>
           <WaterContainerProvider> {/* Wrap with WaterContainerProvider */}
             <ActiveUserProvider> {/* Wrap with ActiveUserProvider */}
