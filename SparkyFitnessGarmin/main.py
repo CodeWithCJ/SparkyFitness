@@ -115,7 +115,7 @@ ALL_HEALTH_METRICS = [
     "heart_rates", "sleep", "stress", "respiration", "spo2",
     "intensity_minutes", "training_readiness", "training_status", "max_metrics",
     "hrv", "lactate_threshold", "endurance_score", "hill_score", "race_predictions",
-    "blood_pressure", "body_battery", "menstrual_data", "floors", "fitness_age", "body_composition"
+    "blood_pressure", "body_battery", "menstrual_data", "floors", "fitness_age", "body_composition", "hydration"
 ]
 
 class HealthAndWellnessRequest(BaseModel):
@@ -206,6 +206,15 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                             health_data["sedentary_seconds"].append({"date": current_date, "value": safe_convert(summary_data.get("sedentarySeconds"), seconds_to_minutes)})
                 except Exception as e:
                     logger.warning(f"Could not retrieve daily summary for {current_date}: {e}")
+
+            # Hydration
+            if "hydration" in metric_types_to_fetch:
+                try:
+                    hydration_data = garmin.get_hydration_data(current_date)
+                    if hydration_data and hydration_data.get("valueInML") is not None:
+                        health_data["water"].append({"date": current_date, "value": hydration_data["valueInML"]})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve hydration data for {current_date}: {e}")
 
             # Floors
             if "floors" in metric_types_to_fetch:
@@ -358,11 +367,13 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                     systolic = bp_entry.get("systolic")
                                     diastolic = bp_entry.get("diastolic")
                                     pulse = bp_entry.get("pulse")
-                                    if systolic is not None and diastolic is not None and pulse is not None:
-                                        formatted_bp = f"{systolic}/{diastolic}, {pulse} bpm"
+                                    if systolic is not None and diastolic is not None:
+                                        bp_value = f"{systolic}/{diastolic}"
+                                        if pulse is not None:
+                                            bp_value += f", {pulse} bpm"
                                         health_data["blood_pressure"].append({
                                             "date": current_date,
-                                            "value": formatted_bp
+                                            "value": bp_value
                                         })
                                     else:
                                         logger.warning(f"Incomplete blood pressure data for {current_date}: {bp_entry}")

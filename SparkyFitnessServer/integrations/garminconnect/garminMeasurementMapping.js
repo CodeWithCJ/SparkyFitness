@@ -6,6 +6,7 @@ const garminMeasurementMapping = {
     'body_water_percentage': { targetType: 'check_in', field: 'body_water_percentage', dataType: 'numeric', measurementType: '%' },
     'bone_mass': { targetType: 'custom', name: 'Bone Mass', dataType: 'numeric', measurementType: 'kg', frequency: 'Daily' },
     'muscle_mass': { targetType: 'check_in', field: 'muscle_mass_kg', dataType: 'numeric', measurementType: 'kg' },
+    'hydration': { targetType: 'check_in', field: 'water', dataType: 'numeric', measurementType: 'ml' },
 
     // Custom Measurements
     'resting_heart_rate': { targetType: 'custom', name: 'Resting Heart Rate', dataType: 'numeric', measurementType: 'bpm', frequency: 'Daily' },
