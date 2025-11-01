@@ -13,7 +13,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
   const errors = [];
 
   for (const dataEntry of healthDataArray) {
-    const { value, type, date, timestamp, source = 'manual' } = dataEntry; // Added source with default
+    const { value, type, date, timestamp, source = 'manual', dataType, measurementType } = dataEntry; // Added source and dataType with default
 
     if (value === undefined || value === null || !type || !date) { // Check for undefined/null value
       errors.push({ error: "Missing required fields: value, type, date in one of the entries", entry: dataEntry });
@@ -88,20 +88,24 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           result = await exerciseEntryDb.upsertExerciseEntryData(userId, actingUserId, exerciseId, activeCaloriesValue, parsedDate);
           processedResults.push({ type, status: 'success', data: result });
           break;
-        case 'weight': // Add case for weight
-          const weightValue = parseFloat(value);
-          if (isNaN(weightValue) || weightValue <= 0) {
-            errors.push({ error: "Invalid value for weight. Must be a positive number.", entry: dataEntry });
+        case 'weight':
+        case 'body_fat_percentage':
+        case 'body_water_percentage':
+        case 'muscle_mass_kg':
+        case 'visceral_fat_level':
+          const numericValue = parseFloat(value);
+          if (isNaN(numericValue) || numericValue <= 0) {
+            errors.push({ error: `Invalid value for ${type}. Must be a positive number.`, entry: dataEntry });
             break;
           }
-          // Assuming upsertCheckInMeasurements can handle individual fields
-          result = await measurementRepository.upsertCheckInMeasurements(userId, actingUserId, parsedDate, { weight: weightValue });
+          const checkInMeasurements = { [type]: numericValue };
+          result = await measurementRepository.upsertCheckInMeasurements(userId, actingUserId, parsedDate, checkInMeasurements);
           processedResults.push({ type, status: 'success', data: result });
           break;
         default:
           // Handle as custom measurement
           // Get or create custom category first to check its data_type
-          const category = await getOrCreateCustomCategory(userId, actingUserId, type);
+          const category = await getOrCreateCustomCategory(userId, actingUserId, type, dataType, measurementType);
           if (!category || !category.id) {
             errors.push({ error: `Failed to get or create custom category for type: ${type}`, entry: dataEntry });
             break;
@@ -155,7 +159,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
 }
 
 // Helper function to get or create a custom category
-async function getOrCreateCustomCategory(userId, actingUserId, categoryName) {
+async function getOrCreateCustomCategory(userId, actingUserId, categoryName, dataType = 'numeric', measurementType = 'N/A') {
   // Try to get existing category
   const existingCategories = await measurementRepository.getCustomCategories(userId);
   let category = existingCategories.find(cat => cat.name === categoryName);
@@ -168,9 +172,9 @@ async function getOrCreateCustomCategory(userId, actingUserId, categoryName) {
       user_id: userId,
       created_by_user_id: actingUserId, // Use actingUserId for audit
       name: categoryName,
-      measurement_type: 'numeric', // Default to numeric for Health Connect data
+      measurement_type: measurementType, // Default to numeric for Health Connect data
       frequency: 'Daily', // Default frequency, can be refined later if needed
-      data_type: 'numeric' // Default to numeric for new categories from health data
+      data_type: dataType // Default to numeric for new categories from health data
     };
     const newCategory = await measurementRepository.createCustomCategory(newCategoryData);
     // To return the full category object including the id and the default data_type
@@ -399,7 +403,7 @@ async function updateCustomCategory(authenticatedUserId, id, updateData) {
 
 async function deleteCustomCategory(authenticatedUserId, id) {
   try {
-    const categoryOwnerId = await measurementRepository.getCustomCategoryOwnerId(id);
+    const categoryOwnerId = await measurementRepository.getCustomCategoryOwnerId(id, authenticatedUserId); // Pass authenticatedUserId
     if (!categoryOwnerId) {
       throw new Error('Custom category not found.');
     }

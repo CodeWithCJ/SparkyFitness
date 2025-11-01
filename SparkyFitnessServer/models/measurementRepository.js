@@ -344,7 +344,7 @@ async function getCustomMeasurementEntries(userId, limit, orderBy, filter) {
   const client = await getClient(userId); // User-specific operation
   try {
     let query = `
-      SELECT cm.*,
+      SELECT cm.*, cm.entry_date::TEXT,
              json_build_object(
                'name', cc.name,
                'measurement_type', cc.measurement_type,
@@ -353,7 +353,7 @@ async function getCustomMeasurementEntries(userId, limit, orderBy, filter) {
              ) AS custom_categories
       FROM custom_measurements cm
       JOIN custom_categories cc ON cm.category_id = cc.id
-      WHERE cm.user_id = $1
+      WHERE cm.user_id = $1 AND cm.value IS NOT NULL
     `;
    const queryParams = [userId];
    let paramIndex = 2;
@@ -421,7 +421,7 @@ async function getCheckInMeasurementsByDateRange(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT *, updated_at FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date DESC, updated_at DESC',
+      'SELECT *, entry_date::TEXT, updated_at FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY check_in_measurements.entry_date DESC, updated_at DESC',
       [userId, startDate, endDate]
     );
     log('debug', `[measurementRepository] getCheckInMeasurementsByDateRange returning: ${JSON.stringify(result.rows)}`);
@@ -442,7 +442,7 @@ async function getCustomMeasurementsByDateRange(userId, categoryId, startDate, e
       queryParams.push(source);
     }
 
-    query += ' ORDER BY entry_date, entry_timestamp';
+    query += ' ORDER BY custom_measurements.entry_date, custom_measurements.entry_timestamp';
 
     const result = await client.query(query, queryParams);
     return result.rows;

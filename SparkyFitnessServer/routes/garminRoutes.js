@@ -70,9 +70,76 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
         const healthWellnessData = await garminConnectService.syncGarminHealthAndWellness(userId, startDate, endDate, metricTypes);
         log('debug', `Raw healthWellnessData from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, healthWellnessData);
 
+        // Process the raw healthWellnessData using measurementService
+        const processedHealthData = [];
+        const checkInDataByDate = {}; // Use an object to group check-in data by date
+
+        for (const metric in healthWellnessData.data) {
+            const dailyEntries = healthWellnessData.data[metric];
+            if (Array.isArray(dailyEntries)) {
+                for (const entry of dailyEntries) {
+                    const calendarDateRaw = entry.date;
+                    if (!calendarDateRaw) continue; // Skip if no date is present
+
+                    // Convert timestamp to YYYY-MM-DD format
+                    const calendarDate = moment(calendarDateRaw).format('YYYY-MM-DD');
+
+                    if (metric === 'body_composition') {
+                        if (!checkInDataByDate[calendarDate]) {
+                            checkInDataByDate[calendarDate] = {};
+                        }
+                        if (entry.weight !== undefined) checkInDataByDate[calendarDate].weight = entry.weight;
+                        if (entry.body_fat_percentage !== undefined) checkInDataByDate[calendarDate].body_fat_percentage = entry.body_fat_percentage;
+                        if (entry.body_water_percentage !== undefined) checkInDataByDate[calendarDate].body_water_percentage = entry.body_water_percentage;
+                        if (entry.muscle_mass !== undefined) checkInDataByDate[calendarDate].muscle_mass_kg = entry.muscle_mass;
+                    } else {
+                        // Handle other metrics, including custom measurements
+                        for (const key in entry) {
+                            if (key !== 'date') {
+                                const mapping = garminMeasurementMapping[key];
+                                if (mapping) {
+                                    const value = entry[key];
+                                    if (mapping.targetType === 'check_in' && value !== undefined) {
+                                        if (!checkInDataByDate[calendarDate]) {
+                                            checkInDataByDate[calendarDate] = {};
+                                        }
+                                        checkInDataByDate[calendarDate][mapping.field] = value;
+                                    } else if (mapping.targetType === 'custom' && value !== null && value !== undefined) {
+                                        processedHealthData.push({
+                                            type: mapping.name,
+                                            value: value,
+                                            date: calendarDate, // Use formatted date
+                                            source: 'garmin',
+                                            dataType: mapping.dataType,
+                                            measurementType: mapping.measurementType
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        log('debug', `Processed health data for measurementService:`, processedHealthData);
+        log('debug', `Processed check-in data for measurementService:`, checkInDataByDate);
+
+        let measurementServiceResult = {};
+        if (processedHealthData.length > 0) {
+            measurementServiceResult = await measurementService.processHealthData(processedHealthData, userId, userId);
+        }
+
+        for (const date in checkInDataByDate) {
+            if (Object.keys(checkInDataByDate[date]).length > 0) {
+                await measurementService.upsertCheckInMeasurements(userId, userId, date, checkInDataByDate[date]);
+            }
+        }
+
         res.status(200).json({
             message: 'Health and wellness sync completed.',
-            data: healthWellnessData
+            garminRawData: healthWellnessData, // Keep raw data for debugging/reference
+            processedMeasurements: measurementServiceResult
         });
     } catch (error) {
         next(error);

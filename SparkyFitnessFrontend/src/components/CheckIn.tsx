@@ -82,6 +82,8 @@ const CheckIn = () => {
     if (currentUserId) {
       loadPreferences(); // Load user's default preferences
       loadCustomCategories();
+      loadExistingData(); // Load initial data when user is available
+      fetchAllRecentMeasurements(); // Fetch recent measurements initially
     }
 
     const handleRefresh = () => {
@@ -99,7 +101,8 @@ const CheckIn = () => {
   
 
   useEffect(() => {
-    if (currentUserId && customCategories.length > 0) {
+    info(loggingLevel, `CheckIn: useEffect for selectedDate triggered. currentUserId: ${currentUserId}, customCategories.length: ${customCategories.length}, selectedDate: ${selectedDate}`);
+    if (currentUserId) { // Removed customCategories.length > 0 condition
       loadExistingData();
       fetchAllRecentMeasurements();
     }
@@ -109,7 +112,7 @@ const CheckIn = () => {
   
     const loadCustomCategories = async () => {
     if (!currentUserId) {
-      warn(loggingLevel, "loadCustomCategories called with no current user ID.");
+      warn(loggingLevel, "CheckIn: loadCustomCategories called with no current user ID.");
       return;
     }
 
@@ -124,23 +127,30 @@ const CheckIn = () => {
 
   const fetchAllRecentMeasurements = async () => {
     if (!currentUserId) {
-      warn(loggingLevel, "fetchAllRecentMeasurements called with no current user ID.");
+      warn(loggingLevel, "CheckIn: fetchAllRecentMeasurements called with no current user ID.");
       return;
     }
 
     try {
+      info(loggingLevel, "CheckIn: Calling fetchRecentCustomMeasurements...");
       const custom = await fetchRecentCustomMeasurements();
+      info(loggingLevel, "CheckIn: fetchRecentCustomMeasurements returned:", custom);
+
       // For standard measurements, fetch for a range (e.g., last 30 days)
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(endDate.getDate() - 30); // Fetch last 30 days
-      const standard = await fetchRecentStandardMeasurements(format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
+      const formattedStartDate = format(startDate, 'yyyy-MM-dd');
+      const formattedEndDate = format(endDate, 'yyyy-MM-dd');
+      info(loggingLevel, `CheckIn: Calling fetchRecentStandardMeasurements for range ${formattedStartDate} to ${formattedEndDate}...`);
+      const standard = await fetchRecentStandardMeasurements(formattedStartDate, formattedEndDate);
+      info(loggingLevel, "CheckIn: fetchRecentStandardMeasurements returned:", standard);
 
       const combined: CombinedMeasurement[] = [];
 
       // Add custom measurements
       custom.forEach(m => {
-        combined.push({
+        const customMeasurement: CombinedMeasurement = {
           id: m.id,
           entry_date: m.entry_date,
           entry_hour: m.entry_hour,
@@ -150,7 +160,9 @@ const CheckIn = () => {
           display_name: m.custom_categories.name,
           display_unit: m.custom_categories.measurement_type,
           custom_categories: m.custom_categories, // Keep original custom_categories for conversion logic
-        });
+        };
+        combined.push(customMeasurement);
+        debug(loggingLevel, `CheckIn: Custom Measurement - Raw entry_date: ${m.entry_date}, entry_timestamp: ${m.entry_timestamp}, Formatted for display: ${formatDateInUserTimezone(m.entry_date, 'PPP')}`);
       });
 
       // Add standard measurements
@@ -182,7 +194,7 @@ const CheckIn = () => {
 
   const handleDeleteMeasurementClick = async (measurement: CombinedMeasurement) => {
     if (!currentUserId) {
-      warn(loggingLevel, "handleDeleteMeasurementClick called with no current user ID.");
+      warn(loggingLevel, "CheckIn: handleDeleteMeasurementClick called with no current user ID.");
       return;
     }
 
@@ -203,9 +215,10 @@ const CheckIn = () => {
           case 'Height': fieldToNull = 'height'; break;
           case 'Body Fat %': fieldToNull = 'body_fat_percentage'; break;
           default:
-            warn(loggingLevel, `Unknown standard measurement type for deletion: ${measurement.display_name}`);
+            warn(loggingLevel, `CheckIn: Unknown standard measurement type for deletion: ${measurement.display_name}`);
             return;
         }
+        info(loggingLevel, `CheckIn: Updating check-in measurement field ${fieldToNull} to null for ID: ${measurement.id}`);
         await updateCheckInMeasurementField({
           id: measurement.id,
           field: fieldToNull,
@@ -213,22 +226,24 @@ const CheckIn = () => {
           entry_date: measurement.entry_date,
         });
       }
-      info(loggingLevel, 'Measurement deleted successfully:', measurement.id);
+      info(loggingLevel, 'CheckIn: Measurement deleted successfully:', measurement.id);
       sonnerToast.success('Measurement deleted successfully');
       fetchAllRecentMeasurements();
       loadExistingData(); // Reload today's values
     } catch (err) {
-      error(loggingLevel, 'Error deleting measurement:', err);
+      error(loggingLevel, 'CheckIn: Error deleting measurement:', err);
       sonnerToast.error('Failed to delete measurement');
     }
   };
 
   const loadExistingData = async () => {
+    info(loggingLevel, `CheckIn: loadExistingData called for date: ${selectedDate}`);
     try {
       // Load check-in measurements
+      info(loggingLevel, `CheckIn: Calling loadExistingCheckInMeasurements for date: ${selectedDate}`);
       const data = await loadExistingCheckInMeasurements(selectedDate);
       if (data) {
-        info(loggingLevel, "Existing check-in data loaded:", data);
+        info(loggingLevel, "CheckIn: Existing check-in data loaded:", data);
         // Set internal state in canonical units (kg, cm)
         // Values are loaded in canonical units, then converted for display
         const convertedWeight = data.weight !== undefined && data.weight !== null ? convertWeight(data.weight, 'kg', defaultWeightUnit) : NaN;
@@ -249,7 +264,7 @@ const CheckIn = () => {
         setBodyFatPercentage(data.body_fat_percentage?.toString() || "");
         setSteps(data.steps?.toString() || "");
       } else {
-        info(loggingLevel, "No existing check-in data for this date, clearing form.");
+        info(loggingLevel, `CheckIn: No existing check-in data for date ${selectedDate}, clearing form.`);
         setWeight("");
         setNeck("");
         setWaist("");
@@ -268,13 +283,14 @@ const CheckIn = () => {
         setMood(moodEntry.mood_value);
         setMoodNotes(moodEntry.notes);
       } else {
-        info(loggingLevel, "No existing mood entry for this date, setting to default.");
+        info(loggingLevel, `CheckIn: No existing mood entry for date ${selectedDate}, setting to default.`);
         setMood(50); // Default mood value
         setMoodNotes(""); // Clear mood notes
       }
 
+      info(loggingLevel, `CheckIn: Calling loadExistingCustomMeasurements for date: ${selectedDate}`);
       const customData = await loadExistingCustomMeasurements(selectedDate);
-      info(loggingLevel, "Custom measurements loaded for date:", { selectedDate, customData });
+      info(loggingLevel, "CheckIn: Custom measurements loaded for date:", { selectedDate, customData });
       if (customData && customData.length > 0) {
         const newCustomValues: { [key: string]: string } = {};
         const newCustomNotes: { [key: string]: string } = {};
@@ -302,11 +318,12 @@ const CheckIn = () => {
         setCustomValues(newCustomValues);
         setCustomNotes(newCustomNotes);
       } else {
+        info(loggingLevel, `CheckIn: No existing custom measurements for date ${selectedDate}, clearing form.`);
         setCustomValues({});
         setCustomNotes({});
       }
     } catch (err) {
-      error(loggingLevel, 'Error loading existing data:', err);
+      error(loggingLevel, 'CheckIn: Error loading existing data:', err);
     }
   };
 
@@ -331,7 +348,7 @@ const CheckIn = () => {
     }
 
     if (!currentUserId) {
-      warn(loggingLevel, "Submit called with no current user ID.");
+      warn(loggingLevel, "CheckIn: Submit called with no current user ID.");
       toast({
         title: "Error",
         description: "You must be logged in to save check-in data",
@@ -357,13 +374,14 @@ const CheckIn = () => {
       if (height) measurementData.height = convertMeasurement(parseFloat(height), defaultMeasurementUnit, 'cm');
       if (bodyFatPercentage) measurementData.body_fat_percentage = parseFloat(bodyFatPercentage);
 
+      info(loggingLevel, "CheckIn: Saving standard check-in measurements:", measurementData);
       await saveCheckInMeasurements(measurementData);
-      info(loggingLevel, "Standard check-in data saved successfully.");
+      info(loggingLevel, "CheckIn: Standard check-in data saved successfully.");
 
       for (const [categoryId, inputValue] of Object.entries(customValues)) {
         const category = customCategories.find(c => c.id === categoryId);
         if (!category) {
-          warn(loggingLevel, `Custom category not found for ID: ${categoryId}`);
+          warn(loggingLevel, `CheckIn: Custom category not found for ID: ${categoryId}`);
           continue;
         }
 
@@ -409,11 +427,12 @@ const CheckIn = () => {
           customMeasurementData.value = inputValue;
         }
 
+        info(loggingLevel, `CheckIn: Saving custom measurement for category ${category.name}:`, customMeasurementData);
         await saveCustomMeasurement(customMeasurementData);
-        info(loggingLevel, `Custom measurement for category ${category.name} saved successfully.`);
+        info(loggingLevel, `CheckIn: Custom measurement for category ${category.name} saved successfully.`);
       }
 
-      info(loggingLevel, "Check-in data saved successfully!");
+      info(loggingLevel, "CheckIn: Check-in data saved successfully!");
       toast({
         title: "Success",
         description: "Check-in data saved successfully!",
@@ -422,7 +441,7 @@ const CheckIn = () => {
       // Refresh recent measurements after saving
       fetchAllRecentMeasurements();
     } catch (err) {
-      error(loggingLevel, 'Error saving check-in data:', err);
+      error(loggingLevel, 'CheckIn: Error saving check-in data:', err);
       toast({
         title: "Error",
         description: "Failed to save check-in data",
@@ -440,12 +459,12 @@ const CheckIn = () => {
       const userProfile = await userManagementService.getUserProfile(currentUserId);
 
       if (!userProfile) {
-        error(loggingLevel, "Error calculating body fat: userProfile is null or undefined.");
+        error(loggingLevel, "CheckIn: Error calculating body fat: userProfile is null or undefined.");
         toast({ title: "Error", description: "Could not load user profile for calculation." });
         return;
       }
       if (!prefs) {
-        error(loggingLevel, "Error calculating body fat: preferences are null or undefined.");
+        error(loggingLevel, "CheckIn: Error calculating body fat: preferences are null or undefined.");
         toast({ title: "Error", description: "Could not load user preferences for calculation." });
         return;
       }
@@ -504,14 +523,14 @@ const CheckIn = () => {
       }
 
       if (errorMessage) {
-        error(loggingLevel, `Error calculating body fat: ${errorMessage}`);
+        error(loggingLevel, `CheckIn: Error calculating body fat: ${errorMessage}`);
         toast({ title: "Error", description: `Failed to calculate body fat: ${errorMessage}`, variant: "destructive" });
       } else {
         setBodyFatPercentage(bfp.toFixed(2));
         toast({ title: "Success", description: "Body fat percentage calculated." });
       }
     } catch (err: any) {
-      error(loggingLevel, 'Error calculating body fat:', err);
+      error(loggingLevel, 'CheckIn: Error calculating body fat:', err);
       toast({ title: "Error", description: `Failed to calculate body fat: ${err.message || "An unknown error occurred."}`, variant: "destructive" });
     }
   };

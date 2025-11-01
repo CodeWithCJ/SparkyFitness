@@ -135,6 +135,8 @@ async function syncGarminHealthAndWellness(userId, startDate, endDate, metricTyp
             start_date: startDate,
             end_date: endDate,
             metric_types: metricTypes || [] // Pass an empty array if metricTypes is not provided
+        }, {
+            timeout: 120000 // 2 minutes timeout
         });
         return response.data;
     } catch (error) {
@@ -166,6 +168,8 @@ async function fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, acti
             start_date: startDate,
             end_date: endDate,
             activity_type: activityType
+        }, {
+            timeout: 120000 // 2 minutes timeout
         });
 
         log('debug', `Raw activities and workouts data from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, response.data);

@@ -3,8 +3,9 @@ import uuid
 import time
 import os
 import json # Import the json module
+from datetime import date, timedelta # Import date and timedelta
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from urllib.parse import urlencode, parse_qs
 from pydantic import BaseModel
 import uvicorn
@@ -12,7 +13,7 @@ from garminconnect import Garmin
 from garth.exc import GarthHTTPError, GarthException
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
@@ -38,6 +39,16 @@ def _cleanup_mfa_cache():
         MFA_STATE_STORE.pop(t, None)
 
 
+def get_dates_in_range(start_date_str, end_date_str):
+    start_date = date.fromisoformat(start_date_str)
+    end_date = date.fromisoformat(end_date_str)
+    delta = timedelta(days=1)
+    dates = []
+    current_date = start_date
+    while current_date <= end_date:
+        dates.append(current_date.isoformat())
+        current_date += delta
+    return dates
 
 def clean_garmin_data(data):
     """
@@ -101,11 +112,10 @@ def convert_user_summary_units(summary):
 
 
 ALL_HEALTH_METRICS = [
-    "daily_summary", "heart_rates", "sleep", "stress", "respiration", "spo2",
+    "heart_rates", "sleep", "stress", "respiration", "spo2",
     "intensity_minutes", "training_readiness", "training_status", "max_metrics",
     "hrv", "lactate_threshold", "endurance_score", "hill_score", "race_predictions",
-    "blood_pressure", "body_battery", "menstrual_data", "menstrual_calendar_data",
-    "pregnancy_summary"
+    "blood_pressure", "body_battery", "menstrual_data", "floors", "fitness_age", "body_composition"
 ]
 
 class HealthAndWellnessRequest(BaseModel):
@@ -144,155 +154,288 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
         garmin = Garmin(is_cn=IS_CN)
         garmin.login(tokenstore=tokens_b64)
 
-        health_data = {}
+        # Initialize health_data as a dictionary where each key is a metric type and the value is a list of daily entries
+        health_data = {metric: [] for metric in ALL_HEALTH_METRICS}
+        dates_to_fetch = get_dates_in_range(start_date, end_date)
 
-        if "daily_summary" in metric_types_to_fetch:
-            try:
-                summary_data = garmin.get_user_summary(start_date)
-                health_data["daily_summary"] = convert_user_summary_units(summary_data)
-            except Exception as e:
-                logger.warning(f"Could not retrieve daily summary for {start_date}: {e}")
-
-        if "heart_rates" in metric_types_to_fetch:
-            try:
-                heart_rate_data = garmin.get_heart_rates(start_date)
-                health_data["heart_rates"] = heart_rate_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve heart rate data for {start_date} to {end_date}: {e}")
-
-        if "sleep" in metric_types_to_fetch:
-            try:
-                sleep_data = garmin.get_sleep_data(start_date)
-                health_data["sleep"] = sleep_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve sleep data for {start_date} to {end_date}: {e}")
-
-        if "stress" in metric_types_to_fetch:
-            try:
-                stress_data = garmin.get_all_day_stress(start_date)
-                health_data["stress"] = stress_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve stress data for {start_date} to {end_date}: {e}")
-
-        if "respiration" in metric_types_to_fetch:
-            try:
-                respiration_data = garmin.get_respiration_data(start_date)
-                health_data["respiration"] = respiration_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve respiration data for {start_date} to {end_date}: {e}")
-
-        if "spo2" in metric_types_to_fetch:
-            try:
-                spo2_data = garmin.get_spo2_data(start_date)
-                health_data["spo2"] = spo2_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve SPO2 data for {start_date} to {end_date}: {e}")
-
-        if "intensity_minutes" in metric_types_to_fetch:
-            try:
-                intensity_minutes_data = garmin.get_intensity_minutes_data(start_date)
-                health_data["intensity_minutes"] = intensity_minutes_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve intensity minutes data for {start_date} to {end_date}: {e}")
-
-        if "training_readiness" in metric_types_to_fetch:
-            try:
-                training_readiness_data = garmin.get_training_readiness(start_date)
-                health_data["training_readiness"] = training_readiness_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve training readiness data for {start_date} to {end_date}: {e}")
-
-        if "training_status" in metric_types_to_fetch:
-            try:
-                training_status_data = garmin.get_training_status(start_date)
-                health_data["training_status"] = training_status_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve training status data for {start_date} to {end_date}: {e}")
-
-        if "max_metrics" in metric_types_to_fetch:
-            try:
-                max_metrics_data = garmin.get_max_metrics(start_date)
-                health_data["max_metrics"] = max_metrics_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve max metrics data for {start_date} to {end_date}: {e}")
-
-        if "hrv" in metric_types_to_fetch:
-            try:
-                hrv_data = garmin.get_hrv_data(start_date)
-                health_data["hrv"] = hrv_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve HRV data for {start_date} to {end_date}: {e}")
-
+        # Fetch metrics that are not date-dependent once
         if "lactate_threshold" in metric_types_to_fetch:
             try:
                 lactate_threshold_data = garmin.get_lactate_threshold()
-                health_data["lactate_threshold"] = lactate_threshold_data
+                if lactate_threshold_data:
+                    # Associate with the start_date for consistency, or handle as a single entry
+                    health_data["lactate_threshold"].append({"date": start_date, "lactate_threshold_hr": lactate_threshold_data.get("speed_and_heart_rate", {}).get("heartRate")})
             except Exception as e:
-                logger.warning(f"Could not retrieve lactate threshold data for {start_date}: {e}")
-
-        if "endurance_score" in metric_types_to_fetch:
-            try:
-                endurance_score_data = garmin.get_endurance_score(start_date, end_date)
-                health_data["endurance_score"] = endurance_score_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve endurance score data for {start_date} to {end_date}: {e}")
-
-        if "hill_score" in metric_types_to_fetch:
-            try:
-                hill_score_data = garmin.get_hill_score(start_date, end_date)
-                health_data["hill_score"] = hill_score_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve hill score data for {start_date} to {end_date}: {e}")
+                logger.warning(f"Could not retrieve lactate threshold data: {e}")
 
         if "race_predictions" in metric_types_to_fetch:
             try:
-                race_predictions_data = garmin.get_race_predictions() # Removed start_date, end_date
-                health_data["race_predictions"] = race_predictions_data
+                race_predictions_data = garmin.get_race_predictions()
+                if race_predictions_data:
+                    for prediction in race_predictions_data.get("racePredictionList", []):
+                        if prediction.get("raceType") == "FIVE_K":
+                            # Associate with the start_date for consistency
+                            health_data["race_predictions"].append({"date": start_date, "race_prediction_5k": prediction.get("predictedTime")})
             except Exception as e:
                 logger.warning(f"Could not retrieve race predictions data: {e}")
 
-        if "blood_pressure" in metric_types_to_fetch:
-            try:
-                blood_pressure_data = garmin.get_blood_pressure(start_date, end_date)
-                health_data["blood_pressure"] = blood_pressure_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve blood pressure data for {start_date} to {end_date}: {e}")
-
-        if "body_battery" in metric_types_to_fetch:
-            try:
-                body_battery_data = garmin.get_body_battery(start_date, end_date)
-                health_data["body_battery"] = body_battery_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve body battery data for {start_date} to {end_date}: {e}")
-
-        if "menstrual_data" in metric_types_to_fetch:
-            try:
-                menstrual_data = garmin.get_menstrual_data_for_date(start_date)
-                health_data["menstrual_data"] = menstrual_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve menstrual data for {start_date}: {e}")
-
-        if "menstrual_calendar_data" in metric_types_to_fetch:
-            try:
-                menstrual_calendar_data = garmin.get_menstrual_calendar_data(start_date, end_date)
-                health_data["menstrual_calendar_data"] = menstrual_calendar_data
-            except Exception as e:
-                logger.warning(f"Could not retrieve menstrual calendar data for {start_date} to {end_date}: {e}")
-
         if "pregnancy_summary" in metric_types_to_fetch:
             try:
-                pregnancy_summary_data = garmin.get_pregnancy_summary() # Removed start_date, end_date
-                health_data["pregnancy_summary"] = pregnancy_summary_data
+                pregnancy_summary_data = garmin.get_pregnancy_summary()
+                if pregnancy_summary_data:
+                    # Associate with the start_date for consistency
+                    health_data["pregnancy_summary"].append({"date": start_date, "data": pregnancy_summary_data})
             except Exception as e:
                 logger.warning(f"Could not retrieve pregnancy summary data: {e}")
 
-       
+        for current_date in dates_to_fetch:
+            # Daily Summary (steps, total_distance, active_seconds, sedentary_seconds)
+            if any(metric in metric_types_to_fetch for metric in ["steps", "total_distance", "highly_active_seconds", "active_seconds", "sedentary_seconds"]):
+                try:
+                    summary_data = garmin.get_user_summary(current_date)
+                    if summary_data:
+                        if "steps" in metric_types_to_fetch:
+                            health_data["steps"].append({"date": current_date, "value": summary_data.get("totalSteps")})
+                        if "total_distance" in metric_types_to_fetch:
+                            health_data["total_distance"].append({"date": current_date, "value": safe_convert(summary_data.get("totalDistance"), meters_to_km)})
+                        if "highly_active_seconds" in metric_types_to_fetch:
+                            health_data["highly_active_seconds"].append({"date": current_date, "value": safe_convert(summary_data.get("highlyActiveSeconds"), seconds_to_minutes)})
+                        if "active_seconds" in metric_types_to_fetch:
+                            health_data["active_seconds"].append({"date": current_date, "value": safe_convert(summary_data.get("activeSeconds"), seconds_to_minutes)})
+                        if "sedentary_seconds" in metric_types_to_fetch:
+                            health_data["sedentary_seconds"].append({"date": current_date, "value": safe_convert(summary_data.get("sedentarySeconds"), seconds_to_minutes)})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve daily summary for {current_date}: {e}")
 
+            # Floors
+            if "floors" in metric_types_to_fetch:
+                try:
+                    floors_data = garmin.get_floors(current_date)
+                    if floors_data:
+                        health_data["floors"].append({"date": current_date, "floors_ascended": floors_data.get("totalFloorsAscended"), "floors_descended": floors_data.get("totalFloorsDescended")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve floors data for {current_date}: {e}")
+
+            # Fitness Age
+            if "fitness_age" in metric_types_to_fetch:
+                try:
+                    fitness_age_data = garmin.get_fitnessage_data(current_date)
+                    if fitness_age_data:
+                        health_data["fitness_age"].append({"date": current_date, "fitness_age": fitness_age_data.get("fitnessAge"), "chronological_age": fitness_age_data.get("chronologicalAge"), "achievable_fitness_age": fitness_age_data.get("achievableFitnessAge")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve fitness age data for {current_date}: {e}")
+
+            # Heart Rates
+            if "heart_rates" in metric_types_to_fetch:
+                try:
+                    heart_rate_data = garmin.get_heart_rates(current_date)
+                    if heart_rate_data:
+                        health_data["heart_rates"].append({"date": current_date, "resting_heart_rate": heart_rate_data.get("restingHeartRate")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve heart rate data for {current_date}: {e}")
+
+            # Sleep
+            if "sleep" in metric_types_to_fetch:
+                try:
+                    sleep_data = garmin.get_sleep_data(current_date)
+                    if sleep_data:
+                        health_data["sleep"].append({"date": current_date, "sleep_duration": sleep_data.get("durationInSeconds")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve sleep data for {current_date}: {e}")
+
+            # Stress
+            if "stress" in metric_types_to_fetch:
+                try:
+                    stress_data = garmin.get_all_day_stress(current_date)
+                    if stress_data:
+                        health_data["stress"].append({
+                            "date": current_date,
+                            "stress_level": stress_data.get("overallStressLevel"),
+                            "stress_duration_total": stress_data.get("totalStressDuration"),
+                            "stress_duration_rest": stress_data.get("restStressDuration"),
+                            "stress_duration_activity": stress_data.get("activityStressDuration"),
+                            "stress_duration_uncategorized": stress_data.get("uncategorizedStressDuration"),
+                            "stress_duration_low": stress_data.get("lowStressDuration"),
+                            "stress_duration_medium": stress_data.get("mediumStressDuration"),
+                            "stress_duration_high": stress_data.get("highStressDuration"),
+                            "stress_percentage_low": stress_data.get("lowStressPercentage"),
+                            "stress_percentage_medium": stress_data.get("mediumStressPercentage"),
+                            "stress_percentage_high": stress_data.get("highStressPercentage")
+                        })
+                except Exception as e:
+                    logger.warning(f"Could not retrieve stress data for {current_date}: {e}")
+
+            # Respiration
+            if "respiration" in metric_types_to_fetch:
+                try:
+                    respiration_data = garmin.get_respiration_data(current_date)
+                    if respiration_data:
+                        health_data["respiration"].append({"date": current_date, "average_respiration_rate": respiration_data.get("avgRespiration")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve respiration data for {current_date}: {e}")
+
+            # SpO2
+            if "spo2" in metric_types_to_fetch:
+                try:
+                    spo2_data = garmin.get_spo2_data(current_date)
+                    if spo2_data:
+                        health_data["spo2"].append({"date": current_date, "average_spo2": spo2_data.get("avgSpO2")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve SPO2 data for {current_date}: {e}")
+
+            # Intensity Minutes
+            if "intensity_minutes" in metric_types_to_fetch:
+                try:
+                    intensity_minutes_data = garmin.get_intensity_minutes_data(current_date)
+                    if intensity_minutes_data:
+                        health_data["intensity_minutes"].append({"date": current_date, "total_intensity_minutes": intensity_minutes_data.get("total")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve intensity minutes data for {current_date}: {e}")
+
+            # Training Readiness
+            if "training_readiness" in metric_types_to_fetch:
+                try:
+                    training_readiness_data = garmin.get_training_readiness(current_date)
+                    if training_readiness_data:
+                        health_data["training_readiness"].append({"date": current_date, "training_readiness_score": training_readiness_data.get("score")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve training readiness data for {current_date}: {e}")
+
+            # Training Status
+            if "training_status" in metric_types_to_fetch:
+                try:
+                    training_status_data = garmin.get_training_status(current_date)
+                    if training_status_data:
+                        health_data["training_status"].append({"date": current_date, "status": training_status_data.get("status")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve training status data for {current_date}: {e}")
+
+            # Max Metrics
+            if "max_metrics" in metric_types_to_fetch:
+                try:
+                    max_metrics_data = garmin.get_max_metrics(current_date)
+                    if max_metrics_data:
+                        health_data["max_metrics"].append({"date": current_date, "vo2_max": max_metrics_data.get("vo2Max")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve max metrics data for {current_date}: {e}")
+
+            # HRV
+            if "hrv" in metric_types_to_fetch:
+                try:
+                    hrv_data = garmin.get_hrv_data(current_date)
+                    if hrv_data:
+                        health_data["hrv"].append({"date": current_date, "average_overnight_hrv": hrv_data.get("hrvSummary", {}).get("weeklyAvg")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve HRV data for {current_date}: {e}")
+
+            # Endurance Score
+            if "endurance_score" in metric_types_to_fetch:
+                try:
+                    endurance_score_data = garmin.get_endurance_score(current_date, current_date)
+                    if endurance_score_data:
+                        health_data["endurance_score"].append({"date": current_date, "score": endurance_score_data.get("score")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve endurance score data for {current_date}: {e}")
+
+            # Hill Score
+            if "hill_score" in metric_types_to_fetch:
+                try:
+                    hill_score_data = garmin.get_hill_score(current_date, current_date)
+                    if hill_score_data:
+                        health_data["hill_score"].append({"date": current_date, "overall": hill_score_data.get("overall")})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve hill score data for {current_date}: {e}")
+
+            # Blood Pressure
+            if "blood_pressure" in metric_types_to_fetch:
+                try:
+                    blood_pressure_data = garmin.get_blood_pressure(current_date, current_date)
+                    logger.debug(f"Raw blood pressure data for {current_date}: {blood_pressure_data}")
+                    if blood_pressure_data and blood_pressure_data.get("measurementSummaries"):
+                        for summary in blood_pressure_data["measurementSummaries"]:
+                            if summary.get("measurements"):
+                                for bp_entry in summary["measurements"]:
+                                    systolic = bp_entry.get("systolic")
+                                    diastolic = bp_entry.get("diastolic")
+                                    pulse = bp_entry.get("pulse")
+                                    if systolic is not None and diastolic is not None and pulse is not None:
+                                        formatted_bp = f"{systolic}/{diastolic}, {pulse} bpm"
+                                        health_data["blood_pressure"].append({
+                                            "date": current_date,
+                                            "value": formatted_bp
+                                        })
+                                    else:
+                                        logger.warning(f"Incomplete blood pressure data for {current_date}: {bp_entry}")
+                            else:
+                                logger.warning(f"No measurements found in blood pressure summary for {current_date}: {summary}")
+                    else:
+                        logger.debug(f"No blood pressure measurement summaries found for {current_date}.")
+                except Exception as e:
+                    logger.warning(f"Could not retrieve blood pressure data for {current_date}: {e}")
+
+            # Body Battery
+            if "body_battery" in metric_types_to_fetch:
+                try:
+                    body_battery_data = garmin.get_body_battery(current_date, current_date)
+                    if body_battery_data and isinstance(body_battery_data, list) and len(body_battery_data) > 0:
+                        for bb_entry in body_battery_data:
+                            health_data["body_battery"].append({
+                                "date": current_date,
+                                "highest": bb_entry.get("highest"),
+                                "lowest": bb_entry.get("lowest"),
+                                "atWake": bb_entry.get("atWake"),
+                                "charged": bb_entry.get("charged"),
+                                "drained": bb_entry.get("drained")
+                            })
+                except Exception as e:
+                    logger.warning(f"Could not retrieve body battery data for {current_date}: {e}")
+
+            # Menstrual Data
+            if "menstrual_data" in metric_types_to_fetch:
+                try:
+                    menstrual_data = garmin.get_menstrual_data_for_date(current_date)
+                    if menstrual_data:
+                        health_data["menstrual_data"].append({"date": current_date, "data": menstrual_data})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve menstrual data for {current_date}: {e}")
+
+            # Menstrual Calendar Data
+            if "menstrual_calendar_data" in metric_types_to_fetch:
+                try:
+                    menstrual_calendar_data = garmin.get_menstrual_calendar_data(current_date, current_date)
+                    if menstrual_calendar_data:
+                        health_data["menstrual_calendar_data"].append({"date": current_date, "data": menstrual_calendar_data})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve menstrual calendar data for {current_date}: {e}")
+
+            # Body Composition
+            if "body_composition" in metric_types_to_fetch:
+                try:
+                    body_composition_data = garmin.get_body_composition(current_date, current_date)
+                    if body_composition_data and body_composition_data.get("dateWeightList"):
+                        for entry in body_composition_data["dateWeightList"]:
+                            health_data["body_composition"].append({
+                                "date": entry.get("date"), # Use the date from the entry itself
+                                "weight": safe_convert(entry.get("weight"), grams_to_kg),
+                                "body_fat_percentage": entry.get("bodyFat"),
+                                "bmi": entry.get("bmi"),
+                                "body_water_percentage": entry.get("bodyWater"),
+                                "bone_mass": entry.get("boneMass"),
+                                "muscle_mass": entry.get("muscleMass")
+                            })
+                except Exception as e:
+                    logger.warning(f"Could not retrieve body composition data for {current_date}: {e}")
+
+        logger.debug(f"Health data before cleaning: {health_data}")
         # Clean and filter the data
         cleaned_health_data = clean_garmin_data(health_data)
 
-        logger.info(f"Successfully retrieved and cleaned health and wellness data for user {user_id} from {start_date} to {end_date}. Data: {cleaned_health_data}")
-        return {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": cleaned_health_data}
+        # Further filter to remove null or empty values before returning
+        final_health_data = {k: v for k, v in cleaned_health_data.items() if v} # Filter out empty lists
+
+        logger.debug(f"Final health data being returned: {final_health_data}")
+        logger.info(f"Successfully retrieved and cleaned health and wellness data for user {user_id} from {start_date} to {end_date}. Data: {final_health_data}")
+        return {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data}
 
     except GarthHTTPError as e:
         logger.error(f"Garmin API error (health_and_wellness): {e}")

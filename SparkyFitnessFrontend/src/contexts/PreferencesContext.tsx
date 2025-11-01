@@ -417,7 +417,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     let dateToFormat: Date;
 
     if (typeof date === 'string') {
-      dateToFormat = parseISO(date); // Use parseISO for string dates
+      // If it's a plain YYYY-MM-DD string, return it directly as it's already in the desired format
+      if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = date.split('-').map(Number);
+        dateToFormat = new Date(year, month - 1, day);
+      } else {
+        // Otherwise, parse as ISO string (which handles timezone)
+        dateToFormat = parseISO(date);
+      }
     } else {
       dateToFormat = date;
     }

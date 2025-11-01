@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 16NfFVVADA2tnkbbCeZzCuFftJOFSO9bUWVQiaiEJGtx4Fd7baU5RMadLOzbhPs
+\restrict XgfRGu5ggmKHmqQOwJt09ll0WrfL4bSgbaOeVKashmpZLQJ3WjncrvwVHdpCdBa
 
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 18.0
@@ -153,6 +153,59 @@ $$;
 
 
 --
+-- Name: create_diary_policy(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.create_diary_policy(table_name text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  EXECUTE format('
+    CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
+    USING (has_diary_access(user_id));
+    CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
+    USING (has_diary_access(user_id))
+    WITH CHECK (has_diary_access(user_id));
+  ', table_name, table_name);
+END;
+$$;
+
+
+--
+-- Name: create_library_policy(text, text, text[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  quoted_permissions text;
+  shared_expression text;
+BEGIN
+  -- Quote each permission name to ensure valid ARRAY syntax
+  SELECT array_to_string(ARRAY(
+    SELECT quote_literal(p) FROM unnest(permissions) p
+  ), ',') INTO quoted_permissions;
+
+  -- Use boolean false if shared_column is 'false', otherwise treat as column name
+  IF shared_column = 'false' THEN
+    shared_expression := 'false';
+  ELSE
+    shared_expression := quote_ident(shared_column);
+  END IF;
+  
+  EXECUTE format('
+    CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
+    USING (has_library_access_with_public(user_id, %s, ARRAY[%s]));
+    CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
+    USING (current_user_id() = user_id)
+    WITH CHECK (current_user_id() = user_id);
+  ', table_name, shared_expression, quoted_permissions, table_name);
+END;
+$$;
+
+
+--
 -- Name: create_owner_centric_all_policy(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -193,6 +246,23 @@ $_$;
 
 
 --
+-- Name: create_owner_policy(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.create_owner_policy(table_name text, id_column text DEFAULT 'user_id'::text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  EXECUTE format('
+    CREATE POLICY owner_policy ON public.%I FOR ALL TO PUBLIC
+    USING (%I = current_user_id())
+    WITH CHECK (%I = current_user_id());
+  ', table_name, id_column, id_column);
+END;
+$$;
+
+
+--
 -- Name: create_user_centric_policy(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -224,6 +294,17 @@ BEGIN
   ON CONFLICT (user_id) DO NOTHING;
   RETURN NEW;
 END;
+$$;
+
+
+--
+-- Name: current_user_id(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.current_user_id() RETURNS uuid
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT (current_setting('app.user_id'::text))::uuid;
 $$;
 
 
@@ -351,6 +432,67 @@ BEGIN
   VALUES (new.id);
   RETURN new;
 END;
+$$;
+
+
+--
+-- Name: has_diary_access(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.has_diary_access(owner_uuid uuid) RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT current_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_diary');
+$$;
+
+
+--
+-- Name: has_family_access(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.has_family_access(owner_uuid uuid, perm text) RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = current_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND (fa.access_permissions ->> perm)::boolean = true
+  );
+$$;
+
+
+--
+-- Name: has_family_access_or(uuid, text[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = current_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND EXISTS (
+      SELECT 1 FROM unnest(perms) p
+      WHERE (fa.access_permissions ->> p)::boolean = true
+    )
+  );
+$$;
+
+
+--
+-- Name: has_library_access_with_public(uuid, boolean, text[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT current_user_id() = owner_uuid OR is_shared OR has_family_access_or(owner_uuid, perms);
 $$;
 
 
@@ -664,6 +806,13 @@ CREATE TABLE public.check_in_measurements (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     height numeric,
     body_fat_percentage numeric,
+    resting_heart_rate integer,
+    sleep_duration_hours numeric(4,2),
+    sleep_quality_score integer,
+    stress_level_score integer,
+    muscle_mass_kg numeric,
+    body_water_percentage numeric,
+    visceral_fat_level integer,
     created_by_user_id uuid,
     updated_by_user_id uuid
 );
@@ -1441,6 +1590,7 @@ CREATE TABLE public.user_preferences (
     body_fat_algorithm text DEFAULT 'U.S. Navy'::text NOT NULL,
     include_bmr_in_net_calories boolean DEFAULT false NOT NULL,
     default_distance_unit character varying(20) DEFAULT 'km'::character varying NOT NULL,
+    language character varying(10) DEFAULT 'en'::character varying,
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text])))
 );
 
@@ -3004,51 +3154,10 @@ ALTER TABLE ONLY public.workout_presets
 ALTER TABLE public.ai_service_settings ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: ai_service_settings ai_service_settings_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY ai_service_settings_all_policy ON public.ai_service_settings TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: ai_service_settings ai_service_settings_user_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY ai_service_settings_user_policy ON public.ai_service_settings USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
 -- Name: check_in_measurements; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.check_in_measurements ENABLE ROW LEVEL SECURITY;
-
---
--- Name: check_in_measurements check_in_measurements_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY check_in_measurements_all_policy ON public.check_in_measurements TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: check_in_measurements check_in_measurements_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY check_in_measurements_modify_policy ON public.check_in_measurements USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = check_in_measurements.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))) WITH CHECK (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = check_in_measurements.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
-
---
--- Name: check_in_measurements check_in_measurements_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY check_in_measurements_select_policy ON public.check_in_measurements FOR SELECT USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = check_in_measurements.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
 
 --
 -- Name: custom_categories; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3057,64 +3166,10 @@ CREATE POLICY check_in_measurements_select_policy ON public.check_in_measurement
 ALTER TABLE public.custom_categories ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: custom_categories custom_categories_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY custom_categories_all_policy ON public.custom_categories TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: custom_categories custom_categories_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY custom_categories_modify_policy ON public.custom_categories USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = custom_categories.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))) WITH CHECK (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = custom_categories.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
-
---
--- Name: custom_categories custom_categories_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY custom_categories_select_policy ON public.custom_categories FOR SELECT USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = custom_categories.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
-
---
 -- Name: custom_measurements; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.custom_measurements ENABLE ROW LEVEL SECURITY;
-
---
--- Name: custom_measurements custom_measurements_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY custom_measurements_all_policy ON public.custom_measurements TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: custom_measurements custom_measurements_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY custom_measurements_modify_policy ON public.custom_measurements USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = custom_measurements.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))) WITH CHECK (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = custom_measurements.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
-
---
--- Name: custom_measurements custom_measurements_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY custom_measurements_select_policy ON public.custom_measurements FOR SELECT USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = custom_measurements.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
 
 --
 -- Name: exercise_entries; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3123,77 +3178,10 @@ CREATE POLICY custom_measurements_select_policy ON public.custom_measurements FO
 ALTER TABLE public.exercise_entries ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: exercise_entries exercise_entries_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY exercise_entries_all_policy ON public.exercise_entries TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: exercise_entries exercise_entries_insert_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY exercise_entries_insert_policy ON public.exercise_entries FOR INSERT WITH CHECK (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = exercise_entries.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
-
---
--- Name: exercise_entries exercise_entries_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY exercise_entries_select_policy ON public.exercise_entries FOR SELECT USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = exercise_entries.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
-
---
--- Name: exercise_entries exercise_entries_update_delete_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY exercise_entries_update_delete_policy ON public.exercise_entries USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = exercise_entries.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
-
---
 -- Name: exercise_entry_sets; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.exercise_entry_sets ENABLE ROW LEVEL SECURITY;
-
---
--- Name: exercise_entry_sets exercise_entry_sets_insert_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY exercise_entry_sets_insert_policy ON public.exercise_entry_sets FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.exercise_entries ee
-  WHERE ((ee.id = exercise_entry_sets.exercise_entry_id) AND ((ee.user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.owner_user_id = ee.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))))));
-
-
---
--- Name: exercise_entry_sets exercise_entry_sets_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY exercise_entry_sets_select_policy ON public.exercise_entry_sets FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM public.exercise_entries ee
-  WHERE ((ee.id = exercise_entry_sets.exercise_entry_id) AND ((ee.user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.owner_user_id = ee.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))))));
-
-
---
--- Name: exercise_entry_sets exercise_entry_sets_update_delete_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY exercise_entry_sets_update_delete_policy ON public.exercise_entry_sets USING ((EXISTS ( SELECT 1
-   FROM public.exercise_entries ee
-  WHERE ((ee.id = exercise_entry_sets.exercise_entry_id) AND ((ee.user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.owner_user_id = ee.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))))));
-
 
 --
 -- Name: exercises; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3202,56 +3190,10 @@ CREATE POLICY exercise_entry_sets_update_delete_policy ON public.exercise_entry_
 ALTER TABLE public.exercises ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: exercises exercises_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY exercises_all_policy ON public.exercises TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: exercises exercises_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY exercises_select_policy ON public.exercises FOR SELECT TO sparky_app USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (shared_with_public = true) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = exercises.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND ((((fa.access_permissions ->> 'can_view_exercise_library'::text))::boolean = true) OR (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))));
-
-
---
 -- Name: external_data_providers; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.external_data_providers ENABLE ROW LEVEL SECURITY;
-
---
--- Name: external_data_providers external_data_providers_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY external_data_providers_all_policy ON public.external_data_providers TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: external_data_providers external_data_providers_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY external_data_providers_modify_policy ON public.external_data_providers TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: external_data_providers external_data_providers_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY external_data_providers_select_policy ON public.external_data_providers FOR SELECT TO sparky_app USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR ((shared_with_public = true) AND (provider_type <> 'garmin'::text)) OR ((provider_type <> 'garmin'::text) AND (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = external_data_providers.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND ((((fa.access_permissions ->> 'can_view_food_library'::text))::boolean = true) OR (((fa.access_permissions ->> 'can_view_exercise_library'::text))::boolean = true))))))));
-
-
---
--- Name: external_data_providers external_data_providers_user_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY external_data_providers_user_policy ON public.external_data_providers USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
 
 --
 -- Name: family_access; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3260,67 +3202,10 @@ CREATE POLICY external_data_providers_user_policy ON public.external_data_provid
 ALTER TABLE public.family_access ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: family_access family_access_insert_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY family_access_insert_policy ON public.family_access FOR INSERT WITH CHECK ((owner_user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: family_access family_access_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY family_access_modify_policy ON public.family_access TO sparky_app USING ((owner_user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((owner_user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: family_access family_access_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY family_access_select_policy ON public.family_access FOR SELECT TO sparky_app USING (((owner_user_id = (current_setting('app.user_id'::text))::uuid) OR (family_user_id = (current_setting('app.user_id'::text))::uuid)));
-
-
---
 -- Name: food_entries; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.food_entries ENABLE ROW LEVEL SECURITY;
-
---
--- Name: food_entries food_entries_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY food_entries_all_policy ON public.food_entries TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: food_entries food_entries_insert_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY food_entries_insert_policy ON public.food_entries FOR INSERT WITH CHECK ((((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = food_entries.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))) AND (EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE (f.id = food_entries.food_id)))));
-
-
---
--- Name: food_entries food_entries_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY food_entries_select_policy ON public.food_entries FOR SELECT USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = food_entries.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
-
---
--- Name: food_entries food_entries_update_delete_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY food_entries_update_delete_policy ON public.food_entries USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = food_entries.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
 
 --
 -- Name: food_variants; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3329,66 +3214,10 @@ CREATE POLICY food_entries_update_delete_policy ON public.food_entries USING (((
 ALTER TABLE public.food_variants ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: food_variants food_variants_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY food_variants_all_policy ON public.food_variants TO sparky_app USING ((EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND (f.user_id = (current_setting('app.user_id'::text))::uuid))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND (f.user_id = (current_setting('app.user_id'::text))::uuid)))));
-
-
---
--- Name: food_variants food_variants_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY food_variants_modify_policy ON public.food_variants USING ((EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND (f.user_id = (current_setting('app.user_id'::text))::uuid)))));
-
-
---
--- Name: food_variants food_variants_rls; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY food_variants_rls ON public.food_variants FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE (f.id = food_variants.food_id))));
-
-
---
--- Name: food_variants food_variants_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY food_variants_select_policy ON public.food_variants FOR SELECT TO sparky_app USING ((EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND ((f.user_id = (current_setting('app.user_id'::text))::uuid) OR (f.shared_with_public = true) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.owner_user_id = f.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND ((((fa.access_permissions ->> 'can_view_food_library'::text))::boolean = true) OR (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))))))));
-
-
---
 -- Name: foods; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.foods ENABLE ROW LEVEL SECURITY;
-
---
--- Name: foods foods_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY foods_all_policy ON public.foods TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: foods foods_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY foods_select_policy ON public.foods FOR SELECT TO sparky_app USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (shared_with_public = true) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = foods.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND ((((fa.access_permissions ->> 'can_view_food_library'::text))::boolean = true) OR (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))));
-
 
 --
 -- Name: goal_presets; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3397,17 +3226,19 @@ CREATE POLICY foods_select_policy ON public.foods FOR SELECT TO sparky_app USING
 ALTER TABLE public.goal_presets ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: goal_presets goal_presets_all_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: family_access insert_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY goal_presets_all_policy ON public.goal_presets TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
+CREATE POLICY insert_policy ON public.family_access FOR INSERT WITH CHECK ((public.current_user_id() = owner_user_id));
 
 
 --
--- Name: goal_presets goal_presets_user_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: food_entries insert_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY goal_presets_user_policy ON public.goal_presets USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
+CREATE POLICY insert_policy ON public.food_entries FOR INSERT WITH CHECK ((public.has_diary_access(user_id) AND (EXISTS ( SELECT 1
+   FROM public.foods f
+  WHERE (f.id = food_entries.food_id)))));
 
 
 --
@@ -3417,80 +3248,10 @@ CREATE POLICY goal_presets_user_policy ON public.goal_presets USING ((user_id = 
 ALTER TABLE public.meal_foods ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: meal_foods meal_foods_rls; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY meal_foods_rls ON public.meal_foods USING (((EXISTS ( SELECT 1
-   FROM public.meals m
-  WHERE (m.id = meal_foods.meal_id))) AND (EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE (f.id = meal_foods.food_id))))) WITH CHECK (((EXISTS ( SELECT 1
-   FROM public.meals m
-  WHERE (m.id = meal_foods.meal_id))) AND (EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE (f.id = meal_foods.food_id)))));
-
-
---
 -- Name: meal_plan_template_assignments; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.meal_plan_template_assignments ENABLE ROW LEVEL SECURITY;
-
---
--- Name: meal_plan_template_assignments meal_plan_template_assignments_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY meal_plan_template_assignments_all_policy ON public.meal_plan_template_assignments TO sparky_app USING (((EXISTS ( SELECT 1
-   FROM public.meal_plan_templates mpt
-  WHERE ((mpt.id = meal_plan_template_assignments.template_id) AND (mpt.user_id = (current_setting('app.user_id'::text))::uuid)))) OR (EXISTS ( SELECT 1
-   FROM public.meals m
-  WHERE ((m.id = meal_plan_template_assignments.meal_id) AND ((m.user_id = (current_setting('app.user_id'::text))::uuid) OR (m.is_public = true) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.family_user_id = m.user_id) AND (fa.owner_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_view_food_library'::text))::boolean = true)))) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.family_user_id = m.user_id) AND (fa.owner_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))))) OR (EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE ((f.id = meal_plan_template_assignments.food_id) AND ((f.user_id = (current_setting('app.user_id'::text))::uuid) OR (f.shared_with_public = true) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.family_user_id = f.user_id) AND (fa.owner_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_view_food_library'::text))::boolean = true)))) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.family_user_id = f.user_id) AND (fa.owner_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))))))) WITH CHECK (((EXISTS ( SELECT 1
-   FROM public.meal_plan_templates mpt
-  WHERE ((mpt.id = meal_plan_template_assignments.template_id) AND (mpt.user_id = (current_setting('app.user_id'::text))::uuid)))) AND ((food_id IS NULL) OR (EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE ((f.id = meal_plan_template_assignments.food_id) AND ((f.user_id = (current_setting('app.user_id'::text))::uuid) OR (f.shared_with_public = true) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.family_user_id = f.user_id) AND (fa.owner_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_view_food_library'::text))::boolean = true)))) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.family_user_id = f.user_id) AND (fa.owner_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))))))) AND ((variant_id IS NULL) OR (EXISTS ( SELECT 1
-   FROM (public.food_variants fv
-     JOIN public.foods f ON ((fv.food_id = f.id)))
-  WHERE ((fv.id = meal_plan_template_assignments.variant_id) AND ((f.user_id = (current_setting('app.user_id'::text))::uuid) OR (f.shared_with_public = true) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.family_user_id = f.user_id) AND (fa.owner_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_view_food_library'::text))::boolean = true)))) OR (EXISTS ( SELECT 1
-           FROM public.family_access fa
-          WHERE ((fa.family_user_id = f.user_id) AND (fa.owner_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))))))));
-
-
---
--- Name: meal_plan_template_assignments meal_plan_template_assignments_rls; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY meal_plan_template_assignments_rls ON public.meal_plan_template_assignments USING (((EXISTS ( SELECT 1
-   FROM public.meal_plan_templates mpt
-  WHERE ((mpt.id = meal_plan_template_assignments.template_id) AND (mpt.user_id = (current_setting('app.user_id'::text))::uuid)))) AND ((((item_type)::text = 'food'::text) AND (EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE (f.id = meal_plan_template_assignments.food_id)))) OR (((item_type)::text = 'meal'::text) AND (EXISTS ( SELECT 1
-   FROM public.meals m
-  WHERE (m.id = meal_plan_template_assignments.meal_id))))))) WITH CHECK (((EXISTS ( SELECT 1
-   FROM public.meal_plan_templates mpt
-  WHERE ((mpt.id = meal_plan_template_assignments.template_id) AND (mpt.user_id = (current_setting('app.user_id'::text))::uuid)))) AND ((((item_type)::text = 'food'::text) AND (EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE (f.id = meal_plan_template_assignments.food_id)))) OR (((item_type)::text = 'meal'::text) AND (EXISTS ( SELECT 1
-   FROM public.meals m
-  WHERE (m.id = meal_plan_template_assignments.meal_id)))))));
-
 
 --
 -- Name: meal_plan_templates; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3499,47 +3260,10 @@ CREATE POLICY meal_plan_template_assignments_rls ON public.meal_plan_template_as
 ALTER TABLE public.meal_plan_templates ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: meal_plan_templates meal_plan_templates_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY meal_plan_templates_all_policy ON public.meal_plan_templates TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: meal_plan_templates meal_plan_templates_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY meal_plan_templates_modify_policy ON public.meal_plan_templates USING ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: meal_plan_templates meal_plan_templates_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY meal_plan_templates_select_policy ON public.meal_plan_templates FOR SELECT USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = meal_plan_templates.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_view_food_library'::text))::boolean = true))))));
-
-
---
 -- Name: meal_plans; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.meal_plans ENABLE ROW LEVEL SECURITY;
-
---
--- Name: meal_plans meal_plans_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY meal_plans_all_policy ON public.meal_plans TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: meal_plans meal_plans_user_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY meal_plans_user_policy ON public.meal_plans USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
 
 --
 -- Name: meals; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3548,21 +3272,127 @@ CREATE POLICY meal_plans_user_policy ON public.meal_plans USING ((user_id = (cur
 ALTER TABLE public.meals ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: meals meals_all_owner_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: check_in_measurements modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY meals_all_owner_policy ON public.meals TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
+CREATE POLICY modify_policy ON public.check_in_measurements USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
--- Name: meals meals_select_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: custom_categories modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY meals_select_policy ON public.meals FOR SELECT TO sparky_app USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (is_public = true) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.family_user_id = meals.user_id) AND (fa.owner_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_view_food_library'::text))::boolean = true)))) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.family_user_id = meals.user_id) AND (fa.owner_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
+CREATE POLICY modify_policy ON public.custom_categories USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: custom_measurements modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.custom_measurements USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: exercise_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.exercise_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: exercise_entry_sets modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.exercise_entry_sets USING ((EXISTS ( SELECT 1
+   FROM public.exercise_entries ee
+  WHERE ((ee.id = exercise_entry_sets.exercise_entry_id) AND public.has_diary_access(ee.user_id))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.exercise_entries ee
+  WHERE ((ee.id = exercise_entry_sets.exercise_entry_id) AND public.has_diary_access(ee.user_id)))));
+
+
+--
+-- Name: exercises modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.exercises USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
+-- Name: external_data_providers modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.external_data_providers USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
+-- Name: family_access modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.family_access USING ((public.current_user_id() = owner_user_id)) WITH CHECK ((public.current_user_id() = owner_user_id));
+
+
+--
+-- Name: food_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.food_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: foods modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.foods USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
+-- Name: meal_foods modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.meal_foods USING ((EXISTS ( SELECT 1
+   FROM public.meals m
+  WHERE ((m.id = meal_foods.meal_id) AND (public.current_user_id() = m.user_id) AND (EXISTS ( SELECT 1
+           FROM public.foods f
+          WHERE (f.id = meal_foods.food_id))))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.meals m
+  WHERE ((m.id = meal_foods.meal_id) AND (public.current_user_id() = m.user_id) AND (EXISTS ( SELECT 1
+           FROM public.foods f
+          WHERE (f.id = meal_foods.food_id)))))));
+
+
+--
+-- Name: meal_plan_templates modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.meal_plan_templates USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
+-- Name: meals modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.meals USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
+-- Name: water_intake modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.water_intake USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: workout_plan_templates modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.workout_plan_templates USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
+-- Name: workout_presets modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.workout_presets USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
 
 
 --
@@ -3572,17 +3402,164 @@ CREATE POLICY meals_select_policy ON public.meals FOR SELECT TO sparky_app USING
 ALTER TABLE public.mood_entries ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: mood_entries mood_entries_all_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: ai_service_settings owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY mood_entries_all_policy ON public.mood_entries TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
+CREATE POLICY owner_policy ON public.ai_service_settings USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
 
 
 --
--- Name: mood_entries mood_entries_user_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: goal_presets owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY mood_entries_user_policy ON public.mood_entries USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
+CREATE POLICY owner_policy ON public.goal_presets USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: meal_plan_template_assignments owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.meal_plan_template_assignments USING (((EXISTS ( SELECT 1
+   FROM public.meal_plan_templates mpt
+  WHERE ((mpt.id = meal_plan_template_assignments.template_id) AND (public.current_user_id() = mpt.user_id)))) AND ((((item_type)::text = 'food'::text) AND (EXISTS ( SELECT 1
+   FROM public.foods f
+  WHERE (f.id = meal_plan_template_assignments.food_id)))) OR (((item_type)::text = 'meal'::text) AND (EXISTS ( SELECT 1
+   FROM public.meals m
+  WHERE (m.id = meal_plan_template_assignments.meal_id))))))) WITH CHECK (((EXISTS ( SELECT 1
+   FROM public.meal_plan_templates mpt
+  WHERE ((mpt.id = meal_plan_template_assignments.template_id) AND (public.current_user_id() = mpt.user_id)))) AND ((((item_type)::text = 'food'::text) AND (EXISTS ( SELECT 1
+   FROM public.foods f
+  WHERE (f.id = meal_plan_template_assignments.food_id)))) OR (((item_type)::text = 'meal'::text) AND (EXISTS ( SELECT 1
+   FROM public.meals m
+  WHERE (m.id = meal_plan_template_assignments.meal_id)))))));
+
+
+--
+-- Name: meal_plans owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.meal_plans USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: mood_entries owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.mood_entries USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: profiles owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.profiles USING ((id = public.current_user_id())) WITH CHECK ((id = public.current_user_id()));
+
+
+--
+-- Name: sparky_chat_history owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.sparky_chat_history USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: user_api_keys owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_api_keys USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: user_goals owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_goals USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: user_ignored_updates owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_ignored_updates USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: user_nutrient_display_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_nutrient_display_preferences USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: user_oidc_links owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_oidc_links USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: user_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_preferences USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: user_water_containers owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_water_containers USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: weekly_goal_plans owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.weekly_goal_plans USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: workout_plan_assignment_sets owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.workout_plan_assignment_sets USING ((EXISTS ( SELECT 1
+   FROM public.workout_plan_template_assignments wpta
+  WHERE (wpta.id = workout_plan_assignment_sets.assignment_id)))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.workout_plan_template_assignments wpta
+  WHERE (wpta.id = workout_plan_assignment_sets.assignment_id))));
+
+
+--
+-- Name: workout_plan_template_assignments owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.workout_plan_template_assignments USING ((EXISTS ( SELECT 1
+   FROM public.workout_plan_templates wpt
+  WHERE ((wpt.id = workout_plan_template_assignments.template_id) AND (public.current_user_id() = wpt.user_id))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.workout_plan_templates wpt
+  WHERE ((wpt.id = workout_plan_template_assignments.template_id) AND (public.current_user_id() = wpt.user_id)))));
+
+
+--
+-- Name: workout_preset_exercise_sets owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.workout_preset_exercise_sets USING ((EXISTS ( SELECT 1
+   FROM public.workout_preset_exercises wpe
+  WHERE (wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id)))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.workout_preset_exercises wpe
+  WHERE (wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id))));
+
+
+--
+-- Name: workout_preset_exercises owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.workout_preset_exercises USING ((EXISTS ( SELECT 1
+   FROM public.workout_presets wp
+  WHERE (wp.id = workout_preset_exercises.workout_preset_id)))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.workout_presets wp
+  WHERE (wp.id = workout_preset_exercises.workout_preset_id))));
 
 
 --
@@ -3592,17 +3569,130 @@ CREATE POLICY mood_entries_user_policy ON public.mood_entries USING ((user_id = 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: profiles profiles_all_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: food_variants select_and_modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY profiles_all_policy ON public.profiles TO sparky_app USING ((id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((id = (current_setting('app.user_id'::text))::uuid));
+CREATE POLICY select_and_modify_policy ON public.food_variants USING ((EXISTS ( SELECT 1
+   FROM public.foods f
+  WHERE ((f.id = food_variants.food_id) AND public.has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.foods f
+  WHERE ((f.id = food_variants.food_id) AND public.has_diary_access(f.user_id)))));
 
 
 --
--- Name: profiles profiles_rls; Type: POLICY; Schema: public; Owner: -
+-- Name: check_in_measurements select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY profiles_rls ON public.profiles USING ((id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((id = (current_setting('app.user_id'::text))::uuid));
+CREATE POLICY select_policy ON public.check_in_measurements FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: custom_categories select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.custom_categories FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: custom_measurements select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.custom_measurements FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: exercise_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.exercise_entries FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: exercise_entry_sets select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.exercise_entry_sets FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM public.exercise_entries ee
+  WHERE ((ee.id = exercise_entry_sets.exercise_entry_id) AND public.has_diary_access(ee.user_id)))));
+
+
+--
+-- Name: exercises select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.exercises FOR SELECT USING (public.has_library_access_with_public(user_id, shared_with_public, ARRAY['can_view_exercise_library'::text, 'can_manage_diary'::text]));
+
+
+--
+-- Name: external_data_providers select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.external_data_providers FOR SELECT USING (((public.current_user_id() = user_id) OR ((provider_type <> 'garmin'::text) AND (shared_with_public OR public.has_family_access_or(user_id, ARRAY['can_view_food_library'::text, 'can_view_exercise_library'::text])))));
+
+
+--
+-- Name: family_access select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.family_access FOR SELECT USING (((public.current_user_id() = owner_user_id) OR (public.current_user_id() = family_user_id)));
+
+
+--
+-- Name: food_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.food_entries FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: foods select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.foods FOR SELECT USING (public.has_library_access_with_public(user_id, shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]));
+
+
+--
+-- Name: meal_foods select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.meal_foods FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM public.meals m
+  WHERE ((m.id = meal_foods.meal_id) AND public.has_library_access_with_public(m.user_id, m.is_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text])))));
+
+
+--
+-- Name: meal_plan_templates select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.meal_plan_templates FOR SELECT USING (public.has_library_access_with_public(user_id, false, ARRAY['can_view_food_library'::text]));
+
+
+--
+-- Name: meals select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.meals FOR SELECT USING (public.has_library_access_with_public(user_id, is_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]));
+
+
+--
+-- Name: water_intake select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.water_intake FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: workout_plan_templates select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.workout_plan_templates FOR SELECT USING (public.has_library_access_with_public(user_id, false, ARRAY['can_view_exercise_library'::text]));
+
+
+--
+-- Name: workout_presets select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.workout_presets FOR SELECT USING (public.has_library_access_with_public(user_id, false, ARRAY['can_view_exercise_library'::text]));
 
 
 --
@@ -3612,38 +3702,10 @@ CREATE POLICY profiles_rls ON public.profiles USING ((id = (current_setting('app
 ALTER TABLE public.sparky_chat_history ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: sparky_chat_history sparky_chat_history_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY sparky_chat_history_all_policy ON public.sparky_chat_history TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: sparky_chat_history sparky_chat_history_user_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY sparky_chat_history_user_policy ON public.sparky_chat_history USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
 -- Name: user_api_keys; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.user_api_keys ENABLE ROW LEVEL SECURITY;
-
---
--- Name: user_api_keys user_api_keys_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_api_keys_all_policy ON public.user_api_keys TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: user_api_keys user_api_keys_user_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_api_keys_user_policy ON public.user_api_keys USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
 
 --
 -- Name: user_goals; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3652,52 +3714,10 @@ CREATE POLICY user_api_keys_user_policy ON public.user_api_keys USING ((user_id 
 ALTER TABLE public.user_goals ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: user_goals user_goals_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_goals_all_policy ON public.user_goals TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: user_goals user_goals_user_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_goals_user_policy ON public.user_goals USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
 -- Name: user_ignored_updates; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.user_ignored_updates ENABLE ROW LEVEL SECURITY;
-
---
--- Name: user_ignored_updates user_ignored_updates_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_ignored_updates_all_policy ON public.user_ignored_updates TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: user_ignored_updates user_ignored_updates_insert_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_ignored_updates_insert_policy ON public.user_ignored_updates FOR INSERT WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: user_ignored_updates user_ignored_updates_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_ignored_updates_select_policy ON public.user_ignored_updates FOR SELECT USING ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: user_ignored_updates user_ignored_updates_update_delete_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_ignored_updates_update_delete_policy ON public.user_ignored_updates USING ((user_id = (current_setting('app.user_id'::text))::uuid));
-
 
 --
 -- Name: user_nutrient_display_preferences; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3706,31 +3726,10 @@ CREATE POLICY user_ignored_updates_update_delete_policy ON public.user_ignored_u
 ALTER TABLE public.user_nutrient_display_preferences ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: user_nutrient_display_preferences user_nutrient_display_preferences_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_nutrient_display_preferences_all_policy ON public.user_nutrient_display_preferences TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: user_nutrient_display_preferences user_nutrient_display_preferences_user_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_nutrient_display_preferences_user_policy ON public.user_nutrient_display_preferences USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
 -- Name: user_oidc_links; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.user_oidc_links ENABLE ROW LEVEL SECURITY;
-
---
--- Name: user_oidc_links user_oidc_links_rls; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_oidc_links_rls ON public.user_oidc_links USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
 
 --
 -- Name: user_preferences; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3739,38 +3738,10 @@ CREATE POLICY user_oidc_links_rls ON public.user_oidc_links USING ((user_id = (c
 ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: user_preferences user_preferences_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_preferences_all_policy ON public.user_preferences TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: user_preferences user_preferences_user_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_preferences_user_policy ON public.user_preferences USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
 -- Name: user_water_containers; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.user_water_containers ENABLE ROW LEVEL SECURITY;
-
---
--- Name: user_water_containers user_water_containers_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_water_containers_all_policy ON public.user_water_containers TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: user_water_containers user_water_containers_user_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_water_containers_user_policy ON public.user_water_containers USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
 
 --
 -- Name: water_intake; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3779,51 +3750,10 @@ CREATE POLICY user_water_containers_user_policy ON public.user_water_containers 
 ALTER TABLE public.water_intake ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: water_intake water_intake_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY water_intake_all_policy ON public.water_intake TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: water_intake water_intake_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY water_intake_modify_policy ON public.water_intake USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = water_intake.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true)))))) WITH CHECK (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = water_intake.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
-
---
--- Name: water_intake water_intake_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY water_intake_select_policy ON public.water_intake FOR SELECT USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = water_intake.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_manage_diary'::text))::boolean = true))))));
-
-
---
 -- Name: weekly_goal_plans; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.weekly_goal_plans ENABLE ROW LEVEL SECURITY;
-
---
--- Name: weekly_goal_plans weekly_goal_plans_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY weekly_goal_plans_all_policy ON public.weekly_goal_plans TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: weekly_goal_plans weekly_goal_plans_user_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY weekly_goal_plans_user_policy ON public.weekly_goal_plans USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
 
 --
 -- Name: workout_plan_assignment_sets; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3832,28 +3762,10 @@ CREATE POLICY weekly_goal_plans_user_policy ON public.weekly_goal_plans USING ((
 ALTER TABLE public.workout_plan_assignment_sets ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: workout_plan_assignment_sets workout_plan_assignment_sets_rls; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY workout_plan_assignment_sets_rls ON public.workout_plan_assignment_sets USING ((EXISTS ( SELECT 1
-   FROM public.workout_plan_template_assignments wpta
-  WHERE (wpta.id = workout_plan_assignment_sets.assignment_id))));
-
-
---
 -- Name: workout_plan_template_assignments; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.workout_plan_template_assignments ENABLE ROW LEVEL SECURITY;
-
---
--- Name: workout_plan_template_assignments workout_plan_template_assignments_rls; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY workout_plan_template_assignments_rls ON public.workout_plan_template_assignments USING ((EXISTS ( SELECT 1
-   FROM public.workout_plan_templates wpt
-  WHERE ((wpt.id = workout_plan_template_assignments.template_id) AND (wpt.user_id = (current_setting('app.user_id'::text))::uuid)))));
-
 
 --
 -- Name: workout_plan_templates; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3862,42 +3774,10 @@ CREATE POLICY workout_plan_template_assignments_rls ON public.workout_plan_templ
 ALTER TABLE public.workout_plan_templates ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: workout_plan_templates workout_plan_templates_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY workout_plan_templates_all_policy ON public.workout_plan_templates TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: workout_plan_templates workout_plan_templates_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY workout_plan_templates_modify_policy ON public.workout_plan_templates USING ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: workout_plan_templates workout_plan_templates_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY workout_plan_templates_select_policy ON public.workout_plan_templates FOR SELECT USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = workout_plan_templates.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_view_exercise_library'::text))::boolean = true))))));
-
-
---
 -- Name: workout_preset_exercise_sets; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.workout_preset_exercise_sets ENABLE ROW LEVEL SECURITY;
-
---
--- Name: workout_preset_exercise_sets workout_preset_exercise_sets_rls; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY workout_preset_exercise_sets_rls ON public.workout_preset_exercise_sets USING ((EXISTS ( SELECT 1
-   FROM public.workout_preset_exercises wpe
-  WHERE (wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id))));
-
 
 --
 -- Name: workout_preset_exercises; Type: ROW SECURITY; Schema: public; Owner: -
@@ -3906,48 +3786,18 @@ CREATE POLICY workout_preset_exercise_sets_rls ON public.workout_preset_exercise
 ALTER TABLE public.workout_preset_exercises ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: workout_preset_exercises workout_preset_exercises_rls; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY workout_preset_exercises_rls ON public.workout_preset_exercises USING ((EXISTS ( SELECT 1
-   FROM public.workout_presets wp
-  WHERE (wp.id = workout_preset_exercises.workout_preset_id))));
-
-
---
 -- Name: workout_presets; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.workout_presets ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: workout_presets workout_presets_all_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY workout_presets_all_policy ON public.workout_presets TO sparky_app USING ((user_id = (current_setting('app.user_id'::text))::uuid)) WITH CHECK ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: workout_presets workout_presets_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY workout_presets_modify_policy ON public.workout_presets USING ((user_id = (current_setting('app.user_id'::text))::uuid));
-
-
---
--- Name: workout_presets workout_presets_select_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY workout_presets_select_policy ON public.workout_presets FOR SELECT USING (((user_id = (current_setting('app.user_id'::text))::uuid) OR (EXISTS ( SELECT 1
-   FROM public.family_access fa
-  WHERE ((fa.owner_user_id = workout_presets.user_id) AND (fa.family_user_id = (current_setting('app.user_id'::text))::uuid) AND (fa.is_active = true) AND (((fa.access_permissions ->> 'can_view_exercise_library'::text))::boolean = true))))));
-
-
---
 -- Name: SCHEMA auth; Type: ACL; Schema: -; Owner: -
 --
 
 GRANT USAGE ON SCHEMA auth TO sparky_app;
+GRANT USAGE ON SCHEMA auth TO sparky_test;
+GRANT USAGE ON SCHEMA auth TO sparky_uat;
 
 
 --
@@ -3955,6 +3805,18 @@ GRANT USAGE ON SCHEMA auth TO sparky_app;
 --
 
 GRANT USAGE ON SCHEMA public TO sparky_app;
+GRANT USAGE ON SCHEMA public TO sparky_test;
+GRANT USAGE ON SCHEMA public TO sparky;
+GRANT USAGE ON SCHEMA public TO sparky_uat;
+
+
+--
+-- Name: SCHEMA system; Type: ACL; Schema: -; Owner: -
+--
+
+GRANT USAGE ON SCHEMA system TO sparky_app;
+GRANT USAGE ON SCHEMA system TO sparky_test;
+GRANT USAGE ON SCHEMA system TO sparky_uat;
 
 
 --
@@ -3962,6 +3824,8 @@ GRANT USAGE ON SCHEMA public TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_uat;
 
 
 --
@@ -3969,6 +3833,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_uat;
 
 
 --
@@ -3976,6 +3842,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_uat;
 
 
 --
@@ -3983,6 +3851,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_uat;
 
 
 --
@@ -3990,6 +3860,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_app;
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_uat;
 
 
 --
@@ -3997,6 +3869,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_uat;
 
 
 --
@@ -4004,6 +3878,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO spark
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_uat;
 
 
 --
@@ -4011,6 +3887,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_ap
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_uat;
 
 
 --
@@ -4018,6 +3896,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_uat;
 
 
 --
@@ -4025,6 +3905,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_app
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_uat;
 
 
 --
@@ -4032,6 +3914,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_detail
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_uat;
 
 
 --
@@ -4039,6 +3923,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_uat;
 
 
 --
@@ -4046,6 +3932,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_uat;
 
 
 --
@@ -4053,6 +3941,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_uat;
 
 
 --
@@ -4060,6 +3950,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO spa
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_uat;
 
 
 --
@@ -4067,6 +3959,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_uat;
 
 
 --
@@ -4074,6 +3968,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_uat;
 
 
 --
@@ -4081,6 +3977,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_uat;
 
 
 --
@@ -4088,6 +3986,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_uat;
 
 
 --
@@ -4095,6 +3995,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_uat;
 
 
 --
@@ -4102,6 +4004,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_uat;
 
 
 --
@@ -4109,6 +4013,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_uat;
 
 
 --
@@ -4116,6 +4022,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_uat;
 
 
 --
@@ -4123,6 +4031,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_uat;
 
 
 --
@@ -4130,6 +4040,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_uat;
 
 
 --
@@ -4137,6 +4049,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_uat;
 
 
 --
@@ -4144,6 +4058,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_uat;
 
 
 --
@@ -4151,6 +4067,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_app;
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_uat;
 
 
 --
@@ -4158,6 +4076,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_uat;
 
 
 --
@@ -4165,6 +4085,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_uat;
 
 
 --
@@ -4172,6 +4094,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_ap
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_uat;
 
 
 --
@@ -4179,6 +4103,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_a
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO sparky_uat;
 
 
 --
@@ -4186,6 +4112,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO spa
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_uat;
 
 
 --
@@ -4193,6 +4121,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_uat;
 
 
 --
@@ -4200,6 +4130,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_uat;
 
 
 --
@@ -4207,6 +4139,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_api_keys TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_api_keys TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_api_keys TO sparky_uat;
 
 
 --
@@ -4214,6 +4148,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_api_keys TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_uat;
 
 
 --
@@ -4221,6 +4157,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_uat;
 
 
 --
@@ -4228,6 +4166,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_uat;
 
 
 --
@@ -4235,6 +4175,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferen
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_uat;
 
 
 --
@@ -4242,6 +4184,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq T
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_uat;
 
 
 --
@@ -4249,6 +4193,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_app;
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_uat;
 
 
 --
@@ -4256,6 +4202,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_uat;
 
 
 --
@@ -4263,6 +4211,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_app
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_uat;
 
 
 --
@@ -4270,6 +4220,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO spark
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_uat;
 
 
 --
@@ -4277,6 +4229,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_app
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_uat;
 
 
 --
@@ -4284,6 +4238,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_uat;
 
 
 --
@@ -4291,6 +4247,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_ap
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_uat;
 
 
 --
@@ -4298,6 +4256,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets T
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_uat;
 
 
 --
@@ -4305,6 +4265,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO spa
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_uat;
 
 
 --
@@ -4312,6 +4274,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignme
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_uat;
 
 
 --
@@ -4319,6 +4283,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq T
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_uat;
 
 
 --
@@ -4326,6 +4292,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO spar
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_uat;
 
 
 --
@@ -4333,6 +4301,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_ap
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_uat;
 
 
 --
@@ -4340,6 +4310,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets T
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_uat;
 
 
 --
@@ -4347,6 +4319,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO spa
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_uat;
 
 
 --
@@ -4354,6 +4328,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sp
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_uat;
 
 
 --
@@ -4361,6 +4337,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_uat;
 
 
 --
@@ -4368,32 +4346,52 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_app;
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_app;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_test;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_uat;
+
+
+--
+-- Name: TABLE schema_migrations; Type: ACL; Schema: system; Owner: -
+--
+
+GRANT SELECT ON TABLE system.schema_migrations TO sparky_app;
+GRANT SELECT ON TABLE system.schema_migrations TO sparky_test;
+GRANT SELECT ON TABLE system.schema_migrations TO sparky_uat;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: auth; Owner: -
 --
 
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky;
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_test;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky;
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_test;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_uat;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky;
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_test;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 16NfFVVADA2tnkbbCeZzCuFftJOFSO9bUWVQiaiEJGtx4Fd7baU5RMadLOzbhPs
+\unrestrict XgfRGu5ggmKHmqQOwJt09ll0WrfL4bSgbaOeVKashmpZLQJ3WjncrvwVHdpCdBa
 
