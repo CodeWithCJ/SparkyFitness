@@ -35,7 +35,8 @@ import { saveMoodEntry, getMoodEntryByDate } from '@/services/moodService'; // I
 import { calculateBodyFatBmi, calculateBodyFatNavy } from '@/services/bodyCompositionService';
 import { getUserPreferences } from '@/services/preferenceService';
 import { userManagementService } from "@/services/userManagementService";
-
+import { api } from '@/services/api'; // Import the API service
+import SleepEntrySection from './SleepEntrySection'; // Import SleepEntrySection
 
 const CheckIn = () => {
   const { user } = useAuth();
@@ -65,10 +66,9 @@ const CheckIn = () => {
   const [customValues, setCustomValues] = useState<{[key: string]: string}>({});
   const [customNotes, setCustomNotes] = useState<{[key: string]: string}>({});
   const [useMostRecentForCalculation, setUseMostRecentForCalculation] = useState(false); // New state for checkbox
-
   const [loading, setLoading] = useState(false);
   const [recentMeasurements, setRecentMeasurements] = useState<CombinedMeasurement[]>([]);
-
+ 
   const currentUserId = activeUserId || user?.id;
   debug(loggingLevel, "Current user ID:", currentUserId);
 
@@ -107,8 +107,6 @@ const CheckIn = () => {
       fetchAllRecentMeasurements();
     }
   }, [currentUserId, selectedDate, customCategories, convertWeight, convertMeasurement, defaultWeightUnit, defaultMeasurementUnit, formatDateInUserTimezone, parseDateInUserTimezone]);
-  
-  
   
     const loadCustomCategories = async () => {
     if (!currentUserId) {
@@ -557,6 +555,9 @@ const CheckIn = () => {
         initialNotes={moodNotes}
       />
 
+      {/* Sleep Entry Section */}
+      <SleepEntrySection selectedDate={selectedDate} />
+
       {/* Check-In Form */}
       <Card>
         <CardHeader>
@@ -679,6 +680,7 @@ const CheckIn = () => {
                   <Button type="button" onClick={handleCalculateBodyFat} className="ml-2">Calculate</Button>
                 </div>
               </div>
+              {/* Custom Categories */}
 
               {/* Custom Categories */}
               {customCategories.map((category) => {

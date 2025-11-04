@@ -28,6 +28,7 @@ const exerciseRoutes = require('./routes/exerciseRoutes');
 const exerciseEntryRoutes = require('./routes/exerciseEntryRoutes');
 const freeExerciseDBRoutes = require('./routes/freeExerciseDBRoutes'); // Import freeExerciseDB routes
 const healthDataRoutes = require('./integrations/healthData/healthDataRoutes');
+const sleepRoutes = require('./routes/sleepRoutes');
 const authRoutes = require('./routes/authRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const externalProviderRoutes = require('./routes/externalProviderRoutes'); // Renamed import
@@ -281,6 +282,8 @@ app.use('/exercises', exerciseRoutes);
 app.use('/exercise-entries', exerciseEntryRoutes);
 app.use('/freeexercisedb', freeExerciseDBRoutes); // Add freeExerciseDB routes
 app.use('/api/health-data', healthDataRoutes);
+app.use('/sleep', sleepRoutes);
+app.use('/sleep', sleepRoutes); // Add sleep routes
 app.use('/auth', authRoutes);
 app.use('/user', authRoutes);
 app.use('/health', healthRoutes);

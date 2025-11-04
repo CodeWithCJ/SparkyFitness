@@ -1,12 +1,13 @@
 console.log('DEBUG: Loading measurementService.js');
+const { log } = require('../config/logging'); // Import the logger utility
 const measurementRepository = require('../models/measurementRepository');
 const userRepository = require('../models/userRepository');
 const exerciseRepository = require('../models/exerciseRepository'); // For active calories
+const sleepRepository = require('../models/sleepRepository'); // Import sleepRepository
 // require concrete modules to avoid circular export issues for exercise functions used at runtime
 const exerciseDb = require('../models/exercise');
 const exerciseEntryDb = require('../models/exerciseEntry');
 const waterContainerRepository = require('../models/waterContainerRepository'); // Import waterContainerRepository
-const { log } = require('../config/logging');
 
 async function processHealthData(healthDataArray, userId, actingUserId) {
   const processedResults = [];
@@ -102,6 +103,15 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           result = await measurementRepository.upsertCheckInMeasurements(userId, actingUserId, parsedDate, checkInMeasurements);
           processedResults.push({ type, status: 'success', data: result });
           break;
+        case 'sleep_entry': // Handle structured sleep entry data
+            try {
+                const sleepEntryResult = await processSleepEntry(userId, actingUserId, dataEntry);
+                processedResults.push({ type, status: 'success', data: sleepEntryResult });
+            } catch (sleepError) {
+                log('error', `Error processing sleep entry: ${sleepError.message}`, dataEntry);
+                errors.push({ error: `Failed to process sleep entry: ${sleepError.message}`, entry: dataEntry });
+            }
+            break;
         default:
           // Handle as custom measurement
           // Get or create custom category first to check its data_type
@@ -462,6 +472,254 @@ async function getCustomMeasurementsByDateRange(authenticatedUserId, userId, cat
   }
 }
 
+async function calculateSleepScore(sleepEntryData, stageEvents, age = null, gender = null) {
+    const { duration_in_seconds, time_asleep_in_seconds } = sleepEntryData;
+
+    if (!duration_in_seconds || duration_in_seconds <= 0) return 0;
+
+    let score = 0;
+    const maxScore = 100;
+
+    // Define optimal ranges based on age and gender
+    let optimalMinDuration = 7 * 3600; // Default 7 hours
+    let optimalMaxDuration = 9 * 3600; // Default 9 hours
+    let optimalDeepMin = 15; // Default 15%
+    let optimalDeepMax = 25; // Default 25%
+    let optimalRemMin = 20; // Default 20%
+    let optimalRemMax = 25; // Default 25%
+
+    // Adjust optimal sleep duration based on age
+    if (age !== null) {
+        if (age >= 65) { // Older adults
+            optimalMinDuration = 7 * 3600;
+            optimalMaxDuration = 8 * 3600;
+        } else if (age >= 18 && age <= 64) { // Adults
+            optimalMinDuration = 7 * 3600;
+            optimalMaxDuration = 9 * 3600;
+        } else if (age >= 14 && age <= 17) { // Teenagers
+            optimalMinDuration = 8 * 3600;
+            optimalMaxDuration = 10 * 3600;
+        }
+        // Add more age groups as needed
+    }
+
+    // Component 1: Total Sleep Duration (TST) - 30% of score
+    const tstWeight = 30;
+
+    if (duration_in_seconds >= optimalMinDuration && duration_in_seconds <= optimalMaxDuration) {
+        score += tstWeight;
+    } else {
+        // Deduct points for being outside optimal range
+        const deviation = Math.min(Math.abs(duration_in_seconds - optimalMinDuration), Math.abs(duration_in_seconds - optimalMaxDuration));
+        score += Math.max(0, tstWeight - (deviation / 3600) * 5); // 5 points deduction per hour deviation
+    }
+
+    // Component 2: Sleep Efficiency - 25% of score
+    const sleepEfficiency = (time_asleep_in_seconds / duration_in_seconds) * 100;
+    const optimalEfficiency = 85; // 85%
+    const efficiencyWeight = 25;
+
+    if (sleepEfficiency >= optimalEfficiency) {
+        score += efficiencyWeight;
+    } else {
+        score += Math.max(0, efficiencyWeight - (optimalEfficiency - sleepEfficiency) * 1); // 1 point deduction per % below optimal
+    }
+
+    // Component 3: Sleep Stage Distribution (Deep & REM) - 30% of score (15% each)
+    let deepSleepDuration = 0;
+    let remSleepDuration = 0;
+    let awakeDuration = 0;
+    let numAwakePeriods = 0;
+
+    if (stageEvents && stageEvents.length > 0) {
+        let inAwakePeriod = false;
+        for (const event of stageEvents) {
+            if (event.stage_type === 'deep') {
+                deepSleepDuration += event.duration_in_seconds;
+            } else if (event.stage_type === 'rem') {
+                remSleepDuration += event.duration_in_seconds;
+            } else if (event.stage_type === 'awake') {
+                awakeDuration += event.duration_in_seconds;
+                if (!inAwakePeriod) {
+                    numAwakePeriods++;
+                    inAwakePeriod = true;
+                }
+            } else {
+                inAwakePeriod = false;
+            }
+        }
+    }
+
+    const totalSleepStagesDuration = deepSleepDuration + remSleepDuration + (time_asleep_in_seconds - awakeDuration);
+    
+    if (totalSleepStagesDuration > 0) {
+        const deepSleepPercentage = (deepSleepDuration / totalSleepStagesDuration) * 100;
+        const remSleepPercentage = (remSleepDuration / totalSleepStagesDuration) * 100;
+
+        // Adjust optimal deep and REM sleep percentages based on age/gender if needed
+        // For simplicity, using general guidelines here. More specific adjustments can be added.
+        if (age !== null) {
+            if (age >= 65) { // Older adults might have less deep sleep
+                optimalDeepMin = 10;
+                optimalDeepMax = 20;
+            }
+        }
+
+        // Deep Sleep Score (15%)
+        const deepWeight = 15;
+        if (deepSleepPercentage >= optimalDeepMin && deepSleepPercentage <= optimalDeepMax) {
+            score += deepWeight;
+        } else {
+            const deviation = Math.min(Math.abs(deepSleepPercentage - optimalDeepMin), Math.abs(deepSleepPercentage - optimalDeepMax));
+            score += Math.max(0, deepWeight - deviation * 0.5); // 0.5 point deduction per % deviation
+        }
+
+        // REM Sleep Score (15%)
+        const remWeight = 15;
+        if (remSleepPercentage >= optimalRemMin && remSleepPercentage <= optimalRemMax) {
+            score += remWeight;
+        } else {
+            const deviation = Math.min(Math.abs(remSleepPercentage - optimalRemMin), Math.abs(remSleepPercentage - optimalRemMax));
+            score += Math.max(0, remWeight - deviation * 0.5); // 0.5 point deduction per % deviation
+        }
+    }
+
+    // Component 4: Disturbances (Awake Time/Periods) - 15% of score
+    const disturbanceWeight = 15;
+    let disturbanceDeduction = 0;
+
+    // Deduct for total awake time
+    disturbanceDeduction += (awakeDuration / 60) * 0.5; // 0.5 points deduction per minute awake
+
+    // Deduct for number of awake periods
+    disturbanceDeduction += numAwakePeriods * 2; // 2 points deduction per awake period
+
+    score += Math.max(0, disturbanceWeight - disturbanceDeduction);
+
+    // Ensure score is within 0-100 range
+    return Math.round(Math.max(0, Math.min(score, maxScore)));
+}
+
+async function processSleepEntry(userId, actingUserId, sleepEntryData) {
+    try {
+        const { stage_events, entry_date, bedtime, wake_time, duration_in_seconds, source, sleep_score: incomingSleepScore, ...rest } = sleepEntryData;
+
+        let timeAsleepInSeconds = 0;
+        if (stage_events && stage_events.length > 0) {
+            timeAsleepInSeconds = stage_events
+                .filter(event => event.stage_type !== 'awake')
+                .reduce((sum, event) => sum + event.duration_in_seconds, 0);
+        }
+
+        // Fetch user profile to get age and gender
+        const userProfile = await userRepository.getUserProfile(userId);
+        let age = null;
+        let gender = null;
+
+        if (userProfile && userProfile.date_of_birth) {
+            const dob = new Date(userProfile.date_of_birth);
+            const today = new Date();
+            age = today.getFullYear() - dob.getFullYear();
+            const m = today.getMonth() - dob.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+                age--;
+            }
+        }
+        if (userProfile && userProfile.gender) {
+            gender = userProfile.gender;
+        }
+
+        const sleepScore = await calculateSleepScore({ duration_in_seconds, time_asleep_in_seconds: timeAsleepInSeconds }, stage_events, age, gender);
+
+        const entryToUpsert = {
+            entry_date: entry_date, // Use the entry_date directly from the frontend
+            bedtime: new Date(bedtime),
+            wake_time: new Date(wake_time),
+            duration_in_seconds: duration_in_seconds,
+            time_asleep_in_seconds: timeAsleepInSeconds, // Populate time_asleep_in_seconds
+            sleep_score: sleepScore, // Always use the calculated sleepScore
+            source: source,
+            ...rest // Include any other properties
+        };
+        log('debug', `[processSleepEntry] entryToUpsert before upsert:`, entryToUpsert);
+
+        const newSleepEntry = await sleepRepository.upsertSleepEntry(userId, actingUserId, entryToUpsert);
+
+        if (stage_events && stage_events.length > 0) {
+            for (const stageEvent of stage_events) {
+                await sleepRepository.upsertSleepStageEvent(userId, newSleepEntry.id, stageEvent);
+            }
+        }
+        return newSleepEntry;
+    } catch (error) {
+        log('error', `Error in processSleepEntry for user ${userId}:`, error);
+        throw error;
+    }
+}
+
+async function updateSleepEntry(userId, entryId, updateData) {
+  try {
+    const { stage_events, bedtime, wake_time, duration_in_seconds, sleep_score: incomingSleepScore, ...entryDetails } = updateData;
+
+    let timeAsleepInSeconds = 0;
+    if (stage_events && stage_events.length > 0) {
+        timeAsleepInSeconds = stage_events
+            .filter(event => event.stage_type !== 'awake')
+            .reduce((sum, event) => sum + event.duration_in_seconds, 0);
+    }
+
+    // Fetch user profile to get age and gender
+    const userProfile = await userRepository.getUserProfile(userId);
+    let age = null;
+    let gender = null;
+
+    if (userProfile && userProfile.date_of_birth) {
+        const dob = new Date(userProfile.date_of_birth);
+        const today = new Date();
+        age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+            age--;
+        }
+    }
+    if (userProfile && userProfile.gender) {
+        gender = userProfile.gender;
+    }
+
+    const sleepScore = await calculateSleepScore({ duration_in_seconds, time_asleep_in_seconds: timeAsleepInSeconds }, stage_events, age, gender);
+
+    const updatedEntryDetails = {
+        ...entryDetails,
+        bedtime: bedtime ? new Date(bedtime) : undefined,
+        wake_time: wake_time ? new Date(wake_time) : undefined,
+        duration_in_seconds: duration_in_seconds,
+        time_asleep_in_seconds: timeAsleepInSeconds, // Populate time_asleep_in_seconds
+        sleep_score: sleepScore, // Always use the calculated sleepScore
+    };
+    log('debug', `[updateSleepEntry] updatedEntryDetails before update:`, updatedEntryDetails);
+
+    // Update the main sleep entry details
+    const updatedEntry = await sleepRepository.updateSleepEntry(userId, entryId, updatedEntryDetails);
+
+    // Handle stage events if provided
+    if (stage_events !== undefined) {
+      // First, delete all existing stage events for this sleep entry
+      await sleepRepository.deleteSleepStageEventsByEntryId(userId, entryId);
+
+      // Then, insert the new stage events
+      if (stage_events.length > 0) {
+        for (const stageEvent of stage_events) {
+          await sleepRepository.upsertSleepStageEvent(userId, entryId, stageEvent);
+        }
+      }
+    }
+    return updatedEntry;
+  } catch (error) {
+    log('error', `Error in updateSleepEntry for user ${userId}, entry ${entryId}:`, error);
+    throw error;
+  }
+}
+ 
 module.exports = {
   processHealthData,
   getWaterIntake,
@@ -485,6 +743,10 @@ module.exports = {
   upsertCustomMeasurementEntry,
   deleteCustomMeasurementEntry,
   getMostRecentMeasurement,
+  processSleepEntry,
+  updateSleepEntry,
+  getSleepEntriesByUserIdAndDateRange: sleepRepository.getSleepEntriesByUserIdAndDateRange,
+  deleteSleepEntry: sleepRepository.deleteSleepEntry, // Export the new delete function
 };
 
 async function upsertCustomMeasurementEntry(authenticatedUserId, actingUserId, payload) {

@@ -56,7 +56,9 @@ BEGIN
     'workout_plan_templates',
     'workout_preset_exercise_sets',
     'workout_preset_exercises',
-    'workout_presets'
+    'workout_presets',
+    'sleep_entries',
+    'sleep_entry_stages'
   ]::text[]) AS table_name;
 END $$;
 
@@ -185,6 +187,8 @@ SELECT create_diary_policy('check_in_measurements');
 SELECT create_diary_policy('custom_categories');
 SELECT create_diary_policy('custom_measurements');
 SELECT create_diary_policy('exercise_entries');
+SELECT create_diary_policy('sleep_entries');
+SELECT create_diary_policy('sleep_entry_stages');
 SELECT create_diary_policy('water_intake');
 
 -- Library access tables
