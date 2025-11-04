@@ -1,0 +1,23 @@
+meta {
+  name: Delete Food Entry
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/foods/food-entries/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id:
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Delete a food entry from the diary.
+}

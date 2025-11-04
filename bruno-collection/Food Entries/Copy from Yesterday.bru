@@ -1,0 +1,26 @@
+meta {
+  name: Copy from Yesterday
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/foods/food-entries/copy-yesterday
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "mealType": "breakfast",
+    "targetDate": "2025-11-04"
+  }
+}
+
+docs {
+  Copy yesterday's meal to today.
+}

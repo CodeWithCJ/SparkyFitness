@@ -1,0 +1,24 @@
+meta {
+  name: Get Meal Plan
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/meals/plan?startDate=2025-11-04&endDate=2025-11-10
+  body: none
+  auth: bearer
+}
+
+params:query {
+  startDate: 2025-11-04
+  endDate: 2025-11-10
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Get meal plan entries for a date range.
+}

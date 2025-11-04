@@ -1,0 +1,36 @@
+meta {
+  name: Create Meal
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/meals
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "name": "My Breakfast",
+    "description": "Healthy breakfast meal",
+    "foods": [
+      {
+        "food_id": "food-uuid-1",
+        "serving_qty": 2
+      },
+      {
+        "food_id": "food-uuid-2",
+        "serving_qty": 1
+      }
+    ]
+  }
+}
+
+docs {
+  Create a new meal template.
+}

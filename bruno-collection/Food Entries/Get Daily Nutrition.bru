@@ -1,0 +1,23 @@
+meta {
+  name: Get Daily Nutrition
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/foods/food-entries/nutrition/today?date=2025-11-04
+  body: none
+  auth: bearer
+}
+
+params:query {
+  date: 2025-11-04
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Get nutrition totals for a specific day.
+}

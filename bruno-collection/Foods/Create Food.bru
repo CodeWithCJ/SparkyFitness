@@ -1,0 +1,31 @@
+meta {
+  name: Create Food
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/foods
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "name": "Custom Food",
+    "calories": 200,
+    "protein": 10,
+    "carbs": 30,
+    "fat": 5,
+    "serving_size": "100g",
+    "is_public": false
+  }
+}
+
+docs {
+  Create a custom food item.
+}

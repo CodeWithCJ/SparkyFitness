@@ -1,0 +1,23 @@
+meta {
+  name: Get Exercise by ID
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/exercises/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id:
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Get a specific exercise by ID.
+}

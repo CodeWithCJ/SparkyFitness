@@ -1,0 +1,29 @@
+meta {
+  name: Create Exercise
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/exercises
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "name": "Custom Exercise",
+    "description": "My custom exercise",
+    "muscle_group": "legs",
+    "equipment": "barbell"
+  }
+}
+
+docs {
+  Create a custom exercise.
+  Can also upload images using multipart/form-data.
+}

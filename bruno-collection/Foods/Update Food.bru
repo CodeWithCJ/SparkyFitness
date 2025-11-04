@@ -1,0 +1,30 @@
+meta {
+  name: Update Food
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/foods/:id
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id:
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "name": "Updated Food Name",
+    "calories": 250
+  }
+}
+
+docs {
+  Update an existing food item.
+}

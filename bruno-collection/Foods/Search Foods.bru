@@ -1,0 +1,24 @@
+meta {
+  name: Search Foods
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/foods/search?name=apple&limit=10
+  body: none
+  auth: bearer
+}
+
+params:query {
+  name: apple
+  limit: 10
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Search foods by name in the user's database and public foods.
+}

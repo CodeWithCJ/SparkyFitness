@@ -1,0 +1,25 @@
+meta {
+  name: Generate API Key
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/auth/user/generate-api-key
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "description": "API key for my application"
+  }
+}
+
+docs {
+  Generate a new API key for programmatic access.
+}

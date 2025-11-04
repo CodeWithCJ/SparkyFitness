@@ -1,0 +1,30 @@
+meta {
+  name: Update Food Entry
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/foods/food-entries/:id
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id:
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "serving_qty": 2,
+    "meal_type": "lunch"
+  }
+}
+
+docs {
+  Update an existing food entry.
+}

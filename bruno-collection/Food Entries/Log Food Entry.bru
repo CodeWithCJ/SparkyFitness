@@ -1,0 +1,29 @@
+meta {
+  name: Log Food Entry
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/foods/food-entries
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "food_id": "food-uuid-here",
+    "serving_qty": 1,
+    "meal_type": "breakfast",
+    "entry_date": "2025-11-04"
+  }
+}
+
+docs {
+  Log a food entry to the diary.
+  meal_type can be: breakfast, lunch, dinner, snack
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Get Meals
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/meals
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Get all meal templates.
+}

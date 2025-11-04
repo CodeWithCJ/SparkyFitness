@@ -1,0 +1,24 @@
+meta {
+  name: Nutritionix Search
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/foods/nutritionix/search?query=chicken&providerId=
+  body: none
+  auth: bearer
+}
+
+params:query {
+  query: chicken
+  providerId:
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Search foods in Nutritionix database.
+}

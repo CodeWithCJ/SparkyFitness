@@ -1,0 +1,23 @@
+meta {
+  name: Search Exercises
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/exercises/search?searchTerm=squat
+  body: none
+  auth: bearer
+}
+
+params:query {
+  searchTerm: squat
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Search exercises by name.
+}

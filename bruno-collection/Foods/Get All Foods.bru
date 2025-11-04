@@ -1,0 +1,19 @@
+meta {
+  name: Get All Foods
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/foods
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Get all foods (user's custom foods and public foods).
+}

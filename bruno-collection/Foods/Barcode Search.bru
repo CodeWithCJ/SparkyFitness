@@ -1,0 +1,23 @@
+meta {
+  name: Barcode Search
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/foods/openfoodfacts/barcode/:barcode
+  body: none
+  auth: bearer
+}
+
+params:path {
+  barcode: 737628064502
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Search food by barcode using Open Food Facts.
+}

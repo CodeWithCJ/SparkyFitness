@@ -1,0 +1,29 @@
+meta {
+  name: Log Meal Plan to Diary
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/meals/plan/:id/log-to-diary
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id:
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "target_date": "2025-11-04"
+  }
+}
+
+docs {
+  Log a planned meal to the food diary.
+}

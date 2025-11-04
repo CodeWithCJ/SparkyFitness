@@ -1,0 +1,46 @@
+meta {
+  name: Log Exercise
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/exercise-entries
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "exercise_id": "exercise-uuid-here",
+    "entry_date": "2025-11-04",
+    "details": [
+      {
+        "set_number": 1,
+        "reps": 10,
+        "weight": 100,
+        "weight_unit": "kg"
+      },
+      {
+        "set_number": 2,
+        "reps": 10,
+        "weight": 100,
+        "weight_unit": "kg"
+      },
+      {
+        "set_number": 3,
+        "reps": 8,
+        "weight": 105,
+        "weight_unit": "kg"
+      }
+    ]
+  }
+}
+
+docs {
+  Log an exercise entry with sets, reps, and weight.
+}

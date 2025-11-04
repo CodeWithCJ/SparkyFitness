@@ -1,0 +1,19 @@
+meta {
+  name: Get Current User
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/auth/user
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Get the current authenticated user's information.
+}

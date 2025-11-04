@@ -1,0 +1,27 @@
+meta {
+  name: Create Meal Plan Entry
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/meals/plan
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "meal_id": "meal-uuid-here",
+    "plan_date": "2025-11-05",
+    "meal_type": "lunch"
+  }
+}
+
+docs {
+  Add a meal to the meal plan.
+}

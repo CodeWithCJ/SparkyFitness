@@ -1,0 +1,23 @@
+meta {
+  name: Get Food by ID
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/foods/:foodId
+  body: none
+  auth: bearer
+}
+
+params:path {
+  foodId:
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Get a specific food by its ID.
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Delete Food
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{baseUrl}}/foods/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id:
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+docs {
+  Delete a food item. Add ?forceDelete=true to force deletion even if referenced.
+}
