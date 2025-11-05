@@ -228,6 +228,30 @@ async function getSleepEntriesByUserIdAndDateRange(userId, startDate, endDate) {
     }
 }
 
+async function getAggregatedSleepStageDataByDateRange(userId, startDate, endDate) {
+    const client = await getClient(userId);
+    try {
+        const query = `
+            SELECT
+                se.entry_date,
+                sse.stage_type,
+                SUM(sse.duration_in_seconds) AS total_duration_in_seconds
+            FROM sleep_entries se
+            JOIN sleep_entry_stages sse ON se.id = sse.entry_id
+            WHERE se.user_id = $1 AND se.entry_date BETWEEN $2 AND $3
+            GROUP BY se.entry_date, sse.stage_type
+            ORDER BY se.entry_date, sse.stage_type;
+        `;
+        const result = await client.query(query, [userId, startDate, endDate]);
+        return result.rows;
+    } catch (error) {
+        log('error', `Error fetching aggregated sleep stage data for user ${userId} from ${startDate} to ${endDate}:`, error);
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
 async function updateSleepEntry(userId, entryId, updateData) {
     const client = await getClient(userId);
     try {
@@ -345,7 +369,56 @@ module.exports = {
     updateSleepEntry,
     deleteSleepStageEventsByEntryId,
     deleteSleepEntry,
+    getSleepEntriesWithStagesByUserIdAndDateRange,
 };
+
+async function getSleepEntriesWithStagesByUserIdAndDateRange(userId, startDate, endDate) {
+    const client = await getClient(userId);
+    try {
+        const query = `
+            SELECT
+                se.id,
+                se.user_id,
+                se.entry_date,
+                se.bedtime,
+                se.wake_time,
+                se.duration_in_seconds,
+                se.time_asleep_in_seconds,
+                se.sleep_score,
+                se.source,
+                se.created_at,
+                se.updated_at,
+                json_agg(
+                    CASE
+                        WHEN sse.id IS NOT NULL THEN json_build_object(
+                            'id', sse.id,
+                            'entry_id', sse.entry_id,
+                            'user_id', sse.user_id,
+                            'stage_type', sse.stage_type,
+                            'start_time', sse.start_time,
+                            'end_time', sse.end_time,
+                            'duration_in_seconds', sse.duration_in_seconds,
+                            'created_at', sse.created_at,
+                            'updated_at', sse.updated_at
+                        )
+                        ELSE NULL
+                    END
+                ) FILTER (WHERE sse.id IS NOT NULL) AS stage_events
+            FROM sleep_entries se
+            LEFT JOIN sleep_entry_stages sse ON se.id = sse.entry_id
+            WHERE se.user_id = $1 AND se.entry_date BETWEEN $2 AND $3
+            GROUP BY se.id
+            ORDER BY se.entry_date DESC;
+        `;
+        const result = await client.query(query, [userId, startDate, endDate]);
+        return result.rows;
+    } catch (error) {
+        log('error', `Error fetching sleep entries with stages for user ${userId} from ${startDate} to ${endDate}:`, error);
+        throw error;
+    } finally {
+        client.release();
+    }
+}
 
 async function deleteSleepEntry(userId, entryId) {
     const client = await getClient(userId);

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; // Added Input import
 import { Label } from "@/components/ui/label"; // Added Label import
 import { Slider } from "@/components/ui/slider";
-import { SleepStageEvent } from '@/types';
+import { SleepStageEvent, SLEEP_STAGE_COLORS } from '@/types';
 
 interface SleepTimelineEditorProps {
   bedtime: string;
@@ -23,12 +23,6 @@ interface SleepTimelineEditorProps {
   };
 }
 
-const stageColors = {
-  awake: 'bg-red-400',
-  rem: 'bg-purple-400',
-  light: 'bg-blue-400',
-  deep: 'bg-green-400',
-};
 
 const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
   bedtime,
@@ -297,7 +291,8 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
               key={stageType}
               type="button"
               onClick={() => setSelectedStageType(stageType as 'awake' | 'rem' | 'light' | 'deep')}
-              className={`${selectedStageType === stageType ? stageColors[stageType as keyof typeof stageColors] : 'bg-gray-200'} text-black`}
+              style={{ backgroundColor: selectedStageType === stageType ? SLEEP_STAGE_COLORS[stageType as keyof typeof SLEEP_STAGE_COLORS] : '#E5E7EB' }}
+              className="text-black"
             >
               {stageType.charAt(0).toUpperCase() + stageType.slice(1)}
             </Button>
@@ -321,9 +316,9 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
 
       {/* Sleep Stage Color Legend */}
       <div className="flex flex-wrap gap-2 mb-4 text-sm">
-        {Object.entries(stageColors).map(([stage, colorClass]) => (
+        {Object.entries(SLEEP_STAGE_COLORS).map(([stage, color]) => (
           <div key={stage} className="flex items-center">
-            <span className={`w-4 h-4 rounded-full mr-1 ${colorClass}`}></span>
+            <span className="w-4 h-4 rounded-full mr-1" style={{ backgroundColor: color }}></span>
             <span>{stage.charAt(0).toUpperCase() + stage.slice(1)}</span>
           </div>
         ))}
@@ -360,8 +355,12 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
           return (
             <div
               key={event.id || index}
-              className={`absolute h-full rounded-md opacity-75 ${stageColors[event.stage_type]}`}
-              style={{ left: `${left}%`, width: `${width}%` }}
+              className="absolute h-full rounded-md opacity-75"
+              style={{
+                left: `${left}%`,
+                width: `${width}%`,
+                backgroundColor: SLEEP_STAGE_COLORS[event.stage_type],
+              }}
               title={`${event.stage_type}: ${format(parseISO(event.start_time), 'p')} - ${format(parseISO(event.end_time), 'p')}`}
             />
           );

@@ -740,6 +740,7 @@ module.exports = {
   getCustomMeasurementEntriesByDate,
   getCheckInMeasurementsByDateRange,
   getCustomMeasurementsByDateRange,
+  calculateSleepScore, // Export calculateSleepScore
   upsertCustomMeasurementEntry,
   deleteCustomMeasurementEntry,
   getMostRecentMeasurement,

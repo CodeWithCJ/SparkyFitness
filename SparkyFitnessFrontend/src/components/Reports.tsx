@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, ScatterChart, Scatter } from 'recharts'; // Added ScatterChart, Scatter
-import { BarChart3, TrendingUp, Activity, Dumbbell } from "lucide-react"; // Added Dumbbell
+import { BarChart3, TrendingUp, Activity, Dumbbell, BedDouble } from "lucide-react"; // Added Dumbbell and BedDouble
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,7 @@ import NutritionChartsGrid from "./reports/NutritionChartsGrid";
 import MeasurementChartsGrid from "./reports/MeasurementChartsGrid";
 import ReportsTables from "./reports/ReportsTables";
 import ExerciseReportsDashboard from "./reports/ExerciseReportsDashboard"; // Import ExerciseReportsDashboard
+import SleepReport from "./reports/SleepReport"; // Import SleepReport
 import { log, debug, info, warn, error, UserLoggingLevel } from "@/utils/logging";
 import { format, parseISO, addDays } from 'date-fns'; // Import format, parseISO, addDays from date-fns
 import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
@@ -36,8 +37,9 @@ import {
   ExerciseProgressData, // Import ExerciseProgressData
   ExerciseDashboardData, // Import new type for dashboard data
 } from '@/services/reportsService';
+import { SleepAnalyticsData } from '@/types'; // Import SleepAnalyticsData
 import { getExerciseProgressData } from '@/services/exerciseEntryService'; // Import getExerciseProgressData
-import { getExerciseDashboardData } from '@/services/reportsService'; // Import new dashboard data function
+import { getExerciseDashboardData, getSleepAnalyticsData } from '@/services/reportsService'; // Import new dashboard data function
 
 const Reports = () => {
   const { user } = useAuth();
@@ -125,6 +127,7 @@ const Reports = () => {
           measurementData: fetchedMeasurementData,
           customCategories: fetchedCustomCategories,
           customMeasurementsData: fetchedCustomMeasurementsData,
+          sleepAnalyticsData: fetchedSleepAnalyticsData, // Keep this line if SleepReport still needs it
         },
         fetchedExerciseDashboardData,
       ] = await Promise.all([
@@ -152,6 +155,7 @@ const Reports = () => {
 
       setCustomCategories(fetchedCustomCategories);
       setCustomMeasurementsData(fetchedCustomMeasurementsData);
+      // setSleepAnalyticsData(fetchedSleepAnalyticsData); // Remove this line as SleepReport will manage its own state
       info(loggingLevel, 'Reports: Reports loaded successfully.');
     } catch (error) {
       error(loggingLevel, 'Reports: Error loading reports:', error);
@@ -306,7 +310,7 @@ const Reports = () => {
       a.href = url;
       a.download = `food-diary-${startDate}-to-${endDate}.csv`;
       document.body.appendChild(a);
-      a.click();
+a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
@@ -632,7 +636,7 @@ const Reports = () => {
         <div>Loading reports...</div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3"> {/* Changed to 3 columns */}
+          <TabsList className="grid w-full grid-cols-4"> {/* Changed to 4 columns */}
             <TabsTrigger value="charts" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Charts
@@ -640,6 +644,10 @@ const Reports = () => {
             <TabsTrigger value="exercise-charts" className="flex items-center gap-2"> {/* New tab for exercise charts */}
               <Dumbbell className="w-4 h-4" />
               Exercise Progress
+            </TabsTrigger>
+            <TabsTrigger value="sleep-analytics" className="flex items-center gap-2">
+              <BedDouble className="w-4 h-4" />
+              Sleep
             </TabsTrigger>
             <TabsTrigger value="table" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
@@ -736,6 +744,10 @@ const Reports = () => {
               endDate={endDate}
               onDrilldown={handleDrilldown}
             />
+          </TabsContent>
+
+          <TabsContent value="sleep-analytics" className="space-y-6">
+            <SleepReport startDate={startDate} endDate={endDate} />
           </TabsContent>
 
           <TabsContent value="table" className="space-y-6">

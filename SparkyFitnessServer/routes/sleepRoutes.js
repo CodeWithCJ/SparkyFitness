@@ -3,7 +3,24 @@ const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
 const measurementService = require('../services/measurementService');
+const sleepAnalyticsService = require('../services/sleepAnalyticsService'); // Import sleepAnalyticsService
 const { log } = require('../config/logging');
+
+// Endpoint for fetching sleep analytics
+router.get('/analytics', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
+    }
+
+    const analyticsData = await sleepAnalyticsService.getSleepAnalytics(req.userId, startDate, endDate);
+    res.status(200).json(analyticsData);
+  } catch (error) {
+    log('error', "Error fetching sleep analytics:", error);
+    next(error);
+  }
+});
 
 // Endpoint for manual sleep entry from the frontend
 router.post('/manual_entry', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
