@@ -5,18 +5,24 @@ import { SleepAnalyticsData, SLEEP_STAGE_COLORS, SleepChartData } from '@/types'
 import { usePreferences } from '@/contexts/PreferencesContext';
 import ZoomableChart from '../ZoomableChart';
 import SleepStageChart from './SleepStageChart';
+import { useTheme } from '@/contexts/ThemeContext';
 
 
 interface SleepAnalyticsChartsProps {
-  sleepAnalyticsData: SleepAnalyticsData[];
-  sleepHypnogramData: SleepChartData[];
+    sleepAnalyticsData: SleepAnalyticsData[];
+    sleepHypnogramData: SleepChartData[];
 }
 
 const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({ sleepAnalyticsData, sleepHypnogramData }) => {
-  const { formatDateInUserTimezone, dateFormat } = usePreferences();
+    const { formatDateInUserTimezone, dateFormat } = usePreferences();
+    const { theme } = useTheme();
+    const tickColor = theme === 'dark' ? '#E0E0E0' : '#333';
+    const gridColor = theme === 'dark' ? '#444' : '#ccc';
+    const tooltipBackgroundColor = theme === 'dark' ? '#333' : '#fff';
+    const tooltipBorderColor = theme === 'dark' ? '#555' : '#ccc';
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
+    const formatTime = (seconds: number) => {
+        const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
   };
@@ -56,11 +62,11 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({ sleepAnalyt
               <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
                 <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height={isMaximized ? `${100 * zoomLevel}%` : "100%"}>
                   <BarChart data={chartData} stackOffset="expand">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                    <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke="#E0E0E0" tick={{ fill: '#E0E0E0' }} />
-                    <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} stroke="#E0E0E0" tick={{ fill: '#E0E0E0' }} />
-                    <Tooltip labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)} contentStyle={{ backgroundColor: '#333', borderColor: '#555', color: '#E0E0E0' }} itemStyle={{ color: '#E0E0E0' }} />
-                    <Legend wrapperStyle={{ color: '#E0E0E0' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                    <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke={tickColor} tick={{ fill: tickColor }} />
+                    <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} stroke={tickColor} tick={{ fill: tickColor }} />
+                    <Tooltip labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)} contentStyle={{ backgroundColor: tooltipBackgroundColor, borderColor: tooltipBorderColor, color: tickColor }} itemStyle={{ color: tickColor }} />
+                    <Legend wrapperStyle={{ color: tickColor }} />
                     <Bar dataKey="deep" stackId="a" fill={SLEEP_STAGE_COLORS.deep} name="Deep" />
                     <Bar dataKey="rem" stackId="a" fill={SLEEP_STAGE_COLORS.rem} name="REM" />
                     <Bar dataKey="light" stackId="a" fill={SLEEP_STAGE_COLORS.light} name="Light" />
@@ -83,17 +89,17 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({ sleepAnalyt
               <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
                 <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height={isMaximized ? `${100 * zoomLevel}%` : "100%"}>
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                    <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke="#E0E0E0" tick={{ fill: '#E0E0E0' }} />
-                    <YAxis tickFormatter={formatBedWakeTime} stroke="#E0E0E0" tick={{ fill: '#E0E0E0' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                    <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke={tickColor} tick={{ fill: tickColor }} />
+                    <YAxis tickFormatter={formatBedWakeTime} stroke={tickColor} tick={{ fill: tickColor }} />
                     <Tooltip
-                      labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)}
-                      formatter={(value: number, name: string) => [`${formatBedWakeTime(value)}`, name]}
-                      contentStyle={{ backgroundColor: '#333', borderColor: '#555', color: '#E0E0E0' }} itemStyle={{ color: '#E0E0E0' }}
+                        labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)}
+                        formatter={(value: number, name: string) => [`${formatBedWakeTime(value)}`, name]}
+                        contentStyle={{ backgroundColor: tooltipBackgroundColor, borderColor: tooltipBorderColor, color: tickColor }} itemStyle={{ color: tickColor }}
                     />
-                    <Legend wrapperStyle={{ color: '#E0E0E0' }} />
-                    <Line type="monotone" dataKey="bedtime" stroke="#8884d8" name="Bedtime" />
-                    <Line type="monotone" dataKey="wakeTime" stroke="#82ca9d" name="Wake Time" />
+                    <Legend wrapperStyle={{ color: tickColor }} />
+                    <Line type="monotone" dataKey="bedtime" stroke="#8884d8" name="Bedtime" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="wakeTime" stroke="#82ca9d" name="Wake Time" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -112,12 +118,12 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({ sleepAnalyt
               <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
                 <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height={isMaximized ? `${100 * zoomLevel}%` : "100%"}>
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                    <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke="#E0E0E0" tick={{ fill: '#E0E0E0' }} />
-                    <YAxis stroke="#E0E0E0" tick={{ fill: '#E0E0E0' }} />
-                    <Tooltip labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)} contentStyle={{ backgroundColor: '#333', borderColor: '#555', color: '#E0E0E0' }} itemStyle={{ color: '#E0E0E0' }} />
-                    <Legend wrapperStyle={{ color: '#E0E0E0' }} />
-                    <Line type="monotone" dataKey="sleepDebt" stroke="#8884d8" name="Sleep Debt (hours)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                    <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke={tickColor} tick={{ fill: tickColor }} />
+                    <YAxis stroke={tickColor} tick={{ fill: tickColor }} />
+                    <Tooltip labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)} contentStyle={{ backgroundColor: tooltipBackgroundColor, borderColor: tooltipBorderColor, color: tickColor }} itemStyle={{ color: tickColor }} />
+                    <Legend wrapperStyle={{ color: tickColor }} />
+                    <Line type="monotone" dataKey="sleepDebt" stroke="#8884d8" name="Sleep Debt (hours)" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -139,12 +145,12 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({ sleepAnalyt
               <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
                 <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height={isMaximized ? `${100 * zoomLevel}%` : "100%"}>
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                    <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke="#E0E0E0" tick={{ fill: '#E0E0E0' }} />
-                    <YAxis domain={[0, 100]} tickFormatter={(value) => `${value.toFixed(0)}%`} stroke="#E0E0E0" tick={{ fill: '#E0E0E0' }} />
-                    <Tooltip labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)} contentStyle={{ backgroundColor: '#333', borderColor: '#555', color: '#E0E0E0' }} itemStyle={{ color: '#E0E0E0' }} />
-                    <Legend wrapperStyle={{ color: '#E0E0E0' }} />
-                    <Line type="monotone" dataKey="sleepEfficiency" stroke="#82ca9d" name="Sleep Efficiency" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                    <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke={tickColor} tick={{ fill: tickColor }} />
+                    <YAxis domain={[0, 100]} tickFormatter={(value) => `${value.toFixed(0)}%`} stroke={tickColor} tick={{ fill: tickColor }} />
+                    <Tooltip labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)} contentStyle={{ backgroundColor: tooltipBackgroundColor, borderColor: tooltipBorderColor, color: tickColor }} itemStyle={{ color: tickColor }} />
+                    <Legend wrapperStyle={{ color: tickColor }} />
+                    <Line type="monotone" dataKey="sleepEfficiency" stroke="#82ca9d" name="Sleep Efficiency" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

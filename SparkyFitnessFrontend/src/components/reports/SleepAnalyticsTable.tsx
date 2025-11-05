@@ -1,4 +1,5 @@
 import React from 'react';
+import { SLEEP_STAGE_COLORS } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CombinedSleepData, SleepStageEvent } from '@/types';
 import { Button } from '../ui/button';
@@ -14,11 +15,21 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
   console.log("SleepAnalyticsTable received combinedSleepData:", combinedSleepData);
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
+  const [areAllRowsExpanded, setAreAllRowsExpanded] = React.useState(false);
 
   const handleExportClick = () => {
     onExport(combinedSleepData);
   };
 
+  const toggleAllRows = () => {
+    if (areAllRowsExpanded) {
+      setExpandedRows(new Set());
+    } else {
+      const allRowIds = new Set(combinedSleepData.map(d => d.sleepEntry.id));
+      setExpandedRows(allRowIds);
+    }
+    setAreAllRowsExpanded(!areAllRowsExpanded);
+  };
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => {
@@ -28,6 +39,7 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
       } else {
         newSet.add(id);
       }
+      setAreAllRowsExpanded(newSet.size === combinedSleepData.length);
       return newSet;
     });
   };
@@ -46,7 +58,11 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[50px]"></TableHead> {/* For expand/collapse button */}
+            <TableHead className="w-[50px]">
+              <Button variant="ghost" size="icon" onClick={toggleAllRows}>
+                {areAllRowsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </TableHead>
             <TableHead>Date</TableHead>
             <TableHead>Bedtime</TableHead>
             <TableHead>Wake Time</TableHead>
@@ -97,12 +113,36 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
                     <TableRow>
                       <TableCell colSpan={12} className="p-0">
                         <div className="bg-gray-50 dark:bg-gray-900 p-4">
-                          <h4 className="font-semibold mb-2">Sleep Stages:</h4>
-                          <ul className="list-disc list-inside">
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-2">
+                            <h4 className="font-semibold text-sm">Sleep Stages Summary:</h4>
                             {Object.entries(aggregatedStages || {}).map(([stage, duration]) => (
-                              <li key={stage}>{stage.charAt(0).toUpperCase() + stage.slice(1)}: {formatTime(duration * 60)}</li>
+                              <div key={stage} className="flex items-center text-sm">
+                                <span
+                                  className="mr-2 h-3 w-3 rounded-full"
+                                  style={{ backgroundColor: SLEEP_STAGE_COLORS[stage as keyof typeof SLEEP_STAGE_COLORS] }}
+                                ></span>
+                                <span>{stage.charAt(0).toUpperCase() + stage.slice(1)}: <strong>{formatTime(duration * 60)}</strong></span>
+                              </div>
                             ))}
-                          </ul>
+                          </div>
+                          <div className="mt-4">
+                            <h4 className="font-semibold text-sm mb-2">Sleep Stage Timeline:</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {sleepEntry.stage_events?.map((event, index) => (
+                                <div
+                                  key={index}
+                                  className="rounded-lg p-2 text-white"
+                                  style={{ backgroundColor: SLEEP_STAGE_COLORS[event.stage_type as keyof typeof SLEEP_STAGE_COLORS] }}
+                                >
+                                  <div className="font-bold text-sm">{event.stage_type.charAt(0).toUpperCase() + event.stage_type.slice(1)}</div>
+                                  <div className="text-xs">{formatTime(event.duration_in_seconds)}</div>
+                                  <div className="text-xs opacity-80">
+                                    {formatDateInUserTimezone(event.start_time, 'HH:mm')} - {formatDateInUserTimezone(event.end_time, 'HH:mm')}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </TableCell>
                     </TableRow>

@@ -218,7 +218,30 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
             <CardTitle>Sleep Hypnogram - {formatDateInUserTimezone(sleepChartData.date, dateFormat)}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
+            <div className="mb-4 flex flex-wrap justify-center gap-x-4 gap-y-2">
+              {Object.entries(stageLabels).map(([stageKey, stageLabel]) => {
+                const totalDurationSeconds = sortedSegments
+                  .filter(s => s.stage_type === stageKey)
+                  .reduce((acc, s) => acc + (new Date(s.end_time).getTime() - new Date(s.start_time).getTime()) / 1000, 0);
+
+                if (totalDurationSeconds === 0) return null;
+
+                const hours = Math.floor(totalDurationSeconds / 3600);
+                const minutes = Math.floor((totalDurationSeconds % 3600) / 60);
+                const durationString = `${hours}h ${minutes}m`;
+
+                return (
+                  <div key={stageKey} className="flex items-center text-sm">
+                    <span
+                      className="mr-2 h-3 w-3 rounded-full"
+                      style={{ backgroundColor: SLEEP_STAGE_COLORS[stageKey] }}
+                    ></span>
+                    <span>{stageLabel}: <strong>{durationString}</strong></span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className={isMaximized ? "h-[calc(95vh-200px)]" : "h-48"}>
               <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height="100%">
                 <svg
                   viewBox={`0 0 ${SVG_BASE_WIDTH} ${CHART_HEIGHT + 30}`}
