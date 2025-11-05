@@ -4,6 +4,7 @@ const userRepository = require('../models/userRepository');
 const goalRepository = require('../models/goalRepository'); // Import goalRepository
 const preferenceRepository = require('../models/preferenceRepository');
 const bmrService = require('./bmrService');
+const sleepAnalyticsService = require('./sleepAnalyticsService'); // Import sleepAnalyticsService
 const { log } = require('../config/logging');
 
 async function getReportsData(authenticatedUserId, targetUserId, startDate, endDate) {
@@ -16,7 +17,8 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
       measurementData,
       customCategoriesResult,
       userProfile,
-      userPreferences
+      userPreferences,
+      sleepAnalyticsData // New: Sleep analytics data
     ] = await Promise.all([
       reportRepository.getNutritionData(targetUserId, startDate, endDate),
       reportRepository.getTabularFoodData(targetUserId, startDate, endDate),
@@ -24,7 +26,8 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
       reportRepository.getMeasurementData(targetUserId, startDate, endDate),
       measurementRepository.getCustomCategories(targetUserId),
       userRepository.getUserProfile(targetUserId),
-      preferenceRepository.getUserPreferences(targetUserId)
+      preferenceRepository.getUserPreferences(targetUserId),
+      sleepAnalyticsService.getSleepAnalytics(targetUserId, startDate, endDate) // New: Fetch sleep analytics
     ]);
 
     const customMeasurementsData = {};
@@ -142,6 +145,7 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
       measurementData,
       customCategories: customCategoriesResult,
       customMeasurementsData,
+      sleepAnalyticsData, // New: Include sleep analytics data
     };
   } catch (error) {
     log('error', `Error fetching reports data for user ${targetUserId} by ${authenticatedUserId}:`, error);

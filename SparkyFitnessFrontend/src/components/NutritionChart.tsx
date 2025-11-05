@@ -46,8 +46,8 @@ const NutritionChart = ({ protein, carbs, fat, proteinGoal, carbsGoal, fatGoal }
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Legend />
-              <Tooltip formatter={(value) => [`${value} cal`, 'Calories']} />
+              <Legend wrapperStyle={{ color: '#E0E0E0' }} />
+              <Tooltip formatter={(value) => [`${value} cal`, 'Calories']} contentStyle={{ backgroundColor: '#333', borderColor: '#555', color: '#E0E0E0' }} itemStyle={{ color: '#E0E0E0' }} />
             </PieChart>
           </ResponsiveContainer>
         </CardContent>
@@ -60,9 +60,9 @@ const NutritionChart = ({ protein, carbs, fat, proteinGoal, carbsGoal, fatGoal }
         <CardContent>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={barData}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip formatter={(value, name) => [`${value}g`, name === 'current' ? 'Current' : 'Goal']} />
+              <XAxis dataKey="name" stroke="#E0E0E0" tick={{ fill: '#E0E0E0' }} />
+              <YAxis stroke="#E0E0E0" tick={{ fill: '#E0E0E0' }} />
+              <Tooltip formatter={(value, name) => [`${value}g`, name === 'current' ? 'Current' : 'Goal']} contentStyle={{ backgroundColor: '#333', borderColor: '#555', color: '#E0E0E0' }} itemStyle={{ color: '#E0E0E0' }} />
               <Bar dataKey="current" fill="#22c55e" name="current" />
               <Bar dataKey="goal" fill="#e5e7eb" name="goal" />
             </BarChart>

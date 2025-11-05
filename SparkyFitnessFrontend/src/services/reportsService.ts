@@ -1,5 +1,6 @@
 import { apiCall } from './api';
 import { Exercise } from './exerciseSearchService'; // Import Exercise interface
+import { SleepAnalyticsData } from '../types'; // Import SleepAnalyticsData
 
 export interface NutritionData {
   date: string;
@@ -147,6 +148,7 @@ export const loadReportsData = async (
   measurementData: MeasurementData[];
   customCategories: CustomCategory[];
   customMeasurementsData: Record<string, CustomMeasurementData[]>;
+  sleepAnalyticsData: SleepAnalyticsData[];
 }> => {
   const params = new URLSearchParams({
     userId,
@@ -241,6 +243,22 @@ export const getExerciseDashboardData = async (
   if (muscle) params.append('muscle', muscle);
   if (exercise) params.append('exercise', exercise);
   const response = await apiCall(`/reports/exercise-dashboard?${params.toString()}`, {
+    method: 'GET',
+  });
+  return response;
+};
+
+export const getSleepAnalyticsData = async (
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<SleepAnalyticsData[]> => {
+  const params = new URLSearchParams({
+    userId,
+    startDate,
+    endDate,
+  });
+  const response = await apiCall(`/sleep/analytics?${params.toString()}`, {
     method: 'GET',
   });
   return response;
