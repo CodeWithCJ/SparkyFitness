@@ -7,7 +7,7 @@ import ZoomableChart from '../ZoomableChart';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface SleepStageChartProps {
-  sleepChartData: SleepChartData;
+  sleepChartData: SleepChartData[];
 }
 
 const CHART_HEIGHT = 200;

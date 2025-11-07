@@ -11,7 +11,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  signIn: (userId: string, userEmail: string, token: string | null, userRole: string, authType: 'oidc' | 'password') => void;
+  signIn: (userId: string, userEmail: string, userRole: string, authType: 'oidc' | 'password') => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,15 +24,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const checkSession = async () => {
       try {
         const authType = localStorage.getItem('authType');
-        const token = localStorage.getItem('token');
 
         let response;
-        if (authType === 'password' && token) {
-          response = await fetch('/api/auth/user', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
+        if (authType === 'password') {
+          response = await fetch('/api/auth/user');
         } else {
           response = await fetch('/openid/api/me', { credentials: 'include' });
         }
@@ -40,25 +35,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (response.ok) {
           const userData = await response.json();
           if (userData && userData.userId && userData.email) {
-            const role = userData.role || localStorage.getItem('userRole') || 'user';
+            const role = userData.role || 'user';
             setUser({ id: userData.userId, email: userData.email, role: role });
           } else {
             setUser(null);
             if (authType === 'password') {
-              localStorage.removeItem('userId');
-              localStorage.removeItem('userEmail');
-              localStorage.removeItem('token');
-              localStorage.removeItem('userRole');
               localStorage.removeItem('authType');
             }
           }
         } else {
           setUser(null);
           if (authType === 'password') {
-            localStorage.removeItem('userId');
-            localStorage.removeItem('userEmail');
-            localStorage.removeItem('token');
-            localStorage.removeItem('userRole');
             localStorage.removeItem('authType');
           }
         }
@@ -67,10 +54,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
         const authType = localStorage.getItem('authType');
         if (authType === 'password') {
-          localStorage.removeItem('userId');
-          localStorage.removeItem('userEmail');
-          localStorage.removeItem('token');
-          localStorage.removeItem('userRole');
           localStorage.removeItem('authType');
         }
       } finally {
@@ -83,13 +66,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signOut = async () => {
     try {
-      const token = localStorage.getItem('token');
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
@@ -100,10 +79,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (response.ok) {
         const responseData = await response.json();
         // Clear all local storage items related to authentication
-        localStorage.removeItem('userId');
-        localStorage.removeItem('userEmail');
-        localStorage.removeItem('token');
-        localStorage.removeItem('userRole');
         localStorage.removeItem('authType'); // Clear authType on sign out
         setUser(null);
 
@@ -118,10 +93,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const errorData = await response.json();
         console.error('Logout failed on server:', errorData);
         // Even if server logout fails, clear client-side state to avoid inconsistent state
-        localStorage.removeItem('userId');
-        localStorage.removeItem('userEmail');
-        localStorage.removeItem('token');
-        localStorage.removeItem('userRole');
         localStorage.removeItem('authType');
         setUser(null);
         window.location.href = '/'; // Redirect even on server-side error to ensure clean state
@@ -129,23 +100,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('Network error during logout:', error);
       // On network error, still attempt to clear local state and redirect
-      localStorage.removeItem('userId');
-      localStorage.removeItem('userEmail');
-      localStorage.removeItem('token');
-      localStorage.removeItem('userRole');
       localStorage.removeItem('authType');
       setUser(null);
       window.location.href = '/';
     }
   };
 
-  const signIn = (userId: string, userEmail: string, token: string | null, userRole: string, authType: 'oidc' | 'password') => {
-    if (token) {
-      localStorage.setItem('token', token);
-    }
-    localStorage.setItem('userId', userId);
-    localStorage.setItem('userEmail', userEmail);
-    localStorage.setItem('userRole', userRole);
+  const signIn = (userId: string, userEmail: string, userRole: string, authType: 'oidc' | 'password') => {
     localStorage.setItem('authType', authType); // Store authType on sign in
     setUser({ id: userId, email: userEmail, role: userRole });
   };

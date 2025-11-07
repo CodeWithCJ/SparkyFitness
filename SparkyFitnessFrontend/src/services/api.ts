@@ -30,15 +30,7 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
     headers['Content-Type'] = 'application/json';
   }
 
-  // Only add Authorization header for internal API calls
-  if (!options?.externalApi) {
-    const token = localStorage.getItem('token');
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    } else {
-      warn(userLoggingLevel, "No authentication token found in localStorage for internal API call.");
-    }
-  }
+  // The Authorization header is no longer needed as authentication is handled by httpOnly cookies.
 
   const config: RequestInit = {
     ...options,

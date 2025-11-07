@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, ImageIcon, X } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
+import DOMPurify from 'dompurify';
 import SparkyNutritionCoach from './SparkyNutritionCoach';
 import { usePreferences } from '@/contexts/PreferencesContext'; // Import usePreferences
 import { debug, info, warn, error } from '@/utils/logging'; // Import logging utilities
@@ -437,7 +438,7 @@ const SparkyChatInterface = () => {
       content = `<img src="${message.metadata.imageUrl}" alt="Uploaded image preview" class="max-w-full h-auto rounded-md mb-2" /><br />${content}`;
     }
 
-    return content;
+    return DOMPurify.sanitize(content);
   };
 
   return (

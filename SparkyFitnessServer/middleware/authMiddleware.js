@@ -40,9 +40,8 @@ const authenticate = async (req, res, next) => {
     return next();
   }
 
-  // 1. Check for JWT token in Authorization header (for traditional login)
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
+  // 1. Check for JWT token in cookie
+  const token = req.cookies.token;
 
   if (token) {
     try {
