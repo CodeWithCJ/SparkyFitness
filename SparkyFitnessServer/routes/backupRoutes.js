@@ -31,7 +31,7 @@ ensureTempUploadDirectory(); // Call once on startup
 router.post('/manual', authenticate, isAdmin, async (req, res) => {
   log('info', 'Manual backup initiated by admin.');
   try {
-    const result = await performBackup();
+    const result = await performBackup(true); // Pass true for manual backup
     if (result.success) {
       res.status(200).json({ message: result.message || 'Backup completed successfully.', path: result.path, fileName: result.fileName });
     } else {
