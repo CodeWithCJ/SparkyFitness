@@ -125,21 +125,23 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleToggleUserStatus = async (userId: string, userName: string, currentStatus: boolean) => {
-    const action = currentStatus ? 'deactivate' : 'activate';
+  const handleToggleUserStatus = async (userId: string, userName: string, newCheckedState: boolean) => {
+    const actualNewStatus = newCheckedState;
+    const action = actualNewStatus ? 'activate' : 'deactivate'; // Action based on the actual new state
     if (!window.confirm(`Are you sure you want to ${action} user ${userName}?`)) {
       return;
     }
     setLoading(true);
     try {
-      await userManagementService.updateUserStatus(userId, !currentStatus);
+      await userManagementService.updateUserStatus(userId, actualNewStatus);
       setUsers(prevUsers =>
-        prevUsers.map(u => (u.id === userId ? { ...u, isActive: !currentStatus } : u))
+        prevUsers.map(u => (u.id === userId ? { ...u, is_active: actualNewStatus } : u))
       );
       toast({
         title: "Success",
         description: `User ${userName} ${action}d successfully.`,
       });
+      await fetchUsers(); // Re-fetch users to get the latest status
     } catch (err: any) {
       setError(err.message || `Failed to ${action} user.`);
       toast({
@@ -277,9 +279,9 @@ const UserManagement: React.FC = () => {
                       </TableHead>
                       <TableHead
                         className="cursor-pointer"
-                        onClick={(e) => { e.stopPropagation(); handleSortChange('isActive'); }}
+                        onClick={(e) => { e.stopPropagation(); handleSortChange('is_active'); }}
                       >
-                        Active {sortBy === 'isActive' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        Active {sortBy === 'is_active' && (sortOrder === 'asc' ? '▲' : '▼')}
                       </TableHead>
                       <TableHead
                         className="cursor-pointer"
@@ -330,9 +332,9 @@ const UserManagement: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Switch
-                            id={`isActive-${user.id}`}
-                            checked={user.isActive}
-                            onCheckedChange={(checked) => handleToggleUserStatus(user.id, user.full_name, user.isActive)}
+                            id={`is_active-${user.id}`}
+                            checked={user.is_active}
+                            onCheckedChange={(newCheckedState) => handleToggleUserStatus(user.id, user.full_name, newCheckedState)}
                             disabled={loading}
                           />
                         </TableCell>

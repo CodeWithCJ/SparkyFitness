@@ -5,7 +5,7 @@ export interface User {
   full_name: string;
   email: string;
   role: 'user' | 'admin';
-  isActive: boolean;
+  is_active: boolean;
   created_at: string;
   last_login_at: string;
 }
@@ -19,7 +19,7 @@ export interface UserProfile {
 export const userManagementService = {
   getUsers: async (searchTerm: string = ''): Promise<User[]> => {
     const response = await api.get(`/admin/users?searchTerm=${searchTerm}`);
-    return response.data;
+    return response as User[];
   },
 
   updateUserFullName: async (userId: string, newFullName: string): Promise<void> => {
