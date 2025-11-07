@@ -90,8 +90,8 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
               }, {} as Record<SleepStageEvent['stage_type'], number>);
 
               return (
-                <>
-                  <TableRow key={sleepEntry.id}>
+                <React.Fragment key={sleepEntry.id}>
+                  <TableRow>
                     <TableCell>
                       <Button variant="ghost" size="icon" onClick={() => toggleRow(sleepEntry.id)}>
                         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -147,7 +147,7 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </React.Fragment>
               );
             })
           ) : (

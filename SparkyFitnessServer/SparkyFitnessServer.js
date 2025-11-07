@@ -8,6 +8,7 @@ runPreflightChecks();
 
 const express = require('express');
 const cors = require('cors'); // Added this line
+const cookieParser = require('cookie-parser');
 const { getRawOwnerPool } = require('./db/poolManager');
 const { log } = require('./config/logging');
 const { getDefaultModel } = require('./ai/config');
@@ -80,6 +81,7 @@ app.use(
 // Middleware to parse JSON bodies for all incoming requests
 // Increased limit to 50mb to accommodate image uploads
 app.use(express.json({ limit: "50mb" }));
+app.use(cookieParser());
 
 // Log all incoming requests
 app.use((req, res, next) => {

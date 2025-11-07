@@ -155,8 +155,8 @@ async function getChatHistoryByUserId(userId) {
   }
 }
 
-async function getChatHistoryEntryById(id) {
-  const client = await getClient(id); // User-specific operation (RLS will handle access)
+async function getChatHistoryEntryById(id, userId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'SELECT * FROM sparky_chat_history WHERE id = $1',
@@ -168,8 +168,8 @@ async function getChatHistoryEntryById(id) {
   }
 }
 
-async function getChatHistoryEntryOwnerId(id) {
-  const client = await getClient(id); // User-specific operation (RLS will handle access)
+async function getChatHistoryEntryOwnerId(id, userId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       'SELECT user_id FROM sparky_chat_history WHERE id = $1',

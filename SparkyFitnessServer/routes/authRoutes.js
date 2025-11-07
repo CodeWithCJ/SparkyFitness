@@ -66,7 +66,13 @@ router.post('/login', loginValidation, async (req, res, next) => {
     }
 
     const { userId, token, role } = await authService.loginUser(email, password, settings);
-    res.status(200).json({ message: 'Login successful', userId, token, role });
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+    res.status(200).json({ message: 'Login successful', userId, role });
   } catch (error) {
     if (error.message === 'Invalid credentials.' || error.message === 'Email/Password login is disabled.') {
       return res.status(401).json({ error: error.message });
@@ -120,6 +126,7 @@ router.post('/logout', async (req, res, next) => {
     }
 
     res.clearCookie('sparky.sid');
+    res.clearCookie('token');
 
     // If OIDC user, return end_session_endpoint for frontend to redirect
     if (providerId) {
@@ -161,7 +168,13 @@ router.post('/register', registerValidation, async (req, res, next) => {
 
   try {
     const { userId, token } = await authService.registerUser(email, password, full_name);
-    res.status(201).json({ message: 'User registered successfully', userId, token });
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+    res.status(201).json({ message: 'User registered successfully', userId, role: 'user' });
   } catch (error) {
     if (error.code === '23505') {
       return res.status(409).json({ error: 'User with this email already exists.' });
