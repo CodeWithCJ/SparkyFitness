@@ -140,12 +140,12 @@ For complete installation guides, development setup, and usage instructions, vis
 
 ## Star History
 
-<iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=#CodeWithCJ/SparkyFitness&type=date&legend=top-left" frameBorder="0"></iframe>
+<iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://star-history.com/#CodeWithCJ/SparkyFitness&Date&legend=top-left" frameborder="0"></iframe>
 
 ## Translations
 
 <a href="https://hosted.weblate.org/engage/sparkyfitness/">
-<img src="https://hosted.weblate.org/widget/sparkyfitness/sparkyfitness/multi-auto.svg" alt="Translation status" />
+<img src="https://hosted.weblate.org/widget/sparkyfitness/sparkyfitness-translations/svg-badge.svg" alt="Translation status" />
 </a>
 
 ## Contributors
