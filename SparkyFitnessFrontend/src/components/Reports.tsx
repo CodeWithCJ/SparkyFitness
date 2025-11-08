@@ -527,7 +527,7 @@ a.click();
         description: `${category.name} data exported successfully`,
       });
     } catch (err) {
-      error(loggingLevel, `Reports: Error exporting custom measurements for category ${category.name}:`, err);
+      error(loggingLevel, 'Reports: Error exporting custom measurements for category ${category.name}:', err);
       toast({
         title: "Error",
         description: "Failed to export data",

@@ -201,11 +201,12 @@ const configureSessionMiddleware = (pool) => {
     secret: process.env.JWT_SECRET,
     resave: false,
     saveUninitialized: true,
+    rolling: true, // Reset session expiration on every request to keep user logged in
     proxy: true, // Trust the proxy in all environments (like Vite dev server)
     cookie: {
       path: "/", // Ensure cookie is sent for all paths
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       // secure and sameSite will be set dynamically
     },
   });

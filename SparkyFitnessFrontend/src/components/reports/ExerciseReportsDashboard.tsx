@@ -12,6 +12,7 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { log, info, error } from "@/utils/logging";
+import ActivityReportVisualizer from "../ActivityReportVisualizer"; // Import ActivityReportVisualizer
 import {
   ExerciseDashboardData,
   ExerciseProgressData,
@@ -23,7 +24,7 @@ import { addDays, subDays, addMonths, subMonths, addYears, subYears, parseISO } 
 import { formatNumber } from "@/utils/numberFormatting";
 
 // Utility function to calculate total tonnage
-const calculateTotalTonnage = (entries: ExerciseProgressData[]) => {
+const calculateTotalTonnage = (entries: { sets: { weight: number | string; reps: number | string; }[] }[]) => {
   return entries.reduce((totalTonnage, entry) => {
     return totalTonnage + entry.sets.reduce((entryTonnage, set) => {
       const weight = parseFloat(set.weight as any) || 0;
@@ -87,6 +88,8 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const [aggregationLevel, setAggregationLevel] = useState<string>('daily'); // New state for aggregation level
   const [comparisonPeriod, setComparisonPeriod] = useState<string | null>(null); // New state for comparison period
+  const [availableGarminEntries, setAvailableGarminEntries] = useState<ExerciseProgressData[]>([]); // New state for available Garmin entries
+  const [selectedActivityReportEntryId, setSelectedActivityReportEntryId] = useState<string | null>(null); // New state for selected activity report
 
   // Default layout for widgets
   const defaultLayout = [
@@ -161,6 +164,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
     try {
       const newExerciseProgressData: Record<string, ExerciseProgressData[]> = {};
       const newComparisonExerciseProgressData: Record<string, ExerciseProgressData[]> = {};
+      let garminEntriesForSelectedExercise: ExerciseProgressData[] = [];
 
       for (const exerciseId of selectedExercisesForChart) {
         const data = await getExerciseProgressData(exerciseId, startDate, endDate, aggregationLevel);
@@ -176,6 +180,16 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
       }
       setExerciseProgressData(newExerciseProgressData);
       setComparisonExerciseProgressData(newComparisonExerciseProgressData);
+      if (selectedExercise) {
+        garminEntriesForSelectedExercise = newExerciseProgressData[selectedExercise]?.filter(entry => entry.provider_name === 'garmin' && entry.exercise_entry_id) || [];
+        setAvailableGarminEntries(garminEntriesForSelectedExercise);
+        // Automatically select the first Garmin entry if available and nothing is selected
+        if (garminEntriesForSelectedExercise.length > 0 && !selectedActivityReportEntryId) {
+          setSelectedActivityReportEntryId(garminEntriesForSelectedExercise[0].exercise_entry_id);
+        } else if (garminEntriesForSelectedExercise.length === 0) {
+          setSelectedActivityReportEntryId(null);
+        }
+      }
 
     } catch (err) {
       const message = "Failed to load exercise progress data.";
@@ -189,7 +203,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [selectedExercisesForChart, startDate, endDate, aggregationLevel, comparisonPeriod, loggingLevel, toast]);
+  }, [selectedExercisesForChart, startDate, endDate, aggregationLevel, comparisonPeriod, loggingLevel, toast, selectedActivityReportEntryId, selectedExercise]);
 
   useEffect(() => {
     fetchExerciseChartData();
@@ -200,6 +214,11 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
   }
 
   const totalTonnage = calculateTotalTonnage(exerciseDashboardData.exerciseEntries);
+
+  // Determine if the selected exercise is a Garmin activity and get its details
+  const selectedExerciseEntry = selectedActivityReportEntryId
+    ? availableGarminEntries.find(entry => entry.exercise_entry_id === selectedActivityReportEntryId)
+    : null;
 
   const renderWidget = (widgetId: string) => {
     switch (widgetId) {
@@ -256,8 +275,10 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               <CardTitle>Workout Heatmap</CardTitle>
             </CardHeader>
             <CardContent>
-              {exerciseDashboardData && (
+              {exerciseDashboardData?.exerciseEntries && exerciseDashboardData.exerciseEntries.length > 0 ? (
                 <WorkoutHeatmap workoutDates={Array.from(new Set(exerciseDashboardData.exerciseEntries.map(entry => entry.entry_date)))} />
+              ) : (
+                <p className="text-center text-muted-foreground">No workout data available for heatmap.</p>
               )}
             </CardContent>
           </Card>
@@ -336,177 +357,236 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
+
+                {selectedExercise && availableGarminEntries.length > 0 && (
+                  <Select
+                    value={selectedActivityReportEntryId || ''}
+                    onValueChange={setSelectedActivityReportEntryId}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select Activity Report Date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableGarminEntries.map(entry => (
+                        <SelectItem key={entry.exercise_entry_id} value={entry.exercise_entry_id}>
+                          {formatDateInUserTimezone(parseISO(entry.entry_date), 'MMM dd, yyyy')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
             </CardContent>
           </Card>
         );
       case "muscleGroupRecovery":
-        return (
-          <MuscleGroupRecoveryTracker key="muscleGroupRecovery" recoveryData={exerciseDashboardData.recoveryData} />
-        );
+        const recoveryData = exerciseDashboardData?.recoveryData;
+        return recoveryData && Object.keys(recoveryData).length > 0 ? (
+          <MuscleGroupRecoveryTracker key="muscleGroupRecovery" recoveryData={recoveryData} />
+        ) : null;
       case "prProgression":
-        return selectedExercisesForChart.length > 0 ? (
-          <PrProgressionChart key="prProgression" prProgressionData={exerciseDashboardData.prProgressionData[selectedExercisesForChart[0]]} />
+        const prProgressionData = selectedExercisesForChart.length > 0 && exerciseDashboardData.prProgressionData[selectedExercisesForChart[0]]
+          ? exerciseDashboardData.prProgressionData[selectedExercisesForChart[0]]
+          : [];
+        return prProgressionData.length > 0 ? (
+          <PrProgressionChart key="prProgression" prProgressionData={prProgressionData} />
         ) : null;
       case "exerciseVariety":
-        return (
-          <ExerciseVarietyScore key="exerciseVariety" varietyData={exerciseDashboardData.exerciseVarietyData} />
-        );
+        const varietyData = exerciseDashboardData?.exerciseVarietyData;
+        return varietyData && Object.keys(varietyData).length > 0 ? (
+          <ExerciseVarietyScore key="exerciseVariety" varietyData={varietyData} />
+        ) : null;
       case "volumeTrend":
-        return selectedExercisesForChart.length > 0 ? (
-          <ZoomableChart key="volumeTrend" title="Volume Trend">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
-                data={
-                  selectedExercisesForChart.length > 0
-                    ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
-                        ...d,
-                        date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
-                        volume: d.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0),
-                        comparisonVolume: comparisonExerciseProgressData[selectedExercisesForChart[0]]?.find(compD => compD.entry_date === d.entry_date)?.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0) || null,
-                      })) || []
-                    : []
-                }
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis label={{ value: `Volume (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                <Legend />
-                {selectedExercisesForChart.map((exerciseId, index) => (
-                  <React.Fragment key={exerciseId}>
-                    <Bar
-                      dataKey="volume"
-                      fill="#8884d8"
-                      name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Current)`}
-                    />
-                    {comparisonPeriod && (
-                      <Bar
-                        dataKey="comparisonVolume"
-                        fill="#8884d8"
-                        opacity={0.6}
-                        name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Comparison)`}
-                      />
-                    )}
-                  </React.Fragment>
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </ZoomableChart>
+        const volumeTrendData = selectedExercisesForChart.length > 0
+          ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
+              ...d,
+              date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
+              volume: d.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0),
+              comparisonVolume: comparisonExerciseProgressData[selectedExercisesForChart[0]]?.find(compD => compD.entry_date === d.entry_date)?.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0) || null,
+            })) || []
+          : [];
+        return volumeTrendData.length > 0 && volumeTrendData.some(d => d.volume > 0) ? (
+          <Card key="volumeTrend">
+            <CardHeader>
+              <CardTitle>Volume Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ZoomableChart title="Volume Trend">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
+                    data={volumeTrendData}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis label={{ value: `Volume (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                    <Legend />
+                    {selectedExercisesForChart.map((exerciseId, index) => (
+                      <React.Fragment key={exerciseId}>
+                        <Bar
+                          dataKey="volume"
+                          fill="#8884d8"
+                          name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Current)`}
+                        />
+                        {comparisonPeriod && (
+                          <Bar
+                            dataKey="comparisonVolume"
+                            fill="#8884d8"
+                            opacity={0.6}
+                            name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Comparison)`}
+                          />
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </ZoomableChart>
+            </CardContent>
+          </Card>
         ) : null;
       case "maxWeightTrend":
-        return selectedExercisesForChart.length > 0 ? (
-          <ZoomableChart key="maxWeightTrend" title="Max Weight Trend">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
-                data={
-                  selectedExercisesForChart.length > 0
-                    ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
-                        ...d,
-                        date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
-                        maxWeight: Math.max(...d.sets.map(set => set.weight)),
-                        comparisonMaxWeight: comparisonExerciseProgressData[selectedExercisesForChart[0]]?.find(compD => compD.entry_date === d.entry_date)?.sets.reduce((max, set) => Math.max(max, set.weight), 0) || null,
-                      })) || []
-                    : []
-                }
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis label={{ value: `Max Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                <Legend />
-                {selectedExercisesForChart.map((exerciseId, index) => (
-                  <React.Fragment key={exerciseId}>
-                    <Bar
-                      dataKey="maxWeight"
-                      fill="#82ca9d"
-                      name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Current)`}
-                    />
-                    {comparisonPeriod && (
-                      <Bar
-                        dataKey="comparisonMaxWeight"
-                        fill="#82ca9d"
-                        opacity={0.6}
-                        name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Comparison)`}
-                      />
-                    )}
-                  </React.Fragment>
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </ZoomableChart>
+        const maxWeightTrendData = selectedExercisesForChart.length > 0
+          ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
+              ...d,
+              date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
+              maxWeight: Math.max(...d.sets.map(set => set.weight)),
+              comparisonMaxWeight: comparisonExerciseProgressData[selectedExercisesForChart[0]]?.find(compD => compD.entry_date === d.entry_date)?.sets.reduce((max, set) => Math.max(max, set.weight), 0) || null,
+            })) || []
+          : [];
+        return maxWeightTrendData.length > 0 && maxWeightTrendData.some(d => d.maxWeight > 0) ? (
+          <Card key="maxWeightTrend">
+            <CardHeader>
+              <CardTitle>Max Weight Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ZoomableChart title="Max Weight Trend">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
+                    data={maxWeightTrendData}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis label={{ value: `Max Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                    <Legend />
+                    {selectedExercisesForChart.map((exerciseId, index) => (
+                      <React.Fragment key={exerciseId}>
+                        <Bar
+                          dataKey="maxWeight"
+                          fill="#82ca9d"
+                          name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Current)`}
+                        />
+                        {comparisonPeriod && (
+                          <Bar
+                            dataKey="comparisonMaxWeight"
+                            fill="#82ca9d"
+                            opacity={0.6}
+                            name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Comparison)`}
+                          />
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </ZoomableChart>
+            </CardContent>
+          </Card>
         ) : null;
       case "estimated1RMTrend":
-        return selectedExercisesForChart.length > 0 ? (
-          <ZoomableChart key="estimated1RMTrend" title="Estimated 1RM Trend">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
-                data={
-                  selectedExercisesForChart.length > 0
-                    ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
-                        ...d,
-                        date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
-                        estimated1RM: Math.round(Math.max(...d.sets.map(set => set.weight * (1 + (set.reps / 30))))),
-                        comparisonEstimated1RM: comparisonExerciseProgressData[selectedExercisesForChart[0]]?.find(compD => compD.entry_date === d.entry_date)?.sets.reduce((max, set) => Math.max(max, set.weight * (1 + (set.reps / 30))), 0) || null,
-                      })) || []
-                    : []
-                }
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis label={{ value: `Estimated 1RM (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                <Legend />
-                {selectedExercisesForChart.map((exerciseId, index) => (
-                  <React.Fragment key={exerciseId}>
-                    <Bar
-                      dataKey="estimated1RM"
-                      fill="#ffc658"
-                      name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Current)`}
-                    />
-                    {comparisonPeriod && (
-                      <Bar
-                        dataKey="comparisonEstimated1RM"
-                        fill="#ffc658"
-                        opacity={0.6}
-                        name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Comparison)`}
-                      />
-                    )}
-                  </React.Fragment>
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </ZoomableChart>
+        const estimated1RMTrendData = selectedExercisesForChart.length > 0
+          ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
+              ...d,
+              date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
+              estimated1RM: Math.round(Math.max(...d.sets.map(set => set.weight * (1 + (set.reps / 30))))),
+              comparisonEstimated1RM: comparisonExerciseProgressData[selectedExercisesForChart[0]]?.find(compD => compD.entry_date === d.entry_date)?.sets.reduce((max, set) => Math.max(max, set.weight * (1 + (set.reps / 30))), 0) || null,
+            })) || []
+          : [];
+        return estimated1RMTrendData.length > 0 && estimated1RMTrendData.some(d => d.estimated1RM > 0) ? (
+          <Card key="estimated1RMTrend">
+            <CardHeader>
+              <CardTitle>Estimated 1RM Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ZoomableChart title="Estimated 1RM Trend">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
+                    data={estimated1RMTrendData}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis label={{ value: `Estimated 1RM (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                    <Legend />
+                    {selectedExercisesForChart.map((exerciseId, index) => (
+                      <React.Fragment key={exerciseId}>
+                        <Bar
+                          dataKey="estimated1RM"
+                          fill="#ffc658"
+                          name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Current)`}
+                        />
+                        {comparisonPeriod && (
+                          <Bar
+                            dataKey="comparisonEstimated1RM"
+                            fill="#ffc658"
+                            opacity={0.6}
+                            name={`${availableExercises.find(ex => ex.id === exerciseId)?.name} (Comparison)`}
+                          />
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </ZoomableChart>
+            </CardContent>
+          </Card>
         ) : null;
       case "bestSetRepRange":
-        return selectedExercisesForChart.length > 0 && exerciseDashboardData.bestSetRepRange[selectedExercisesForChart[0]] ? (
-          <ZoomableChart key="bestSetRepRange" title="Best Set by Rep Range">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={Object.entries(exerciseDashboardData.bestSetRepRange[selectedExercisesForChart[0]] || {}).map(([range, data]) => ({
-                range,
-                weight: data.weight,
-              }))}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="range" />
-                <YAxis label={{ value: `Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                <Legend />
-                <Bar dataKey="weight" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ZoomableChart>
+        const bestSetRepRangeData = selectedExercisesForChart.length > 0 && exerciseDashboardData.bestSetRepRange[selectedExercisesForChart[0]]
+          ? Object.entries(exerciseDashboardData.bestSetRepRange[selectedExercisesForChart[0]] || {}).map(([range, data]) => ({
+              range,
+              weight: data.weight,
+            }))
+          : [];
+        return bestSetRepRangeData.length > 0 && bestSetRepRangeData.some(d => d.weight > 0) ? (
+          <Card key="bestSetRepRange">
+            <CardHeader>
+              <CardTitle>Best Set by Rep Range</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ZoomableChart title="Best Set by Rep Range">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={bestSetRepRangeData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="range" />
+                    <YAxis label={{ value: `Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                    <Legend />
+                    {selectedExercisesForChart[0] && ( // Render only if an exercise is selected
+                      <Bar
+                        dataKey="weight"
+                        fill="#8884d8"
+                      />
+                    )}
+                  </BarChart>
+                </ResponsiveContainer>
+              </ZoomableChart>
+            </CardContent>
+          </Card>
         ) : null;
       case "trainingVolumeByMuscleGroup":
-        return exerciseDashboardData.muscleGroupVolume && Object.keys(exerciseDashboardData.muscleGroupVolume).length > 0 ? (
+        const trainingVolumeByMuscleGroupData = exerciseDashboardData.muscleGroupVolume && Object.keys(exerciseDashboardData.muscleGroupVolume).length > 0
+          ? Object.entries(exerciseDashboardData.muscleGroupVolume).map(([muscle, volume]) => ({
+              muscle,
+              volume,
+            }))
+          : [];
+        return trainingVolumeByMuscleGroupData.length > 0 && trainingVolumeByMuscleGroupData.some(d => d.volume > 0) ? (
           <Card key="trainingVolumeByMuscleGroup">
             <CardHeader>
               <CardTitle>Training Volume by Muscle Group</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={Object.entries(exerciseDashboardData.muscleGroupVolume).map(([muscle, volume]) => ({
-                  muscle,
-                  volume,
-                }))}>
+                <BarChart data={trainingVolumeByMuscleGroupData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="muscle" />
                   <YAxis label={{ value: `Volume (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
@@ -519,85 +599,100 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
           </Card>
         ) : null;
       case "repsVsWeightScatter":
-        return selectedExercisesForChart.length > 0 ? (
-          <ZoomableChart key="repsVsWeightScatter" title="Reps vs Weight">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-                data={
-                  selectedExercisesForChart.length > 0
-                    ? (() => {
-                        const repWeightMap = new Map<number, { totalWeight: number, count: number }>();
-                        exerciseProgressData[selectedExercisesForChart[0]]?.flatMap(entry => entry.sets.map(set => ({
-                          reps: set.reps,
-                          weight: set.weight,
-                        }))).forEach(item => {
-                          if (repWeightMap.has(item.reps)) {
-                            const existing = repWeightMap.get(item.reps)!;
-                            existing.totalWeight += item.weight;
-                            existing.count += 1;
-                          } else {
-                            repWeightMap.set(item.reps, { totalWeight: item.weight, count: 1 });
-                          }
-                        });
-                        return Array.from(repWeightMap.entries()).map(([reps, { totalWeight, count }]) => ({
-                          reps,
-                          averageWeight: Math.round(totalWeight / count),
-                        })).sort((a, b) => a.reps - b.reps);
-                      })()
-                    : []
+        const repsVsWeightScatterData = selectedExercisesForChart.length > 0
+          ? (() => {
+              const repWeightMap = new Map<number, { totalWeight: number, count: number }>();
+              exerciseProgressData[selectedExercisesForChart[0]]?.flatMap(entry => entry.sets.map(set => ({
+                reps: set.reps,
+                weight: set.weight,
+              }))).forEach(item => {
+                if (repWeightMap.has(item.reps)) {
+                  const existing = repWeightMap.get(item.reps)!;
+                  existing.totalWeight += item.weight;
+                  existing.count += 1;
+                } else {
+                  repWeightMap.set(item.reps, { totalWeight: item.weight, count: 1 });
                 }
-              >
-                <CartesianGrid />
-                <XAxis dataKey="reps" name="Reps" />
-                <YAxis label={{ value: `Average Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
-                <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                <Legend />
-                {selectedExercisesForChart.map((exerciseId, index) => (
-                  <Bar
-                    key={exerciseId}
-                    dataKey="averageWeight"
-                    name={availableExercises.find(ex => ex.id === exerciseId)?.name}
-                    fill="#a4de6c"
-                  />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </ZoomableChart>
+              });
+              return Array.from(repWeightMap.entries()).map(([reps, { totalWeight, count }]) => ({
+                reps,
+                averageWeight: Math.round(totalWeight / count),
+              })).sort((a, b) => a.reps - b.reps);
+            })()
+          : [];
+        return repsVsWeightScatterData.length > 0 && repsVsWeightScatterData.some(d => d.averageWeight > 0) ? (
+          <Card key="repsVsWeightScatter">
+            <CardHeader>
+              <CardTitle>Reps vs Weight</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ZoomableChart title="Reps vs Weight">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                    data={repsVsWeightScatterData}
+                  >
+                    <CartesianGrid />
+                    <XAxis dataKey="reps" name="Reps" />
+                    <YAxis label={{ value: `Average Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
+                    <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                    <Legend />
+                    {selectedExercisesForChart[0] && ( // Render only if an exercise is selected
+                      <Bar
+                        dataKey="averageWeight"
+                        name={availableExercises.find(ex => ex.id === selectedExercisesForChart[0])?.name}
+                        fill="#a4de6c"
+                      />
+                    )}
+                  </BarChart>
+                </ResponsiveContainer>
+              </ZoomableChart>
+            </CardContent>
+          </Card>
         ) : null;
       case "timeUnderTension":
-        return selectedExercisesForChart.length > 0 ? (
-          <ZoomableChart key="timeUnderTension" title="Time Under Tension Trend">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={
-                  selectedExercisesForChart.length > 0
-                    ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
-                        ...d,
-                        date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
-                        timeUnderTension: d.sets.reduce((sum, set) => sum + (set.duration || 0), 0)
-                      })) || []
-                    : []
-                }
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis label={{ value: 'Time Under Tension (min)', angle: -90, position: 'insideLeft', offset: 10 }} />
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                <Legend />
-                {selectedExercisesForChart.map((exerciseId, index) => (
-                  <Bar
-                    key={exerciseId}
-                    dataKey="timeUnderTension"
-                    fill="#d0ed57"
-                    name={`${availableExercises.find(ex => ex.id === exerciseId)?.name}`}
-                  />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </ZoomableChart>
+        const timeUnderTensionData = selectedExercisesForChart.length > 0
+          ? exerciseProgressData[selectedExercisesForChart[0]]?.map(d => ({
+              ...d,
+              date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
+              timeUnderTension: d.sets.reduce((sum, set) => sum + (set.duration || 0), 0)
+            })) || []
+          : [];
+        return timeUnderTensionData.length > 0 && timeUnderTensionData.some(d => d.timeUnderTension > 0) ? (
+          <Card key="timeUnderTension">
+            <CardHeader>
+              <CardTitle>Time Under Tension Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ZoomableChart title="Time Under Tension Trend">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={timeUnderTensionData}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis label={{ value: 'Time Under Tension (min)', angle: -90, position: 'insideLeft', offset: 10 }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                    <Legend />
+                    {selectedExercisesForChart.map((exerciseId, index) => (
+                      <React.Fragment key={exerciseId}>
+                        <Bar
+                          dataKey="timeUnderTension"
+                          fill="#d0ed57"
+                          name={`${availableExercises.find(ex => ex.id === exerciseId)?.name}`}
+                        />
+                      </React.Fragment>
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </ZoomableChart>
+            </CardContent>
+          </Card>
         ) : null;
       case "prVisualization":
-        return selectedExercisesForChart.length > 0 && exerciseDashboardData.prData[selectedExercisesForChart[0]] ? (
+        const prVisualizationData = selectedExercisesForChart.length > 0 && exerciseDashboardData.prData[selectedExercisesForChart[0]]
+          ? exerciseDashboardData.prData[selectedExercisesForChart[0]]
+          : null;
+        return prVisualizationData && (prVisualizationData.oneRM > 0 || prVisualizationData.weight > 0 || prVisualizationData.reps > 0) ? (
           <Card key="prVisualization">
             <CardHeader>
               <CardTitle>Personal Records (PRs)</CardTitle>
@@ -606,33 +701,33 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
                   <span className="text-xl font-bold">
-                    {convertWeight(exerciseDashboardData.prData[selectedExercisesForChart[0]].oneRM, 'kg', weightUnit).toFixed(1)} {weightUnit}
+                    {convertWeight(prVisualizationData.oneRM, 'kg', weightUnit).toFixed(1)} {weightUnit}
                   </span>
                   <span className="text-sm text-muted-foreground">Estimated 1RM</span>
                   <span className="text-xs text-muted-foreground">
-                    ({exerciseDashboardData.prData[selectedExercisesForChart[0]].reps} reps @{" "}
-                    {convertWeight(exerciseDashboardData.prData[selectedExercisesForChart[0]].weight, 'kg', weightUnit)} {weightUnit} on{" "}
-                    {formatDateInUserTimezone(exerciseDashboardData.prData[selectedExercisesForChart[0]].date, 'MMM dd, yyyy')})
+                    ({prVisualizationData.reps} reps @{" "}
+                    {convertWeight(prVisualizationData.weight, 'kg', weightUnit)} {weightUnit} on{" "}
+                    {formatDateInUserTimezone(prVisualizationData.date, 'MMM dd, yyyy')})
                   </span>
                 </div>
                 <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
                   <span className="text-xl font-bold">
-                    {convertWeight(exerciseDashboardData.prData[selectedExercisesForChart[0]].weight, 'kg', weightUnit).toFixed(1)} {weightUnit}
+                    {convertWeight(prVisualizationData.weight, 'kg', weightUnit).toFixed(1)} {weightUnit}
                   </span>
                   <span className="text-sm text-muted-foreground">Max Weight</span>
                   <span className="text-xs text-muted-foreground">
-                    ({exerciseDashboardData.prData[selectedExercisesForChart[0]].reps} reps on{" "}
-                    {formatDateInUserTimezone(exerciseDashboardData.prData[selectedExercisesForChart[0]].date, 'MMM dd, yyyy')})
+                    ({prVisualizationData.reps} reps on{" "}
+                    {formatDateInUserTimezone(prVisualizationData.date, 'MMM dd, yyyy')})
                   </span>
                 </div>
                 <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
                   <span className="text-xl font-bold">
-                    {exerciseDashboardData.prData[selectedExercisesForChart[0]].reps} reps
+                    {prVisualizationData.reps} reps
                   </span>
                   <span className="text-sm text-muted-foreground">Max Reps</span>
                   <span className="text-xs text-muted-foreground">
-                    ({convertWeight(exerciseDashboardData.prData[selectedExercisesForChart[0]].weight, 'kg', weightUnit)} {weightUnit} on{" "}
-                    {formatDateInUserTimezone(exerciseDashboardData.prData[selectedExercisesForChart[0]].date, 'MMM dd, yyyy')})
+                    ({convertWeight(prVisualizationData.weight, 'kg', weightUnit)} {weightUnit} on{" "}
+                    {formatDateInUserTimezone(prVisualizationData.date, 'MMM dd, yyyy')})
                   </span>
                 </div>
               </div>
@@ -640,16 +735,17 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
           </Card>
         ) : null;
       case "setPerformance":
-        return selectedExercisesForChart.length > 0 && exerciseDashboardData.setPerformanceData[selectedExercisesForChart[0]] ? (
+        const setPerformanceData = selectedExercisesForChart.length > 0 && exerciseDashboardData.setPerformanceData[selectedExercisesForChart[0]]
+          ? Object.entries(exerciseDashboardData.setPerformanceData[selectedExercisesForChart[0]]).map(([setName, data]) => ({
+              setName: setName.replace('Set', ' Set'),
+              avgWeight: data.avgWeight,
+              avgReps: data.avgReps,
+            }))
+          : [];
+        return setPerformanceData.length > 0 && setPerformanceData.some(d => d.avgWeight > 0 || d.avgReps > 0) ? (
           <SetPerformanceAnalysisChart
             key="setPerformance"
-            setPerformanceData={
-              Object.entries(exerciseDashboardData.setPerformanceData[selectedExercisesForChart[0]]).map(([setName, data]) => ({
-                setName: setName.replace('Set', ' Set'),
-                avgWeight: data.avgWeight,
-                avgReps: data.avgReps,
-              }))
-            }
+            setPerformanceData={setPerformanceData}
           />
         ) : null;
       default:
@@ -657,6 +753,10 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
     }
   };
 
+  // Find the selected exercise entry that is a Garmin activity
+  const selectedGarminActivityEntry = selectedActivityReportEntryId
+    ? availableGarminEntries.find(entry => entry.exercise_entry_id === selectedActivityReportEntryId)
+    : null;
 
   return (
     <div className="space-y-6">
@@ -665,11 +765,21 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         {errorMessage && <p className="text-red-500">{errorMessage}</p>}
         {!loading && !errorMessage && widgetLayout.map(widgetId => renderWidget(widgetId))}
       </div>
- 
+  
       {!loading && !errorMessage && selectedExercisesForChart.length > 0 && Object.keys(exerciseProgressData).length === 0 && (
         <p className="text-center text-muted-foreground">
           No progress data available for the selected exercises in the chosen date range.
         </p>
+      )}
+
+      {/* Render ActivityReportVisualizer if a Garmin activity is selected */}
+      {selectedGarminActivityEntry && (
+        <div className="mt-8">
+          <ActivityReportVisualizer
+            exerciseEntryId={selectedGarminActivityEntry.exercise_entry_id}
+            providerName={selectedGarminActivityEntry.provider_name || 'garmin'} // Default to 'garmin' if provider_name is somehow missing
+          />
+        </div>
       )}
     </div>
   );

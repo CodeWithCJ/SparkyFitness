@@ -176,7 +176,12 @@ export const getExerciseProgressData = async (exerciseId: string, startDate: str
   const response = await apiCall(`/exercise-entries/progress/${exerciseId}?${params.toString()}`, {
     method: 'GET',
   });
-  return response;
+  // Ensure that exercise_entry_id and provider_name are included in the returned data
+  return response.map((entry: ExerciseProgressData) => ({
+    ...entry,
+    exercise_entry_id: entry.exercise_entry_id || '', // Provide a default or ensure it's always present
+    provider_name: entry.provider_name || '', // Provide a default or ensure it's always present
+  }));
 };
 
 export const searchExercises = async (query: string, filterType: string): Promise<Exercise[]> => {
