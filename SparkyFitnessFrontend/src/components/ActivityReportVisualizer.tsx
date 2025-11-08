@@ -9,6 +9,7 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { FaRoute, FaClock, FaWalking, FaMountain, FaFire, FaHeartbeat, FaRunning } from 'react-icons/fa';
 import ActivityReportLapTable from './ActivityReportLapTable';
 import { info, warn, error as logError } from "@/utils/logging";
+import ActivityReportMap from './ActivityReportMap';
 
 interface ActivityReportVisualizerProps {
   exerciseEntryId: string;
@@ -31,7 +32,13 @@ interface ActivityData {
     averageHR?: number; // Added for Heart Rate
     averageRunCadence?: number; // Added for Running Dynamics
   };
-  details: any;
+  details: {
+    geoPolylineDTO?: {
+      polyline: { lat: number; lon: number; }[];
+    };
+    activityDetailMetrics: any[];
+    metricDescriptors: any[];
+  };
   splits: {
     lapDTOs: any[];
   };
@@ -330,6 +337,14 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
        {/* Add Gear: Add link here if needed */}
      </div>
 
+     {/* Map Section */}
+     {activityData.details?.geoPolylineDTO?.polyline && activityData.details.geoPolylineDTO.polyline.length > 0 && (
+       <div className="mb-8">
+         <h3 className="text-xl font-semibold mb-2">Activity Map</h3>
+         <ActivityReportMap polylineData={activityData.details.geoPolylineDTO.polyline} />
+       </div>
+     )}
+
      {/* Key Metrics Display */}
 
      {/* Charts Section */}
@@ -622,7 +637,7 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
        </ZoomableChart>
      )}
    </div>
-  );
+ );
 };
 
 export default ActivityReportVisualizer;
