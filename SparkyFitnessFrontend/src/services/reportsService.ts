@@ -112,6 +112,7 @@ export interface ExerciseProgressData {
   duration_minutes: number;
   exercise_entry_id: string; // New field
   provider_name?: string; // New field
+  exercise_name?: string; // Added field for exercise name
   sets: {
     id: string;
     set_number: number;
