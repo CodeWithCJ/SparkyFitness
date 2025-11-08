@@ -73,7 +73,7 @@ async function getActivityDetailsByEntryId(userId, exerciseEntryId) {
         SELECT eead.*
         FROM exercise_entry_activity_details eead
         JOIN exercise_entries ee ON eead.exercise_entry_id = ee.id
-        WHERE eead.exercise_entry_id = $1 AND ee.user_id = $2;
+        WHERE eead.exercise_entry_id = $1 AND ee.user_id = $2 AND eead.detail_type IN ('full_activity_data', 'full_workout_data');
     `;
     try {
         const result = await client.query(query, [exerciseEntryId, userId]);

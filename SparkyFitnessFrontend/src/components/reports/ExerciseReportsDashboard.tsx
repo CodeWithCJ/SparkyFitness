@@ -85,7 +85,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
   const [availableExercises, setAvailableExercises] = useState<{ id: string, name: string }[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
-  const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
+  const [selectedExercise, setSelectedExercise] = useState<string>('All');
   const [aggregationLevel, setAggregationLevel] = useState<string>('daily'); // New state for aggregation level
   const [comparisonPeriod, setComparisonPeriod] = useState<string | null>(null); // New state for comparison period
 
@@ -127,7 +127,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
     else {
       setSelectedExercisesForChart([]);
     }
-  }, [selectedExercise]);
+  }, [selectedExercise, availableExercises]);
 
   const saveLayout = (layout: string[]) => {
     setWidgetLayout(layout);
@@ -346,11 +346,6 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedExercise === 'All' && (
-                  <p className="text-sm text-muted-foreground col-span-3">
-                    Some charts (e.g., PR Progression, Best Set by Rep Range) are only available when a single exercise is selected.
-                  </p>
-                )}
 
             </CardContent>
           </Card>
