@@ -47,7 +47,7 @@ jobs:
             codewithcj/sparkyfitness
             ghcr.io/${{ github.repository }}-frontend
           tags: |
-            type=raw,value=${{ steps.package-version.outputs.current-version }}
+            type=raw,value=v${{ steps.package-version.outputs.current-version }}
 
       - name: Build and push frontend
         id: push-frontend
@@ -75,7 +75,7 @@ jobs:
             codewithcj/sparkyfitness_server
             ghcr.io/${{ github.repository }}-server
           tags: |
-            type=raw,value=${{ steps.package-version.outputs.current-version }}
+            type=raw,value=v${{ steps.package-version.outputs.current-version }}
 
       - name: Build and push server
         id: push-server
@@ -103,7 +103,7 @@ jobs:
             codewithcj/sparkyfitness_garmin
             ghcr.io/${{ github.repository }}-garmin
           tags: |
-            type=raw,value=${{ steps.package-version.outputs.current-version }}
+            type=raw,value=v${{ steps.package-version.outputs.current-version }}
 
       - name: Build and push Garmin Microservice
         id: push-garmin
