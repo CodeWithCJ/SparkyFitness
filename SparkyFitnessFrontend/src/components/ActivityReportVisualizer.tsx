@@ -113,11 +113,13 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
    const speedDescriptor = metricDescriptors.find((d: any) => d.key === 'directSpeed');
    const heartRateDescriptor = metricDescriptors.find((d: any) => d.key === 'directHeartRate');
    const runCadenceDescriptor = metricDescriptors.find((d: any) => d.key === 'directRunCadence');
+   const elevationDescriptor = metricDescriptors.find((d: any) => d.key === 'directElevation');
 
    const timestampIndex = timestampDescriptor?.metricsIndex ?? metricDescriptors.indexOf(timestampDescriptor);
    const distanceIndex = distanceDescriptor?.metricsIndex ?? metricDescriptors.indexOf(distanceDescriptor);
    const speedIndex = speedDescriptor?.metricsIndex ?? metricDescriptors.indexOf(speedDescriptor);
    const heartRateIndex = heartRateDescriptor?.metricsIndex ?? metricDescriptors.indexOf(heartRateDescriptor);
+   const elevationIndex = elevationDescriptor?.metricsIndex ?? metricDescriptors.indexOf(elevationDescriptor);
 
    // Add a defensive check for heartRateDescriptor
    if (!heartRateDescriptor) {
@@ -186,6 +188,8 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
      const speed = speedIndex !== undefined && metric.metrics[speedIndex] !== undefined ? metric.metrics[speedIndex] : 0;
      const heartRate = heartRateIndex !== undefined && metric.metrics[heartRateIndex] !== undefined ? metric.metrics[heartRateIndex] : null;
      const runCadence = runCadenceIndex !== undefined && metric.metrics[runCadenceIndex] !== undefined ? metric.metrics[runCadenceIndex] : 0;
+     const elevation = elevationIndex !== undefined && metric.metrics[elevationIndex] !== undefined ? metric.metrics[elevationIndex] : null;
+    
 
      const paceMinutesPerKm = speed > 0 ? (1000 / (speed * 60)) : 0; // Convert m/s to min/km
      const activityDurationSeconds = (currentTimestamp - activityStartTime) / 1000; // Duration in seconds (assuming directTimestamp is in milliseconds)
@@ -199,6 +203,7 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
        pace: paceMinutesPerKm > 0 ? parseFloat(paceMinutesPerKm.toFixed(2)) : 0,
        heartRate: heartRate,
        runCadence: runCadence,
+       elevation: elevation,
      };
    }).filter(Boolean) as any[]; // Filter out null entries and assert type
    
@@ -227,9 +232,12 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
  const paceData = allChartData.filter((data: any) => data.speed > 0); // Filter out zero speeds for meaningful pace
  const heartRateData = allChartData.filter((data: any) => data.heartRate > 0);
  const runCadenceData = allChartData.filter((data: any) => data.runCadence > 0);
-
+ const elevationData = allChartData.filter((data: any) => data.elevation !== null);
+ 
  info(loggingLevel, "Pace Data Timestamps:", paceData.map((d: any) => d.timestamp));
  info(loggingLevel, "Heart Rate Data Timestamps:", heartRateData.map((d: any) => d.timestamp));
+ info(loggingLevel, "Elevation Data Timestamps:", elevationData.map((d: any) => d.timestamp));
+ 
 
  const hrInTimezonesData = activityData.hr_in_timezones?.map((zone: any) => ({
    name: `Zone ${zone.zoneNumber} (${zone.zoneLowBoundary} bpm)`,
@@ -601,6 +609,54 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
            )}
          </ZoomableChart>
        )}
+       {/* Elevation Chart */}
+       {elevationData && elevationData.length > 0 && (
+         <ZoomableChart title="Elevation (m)">
+           {(isMaximized, zoomLevel) => (
+           <Card className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}>
+             <CardHeader>
+               <CardTitle className="text-sm">Elevation (m)</CardTitle>
+             </CardHeader>
+             <CardContent className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}>
+                 <ResponsiveContainer width={`${100 * zoomLevel}%`} height={isMaximized ? `${100 * zoomLevel}%` : 300 * zoomLevel}>
+                   <LineChart data={elevationData} syncId="activityReportSync">
+                     <CartesianGrid strokeDasharray="3 3" />
+                     <XAxis
+                       dataKey={getXAxisDataKey()}
+                       label={{ value: getXAxisLabel(), position: 'insideBottom', offset: -5 }}
+                       tickFormatter={(value) => {
+                         if (xAxisMode === 'activityDuration') return `${value.toFixed(0)} min`;
+                         if (xAxisMode === 'distance') return `${value.toFixed(2)}`;
+                         if (xAxisMode === 'timeOfDay') return new Date(value).toLocaleTimeString();
+                         return value;
+                       }}
+                       interval="preserveStartEnd"
+                     />
+                     <YAxis />
+                     <Tooltip
+                       labelFormatter={(value) => {
+                         if (xAxisMode === 'timeOfDay') {
+                           return new Date(value).toLocaleTimeString();
+                         }
+                         if (xAxisMode === 'activityDuration') {
+                           return `${Number(value).toFixed(0)} min`;
+                         }
+                         if (xAxisMode === 'distance') {
+                           return `${Number(value).toFixed(2)} ${distanceUnit === 'km' ? 'km' : 'mi'}`;
+                         }
+                         return String(value);
+                       }}
+                       formatter={(value: number) => Number(value).toFixed(2)}
+                     />
+                     <Legend />
+                     <Line type="monotone" dataKey="elevation" stroke="#007bff" name="Elevation (m)" dot={false} strokeWidth={2} />
+                   </LineChart>
+                 </ResponsiveContainer>
+             </CardContent>
+           </Card>
+           )}
+         </ZoomableChart>
+       )}
        {/* Time in Zones Chart */}
        {hrInTimezonesData && hrInTimezonesData.length > 0 && (
          <ZoomableChart title="Heart Rate Time in Zones">
@@ -616,7 +672,7 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
                      <XAxis dataKey="name" />
                      <YAxis />
                      <Tooltip
-                         formatter={(value: number) => `${value.toFixed(0)} s`}
+                         formatter={(value: number) => `${value.toFixed(2)} s`}
                        />
                      <Legend />
                      <Bar dataKey="Time in Zone (s)" fill="#8884d8" />
