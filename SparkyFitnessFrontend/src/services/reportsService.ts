@@ -92,6 +92,8 @@ export interface DailyExerciseEntry {
   calories_burned: number;
   notes?: string;
   exercises: Exercise; // Use the comprehensive Exercise interface
+  exercise_entry_id?: string; // New field
+  provider_name?: string; // New field
   sets: { // Define the structure of sets
     id: string;
     set_number: number;
@@ -108,6 +110,8 @@ export interface ExerciseProgressData {
   entry_date: string;
   calories_burned: number;
   duration_minutes: number;
+  exercise_entry_id: string; // New field
+  provider_name?: string; // New field
   sets: {
     id: string;
     set_number: number;

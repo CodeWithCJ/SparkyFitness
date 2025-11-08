@@ -1,7 +1,7 @@
 {
   "name": "sparkyfitnessfrontend",
   "private": true,
-  "version": "0.15.9",
+  "version": "0.15.9.1",
   "homepage": "https://github.com/CodeWithCJ/SparkyFitness",
   "type": "module",
   "scripts": {
@@ -82,6 +82,7 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.53.0",
     "react-i18next": "^16.2.3",
+    "react-icons": "^5.5.0",
     "react-resizable-panels": "^2.1.3",
     "react-router-dom": "^6.26.2",
     "react-toastify": "^11.0.5",

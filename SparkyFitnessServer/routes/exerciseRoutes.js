@@ -385,4 +385,43 @@ router.post(
   }
 );
 
+// Endpoint to get Garmin activity details by exercise entry ID
+router.get('/garmin-activity-details/:exerciseEntryId', authenticate, async (req, res, next) => {
+  const { exerciseEntryId } = req.params;
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  if (!exerciseEntryId || !uuidRegex.test(exerciseEntryId)) {
+    return res.status(400).json({ error: 'Exercise Entry ID is required and must be a valid UUID.' });
+  }
+  try {
+    const garminDetails = await exerciseService.getGarminActivityDetailsByExerciseEntryId(req.userId, exerciseEntryId);
+    if (!garminDetails) {
+      return res.status(404).json({ error: 'Garmin activity details not found for this exercise entry.' });
+    }
+    res.status(200).json(garminDetails);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Endpoint to get activity details by exercise entry ID and provider
+router.get('/activity-details/:exerciseEntryId/:providerName', authenticate, async (req, res, next) => {
+  const { exerciseEntryId, providerName } = req.params;
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  if (!exerciseEntryId || !uuidRegex.test(exerciseEntryId)) {
+    return res.status(400).json({ error: 'Exercise Entry ID is required and must be a valid UUID.' });
+  }
+  if (!providerName) {
+    return res.status(400).json({ error: 'Provider name is required.' });
+  }
+  try {
+    const activityDetails = await exerciseService.getActivityDetailsByExerciseEntryIdAndProvider(req.userId, exerciseEntryId, providerName);
+    if (!activityDetails) {
+      return res.status(404).json({ error: `Activity details not found for this exercise entry and provider: ${providerName}.` });
+    }
+    res.status(200).json(activityDetails);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

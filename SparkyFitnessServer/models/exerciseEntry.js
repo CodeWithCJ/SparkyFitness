@@ -474,6 +474,7 @@ async function getExerciseProgressData(userId, exerciseId, startDate, endDate) {
   try {
     const result = await client.query(
       `SELECT
+         ee.id AS exercise_entry_id,
          ee.entry_date,
          ee.duration_minutes,
          ee.calories_burned,
@@ -481,6 +482,7 @@ async function getExerciseProgressData(userId, exerciseId, startDate, endDate) {
          ee.image_url,
          ee.distance,
          ee.avg_heart_rate,
+         ee.source AS provider_name,
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
