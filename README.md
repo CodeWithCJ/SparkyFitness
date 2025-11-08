@@ -145,7 +145,7 @@ For complete installation guides, development setup, and usage instructions, vis
 ## Translations
 
 <a href="https://hosted.weblate.org/engage/sparkyfitness/">
-<img src="https://hosted.weblate.org/widget/sparkyfitness/sparkyfitness-translations/svg-badge.svg" alt="Translation status" />
+<img src="https://hosted.weblate.org/widget/sparkyfitness/sparkyfitness-translations/multi-auto.svg" alt="Translation status" />
 </a>
 
 ## Contributors
