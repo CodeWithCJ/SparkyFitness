@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslation } from "react-i18next"; // Import useTranslation
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -82,6 +83,7 @@ const MealCard = ({
   onCopyFromYesterday, // Destructure new prop
 }: MealCardProps) => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { loggingLevel, nutrientDisplayPreferences } = usePreferences(); // Get logging level
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
@@ -197,9 +199,9 @@ const MealCard = ({
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Add Food to {meal.name}</DialogTitle>
+                    <DialogTitle>{t("mealCard.addFoodToMeal", { mealName: t(`common.${meal.type}`, meal.name), defaultValue: `Add Food to ${t(`common.${meal.type}`, meal.name)}` })}</DialogTitle>
                     <DialogDescription>
-                      Search for foods to add to your {meal.name.toLowerCase()}.
+                      {t("mealCard.searchFoodsForMeal", { mealName: t(`common.${meal.type}`, meal.name).toLowerCase(), defaultValue: `Search for foods to add to your ${t(`common.${meal.type}`, meal.name).toLowerCase()}.` })}
                     </DialogDescription>
                   </DialogHeader>
                   <EnhancedFoodSearch

@@ -607,7 +607,7 @@ const FoodDiary = ({
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? formatDate(date) : <span>{t("foodDiary.pickADate", "Pick a date")}</span>}
+                    {date ? formatDate(date) : <span>{t("foodDiary.pickADate", "Pick a Date")}</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -707,6 +707,7 @@ const FoodDiary = ({
               initialExercisesToLog={initialExercisesToLog} // Pass the new prop directly
               onExercisesLogged={onExercisesLogged} // Pass the new prop directly
               key={`exercise-${externalRefreshTrigger}`}
+              t={t} // Pass the t function
             />
           </div>
         </>
