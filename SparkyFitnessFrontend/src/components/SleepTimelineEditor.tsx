@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from "react-i18next";
 import { format, parseISO, differenceInMinutes, addMinutes, isSameMinute, isBefore, isAfter } from 'date-fns';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; // Added Input import
@@ -34,6 +35,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
   isEditing = false,
   entryDetails,
 }) => {
+ const { t } = useTranslation();
   const parsedBedtime = useMemo(() => parseISO(bedtime), [bedtime]);
   const parsedWakeTime = useMemo(() => parseISO(wakeTime), [wakeTime]);
   const totalDurationMinutes = useMemo(() => differenceInMinutes(parsedWakeTime, parsedBedtime), [parsedBedtime, parsedWakeTime]);
@@ -252,7 +254,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
           {isEditing ? (
             <>
               <div>
-                <Label htmlFor="edit-bedtime">Bedtime</Label>
+                <Label htmlFor="edit-bedtime">{t('sleepTimelineEditor.bedtime', 'Bedtime')}</Label>
                 <Input
                   id="edit-bedtime"
                   type="time"
@@ -261,7 +263,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                 />
               </div>
               <div>
-                <Label htmlFor="edit-wakeTime">Wake Time</Label>
+                <Label htmlFor="edit-wakeTime">{t('sleepTimelineEditor.wakeTime', 'Wake Time')}</Label>
                 <Input
                   id="edit-wakeTime"
                   type="time"
@@ -272,17 +274,17 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
             </>
           ) : (
             <>
-              <p><b>Bedtime:</b> {entryDetails.bedtime}</p>
-              <p><b>Wake Time:</b> {entryDetails.wakeTime}</p>
+              <p><b>{t('sleepTimelineEditor.bedtime', 'Bedtime')}:</b> {entryDetails.bedtime}</p>
+              <p><b>{t('sleepTimelineEditor.wakeTime', 'Wake Time')}:</b> {entryDetails.wakeTime}</p>
             </>
           )}
-          <p><b>Duration:</b> {entryDetails.duration} hours</p>
-          {entryDetails.sleepScore && <p><b>Sleep Score:</b> {entryDetails.sleepScore}</p>}
-          {entryDetails.source && <p><b>Source:</b> {entryDetails.source}</p>}
+          <p><b>{t('sleepTimelineEditor.duration', 'Duration')}:</b> {entryDetails.duration} hours</p>
+          {entryDetails.sleepScore && <p><b>{t('sleepTimelineEditor.sleepScore', 'Sleep Score')}:</b> {entryDetails.sleepScore}</p>}
+          {entryDetails.source && <p><b>{t('sleepTimelineEditor.source', 'Source')}:</b> {entryDetails.source}</p>}
         </div>
       )}
 
-      <h4 className="text-md font-semibold mb-2">Sleep Timeline</h4>
+      <h4 className="text-md font-semibold mb-2">{t('sleepTimelineEditor.sleepTimeline', 'Sleep Timeline')}</h4>
 
       {isEditing && ( // Conditionally render buttons for editing mode
         <div className="flex space-x-2 mb-4">
@@ -294,7 +296,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
               style={{ backgroundColor: selectedStageType === stageType ? SLEEP_STAGE_COLORS[stageType as keyof typeof SLEEP_STAGE_COLORS] : '#E5E7EB' }}
               className="text-black"
             >
-              {stageType.charAt(0).toUpperCase() + stageType.slice(1)}
+              {t(`sleepTimelineEditor.${stageType}`, stageType.charAt(0).toUpperCase() + stageType.slice(1))}
             </Button>
           ))}
           <Button
@@ -309,7 +311,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
             }}
             className={`${selectedStageType === null ? 'bg-gray-400' : 'bg-gray-200'} text-black`}
           >
-            Clear
+            {t('sleepTimelineEditor.clear', 'Clear')}
           </Button>
         </div>
       )}
@@ -319,7 +321,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
         {Object.entries(SLEEP_STAGE_COLORS).map(([stage, color]) => (
           <div key={stage} className="flex items-center">
             <span className="w-4 h-4 rounded-full mr-1" style={{ backgroundColor: color }}></span>
-            <span>{stage.charAt(0).toUpperCase() + stage.slice(1)}</span>
+            <span>{t(`sleepTimelineEditor.${stage}`, stage.charAt(0).toUpperCase() + stage.slice(1))}</span>
           </div>
         ))}
       </div>
