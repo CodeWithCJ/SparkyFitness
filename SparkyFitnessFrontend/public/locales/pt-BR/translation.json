@@ -1,0 +1,100 @@
+{
+    "nav": {
+        "diary": "Diário",
+        "checkin": "Check-in",
+        "reports": "Relatórios",
+        "foods": "Comidas",
+        "exercises": "Exercícios",
+        "goals": "Metas",
+        "settings": "Configurações",
+        "admin": "Admin"
+    },
+    "settings": {
+        "profileInformation": {
+            "title": "Informação da Conta",
+            "description": "Gerencie suas informações pessoais e foto de perfil",
+            "changePhoto": "Mudar Foto",
+            "photoSize": "PNG, JPG até 5MB",
+            "fullName": "Nome Completo",
+            "enterFullName": "Digite seu nome completo",
+            "phoneNumber": "Número de Telefone",
+            "enterPhoneNumber": "Digite seu número de telefone",
+            "dateOfBirth": "Data de Nascimento",
+            "pickADate": "Escolha uma data",
+            "gender": "Gênero",
+            "selectGender": "Selecionar Gênero",
+            "male": "Masculino",
+            "female": "Feminino",
+            "other": "Outro",
+            "bio": "Bio",
+            "tellAboutYourself": "Conte-nos sobre você",
+            "saveProfile": "Salvar Perfil",
+            "saving": "Salvando..."
+        },
+        "preferences": {
+            "title": "Preferências",
+            "description": "Personalize as configurações e as preferências de exibição do seu aplicativo",
+            "dateFormat": "Formato de data",
+            "weightUnit": "Unidade de Peso",
+            "kilograms": "Quilogramas (kg)",
+            "pounds": "Libras (lbs)",
+            "measurementUnit": "Unidade de Medida",
+            "centimeters": "Centímetros (cm)",
+            "inches": "Polegadas (pol)",
+            "distanceUnit": "Unidade de Distância",
+            "kilometers": "Quilômetros (km)",
+            "miles": "Milhas (miles)",
+            "loggingLevel": "Nível mínimo de registro",
+            "debug": "DEBUG (Mais Detalhado)",
+            "info": "INFO",
+            "warn": "WARN",
+            "error": "ERROR",
+            "silent": "SILENT (Sem Registros)",
+            "itemDisplayLimit": "Pesquisar/Recente/Limite máximo",
+            "items": "{{count}} itens",
+            "language": "Linguagem",
+            "english": "English",
+            "tamil": "தமிழ்",
+            "savePreferences": "Salvar Preferências"
+        },
+        "waterTracking": {
+            "title": "Rastreamento de água",
+            "description": "Configure seu consumo de agua nas configurações",
+            "waterDisplayUnit": "Unidade de exibição de água",
+            "milliliters": "Mililitros (ml)",
+            "fluidOunces": "Fluid Ounces (oz)",
+            "cups": "Copos",
+            "saveWaterDisplayUnit": "Salvar a unidade de exibição de água"
+        },
+        "nutrientDisplay": {
+            "title": "Exibição Nutrientes",
+            "description": "Escolha quais nutrientes exibir nas visualizações de alimentos e refeições"
+        },
+        "calculationSettings": {
+            "title": "Configurações de Cálculos",
+            "description": "Gerenciar as preferências de cálculo da taxa metabólica basal e da gordura corporal"
+        },
+        "familyAccess": {
+            "title": "Acesso Familiar",
+            "description": "Gerencie o acesso aos seus dados para membros da família"
+        },
+        "customCategories": {
+            "title": "Categorias Personalizadas",
+            "description": "Crie e gerencie categorias de medição personalizadas"
+        },
+        "foodExerciseDataProviders": {
+            "title": "Fornecedores de dados sobre alimentação e exercícios físicos",
+            "description": "Configure fontes externas de dados de alimentação e exercícios e sincronize os dados com o Garmin Connect",
+            "invalidKeyLengthWarning": "Se você encontrar um erro de \"Invalid key length\", certifique-se de que suas chaves de criptografia e autenticação JWT nas variáveis de ambiente do servidor tenham 64 caracteres hexadecimais."
+        },
+        "aiService": {
+            "title": "Serviço de IA",
+            "description": "Gerenciar configurações para recursos com tecnologia de IA",
+            "invalidKeyLengthWarning": "Se você encontrar um erro de \"Invalid key length\", certifique-se de que suas chaves de criptografia e autenticação JWT nas variáveis de ambiente do servidor tenham 64 caracteres hexadecimais."
+        },
+        "apiKeyManagement": {
+            "title": "Gerenciamento de chaves de API",
+            "description": "Gerar e gerenciar chaves de API para integrações externas"
+        }
+    }
+}

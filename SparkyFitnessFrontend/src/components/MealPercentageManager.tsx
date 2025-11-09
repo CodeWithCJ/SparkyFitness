@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,6 +28,7 @@ const distributionTemplates = [
 ];
 
 const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalCalories }: MealPercentageManagerProps) => {
+  const { t } = useTranslation();
   const [percentages, setPercentages] = useState<MealPercentages>(initialPercentages);
   const [locks, setLocks] = useState({ breakfast: false, lunch: false, dinner: false, snacks: false });
   const [selectedTemplateName, setSelectedTemplateName] = useState<string>('');
@@ -149,22 +151,22 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalC
       <div className="flex flex-col sm:flex-row gap-4">
         <Select onValueChange={handleTemplateChange} value={selectedTemplateName}>
           <SelectTrigger>
-            <SelectValue placeholder="Select a Distribution Template" />
+            <SelectValue placeholder={t('goals.mealDistribution.selectTemplate')} />
           </SelectTrigger>
           <SelectContent>
-            {selectedTemplateName === 'Custom' && <SelectItem value="Custom" disabled>Custom</SelectItem>}
+            {selectedTemplateName === 'Custom' && <SelectItem value="Custom" disabled>{t('goals.mealDistribution.custom')}</SelectItem>}
             {distributionTemplates.map(template => (
               <SelectItem key={template.name} value={template.name}>{template.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={distributeRemaining} variant="outline" className="w-full sm:w-auto">Distribute Remaining Evenly</Button>
+        <Button onClick={distributeRemaining} variant="outline" className="w-full sm:w-auto">{t('goals.mealDistribution.distributeRemaining')}</Button>
       </div>
 
       {(Object.keys(percentages) as Array<keyof MealPercentages>).map(meal => (
         <div key={meal} className="space-y-2">
           <Label htmlFor={meal} className="capitalize font-semibold">
-            {meal} ({calculateCalories(percentages[meal])} kcal)
+            {t(`common.${meal}`)} ({calculateCalories(percentages[meal])} {t('common.kcal')})
           </Label>
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => handleLockToggle(meal)}>
@@ -194,8 +196,8 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalC
       ))}
 
       <div className={`text-right font-semibold ${totalPercentage === 100 ? 'text-green-600' : 'text-red-600'}`}>
-        Total: {totalPercentage}%
-        {totalPercentage !== 100 && <p className="text-sm font-normal">(Must be 100% to save)</p>}
+        {t('goals.mealDistribution.total')}: {totalPercentage}%
+        {totalPercentage !== 100 && <p className="text-sm font-normal">({t('goals.mealDistribution.mustBe100')})</p>}
       </div>
     </div>
   );

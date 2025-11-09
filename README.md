@@ -154,6 +154,11 @@ For complete installation guides, development setup, and usage instructions, vis
 <img src="https://hosted.weblate.org/widget/sparkyfitness/sparkyfitness-translations/multi-auto.svg" alt="Translation status" />
 </a>
 
+## Repository activity
+
+![Alt](https://repobeats.axiom.co/api/embed/828203d3070ff56c8873c727b6873b684c4ed399.svg "Repobeats analytics image")
+
+
 ## Contributors
 
 <a href="https://github.com/CodeWithCJ/SparkyFitness/graphs/contributors">

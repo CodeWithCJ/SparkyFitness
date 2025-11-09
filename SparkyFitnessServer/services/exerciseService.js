@@ -994,14 +994,21 @@ module.exports = {
 async function getActivityDetailsByExerciseEntryIdAndProvider(authenticatedUserId, exerciseEntryId, providerName) {
   try {
     const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(authenticatedUserId, exerciseEntryId);
-    // Filter for activity details by providerName and return the detail_data
-    const filteredDetails = activityDetails.filter(
+    
+    // Find the full_activity_data and full_workout_data for the given provider
+    const activityData = activityDetails.find(
       (detail) => detail.provider_name === providerName && detail.detail_type === 'full_activity_data'
     );
+    const workoutData = activityDetails.find(
+      (detail) => detail.provider_name === providerName && detail.detail_type === 'full_workout_data'
+    );
 
-    if (filteredDetails.length > 0) {
-      // Assuming there's only one full_activity_data per exercise entry from a given provider
-      return filteredDetails[0].detail_data;
+    // Return a composite object containing both, if they exist
+    if (activityData || workoutData) {
+      return {
+        activity: activityData ? activityData.detail_data : null,
+        workout: workoutData ? workoutData.detail_data : null,
+      };
     }
     return null;
   } catch (error) {
