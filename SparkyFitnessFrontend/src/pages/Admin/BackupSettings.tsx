@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../../services/api'; // Assuming an API service exists
 import { useAuth } from '../../hooks/useAuth'; // Import useAuth hook
 import { usePreferences } from '../../contexts/PreferencesContext'; // Assuming a preferences context for admin settings
@@ -7,6 +8,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { Shield } from "lucide-react"; // Import an icon for the trigger
 
 const BackupSettings: React.FC = () => {
+  const { t } = useTranslation();
   const { toast } = useToast(); // Initialize the custom toast hook
   const { signOut } = useAuth(); // Use the signOut function from useAuth
   const [backupEnabled, setBackupEnabled] = useState<boolean>(false);
@@ -46,8 +48,8 @@ const BackupSettings: React.FC = () => {
       setBackupLocation(data.backupLocation || '/app/SparkyFitnessServer/backup'); // Use fetched or default
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to fetch backup settings.',
+        title: t('admin.backupSettings.error'),
+        description: t('admin.backupSettings.failedToFetchSettings'),
         variant: 'destructive',
       });
       console.error('Error fetching backup settings:', error);
@@ -56,7 +58,7 @@ const BackupSettings: React.FC = () => {
 
   useEffect(() => {
     fetchBackupSettings();
-  }, []); // Empty dependency array means this runs once on mount
+  }, [fetchBackupSettings, t]);
 
   const handleDayChange = (day: string) => {
     const updatedDays = backupDays.includes(day)
@@ -82,13 +84,13 @@ const BackupSettings: React.FC = () => {
         },
       });
       toast({
-        title: 'Success',
-        description: 'Backup settings saved successfully!',
+        title: t('success'),
+        description: t('admin.backupSettings.backupSettingsSaved'),
       });
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to save backup settings.',
+        title: t('admin.backupSettings.error'),
+        description: t('admin.backupSettings.failedToSaveSettings'),
         variant: 'destructive',
       });
       console.error('Error saving backup settings:', error);
@@ -102,21 +104,21 @@ const BackupSettings: React.FC = () => {
       const message = response?.message || response?.data?.message || 'Backup completed successfully.';
       console.log('Backup success message:', message);
       toast({
-        title: 'Success',
+        title: t('success'),
         description: message,
       });
       // Re-fetch settings to get the most up-to-date status from the backend
       await fetchBackupSettings();
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'Manual backup failed.';
+      const errorMessage = error.response?.data?.error || error.message || t('admin.backupSettings.backupFailed');
       console.error('Backup error message:', errorMessage); // Added for debugging
       toast({
-        title: 'Error',
+        title: t('admin.backupSettings.error'),
         description: errorMessage,
         variant: 'destructive',
       });
       console.error('Error during manual backup:', error);
-      setLastBackupStatus(`Failed on ${new Date().toLocaleString()}`); // Keep local update for immediate feedback on failure
+      setLastBackupStatus(`${t('failedOn')} ${new Date().toLocaleString()}`); // Keep local update for immediate feedback on failure
     }
   };
 
@@ -129,15 +131,15 @@ const BackupSettings: React.FC = () => {
     const formData = new FormData();
     formData.append('backupFile', file);
 
-    if (!window.confirm('WARNING: Restoring a backup will wipe all current data and replace it with the backup content. Are you absolutely sure you want to proceed?')) {
+    if (!window.confirm(t('admin.backupSettings.restoreConfirm'))) {
       return;
     }
 
     try {
       console.log('Initiating backup restore...'); // Added for debugging
       toast({
-        title: 'Info',
-        description: 'Restoring backup... This may take a while.',
+        title: t('info'),
+        description: t('admin.backupSettings.restoringBackup'),
       });
       await api.post('/admin/backup/restore', {
         body: formData,
@@ -145,15 +147,15 @@ const BackupSettings: React.FC = () => {
       });
       console.log('Backup restore successful.'); // Added for debugging
       toast({
-        title: 'Success',
-        description: 'Backup restored successfully! Logging out...',
+        title: t('success'),
+        description: t('admin.backupSettings.restoreSuccess'),
       });
       await signOut(); // Log out the user after successful restore
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'Backup restore failed.';
+      const errorMessage = error.response?.data?.error || error.message || t('admin.backupSettings.restoreFailed');
       console.error('Backup restore error message:', errorMessage); // Added for debugging
       toast({
-        title: 'Error',
+        title: t('admin.backupSettings.error'),
         description: errorMessage,
         variant: 'destructive',
       });
@@ -168,15 +170,15 @@ const BackupSettings: React.FC = () => {
       <AccordionItem value="backup-settings" className="border rounded-lg mb-4">
         <AccordionTrigger
           className="flex items-center gap-2 p-4 hover:no-underline"
-          description="Configure scheduled backups and restore options"
+          description={t('admin.backupSettings.description')}
         >
           <Shield className="h-5 w-5" />
-          Backup Settings
+          {t('admin.backupSettings.title')}
         </AccordionTrigger>
         <AccordionContent className="p-4 pt-0 space-y-6">
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
-              Enable Scheduled Backups:
+              {t('admin.backupSettings.enableScheduledBackups')}
             </label>
             <input
               type="checkbox"
@@ -190,7 +192,7 @@ const BackupSettings: React.FC = () => {
             <>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
-                  Backup Days:
+                  {t('admin.backupSettings.backupDays')}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {daysOfWeek.map(day => (
@@ -201,7 +203,7 @@ const BackupSettings: React.FC = () => {
                         onChange={() => handleDayChange(day)}
                         className="form-checkbox h-4 w-4 text-blue-600"
                       />
-                      <span className="ml-2 text-gray-700">{day}</span>
+                      <span className="ml-2 text-gray-700">{t(day.toLowerCase())}</span>
                     </label>
                   ))}
                 </div>
@@ -209,7 +211,7 @@ const BackupSettings: React.FC = () => {
 
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="backupTime">
-                  Backup Time ({new Date().toLocaleTimeString('en-us', { timeZoneName: 'short' }).split(' ')[2]}):
+                  {t('admin.backupSettings.backupTime', { timezone: new Date().toLocaleTimeString('en-us', { timeZoneName: 'short' }).split(' ')[2] })}
                 </label>
                 <input
                   type="time"
@@ -222,7 +224,7 @@ const BackupSettings: React.FC = () => {
 
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="retentionDays">
-                  Keep backups for (days):
+                  {t('admin.backupSettings.retentionDays')}
                 </label>
                 <input
                   type="number"
@@ -238,16 +240,16 @@ const BackupSettings: React.FC = () => {
 
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
-              Backup Location:
+              {t('admin.backupSettings.backupLocation')}
             </label>
             <p className="text-gray-900">{backupLocation}</p>
           </div>
 
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
-              Last Backup Status:
+              {t('admin.backupSettings.lastBackupStatus')}
             </label>
-            <p className="text-gray-900">{lastBackupStatus || 'N/A'}</p>
+            <p className="text-gray-900">{lastBackupStatus || t('admin.backupSettings.notApplicable')}</p>
           </div>
 
           <div className="flex gap-4 mb-6">
@@ -255,23 +257,23 @@ const BackupSettings: React.FC = () => {
               onClick={handleSaveSettings}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             >
-              Save Settings
+              {t('admin.backupSettings.saveSettings')}
             </button>
             <button
               onClick={handleManualBackup}
               className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             >
-              Run Manual Backup Now
+              {t('admin.backupSettings.runManualBackup')}
             </button>
           </div>
 
           <div className="mb-4">
-            <h3 className="text-xl font-bold mb-2">Restore Backup</h3>
+            <h3 className="text-xl font-bold mb-2">{t('admin.backupSettings.restoreBackup')}</h3>
             <p className="text-orange-500 mb-2">
-              **Important Note:** This backup functionality is new and should be used with caution. While it creates a backup, it's highly recommended to create additional backups independently of this application. Always follow the 3-2-1 backup strategy (3 copies of your data, on 2 different media, with 1 copy offsite) to ensure data safety. The functionality of restore may not work properly in all scenarios, so do not rely solely on this in-app backup.
+              <strong>{t('admin.backupSettings.restoreWarningImportant')}</strong> {t('admin.backupSettings.restoreWarningImportantText')}
             </p>
             <p className="text-red-600 mb-2">
-              WARNING: Restoring a backup will wipe all current data and replace it with the backup content. Proceed with extreme caution. Restart the server manually after restoring.
+              {t('admin.backupSettings.restoreWarningCaution')} {t('admin.backupSettings.restoreWarningCautionText')}
             </p>
             <input
               type="file"
