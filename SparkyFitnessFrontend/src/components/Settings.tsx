@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { formatDateToYYYYMMDD } from "@/lib/utils"; // Import the new utility function
+import { getSupportedLanguages, getLanguageDisplayName } from "@/utils/languageUtils"; // Import language utilities
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -713,8 +714,11 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="en">{t('settings.preferences.english')}</SelectItem>
-                    <SelectItem value="ta">{t('settings.preferences.tamil')}</SelectItem>
+                    {getSupportedLanguages().map((langCode) => (
+                      <SelectItem key={langCode} value={langCode}>
+                        {getLanguageDisplayName(langCode)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

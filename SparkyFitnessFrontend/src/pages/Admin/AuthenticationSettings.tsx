@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Info, Lock, Clipboard } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { globalSettingsService, type GlobalSettings } from '../../services/globalSettingsService';
@@ -9,6 +10,7 @@ import OidcSettings from './OidcSettings';
 import { Button } from '@/components/ui/button';
 
 const AuthenticationSettings: React.FC = () => {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<GlobalSettings | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -18,13 +20,13 @@ const AuthenticationSettings: React.FC = () => {
         const fetchedSettings = await globalSettingsService.getSettings();
         setSettings(fetchedSettings);
       } catch (error) {
-        toast({ title: "Error", description: "Could not load global authentication settings.", variant: "destructive" });
+        toast({ title: t('admin.authenticationSettings.errorLoadingSettings'), description: t('admin.authenticationSettings.errorLoadingSettingsDescription'), variant: "destructive" });
       } finally {
         setLoading(false);
       }
     };
     fetchSettings();
-  }, []);
+  }, [t]);
 
   const handleSwitchChange = async (id: keyof GlobalSettings, checked: boolean) => {
     if (!settings) return;
@@ -34,15 +36,15 @@ const AuthenticationSettings: React.FC = () => {
 
     try {
       await globalSettingsService.saveSettings(newSettings);
-      toast({ title: "Settings Saved", description: "Login setting has been updated." });
+      toast({ title: t('admin.authenticationSettings.settingsSaved'), description: t('admin.authenticationSettings.loginSettingUpdated') });
     } catch (error) {
-      toast({ title: "Error", description: "Failed to save login settings. Reverting.", variant: "destructive" });
+      toast({ title: t('admin.authenticationSettings.error'), description: t('admin.authenticationSettings.failedToSaveLoginSettings'), variant: "destructive" });
       setSettings(settings); // Revert optimistic update on failure
     }
   };
 
   if (loading) {
-    return <div>Loading settings...</div>;
+    return <div>{t('admin.authenticationSettings.loadingSettings')}</div>;
   }
 
   return (
@@ -50,17 +52,17 @@ const AuthenticationSettings: React.FC = () => {
       <AccordionItem value="login-management" className="border rounded-lg">
         <AccordionTrigger
           className="flex items-center gap-2 p-4 hover:no-underline"
-          description="Enable or disable different methods for users to log in."
+          description={t('admin.authenticationSettings.loginManagement.description')}
         >
           <Info className="h-5 w-5" />
-          Login Management
+          {t('admin.authenticationSettings.loginManagement.title')}
         </AccordionTrigger>
         <AccordionContent className="p-4 pt-0 space-y-4">
           {settings && (
             <>
               <div className="flex items-center justify-between p-4 border rounded-md">
                 <Label htmlFor="enable_email_password_login" className="font-medium">
-                  Enable Email & Password Login
+                  {t('admin.authenticationSettings.loginManagement.enableEmailPasswordLogin')}
                 </Label>
                 <Switch
                   id="enable_email_password_login"
@@ -70,7 +72,7 @@ const AuthenticationSettings: React.FC = () => {
               </div>
               <div className="flex items-center justify-between p-4 border rounded-md">
                 <Label htmlFor="is_oidc_active" className="font-medium">
-                  Enable OIDC Login (Global)
+                  {t('admin.authenticationSettings.loginManagement.enableOidcLoginGlobal')}
                 </Label>
                 <Switch
                   id="is_oidc_active"
@@ -83,7 +85,7 @@ const AuthenticationSettings: React.FC = () => {
           <div className="flex items-start p-4 mt-2 text-sm text-muted-foreground bg-secondary/20 border border-secondary/40 rounded-lg">
             <Info className="h-5 w-5 mr-3 mt-1 flex-shrink-0" />
             <div>
-              <strong>Emergency Fail-Safe:</strong> If you are ever locked out of your account, you can force email/password login to be enabled by setting the following environment variable on your server and restarting it:
+              <strong>{t('admin.authenticationSettings.loginManagement.emergencyFailSafe')}</strong> {t('admin.authenticationSettings.loginManagement.emergencyFailSafeDescription')}
               <code className="font-mono bg-gray-200 dark:bg-gray-700 p-1 rounded flex items-center">
                 SPARKY_FITNESS_FORCE_EMAIL_LOGIN=true
                 <Button
@@ -92,7 +94,7 @@ const AuthenticationSettings: React.FC = () => {
                   className="ml-2 h-5 w-5"
                   onClick={() => {
                     navigator.clipboard.writeText('SPARKY_FITNESS_FORCE_EMAIL_LOGIN=true');
-                    toast({ title: "Copied!", description: "Environment variable copied to clipboard." });
+                    toast({ title: t('copied'), description: t('admin.authenticationSettings.loginManagement.envVarCopied') });
                   }}
                 >
                   <Clipboard className="h-4 w-4" />
@@ -106,10 +108,10 @@ const AuthenticationSettings: React.FC = () => {
       <AccordionItem value="oidc-provider-settings" className="border rounded-lg">
         <AccordionTrigger
           className="flex items-center gap-2 p-4 hover:no-underline"
-          description="Configure your OpenID Connect (OIDC) providers."
+          description={t('admin.authenticationSettings.oidcProviderManagement.description')}
         >
           <Lock className="h-5 w-5" />
-          OIDC Provider Management
+          {t('admin.authenticationSettings.oidcProviderManagement.title')}
         </AccordionTrigger>
         <AccordionContent className="p-4 pt-0">
           <OidcSettings />

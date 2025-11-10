@@ -3,11 +3,11 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      POSTGRES_DB: ${SPARKY_FITNESS_DB_NAME}
-      POSTGRES_USER: ${SPARKY_FITNESS_DB_USER}
-      POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD}
+      POSTGRES_DB: ${SPARKY_FITNESS_DB_NAME:?Variable is required and must be set}
+      POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:?Variable is required and must be set}
+      POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
     volumes:
-      - ../postgresql:/var/lib/postgresql/data
+      - ${DB_PATH:-../postgresql}:/var/lib/postgresql/data
     networks:
       - sparkyfitness-network # Use the new named network
 
@@ -15,23 +15,23 @@ services:
     image: codewithcj/sparkyfitness_server:latest # Use pre-built image
     environment:
       SPARKY_FITNESS_LOG_LEVEL: ${SPARKY_FITNESS_LOG_LEVEL}
-      SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER}
+      SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
       SPARKY_FITNESS_DB_HOST: sparkyfitness-db # Use the service name 'sparkyfitness-db' for inter-container communication
       SPARKY_FITNESS_DB_NAME: ${SPARKY_FITNESS_DB_NAME}
-      SPARKY_FITNESS_DB_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD}
-      SPARKY_FITNESS_APP_DB_USER: ${SPARKY_FITNESS_APP_DB_USER}
-      SPARKY_FITNESS_APP_DB_PASSWORD: ${SPARKY_FITNESS_APP_DB_PASSWORD}
+      SPARKY_FITNESS_DB_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
+      SPARKY_FITNESS_APP_DB_USER: ${SPARKY_FITNESS_APP_DB_USER:-sparkyapp}
+      SPARKY_FITNESS_APP_DB_PASSWORD: ${SPARKY_FITNESS_APP_DB_PASSWORD:?Variable is required and must be set}
       SPARKY_FITNESS_DB_PORT: 5432
-      SPARKY_FITNESS_API_ENCRYPTION_KEY: ${SPARKY_FITNESS_API_ENCRYPTION_KEY}
+      SPARKY_FITNESS_API_ENCRYPTION_KEY: ${SPARKY_FITNESS_API_ENCRYPTION_KEY:?Variable is required and must be set}
       # Uncomment the line below and comment the line above to use a file-based secret
       # SPARKY_FITNESS_API_ENCRYPTION_KEY_FILE: /run/secrets/sparkyfitness_api_key
 
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?Variable is required and must be set}
       # Uncomment the line below and comment the line above to use a file-based secret
       # JWT_SECRET_FILE: /run/secrets/sparkyfitness_jwt_secret
-      SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL}
+      SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL:-http://0.0.0.0:3004}
       SPARKY_FITNESS_DISABLE_SIGNUP: ${SPARKY_FITNESS_DISABLE_SIGNUP}
-      SPARKY_FITNESS_ADMIN_EMAIL: ${SPARKY_FITNESS_ADMIN_EMAIL}  #User with this email can access the admin panel
+      SPARKY_FITNESS_ADMIN_EMAIL: ${SPARKY_FITNESS_ADMIN_EMAIL} #User with this email can access the admin panel
       SPARKY_FITNESS_EMAIL_HOST: ${SPARKY_FITNESS_EMAIL_HOST}
       SPARKY_FITNESS_EMAIL_PORT: ${SPARKY_FITNESS_EMAIL_PORT}
       SPARKY_FITNESS_EMAIL_SECURE: ${SPARKY_FITNESS_EMAIL_SECURE}
@@ -45,9 +45,8 @@ services:
     depends_on:
       - sparkyfitness-db # Backend depends on the database being available
     volumes:
-      - ./backup:/app/SparkyFitnessServer/backup # Mount volume for backups
-      - ./uploads:/app/SparkyFitnessServer/uploads # Mount volume for Profile pictures and excercise images
-
+      - ${SERVER_BACKUP_PATH:-./backup}:/app/SparkyFitnessServer/backup # Mount volume for backups
+      - ${SERVER_UPLOADS_PATH:-./uploads}:/app/SparkyFitnessServer/uploads # Mount volume for Profile pictures and excercise images
 
   sparkyfitness-frontend:
     image: codewithcj/sparkyfitness:latest # Use pre-built image
@@ -59,7 +58,7 @@ services:
     depends_on:
       - sparkyfitness-server # Frontend depends on the server
       #- sparkyfitness-garmin # Frontend depends on Garmin microservice. Enable if you are using Garmin Connect features.
-  
+
   # Garmin integration is still work in progress. Enable once table is ready.
   # sparkyfitness-garmin:
   #   image: codewithcj/sparkyfitness_garmin:latest

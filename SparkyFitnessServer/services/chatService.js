@@ -83,11 +83,11 @@ async function getSparkyChatHistory(authenticatedUserId, targetUserId) {
 
 async function getSparkyChatHistoryEntry(authenticatedUserId, id) {
   try {
-    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id);
+    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id, authenticatedUserId);
     if (!entryOwnerId) {
       throw new Error('Chat history entry not found.');
     }
-    const entry = await chatRepository.getChatHistoryEntryById(id);
+    const entry = await chatRepository.getChatHistoryEntryById(id, authenticatedUserId);
     return entry;
   } catch (error) {
     log('error', `Error fetching chat history entry ${id} by ${authenticatedUserId}:`, error);

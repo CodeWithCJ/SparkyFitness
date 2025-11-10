@@ -1,0 +1,129 @@
+{
+    "nav": {
+        "diary": "Tagebuch",
+        "checkin": "Statusmeldung",
+        "reports": "Berichte",
+        "foods": "Lebensmittel",
+        "exercises": "Übungen",
+        "goals": "Ziele",
+        "settings": "Einstellungen",
+        "admin": "Administration"
+    },
+    "settings": {
+        "profileInformation": {
+            "title": "Profilinformationen",
+            "description": "Persönliche Informationen und Profilbild verwalten",
+            "changePhoto": "Foto ändern",
+            "photoSize": "PNG, JPG bis 5 MB",
+            "fullName": "Vollständiger Name",
+            "enterFullName": "Gib deinen vollständigen Namen ein",
+            "phoneNumber": "Telefonnummer",
+            "enterPhoneNumber": "Gib deine Telefonnummer ein",
+            "dateOfBirth": "Geburtsdatum",
+            "pickADate": "Wähle ein Datum",
+            "gender": "Geschlecht",
+            "selectGender": "Geschlecht wählen",
+            "male": "männlich",
+            "female": "weiblich",
+            "other": "divers",
+            "bio": "Biografie",
+            "tellAboutYourself": "Erzähl uns etwas über dich",
+            "saveProfile": "Profil speichern",
+            "saving": "speichern …"
+        },
+        "preferences": {
+            "title": "Präferenzen",
+            "description": "Verwalte deine App- und Anzeigeeinstellungen",
+            "dateFormat": "Datumsformat",
+            "weightUnit": "Gewichtseinheit",
+            "kilograms": "Kilogramm (kg)",
+            "pounds": "Amerikanische Pfund (lbs)",
+            "measurementUnit": "Maßeinheit",
+            "centimeters": "Zentimeter (cm)",
+            "inches": "Zoll (in)",
+            "distanceUnit": "Längeneinheit",
+            "kilometers": "Kilometer (km)",
+            "miles": "Meilen (miles)",
+            "loggingLevel": "Minimales Logging-Stufe",
+            "debug": "DEBUG (meiste Details)",
+            "info": "INFO",
+            "warn": "WARN",
+            "error": "ERROR",
+            "silent": "SILENT (keine Logs)",
+            "itemDisplayLimit": "Obergrenze für Suche/Letzte Ergebnisse",
+            "items": "{{count}} Einträge",
+            "language": "Sprache",
+            "english": "Englisch",
+            "tamil": "தமிழ் (Tamil)",
+            "savePreferences": "Präferenzen speichern"
+        },
+        "waterTracking": {
+            "title": "Wasser-Tracking",
+            "description": "Wasseraufnahmeverfolgung einstellen",
+            "waterDisplayUnit": "Wasserdarstellungseinheit",
+            "milliliters": "Milliliter (ml)",
+            "fluidOunces": "Flüssigunzen (oz)",
+            "cups": "Tassen (ca. 240 ml)",
+            "saveWaterDisplayUnit": "Wasseranzeigeeinheit speichern"
+        },
+        "nutrientDisplay": {
+            "title": "Nährwertanzeige",
+            "description": "Wähle, welche Nährwerte für Lebensmittel und Mahlzeiten angezeigt werden sollen"
+        },
+        "calculationSettings": {
+            "title": "Berechnungseinstellungen",
+            "description": "Grundumsatz- und Körperfettberechnungseinstellungen verwalten"
+        },
+        "familyAccess": {
+            "title": "Familienzugriff",
+            "description": "Zugriff auf deine Daten für Familienmitglieder verwalten"
+        },
+        "customCategories": {
+            "title": "Eigene Kategorien",
+            "description": "Erstelle und verwalte eigene Messungskategorien"
+        },
+        "foodExerciseDataProviders": {
+            "title": "Lebensmittel- und Trainingsdatenanbieter",
+            "description": "Externe Lebensmittel- und Trainingsdatenanbieter einstellen und Daten mit Garmin Connect synchronisieren",
+            "invalidKeyLengthWarning": "Wenn ein „Invalid key length“-Fehler auftritt, stelle sicher, dass die Encryption- und JWT-Authentication-Schlüssel in den ENV-Variablen des Servers im 64-HEX-Format sind."
+        },
+        "aiService": {
+            "title": "KI-Dienste",
+            "description": "Einstellungen für KI-gestützte Funktionalitäten verwalten",
+            "invalidKeyLengthWarning": "Wenn ein „Invalid key length“-Fehler auftritt, stelle sicher, dass die Encryption- und JWT-Authentication-Schlüssel in den ENV-Variablen des Servers im 64-HEX-Format sind."
+        },
+        "apiKeyManagement": {
+            "title": "API-Schlüssel-Verwaltung",
+            "description": "Generiere und verwalte API-Schlüssel für externe Integrationen",
+            "infoText": "Generiere API-Schlüssel und übertrage sicher Daten von externen Applikationen wie iPhone Shortcuts. Diese Schlüssel sind an deinen Account gebunden und können jederzeit widerrufen werden.",
+            "wikiWarning": "Siehe die Wiki-Seite auf GitHub für Beispielanweisungen zur Einrichtung auf iPhone und Android.",
+            "descriptionPlaceholder": "Beschreibung (bspw. „iPhone Health Shortcut“)",
+            "generateNewKey": "Neuen Schlüssel generieren",
+            "generating": "generieren …",
+            "noApiKeys": "Bisher keine API-Schlüssel generiert.",
+            "noDescription": "Keine Beschreibung",
+            "copied": "Kopiert!",
+            "apiKeyCopied": "API-Schlüssel in die Zwischenablage kopiert.",
+            "created": "Erstellt:",
+            "lastUsed": "Zuletzt benutzt:",
+            "deleteApiKeyConfirm": "Bist du sicher, dass du diesen API-Schlüssel löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden."
+        },
+        "accountSecurity": {
+            "title": "Account-Sicherheit",
+            "description": "E-Mail oder Passwort ändern",
+            "currentEmail": "E-Mail ändern",
+            "enterNewEmail": "Neue E-Mail-Adresse eingeben",
+            "updateEmail": "E-Mail-Adresse aktualisieren",
+            "verifyNewEmail": "Du musst deine neue E-Mail-Adresse verifizieren.",
+            "changePassword": "Passwort ändern",
+            "newPassword": "Neues Passwort",
+            "enterNewPassword": "Neues Passwort eingeben",
+            "confirmNewPassword": "Neues Passwort bestätigen",
+            "updatePassword": "Passwort aktualisieren",
+            "updating": "aktualisiere …",
+            "newPasswordsDoNotMatch": "Neue Passwörter stimmen nicht überein.",
+            "passwordLengthError": "Passwort muss mindestens 6 Zeichen lang sein.",
+            "enterNewEmailAddress": "Bitte neue E-Mail-Adresse eingeben"
+        }
+    }
+}

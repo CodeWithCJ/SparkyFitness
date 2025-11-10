@@ -988,7 +988,34 @@ module.exports = {
   importExercisesFromJson, // Export the new function
   getExercisesNeedingReview, // New export
   updateExerciseEntriesSnapshot, // New export
+  getActivityDetailsByExerciseEntryIdAndProvider, // Renamed export
 };
+
+async function getActivityDetailsByExerciseEntryIdAndProvider(authenticatedUserId, exerciseEntryId, providerName) {
+  try {
+    const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(authenticatedUserId, exerciseEntryId);
+    
+    // Find the full_activity_data and full_workout_data for the given provider
+    const activityData = activityDetails.find(
+      (detail) => detail.provider_name === providerName && detail.detail_type === 'full_activity_data'
+    );
+    const workoutData = activityDetails.find(
+      (detail) => detail.provider_name === providerName && detail.detail_type === 'full_workout_data'
+    );
+
+    // Return a composite object containing both, if they exist
+    if (activityData || workoutData) {
+      return {
+        activity: activityData ? activityData.detail_data : null,
+        workout: workoutData ? workoutData.detail_data : null,
+      };
+    }
+    return null;
+  } catch (error) {
+    log('error', `Error fetching activity details for exercise entry ${exerciseEntryId} from provider ${providerName} by user ${authenticatedUserId}:`, error);
+    throw error;
+  }
+}
 
 async function getExercisesNeedingReview(authenticatedUserId) {
   try {

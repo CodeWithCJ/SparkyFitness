@@ -8,6 +8,7 @@ runPreflightChecks();
 
 const express = require('express');
 const cors = require('cors'); // Added this line
+const cookieParser = require('cookie-parser');
 const { getRawOwnerPool } = require('./db/poolManager');
 const { log } = require('./config/logging');
 const { getDefaultModel } = require('./ai/config');
@@ -28,6 +29,7 @@ const exerciseRoutes = require('./routes/exerciseRoutes');
 const exerciseEntryRoutes = require('./routes/exerciseEntryRoutes');
 const freeExerciseDBRoutes = require('./routes/freeExerciseDBRoutes'); // Import freeExerciseDB routes
 const healthDataRoutes = require('./integrations/healthData/healthDataRoutes');
+const sleepRoutes = require('./routes/sleepRoutes');
 const authRoutes = require('./routes/authRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const externalProviderRoutes = require('./routes/externalProviderRoutes'); // Renamed import
@@ -79,6 +81,7 @@ app.use(
 // Middleware to parse JSON bodies for all incoming requests
 // Increased limit to 50mb to accommodate image uploads
 app.use(express.json({ limit: "50mb" }));
+app.use(cookieParser());
 
 // Log all incoming requests
 app.use((req, res, next) => {
@@ -198,11 +201,12 @@ const configureSessionMiddleware = (pool) => {
     secret: process.env.JWT_SECRET,
     resave: false,
     saveUninitialized: true,
+    rolling: true, // Reset session expiration on every request to keep user logged in
     proxy: true, // Trust the proxy in all environments (like Vite dev server)
     cookie: {
       path: "/", // Ensure cookie is sent for all paths
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       // secure and sameSite will be set dynamically
     },
   });
@@ -281,6 +285,8 @@ app.use('/exercises', exerciseRoutes);
 app.use('/exercise-entries', exerciseEntryRoutes);
 app.use('/freeexercisedb', freeExerciseDBRoutes); // Add freeExerciseDB routes
 app.use('/api/health-data', healthDataRoutes);
+app.use('/sleep', sleepRoutes);
+app.use('/sleep', sleepRoutes); // Add sleep routes
 app.use('/auth', authRoutes);
 app.use('/user', authRoutes);
 app.use('/health', healthRoutes);

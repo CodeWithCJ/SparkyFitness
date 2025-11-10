@@ -1,5 +1,6 @@
 import { apiCall } from './api';
 import { Exercise } from './exerciseSearchService'; // Import Exercise interface
+import { SleepAnalyticsData } from '../types'; // Import SleepAnalyticsData
 
 export interface NutritionData {
   date: string;
@@ -91,6 +92,8 @@ export interface DailyExerciseEntry {
   calories_burned: number;
   notes?: string;
   exercises: Exercise; // Use the comprehensive Exercise interface
+  exercise_entry_id?: string; // New field
+  provider_name?: string; // New field
   sets: { // Define the structure of sets
     id: string;
     set_number: number;
@@ -107,6 +110,9 @@ export interface ExerciseProgressData {
   entry_date: string;
   calories_burned: number;
   duration_minutes: number;
+  exercise_entry_id: string; // New field
+  provider_name?: string; // New field
+  exercise_name?: string; // Added field for exercise name
   sets: {
     id: string;
     set_number: number;
@@ -147,6 +153,7 @@ export const loadReportsData = async (
   measurementData: MeasurementData[];
   customCategories: CustomCategory[];
   customMeasurementsData: Record<string, CustomMeasurementData[]>;
+  sleepAnalyticsData: SleepAnalyticsData[];
 }> => {
   const params = new URLSearchParams({
     userId,
@@ -241,6 +248,22 @@ export const getExerciseDashboardData = async (
   if (muscle) params.append('muscle', muscle);
   if (exercise) params.append('exercise', exercise);
   const response = await apiCall(`/reports/exercise-dashboard?${params.toString()}`, {
+    method: 'GET',
+  });
+  return response;
+};
+
+export const getSleepAnalyticsData = async (
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<SleepAnalyticsData[]> => {
+  const params = new URLSearchParams({
+    userId,
+    startDate,
+    endDate,
+  });
+  const response = await apiCall(`/sleep/analytics?${params.toString()}`, {
     method: 'GET',
   });
   return response;

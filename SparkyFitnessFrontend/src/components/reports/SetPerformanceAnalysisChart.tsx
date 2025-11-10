@@ -9,19 +9,22 @@ interface SetPerformanceAnalysisChartProps {
     avgWeight: number;
     avgReps: number;
   }[];
+  exerciseName?: string; // New prop for exercise name
 }
 
-const SetPerformanceAnalysisChart: React.FC<SetPerformanceAnalysisChartProps> = ({ setPerformanceData }) => {
+const SetPerformanceAnalysisChart: React.FC<SetPerformanceAnalysisChartProps> = ({ setPerformanceData, exerciseName }) => {
   if (!setPerformanceData || setPerformanceData.length === 0) {
     return null;
   }
 
+  const chartTitle = exerciseName ? `Set Performance Analysis - ${exerciseName}` : "Set Performance Analysis";
+
   return (
-    <ZoomableChart title="Set Performance Analysis">
+    <ZoomableChart title={chartTitle}>
       {(isMaximized, zoomLevel) => (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Set Performance Analysis</CardTitle>
+            <CardTitle className="text-sm">{chartTitle}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>

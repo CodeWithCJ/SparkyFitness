@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Search, Edit, Trash2, UserCog, KeyRound } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { userManagementService, type User } from '../../services/userManagementService';
 
 const UserManagement: React.FC = () => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,10 +31,10 @@ const UserManagement: React.FC = () => {
       const fetchedUsers = await userManagementService.getUsers(searchTerm); // Fetch without sort parameters
       setUsers(fetchedUsers);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch user data.');
+      setError(err.message || t('admin.userManagement.errorLoadingUsers'));
       toast({
-        title: "Error",
-        description: "Failed to load user data.",
+        title: t('admin.userManagement.error'),
+        description: t('admin.userManagement.errorLoadingUsers'),
         variant: "destructive",
       });
     } finally {
@@ -42,7 +44,7 @@ const UserManagement: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [searchTerm, sortBy, sortOrder]); // Re-fetch when search term or sort changes
+  }, [searchTerm, sortBy, sortOrder, t]); // Re-fetch when search term or sort changes
 
 
 
@@ -52,28 +54,28 @@ const UserManagement: React.FC = () => {
       setEditedUser(null);
       return;
     }
-
-    if (!window.confirm(`Are you sure you want to change ${currentFullName}'s full name to ${newFullName}?`)) {
-      setEditingUserId(null);
-      setEditedUser(null);
-      return;
-    }
+ 
+     if (!window.confirm(t('admin.userManagement.confirmChangeFullName', { currentFullName, newFullName }))) {
+       setEditingUserId(null);
+       setEditedUser(null);
+       return;
+     }
 
     setLoading(true);
     try {
       await userManagementService.updateUserFullName(userId, newFullName);
       setUsers(prevUsers => prevUsers.map(u => (u.id === userId ? { ...u, full_name: newFullName } : u)));
       toast({
-        title: "Success",
-        description: `User ${currentFullName}'s full name updated successfully.`,
+        title: t('success'),
+        description: t('admin.userManagement.fullNameUpdated', { currentFullName }),
       });
       setEditingUserId(null);
       setEditedUser(null);
     } catch (err: any) {
-      setError(err.message || 'Failed to save user full name.');
+      setError(err.message || t('admin.userManagement.failedToSaveFullName'));
       toast({
-        title: "Error",
-        description: "Failed to save user full name.",
+        title: t('admin.userManagement.error'),
+        description: t('admin.userManagement.failedToSaveFullName'),
         variant: "destructive",
       });
     } finally {
@@ -87,14 +89,14 @@ const UserManagement: React.FC = () => {
       await userManagementService.deleteUser(userId);
       setUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
       toast({
-        title: "Success",
-        description: `User with ID ${userId} deleted successfully.`,
+        title: t('success'),
+        description: t('admin.userManagement.deleteSuccess', { userId }),
       });
     } catch (err: any) {
-      setError(err.message || 'Failed to delete user.');
+      setError(err.message || t('admin.userManagement.deleteFailed'));
       toast({
-        title: "Error",
-        description: "Failed to delete user.",
+        title: t('admin.userManagement.error'),
+        description: t('admin.userManagement.deleteFailed'),
         variant: "destructive",
       });
     } finally {
@@ -103,21 +105,21 @@ const UserManagement: React.FC = () => {
   };
 
   const handleResetPassword = async (userId: string, userName: string) => {
-    if (!window.confirm(`Are you sure you want to reset the password for ${userName}?`)) {
+    if (!window.confirm(t('admin.userManagement.resetPasswordConfirm', { userName }))) {
       return;
     }
     setLoading(true);
     try {
       await userManagementService.resetUserPassword(userId);
       toast({
-        title: "Success",
-        description: `Password reset initiated for ${userName}.`,
+        title: t('success'),
+        description: t('admin.userManagement.resetPasswordInitiated', { userName }),
       });
     } catch (err: any) {
-      setError(err.message || 'Failed to reset password.');
+      setError(err.message || t('admin.userManagement.resetPasswordFailed'));
       toast({
-        title: "Error",
-        description: "Failed to reset password.",
+        title: t('admin.userManagement.error'),
+        description: t('admin.userManagement.resetPasswordFailed'),
         variant: "destructive",
       });
     } finally {
@@ -125,26 +127,28 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleToggleUserStatus = async (userId: string, userName: string, currentStatus: boolean) => {
-    const action = currentStatus ? 'deactivate' : 'activate';
-    if (!window.confirm(`Are you sure you want to ${action} user ${userName}?`)) {
+  const handleToggleUserStatus = async (userId: string, userName: string, newCheckedState: boolean) => {
+    const actualNewStatus = newCheckedState;
+    const action = actualNewStatus ? 'activate' : 'deactivate'; // Action based on the actual new state
+    if (!window.confirm(t('admin.userManagement.toggleUserStatusConfirm', { action, userName }))) {
       return;
     }
     setLoading(true);
     try {
-      await userManagementService.updateUserStatus(userId, !currentStatus);
+      await userManagementService.updateUserStatus(userId, actualNewStatus);
       setUsers(prevUsers =>
-        prevUsers.map(u => (u.id === userId ? { ...u, isActive: !currentStatus } : u))
+        prevUsers.map(u => (u.id === userId ? { ...u, is_active: actualNewStatus } : u))
       );
       toast({
-        title: "Success",
-        description: `User ${userName} ${action}d successfully.`,
+        title: t('success'),
+        description: t('admin.userManagement.userStatusUpdated', { userName, action }),
       });
+      await fetchUsers(); // Re-fetch users to get the latest status
     } catch (err: any) {
-      setError(err.message || `Failed to ${action} user.`);
+      setError(err.message || t('admin.userManagement.failedToUpdateUserStatus', { action }));
       toast({
-        title: "Error",
-        description: `Failed to ${action} user.`,
+        title: t('admin.userManagement.error'),
+        description: t('admin.userManagement.failedToUpdateUserStatus', { action }),
         variant: "destructive",
       });
     } finally {
@@ -154,7 +158,7 @@ const UserManagement: React.FC = () => {
 
   const handleToggleUserRole = async (userId: string, userName: string, currentRole: string) => {
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
-    if (!window.confirm(`Are you sure you want to change user ${userName}'s role to ${newRole}?`)) {
+    if (!window.confirm(t('admin.userManagement.toggleUserRoleConfirm', { userName, newRole }))) {
       return;
     }
     setLoading(true);
@@ -164,14 +168,14 @@ const UserManagement: React.FC = () => {
         prevUsers.map(u => (u.id === userId ? { ...u, role: newRole } : u))
       );
       toast({
-        title: "Success",
-        description: `User ${userName}'s role updated to ${newRole} successfully.`,
+        title: t('success'),
+        description: t('admin.userManagement.userRoleUpdated', { userName, newRole }),
       });
     } catch (err: any) {
-      setError(err.message || `Failed to update user ${userName}'s role.`);
+      setError(err.message || t('admin.userManagement.failedToUpdateUserRole', { userName }));
       toast({
-        title: "Error",
-        description: `Failed to update user ${userName}'s role.`,
+        title: t('admin.userManagement.error'),
+        description: t('admin.userManagement.failedToUpdateUserRole', { userName }),
         variant: "destructive",
       });
     } finally {
@@ -180,15 +184,15 @@ const UserManagement: React.FC = () => {
   };
  
   if (loading) {
-    return <div>Loading user data...</div>;
+    return <div>{t('admin.userManagement.loadingUsers')}</div>;
   }
 
   if (error) {
-    return <div className="text-red-500">Error: {error}</div>;
+    return <div className="text-red-500">{t('admin.userManagement.error')}: {error}</div>;
   }
 
   if (!users || users.length === 0) {
-    return <div>No users found.</div>;
+    return <div>{t('admin.userManagement.noUsersFound')}</div>;
   }
 
   const sortedUsers = [...users].sort((a, b) => {
@@ -236,10 +240,10 @@ const UserManagement: React.FC = () => {
       <AccordionItem value="user-management" className="border rounded-lg mb-4">
         <AccordionTrigger
           className="flex items-center gap-2 p-4 hover:no-underline"
-          description="Manage user accounts, roles, and statuses."
+          description={t('admin.userManagement.description')}
         >
           <UserCog className="h-5 w-5" />
-          User Management
+          {t('admin.userManagement.title')}
         </AccordionTrigger>
         <AccordionContent className="p-4 pt-0 space-y-6">
           <Card className="w-full mx-auto">
@@ -247,7 +251,7 @@ const UserManagement: React.FC = () => {
               <div className="relative mb-4">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search users..."
+                  placeholder={t('admin.userManagement.searchUsers')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
@@ -261,39 +265,39 @@ const UserManagement: React.FC = () => {
                         className="cursor-pointer"
                         onClick={(e) => { e.stopPropagation(); handleSortChange('full_name'); }}
                       >
-                        Full Name {sortBy === 'full_name' && (sortOrder === 'asc' ? '▲' : '▼')} <Edit className="h-4 w-4 inline-block ml-1" />
+                        {t('admin.userManagement.fullName')} {sortBy === 'full_name' && (sortOrder === 'asc' ? '▲' : '▼')} <Edit className="h-4 w-4 inline-block ml-1" />
                       </TableHead>
                       <TableHead
                         className="cursor-pointer"
                         onClick={(e) => { e.stopPropagation(); handleSortChange('email'); }}
                       >
-                        Email {sortBy === 'email' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        {t('admin.userManagement.email')} {sortBy === 'email' && (sortOrder === 'asc' ? '▲' : '▼')}
                       </TableHead>
                       <TableHead
                         className="cursor-pointer"
                         onClick={(e) => { e.stopPropagation(); handleSortChange('role'); }}
                       >
-                        Admin {sortBy === 'role' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        {t('admin.userManagement.admin')} {sortBy === 'role' && (sortOrder === 'asc' ? '▲' : '▼')}
                       </TableHead>
                       <TableHead
                         className="cursor-pointer"
-                        onClick={(e) => { e.stopPropagation(); handleSortChange('isActive'); }}
+                        onClick={(e) => { e.stopPropagation(); handleSortChange('is_active'); }}
                       >
-                        Active {sortBy === 'isActive' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        {t('admin.userManagement.active')} {sortBy === 'is_active' && (sortOrder === 'asc' ? '▲' : '▼')}
                       </TableHead>
                       <TableHead
                         className="cursor-pointer"
                         onClick={(e) => { e.stopPropagation(); handleSortChange('created_at'); }}
                       >
-                        Created At {sortBy === 'created_at' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        {t('admin.userManagement.createdAt')} {sortBy === 'created_at' && (sortOrder === 'asc' ? '▲' : '▼')}
                       </TableHead>
                       <TableHead
                         className="cursor-pointer"
                         onClick={(e) => { e.stopPropagation(); handleSortChange('last_login_at'); }}
                       >
-                        Last Login {sortBy === 'last_login_at' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        {t('admin.userManagement.lastLogin')} {sortBy === 'last_login_at' && (sortOrder === 'asc' ? '▲' : '▼')}
                       </TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="text-right">{t('admin.userManagement.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -330,17 +334,17 @@ const UserManagement: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Switch
-                            id={`isActive-${user.id}`}
-                            checked={user.isActive}
-                            onCheckedChange={(checked) => handleToggleUserStatus(user.id, user.full_name, user.isActive)}
+                            id={`is_active-${user.id}`}
+                            checked={user.is_active}
+                            onCheckedChange={(newCheckedState) => handleToggleUserStatus(user.id, user.full_name, newCheckedState)}
                             disabled={loading}
                           />
                         </TableCell>
                         <TableCell>
-                          {user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}
+                          {user.created_at ? new Date(user.created_at).toLocaleString() : t('admin.userManagement.notApplicable')}
                         </TableCell>
                         <TableCell>
-                          {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : 'N/A'}
+                          {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : t('admin.userManagement.notApplicable')}
                         </TableCell>
                         <TableCell className="text-right">
                           <>
