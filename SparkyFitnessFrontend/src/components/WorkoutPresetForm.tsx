@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,7 @@ interface WorkoutPresetFormProps {
   initialPreset?: WorkoutPreset | null;
 }
 
-const SortableSetItem = React.memo(({ set, exerciseIndex, setIndex, onSetChange, onDuplicateSet, onRemoveSet, weightUnit }: { set: WorkoutPresetSet, exerciseIndex: number, setIndex: number, onSetChange: Function, onDuplicateSet: Function, onRemoveSet: Function, weightUnit: string }) => {
+const SortableSetItem = React.memo(({ t, set, exerciseIndex, setIndex, onSetChange, onDuplicateSet, onRemoveSet, weightUnit }: { t: any, set: WorkoutPresetSet, exerciseIndex: number, setIndex: number, onSetChange: Function, onDuplicateSet: Function, onRemoveSet: Function, weightUnit: string }) => {
   const {
     attributes,
     listeners,
@@ -47,48 +48,48 @@ const SortableSetItem = React.memo(({ set, exerciseIndex, setIndex, onSetChange,
         </div>
         <div className="grid grid-cols-1 md:grid-cols-8 gap-2 flex-grow items-center">
           <div className="md:col-span-1">
-            <Label>Set</Label>
+            <Label>{t('workoutPresetForm.setLabel', 'Set')}</Label>
             <p className="font-medium p-2">{set.set_number}</p>
           </div>
           <div className="md:col-span-2">
-            <Label>Type</Label>
+            <Label>{t('workoutPresetForm.typeLabel', 'Type')}</Label>
             <Select value={set.set_type} onValueChange={(value) => onSetChange(exerciseIndex, setIndex, 'set_type', value)}>
               <SelectTrigger>
-                <SelectValue placeholder="Set Type" />
+                <SelectValue placeholder={t('workoutPresetForm.setTypePlaceholder', 'Set Type')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Working Set">Working Set</SelectItem>
-                <SelectItem value="Warm-up">Warm-up</SelectItem>
-                <SelectItem value="Drop Set">Drop Set</SelectItem>
-                <SelectItem value="Failure">Failure</SelectItem>
-                <SelectItem value="AMRAP">AMRAP</SelectItem>
-                <SelectItem value="Back-off">Back-off</SelectItem>
-                <SelectItem value="Rest-Pause">Rest-Pause</SelectItem>
-                <SelectItem value="Cluster">Cluster</SelectItem>
-                <SelectItem value="Technique">Technique</SelectItem>
+                <SelectItem value="Working Set">{t('workoutPresetForm.workingSet', 'Working Set')}</SelectItem>
+                <SelectItem value="Warm-up">{t('workoutPresetForm.warmUp', 'Warm-up')}</SelectItem>
+                <SelectItem value="Drop Set">{t('workoutPresetForm.dropSet', 'Drop Set')}</SelectItem>
+                <SelectItem value="Failure">{t('workoutPresetForm.failure', 'Failure')}</SelectItem>
+                <SelectItem value="AMRAP">{t('workoutPresetForm.amrap', 'AMRAP')}</SelectItem>
+                <SelectItem value="Back-off">{t('workoutPresetForm.backOff', 'Back-off')}</SelectItem>
+                <SelectItem value="Rest-Pause">{t('workoutPresetForm.restPause', 'Rest-Pause')}</SelectItem>
+                <SelectItem value="Cluster">{t('workoutPresetForm.cluster', 'Cluster')}</SelectItem>
+                <SelectItem value="Technique">{t('workoutPresetForm.technique', 'Technique')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="md:col-span-1">
             <Label htmlFor={`reps-${exerciseIndex}-${set.id}`} className="flex items-center">
-              <Repeat className="h-4 w-4 mr-1" style={{ color: '#3b82f6' }} /> Reps
+              <Repeat className="h-4 w-4 mr-1" style={{ color: '#3b82f6' }} /> {t('workoutPresetForm.repsLabel', 'Reps')}
             </Label>
             <Input id={`reps-${exerciseIndex}-${set.id}`} type="number" value={set.reps ?? ''} onChange={(e) => onSetChange(exerciseIndex, setIndex, 'reps', Number(e.target.value))} />
           </div>
           <div className="md:col-span-1">
             <Label htmlFor={`weight-${exerciseIndex}-${set.id}`} className="flex items-center">
-              <Dumbbell className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} /> Weight ({weightUnit})
+              <Dumbbell className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} /> {t('workoutPresetForm.weightLabel', 'Weight')} ({weightUnit})
             </Label>
             <Input id={`weight-${exerciseIndex}-${set.id}`} type="number" value={set.weight ?? ''} onChange={(e) => onSetChange(exerciseIndex, setIndex, 'weight', Number(e.target.value))} />
           </div>
           <div className="md:col-span-1">
             <Label htmlFor={`duration-${exerciseIndex}-${set.id}`} className="flex items-center">
-                            <Hourglass className="h-4 w-4 mr-1" style={{ color: '#f97316' }} /> Duration (min)
+                            <Hourglass className="h-4 w-4 mr-1" style={{ color: '#f97316' }} /> {t('workoutPresetForm.durationLabel', 'Duration (min)')}
                           </Label>            <Input id={`duration-${exerciseIndex}-${set.id}`} type="number" value={set.duration ?? ''} onChange={(e) => onSetChange(exerciseIndex, setIndex, 'duration', Number(e.target.value))} />
           </div>
           <div className="md:col-span-1">
             <Label htmlFor={`rest-${exerciseIndex}-${set.id}`} className="flex items-center">
-              <Timer className="h-4 w-4 mr-1" style={{ color: '#8b5cf6' }} /> Rest (s)
+              <Timer className="h-4 w-4 mr-1" style={{ color: '#8b5cf6' }} /> {t('workoutPresetForm.restLabel', 'Rest (s)')}
             </Label>
             <Input id={`rest-${exerciseIndex}-${set.id}`} type="number" value={set.rest_time ?? ''} onChange={(e) => onSetChange(exerciseIndex, setIndex, 'rest_time', Number(e.target.value))} />
           </div>
@@ -103,7 +104,7 @@ const SortableSetItem = React.memo(({ set, exerciseIndex, setIndex, onSetChange,
         </div>
       </div>
       <div className="pl-8">
-        <Label htmlFor={`notes-${exerciseIndex}-${set.id}`}>Notes</Label>
+        <Label htmlFor={`notes-${exerciseIndex}-${set.id}`}>{t('workoutPresetForm.notesLabel', 'Notes')}</Label>
         <Textarea id={`notes-${exerciseIndex}-${set.id}`} value={set.notes ?? ''} onChange={(e) => onSetChange(exerciseIndex, setIndex, 'notes', e.target.value)} />
       </div>
     </div>
@@ -116,6 +117,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
   onSave,
   initialPreset,
 }) => {
+  const { t } = useTranslation();
   const { loggingLevel, weightUnit, convertWeight } = usePreferences();
   const { toast } = useToast();
   const [name, setName] = useState("");
@@ -274,8 +276,8 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
   const handleSubmit = () => {
     if (!name.trim()) {
       toast({
-        title: "Validation Error",
-        description: "Preset Name is required.",
+        title: t('workoutPresetForm.validationErrorTitle', 'Validation Error'),
+        description: t('workoutPresetForm.nameRequiredError', 'Preset Name is required.'),
         variant: "destructive",
       });
       return;
@@ -299,14 +301,14 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initialPreset ? "Edit Workout Preset" : "Create New Workout Preset"}</DialogTitle>
+          <DialogTitle>{initialPreset ? t('workoutPresetForm.editTitle', 'Edit Workout Preset') : t('workoutPresetForm.createTitle', 'Create New Workout Preset')}</DialogTitle>
           <DialogDescription>
-            {initialPreset ? "Edit the details of your workout preset." : "Create a new workout preset by providing a name, description, and exercises."}
+            {initialPreset ? t('workoutPresetForm.editDescription', 'Edit the details of your workout preset.') : t('workoutPresetForm.createDescription', 'Create a new workout preset by providing a name, description, and exercises.')}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4 overflow-y-auto max-h-full">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t('workoutPresetForm.nameLabel', 'Name')}</Label>
             <Input
               id="name"
               value={name}
@@ -315,7 +317,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">{t('workoutPresetForm.descriptionLabel', 'Description')}</Label>
             <Textarea
               id="description"
               value={description}
@@ -328,13 +330,13 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
               checked={isPublic}
               onCheckedChange={setIsPublic}
             />
-            <Label htmlFor="isPublic">Share with Public</Label>
+            <Label htmlFor="isPublic">{t('workoutPresetForm.shareWithPublicLabel', 'Share with Public')}</Label>
           </div>
 
           <div className="col-span-4">
-            <h3 className="text-lg font-semibold mb-2">Exercises</h3>
+            <h3 className="text-lg font-semibold mb-2">{t('workoutPresetForm.exercisesLabel', 'Exercises')}</h3>
             <Button type="button" onClick={() => setIsAddExerciseDialogOpen(true)} className="mb-4">
-              <Plus className="h-4 w-4 mr-2" /> Add Exercise
+              <Plus className="h-4 w-4 mr-2" /> {t('workoutPresetForm.addExerciseButton', 'Add Exercise')}
             </Button>
 
             <AddExerciseDialog
@@ -359,6 +361,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                         {ex.sets.map((set, setIndex) => (
                           <SortableSetItem
                             key={set.id}
+                            t={t}
                             set={set}
                             exerciseIndex={exerciseIndex}
                             setIndex={setIndex}
@@ -371,7 +374,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                       </div>
                     </SortableContext>
                     <Button type="button" variant="outline" onClick={() => handleAddSet(exerciseIndex)}>
-                      <Plus className="h-4 w-4 mr-2" /> Add Set
+                      <Plus className="h-4 w-4 mr-2" /> {t('workoutPresetForm.addSetButton', 'Add Set')}
                     </Button>
                     <ExerciseHistoryDisplay exerciseId={ex.exercise_id} />
                   </div>
@@ -382,10 +385,10 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </Button>
           <Button onClick={handleSubmit}>
-            {initialPreset ? "Save Changes" : "Create Preset"}
+            {initialPreset ? t('common.saveChanges', 'Save Changes') : t('workoutPresetForm.createPresetButton', 'Create Preset')}
           </Button>
         </DialogFooter>
       </DialogContent>

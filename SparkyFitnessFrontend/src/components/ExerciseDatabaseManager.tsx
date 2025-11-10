@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ interface ExerciseDatabaseManagerProps {
 }
 
 const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPresetExercisesSelected }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { loggingLevel } = usePreferences();
   // Existing states for Exercise management
@@ -99,8 +101,8 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
     } catch (err) {
       error(loggingLevel, "Error loading exercises:", err);
       toast({
-        title: "Error",
-        description: "Failed to load exercises",
+        title: t('common.error', 'Error'),
+        description: t('exercise.databaseManager.failedToLoadExercises', 'Failed to load exercises'),
         variant: "destructive",
       });
     }
@@ -144,8 +146,8 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
 
       await updateExercise(selectedExercise.id, formData);
       toast({
-        title: "Success",
-        description: "Exercise edited successfully",
+        title: t('common.success', 'Success'),
+        description: t('exercise.databaseManager.editSuccess', 'Exercise edited successfully'),
       });
       if (user?.id === selectedExercise.user_id) {
         setSyncExerciseId(selectedExercise.id);
@@ -160,8 +162,8 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
     } catch (err) {
       error(loggingLevel, "Error editing exercise:", err);
       toast({
-        title: "Error",
-        description: "Failed to edit exercise",
+        title: t('common.error', 'Error'),
+        description: t('exercise.databaseManager.failedToEditExercise', 'Failed to edit exercise'),
         variant: "destructive",
       });
     }
@@ -177,8 +179,8 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
     } catch (err) {
       error(loggingLevel, "Error fetching deletion impact:", err);
       toast({
-        title: "Error",
-        description: "Could not fetch deletion impact. Please try again.",
+        title: t('common.error', 'Error'),
+        description: t('exercise.databaseManager.failedToFetchDeletionImpact', 'Could not fetch deletion impact. Please try again.'),
         variant: "destructive",
       });
     }
@@ -193,21 +195,21 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
       // Interpret server response status for user feedback
       if (response && response.status) {
         if (response.status === 'deleted' || response.status === 'force_deleted') {
-          toast({ title: 'Success', description: 'Exercise deleted successfully.' });
+          toast({ title: t('common.success', 'Success'), description: t('exercise.databaseManager.deleteSuccess', 'Exercise deleted successfully.') });
         } else if (response.status === 'hidden') {
-          toast({ title: 'Success', description: 'Exercise hidden (marked as quick). Historical entries remain.' });
+          toast({ title: t('common.success', 'Success'), description: t('exercise.databaseManager.hiddenSuccess', 'Exercise hidden (marked as quick). Historical entries remain.') });
         } else {
-          toast({ title: 'Success', description: response.message || 'Exercise delete operation completed.' });
+          toast({ title: t('common.success', 'Success'), description: response.message || t('exercise.databaseManager.deleteOperationCompleted', 'Exercise delete operation completed.') });
         }
       } else {
-        toast({ title: 'Success', description: 'Exercise deleted successfully.' });
+        toast({ title: t('common.success', 'Success'), description: t('exercise.databaseManager.deleteSuccess', 'Exercise deleted successfully.') });
       }
       loadExercisesData();
     } catch (err) {
       error(loggingLevel, "Error deleting exercise:", err);
       toast({
-        title: "Error",
-        description: "Failed to delete exercise.",
+        title: t('common.error', 'Error'),
+        description: t('exercise.databaseManager.failedToDeleteExercise', 'Failed to delete exercise.'),
         variant: "destructive",
       });
     } finally {
@@ -221,15 +223,15 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
     try {
       await updateExerciseShareStatus(exerciseId, share);
       toast({
-        title: "Success",
-        description: `Exercise ${share ? 'shared' : 'unshared'} successfully`,
+        title: t('common.success', 'Success'),
+        description: t('exercise.databaseManager.shareStatusSuccess', { shareStatus: share ? 'shared' : 'unshared' }),
       });
       loadExercisesData();
     } catch (err) {
       error(loggingLevel, "Error sharing exercise:", err);
       toast({
-        title: "Error",
-        description: "Failed to share exercise",
+        title: t('common.error', 'Error'),
+        description: t('exercise.databaseManager.failedToShareExercise', 'Failed to share exercise'),
         variant: "destructive",
       });
     }
@@ -240,13 +242,13 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
       try {
         await updateExerciseEntriesSnapshot(syncExerciseId);
         toast({
-          title: "Success",
-          description: "Past diary entries have been updated.",
+          title: t('common.success', 'Success'),
+          description: t('exercise.databaseManager.syncSuccess', 'Past diary entries have been updated.'),
         });
       } catch (error) {
         toast({
-          title: "Error",
-          description: "Failed to update past diary entries.",
+          title: t('common.error', 'Error'),
+          description: t('exercise.databaseManager.syncError', 'Failed to update past diary entries.'),
           variant: "destructive",
         });
       }
@@ -259,7 +261,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
     if (!exercise.user_id) {
       return (
         <Badge variant="outline" className="text-xs w-fit">
-          System
+          {t('exercise.databaseManager.badgeSystem', 'System')}
         </Badge>
       );
     }
@@ -267,7 +269,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
     if (exercise.user_id === currentUserId) {
       return (
         <Badge variant="secondary" className="text-xs w-fit">
-          Private
+          {t('exercise.databaseManager.badgePrivate', 'Private')}
         </Badge>
       );
     }
@@ -278,7 +280,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
           variant="outline"
           className="text-xs w-fit bg-blue-50 text-blue-700"
         >
-          Family
+          {t('exercise.databaseManager.badgeFamily', 'Family')}
         </Badge>
       );
     }
@@ -290,28 +292,33 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
       {/* Exercises Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Exercises</CardTitle>
+          <CardTitle>{t('exercise.databaseManager.cardTitle', 'Exercises')}</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
             <div className="flex flex-wrap items-center gap-2 flex-1">
               <Input
                 type="text"
-                placeholder="Search exercises..."
+                placeholder={t('exercise.databaseManager.searchPlaceholder', 'Search exercises...')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="flex-1 min-w-[150px]"
               />
               <Select onValueChange={setCategoryFilter} defaultValue={categoryFilter}>
                 <SelectTrigger className="w-48">
-                  <SelectValue placeholder="All Categories" />
+                  <SelectValue placeholder={t('exercise.databaseManager.allCategoriesPlaceholder', 'All Categories')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="general">General</SelectItem>
-                  <SelectItem value="strength">Strength</SelectItem>
-                  <SelectItem value="cardio">Cardio</SelectItem>
-                  <SelectItem value="yoga">Yoga</SelectItem>
+                  <SelectItem value="all">{t('exercise.databaseManager.allCategoriesItem', 'All Categories')}</SelectItem>
+                  <SelectItem value="general">{t('exercise.addExerciseDialog.categoryGeneral', 'General')}</SelectItem>
+                  <SelectItem value="strength">{t('exercise.addExerciseDialog.categoryStrength', 'Strength')}</SelectItem>
+                  <SelectItem value="cardio">{t('exercise.addExerciseDialog.categoryCardio', 'Cardio')}</SelectItem>
+                  <SelectItem value="yoga">{t('exercise.addExerciseDialog.categoryYoga', 'Yoga')}</SelectItem>
+                  <SelectItem value="powerlifting">{t('exercise.databaseManager.categoryPowerlifting', 'Powerlifting')}</SelectItem>
+                  <SelectItem value="olympic weightlifting">{t('exercise.databaseManager.categoryOlympicWeightlifting', 'Olympic Weightlifting')}</SelectItem>
+                  <SelectItem value="strongman">{t('exercise.databaseManager.categoryStrongman', 'Strongman')}</SelectItem>
+                  <SelectItem value="plyometrics">{t('exercise.databaseManager.categoryPlyometrics', 'Plyometrics')}</SelectItem>
+                  <SelectItem value="stretching">{t('exercise.databaseManager.categoryStretching', 'Stretching')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -319,27 +326,27 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
             <div className="flex flex-wrap items-center gap-2">
               <Select onValueChange={(value) => setOwnershipFilter(value as ExerciseOwnershipFilter)} defaultValue={ownershipFilter}>
                 <SelectTrigger className="w-32">
-                  <SelectValue placeholder="All" />
+                  <SelectValue placeholder={t('exercise.databaseManager.allOwnershipPlaceholder', 'All')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="own">My Own</SelectItem>
-                  <SelectItem value="family">Family</SelectItem>
-                  <SelectItem value="public">Public</SelectItem>
-                  <SelectItem value="needs-review">Needs Review</SelectItem>
+                  <SelectItem value="all">{t('exercise.databaseManager.allOwnershipItem', 'All')}</SelectItem>
+                  <SelectItem value="own">{t('exercise.databaseManager.myOwnOwnershipItem', 'My Own')}</SelectItem>
+                  <SelectItem value="family">{t('exercise.databaseManager.familyOwnershipItem', 'Family')}</SelectItem>
+                  <SelectItem value="public">{t('exercise.databaseManager.publicOwnershipItem', 'Public')}</SelectItem>
+                  <SelectItem value="needs-review">{t('exercise.databaseManager.needsReviewOwnershipItem', 'Needs Review')}</SelectItem>
                 </SelectContent>
               </Select>
               <Button className="bg-slate-900 hover:bg-slate-800 text-white" onClick={() => setIsAddExerciseDialogOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
-                Add Exercise
+                {t('exercise.databaseManager.addExerciseButton', 'Add Exercise')}
               </Button>
             </div>
           </div>
           
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">All Exercises ({totalExercisesCount})</h3>
+            <h3 className="text-lg font-semibold">{t('exercise.databaseManager.allExercisesCount', { totalExercisesCount, defaultValue: `All Exercises (${totalExercisesCount})` })}</h3>
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-muted-foreground">Items per page:</span>
+              <span className="text-sm text-muted-foreground">{t('exercise.databaseManager.itemsPerPageLabel', 'Items per page:')}</span>
               <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
                 <SelectTrigger className="w-20">
                   <SelectValue />
@@ -370,24 +377,24 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                   </div>
                   <div className="text-sm text-gray-600 mb-1">
                     {exercise.category}
-                    {exercise.level && ` • Level: ${exercise.level}`}
-                    {exercise.force && ` • Force: ${exercise.force}`}
-                    {exercise.mechanic && ` • Mechanic: ${exercise.mechanic}`}
+                    {exercise.level && ` • ${t('exercise.databaseManager.levelDisplay', { level: exercise.level, defaultValue: `Level: ${exercise.level}` })}`}
+                    {exercise.force && ` • ${t('exercise.databaseManager.forceDisplay', { force: exercise.force, defaultValue: `Force: ${exercise.force}` })}`}
+                    {exercise.mechanic && ` • ${t('exercise.databaseManager.mechanicDisplay', { mechanic: exercise.mechanic, defaultValue: `Mechanic: ${exercise.mechanic}` })}`}
                   </div>
                   {exercise.equipment && Array.isArray(exercise.equipment) && exercise.equipment.length > 0 && (
-                    <div className="text-xs text-gray-400">Equipment: {exercise.equipment.join(', ')}</div>
+                    <div className="text-xs text-gray-400">{t('exercise.databaseManager.equipmentDisplay', { equipment: exercise.equipment.join(', '), defaultValue: `Equipment: ${exercise.equipment.join(', ')}` })}</div>
                   )}
                   {exercise.primary_muscles && Array.isArray(exercise.primary_muscles) && exercise.primary_muscles.length > 0 && (
-                    <div className="text-xs text-gray-400">Primary Muscles: {exercise.primary_muscles.join(', ')}</div>
+                    <div className="text-xs text-gray-400">{t('exercise.databaseManager.primaryMusclesDisplay', { primaryMuscles: exercise.primary_muscles.join(', '), defaultValue: `Primary Muscles: ${exercise.primary_muscles.join(', ')}` })}</div>
                   )}
                   {exercise.secondary_muscles && Array.isArray(exercise.secondary_muscles) && exercise.secondary_muscles.length > 0 && (
-                    <div className="text-xs text-gray-400">Secondary Muscles: {exercise.secondary_muscles.join(', ')}</div>
+                    <div className="text-xs text-gray-400">{t('exercise.databaseManager.secondaryMusclesDisplay', { secondaryMuscles: exercise.secondary_muscles.join(', '), defaultValue: `Secondary Muscles: ${exercise.secondary_muscles.join(', ')}` })}</div>
                   )}
                   {exercise.instructions && Array.isArray(exercise.instructions) && exercise.instructions.length > 0 && (
-                    <div className="text-xs text-gray-400">Instructions: {exercise.instructions[0]}...</div>
+                    <div className="text-xs text-gray-400">{t('exercise.databaseManager.instructionsDisplay', { instruction: exercise.instructions[0], defaultValue: `Instructions: ${exercise.instructions[0]}` })}...</div>
                   )}
                   <div className="text-sm text-gray-500">
-                    Calories/Hour: {exercise.calories_per_hour}
+                    {t('exercise.databaseManager.caloriesPerHourDisplay', { caloriesPerHour: exercise.calories_per_hour, defaultValue: `Calories/Hour: ${exercise.calories_per_hour}` })}
                   </div>
                   {exercise.description && (
                     <div className="text-sm text-gray-400 mt-1">{exercise.description}</div>
@@ -423,9 +430,9 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                         <p>
                           {exercise.user_id === user?.id
                             ? exercise.shared_with_public
-                              ? "Make private"
-                              : "Share with public"
-                            : "Not editable"}
+                              ? t('exercise.databaseManager.makePrivateTooltip', 'Make private')
+                              : t('exercise.databaseManager.shareWithPublicTooltip', 'Share with public')
+                            : t('exercise.databaseManager.notEditableTooltip', 'Not editable')}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -463,7 +470,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{exercise.user_id === user?.id ? "Edit exercise" : "Not editable"}</p>
+                        <p>{exercise.user_id === user?.id ? t('exercise.databaseManager.editExerciseTooltip', 'Edit exercise') : t('exercise.databaseManager.notEditableTooltip', 'Not editable')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -483,7 +490,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{exercise.user_id === user?.id ? "Delete exercise" : "Not editable"}</p>
+                        <p>{exercise.user_id === user?.id ? t('exercise.databaseManager.deleteExerciseTooltip', 'Delete exercise') : t('exercise.databaseManager.notEditableTooltip', 'Not editable')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -544,7 +551,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
       {/* Workout Presets Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Workout Presets</CardTitle>
+          <CardTitle>{t('exercise.databaseManager.workoutPresetsCardTitle', 'Workout Presets')}</CardTitle>
         </CardHeader>
         <CardContent>
           <WorkoutPresetsManager />
@@ -554,7 +561,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
       {/* Workout Plans Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Workout Plans</CardTitle>
+          <CardTitle>{t('exercise.databaseManager.workoutPlansCardTitle', 'Workout Plans')}</CardTitle>
         </CardHeader>
         <CardContent>
           <WorkoutPlansManager />
@@ -571,16 +578,16 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[625px] overflow-y-auto max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>Edit Exercise</DialogTitle>
+            <DialogTitle>{t('exercise.databaseManager.editExerciseDialogTitle', 'Edit Exercise')}</DialogTitle>
             <DialogDescription>
-              Edit the details of the selected exercise.
+              {t('exercise.databaseManager.editExerciseDialogDescription', 'Edit the details of the selected exercise.')}
             </DialogDescription>
           </DialogHeader>
           {selectedExercise && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-name" className="text-right">
-                  Name
+                  {t('exercise.addExerciseDialog.nameLabel', 'Name')}
                 </Label>
                 <Input
                   id="edit-name"
@@ -591,28 +598,28 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-category" className="text-right">
-                  Category
+                  {t('exercise.addExerciseDialog.categoryLabel', 'Category')}
                 </Label>
                 <Select onValueChange={setEditExerciseCategory} defaultValue={editExerciseCategory}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select a category" />
+                    <SelectValue placeholder={t('exercise.addExerciseDialog.selectCategoryPlaceholder', 'Select a category')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="general">General</SelectItem>
-                    <SelectItem value="strength">Strength</SelectItem>
-                    <SelectItem value="cardio">Cardio</SelectItem>
-                    <SelectItem value="yoga">Yoga</SelectItem>
-                    <SelectItem value="powerlifting">Powerlifting</SelectItem>
-                    <SelectItem value="olympic weightlifting">Olympic Weightlifting</SelectItem>
-                    <SelectItem value="strongman">Strongman</SelectItem>
-                    <SelectItem value="plyometrics">Plyometrics</SelectItem>
-                    <SelectItem value="stretching">Stretching</SelectItem>
+                    <SelectItem value="general">{t('exercise.addExerciseDialog.categoryGeneral', 'General')}</SelectItem>
+                    <SelectItem value="strength">{t('exercise.addExerciseDialog.categoryStrength', 'Strength')}</SelectItem>
+                    <SelectItem value="cardio">{t('exercise.addExerciseDialog.categoryCardio', 'Cardio')}</SelectItem>
+                    <SelectItem value="yoga">{t('exercise.addExerciseDialog.categoryYoga', 'Yoga')}</SelectItem>
+                    <SelectItem value="powerlifting">{t('exercise.databaseManager.categoryPowerlifting', 'Powerlifting')}</SelectItem>
+                    <SelectItem value="olympic weightlifting">{t('exercise.databaseManager.categoryOlympicWeightlifting', 'Olympic Weightlifting')}</SelectItem>
+                    <SelectItem value="strongman">{t('exercise.databaseManager.categoryStrongman', 'Strongman')}</SelectItem>
+                    <SelectItem value="plyometrics">{t('exercise.databaseManager.categoryPlyometrics', 'Plyometrics')}</SelectItem>
+                    <SelectItem value="stretching">{t('exercise.databaseManager.categoryStretching', 'Stretching')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-calories" className="text-right">
-                  Calories/Hour
+                  {t('exercise.addExerciseDialog.caloriesPerHourLabel', 'Calories/Hour')}
                 </Label>
                 <Input
                   id="edit-calories"
@@ -625,51 +632,51 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
               {/* New fields for editing */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-level" className="text-right">
-                  Level
+                  {t('exercise.addExerciseDialog.levelLabel', 'Level')}
                 </Label>
                 <Select onValueChange={setEditExerciseLevel} defaultValue={editExerciseLevel}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select level" />
+                    <SelectValue placeholder={t('exercise.addExerciseDialog.selectLevelPlaceholder', 'Select level')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="expert">Expert</SelectItem>
+                    <SelectItem value="beginner">{t('exercise.addExerciseDialog.levelBeginner', 'Beginner')}</SelectItem>
+                    <SelectItem value="intermediate">{t('exercise.addExerciseDialog.levelIntermediate', 'Intermediate')}</SelectItem>
+                    <SelectItem value="expert">{t('exercise.addExerciseDialog.levelExpert', 'Expert')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-force" className="text-right">
-                  Force
+                  {t('exercise.addExerciseDialog.forceLabel', 'Force')}
                 </Label>
                 <Select onValueChange={setEditExerciseForce} defaultValue={editExerciseForce}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select force" />
+                    <SelectValue placeholder={t('exercise.addExerciseDialog.selectForcePlaceholder', 'Select force')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pull">Pull</SelectItem>
-                    <SelectItem value="push">Push</SelectItem>
-                    <SelectItem value="static">Static</SelectItem>
+                    <SelectItem value="pull">{t('exercise.addExerciseDialog.forcePull', 'Pull')}</SelectItem>
+                    <SelectItem value="push">{t('exercise.addExerciseDialog.forcePush', 'Push')}</SelectItem>
+                    <SelectItem value="static">{t('exercise.addExerciseDialog.forceStatic', 'Static')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-mechanic" className="text-right">
-                  Mechanic
+                  {t('exercise.addExerciseDialog.mechanicLabel', 'Mechanic')}
                 </Label>
                 <Select onValueChange={setEditExerciseMechanic} defaultValue={editExerciseMechanic}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select mechanic" />
+                    <SelectValue placeholder={t('exercise.addExerciseDialog.selectMechanicPlaceholder', 'Select mechanic')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="isolation">Isolation</SelectItem>
-                    <SelectItem value="compound">Compound</SelectItem>
+                    <SelectItem value="isolation">{t('exercise.addExerciseDialog.mechanicIsolation', 'Isolation')}</SelectItem>
+                    <SelectItem value="compound">{t('exercise.addExerciseDialog.mechanicCompound', 'Compound')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-equipment" className="text-right mt-1">
-                  Equipment (comma-separated)
+                  {t('exercise.addExerciseDialog.equipmentLabel', 'Equipment (comma-separated)')}
                 </Label>
                 <Input
                   id="edit-equipment"
@@ -680,7 +687,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-primary-muscles" className="text-right mt-1">
-                  Primary Muscles (comma-separated)
+                  {t('exercise.addExerciseDialog.primaryMusclesLabel', 'Primary Muscles (comma-separated)')}
                 </Label>
                 <Input
                   id="edit-primary-muscles"
@@ -691,7 +698,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-secondary-muscles" className="text-right mt-1">
-                  Secondary Muscles (comma-separated)
+                  {t('exercise.addExerciseDialog.secondaryMusclesLabel', 'Secondary Muscles (comma-separated)')}
                 </Label>
                 <Input
                   id="edit-secondary-muscles"
@@ -702,7 +709,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-instructions" className="text-right mt-1">
-                  Instructions (one per line)
+                  {t('exercise.addExerciseDialog.instructionsLabel', 'Instructions (one per line)')}
                 </Label>
                 <Textarea
                   id="edit-instructions"
@@ -713,7 +720,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-images" className="text-right mt-1">
-                  Images
+                  {t('exercise.addExerciseDialog.imagesLabel', 'Images')}
                 </Label>
                 <div className="col-span-3">
                   <Input
@@ -824,7 +831,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-description" className="text-right mt-1">
-                  Description
+                  {t('exercise.addExerciseDialog.descriptionLabel', 'Description')}
                 </Label>
                 <Textarea
                   id="edit-description"
@@ -835,7 +842,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
               </div>
             </div>
           )}
-          <Button onClick={handleEditExercise}>Save Changes</Button>
+          <Button onClick={handleEditExercise}>{t('common.saveChanges', 'Save Changes')}</Button>
         </DialogContent>
       </Dialog>
 
@@ -844,29 +851,29 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
           open={showDeleteConfirmation}
           onOpenChange={setShowDeleteConfirmation}
           onConfirm={confirmDelete}
-          title={deletionImpact.isUsedByOthers ? `Delete ${exerciseToDelete.name}?` : `Delete ${exerciseToDelete.name}?`}
+          title={t('exercise.databaseManager.deleteConfirmationTitle', { exerciseName: exerciseToDelete.name, defaultValue: `Delete ${exerciseToDelete.name}?` })}
           description={
             <div>
               {deletionImpact.isUsedByOthers ? (
                 <>
-                  <p>This exercise is used by other users. Deleting it will affect their data and is not allowed; it will be hidden instead.</p>
+                  <p>{t('exercise.databaseManager.deleteUsedByOthersDescription', 'This exercise is used by other users. Deleting it will affect their data and is not allowed; it will be hidden instead.')}</p>
                   <ul className="list-disc pl-5 mt-2">
-                    <li>{deletionImpact.exerciseEntriesCount} diary entries (across users)</li>
+                    <li>{t('exercise.databaseManager.deleteUsedByOthersEntries', { exerciseEntriesCount: deletionImpact.exerciseEntriesCount, defaultValue: `${deletionImpact.exerciseEntriesCount} diary entries (across users)` })}</li>
                   </ul>
                 </>
               ) : (
                 <>
-                  <p>This will permanently delete the exercise and all associated data for your account.</p>
+                  <p>{t('exercise.databaseManager.deletePermanentDescription', 'This will permanently delete the exercise and all associated data for your account.')}</p>
                   <ul className="list-disc pl-5 mt-2">
-                    <li>{deletionImpact.exerciseEntriesCount} diary entries</li>
+                    <li>{t('exercise.databaseManager.deletePermanentEntries', { exerciseEntriesCount: deletionImpact.exerciseEntriesCount, defaultValue: `${deletionImpact.exerciseEntriesCount} diary entries` })}</li>
                   </ul>
                 </>
               )}
             </div>
           }
-          warning={deletionImpact.isUsedByOthers ? "This exercise is used in workouts or diaries by other users. Deleting it will affect their data. It will be hidden instead." : undefined}
+          warning={deletionImpact.isUsedByOthers ? t('exercise.databaseManager.deleteUsedByOthersWarning', 'This exercise is used in workouts or diaries by other users. Deleting it will affect their data. It will be hidden instead.') : undefined}
           variant={deletionImpact.isUsedByOthers ? "destructive" : "destructive"}
-          confirmLabel={!deletionImpact.isUsedByOthers && deletionImpact.exerciseEntriesCount > 0 ? 'Force Delete' : 'Confirm'}
+          confirmLabel={!deletionImpact.isUsedByOthers && deletionImpact.exerciseEntriesCount > 0 ? t('exercise.databaseManager.forceDeleteConfirmLabel', 'Force Delete') : t('common.confirm', 'Confirm')}
         />
       )}
       {showSyncConfirmation && (
@@ -874,8 +881,8 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
           open={showSyncConfirmation}
           onOpenChange={setShowSyncConfirmation}
           onConfirm={handleSyncConfirmation}
-          title="Sync Past Entries?"
-          description="Do you want to update all your past diary entries for this exercise with the new information?"
+          title={t('exercise.databaseManager.syncConfirmationTitle', 'Sync Past Entries?')}
+          description={t('exercise.databaseManager.syncConfirmationDescription', 'Do you want to update all your past diary entries for this exercise with the new information?')}
         />
       )}
     </div>

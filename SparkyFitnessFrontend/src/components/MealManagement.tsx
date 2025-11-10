@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from "react-i18next";
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -30,6 +31,7 @@ import MealBuilder from './MealBuilder';
 // This component is now a standalone library for managing meal templates.
 // Interactions with the meal plan calendar are handled by the calendar itself.
 const MealManagement: React.FC = () => {
+ const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
   const { loggingLevel } = usePreferences();
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -49,8 +51,8 @@ const MealManagement: React.FC = () => {
     } catch (err) {
       error(loggingLevel, 'Failed to fetch meals:', err);
       toast({
-        title: 'Error',
-        description: 'Failed to load meals.',
+        title: t('common.error', 'Error'),
+        description: t('mealManagement.failedToLoadMeals', 'Failed to load meals.'),
         variant: 'destructive',
       });
     }
@@ -75,15 +77,15 @@ const MealManagement: React.FC = () => {
     try {
       const result = await deleteMeal(activeUserId, mealId, force);
       toast({
-        title: 'Success',
+        title: t('common.success', 'Success'),
         description: result.message,
       });
       fetchMeals();
     } catch (err) {
       error(loggingLevel, 'Failed to delete meal:', err);
       toast({
-        title: 'Error',
-        description: `Failed to delete meal: ${err instanceof Error ? err.message : String(err)}`,
+        title: t('common.error', 'Error'),
+        description: t('mealManagement.failedToDeleteMeal', { errorMessage: err instanceof Error ? err.message : String(err), defaultValue: `Failed to delete meal: ${err instanceof Error ? err.message : String(err)}` }),
         variant: 'destructive',
       });
     } finally {
@@ -101,8 +103,8 @@ const MealManagement: React.FC = () => {
     } catch (err) {
       error(loggingLevel, 'Failed to get meal deletion impact:', err);
       toast({
-        title: 'Error',
-        description: 'Could not check meal usage.',
+        title: t('common.error', 'Error'),
+        description: t('mealManagement.couldNotCheckMealUsage', 'Could not check meal usage.'),
         variant: 'destructive',
       });
     }
@@ -112,8 +114,8 @@ const MealManagement: React.FC = () => {
     setShowMealBuilderDialog(false);
     fetchMeals();
     toast({
-      title: 'Success',
-      description: `Meal "${meal.name}" saved successfully.`,
+      title: t('common.success', 'Success'),
+      description: t('mealManagement.mealSavedSuccessfully', { mealName: meal.name, defaultValue: `Meal "${meal.name}" saved successfully.` }),
     });
   };
 
@@ -130,8 +132,8 @@ const MealManagement: React.FC = () => {
     } catch (err) {
       error(loggingLevel, 'Failed to fetch meal details:', err);
       toast({
-        title: 'Error',
-        description: 'Could not load meal details.',
+        title: t('common.error', 'Error'),
+        description: t('mealManagement.couldNotLoadMealDetails', 'Could not load meal details.'),
         variant: 'destructive',
       });
     }
@@ -164,15 +166,15 @@ const MealManagement: React.FC = () => {
       };
       await updateMeal(activeUserId, mealId, mealPayload);
       toast({
-        title: 'Success',
-        description: 'Meal shared publicly.',
+        title: t('common.success', 'Success'),
+        description: t('mealManagement.mealSharedPublicly', 'Meal shared publicly.'),
       });
       fetchMeals();
     } catch (err) {
       error(loggingLevel, 'Failed to share meal:', err);
       toast({
-        title: 'Error',
-        description: `Failed to share meal: ${err instanceof Error ? err.message : String(err)}`,
+        title: t('common.error', 'Error'),
+        description: t('mealManagement.failedToShareMeal', { errorMessage: err instanceof Error ? err.message : String(err), defaultValue: `Failed to share meal: ${err instanceof Error ? err.message : String(err)}` }),
         variant: 'destructive',
       });
     }
@@ -205,15 +207,15 @@ const MealManagement: React.FC = () => {
       };
       await updateMeal(activeUserId, mealId, mealPayload);
       toast({
-        title: 'Success',
-        description: 'Meal unshared.',
+        title: t('common.success', 'Success'),
+        description: t('mealManagement.mealUnshared', 'Meal unshared.'),
       });
       fetchMeals();
     } catch (err) {
       error(loggingLevel, 'Failed to unshare meal:', err);
       toast({
-        title: 'Error',
-        description: `Failed to unshare meal: ${err instanceof Error ? err.message : String(err)}`,
+        title: t('common.error', 'Error'),
+        description: t('mealManagement.failedToUnshareMeal', { errorMessage: err instanceof Error ? err.message : String(err), defaultValue: `Failed to unshare meal: ${err instanceof Error ? err.message : String(err)}` }),
         variant: 'destructive',
       });
     }
@@ -230,15 +232,15 @@ const MealManagement: React.FC = () => {
     <TooltipProvider>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-2xl font-bold">Manage Meals</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t('mealManagement.manageMeals', 'Manage Meals')}</CardTitle>
           <Button onClick={handleCreateNewMeal}>
-            <Plus className="mr-2 h-4 w-4" /> Create New Meal
+            <Plus className="mr-2 h-4 w-4" /> {t('mealManagement.createNewMeal', 'Create New Meal')}
           </Button>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4 mb-4">
             <Input
-              placeholder="Search meals..."
+              placeholder={t('mealManagement.searchMealsPlaceholder', 'Search meals...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1 min-w-[200px]"
@@ -247,21 +249,21 @@ const MealManagement: React.FC = () => {
                 <Filter className="h-4 w-4 text-gray-500" />
                 <Select value={filter} onValueChange={(value: MealFilter) => setFilter(value)}>
                   <SelectTrigger className="w-32">
-                    <SelectValue />
+                    <SelectValue placeholder={t('mealManagement.all', 'All')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="mine">My Meals</SelectItem>
-                    <SelectItem value="family">Family</SelectItem>
-                    <SelectItem value="public">Public</SelectItem>
-                    <SelectItem value="needs-review">Needs Review</SelectItem>
+                    <SelectItem value="all">{t('mealManagement.all', 'All')}</SelectItem>
+                    <SelectItem value="mine">{t('mealManagement.myMeals', 'My Meals')}</SelectItem>
+                    <SelectItem value="family">{t('mealManagement.family', 'Family')}</SelectItem>
+                    <SelectItem value="public">{t('mealManagement.public', 'Public')}</SelectItem>
+                    <SelectItem value="needs-review">{t('mealManagement.needsReview', 'Needs Review')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
           </div>
 
           {filteredMeals.length === 0 ? (
-            <p className="text-center text-muted-foreground">No meals found. Create one!</p>
+            <p className="text-center text-muted-foreground">{t('mealManagement.noMealsFound', 'No meals found. Create one!')}</p>
           ) : (
             <div className="space-y-4">
               {filteredMeals.map(meal => (
@@ -270,9 +272,9 @@ const MealManagement: React.FC = () => {
                     <div>
                       <h3 className="text-lg font-semibold">
                         {meal.name}
-                        {meal.is_public && <Badge variant="secondary" className="ml-2"><Share2 className="h-3 w-3 mr-1" />Public</Badge>}
+                        {meal.is_public && <Badge variant="secondary" className="ml-2"><Share2 className="h-3 w-3 mr-1" />{t('mealManagement.public', 'Public')}</Badge>}
                       </h3>
-                      <p className="text-sm text-muted-foreground">{meal.description || 'No description'}</p>
+                      <p className="text-sm text-muted-foreground">{meal.description || t('mealManagement.noDescription', {defaultValue: 'No description'})}</p>
                     </div>
                     <div className="flex space-x-2">
                       {meal.is_public ? (
@@ -283,7 +285,7 @@ const MealManagement: React.FC = () => {
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Unshare Meal</p>
+                            <p>{t('mealManagement.unshareMeal', 'Unshare Meal')}</p>
                           </TooltipContent>
                         </Tooltip>
                       ) : (
@@ -294,7 +296,7 @@ const MealManagement: React.FC = () => {
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Share Meal</p>
+                            <p>{t('mealManagement.shareMeal', 'Share Meal')}</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -305,7 +307,7 @@ const MealManagement: React.FC = () => {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Edit Meal</p>
+                          <p>{t('mealManagement.editMeal', 'Edit Meal')}</p>
                         </TooltipContent>
                       </Tooltip>
                       <Tooltip>
@@ -315,7 +317,7 @@ const MealManagement: React.FC = () => {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Delete Meal</p>
+                          <p>{t('mealManagement.deleteMeal', 'Delete Meal')}</p>
                         </TooltipContent>
                       </Tooltip>
                       <Tooltip>
@@ -325,7 +327,7 @@ const MealManagement: React.FC = () => {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>View Meal Details</p>
+                          <p>{t('mealManagement.viewMealDetails', 'View Meal Details')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -339,9 +341,9 @@ const MealManagement: React.FC = () => {
       <Dialog open={showMealBuilderDialog} onOpenChange={setShowMealBuilderDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingMealId ? 'Edit Meal' : 'Create New Meal'}</DialogTitle>
+            <DialogTitle>{editingMealId ? t('mealManagement.editMealDialogTitle', 'Edit Meal') : t('mealManagement.createNewMealDialogTitle', 'Create New Meal')}</DialogTitle>
             <DialogDescription>
-              {editingMealId ? 'Edit the details of your meal.' : 'Create a new meal by adding foods.'}
+              {editingMealId ? t('mealManagement.editMealDialogDescription', 'Edit the details of your meal.') : t('mealManagement.createNewMealDialogDescription', 'Create a new meal by adding foods.')}
             </DialogDescription>
           </DialogHeader>
           <MealBuilder
@@ -358,11 +360,11 @@ const MealManagement: React.FC = () => {
           <DialogHeader>
             <DialogTitle>{viewingMeal?.name}</DialogTitle>
             <DialogDescription>
-              {viewingMeal?.description || 'No description provided.'}
+              {viewingMeal?.description || t('mealManagement.noDescriptionProvided', 'No description provided.')}
             </DialogDescription>
           </DialogHeader>
           <div>
-            <h4 className="font-semibold mb-2">Foods in this Meal:</h4>
+            <h4 className="font-semibold mb-2">{t('mealManagement.foodsInThisMeal', 'Foods in this Meal:')}</h4>
             {viewingMeal?.foods && viewingMeal.foods.length > 0 ? (
               <ul className="list-disc pl-5 space-y-1">
                 {viewingMeal.foods.map((food, index) => (
@@ -372,7 +374,7 @@ const MealManagement: React.FC = () => {
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground">No foods have been added to this meal yet.</p>
+              <p className="text-muted-foreground">{t('mealManagement.noFoodsAddedToMealYet', 'No foods have been added to this meal yet.')}</p>
             )}
           </div>
         </DialogContent>
@@ -382,25 +384,25 @@ const MealManagement: React.FC = () => {
       <Dialog open={!!mealToDelete} onOpenChange={(isOpen) => { if (!isOpen) { setMealToDelete(null); setDeletionImpact(null); } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Meal</DialogTitle>
+            <DialogTitle>{t('mealManagement.deleteMealDialogTitle', 'Delete Meal')}</DialogTitle>
           </DialogHeader>
           {deletionImpact && (
             <div>
               {deletionImpact.usedByOtherUsers ? (
-                <p>This meal is used in meal plans by other users. You can only hide it, which will prevent it from being used in the future.</p>
+                <p>{t('mealManagement.usedByOtherUsersWarning', 'This meal is used in meal plans by other users. You can only hide it, which will prevent it from being used in the future.')}</p>
               ) : deletionImpact.usedByCurrentUser ? (
-                <p>This meal is used in your meal plans. Deleting it will remove it from those plans.</p>
+                <p>{t('mealManagement.usedByCurrentUserWarning', 'This meal is used in your meal plans. Deleting it will remove it from those plans.')}</p>
               ) : (
-                <p>Are you sure you want to permanently delete this meal?</p>
+                <p>{t('mealManagement.confirmPermanentDelete', 'Are you sure you want to permanently delete this meal?')}</p>
               )}
             </div>
           )}
           <div className="flex justify-end space-x-2 mt-4">
-            <Button variant="outline" onClick={() => { setMealToDelete(null); setDeletionImpact(null); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setMealToDelete(null); setDeletionImpact(null); }}>{t('common.cancel', 'Cancel')}</Button>
             {deletionImpact?.usedByOtherUsers ? (
-              <Button variant="destructive" onClick={() => handleDeleteMeal(mealToDelete!)}>Hide</Button>
+              <Button variant="destructive" onClick={() => handleDeleteMeal(mealToDelete!)}>{t('mealManagement.hide', 'Hide')}</Button>
             ) : (
-              <Button variant="destructive" onClick={() => handleDeleteMeal(mealToDelete!, deletionImpact?.usedByCurrentUser)}>Delete</Button>
+              <Button variant="destructive" onClick={() => handleDeleteMeal(mealToDelete!, deletionImpact?.usedByCurrentUser)}>{t('mealManagement.delete', 'Delete')}</Button>
             )}
           </div>
         </DialogContent>

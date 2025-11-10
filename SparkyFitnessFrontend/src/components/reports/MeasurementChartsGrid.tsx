@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Scale, Activity } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import ZoomableChart from "../ZoomableChart";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from "@/utils/logging";
@@ -24,6 +25,7 @@ interface MeasurementChartsGridProps {
 }
 
 const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasurementsInCm }: MeasurementChartsGridProps) => {
+  const { t } = useTranslation();
   const { loggingLevel, formatDateInUserTimezone } = usePreferences(); // Destructure formatDateInUserTimezone
   info(loggingLevel, 'MeasurementChartsGrid: Rendering component.');
 
@@ -51,13 +53,13 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
       {/* Body Measurements Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Weight Chart */}
-        <ZoomableChart title={`Weight (${showWeightInKg ? 'kg' : 'lbs'})`}>
+        <ZoomableChart title={`${t('reports.weight', 'Weight')} (${showWeightInKg ? t('reports.kg', 'kg') : t('reports.lbs', 'lbs')})`}>
           {(isMaximized, zoomLevel) => (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center">
                   <Scale className="w-4 h-4 mr-2" />
-                  Weight ({showWeightInKg ? 'kg' : 'lbs'})
+                  {t('reports.weight', 'Weight')} ({showWeightInKg ? t('reports.kg', 'kg') : t('reports.lbs', 'lbs')})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -66,10 +68,10 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                     <LineChart data={measurementData.filter(d => d.weight)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
-                        dataKey="entry_date" // Changed from 'date' to 'entry_date'
+                        dataKey="entry_date"
                         fontSize={10}
-                        tickFormatter={formatDateForChart} // Apply formatter
-                        tickCount={isMaximized ? Math.max(measurementData.length, 10) : undefined} // More ticks when maximized
+                        tickFormatter={formatDateForChart}
+                        tickCount={isMaximized ? Math.max(measurementData.length, 10) : undefined}
                       />
                       <YAxis
                         fontSize={10}
@@ -77,8 +79,8 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                         tickFormatter={(value) => value.toFixed(1)}
                       />
                       <Tooltip
-                        labelFormatter={(value) => formatDateForChart(value as string)} // Apply formatter
-                        formatter={(value: number) => [`${value.toFixed(1)} ${showWeightInKg ? 'kg' : 'lbs'}`]}
+                        labelFormatter={(value) => formatDateForChart(value as string)}
+                        formatter={(value: number) => [`${value.toFixed(1)} ${showWeightInKg ? t('reports.kg', 'kg') : t('reports.lbs', 'lbs')}`]}
                         contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                       />
                       <Line type="monotone" dataKey="weight" stroke="#e74c3c" strokeWidth={2} dot={false} />
@@ -91,11 +93,11 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
         </ZoomableChart>
 
         {/* Neck Chart */}
-        <ZoomableChart title={`Neck (${showMeasurementsInCm ? 'cm' : 'inches'})`}>
+        <ZoomableChart title={`${t('reports.neck', 'Neck')} (${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})`}>
           {(isMaximized, zoomLevel) => (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Neck ({showMeasurementsInCm ? 'cm' : 'inches'})</CardTitle>
+                <CardTitle className="text-sm">{t('reports.neck', 'Neck')} ({showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className={isMaximized ? "h-[calc(80vh-150px)]" : "h-48"}>
@@ -103,18 +105,18 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                     <LineChart data={measurementData.filter(d => d.neck)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
-                        dataKey="entry_date" // Changed from 'date' to 'entry_date'
+                        dataKey="entry_date"
                         fontSize={10}
-                        tickFormatter={formatDateForChart} // Apply formatter
-                        tickCount={isMaximized ? Math.max(measurementData.length, 10) : undefined} // More ticks when maximized
+                        tickFormatter={formatDateForChart}
+                        tickCount={isMaximized ? Math.max(measurementData.length, 10) : undefined}
                       />
                       <YAxis
                         fontSize={10}
                         domain={getYAxisDomain(measurementData.filter(d => d.neck), 'neck') || undefined}
                       />
                       <Tooltip
-                        labelFormatter={(value) => formatDateForChart(value as string)} // Apply formatter
-                        formatter={(value: number) => [`${value.toFixed(1)} ${showMeasurementsInCm ? 'cm' : 'inches'}`]}
+                        labelFormatter={(value) => formatDateForChart(value as string)}
+                        formatter={(value: number) => [`${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`]}
                         contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                       />
                       <Line type="monotone" dataKey="neck" stroke="#3498db" strokeWidth={2} dot={false} />
@@ -127,11 +129,11 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
         </ZoomableChart>
 
         {/* Waist Chart */}
-        <ZoomableChart title={`Waist (${showMeasurementsInCm ? 'cm' : 'inches'})`}>
+        <ZoomableChart title={`${t('reports.waist', 'Waist')} (${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})`}>
           {(isMaximized, zoomLevel) => (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Waist ({showMeasurementsInCm ? 'cm' : 'inches'})</CardTitle>
+                <CardTitle className="text-sm">{t('reports.waist', 'Waist')} ({showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
@@ -139,10 +141,10 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                     <LineChart data={measurementData.filter(d => d.waist)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
-                        dataKey="entry_date" // Changed from 'date' to 'entry_date'
+                        dataKey="entry_date"
                         fontSize={10}
-                        tickFormatter={formatDateForChart} // Apply formatter
-                        tickCount={isMaximized ? Math.max(measurementData.length, 10) : undefined} // More ticks when maximized
+                        tickFormatter={formatDateForChart}
+                        tickCount={isMaximized ? Math.max(measurementData.length, 10) : undefined}
                       />
                       <YAxis
                         fontSize={10}
@@ -150,8 +152,8 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                         tickFormatter={(value) => value.toFixed(1)}
                       />
                       <Tooltip
-                        labelFormatter={(value) => formatDateForChart(value as string)} // Apply formatter
-                        formatter={(value: number) => [`${value.toFixed(1)} ${showMeasurementsInCm ? 'cm' : 'inches'}`]}
+                        labelFormatter={(value) => formatDateForChart(value as string)}
+                        formatter={(value: number) => [`${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`]}
                         contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                       />
                       <Line type="monotone" dataKey="waist" stroke="#e74c3c" strokeWidth={2} dot={false} />
@@ -164,11 +166,11 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
         </ZoomableChart>
 
         {/* Hips Chart */}
-        <ZoomableChart title={`Hips (${showMeasurementsInCm ? 'cm' : 'inches'})`}>
+        <ZoomableChart title={`${t('reports.hips', 'Hips')} (${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})`}>
           {(isMaximized, zoomLevel) => (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Hips ({showMeasurementsInCm ? 'cm' : 'inches'})</CardTitle>
+                <CardTitle className="text-sm">{t('reports.hips', 'Hips')} ({showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
@@ -176,18 +178,18 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                     <LineChart data={measurementData.filter(d => d.hips)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
-                        dataKey="entry_date" // Changed from 'date' to 'entry_date'
+                        dataKey="entry_date"
                         fontSize={10}
-                        tickFormatter={formatDateForChart} // Apply formatter
-                        tickCount={isMaximized ? Math.max(measurementData.length, 10) : undefined} // More ticks when maximized
+                        tickFormatter={formatDateForChart}
+                        tickCount={isMaximized ? Math.max(measurementData.length, 10) : undefined}
                       />
                       <YAxis
                         fontSize={10}
                         domain={getYAxisDomain(measurementData.filter(d => d.hips), 'hips') || undefined}
                       />
                       <Tooltip
-                        labelFormatter={(value) => formatDateForChart(value as string)} // Apply formatter
-                        formatter={(value: number) => [`${value.toFixed(1)} ${showMeasurementsInCm ? 'cm' : 'inches'}`]}
+                        labelFormatter={(value) => formatDateForChart(value as string)}
+                        formatter={(value: number) => [`${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`]}
                         contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                       />
                       <Line type="monotone" dataKey="hips" stroke="#f39c12" strokeWidth={2} dot={false} />
@@ -201,13 +203,13 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
       </div>
 
       {/* Steps Chart */}
-      <ZoomableChart title="Daily Steps">
+      <ZoomableChart title={t('reports.dailySteps', 'Daily Steps')}>
         {(isMaximized, zoomLevel) => (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Activity className="w-5 h-5 mr-2" />
-                Daily Steps
+                {t('reports.dailySteps', 'Daily Steps')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -216,16 +218,16 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                   <BarChart data={measurementData.filter(d => d.steps)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
-                      dataKey="entry_date" // Changed from 'date' to 'entry_date'
-                      tickFormatter={formatDateForChart} // Apply formatter
-                      tickCount={isMaximized ? Math.max(measurementData.length, 10) : undefined} // More ticks when maximized
+                      dataKey="entry_date"
+                      tickFormatter={formatDateForChart}
+                      tickCount={isMaximized ? Math.max(measurementData.length, 10) : undefined}
                     />
                     <YAxis
                       domain={getYAxisDomain(measurementData.filter(d => d.steps), 'steps') || undefined}
                       tickFormatter={(value) => Math.round(value).toString()}
                     />
                     <Tooltip
-                      labelFormatter={(value) => formatDateForChart(value as string)} // Apply formatter
+                      labelFormatter={(value) => formatDateForChart(value as string)}
                       contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                     />
                     <Bar dataKey="steps" fill="#2ecc71" />
