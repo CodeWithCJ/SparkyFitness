@@ -28,14 +28,14 @@ const AddWorkoutPresetDialog: React.FC<AddWorkoutPresetDialogProps> = ({
     if (!user?.id) return;
     debug(loggingLevel, "AddWorkoutPresetDialog: Fetching workout presets.");
     try {
-      const presets = await getWorkoutPresets();
+      const presets = await getWorkoutPresets(1, 1000); // Fetch all presets, assuming 1000 is a sufficient limit
       info(loggingLevel, "AddWorkoutPresetDialog: Fetched presets:", presets);
-      setAllPresets(presets);
+      setAllPresets(presets.presets);
       // For now, just use a simple slice for recent/top.
       // In a real app, this would involve more sophisticated logic
       // based on user history or popularity.
-      setRecentPresets(presets.slice(0, 3));
-      setTopPresets(presets.slice(3, 6));
+      setRecentPresets(presets.presets.slice(0, 3));
+      setTopPresets(presets.presets.slice(3, 6));
     } catch (err) {
       error(loggingLevel, "AddWorkoutPresetDialog: Failed to load workout presets:", err);
       toast({

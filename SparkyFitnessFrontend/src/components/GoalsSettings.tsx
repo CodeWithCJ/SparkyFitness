@@ -116,8 +116,8 @@ const GoalsSettings = () => {
     } catch (error) {
       console.error('Error loading goal presets:', error);
       toast({
-        title: t('goals.goalsSettings.error'),
-        description: t('goals.goalsSettings.errorLoadingGoalPresets'),
+        title: t('goals.goalsSettings.error', 'Error'),
+        description: t('goals.goalsSettings.errorLoadingGoalPresets', 'Failed to load goal presets.'),
         variant: "destructive",
       });
     }
@@ -165,18 +165,18 @@ const GoalsSettings = () => {
 
       if (currentPreset.id) {
         await updateGoalPreset(currentPreset.id, presetToSave);
-        toast({ title: t('goals.goalsSettings.success'), description: t('goals.goalsSettings.presetUpdatedSuccess') });
+        toast({ title: t('goals.goalsSettings.success', 'Success'), description: t('goals.goalsSettings.presetUpdatedSuccess', 'Goal preset updated successfully.') });
       } else {
         await createGoalPreset(presetToSave);
-        toast({ title: t('goals.goalsSettings.success'), description: t('goals.goalsSettings.presetCreatedSuccess') });
+        toast({ title: t('goals.goalsSettings.success', 'Success'), description: t('goals.goalsSettings.presetCreatedSuccess', 'Goal preset created successfully.') });
       }
       setIsPresetDialogOpen(false);
       loadGoalPresets(); // Refresh the list
     } catch (error) {
       console.error('Error saving preset:', error);
       toast({
-        title: t('goals.goalsSettings.error'),
-        description: t('goals.goalsSettings.errorSavingPreset'),
+        title: t('goals.goalsSettings.error', 'Error'),
+        description: t('goals.goalsSettings.errorSavingPreset', 'Failed to save goal preset.'),
         variant: "destructive",
       });
     } finally {
@@ -185,16 +185,16 @@ const GoalsSettings = () => {
   };
 
   const handleDeletePreset = async (presetId: string) => {
-    if (!confirm(t('goals.goalsSettings.deletePresetConfirm'))) return;
+    if (!confirm(t('goals.goalsSettings.deletePresetConfirm', 'Are you sure you want to delete this preset?'))) return;
     try {
       await deleteGoalPreset(presetId);
-      toast({ title: t('goals.goalsSettings.success'), description: t('goals.goalsSettings.presetDeletedSuccess') });
+      toast({ title: t('goals.goalsSettings.success', 'Success'), description: t('goals.goalsSettings.presetDeletedSuccess', 'Goal preset deleted successfully.') });
       loadGoalPresets();
     } catch (error) {
       console.error('Error deleting preset:', error);
       toast({
-        title: t('goals.goalsSettings.error'),
-        description: t('goals.goalsSettings.errorDeletingPreset'),
+        title: t('goals.goalsSettings.error', 'Error'),
+        description: t('goals.goalsSettings.errorDeletingPreset', 'Failed to delete goal preset.'),
         variant: "destructive",
       });
     }
@@ -229,8 +229,8 @@ const GoalsSettings = () => {
     } catch (error) {
       console.error('Error loading weekly plans:', error);
       toast({
-        title: t('goals.goalsSettings.error'),
-        description: t('goals.goalsSettings.errorLoadingWeeklyPlans'),
+        title: t('goals.goalsSettings.error', 'Error'),
+        description: t('goals.goalsSettings.errorLoadingWeeklyPlans', 'Failed to load weekly plans.'),
         variant: "destructive",
       });
     }
@@ -265,18 +265,18 @@ const GoalsSettings = () => {
     try {
       if (currentWeeklyPlan.id) {
         await updateWeeklyGoalPlan(currentWeeklyPlan.id, currentWeeklyPlan);
-        toast({ title: t('goals.goalsSettings.success'), description: t('goals.goalsSettings.weeklyPlanUpdatedSuccess') });
+        toast({ title: t('goals.goalsSettings.success', 'Success'), description: t('goals.goalsSettings.weeklyPlanUpdatedSuccess', 'Weekly plan updated successfully.') });
       } else {
         await createWeeklyGoalPlan(currentWeeklyPlan);
-        toast({ title: t('goals.goalsSettings.success'), description: t('goals.goalsSettings.weeklyPlanCreatedSuccess') });
+        toast({ title: t('goals.goalsSettings.success', 'Success'), description: t('goals.goalsSettings.weeklyPlanCreatedSuccess', 'Weekly plan created successfully.') });
       }
       setIsWeeklyPlanDialogOpen(false);
       loadWeeklyPlans(); // Refresh the list
     } catch (error) {
       console.error('Error saving weekly plan:', error);
       toast({
-        title: t('goals.goalsSettings.error'),
-        description: t('goals.goalsSettings.errorSavingWeeklyPlan'),
+        title: t('goals.goalsSettings.error', 'Error'),
+        description: t('goals.goalsSettings.errorSavingWeeklyPlan', 'Failed to save weekly plan.'),
         variant: "destructive",
       });
     } finally {
@@ -285,16 +285,16 @@ const GoalsSettings = () => {
   };
 
   const handleDeleteWeeklyPlan = async (planId: string) => {
-    if (!confirm(t('goals.goalsSettings.deleteWeeklyPlanConfirm'))) return;
+    if (!confirm(t('goals.goalsSettings.deleteWeeklyPlanConfirm', 'Are you sure you want to delete this weekly plan?'))) return;
     try {
       await deleteWeeklyGoalPlan(planId);
-      toast({ title: t('goals.goalsSettings.success'), description: t('goals.goalsSettings.weeklyPlanDeletedSuccess') });
+      toast({ title: t('goals.goalsSettings.success', 'Success'), description: t('goals.goalsSettings.weeklyPlanDeletedSuccess', 'Weekly plan deleted successfully.') });
       loadWeeklyPlans();
     } catch (error) {
       console.error('Error deleting weekly plan:', error);
       toast({
-        title: t('goals.goalsSettings.error'),
-        description: t('goals.goalsSettings.errorDeletingWeeklyPlan'),
+        title: t('goals.goalsSettings.error', 'Error'),
+        description: t('goals.goalsSettings.errorDeletingWeeklyPlan', 'Failed to delete weekly plan.'),
         variant: "destructive",
       });
     }
@@ -312,16 +312,16 @@ const GoalsSettings = () => {
       await saveGoalsService(today, goals, true);
 
       toast({
-        title: t('goals.goalsSettings.success'),
-        description: t('goals.goalsSettings.goalsUpdatedSuccess'),
+        title: t('goals.goalsSettings.success', 'Success'),
+        description: t('goals.goalsSettings.goalsUpdatedSuccess', 'Goals updated and will apply for the next 6 months (or until your next future goal)'),
       });
       
       await loadGoals();
     } catch (error) {
       console.error('Error saving goals:', error);
       toast({
-        title: t('goals.goalsSettings.error'),
-        description: t('goals.goalsSettings.errorSavingGoals'),
+        title: t('goals.goalsSettings.error', 'Error'),
+        description: t('goals.goalsSettings.errorSavingGoals', 'An unexpected error occurred while saving goals'),
         variant: "destructive",
       });
     } finally {
@@ -330,22 +330,22 @@ const GoalsSettings = () => {
   };
 
   const handleResetOnboarding = async () => {
-    if (!confirm(t('goals.goalsSettings.resetOnboardingConfirm'))) {
+    if (!confirm(t('goals.goalsSettings.resetOnboardingConfirm', 'Are you sure you want to reset your onboarding status? This will restart the onboarding process.'))) {
       return;
     }
     setSaving(true);
     try {
       await resetOnboardingStatus();
       toast({
-        title: t('goals.goalsSettings.success'),
-        description: t('goals.goalsSettings.resetOnboardingSuccess'),
+        title: t('goals.goalsSettings.success', 'Success'),
+        description: t('goals.goalsSettings.resetOnboardingSuccess', 'Onboarding status has been reset. The page will now reload.'),
       });
       window.location.reload();
     } catch (error: any) {
       console.error('Error resetting onboarding status:', error);
       toast({
-        title: t('goals.goalsSettings.error'),
-        description: `${t('goals.goalsSettings.errorResettingOnboarding')} ${error.message}`,
+        title: t('goals.goalsSettings.error', 'Error'),
+        description: `${t('goals.goalsSettings.errorResettingOnboarding', 'Failed to reset onboarding status:')} ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -359,29 +359,29 @@ const GoalsSettings = () => {
   const visibleNutrients = goalPreferences ? goalPreferences.visible_nutrients : Object.keys(goals);
 
   if (!user) {
-    return <div>{t('goals.goalsSettings.pleaseSignIn')}</div>;
+    return <div>{t('goals.goalsSettings.pleaseSignIn', 'Please sign in to manage your goals.')}</div>;
   }
 
   if (loading) {
-    return <div>{t('goals.goalsSettings.loadingGoals')}</div>;
+    return <div>{t('goals.goalsSettings.loadingGoals', 'Loading goals...')}</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">{t('goals.goalsSettings.title')}</h2>
+        <h2 className="text-2xl font-bold">{t('goals.goalsSettings.title', 'Goals Settings')}</h2>
         <Badge variant="outline" className="text-lg px-3 py-1">
           <Target className="w-4 h-4 mr-2" />
-          {t('goals.goalsSettings.cascadingGoals')}
+          {t('goals.goalsSettings.cascadingGoals', 'Cascading Goals')}
         </Badge>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            {t('goals.goalsSettings.dailyNutritionGoals')}
+            {t('goals.goalsSettings.dailyNutritionGoals', 'Daily Nutrition Goals')}
             <div className="text-sm font-normal text-gray-600 ml-2">
-              {t('goals.goalsSettings.changesCascadeInfo')}
+              {t('goals.goalsSettings.changesCascadeInfo', '(Changes cascade for 6 months from today or until your next future goal)')}
             </div>
           </CardTitle>
         </CardHeader>
@@ -389,7 +389,7 @@ const GoalsSettings = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Primary Macros */}
             {visibleNutrients.includes('calories') && <div>
-              <Label htmlFor="calories">{t('goals.goalsSettings.calories')}</Label>
+              <Label htmlFor="calories">{t('goals.goalsSettings.calories', 'Calories')}</Label>
               <Input
                 id="calories"
                 type="number"
@@ -399,7 +399,7 @@ const GoalsSettings = () => {
             </div>}
             
             {visibleNutrients.includes('protein') && <div>
-              <Label htmlFor="protein">{t('goals.goalsSettings.protein')}</Label>
+              <Label htmlFor="protein">{t('goals.goalsSettings.protein', 'Protein (g)')}</Label>
               <Input
                 id="protein"
                 type="number"
@@ -409,7 +409,7 @@ const GoalsSettings = () => {
             </div>}
             
             {visibleNutrients.includes('carbs') && <div>
-              <Label htmlFor="carbs">{t('goals.goalsSettings.carbohydrates')}</Label>
+              <Label htmlFor="carbs">{t('goals.goalsSettings.carbohydrates', 'Carbohydrates (g)')}</Label>
               <Input
                 id="carbs"
                 type="number"
@@ -419,7 +419,7 @@ const GoalsSettings = () => {
             </div>}
             
             {visibleNutrients.includes('fat') && <div>
-              <Label htmlFor="fat">{t('goals.goalsSettings.fat')}</Label>
+              <Label htmlFor="fat">{t('goals.goalsSettings.fat', 'Fat (g)')}</Label>
               <Input
                 id="fat"
                 type="number"
@@ -430,7 +430,7 @@ const GoalsSettings = () => {
 
             {/* Fat Types */}
             {visibleNutrients.includes('saturated_fat') && <div>
-              <Label htmlFor="saturated_fat">{t('goals.goalsSettings.saturatedFat')}</Label>
+              <Label htmlFor="saturated_fat">{t('goals.goalsSettings.saturatedFat', 'Saturated Fat (g)')}</Label>
               <Input
                 id="saturated_fat"
                 type="number"
@@ -440,7 +440,7 @@ const GoalsSettings = () => {
             </div>}
 
             {visibleNutrients.includes('polyunsaturated_fat') && <div>
-              <Label htmlFor="polyunsaturated_fat">{t('goals.goalsSettings.polyunsaturatedFat')}</Label>
+              <Label htmlFor="polyunsaturated_fat">{t('goals.goalsSettings.polyunsaturatedFat', 'Polyunsaturated Fat (g)')}</Label>
               <Input
                 id="polyunsaturated_fat"
                 type="number"
@@ -450,7 +450,7 @@ const GoalsSettings = () => {
             </div>}
 
             {visibleNutrients.includes('monounsaturated_fat') && <div>
-              <Label htmlFor="monounsaturated_fat">{t('goals.goalsSettings.monounsaturatedFat')}</Label>
+              <Label htmlFor="monounsaturated_fat">{t('goals.goalsSettings.monounsaturatedFat', 'Monounsaturated Fat (g)')}</Label>
               <Input
                 id="monounsaturated_fat"
                 type="number"
@@ -460,7 +460,7 @@ const GoalsSettings = () => {
             </div>}
 
             {visibleNutrients.includes('trans_fat') && <div>
-              <Label htmlFor="trans_fat">{t('goals.goalsSettings.transFat')}</Label>
+              <Label htmlFor="trans_fat">{t('goals.goalsSettings.transFat', 'Trans Fat (g)')}</Label>
               <Input
                 id="trans_fat"
                 type="number"
@@ -471,7 +471,7 @@ const GoalsSettings = () => {
 
             {/* Other Nutrients */}
             {visibleNutrients.includes('cholesterol') && <div>
-              <Label htmlFor="cholesterol">{t('goals.goalsSettings.cholesterol')}</Label>
+              <Label htmlFor="cholesterol">{t('goals.goalsSettings.cholesterol', 'Cholesterol (mg)')}</Label>
               <Input
                 id="cholesterol"
                 type="number"
@@ -480,7 +480,7 @@ const GoalsSettings = () => {
               />
             </div>}
             {visibleNutrients.includes('sodium') && <div>
-              <Label htmlFor="sodium">{t('goals.goalsSettings.sodium')}</Label>
+              <Label htmlFor="sodium">{t('goals.goalsSettings.sodium', 'Sodium (mg)')}</Label>
               <Input
                 id="sodium"
                 type="number"
@@ -489,7 +489,7 @@ const GoalsSettings = () => {
               />
             </div>}
             {visibleNutrients.includes('potassium') && <div>
-              <Label htmlFor="potassium">{t('goals.goalsSettings.potassium')}</Label>
+              <Label htmlFor="potassium">{t('goals.goalsSettings.potassium', 'Potassium (mg)')}</Label>
               <Input
                 id="potassium"
                 type="number"
@@ -498,7 +498,7 @@ const GoalsSettings = () => {
               />
             </div>}
             {visibleNutrients.includes('dietary_fiber') && <div>
-              <Label htmlFor="dietary_fiber">{t('goals.goalsSettings.dietaryFiber')}</Label>
+              <Label htmlFor="dietary_fiber">{t('goals.goalsSettings.dietaryFiber', 'Dietary Fiber (g)')}</Label>
               <Input
                 id="dietary_fiber"
                 type="number"
@@ -507,7 +507,7 @@ const GoalsSettings = () => {
               />
             </div>}
             {visibleNutrients.includes('sugars') && <div>
-              <Label htmlFor="sugars">{t('goals.goalsSettings.sugars')}</Label>
+              <Label htmlFor="sugars">{t('goals.goalsSettings.sugars', 'Sugars (g)')}</Label>
               <Input
                 id="sugars"
                 type="number"
@@ -517,7 +517,7 @@ const GoalsSettings = () => {
             </div>}
             {/* Vitamins and Minerals */}
             {visibleNutrients.includes('vitamin_a') && <div>
-              <Label htmlFor="vitamin_a">{t('goals.goalsSettings.vitaminA')}</Label>
+              <Label htmlFor="vitamin_a">{t('goals.goalsSettings.vitaminA', 'Vitamin A (mcg)')}</Label>
               <Input
                 id="vitamin_a"
                 type="number"
@@ -526,7 +526,7 @@ const GoalsSettings = () => {
               />
             </div>}
             {visibleNutrients.includes('vitamin_c') && <div>
-              <Label htmlFor="vitamin_c">{t('goals.goalsSettings.vitaminC')}</Label>
+              <Label htmlFor="vitamin_c">{t('goals.goalsSettings.vitaminC', 'Vitamin C (mg)')}</Label>
               <Input
                 id="vitamin_c"
                 type="number"
@@ -535,7 +535,7 @@ const GoalsSettings = () => {
               />
             </div>}
             {visibleNutrients.includes('calcium') && <div>
-              <Label htmlFor="calcium">{t('goals.goalsSettings.calcium')}</Label>
+              <Label htmlFor="calcium">{t('goals.goalsSettings.calcium', 'Calcium (mg)')}</Label>
               <Input
                 id="calcium"
                 type="number"
@@ -544,7 +544,7 @@ const GoalsSettings = () => {
               />
             </div>}
             {visibleNutrients.includes('iron') && <div>
-              <Label htmlFor="iron">{t('goals.goalsSettings.iron')}</Label>
+              <Label htmlFor="iron">{t('goals.goalsSettings.iron', 'Iron (mg)')}</Label>
               <Input
                 id="iron"
                 type="number"
@@ -554,7 +554,7 @@ const GoalsSettings = () => {
             </div>}
             
             <div>
-              <Label htmlFor="water">{t('goals.goalsSettings.waterGoal', { unit: water_display_unit })}</Label>
+              <Label htmlFor="water">{t('goals.goalsSettings.waterGoal', { unit: water_display_unit, defaultValue: 'Water Goal ({{unit}})' })}</Label>
               <Input
                 id="water"
                 type="number"
@@ -577,7 +577,7 @@ const GoalsSettings = () => {
             </div>
             {/* Exercise Goals */}
             <div>
-              <Label htmlFor="target_exercise_calories_burned">{t('goals.goalsSettings.targetExerciseCaloriesBurned')}</Label>
+              <Label htmlFor="target_exercise_calories_burned">{t('goals.goalsSettings.targetExerciseCaloriesBurned', 'Target Exercise Calories Burned')}</Label>
               <Input
                 id="target_exercise_calories_burned"
                 type="number"
@@ -586,7 +586,7 @@ const GoalsSettings = () => {
               />
             </div>
             <div>
-              <Label htmlFor="target_exercise_duration_minutes">{t('goals.goalsSettings.targetExerciseDurationMinutes')}</Label>
+              <Label htmlFor="target_exercise_duration_minutes">{t('goals.goalsSettings.targetExerciseDurationMinutes', 'Target Exercise Duration (minutes)')}</Label>
               <Input
                 id="target_exercise_duration_minutes"
                 type="number"
@@ -598,7 +598,7 @@ const GoalsSettings = () => {
 
           <Separator className="my-6" />
 
-          <h3 className="text-lg font-semibold mb-4">{t('goals.goalsSettings.mealCalorieDistribution')}</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('goals.goalsSettings.mealCalorieDistribution', 'Meal Calorie Distribution')}</h3>
           <MealPercentageManager
             initialPercentages={{
               breakfast: goals.breakfast_percentage,
@@ -624,7 +624,7 @@ const GoalsSettings = () => {
               className="w-full"
               disabled={saving || (goals.breakfast_percentage + goals.lunch_percentage + goals.dinner_percentage + goals.snacks_percentage) !== 100}
             >
-              {saving ? t('goals.goalsSettings.saving') : t('goals.goalsSettings.saveGoals')}
+              {saving ? t('goals.goalsSettings.saving', 'Saving...') : t('goals.goalsSettings.saveGoals', 'Save Goals')}
             </Button>
           </div>
         </CardContent>
@@ -633,14 +633,14 @@ const GoalsSettings = () => {
       {/* Goal Presets Section */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-2xl font-bold">{t('goals.goalsSettings.goalPresets')}</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t('goals.goalsSettings.goalPresets', 'Goal Presets')}</CardTitle>
           <Button size="sm" onClick={handleCreatePresetClick}>
-            <PlusCircle className="w-4 h-4 mr-2" /> {t('goals.goalsSettings.createNewPreset')}
+            <PlusCircle className="w-4 h-4 mr-2" /> {t('goals.goalsSettings.createNewPreset', 'Create New Preset')}
           </Button>
         </CardHeader>
         <CardContent>
           {goalPresets.length === 0 ? (
-            <p className="text-gray-500">{t('goals.goalsSettings.noGoalPresets')}</p>
+            <p className="text-gray-500">{t('goals.goalsSettings.noGoalPresets', 'No goal presets defined yet. Create one to get started!')}</p>
           ) : (
             <div className="space-y-4">
               {goalPresets.map((preset) => (
@@ -648,15 +648,15 @@ const GoalsSettings = () => {
                   <div>
                     <h4 className="font-semibold">{preset.preset_name}</h4>
                     <p className="text-sm text-gray-600">
-                      {t('goals.goalsSettings.presetKcalMacros', { calories: preset.calories, protein: Number(preset.protein || 0).toFixed(0), carbs: Number(preset.carbs || 0).toFixed(0), fat: Number(preset.fat || 0).toFixed(0) })}
+                      {t('goals.goalsSettings.presetKcalMacros', { calories: preset.calories, protein: Number(preset.protein || 0).toFixed(0), carbs: Number(preset.carbs || 0).toFixed(0), fat: Number(preset.fat || 0).toFixed(0), defaultValue: '{{calories}} kcal, {{protein}}g P, {{carbs}}g C, {{fat}}g F' })}
                     </p>
                   </div>
                   <div className="flex space-x-2">
                     <Button variant="outline" size="sm" onClick={() => handleEditPresetClick(preset)}>
-                      <Edit className="w-4 h-4" /> {t('goals.goalsSettings.edit')}
+                      <Edit className="w-4 h-4" /> {t('goals.goalsSettings.edit', 'Edit')}
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => handleDeletePreset(preset.id!)}>
-                      <Trash2 className="w-4 h-4" /> {t('goals.goalsSettings.delete')}
+                      <Trash2 className="w-4 h-4" /> {t('goals.goalsSettings.delete', 'Delete')}
                     </Button>
                   </div>
                 </div>
@@ -670,15 +670,15 @@ const GoalsSettings = () => {
       <Dialog open={isPresetDialogOpen} onOpenChange={setIsPresetDialogOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{currentPreset?.id ? t('goals.goalsSettings.editGoalPreset') : t('goals.goalsSettings.createNewGoalPreset')}</DialogTitle>
-            <DialogDescription>{t('goals.goalsSettings.defineReusableGoals')}</DialogDescription>
+            <DialogTitle>{currentPreset?.id ? t('goals.goalsSettings.editGoalPreset', 'Edit Goal Preset') : t('goals.goalsSettings.createNewGoalPreset', 'Create New Goal Preset')}</DialogTitle>
+            <DialogDescription>{t('goals.goalsSettings.defineReusableGoals', 'Define a reusable set of nutrition and exercise goals.')}</DialogDescription>
           </DialogHeader>
           {currentPreset && (
             <div className="space-y-6 py-4">
               {/* Preset Name */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="preset_name" className="text-right">
-                  {t('goals.goalsSettings.presetName')}
+                  {t('goals.goalsSettings.presetName', 'Preset Name')}
                 </Label>
                 <Input
                   id="preset_name"
@@ -689,11 +689,11 @@ const GoalsSettings = () => {
               </div>
 
               {/* Main Nutrients Section */}
-              <h3 className="text-lg font-semibold col-span-full">{t('goals.goalsSettings.mainNutrients')}</h3>
+              <h3 className="text-lg font-semibold col-span-full">{t('goals.goalsSettings.mainNutrients', 'Main Nutrients')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Calories */}
                 <div>
-                  <Label htmlFor="calories">{t('goals.goalsSettings.calories')}</Label>
+                  <Label htmlFor="calories">{t('goals.goalsSettings.calories', 'Calories')}</Label>
                   <Input
                     id="calories"
                     type="number"
@@ -704,7 +704,7 @@ const GoalsSettings = () => {
 
                 {/* Macro Input Type Toggle */}
                 <div className="col-span-full flex items-center gap-4">
-                  <Label className="text-right">{t('goals.goalsSettings.macrosBy')}</Label>
+                  <Label className="text-right">{t('goals.goalsSettings.macrosBy', 'Macros By')}</Label>
                   <RadioGroup
                     value={presetMacroInputType}
                     onValueChange={(value: 'grams' | 'percentages') => setPresetMacroInputType(value)}
@@ -712,11 +712,11 @@ const GoalsSettings = () => {
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="grams" id="macro-grams" />
-                      <Label htmlFor="macro-grams">{t('goals.goalsSettings.grams')}</Label>
+                      <Label htmlFor="macro-grams">{t('goals.goalsSettings.grams', 'Grams')}</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="percentages" id="macro-percentages" />
-                      <Label htmlFor="macro-percentages">{t('goals.goalsSettings.percentages')}</Label>
+                      <Label htmlFor="macro-percentages">{t('goals.goalsSettings.percentages', 'Percentages')}</Label>
                     </div>
                   </RadioGroup>
                 </div>
@@ -724,7 +724,7 @@ const GoalsSettings = () => {
                 {/* Protein */}
                 <div>
                   <Label htmlFor="protein">
-                    {presetMacroInputType === 'grams' ? t('goals.goalsSettings.protein') : t('goals.goalsSettings.proteinPercentage')}
+                    {presetMacroInputType === 'grams' ? t('goals.goalsSettings.protein', 'Protein (g)') : t('goals.goalsSettings.proteinPercentage', 'Protein (%)')}
                   </Label>
                   <Input
                     id="protein"
@@ -744,7 +744,7 @@ const GoalsSettings = () => {
                 {/* Carbs */}
                 <div>
                   <Label htmlFor="carbs">
-                    {presetMacroInputType === 'grams' ? t('goals.goalsSettings.carbohydrates') : t('goals.goalsSettings.carbsPercentage')}
+                    {presetMacroInputType === 'grams' ? t('goals.goalsSettings.carbohydrates', 'Carbohydrates (g)') : t('goals.goalsSettings.carbsPercentage', 'Carbs (%)')}
                   </Label>
                   <Input
                     id="carbs"
@@ -764,7 +764,7 @@ const GoalsSettings = () => {
                 {/* Fat */}
                 <div>
                   <Label htmlFor="fat">
-                    {presetMacroInputType === 'grams' ? t('goals.goalsSettings.fat') : t('goals.goalsSettings.fatPercentage')}
+                    {presetMacroInputType === 'grams' ? t('goals.goalsSettings.fat', 'Fat (g)') : t('goals.goalsSettings.fatPercentage', 'Fat (%)')}
                   </Label>
                   <Input
                     id="fat"
@@ -784,73 +784,73 @@ const GoalsSettings = () => {
                 {/* Calculated Grams */}
                 <div className="col-span-full text-center text-sm text-gray-500">
                   {presetMacroInputType === 'percentages' && (
-                    t('goals.goalsSettings.calculatedGrams', { protein: Number(currentPreset.protein || 0).toFixed(0), carbs: Number(currentPreset.carbs || 0).toFixed(0), fat: Number(currentPreset.fat || 0).toFixed(0) })
+                    t('goals.goalsSettings.calculatedGrams', { protein: Number(currentPreset.protein || 0).toFixed(0), carbs: Number(currentPreset.carbs || 0).toFixed(0), fat: Number(currentPreset.fat || 0).toFixed(0), defaultValue: 'Calculated Grams: Protein {{protein}}g, Carbs {{carbs}}g, Fat {{fat}}g' })
                   )}
                 </div>
               </div>
 
               {/* Fat Breakdown Section */}
-              <h3 className="text-lg font-semibold col-span-full mt-4">{t('goals.goalsSettings.fatBreakdown')}</h3>
+              <h3 className="text-lg font-semibold col-span-full mt-4">{t('goals.goalsSettings.fatBreakdown', 'Fat Breakdown')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <Label htmlFor="saturated_fat">{t('goals.goalsSettings.satFat')}</Label>
+                  <Label htmlFor="saturated_fat">{t('goals.goalsSettings.satFat', 'Sat Fat (g)')}</Label>
                   <Input id="saturated_fat" type="number" value={currentPreset.saturated_fat} onChange={(e) => setCurrentPreset({ ...currentPreset, saturated_fat: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="polyunsaturated_fat">{t('goals.goalsSettings.polyFat')}</Label>
+                  <Label htmlFor="polyunsaturated_fat">{t('goals.goalsSettings.polyFat', 'Poly Fat (g)')}</Label>
                   <Input id="polyunsaturated_fat" type="number" value={currentPreset.polyunsaturated_fat} onChange={(e) => setCurrentPreset({ ...currentPreset, polyunsaturated_fat: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="monounsaturated_fat">{t('goals.goalsSettings.monoFat')}</Label>
+                  <Label htmlFor="monounsaturated_fat">{t('goals.goalsSettings.monoFat', 'Mono Fat (g)')}</Label>
                   <Input id="monounsaturated_fat" type="number" value={currentPreset.monounsaturated_fat} onChange={(e) => setCurrentPreset({ ...currentPreset, monounsaturated_fat: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="trans_fat">{t('goals.goalsSettings.transFat')}</Label>
+                  <Label htmlFor="trans_fat">{t('goals.goalsSettings.transFat', 'Trans Fat (g)')}</Label>
                   <Input id="trans_fat" type="number" value={currentPreset.trans_fat} onChange={(e) => setCurrentPreset({ ...currentPreset, trans_fat: Number(e.target.value) })} />
                 </div>
               </div>
 
               {/* Minerals & Other Section */}
-              <h3 className="text-lg font-semibold col-span-full mt-4">{t('goals.goalsSettings.mineralsOther')}</h3>
+              <h3 className="text-lg font-semibold col-span-full mt-4">{t('goals.goalsSettings.mineralsOther', 'Minerals & Other')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <Label htmlFor="cholesterol">{t('goals.goalsSettings.cholesterol')}</Label>
+                  <Label htmlFor="cholesterol">{t('goals.goalsSettings.cholesterol', 'Cholesterol (mg)')}</Label>
                   <Input id="cholesterol" type="number" value={currentPreset.cholesterol} onChange={(e) => setCurrentPreset({ ...currentPreset, cholesterol: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="sodium">{t('goals.goalsSettings.sodium')}</Label>
+                  <Label htmlFor="sodium">{t('goals.goalsSettings.sodium', 'Sodium (mg)')}</Label>
                   <Input id="sodium" type="number" value={currentPreset.sodium} onChange={(e) => setCurrentPreset({ ...currentPreset, sodium: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="potassium">{t('goals.goalsSettings.potassium')}</Label>
+                  <Label htmlFor="potassium">{t('goals.goalsSettings.potassium', 'Potassium (mg)')}</Label>
                   <Input id="potassium" type="number" value={currentPreset.potassium} onChange={(e) => setCurrentPreset({ ...currentPreset, potassium: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="dietary_fiber">{t('goals.goalsSettings.fiber')}</Label>
+                  <Label htmlFor="dietary_fiber">{t('goals.goalsSettings.fiber', 'Fiber (g)')}</Label>
                   <Input id="dietary_fiber" type="number" value={currentPreset.dietary_fiber} onChange={(e) => setCurrentPreset({ ...currentPreset, dietary_fiber: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="sugars">{t('goals.goalsSettings.sugars')}</Label>
+                  <Label htmlFor="sugars">{t('goals.goalsSettings.sugars', 'Sugars (g)')}</Label>
                   <Input id="sugars" type="number" value={currentPreset.sugars} onChange={(e) => setCurrentPreset({ ...currentPreset, sugars: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="vitamin_a">{t('goals.goalsSettings.vitaminA')}</Label>
+                  <Label htmlFor="vitamin_a">{t('goals.goalsSettings.vitaminA', 'Vitamin A (mcg)')}</Label>
                   <Input id="vitamin_a" type="number" value={currentPreset.vitamin_a} onChange={(e) => setCurrentPreset({ ...currentPreset, vitamin_a: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="vitamin_c">{t('goals.goalsSettings.vitaminC')}</Label>
+                  <Label htmlFor="vitamin_c">{t('goals.goalsSettings.vitaminC', 'Vitamin C (mg)')}</Label>
                   <Input id="vitamin_c" type="number" value={currentPreset.vitamin_c} onChange={(e) => setCurrentPreset({ ...currentPreset, vitamin_c: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="calcium">{t('goals.goalsSettings.calcium')}</Label>
+                  <Label htmlFor="calcium">{t('goals.goalsSettings.calcium', 'Calcium (mg)')}</Label>
                   <Input id="calcium" type="number" value={currentPreset.calcium} onChange={(e) => setCurrentPreset({ ...currentPreset, calcium: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="iron">{t('goals.goalsSettings.iron')}</Label>
+                  <Label htmlFor="iron">{t('goals.goalsSettings.iron', 'Iron (mg)')}</Label>
                   <Input id="iron" type="number" value={currentPreset.iron} onChange={(e) => setCurrentPreset({ ...currentPreset, iron: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="water_goal_ml">{t('goals.goalsSettings.waterGoal', { unit: water_display_unit })}</Label>
+                  <Label htmlFor="water_goal_ml">{t('goals.goalsSettings.waterGoal', { unit: water_display_unit, defaultValue: 'Water Goal ({{unit}})' })}</Label>
                   <Input
                     id="water_goal_ml"
                     type="number"
@@ -874,14 +874,14 @@ const GoalsSettings = () => {
               </div>
 
               {/* Exercise Section */}
-              <h3 className="text-lg font-semibold col-span-full mt-4">{t('goals.goalsSettings.exercise')}</h3>
+              <h3 className="text-lg font-semibold col-span-full mt-4">{t('goals.goalsSettings.exercise', 'Exercise')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <Label htmlFor="target_exercise_calories_burned">{t('goals.goalsSettings.exerciseCalories')}</Label>
+                  <Label htmlFor="target_exercise_calories_burned">{t('goals.goalsSettings.exerciseCalories', 'Exercise Calories')}</Label>
                   <Input id="target_exercise_calories_burned" type="number" value={currentPreset.target_exercise_calories_burned} onChange={(e) => setCurrentPreset({ ...currentPreset, target_exercise_calories_burned: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label htmlFor="target_exercise_duration_minutes">{t('goals.goalsSettings.exerciseDuration')}</Label>
+                  <Label htmlFor="target_exercise_duration_minutes">{t('goals.goalsSettings.exerciseDuration', 'Ex. Duration (min)')}</Label>
                   <Input id="target_exercise_duration_minutes" type="number" value={currentPreset.target_exercise_duration_minutes} onChange={(e) => setCurrentPreset({ ...currentPreset, target_exercise_duration_minutes: Number(e.target.value) })} />
                 </div>
               </div>
@@ -890,7 +890,7 @@ const GoalsSettings = () => {
           {currentPreset && (
             <>
               <Separator className="my-6" />
-              <h3 className="text-lg font-semibold col-span-full mt-4">{t('goals.goalsSettings.mealCalorieDistribution')}</h3>
+              <h3 className="text-lg font-semibold col-span-full mt-4">{t('goals.goalsSettings.mealCalorieDistribution', 'Meal Calorie Distribution')}</h3>
               <MealPercentageManager
                 initialPercentages={{
                   breakfast: currentPreset.breakfast_percentage,
@@ -911,7 +911,7 @@ const GoalsSettings = () => {
               />
               <DialogFooter>
                 <Button onClick={handleSavePreset} disabled={presetSaving || (currentPreset.breakfast_percentage + currentPreset.lunch_percentage + currentPreset.dinner_percentage + currentPreset.snacks_percentage) !== 100}>
-                  {presetSaving ? t('goals.goalsSettings.saving') : t('goals.goalsSettings.savePreset')}
+                  {presetSaving ? t('goals.goalsSettings.saving', 'Saving...') : t('goals.goalsSettings.savePreset', 'Save Preset')}
                 </Button>
               </DialogFooter>
             </>
@@ -922,30 +922,30 @@ const GoalsSettings = () => {
       {/* Weekly Goal Plans Section */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-2xl font-bold">{t('goals.goalsSettings.weeklyGoalPlans')}</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t('goals.goalsSettings.weeklyGoalPlans', 'Weekly Goal Plans (WIP)')}</CardTitle>
           <Button size="sm" onClick={handleCreateWeeklyPlanClick}>
-            <PlusCircle className="w-4 h-4 mr-2" /> {t('goals.goalsSettings.createNewPlan')}
+            <PlusCircle className="w-4 h-4 mr-2" /> {t('goals.goalsSettings.createNewPlan', 'Create New Plan')}
           </Button>
         </CardHeader>
         <CardContent>
           {weeklyPlans.length === 0 ? (
-            <p className="text-gray-500">{t('goals.goalsSettings.noWeeklyPlans')}</p>
+            <p className="text-gray-500">{t('goals.goalsSettings.noWeeklyPlans', 'No weekly goal plans defined yet. Create one to automate your goals!')}</p>
           ) : (
             <div className="space-y-4">
               {weeklyPlans.map((plan) => (
                 <div key={plan.id} className="flex items-center justify-between p-3 border rounded-md">
                   <div>
-                    <h4 className="font-semibold">{plan.plan_name} {plan.is_active && <Badge variant="secondary">{t('goals.goalsSettings.active')}</Badge>}</h4>
+                    <h4 className="font-semibold">{plan.plan_name} {plan.is_active && <Badge variant="secondary">{t('goals.goalsSettings.active', 'Active')}</Badge>}</h4>
                     <p className="text-sm text-gray-600">
-                      {formatDateInUserTimezone(plan.start_date)} to {plan.end_date ? formatDateInUserTimezone(plan.end_date) : t('common.indefinite')}
+                      {formatDateInUserTimezone(plan.start_date)} to {plan.end_date ? formatDateInUserTimezone(plan.end_date) : t('common.indefinite', 'Indefinite')}
                     </p>
                   </div>
                   <div className="flex space-x-2">
                     <Button variant="outline" size="sm" onClick={() => handleEditWeeklyPlanClick(plan)}>
-                      <Edit className="w-4 h-4" /> {t('goals.goalsSettings.edit')}
+                      <Edit className="w-4 h-4" /> {t('goals.goalsSettings.edit', 'Edit')}
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => handleDeleteWeeklyPlan(plan.id!)}>
-                      <Trash2 className="w-4 h-4" /> {t('goals.goalsSettings.delete')}
+                      <Trash2 className="w-4 h-4" /> {t('goals.goalsSettings.delete', 'Delete')}
                     </Button>
                   </div>
                 </div>
@@ -959,14 +959,14 @@ const GoalsSettings = () => {
       <Dialog open={isWeeklyPlanDialogOpen} onOpenChange={setIsWeeklyPlanDialogOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{currentWeeklyPlan?.id ? t('goals.goalsSettings.editWeeklyGoalPlan') : t('goals.goalsSettings.createNewWeeklyGoalPlan')}</DialogTitle>
-            <DialogDescription>{t('goals.goalsSettings.defineWeeklySchedule')}</DialogDescription>
+            <DialogTitle>{currentWeeklyPlan?.id ? t('goals.goalsSettings.editWeeklyGoalPlan', 'Edit Weekly Goal Plan') : t('goals.goalsSettings.createNewWeeklyGoalPlan', 'Create New Weekly Goal Plan')}</DialogTitle>
+            <DialogDescription>{t('goals.goalsSettings.defineWeeklySchedule', 'Define a recurring weekly schedule for your goals.')}</DialogDescription>
           </DialogHeader>
           {currentWeeklyPlan && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="plan_name" className="text-right">
-                  {t('goals.goalsSettings.planName')}
+                  {t('goals.goalsSettings.planName', 'Plan Name')}
                 </Label>
                 <Input
                   id="plan_name"
@@ -977,7 +977,7 @@ const GoalsSettings = () => {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="start_date" className="text-right">
-                  {t('goals.goalsSettings.startDate')}
+                  {t('goals.goalsSettings.startDate', 'Start Date')}
                 </Label>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -989,7 +989,7 @@ const GoalsSettings = () => {
                       )}
                     >
                       <CalendarDays className="mr-2 h-4 w-4" />
-                      {currentWeeklyPlan.start_date ? formatDateInUserTimezone(new Date(currentWeeklyPlan.start_date), dateFormat) : <span>{t('goals.goalsSettings.pickADate')}</span>}
+                      {currentWeeklyPlan.start_date ? formatDateInUserTimezone(new Date(currentWeeklyPlan.start_date), dateFormat) : <span>{t('goals.goalsSettings.pickADate', 'Pick a date')}</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -1004,7 +1004,7 @@ const GoalsSettings = () => {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="end_date" className="text-right">
-                  {t('goals.goalsSettings.endDate')}
+                  {t('goals.goalsSettings.endDate', 'End Date (Optional)')}
                 </Label>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -1016,7 +1016,7 @@ const GoalsSettings = () => {
                       )}
                     >
                       <CalendarDays className="mr-2 h-4 w-4" />
-                      {currentWeeklyPlan.end_date ? formatDateInUserTimezone(parseDateInUserTimezone(currentWeeklyPlan.end_date), dateFormat) : <span>{t('goals.goalsSettings.pickADate')}</span>} // Changed
+                      {currentWeeklyPlan.end_date ? formatDateInUserTimezone(parseDateInUserTimezone(currentWeeklyPlan.end_date), dateFormat) : <span>{t('goals.goalsSettings.pickADate', 'Pick a date')}</span>} // Changed
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -1031,7 +1031,7 @@ const GoalsSettings = () => {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="is_active" className="text-right">
-                  {t('goals.goalsSettings.activePlan')}
+                  {t('goals.goalsSettings.activePlan', 'Active Plan')}
                 </Label>
                 <RadioGroup
                   value={currentWeeklyPlan.is_active ? 'true' : 'false'}
@@ -1040,11 +1040,11 @@ const GoalsSettings = () => {
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="true" id="active-true" />
-                    <Label htmlFor="active-true">{t('goals.goalsSettings.yes')}</Label>
+                    <Label htmlFor="active-true">{t('goals.goalsSettings.yes', 'Yes')}</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="false" id="active-false" />
-                    <Label htmlFor="active-false">{t('goals.goalsSettings.no')}</Label>
+                    <Label htmlFor="active-false">{t('goals.goalsSettings.no', 'No')}</Label>
                   </div>
                 </RadioGroup>
               </div>
@@ -1053,14 +1053,14 @@ const GoalsSettings = () => {
               {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
                 <div className="grid grid-cols-4 items-center gap-4" key={day}>
                   <Label htmlFor={`${day}_preset_id`} className="text-right capitalize">
-                    {t(`common.${day}`)}
+                    {t(`common.${day}`, day.charAt(0).toUpperCase() + day.slice(1))}
                   </Label>
                   <Select
                     value={(currentWeeklyPlan as any)[`${day}_preset_id`] || undefined}
                     onValueChange={(value) => setCurrentWeeklyPlan({ ...currentWeeklyPlan, [`${day}_preset_id`]: value || null })}
                   >
                     <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder={t('goals.goalsSettings.selectPreset', { day: t(`common.${day}`) })} />
+                      <SelectValue placeholder={t('goals.goalsSettings.selectPreset', { day: t(`common.${day}`, day.charAt(0).toUpperCase() + day.slice(1)), defaultValue: 'Select {{day}} preset' })} />
                     </SelectTrigger>
                     <SelectContent>
                       {goalPresets.map((preset) => (
@@ -1076,7 +1076,7 @@ const GoalsSettings = () => {
           )}
           <DialogFooter>
             <Button onClick={handleSaveWeeklyPlan} disabled={weeklyPlanSaving}>
-              {weeklyPlanSaving ? t('goals.goalsSettings.saving') : t('goals.goalsSettings.saveWeeklyPlan')}
+              {weeklyPlanSaving ? t('goals.goalsSettings.saving', 'Saving...') : t('goals.goalsSettings.saveWeeklyPlan', 'Save Weekly Plan')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1085,11 +1085,11 @@ const GoalsSettings = () => {
       {/* Reset Onboarding */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('goals.goalsSettings.resetOnboarding')}</CardTitle>
+          <CardTitle>{t('goals.goalsSettings.resetOnboarding', 'Reset Onboarding')}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            {t('goals.goalsSettings.resetOnboardingDescription')}
+            {t('goals.goalsSettings.resetOnboardingDescription', 'Reset your onboarding status to revisit the initial questionnaire. You will be signed out after resetting.')}
           </p>
           <Button
             onClick={handleResetOnboarding}
@@ -1097,7 +1097,7 @@ const GoalsSettings = () => {
             variant="destructive"
           >
             <RotateCcw className="h-4 w-4 mr-2" />
-            {t('goals.goalsSettings.resetOnboarding')}
+            {t('goals.goalsSettings.resetOnboarding', 'Reset Onboarding')}
           </Button>
         </CardContent>
       </Card>
