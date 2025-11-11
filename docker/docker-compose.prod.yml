@@ -12,7 +12,9 @@ services:
       - sparkyfitness-network # Use the new named network
 
   sparkyfitness-server:
-    image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness_server:latest # Use pre-built image
+    # Uses GitHub Container Registry (GHCR) - no Docker Hub authentication needed
+    # Your images: ghcr.io/YOUR_USERNAME/sparkyfitness-server:latest
+    image: ghcr.io/${GITHUB_REPOSITORY:-kraleod/sparkyfitness}-server:latest
     environment:
       SPARKY_FITNESS_LOG_LEVEL: ${SPARKY_FITNESS_LOG_LEVEL}
       SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
@@ -49,7 +51,9 @@ services:
       - ${SERVER_UPLOADS_PATH:-./uploads}:/app/SparkyFitnessServer/uploads # Mount volume for Profile pictures and excercise images
 
   sparkyfitness-frontend:
-    image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness:latest # Use pre-built image
+    # Uses GitHub Container Registry (GHCR) - no Docker Hub authentication needed
+    # Your images: ghcr.io/YOUR_USERNAME/sparkyfitness-frontend:latest
+    image: ghcr.io/${GITHUB_REPOSITORY:-kraleod/sparkyfitness}-frontend:latest
     ports:
       - "3004:80" # Map host port 8080 to container port 80 (Nginx)
     networks:
@@ -61,7 +65,7 @@ services:
 
   # Garmin integration is still work in progress. Enable once table is ready.
   # sparkyfitness-garmin:
-  #   image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness_garmin:latest
+  #   image: ghcr.io/${GITHUB_REPOSITORY:-kraleod/sparkyfitness}-garmin:latest
   #   container_name: sparkyfitness-garmin
   #   environment:
   #     GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:${GARMIN_SERVICE_PORT}

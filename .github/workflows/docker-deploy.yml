@@ -29,6 +29,14 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
+      - name: Debug secrets
+        run: |
+          echo "Docker username length: ${#DOCKER_USER}"
+          echo "Docker username (first 3 chars): ${DOCKER_USER:0:3}..."
+          echo "Password set: ${{ secrets.DOCKER_PASSWORD != '' }}"
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
+
       - name: Determine image tags
         id: determine_tags
         run: |
@@ -54,11 +62,13 @@ jobs:
             echo "include_latest=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+      # Temporarily disabled Docker Hub login due to authentication issues
+      # Uncomment and configure secrets to enable Docker Hub publishing
+      # - name: Log in to Docker Hub
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKER_USERNAME }}
+      #     password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -75,7 +85,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.DOCKER_USERNAME }}/sparkyfitness
             ghcr.io/${{ github.repository }}-frontend
           tags: |
             type=raw,value=${{ steps.determine_tags.outputs.tag }}
@@ -104,7 +113,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.DOCKER_USERNAME }}/sparkyfitness_server
             ghcr.io/${{ github.repository }}-server
           tags: |
             type=raw,value=${{ steps.determine_tags.outputs.tag }}
@@ -133,7 +141,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.DOCKER_USERNAME }}/sparkyfitness_garmin
             ghcr.io/${{ github.repository }}-garmin
           tags: |
             type=raw,value=${{ steps.determine_tags.outputs.tag }}
