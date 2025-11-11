@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveContainer } from 'recharts';
 import { SleepChartData, SLEEP_STAGE_COLORS } from '@/types';
@@ -7,7 +8,7 @@ import ZoomableChart from '../ZoomableChart';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface SleepStageChartProps {
-  sleepChartData: SleepChartData[];
+  sleepChartData: SleepChartData;
 }
 
 const CHART_HEIGHT = 200;
@@ -32,6 +33,7 @@ const stageLabels: { [key: string]: string } = {
 };
 
 const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => {
+  const { t } = useTranslation();
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
   const { theme } = useTheme();
 
@@ -39,10 +41,10 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Sleep Hypnogram - {formatDateInUserTimezone(sleepChartData.date, dateFormat)}</CardTitle>
+          <CardTitle>{t("sleepReport.sleepHypnogram", "Sleep Hypnogram")} - {formatDateInUserTimezone(sleepChartData.date, dateFormat)}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>No sleep stage data available for this entry.</p>
+          <p>{t("sleepReport.noSleepStageDataAvailable", "No sleep stage data available for this entry.")}</p>
         </CardContent>
       </Card>
     );
@@ -162,7 +164,7 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
           fill={theme === 'dark' ? 'white' : 'black'}
           fontSize="12"
         >
-          {stageLabels[stageType]}
+          {t(`sleepAnalyticsCharts.${stageType === 'light' ? 'core' : stageType}`, stageLabels[stageType])}
         </text>
       );
     });
@@ -211,11 +213,11 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
   };
 
   return (
-    <ZoomableChart title="Sleep Hypnogram">
+    <ZoomableChart title={t("sleepReport.sleepHypnogram", "Sleep Hypnogram")}>
       {(isMaximized, zoomLevel) => (
         <Card>
           <CardHeader>
-            <CardTitle>Sleep Hypnogram - {formatDateInUserTimezone(sleepChartData.date, dateFormat)}</CardTitle>
+            <CardTitle>{t("sleepReport.sleepHypnogram", "Sleep Hypnogram")} - {formatDateInUserTimezone(sleepChartData.date, dateFormat)}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex flex-wrap justify-center gap-x-4 gap-y-2">
@@ -236,7 +238,7 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
                       className="mr-2 h-3 w-3 rounded-full"
                       style={{ backgroundColor: SLEEP_STAGE_COLORS[stageKey] }}
                     ></span>
-                    <span>{stageLabel}: <strong>{durationString}</strong></span>
+                    <span>{t(`sleepAnalyticsCharts.${stageKey === 'light' ? 'core' : stageKey}`, stageLabel)}: <strong>{durationString}</strong></span>
                   </div>
                 );
               })}

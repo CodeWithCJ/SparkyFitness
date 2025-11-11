@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { SLEEP_STAGE_COLORS } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CombinedSleepData, SleepStageEvent } from '@/types';
@@ -12,6 +13,7 @@ interface SleepAnalyticsTableProps {
 }
  
 const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleepData, onExport }) => {
+  const { t } = useTranslation();
   console.log("SleepAnalyticsTable received combinedSleepData:", combinedSleepData);
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
@@ -53,7 +55,7 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <Button onClick={handleExportClick}>Export to CSV</Button>
+        <Button onClick={handleExportClick}>{t('sleepAnalyticsTable.exportToCSV', 'Export to CSV')}</Button>
       </div>
       <Table>
         <TableHeader>
@@ -63,17 +65,17 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
                 {areAllRowsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
             </TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Bedtime</TableHead>
-            <TableHead>Wake Time</TableHead>
-            <TableHead>Duration</TableHead>
-            <TableHead>Time Asleep</TableHead>
-            <TableHead>Score</TableHead>
-            <TableHead>Efficiency</TableHead>
-            <TableHead>Debt</TableHead>
-            <TableHead>Awake Periods</TableHead>
-            <TableHead>Insight</TableHead>
-            <TableHead>Source</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.date', 'Date')}</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.bedtime', 'Bedtime')}</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.wakeTime', 'Wake Time')}</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.duration', 'Duration')}</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.timeAsleep', 'Time Asleep')}</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.score', 'Score')}</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.efficiency', 'Efficiency')}</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.debt', 'Debt')}</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.awakePeriods', 'Awake Periods')}</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.insight', 'Insight')}</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.source', 'Source')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -81,8 +83,8 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
             combinedSleepData.map(({ sleepEntry, sleepAnalyticsData }) => {
               const isExpanded = expandedRows.has(sleepEntry.id);
               const totalSleepDurationHours = (sleepEntry.duration_in_seconds / 3600).toFixed(1);
-              const timeAsleepHours = sleepEntry.time_asleep_in_seconds ? (sleepEntry.time_asleep_in_seconds / 3600).toFixed(1) : 'N/A';
-              const insight = sleepEntry.sleep_score && sleepEntry.sleep_score > 70 ? "Good Sleep" : "Needs Improvement";
+              const timeAsleepHours = sleepEntry.time_asleep_in_seconds ? (sleepEntry.time_asleep_in_seconds / 3600).toFixed(1) : t('common.notApplicable', 'N/A');
+              const insight = sleepEntry.sleep_score && sleepEntry.sleep_score > 70 ? t('sleepAnalyticsTable.goodSleep', 'Good Sleep') : t('sleepAnalyticsTable.needsImprovement', 'Needs Improvement');
 
               const aggregatedStages = sleepEntry.stage_events?.reduce((acc, event) => {
                 acc[event.stage_type] = (acc[event.stage_type] || 0) + (event.duration_in_seconds / 60); // in minutes
@@ -114,19 +116,19 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
                       <TableCell colSpan={12} className="p-0">
                         <div className="bg-gray-50 dark:bg-gray-900 p-4">
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-2">
-                            <h4 className="font-semibold text-sm">Sleep Stages Summary:</h4>
+                            <h4 className="font-semibold text-sm">{t('sleepAnalyticsTable.sleepStagesSummary', 'Sleep Stages Summary:')}</h4>
                             {Object.entries(aggregatedStages || {}).map(([stage, duration]) => (
                               <div key={stage} className="flex items-center text-sm">
                                 <span
                                   className="mr-2 h-3 w-3 rounded-full"
                                   style={{ backgroundColor: SLEEP_STAGE_COLORS[stage as keyof typeof SLEEP_STAGE_COLORS] }}
                                 ></span>
-                                <span>{stage.charAt(0).toUpperCase() + stage.slice(1)}: <strong>{formatTime(duration * 60)}</strong></span>
+                                <span>{t(`sleepAnalyticsCharts.${stage.toLowerCase()}`, stage.charAt(0).toUpperCase() + stage.slice(1))}: <strong>{formatTime(duration * 60)}</strong></span>
                               </div>
                             ))}
                           </div>
                           <div className="mt-4">
-                            <h4 className="font-semibold text-sm mb-2">Sleep Stage Timeline:</h4>
+                            <h4 className="font-semibold text-sm mb-2">{t('sleepAnalyticsTable.sleepStageTimeline', 'Sleep Stage Timeline:')}</h4>
                             <div className="flex flex-wrap gap-2">
                               {sleepEntry.stage_events?.map((event, index) => (
                                 <div
@@ -134,7 +136,7 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
                                   className="rounded-lg p-2 text-white"
                                   style={{ backgroundColor: SLEEP_STAGE_COLORS[event.stage_type as keyof typeof SLEEP_STAGE_COLORS] }}
                                 >
-                                  <div className="font-bold text-sm">{event.stage_type.charAt(0).toUpperCase() + event.stage_type.slice(1)}</div>
+                                  <div className="font-bold text-sm">{t(`sleepAnalyticsCharts.${event.stage_type.toLowerCase()}`, event.stage_type.charAt(0).toUpperCase() + event.stage_type.slice(1))}</div>
                                   <div className="text-xs">{formatTime(event.duration_in_seconds)}</div>
                                   <div className="text-xs opacity-80">
                                     {formatDateInUserTimezone(event.start_time, 'HH:mm')} - {formatDateInUserTimezone(event.end_time, 'HH:mm')}
@@ -153,7 +155,7 @@ const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleep
           ) : (
             <TableRow>
               <TableCell colSpan={12} className="text-center">
-                No sleep data available.
+                {t('sleepAnalyticsTable.noSleepDataAvailable', 'No sleep data available.')}
               </TableCell>
             </TableRow>
           )}
