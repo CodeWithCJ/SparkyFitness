@@ -1,9 +1,19 @@
-name: Publish Docker frontend image
+name: Publish Docker images
 
 on:
   release:
     types: [published]
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - dev
+      - 'claude/**'  # Trigger on all claude/* branches
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.github/workflows/docs-*.yml'
+      - '.github/workflows/android.yml'
 
 jobs:
   push_to_registries:
@@ -20,22 +30,30 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      - name: Get latest release tag
-        id: get_latest_release
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const { data: releases } = await github.rest.repos.listReleases({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-            const latestRelease = releases.find(release => !release.prerelease && !release.draft);
-            if (latestRelease) {
-              core.setOutput('tag', latestRelease.tag_name);
-            } else {
-              core.setOutput('tag', 'latest'); // Fallback if no releases found
-            }
-          result-encoding: string
+      - name: Determine image tags
+        id: determine_tags
+        run: |
+          # Determine tags based on trigger type
+          if [ "${{ github.event_name }}" = "release" ]; then
+            # For releases, use the release tag
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "include_latest=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            # For branch pushes, use sanitized branch name
+            BRANCH_NAME="${{ github.ref_name }}"
+            SAFE_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9._-]/-/g' | tr '[:upper:]' '[:lower:]')
+            echo "tag=$SAFE_BRANCH" >> $GITHUB_OUTPUT
+            # Only tag as 'latest' for main branch
+            if [ "$BRANCH_NAME" = "main" ]; then
+              echo "include_latest=true" >> $GITHUB_OUTPUT
+            else
+              echo "include_latest=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            # For workflow_dispatch or other triggers, use 'latest'
+            echo "tag=latest" >> $GITHUB_OUTPUT
+            echo "include_latest=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -61,8 +79,8 @@ jobs:
             codewithcj/sparkyfitness
             ghcr.io/${{ github.repository }}-frontend
           tags: |
-            type=raw,value=${{ steps.get_latest_release.outputs.tag }}
-            type=raw,value=latest
+            type=raw,value=${{ steps.determine_tags.outputs.tag }}
+            type=raw,value=latest,enable=${{ steps.determine_tags.outputs.include_latest == 'true' }}
 
       - name: Build and push frontend
         id: push-frontend
@@ -90,8 +108,8 @@ jobs:
             codewithcj/sparkyfitness_server
             ghcr.io/${{ github.repository }}-server
           tags: |
-            type=raw,value=${{ steps.get_latest_release.outputs.tag }}
-            type=raw,value=latest
+            type=raw,value=${{ steps.determine_tags.outputs.tag }}
+            type=raw,value=latest,enable=${{ steps.determine_tags.outputs.include_latest == 'true' }}
 
       - name: Build and push server
         id: push-server
@@ -119,8 +137,8 @@ jobs:
             codewithcj/sparkyfitness_garmin
             ghcr.io/${{ github.repository }}-garmin
           tags: |
-            type=raw,value=${{ steps.get_latest_release.outputs.tag }}
-            type=raw,value=latest
+            type=raw,value=${{ steps.determine_tags.outputs.tag }}
+            type=raw,value=latest,enable=${{ steps.determine_tags.outputs.include_latest == 'true' }}
 
       - name: Build and push Garmin Microservice
         id: push-garmin
