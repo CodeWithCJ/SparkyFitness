@@ -195,7 +195,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
       mobileTabs.push(
         { value: "home", label: t('nav.diary'), icon: Home },
         { value: "reports", label: t('nav.reports'), icon: BarChart3 },
-        { value: "Add", label: "Add", icon: isAddCompOpen ? X : Home },
+        { value: "Add", label: "Add", icon: isAddCompOpen ? X : Activity },
         { value: "settings", label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
