@@ -26,9 +26,9 @@ services:
       - sparkyfitness-network
 
   sparkyfitness-server:
-    # Use branch-specific image tag from environment variable
-    # Default to 'latest' if IMAGE_TAG is not set
-    image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness_server:${IMAGE_TAG:-latest}
+    # Uses GitHub Container Registry (GHCR) - no Docker Hub authentication needed
+    # Set GITHUB_REPOSITORY and IMAGE_TAG env vars to customize
+    image: ghcr.io/${GITHUB_REPOSITORY:-kraleod/sparkyfitness}-server:${IMAGE_TAG:-latest}
     environment:
       SPARKY_FITNESS_LOG_LEVEL: ${SPARKY_FITNESS_LOG_LEVEL:-info}
       SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
@@ -60,8 +60,9 @@ services:
       - ${SERVER_UPLOADS_PATH:-./uploads}:/app/SparkyFitnessServer/uploads
 
   sparkyfitness-frontend:
-    # Use branch-specific image tag from environment variable
-    image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness:${IMAGE_TAG:-latest}
+    # Uses GitHub Container Registry (GHCR) - no Docker Hub authentication needed
+    # Set GITHUB_REPOSITORY and IMAGE_TAG env vars to customize
+    image: ghcr.io/${GITHUB_REPOSITORY:-kraleod/sparkyfitness}-frontend:${IMAGE_TAG:-latest}
     ports:
       - "${FRONTEND_PORT:-3004}:80"
     networks:
@@ -76,7 +77,7 @@ services:
 
   # Uncomment if you need the Garmin microservice
   # sparkyfitness-garmin:
-  #   image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness_garmin:${IMAGE_TAG:-latest}
+  #   image: ghcr.io/${GITHUB_REPOSITORY:-kraleod/sparkyfitness}-garmin:${IMAGE_TAG:-latest}
   #   container_name: sparkyfitness-garmin
   #   environment:
   #     GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:${GARMIN_SERVICE_PORT:-8000}
