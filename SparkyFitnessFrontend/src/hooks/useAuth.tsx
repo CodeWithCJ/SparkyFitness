@@ -35,6 +35,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               setUser({ id: userData.userId, email: userData.email, role: role });
               userAuthenticated = true;
             }
+          } else if (oidcResponse.status === 401 || oidcResponse.status === 403) {
+            // Session expired or unauthorized - this is expected when behind Authentik proxy
+            // Don't log as warning, just note it for debugging
+            console.debug('OIDC session not found (401/403) - will check password session or trigger Authentik redirect');
           }
         } catch (oidcError) {
           console.warn('OIDC session check failed:', oidcError);
@@ -51,6 +55,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setUser({ id: userData.userId, email: userData.email, role: role });
                 userAuthenticated = true;
               }
+            } else if (passwordResponse.status === 401 || passwordResponse.status === 403) {
+              // No valid session found - this triggers when Authentik session expires
+              console.debug('No valid session found (401/403) - user will need to re-authenticate');
             }
           } catch (passwordError) {
             console.warn('Password session check failed:', passwordError);
@@ -59,6 +66,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         if (!userAuthenticated) {
           setUser(null);
+          // Don't redirect here - let Authentik proxy handle initial authentication
+          // The redirect will happen when API calls fail (handled in api.ts)
         }
       } catch (error) {
         console.error('Error during session check:', error);

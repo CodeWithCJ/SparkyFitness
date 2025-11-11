@@ -86,18 +86,39 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
       if (response.status === 404 && options?.suppress404Toast) {
         debug(userLoggingLevel, `API call returned 404 for ${endpoint}, toast suppressed. Returning null.`);
         return null; // Return null for 404 with suppression
-      } else {
+      }
+
+      // Handle authentication errors (401) and authorization errors (403)
+      // When session expires or Authentik logs user out, redirect to trigger re-authentication
+      if (response.status === 401 || response.status === 403) {
+        warn(userLoggingLevel, `Authentication/Authorization failed for ${endpoint}: ${response.status} ${errorMessage}`);
+
+        // Clear any local storage auth data
+        localStorage.removeItem('token');
+
+        // Show a more user-friendly error message
         toast({
-          title: "API Error",
-          description: errorMessage,
+          title: "Session Expired",
+          description: "Your session has expired. Please log in again.",
           variant: "destructive",
         });
-        if (errorMessage.includes('Authentication: Invalid or expired token.')) {
-          localStorage.removeItem('token');
-          window.location.reload();
-        }
+
+        // Redirect to root - this will trigger Authentik proxy to redirect to login
+        // Using a small delay to ensure the toast is visible
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 500);
+
         throw new Error(errorMessage);
       }
+
+      // Handle all other errors
+      toast({
+        title: "API Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      throw new Error(errorMessage);
     }
 
     // Handle different response types

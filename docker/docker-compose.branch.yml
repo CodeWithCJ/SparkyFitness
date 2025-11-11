@@ -1,0 +1,94 @@
+# Docker Compose configuration for using branch-specific pre-built images
+# This file is designed to use images automatically built by GitHub Actions
+# when you push to your feature/fix branches (e.g., claude/*)
+#
+# Usage:
+#   1. Set your branch name in .env file:
+#      IMAGE_TAG=claude-authentik-proxy-auth-setup-011cv2eprxqy243vyrwvg1mw
+#
+#   2. Run with this compose file:
+#      docker-compose -f docker/docker-compose.branch.yml up -d
+#
+#   3. Or override tag directly:
+#      IMAGE_TAG=main docker-compose -f docker/docker-compose.branch.yml up -d
+
+services:
+  sparkyfitness-db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${SPARKY_FITNESS_DB_NAME:?Variable is required and must be set}
+      POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:?Variable is required and must be set}
+      POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
+    volumes:
+      - ${DB_PATH:-./postgresql}:/var/lib/postgresql/data
+    networks:
+      - sparkyfitness-network
+
+  sparkyfitness-server:
+    # Use branch-specific image tag from environment variable
+    # Default to 'latest' if IMAGE_TAG is not set
+    image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness_server:${IMAGE_TAG:-latest}
+    environment:
+      SPARKY_FITNESS_LOG_LEVEL: ${SPARKY_FITNESS_LOG_LEVEL:-info}
+      SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
+      SPARKY_FITNESS_DB_HOST: sparkyfitness-db
+      SPARKY_FITNESS_DB_NAME: ${SPARKY_FITNESS_DB_NAME}
+      SPARKY_FITNESS_DB_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
+      SPARKY_FITNESS_APP_DB_USER: ${SPARKY_FITNESS_APP_DB_USER:-sparkyapp}
+      SPARKY_FITNESS_APP_DB_PASSWORD: ${SPARKY_FITNESS_APP_DB_PASSWORD:?Variable is required and must be set}
+      SPARKY_FITNESS_DB_PORT: 5432
+      SPARKY_FITNESS_API_ENCRYPTION_KEY: ${SPARKY_FITNESS_API_ENCRYPTION_KEY:?Variable is required and must be set}
+      JWT_SECRET: ${JWT_SECRET:?Variable is required and must be set}
+      SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL:-http://0.0.0.0:3004}
+      SPARKY_FITNESS_DISABLE_SIGNUP: ${SPARKY_FITNESS_DISABLE_SIGNUP}
+      SPARKY_FITNESS_ADMIN_EMAIL: ${SPARKY_FITNESS_ADMIN_EMAIL}
+      SPARKY_FITNESS_EMAIL_HOST: ${SPARKY_FITNESS_EMAIL_HOST}
+      SPARKY_FITNESS_EMAIL_PORT: ${SPARKY_FITNESS_EMAIL_PORT}
+      SPARKY_FITNESS_EMAIL_SECURE: ${SPARKY_FITNESS_EMAIL_SECURE}
+      SPARKY_FITNESS_EMAIL_USER: ${SPARKY_FITNESS_EMAIL_USER}
+      SPARKY_FITNESS_EMAIL_PASS: ${SPARKY_FITNESS_EMAIL_PASS}
+      SPARKY_FITNESS_EMAIL_FROM: ${SPARKY_FITNESS_EMAIL_FROM}
+      GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:8000
+    networks:
+      - sparkyfitness-network
+    restart: always
+    depends_on:
+      - sparkyfitness-db
+    volumes:
+      - ${SERVER_BACKUP_PATH:-./backup}:/app/SparkyFitnessServer/backup
+      - ${SERVER_UPLOADS_PATH:-./uploads}:/app/SparkyFitnessServer/uploads
+
+  sparkyfitness-frontend:
+    # Use branch-specific image tag from environment variable
+    image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness:${IMAGE_TAG:-latest}
+    ports:
+      - "${FRONTEND_PORT:-3004}:80"
+    networks:
+      - sparkyfitness-network
+    restart: always
+    depends_on:
+      - sparkyfitness-server
+    environment:
+      # Frontend environment variables (if needed by docker-entrypoint.sh)
+      SPARKY_FITNESS_SERVER_HOST: ${SPARKY_FITNESS_SERVER_HOST:-sparkyfitness-server}
+      SPARKY_FITNESS_SERVER_PORT: ${SPARKY_FITNESS_SERVER_PORT:-3010}
+
+  # Uncomment if you need the Garmin microservice
+  # sparkyfitness-garmin:
+  #   image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness_garmin:${IMAGE_TAG:-latest}
+  #   container_name: sparkyfitness-garmin
+  #   environment:
+  #     GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:${GARMIN_SERVICE_PORT:-8000}
+  #     GARMIN_SERVICE_PORT: ${GARMIN_SERVICE_PORT:-8000}
+  #     GARMIN_SERVICE_IS_CN: ${GARMIN_SERVICE_IS_CN:-false}
+  #   networks:
+  #     - sparkyfitness-network
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - sparkyfitness-db
+  #     - sparkyfitness-server
+
+networks:
+  sparkyfitness-network:
+    driver: bridge
