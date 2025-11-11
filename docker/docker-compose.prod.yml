@@ -12,7 +12,7 @@ services:
       - sparkyfitness-network # Use the new named network
 
   sparkyfitness-server:
-    image: codewithcj/sparkyfitness_server:latest # Use pre-built image
+    image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness_server:latest # Use pre-built image
     environment:
       SPARKY_FITNESS_LOG_LEVEL: ${SPARKY_FITNESS_LOG_LEVEL}
       SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
@@ -49,7 +49,7 @@ services:
       - ${SERVER_UPLOADS_PATH:-./uploads}:/app/SparkyFitnessServer/uploads # Mount volume for Profile pictures and excercise images
 
   sparkyfitness-frontend:
-    image: codewithcj/sparkyfitness:latest # Use pre-built image
+    image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness:latest # Use pre-built image
     ports:
       - "3004:80" # Map host port 8080 to container port 80 (Nginx)
     networks:
@@ -61,7 +61,7 @@ services:
 
   # Garmin integration is still work in progress. Enable once table is ready.
   # sparkyfitness-garmin:
-  #   image: codewithcj/sparkyfitness_garmin:latest
+  #   image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness_garmin:latest
   #   container_name: sparkyfitness-garmin
   #   environment:
   #     GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:${GARMIN_SERVICE_PORT}

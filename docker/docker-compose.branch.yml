@@ -28,7 +28,7 @@ services:
   sparkyfitness-server:
     # Use branch-specific image tag from environment variable
     # Default to 'latest' if IMAGE_TAG is not set
-    image: codewithcj/sparkyfitness_server:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness_server:${IMAGE_TAG:-latest}
     environment:
       SPARKY_FITNESS_LOG_LEVEL: ${SPARKY_FITNESS_LOG_LEVEL:-info}
       SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
@@ -61,7 +61,7 @@ services:
 
   sparkyfitness-frontend:
     # Use branch-specific image tag from environment variable
-    image: codewithcj/sparkyfitness:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness:${IMAGE_TAG:-latest}
     ports:
       - "${FRONTEND_PORT:-3004}:80"
     networks:
@@ -76,7 +76,7 @@ services:
 
   # Uncomment if you need the Garmin microservice
   # sparkyfitness-garmin:
-  #   image: codewithcj/sparkyfitness_garmin:${IMAGE_TAG:-latest}
+  #   image: ${DOCKER_USERNAME:-codewithcj}/sparkyfitness_garmin:${IMAGE_TAG:-latest}
   #   container_name: sparkyfitness-garmin
   #   environment:
   #     GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:${GARMIN_SERVICE_PORT:-8000}
