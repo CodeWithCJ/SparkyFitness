@@ -130,6 +130,31 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
     return text ? JSON.parse(text) : {};
   } catch (err: any) {
     error(userLoggingLevel, "API call network error:", err);
+
+    // Network errors can be caused by Authentik proxy redirecting to login page
+    // This happens when the session expires and Authentik returns a 302 redirect
+    // The browser sees this as a CORS error and throws NetworkError
+    // Check if this might be an authentication issue
+    if (err.message && (err.message.includes('NetworkError') || err.message.includes('Failed to fetch'))) {
+      // This is likely Authentik redirecting us to login
+      // Clear any cached data and redirect
+      localStorage.removeItem('token');
+
+      toast({
+        title: "Session Expired",
+        description: "Your session has expired. Redirecting to login...",
+        variant: "destructive",
+      });
+
+      // Redirect to trigger Authentik login
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
+
+      throw new Error('Session expired - redirecting to login');
+    }
+
+    // For other network errors, show generic error
     toast({
       title: "Network Error",
       description: err.message || "Could not connect to the server.",
