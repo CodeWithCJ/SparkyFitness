@@ -29,6 +29,14 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
+      - name: Debug secrets
+        run: |
+          echo "Docker username length: ${#DOCKER_USER}"
+          echo "Docker username (first 3 chars): ${DOCKER_USER:0:3}..."
+          echo "Password set: ${{ secrets.DOCKER_PASSWORD != '' }}"
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
+
       - name: Determine image tags
         id: determine_tags
         run: |
