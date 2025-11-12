@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Tooltip,
   TooltipContent,
@@ -133,6 +134,7 @@ const SortableSetItem = React.memo(({ set, assignmentIndex, setIndex, handleSetC
 });
 
 const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onClose, onSave, initialData, onUpdate }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { weightUnit, loggingLevel, convertWeight } = usePreferences();
   const [planName, setPlanName] = useState("");
@@ -201,8 +203,8 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
       setExercises(fetchedExercises);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to load workout presets or exercises.",
+        title: t('addWorkoutPlanDialog.errorToastTitle', "Error"),
+        description: t('addWorkoutPlanDialog.errorToastDescription', "Failed to load workout presets or exercises."),
         variant: "destructive",
       });
       console.error("Error fetching presets or exercises:", error);
@@ -370,8 +372,8 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
   const handleCopyAssignment = (assignment: WorkoutPlanAssignment) => {
     setCopiedAssignment({ ...assignment });
     toast({
-      title: "Copied!",
-      description: `${assignment.exercise_name || `Preset: ${workoutPresets.find(p => p.id === assignment.workout_preset_id)?.name}` } copied to clipboard.`,
+      title: t('addWorkoutPlanDialog.copiedToastTitle', "Copied!"),
+      description: t('addWorkoutPlanDialog.copiedToastDescription', { itemName: assignment.exercise_name || `${t('addWorkoutPlanDialog.presetLabel', "Preset:")} ${workoutPresets.find(p => p.id === assignment.workout_preset_id)?.name}` }),
     });
   };
 
@@ -384,8 +386,8 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
       };
       setAssignments((prev) => [...prev, newAssignment]);
       toast({
-        title: "Pasted!",
-        description: `Pasted ${newAssignment.exercise_name || `Preset: ${workoutPresets.find(p => p.id === newAssignment.workout_preset_id)?.name}`} to the new day.`,
+        title: t('addWorkoutPlanDialog.pastedToastTitle', "Pasted!"),
+        description: t('addWorkoutPlanDialog.pastedToastDescription', { itemName: newAssignment.exercise_name || `${t('addWorkoutPlanDialog.presetLabel', "Preset:")} ${workoutPresets.find(p => p.id === newAssignment.workout_preset_id)?.name}` }),
       });
     }
   };
@@ -393,8 +395,8 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
   const handleSave = () => {
     if (planName.trim() === "" || startDate.trim() === "") {
       toast({
-        title: "Validation Error",
-        description: "Plan Name and Start Date are required.",
+        title: t('addWorkoutPlanDialog.validationErrorTitle', "Validation Error"),
+        description: t('addWorkoutPlanDialog.validationErrorDescription', "Plan Name and Start Date are required."),
         variant: "destructive",
       });
       return;
@@ -433,15 +435,15 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
       <TooltipProvider>
       <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initialData ? "Edit Workout Plan" : "Add New Workout Plan"}</DialogTitle>
+          <DialogTitle>{initialData ? t('addWorkoutPlanDialog.editTitle', "Edit Workout Plan") : t('addWorkoutPlanDialog.addTitle', "Add New Workout Plan")}</DialogTitle>
           <DialogDescription>
-            {initialData ? "Edit the details for your workout plan and its assignments." : "Enter the details for your new workout plan and assign workouts to days."}
+            {initialData ? t('addWorkoutPlanDialog.editDescription', "Edit the details for your workout plan and its assignments.") : t('addWorkoutPlanDialog.addDescription', "Enter the details for your new workout plan and assign workouts to days.")}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="planName">
-              Plan Name
+              {t('addWorkoutPlanDialog.planNameLabel', "Plan Name")}
             </Label>
             <Input
               id="planName"
@@ -451,7 +453,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">
-              Description
+              {t('addWorkoutPlanDialog.descriptionLabel', "Description")}
             </Label>
             <Textarea
               id="description"
@@ -462,7 +464,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">
-                Start Date
+                {t('addWorkoutPlanDialog.startDateLabel', "Start Date")}
               </Label>
               <div className="relative">
                 <Input
@@ -476,7 +478,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
             </div>
             <div className="space-y-2">
               <Label htmlFor="endDate">
-                End Date (Optional)
+                {t('addWorkoutPlanDialog.endDateLabel', "End Date (Optional)")}
               </Label>
               <div className="relative">
                 <Input
@@ -496,15 +498,15 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
               onCheckedChange={(checked) => setIsActive(checked as boolean)}
             />
             <Label htmlFor="isActive">
-              Set as active plan
+              {t('addWorkoutPlanDialog.setActiveLabel', "Set as active plan")}
             </Label>
           </div>
           <p className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mt-2" role="alert">
-            <span className="font-bold">Note:</span> Note: Updating an active plan adjusts upcoming exercise entries. Deleting a plan clears future ones, while previous entries stay in your log.
+            <span className="font-bold">{t('addWorkoutPlanDialog.noteTitle', "Note:")}</span> {t('addWorkoutPlanDialog.noteDescription', "Updating an active plan adjusts upcoming exercise entries. Deleting a plan clears future ones, while previous entries stay in your log.")}
           </p>
 
           <div className="space-y-4">
-            <h4 className="mb-2 text-lg font-medium">Assignments</h4>
+            <h4 className="mb-2 text-lg font-medium">{t('addWorkoutPlanDialog.assignmentsTitle', "Assignments")}</h4>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               {daysOfWeek.map((day) => (
                 <Card key={day.id}>
@@ -522,7 +524,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
                               <div className="flex items-center justify-between">
                                 <div>
                                   <h4 className="font-medium">
-                                    Preset: {workoutPresets.find(p => p.id === assignment.workout_preset_id)?.name || "N/A"}
+                                    {t('addWorkoutPlanDialog.presetLabel', "Preset:")} {workoutPresets.find(p => p.id === assignment.workout_preset_id)?.name || "N/A"}
                                   </h4>
                                   {(() => {
                                     const preset = workoutPresets.find(p => p.id === assignment.workout_preset_id);
@@ -532,7 +534,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
                                           {preset.exercises.map((ex, idx) => (
                                             <p key={idx} className="flex flex-wrap items-center gap-x-4 gap-y-1">
                                               <span className="font-medium">{ex.exercise_name}</span>
-                                              {ex.sets && <span className="flex items-center gap-1"><ListOrdered className="h-3 w-3" /> {ex.sets.length} sets</span>}
+                                              {ex.sets && <span className="flex items-center gap-1"><ListOrdered className="h-3 w-3" /> {ex.sets.length} {t('addWorkoutPlanDialog.setsLabel', "sets")}</span>}
                                             </p>
                                           ))}
                                         </div>
@@ -580,7 +582,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
                                   </div>
                                 </SortableContext>
                                 <Button type="button" variant="outline" onClick={() => handleAddSetInPlan(originalIndex)}>
-                                  <Plus className="h-4 w-4 mr-2" /> Add Set
+                                  <Plus className="h-4 w-4 mr-2" /> {t('addWorkoutPlanDialog.addSetButton', "Add Set")}
                                 </Button>
                                 <ExerciseHistoryDisplay exerciseId={assignment.exercise_id!} />
                               </>
@@ -593,11 +595,11 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
                         setSelectedDayForAssignment(day.id);
                         setIsAddExerciseDialogOpen(true);
                       }}>
-                        <Plus className="h-4 w-4 mr-2" /> Add Exercise/Preset
+                        <Plus className="h-4 w-4 mr-2" /> {t('addWorkoutPlanDialog.addExercisePresetButton', "Add Exercise/Preset")}
                       </Button>
                       {copiedAssignment && (
                         <Button variant="outline" size="sm" onClick={() => handlePasteAssignment(day.id)}>
-                          <Copy className="h-4 w-4 mr-2" /> Paste Exercise
+                          <Copy className="h-4 w-4 mr-2" /> {t('addWorkoutPlanDialog.pasteExerciseButton', "Paste Exercise")}
                         </Button>
                       )}
                     </div>
@@ -609,18 +611,18 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
          </div>
          <DialogFooter>
            <DialogClose asChild>
-             <Button variant="outline" onClick={onClose}>Cancel</Button>
+             <Button variant="outline" onClick={onClose}>{t('addWorkoutPlanDialog.cancelButton', "Cancel")}</Button>
            </DialogClose>
-           <Button onClick={handleSave}>Save Plan</Button>
+           <Button onClick={handleSave}>{t('addWorkoutPlanDialog.saveButton', "Save Plan")}</Button>
          </DialogFooter>
        </DialogContent>
  
        <Dialog open={isAddExerciseDialogOpen} onOpenChange={setIsAddExerciseDialogOpen}>
          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
            <DialogHeader>
-             <DialogTitle>Add Exercise or Preset</DialogTitle>
+             <DialogTitle>{t('addWorkoutPlanDialog.addExerciseOrPresetTitle', "Add Exercise or Preset")}</DialogTitle>
              <DialogDescription>
-               Select an exercise or a preset to add to the selected day.
+               {t('addWorkoutPlanDialog.addExerciseOrPresetDescription', "Select an exercise or a preset to add to the selected day.")}
              </DialogDescription>
            </DialogHeader>
            <AddExerciseDialog

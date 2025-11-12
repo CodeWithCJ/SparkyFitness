@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,6 +97,7 @@ const ExerciseCard = ({
   initialExercisesToLog, // Destructure new prop
   onExercisesLogged, // Destructure new prop
 }: ExerciseCardProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const { loggingLevel, itemDisplayLimit, weightUnit, convertWeight } = usePreferences(); // Get logging level
@@ -585,7 +587,7 @@ const ExerciseCard = ({
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="dark:text-slate-300">Exercise</CardTitle>
+          <CardTitle className="dark:text-slate-300">{t("exerciseCard.title", "Exercise")}</CardTitle>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -594,7 +596,7 @@ const ExerciseCard = ({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Add Exercise</p>
+                <p>{t("exerciseCard.addExercise", "Add Exercise")}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -611,7 +613,7 @@ const ExerciseCard = ({
       <CardContent>
         {exerciseEntries.length === 0 ? (
           <p className="dark:text-slate-300">
-            No exercise entries for this day.
+            {t("exerciseCard.noEntries", "No exercise entries for this day.")}
           </p>
         ) : (
           <div className="space-y-4">
@@ -779,13 +781,13 @@ const ExerciseCard = ({
               </div>
             ))}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-2 gap-4">
-              <span className="font-semibold">Exercise Total:</span>
+              <span className="font-semibold">{t("exerciseCard.exerciseTotal", "Exercise Total")}:</span>
               <div className="grid grid-cols-1 gap-2 sm:gap-4 text-xs sm:text-sm">
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100">
                     {Math.round(totalExerciseCaloriesBurned)}
                   </div>
-                  <div className="text-xs text-gray-500">cal</div>
+                  <div className="text-xs text-gray-500">{t("common.caloriesUnit", "cal")}</div>
                 </div>
               </div>
             </div>
@@ -842,16 +844,16 @@ const ExerciseCard = ({
       <Dialog open={isEditExerciseDatabaseDialogOpen} onOpenChange={setIsEditExerciseDatabaseDialogOpen}>
         <DialogContent className="sm:max-w-[625px] overflow-y-auto max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>Edit Exercise in Database</DialogTitle>
+            <DialogTitle>{t("exerciseCard.editExerciseInDatabase", "Edit Exercise in Database")}</DialogTitle>
             <DialogDescription>
-              Edit the details of the selected exercise in the database.
+              {t("exerciseCard.editExerciseInDatabaseDescription", "Edit the details of the selected exercise in the database.")}
             </DialogDescription>
           </DialogHeader>
           {exerciseToEditInDatabase && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-db-name" className="text-right">
-                  Name
+                  {t("exerciseCard.name", "Name")}
                 </Label>
                 <Input
                   id="edit-db-name"
@@ -862,28 +864,28 @@ const ExerciseCard = ({
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-db-category" className="text-right">
-                  Category
+                  {t("exerciseCard.category", "Category")}
                 </Label>
                 <Select onValueChange={setEditExerciseCategory} defaultValue={editExerciseCategory}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select a category" />
+                    <SelectValue placeholder={t("exerciseCard.selectCategory", "Select a category")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="general">General</SelectItem>
-                    <SelectItem value="strength">Strength</SelectItem>
-                    <SelectItem value="cardio">Cardio</SelectItem>
-                    <SelectItem value="yoga">Yoga</SelectItem>
-                    <SelectItem value="powerlifting">Powerlifting</SelectItem>
-                    <SelectItem value="olympic weightlifting">Olympic Weightlifting</SelectItem>
-                    <SelectItem value="strongman">Strongman</SelectItem>
-                    <SelectItem value="plyometrics">Plyometrics</SelectItem>
-                    <SelectItem value="stretching">Stretching</SelectItem>
+                    <SelectItem value="general">{t("exerciseCard.categoryGeneral", "General")}</SelectItem>
+                    <SelectItem value="strength">{t("exerciseCard.categoryStrength", "Strength")}</SelectItem>
+                    <SelectItem value="cardio">{t("exerciseCard.categoryCardio", "Cardio")}</SelectItem>
+                    <SelectItem value="yoga">{t("exerciseCard.categoryYoga", "Yoga")}</SelectItem>
+                    <SelectItem value="powerlifting">{t("exerciseCard.categoryPowerlifting", "Powerlifting")}</SelectItem>
+                    <SelectItem value="olympic weightlifting">{t("exerciseCard.categoryOlympicWeightlifting", "Olympic Weightlifting")}</SelectItem>
+                    <SelectItem value="strongman">{t("exerciseCard.categoryStrongman", "Strongman")}</SelectItem>
+                    <SelectItem value="plyometrics">{t("exerciseCard.categoryPlyometrics", "Plyometrics")}</SelectItem>
+                    <SelectItem value="stretching">{t("exerciseCard.categoryStretching", "Stretching")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-db-calories" className="text-right">
-                  Calories/Hour
+                  {t("exerciseCard.caloriesPerHour", "Calories/Hour")}
                 </Label>
                 <Input
                   id="edit-db-calories"
@@ -895,51 +897,51 @@ const ExerciseCard = ({
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-db-level" className="text-right">
-                  Level
+                  {t("exerciseCard.level", "Level")}
                 </Label>
                 <Select onValueChange={setEditExerciseLevel} defaultValue={editExerciseLevel}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select level" />
+                    <SelectValue placeholder={t("exerciseCard.selectLevel", "Select level")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="expert">Expert</SelectItem>
+                    <SelectItem value="beginner">{t("exerciseCard.levelBeginner", "Beginner")}</SelectItem>
+                    <SelectItem value="intermediate">{t("exerciseCard.levelIntermediate", "Intermediate")}</SelectItem>
+                    <SelectItem value="expert">{t("exerciseCard.levelExpert", "Expert")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-db-force" className="text-right">
-                  Force
+                  {t("exerciseCard.force", "Force")}
                 </Label>
                 <Select onValueChange={setEditExerciseForce} defaultValue={editExerciseForce}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select force" />
+                    <SelectValue placeholder={t("exerciseCard.selectForce", "Select force")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pull">Pull</SelectItem>
-                    <SelectItem value="push">Push</SelectItem>
-                    <SelectItem value="static">Static</SelectItem>
+                    <SelectItem value="pull">{t("exerciseCard.forcePull", "Pull")}</SelectItem>
+                    <SelectItem value="push">{t("exerciseCard.forcePush", "Push")}</SelectItem>
+                    <SelectItem value="static">{t("exerciseCard.forceStatic", "Static")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-db-mechanic" className="text-right">
-                  Mechanic
+                  {t("exerciseCard.mechanic", "Mechanic")}
                 </Label>
                 <Select onValueChange={setEditExerciseMechanic} defaultValue={editExerciseMechanic}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select mechanic" />
+                    <SelectValue placeholder={t("exerciseCard.selectMechanic", "Select mechanic")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="isolation">Isolation</SelectItem>
-                    <SelectItem value="compound">Compound</SelectItem>
+                    <SelectItem value="isolation">{t("exerciseCard.mechanicIsolation", "Isolation")}</SelectItem>
+                    <SelectItem value="compound">{t("exerciseCard.mechanicCompound", "Compound")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-db-equipment" className="text-right mt-1">
-                  Equipment (comma-separated)
+                  {t("exerciseCard.equipment", "Equipment (comma-separated)")}
                 </Label>
                 <Input
                   id="edit-db-equipment"
@@ -950,7 +952,7 @@ const ExerciseCard = ({
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-db-primary-muscles" className="text-right mt-1">
-                  Primary Muscles (comma-separated)
+                  {t("exerciseCard.primaryMuscles", "Primary Muscles (comma-separated)")}
                 </Label>
                 <Input
                   id="edit-db-primary-muscles"
@@ -961,7 +963,7 @@ const ExerciseCard = ({
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-db-secondary-muscles" className="text-right mt-1">
-                  Secondary Muscles (comma-separated)
+                  {t("exerciseCard.secondaryMuscles", "Secondary Muscles (comma-separated)")}
                 </Label>
                 <Input
                   id="edit-db-secondary-muscles"
@@ -972,7 +974,7 @@ const ExerciseCard = ({
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-db-instructions" className="text-right mt-1">
-                  Instructions (one per line)
+                  {t("exerciseCard.instructions", "Instructions (one per line)")}
                 </Label>
                 <Textarea
                   id="edit-db-instructions"
@@ -983,7 +985,7 @@ const ExerciseCard = ({
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-db-images" className="text-right mt-1">
-                  Images
+                  {t("exerciseCard.images", "Images")}
                 </Label>
                 <div className="col-span-3">
                   <Input
@@ -1094,7 +1096,7 @@ const ExerciseCard = ({
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="edit-db-description" className="text-right mt-1">
-                  Description
+                  {t("exerciseCard.description", "Description")}
                 </Label>
                 <Textarea
                   id="edit-db-description"
@@ -1105,7 +1107,7 @@ const ExerciseCard = ({
               </div>
             </div>
           )}
-          <Button onClick={handleSaveExerciseDatabaseEdit}>Save Changes</Button>
+          <Button onClick={handleSaveExerciseDatabaseEdit}>{t("exerciseCard.saveChanges", "Save Changes")}</Button>
         </DialogContent>
       </Dialog>
     </Card>

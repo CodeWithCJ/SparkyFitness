@@ -6,6 +6,7 @@ import MiniNutritionTrends from "./MiniNutritionTrends";
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 import { useIsMobile } from "@/hooks/use-mobile";
 import { debug, info, warn, error } from "@/utils/logging"; // Import logging utility
+import { useTranslation } from "react-i18next";
 
 interface Goals {
   calories: number;
@@ -49,6 +50,7 @@ const DiaryTopControls = ({
   const { loggingLevel, nutrientDisplayPreferences } = usePreferences(); // Get logging level
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
+  const { t } = useTranslation();
   const summaryPreferences = nutrientDisplayPreferences.find(
     (p) => p.view_group === "summary" && p.platform === platform,
   );
@@ -59,21 +61,21 @@ const DiaryTopControls = ({
   const nutrientDetails: {
     [key: string]: { color: string; label: string; unit: string };
   } = {
-    calories: { color: "bg-green-500", label: "cal", unit: "" },
-    protein: { color: "bg-blue-500", label: "protein", unit: "g" },
-    carbs: { color: "bg-orange-500", label: "carbs", unit: "g" },
-    fat: { color: "bg-yellow-500", label: "fat", unit: "g" },
-    dietary_fiber: { color: "bg-green-600", label: "fiber", unit: "g" },
-    sugars: { color: "bg-pink-500", label: "sugar", unit: "g" },
-    sodium: { color: "bg-purple-500", label: "sodium", unit: "mg" },
-    cholesterol: { color: "bg-indigo-500", label: "cholesterol", unit: "mg" },
-    saturated_fat: { color: "bg-red-500", label: "sat fat", unit: "g" },
-    trans_fat: { color: "bg-red-700", label: "trans fat", unit: "g" },
-    potassium: { color: "bg-teal-500", label: "potassium", unit: "mg" },
-    vitamin_a: { color: "bg-yellow-400", label: "vit a", unit: "mcg" },
-    vitamin_c: { color: "bg-orange-400", label: "vit c", unit: "mg" },
-    iron: { color: "bg-gray-500", label: "iron", unit: "mg" },
-    calcium: { color: "bg-blue-400", label: "calcium", unit: "mg" },
+    calories: { color: "bg-green-500", label: t("diary.nutrientLabels.cal", "cal"), unit: "" },
+    protein: { color: "bg-blue-500", label: t("diary.nutrientLabels.protein", "protein"), unit: "g" },
+    carbs: { color: "bg-orange-500", label: t("diary.nutrientLabels.carbs", "carbs"), unit: "g" },
+    fat: { color: "bg-yellow-500", label: t("diary.nutrientLabels.fat", "fat"), unit: "g" },
+    dietary_fiber: { color: "bg-green-600", label: t("diary.nutrientLabels.fiber", "fiber"), unit: "g" },
+    sugars: { color: "bg-pink-500", label: t("diary.nutrientLabels.sugar", "sugar"), unit: "g" },
+    sodium: { color: "bg-purple-500", label: t("diary.nutrientLabels.sodium", "sodium"), unit: "mg" },
+    cholesterol: { color: "bg-indigo-500", label: t("diary.nutrientLabels.cholesterol", "cholesterol"), unit: "mg" },
+    saturated_fat: { color: "bg-red-500", label: t("diary.nutrientLabels.satFat", "sat fat"), unit: "g" },
+    trans_fat: { color: "bg-red-700", label: t("diary.nutrientLabels.transFat", "trans fat"), unit: "g" },
+    potassium: { color: "bg-teal-500", label: t("diary.nutrientLabels.potassium", "potassium"), unit: "mg" },
+    vitamin_a: { color: "bg-yellow-400", label: t("diary.nutrientLabels.vitA", "vit a"), unit: "mcg" },
+    vitamin_c: { color: "bg-orange-400", label: t("diary.nutrientLabels.vitC", "vit c"), unit: "mg" },
+    iron: { color: "bg-gray-500", label: t("diary.nutrientLabels.iron", "iron"), unit: "mg" },
+    calcium: { color: "bg-blue-400", label: t("diary.nutrientLabels.calcium", "calcium"), unit: "mg" },
   };
 
   debug(loggingLevel, "DiaryTopControls component rendered.", {
@@ -99,7 +101,7 @@ const DiaryTopControls = ({
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg dark:text-slate-300">
-                Nutrition Summary
+                {t("diary.nutritionSummary", "Nutrition Summary")}
               </CardTitle>
               <EditGoals
                 selectedDate={selectedDate}
@@ -127,7 +129,7 @@ const DiaryTopControls = ({
                       {details.unit}
                     </div>
                     <div className="text-xs text-gray-500">
-                      of {goal}
+                      {t("diary.of", "of")} {goal}
                       {details.unit} {details.label}
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">

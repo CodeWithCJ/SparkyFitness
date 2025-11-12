@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ interface SleepEntrySectionProps {
 }
 
 const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) => {
+  const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
   const { formatDateInUserTimezone, loggingLevel } = usePreferences();
 
@@ -54,7 +56,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
       info(loggingLevel, "SleepEntrySection: Sleep entries fetched successfully:", response);
     } catch (err) {
       error(loggingLevel, 'SleepEntrySection: Error fetching sleep entries:', err);
-      sonnerToast.error('Failed to load sleep entries');
+      sonnerToast.error(t('sleepEntrySection.failedToLoadSleepEntries', 'Failed to load sleep entries'));
     } finally {
       setLoading(false);
     }
@@ -66,8 +68,8 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
     if (!currentUserId) {
       warn(loggingLevel, "SleepEntrySection: Submit called with no current user ID.");
       toast({
-        title: "Error",
-        description: "You must be logged in to save sleep data",
+        title: t('sleepEntrySection.error', 'Error'),
+        description: t('sleepEntrySection.mustBeLoggedInToSaveSleepData', 'You must be logged in to save sleep data'),
         variant: "destructive",
       });
       return;
@@ -76,8 +78,8 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
     for (const session of sleepSessions) {
       if (!session.bedtime || !session.wakeTime) {
         toast({
-          title: "Error",
-          description: "Please enter both bedtime and wake time for all sleep sessions.",
+          title: t('sleepEntrySection.error', 'Error'),
+          description: t('sleepEntrySection.enterBedtimeAndWakeTime', 'Please enter both bedtime and wake time for all sleep sessions.'),
           variant: "destructive",
         });
         return;
@@ -114,14 +116,14 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
         await api.post('/sleep/manual_entry', { body: sleepEntryData });
         info(loggingLevel, "SleepEntrySection: Sleep entry saved successfully.");
       }
-      sonnerToast.success('Sleep entries saved successfully!');
+      sonnerToast.success(t('sleepEntrySection.sleepEntriesSavedSuccessfully', 'Sleep entries saved successfully!'));
       setSleepSessions([{ bedtime: '', wakeTime: '', stageEvents: [] }]); // Reset form
       fetchSleepEntries(); // Refresh list
     } catch (err) {
       error(loggingLevel, 'SleepEntrySection: Error saving sleep entry:', err);
       toast({
-        title: "Error",
-        description: "Failed to save sleep entry",
+        title: t('sleepEntrySection.error', 'Error'),
+        description: t('sleepEntrySection.failedToSaveSleepEntry', 'Failed to save sleep entry'),
         variant: "destructive",
       });
     } finally {
@@ -151,7 +153,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
     const updatedSessions = [...sleepSessions];
     updatedSessions[index] = { ...updatedSessions[index], stageEvents: events, bedtime: newBedtime, wakeTime: newWakeTime };
     setSleepSessions(updatedSessions);
-    sonnerToast.success('Sleep stages and times for new session updated locally. Remember to save the main sleep entry.');
+    sonnerToast.success(t('sleepEntrySection.newSessionStagesUpdatedLocally', 'Sleep stages and times for new session updated locally. Remember to save the main sleep entry.'));
   };
 
   const handleDiscardNewSessionStageEvents = (index: number) => {
@@ -159,7 +161,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
     const updatedSessions = [...sleepSessions];
     updatedSessions[index] = { ...updatedSessions[index], stageEvents: [] }; // Or revert to a default state if needed
     setSleepSessions(updatedSessions);
-    sonnerToast.info('Sleep stage changes for new session discarded.');
+    sonnerToast.info(t('sleepEntrySection.newSessionStagesDiscarded', 'Sleep stage changes for new session discarded.'));
   };
 
   const handleSaveExistingEntryStageEvents = async (entryId: string, events: SleepStageEvent[], newBedtime: string, newWakeTime: string) => {
@@ -188,27 +190,27 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
       const parsedWakeTime = parseISO(newWakeTime);
       const durationInMinutes = differenceInMinutes(parsedWakeTime, parsedBedtime);
       const durationInSeconds = durationInMinutes * 60;
-
-      await api.put(`/sleep/${entryId}`, { body: { stage_events: eventsForApi, bedtime: newBedtime, wake_time: newWakeTime, duration_in_seconds: durationInSeconds } });
-      sonnerToast.success('Sleep stages and times updated successfully!');
-      info(loggingLevel, `SleepEntrySection: Sleep stages and times for entry ${entryId} updated successfully.`);
-    } catch (err) {
-      error(loggingLevel, `SleepEntrySection: Error updating sleep stages and times for entry ${entryId}:`, err);
-      toast({
-        title: "Error",
-        description: "Failed to update sleep stages and times",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+ 
+       await api.put(`/sleep/${entryId}`, { body: { stage_events: eventsForApi, bedtime: newBedtime, wake_time: newWakeTime, duration_in_seconds: durationInSeconds } });
+       sonnerToast.success(t('sleepEntrySection.stagesUpdatedSuccessfully', 'Sleep stages and times updated successfully!'));
+       info(loggingLevel, `SleepEntrySection: Sleep stages and times for entry ${entryId} updated successfully.`);
+     } catch (err) {
+       error(loggingLevel, `SleepEntrySection: Error updating sleep stages and times for entry ${entryId}:`, err);
+       toast({
+         title: t('sleepEntrySection.error', 'Error'),
+         description: t('sleepEntrySection.failedToUpdateSleepStages', 'Failed to update sleep stages and times'),
+         variant: "destructive",
+       });
+     } finally {
+       setLoading(false);
+     }
+   };
 
   const handleDiscardExistingEntryStageEvents = (entryId: string) => {
     debug(loggingLevel, `SleepEntrySection: handleDiscardExistingEntryStageEvents for entry ${entryId}`);
     // Re-fetch the entry to revert changes
     fetchSleepEntries();
-    sonnerToast.info('Sleep stage changes for existing entry discarded.');
+    sonnerToast.info(t('sleepEntrySection.stagesDiscarded', 'Sleep stage changes for existing entry discarded.'));
   };
 
   const handleDeleteSleepEntry = async (entryId: string) => {
@@ -219,13 +221,13 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
     setLoading(true);
     try {
       await api.delete(`/sleep/${entryId}`);
-      sonnerToast.success('Sleep entry deleted successfully!');
+      sonnerToast.success(t('sleepEntrySection.sleepEntryDeletedSuccessfully', 'Sleep entry deleted successfully!'));
       fetchSleepEntries(); // Refresh the list after deletion
     } catch (err) {
       error(loggingLevel, `SleepEntrySection: Error deleting sleep entry ${entryId}:`, err);
       toast({
-        title: "Error",
-        description: "Failed to delete sleep entry",
+        title: t('sleepEntrySection.error', 'Error'),
+        description: t('sleepEntrySection.failedToDeleteSleepEntry', 'Failed to delete sleep entry'),
         variant: "destructive",
       });
     } finally {
@@ -236,16 +238,16 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sleep Tracking</CardTitle>
+        <CardTitle>{t('sleepEntrySection.sleepTracking', 'Sleep Tracking')}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSleepSubmit} className="space-y-4">
           {sleepSessions.map((session, index) => (
             <div key={index} className="border p-4 rounded-lg space-y-4">
-              <h4 className="text-md font-semibold">Sleep Session {index + 1}</h4>
+              <h4 className="text-md font-semibold">{t('sleepEntrySection.sleepSession', { sessionNumber: index + 1, defaultValue: `Sleep Session ${index + 1}` })}</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor={`bedtime-${index}`}>Bedtime</Label>
+                  <Label htmlFor={`bedtime-${index}`}>{t('sleepEntrySection.bedtime', 'Bedtime')}</Label>
                   <Input
                     id={`bedtime-${index}`}
                     type="time"
@@ -254,7 +256,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
                   />
                 </div>
                 <div>
-                  <Label htmlFor={`wakeTime-${index}`}>Wake Time</Label>
+                  <Label htmlFor={`wakeTime-${index}`}>{t('sleepEntrySection.wakeTime', 'Wake Time')}</Label>
                   <Input
                     id={`wakeTime-${index}`}
                     type="time"
@@ -289,10 +291,10 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
           ))}
           <div className="flex justify-center space-x-2">
             <Button type="button" onClick={handleAddSleepSession} variant="outline" size="sm">
-              Add Another Sleep Session
+              {t('sleepEntrySection.addAnotherSleepSession', 'Add Another Sleep Session')}
             </Button>
             <Button type="submit" disabled={loading} size="sm">
-              {loading ? 'Saving Sleep...' : 'Save Sleep'}
+              {loading ? t('sleepEntrySection.savingSleep', 'Saving Sleep...') : t('sleepEntrySection.saveSleep', 'Save Sleep')}
             </Button>
           </div>
         </form>

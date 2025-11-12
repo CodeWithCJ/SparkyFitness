@@ -1,5 +1,5 @@
-
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ interface NoteValues {
 }
 
 const CustomMeasurements = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const { formatDateInUserTimezone, loggingLevel } = usePreferences(); // Use preferences for timezone
@@ -52,7 +53,7 @@ const CustomMeasurements = () => {
       fetchMeasurements();
       loadTodayValues();
     }
-  }, [user, activeUserId, formatDateInUserTimezone, loggingLevel]); // Add formatDateInUserTimezone and loggingLevel to dependencies
+  }, [user, activeUserId, formatDateInUserTimezone, loggingLevel, t]); // Add t to dependencies
 
   const fetchCategories = async () => {
     if (!activeUserId) return;
@@ -63,7 +64,7 @@ const CustomMeasurements = () => {
       setCategories(data || []);
     } catch (err: any) {
       console.error('Error fetching categories:', err);
-      toast.error(err.message || 'Failed to load categories');
+      toast.error(err.message || t('customMeasurements.loadCategoriesErrorToast', 'Failed to load categories'));
     }
   };
 
@@ -76,7 +77,7 @@ const CustomMeasurements = () => {
       setMeasurements(data || []);
     } catch (err: any) {
       console.error('Error fetching measurements:', err);
-      toast.error(err.message || 'Failed to load measurements');
+      toast.error(err.message || t('customMeasurements.loadMeasurementsErrorToast', 'Failed to load measurements'));
     }
   };
 
@@ -98,27 +99,27 @@ const CustomMeasurements = () => {
       setValues(newValues);
     } catch (err: any) {
       console.error('Error loading today values:', err);
-      toast.error(err.message || 'Failed to load today\'s measurements');
+      toast.error(err.message || t('customMeasurements.loadTodayMeasurementsErrorToast', 'Failed to load today\'s measurements'));
     }
   };
 
   const handleSave = async (categoryId: string) => {
     if (!activeUserId || !values[categoryId]) {
-      toast.error('Please enter a value');
+      toast.error(t('customMeasurements.enterValueToastError', 'Please enter a value'));
       return;
     }
 
     const category = categories.find(c => c.id === categoryId);
     if (!category) {
-      toast.error('Invalid category');
+      toast.error(t('customMeasurements.invalidCategoryToastError', 'Invalid category'));
       return;
     }
 
-    let valueToSave = values[categoryId];
+    let valueToSave: string | number = values[categoryId];
     if (category.data_type === 'numeric') {
       const numericValue = parseFloat(values[categoryId]);
       if (isNaN(numericValue) || numericValue <= 0) {
-        toast.error('Please enter a valid positive number');
+        toast.error(t('customMeasurements.invalidPositiveNumberToastError', 'Please enter a valid positive number'));
         return;
       }
       valueToSave = numericValue;
@@ -151,8 +152,8 @@ const CustomMeasurements = () => {
         notes: notes[categoryId] || null,
       };
 
-      await saveCustomMeasurement(measurementData, category.frequency);
-      toast.success('Measurement saved successfully');
+      await saveCustomMeasurement(measurementData);
+      toast.success(t('customMeasurements.saveSuccessToast', 'Measurement saved successfully'));
       fetchMeasurements();
       // Clear the input after successful save for 'All' frequency
       if (category.frequency === 'All') {
@@ -161,7 +162,7 @@ const CustomMeasurements = () => {
       }
     } catch (error) {
       console.error('Error saving measurement:', error);
-      toast.error('Failed to save measurement');
+      toast.error(t('customMeasurements.saveErrorToast', 'Failed to save measurement'));
     } finally {
       setLoadingStates(prev => ({ ...prev, [categoryId]: false }));
     }
@@ -172,12 +173,12 @@ const CustomMeasurements = () => {
 
     try {
       await deleteCustomMeasurement(measurementId);
-      toast.success('Measurement deleted successfully');
+      toast.success(t('customMeasurements.deleteSuccessToast', 'Measurement deleted successfully'));
       fetchMeasurements();
       loadTodayValues();
     } catch (err: any) {
       console.error('Error deleting measurement:', err);
-      toast.error(err.message || 'Failed to delete measurement');
+      toast.error(err.message || t('customMeasurements.deleteErrorToast', 'Failed to delete measurement'));
     }
   };
 
@@ -185,12 +186,12 @@ const CustomMeasurements = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Custom Measurements - {new Date().toLocaleDateString()}</CardTitle>
+          <CardTitle className="text-lg">{t('customMeasurements.title', 'Custom Measurements - {{date}}', { date: new Date().toLocaleDateString() })}</CardTitle>
         </CardHeader>
         <CardContent>
           {categories.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              No custom categories available. Add some categories first to start tracking measurements.
+              {t('customMeasurements.noCategoriesAvailable', 'No custom categories available. Add some categories first to start tracking measurements.')}
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -210,7 +211,7 @@ const CustomMeasurements = () => {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div>
-                        <Label htmlFor={`value-${category.id}`} className="text-xs">Value</Label>
+                        <Label htmlFor={`value-${category.id}`} className="text-xs">{t('customMeasurements.valueLabel', 'Value')}</Label>
                         <div className="flex gap-2 mt-1">
                           <Input
                             id={`value-${category.id}`}
@@ -218,7 +219,7 @@ const CustomMeasurements = () => {
                             step="0.01"
                             value={values[category.id] || ''}
                             onChange={(e) => setValues(prev => ({ ...prev, [category.id]: e.target.value }))}
-                            placeholder="Enter value"
+                            placeholder={t('customMeasurements.enterValuePlaceholder', 'Enter value')}
                             className="h-8 text-sm flex-1"
                           />
                           <Button
@@ -229,18 +230,18 @@ const CustomMeasurements = () => {
                             className="h-8 text-xs px-3 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
                           >
                             <Save className="mr-1 h-3 w-3" />
-                            {isLoading ? 'Saving...' : 'Save'}
+                            {isLoading ? t('customMeasurements.savingButton', 'Saving...') : t('customMeasurements.saveButton', 'Save')}
                           </Button>
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor={`notes-${category.id}`} className="text-xs">Notes (optional)</Label>
+                        <Label htmlFor={`notes-${category.id}`} className="text-xs">{t('customMeasurements.notesOptionalLabel', 'Notes (optional)')}</Label>
                         <Input
                           id={`notes-${category.id}`}
                           type="text"
                           value={notes[category.id] || ''}
                           onChange={(e) => setNotes(prev => ({ ...prev, [category.id]: e.target.value }))}
-                          placeholder="Add a note..."
+                          placeholder={t('customMeasurements.addNotePlaceholder', 'Add a note...')}
                           className="h-8 text-sm flex-1 mt-1"
                         />
                       </div>
@@ -256,12 +257,12 @@ const CustomMeasurements = () => {
       {/* Recent Measurements */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Recent Measurements (Last 20)</CardTitle>
+          <CardTitle className="text-lg">{t('customMeasurements.recentMeasurementsTitle', 'Recent Measurements (Last 20)')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             {measurements.length === 0 ? (
-              <p className="text-muted-foreground">No measurements recorded yet</p>
+              <p className="text-muted-foreground">{t('customMeasurements.noMeasurementsRecorded', 'No measurements recorded yet')}</p>
             ) : (
               measurements.map((measurement) => (
                 <div
@@ -275,12 +276,12 @@ const CustomMeasurements = () => {
                     <div className="text-sm text-muted-foreground">
                       {new Date(measurement.entry_date).toLocaleDateString()}
                       {measurement.entry_hour !== null && (
-                        <span> at {measurement.entry_hour.toString().padStart(2, '0')}:00</span>
+                        <span> {t('customMeasurements.at', 'at')} {measurement.entry_hour.toString().padStart(2, '0')}:00</span>
                       )}
                     </div>
                     {measurement.notes && (
                       <div className="text-sm text-gray-500 mt-1">
-                        <strong>Notes:</strong> {measurement.notes}
+                        <strong>{t('customMeasurements.notesLabel', 'Notes:')}</strong> {measurement.notes}
                       </div>
                     )}
                   </div>

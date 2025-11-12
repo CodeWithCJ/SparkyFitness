@@ -14,6 +14,7 @@ import { SleepEntry, SleepStageEvent, SleepAnalyticsData, CombinedSleepData, Sle
 import SleepAnalyticsTable from './SleepAnalyticsTable';
 import SleepAnalyticsCharts from './SleepAnalyticsCharts';
 import SleepStageChart from './SleepStageChart';
+import { useTranslation } from 'react-i18next';
 
 
 interface SleepReportProps {
@@ -22,6 +23,7 @@ interface SleepReportProps {
 }
 
 const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
+  const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
   const { formatDateInUserTimezone, loggingLevel, dateFormat } = usePreferences();
   const [sleepEntries, setSleepEntries] = useState<SleepEntry[]>([]);
@@ -47,7 +49,7 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
     } catch (err) {
       error(loggingLevel, 'SleepReport: Error fetching sleep entries:', err);
       console.error("Error fetching sleep entries:", err);
-      sonnerToast.error('Failed to load sleep entries');
+      sonnerToast.error(t('sleepReport.failedToLoadSleepEntries', 'Failed to load sleep entries'));
     } finally {
       setLoading(false);
     }
@@ -55,23 +57,32 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
 
   const exportSleepDataToCSV = (data: CombinedSleepData[]) => {
     if (!data.length) {
-      sonnerToast.info('No sleep data to export.');
+      sonnerToast.info(t('sleepReport.noSleepDataToExport', 'No sleep data to export.'));
       return;
     }
 
     const csvHeaders = [
-      'Date', 'Bedtime', 'Wake Time', 'Duration (h)', 'Time Asleep (h)',
-      'Score', 'Efficiency (%)', 'Debt (h)', 'Awake Periods', 'Source', 'Insight'
+      t('sleepReport.csvHeadersDate', 'Date'),
+      t('sleepReport.csvHeadersBedtime', 'Bedtime'),
+      t('sleepReport.csvHeadersWakeTime', 'Wake Time'),
+      t('sleepReport.csvHeadersDurationHours', 'Duration (h)'),
+      t('sleepReport.csvHeadersTimeAsleepHours', 'Time Asleep (h)'),
+      t('sleepReport.csvHeadersScore', 'Score'),
+      t('sleepReport.csvHeadersEfficiencyPercentage', 'Efficiency (%)'),
+      t('sleepReport.csvHeadersDebtHours', 'Debt (h)'),
+      t('sleepReport.csvHeadersAwakePeriods', 'Awake Periods'),
+      t('sleepReport.csvHeadersSource', 'Source'),
+      t('sleepReport.csvHeadersInsight', 'Insight')
     ];
 
     const csvRows = data.map(({ sleepEntry, sleepAnalyticsData }) => {
-      const insight = sleepEntry.sleep_score && sleepEntry.sleep_score > 70 ? "Good Sleep" : "Needs Improvement";
+      const insight = sleepEntry.sleep_score && sleepEntry.sleep_score > 70 ? t('sleepReport.goodSleep', 'Good Sleep') : t('sleepReport.needsImprovement', 'Needs Improvement');
       return [
         formatDateInUserTimezone(sleepEntry.entry_date, dateFormat),
         formatDateInUserTimezone(sleepEntry.bedtime, 'HH:mm'),
         formatDateInUserTimezone(sleepEntry.wake_time, 'HH:mm'),
         (sleepEntry.duration_in_seconds / 3600).toFixed(1),
-        sleepEntry.time_asleep_in_seconds ? (sleepEntry.time_asleep_in_seconds / 3600).toFixed(1) : 'N/A',
+        sleepEntry.time_asleep_in_seconds ? (sleepEntry.time_asleep_in_seconds / 3600).toFixed(1) : t('common.notApplicable', 'N/A'),
         sleepAnalyticsData.sleepScore.toFixed(0),
         sleepAnalyticsData.sleepEfficiency.toFixed(1),
         sleepAnalyticsData.sleepDebt.toFixed(1),
@@ -95,7 +106,7 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    sonnerToast.success('Sleep data exported successfully.');
+    sonnerToast.success(t('sleepReport.sleepDataExportedSuccessfully', 'Sleep data exported successfully.'));
   };
 
   const processSleepData = (): CombinedSleepData[] => {
@@ -151,7 +162,7 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
   };
 
   if (loading) {
-    return <p>Loading sleep data...</p>;
+    return <p>{t('sleepReport.loadingSleepData', 'Loading sleep data...')}</p>;
   }
 
   const combinedSleepData = processSleepData();
@@ -171,12 +182,12 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Sleep Report</CardTitle>
+          <CardTitle>{t('sleepReport.sleepReportTitle', 'Sleep Report')}</CardTitle>
         </CardHeader>
         <CardContent>
 
           {sleepEntries.length === 0 ? (
-            <p>No sleep data available for the selected date range.</p>
+            <p>{t('sleepReport.noSleepDataAvailableRange', 'No sleep data available for the selected date range.')}</p>
           ) : (
             <div className="space-y-6">
               <SleepAnalyticsCharts

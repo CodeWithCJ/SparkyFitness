@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ interface AddExerciseDialogProps {
 }
 
 const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkoutPresetSelected }: AddExerciseDialogProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(mode === 'database-manager' ? 'online' : 'my-exercises');
   const [newExerciseName, setNewExerciseName] = useState("");
@@ -52,8 +54,8 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
 
   const handleExerciseSelect = (exercise: Exercise, sourceMode: 'internal' | 'external') => {
     toast({
-      title: "Success",
-      description: `${exercise.name} added to your exercises.`,
+      title: t('common.success', 'Success'),
+      description: t('exercise.addExerciseDialog.addSuccess', 'Exercise added successfully'),
     });
     onExerciseAdded(exercise, sourceMode); // Pass the selected exercise and source mode
     onOpenChange(false);
@@ -88,13 +90,13 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
 
       await createExercise(formData);
       toast({
-        title: "Success",
-        description: "Exercise added successfully",
+        title: t('common.success', 'Success'),
+        description: t('exercise.addExerciseDialog.addSuccess', 'Exercise added successfully'),
       });
       // Assuming the newly created exercise is returned by createExercise
       // For now, we'll just pass a placeholder or refetch if necessary.
       // A more robust solution would be to return the created exercise from createExercise.
-      onExerciseAdded({ id: 'temp-id', name: newExerciseName, category: newExerciseCategory, calories_per_hour: manualCaloriesPerHour !== undefined ? manualCaloriesPerHour : newExerciseCalories, sets: [{ set_number: 1, set_type: 'Working Set', reps: 10, weight: 0 }] }, 'custom');
+      onExerciseAdded({ id: 'temp-id', name: newExerciseName, category: newExerciseCategory, calories_per_hour: manualCaloriesPerHour !== undefined ? manualCaloriesPerHour : newExerciseCalories }, 'custom');
       onOpenChange(false);
       setNewExerciseName("");
       setNewExerciseCategory("general");
@@ -113,8 +115,8 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
     } catch (error) {
       console.error("Error adding exercise:", error);
       toast({
-        title: "Error",
-        description: "Failed to add exercise",
+        title: t('common.error', 'Error'),
+        description: t('exercise.addExerciseDialog.addError', 'Failed to add exercise'),
         variant: "destructive",
       });
     }
@@ -177,8 +179,8 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
       });
 
       toast({
-        title: "Success",
-        description: "Exercise data imported successfully",
+        title: t('common.success', 'Success'),
+        description: t('exercise.addExerciseDialog.importSuccess', 'Exercise data imported successfully'),
       });
       onOpenChange(false);
     } catch (error) {
@@ -190,16 +192,16 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
           .join(", ");
 
         toast({
-          title: "Import Failed: Duplicate Items Found",
-          description: `The following items already exist: ${duplicateList}. Please remove them from your file and try again.`,
+          title: t('exercise.addExerciseDialog.importDuplicateTitle', 'Import Failed: Duplicate Items Found'),
+          description: t('exercise.addExerciseDialog.importDuplicateDescription', 'The following items already exist: {{duplicateList}}. Please remove them from your file and try again.', { duplicateList }),
           variant: "destructive",
           duration: 10000,
         });
       } else {
         toast({
-          title: "An Error Occurred",
+          title: t('common.errorOccurred', 'An Error Occurred'),
           description:
-            error.message || "Failed to import exercise data. Please try again.",
+            error.message || t('exercise.addExerciseDialog.importError', 'Failed to import exercise data. Please try again.'),
           variant: "destructive",
         });
       }
@@ -210,18 +212,18 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={activeTab === 'import-csv' ? "sm:max-w-[95vw] sm:max-h-[95vh] w-[95vw] h-[95vh] overflow-y-auto" : "sm:max-w-[625px] overflow-y-auto max-h-[90vh]"}>
         <DialogHeader>
-          <DialogTitle>Add Exercise</DialogTitle>
+          <DialogTitle>{t('exercise.addExerciseDialog.title', 'Add Exercise')}</DialogTitle>
           <DialogDescription>
-            Add a new exercise to your database, either by creating a custom one or importing from an external source.
+            {t('exercise.addExerciseDialog.description', 'Add a new exercise to your database, either by creating a custom one or importing from an external source.')}
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
           <TabsList className={`grid w-full grid-cols-${mode === 'database-manager' ? 3 : (mode === 'diary' || mode === 'workout-plan') ? 5 : 4}`}>
-            {mode !== 'database-manager' && <TabsTrigger value="my-exercises">My Exercises</TabsTrigger>}
-            {(mode === 'diary' || mode === 'workout-plan') && <TabsTrigger value="workout-preset">Workout Preset</TabsTrigger>}
-            <TabsTrigger value="online">Online</TabsTrigger>
-            <TabsTrigger value="custom">Add Custom</TabsTrigger>
-            <TabsTrigger value="import-csv">Import CSV</TabsTrigger>
+            {mode !== 'database-manager' && <TabsTrigger value="my-exercises">{t('exercise.addExerciseDialog.myExercisesTab', 'My Exercises')}</TabsTrigger>}
+            {(mode === 'diary' || mode === 'workout-plan') && <TabsTrigger value="workout-preset">{t('exercise.addExerciseDialog.workoutPresetTab', 'Workout Preset')}</TabsTrigger>}
+            <TabsTrigger value="online">{t('exercise.addExerciseDialog.onlineTab', 'Online')}</TabsTrigger>
+            <TabsTrigger value="custom">{t('exercise.addExerciseDialog.addCustomTab', 'Add Custom')}</TabsTrigger>
+            <TabsTrigger value="import-csv">{t('exercise.addExerciseDialog.importCSVTab', 'Import CSV')}</TabsTrigger>
           </TabsList>
           {mode !== 'database-manager' && (
             <TabsContent value="my-exercises">
@@ -247,7 +249,7 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">
-                  Name
+                  {t('exercise.addExerciseDialog.nameLabel', 'Name')}
                 </Label>
                 <Input
                   id="name"
@@ -258,23 +260,23 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="category" className="text-right">
-                  Category
+                  {t('exercise.addExerciseDialog.categoryLabel', 'Category')}
                 </Label>
                 <Select onValueChange={setNewExerciseCategory} defaultValue={newExerciseCategory}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select a category" />
+                    <SelectValue placeholder={t('exercise.addExerciseDialog.selectCategoryPlaceholder', 'Select a category')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="general">General</SelectItem>
-                    <SelectItem value="strength">Strength</SelectItem>
-                    <SelectItem value="cardio">Cardio</SelectItem>
-                    <SelectItem value="yoga">Yoga</SelectItem>
+                    <SelectItem value="general">{t('exercise.addExerciseDialog.categoryGeneral', 'General')}</SelectItem>
+                    <SelectItem value="strength">{t('exercise.addExerciseDialog.categoryStrength', 'Strength')}</SelectItem>
+                    <SelectItem value="cardio">{t('exercise.addExerciseDialog.categoryCardio', 'Cardio')}</SelectItem>
+                    <SelectItem value="yoga">{t('exercise.addExerciseDialog.categoryYoga', 'Yoga')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="calories" className="text-right">
-                  Calories/Hour
+                  {t('exercise.addExerciseDialog.caloriesPerHourLabel', 'Calories/Hour')}
                 </Label>
                 <Input
                   id="calories"
@@ -285,12 +287,12 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
                   className="col-span-3"
                 />
                 <p className="col-span-4 text-xs text-muted-foreground">
-                  Leave blank to use system calculated calories per hour ({newExerciseCalories} cal/hour).
+                  {t('exercise.addExerciseDialog.caloriesPerHourHint', 'Leave blank to use system calculated calories per hour ({{newExerciseCalories}} cal/hour).', { newExerciseCalories })}
                 </p>
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="description" className="text-right mt-1">
-                  Description
+                  {t('exercise.addExerciseDialog.descriptionLabel', 'Description')}
                 </Label>
                 <Textarea
                   id="description"
@@ -302,7 +304,7 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="source" className="text-right">
-                  Source
+                  {t('exercise.addExerciseDialog.sourceLabel', 'Source')}
                 </Label>
                 <Input
                   id="source"
@@ -313,51 +315,51 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="force" className="text-right">
-                  Force
+                  {t('exercise.addExerciseDialog.forceLabel', 'Force')}
                 </Label>
                 <Select onValueChange={setNewExerciseForce} defaultValue={newExerciseForce}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select force" />
+                    <SelectValue placeholder={t('exercise.addExerciseDialog.selectForcePlaceholder', 'Select force')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pull">Pull</SelectItem>
-                    <SelectItem value="push">Push</SelectItem>
-                    <SelectItem value="static">Static</SelectItem>
+                    <SelectItem value="pull">{t('exercise.addExerciseDialog.forcePull', 'Pull')}</SelectItem>
+                    <SelectItem value="push">{t('exercise.addExerciseDialog.forcePush', 'Push')}</SelectItem>
+                    <SelectItem value="static">{t('exercise.addExerciseDialog.forceStatic', 'Static')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="level" className="text-right">
-                  Level
+                  {t('exercise.addExerciseDialog.levelLabel', 'Level')}
                 </Label>
                 <Select onValueChange={setNewExerciseLevel} defaultValue={newExerciseLevel}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select level" />
+                    <SelectValue placeholder={t('exercise.addExerciseDialog.selectLevelPlaceholder', 'Select level')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="expert">Expert</SelectItem>
+                    <SelectItem value="beginner">{t('exercise.addExerciseDialog.levelBeginner', 'Beginner')}</SelectItem>
+                    <SelectItem value="intermediate">{t('exercise.addExerciseDialog.levelIntermediate', 'Intermediate')}</SelectItem>
+                    <SelectItem value="expert">{t('exercise.addExerciseDialog.levelExpert', 'Expert')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="mechanic" className="text-right">
-                  Mechanic
+                  {t('exercise.addExerciseDialog.mechanicLabel', 'Mechanic')}
                 </Label>
                 <Select onValueChange={setNewExerciseMechanic} defaultValue={newExerciseMechanic}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select mechanic" />
+                    <SelectValue placeholder={t('exercise.addExerciseDialog.selectMechanicPlaceholder', 'Select mechanic')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="isolation">Isolation</SelectItem>
-                    <SelectItem value="compound">Compound</SelectItem>
+                    <SelectItem value="isolation">{t('exercise.addExerciseDialog.mechanicIsolation', 'Isolation')}</SelectItem>
+                    <SelectItem value="compound">{t('exercise.addExerciseDialog.mechanicCompound', 'Compound')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="equipment" className="text-right mt-1">
-                  Equipment (comma-separated)
+                  {t('exercise.addExerciseDialog.equipmentLabel', 'Equipment (comma-separated)')}
                 </Label>
                 <Textarea
                   id="equipment"
@@ -368,7 +370,7 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="primaryMuscles" className="text-right mt-1">
-                  Primary Muscles (comma-separated)
+                  {t('exercise.addExerciseDialog.primaryMusclesLabel', 'Primary Muscles (comma-separated)')}
                 </Label>
                 <Textarea
                   id="primaryMuscles"
@@ -379,7 +381,7 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="secondaryMuscles" className="text-right mt-1">
-                  Secondary Muscles (comma-separated)
+                  {t('exercise.addExerciseDialog.secondaryMusclesLabel', 'Secondary Muscles (comma-separated)')}
                 </Label>
                 <Textarea
                   id="secondaryMuscles"
@@ -390,7 +392,7 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="instructions" className="text-right mt-1">
-                  Instructions (one per line)
+                  {t('exercise.addExerciseDialog.instructionsLabel', 'Instructions (one per line)')}
                 </Label>
                 <Textarea
                   id="instructions"
@@ -401,7 +403,7 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="images" className="text-right mt-1">
-                  Images
+                  {t('exercise.addExerciseDialog.imagesLabel', 'Images')}
                 </Label>
                 <div className="col-span-3">
                   <Input
@@ -437,7 +439,7 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
                   </div>
                 </div>
               </div>
-            <Button onClick={handleAddCustomExercise}>Add Exercise</Button>
+            <Button onClick={handleAddCustomExercise}>{t('exercise.addExerciseDialog.addButton', 'Add Exercise')}</Button>
           </TabsContent>
           <TabsContent value="import-csv">
             <div className="pt-4">

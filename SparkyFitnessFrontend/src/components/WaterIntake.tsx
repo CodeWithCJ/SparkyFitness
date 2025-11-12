@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Droplet } from "lucide-react";
@@ -15,6 +16,7 @@ interface WaterIntakeProps {
 }
 
 const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [waterMl, setWaterMl] = useState(0);
   const [waterGoalMl, setWaterGoalMl] = useState(1920);
@@ -98,15 +100,18 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       });
 
       toast({
-        title: "Success",
-        description: "Water intake updated",
+        title: t("foodDiary.success", "Success"),
+        description: t("foodDiary.waterIntake.updated", "Water intake updated"),
       });
       window.dispatchEvent(new Event("measurementsRefresh"));
     } catch (error) {
       console.error("Error:", error);
       toast({
-        title: "Error",
-        description: "Failed to save water intake",
+        title: t("foodDiary.error", "Error"),
+        description: t(
+          "foodDiary.waterIntake.updateError",
+          "Failed to save water intake",
+        ),
         variant: "destructive",
       });
     } finally {
@@ -129,7 +134,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center text-base dark:text-slate-300">
           <Droplet className="w-4 h-4 mr-2" />
-          Water Intake
+          {t("foodDiary.waterIntake.title", "Water Intake")}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col justify-between p-3 dark:text-slate-300">
@@ -216,8 +221,23 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
         </div>
         <div className="text-center text-gray-500 text-xs mt-2">
           {activeContainer
-            ? `${convertMlToSelectedUnit(activeContainer.volume / activeContainer.servings_per_container, activeContainer.unit).toFixed(activeContainer.unit === "ml" ? 0 : 2)} ${activeContainer.unit} per drink`
-            : `${convertMlToSelectedUnit(250, water_display_unit).toFixed(water_display_unit === "ml" ? 0 : 2)} ${water_display_unit} per drink (default)`}
+            ? t("foodDiary.waterIntake.perDrink", {
+                volume: convertMlToSelectedUnit(
+                  activeContainer.volume /
+                    activeContainer.servings_per_container,
+                  activeContainer.unit,
+                ).toFixed(activeContainer.unit === "ml" ? 0 : 2),
+                unit: activeContainer.unit,
+                defaultValue: `${convertMlToSelectedUnit(activeContainer.volume / activeContainer.servings_per_container, activeContainer.unit).toFixed(activeContainer.unit === "ml" ? 0 : 2)} ${activeContainer.unit} per drink`,
+              })
+            : t("foodDiary.waterIntake.defaultPerDrink", {
+                volume: convertMlToSelectedUnit(
+                  250,
+                  water_display_unit,
+                ).toFixed(water_display_unit === "ml" ? 0 : 2),
+                unit: water_display_unit,
+                defaultValue: `${convertMlToSelectedUnit(250, water_display_unit).toFixed(water_display_unit === "ml" ? 0 : 2)} ${water_display_unit} per drink (default)`,
+              })}
         </div>
       </CardContent>
     </Card>

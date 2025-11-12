@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +49,7 @@ const booleanFields = new Set(["is_custom", "shared_with_public"]);
 const arrayFields = new Set(["equipment", "primary_muscles", "secondary_muscles", "instructions", "images"]);
 
 const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [csvData, setCsvData] = useState<ExerciseCSVData[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -105,8 +107,8 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
 
       if (!text || text.trim() === "") {
         toast({
-          title: "Import Error",
-          description: "The selected file is empty.",
+          title: t("exercise.exerciseImportCSV.importError", "Import Error"),
+          description: t("exercise.exerciseImportCSV.emptyFile", "The selected file is empty."),
           variant: "destructive",
         });
         return;
@@ -120,9 +122,9 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
 
       if (!areHeadersValid) {
         toast({
-          title: "Invalid CSV Format",
+          title: t("exercise.exerciseImportCSV.invalidCSVFormat", "Invalid CSV Format"),
           description:
-            "The CSV headers do not match the required format or order. Please download the template.",
+            t("exercise.exerciseImportCSV.invalidCSVFormatDescription", "The CSV headers do not match the required format or order. Please download the template."),
           variant: "destructive",
         });
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -135,8 +137,8 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
         setCsvData(parsedData);
       } else {
         toast({
-          title: "No Data Found",
-          description: "The CSV file contains headers but no data rows.",
+          title: t("exercise.exerciseImportCSV.noDataFound", "No Data Found"),
+          description: t("exercise.exerciseImportCSV.noDataFoundDescription", "The CSV file contains headers but no data rows."),
           variant: "destructive",
         });
       }
@@ -242,8 +244,8 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     );
     if (invalidRow) {
       toast({
-        title: "Validation Error",
-        description: "The 'name' field cannot be empty.",
+        title: t("exercise.exerciseImportCSV.validationError", "Validation Error"),
+        description: t("exercise.exerciseImportCSV.nameEmptyError", "The 'name' field cannot be empty."),
         variant: "destructive",
       });
       return;
@@ -265,18 +267,17 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Import Exercise Data</CardTitle>
+        <CardTitle>{t("exercise.exerciseImportCSV.importExerciseData", "Import Exercise Data")}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="mb-6 p-4 border rounded-lg bg-muted/50">
-          <h3 className="text-lg font-semibold mb-2">Standard Values for Dropdowns</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("exercise.exerciseImportCSV.standardValuesForDropdowns", "Standard Values for Dropdowns")}</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            When importing exercises, ensure that values for 'Level', 'Force', and 'Mechanic' match these standard options.
-            You can click the copy icon to quickly copy the list of valid values for each field.
+            {t("exercise.exerciseImportCSV.standardValuesDescription", "When importing exercises, ensure that values for 'Level', 'Force', and 'Mechanic' match these standard options. You can click the copy icon to quickly copy the list of valid values for each field.")}
           </p>
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <h4 className="font-medium mb-1">Level:</h4>
+              <h4 className="font-medium mb-1">{t("exercise.exerciseImportCSV.levelLabel", "Level:")}</h4>
               <div className="flex flex-wrap gap-2">
                 {["beginner", "intermediate", "expert"].map((value) => (
                   <TooltipProvider key={value}>
@@ -288,14 +289,14 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                           className="h-7 px-2 flex items-center gap-1"
                           onClick={() => {
                             navigator.clipboard.writeText(value);
-                            toast({ title: "Copied!", description: `'${value}' copied to clipboard.` });
+                            toast({ title: t("exercise.exerciseImportCSV.copied", "Copied!"), description: t("exercise.exerciseImportCSV.copiedToClipboard", `'${value}' copied to clipboard.`, { value }) });
                           }}
                         >
                           {value} <Copy className="h-3 w-3" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Copy '{value}'</p>
+                        <p>{t("exercise.exerciseImportCSV.copyTooltip", "Copy '{{value}}'", { value })}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -303,7 +304,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
               </div>
             </div>
             <div>
-              <h4 className="font-medium mb-1">Force:</h4>
+              <h4 className="font-medium mb-1">{t("exercise.exerciseImportCSV.forceLabel", "Force:")}</h4>
               <div className="flex flex-wrap gap-2">
                 {["pull", "push", "static"].map((value) => (
                   <TooltipProvider key={value}>
@@ -315,14 +316,14 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                           className="h-7 px-2 flex items-center gap-1"
                           onClick={() => {
                             navigator.clipboard.writeText(value);
-                            toast({ title: "Copied!", description: `'${value}' copied to clipboard.` });
+                            toast({ title: t("exercise.exerciseImportCSV.copied", "Copied!"), description: t("exercise.exerciseImportCSV.copiedToClipboard", `'${value}' copied to clipboard.`, { value }) });
                           }}
                         >
                           {value} <Copy className="h-3 w-3" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Copy '{value}'</p>
+                        <p>{t("exercise.exerciseImportCSV.copyTooltip", "Copy '{{value}}'", { value })}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -330,7 +331,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
               </div>
             </div>
             <div>
-              <h4 className="font-medium mb-1">Mechanic:</h4>
+              <h4 className="font-medium mb-1">{t("exercise.exerciseImportCSV.mechanicLabel", "Mechanic:")}</h4>
               <div className="flex flex-wrap gap-2">
                 {["isolation", "compound"].map((value) => (
                   <TooltipProvider key={value}>
@@ -342,14 +343,14 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                           className="h-7 px-2 flex items-center gap-1"
                           onClick={() => {
                             navigator.clipboard.writeText(value);
-                            toast({ title: "Copied!", description: `'${value}' copied to clipboard.` });
+                            toast({ title: t("exercise.exerciseImportCSV.copied", "Copied!"), description: t("exercise.exerciseImportCSV.copiedToClipboard", `'${value}' copied to clipboard.`, { value }) });
                           }}
                         >
                           {value} <Copy className="h-3 w-3" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Copy '{value}'</p>
+                        <p>{t("exercise.exerciseImportCSV.copyTooltip", "Copy '{{value}}'", { value })}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -367,7 +368,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                 variant="outline"
                 className="flex items-center justify-center gap-2"
               >
-                <Plus size={16} /> Add Row
+                <Plus size={16} /> {t("exercise.exerciseImportCSV.addRow", "Add Row")}
               </Button>
               <Button
                 type="button"
@@ -375,7 +376,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                 variant="outline"
                 className="flex items-center justify-center gap-2"
               >
-                <Upload size={16} /> Upload CSV
+                <Upload size={16} /> {t("exercise.exerciseImportCSV.uploadCSV", "Upload CSV")}
               </Button>
               <Button
                 type="button"
@@ -383,7 +384,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                 variant="outline"
                 className="flex items-center justify-center gap-2"
               >
-                <Download size={16} /> Download Template
+                <Download size={16} /> {t("exercise.exerciseImportCSV.downloadTemplate", "Download Template")}
               </Button>
               {csvData.length > 0 && (
                 <Button
@@ -392,7 +393,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                   variant="destructive"
                   className="flex items-center justify-center gap-2"
                 >
-                  <Trash2 size={16} /> Clear Data
+                  <Trash2 size={16} /> {t("exercise.exerciseImportCSV.clearData", "Clear Data")}
                 </Button>
               )}
             </div>
@@ -405,7 +406,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
             />
             {csvData.length > 0 && (
               <div className="text-sm text-green-600">
-                Successfully loaded {csvData.length} records.
+                {t("exercise.exerciseImportCSV.loadedRecords", "Successfully loaded {{count}} records.", { count: csvData.length })}
               </div>
             )}
           </div>
@@ -425,24 +426,24 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                         </th>
                       ))}
                       <th className="px-4 py-2 text-left bg-background font-medium whitespace-nowrap">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {csvData.map((row) => (
-                      <tr
-                        key={row.id}
-                        className="block md:table-row mb-4 md:mb-0 border rounded-lg overflow-hidden md:border-0 md:rounded-none md:border-t hover:bg-muted/50"
-                      >
-                        {headers.map((header) => (
-                          <td
-                            key={header}
-                            className="block md:table-cell px-4 py-3 md:py-2 md:whitespace-nowrap border-b md:border-0 last:border-b-0"
-                          >
-                            <span className="font-medium capitalize text-muted-foreground md:hidden mb-1 block">
-                              {header.replace(/_/g, " ")}
-                            </span>
+                        {t("exercise.exerciseImportCSV.actions", "Actions")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvData.map((row) => (
+                        <tr
+                          key={row.id}
+                          className="block md:table-row mb-4 md:mb-0 border rounded-lg overflow-hidden md:border-0 md:rounded-none md:border-t hover:bg-muted/50"
+                        >
+                          {headers.map((header) => (
+                            <td
+                              key={header}
+                              className="block md:table-cell px-4 py-3 md:py-2 md:whitespace-nowrap border-b md:border-0 last:border-b-0"
+                            >
+                              <span className="font-medium capitalize text-muted-foreground md:hidden mb-1 block">
+                                {header.replace(/_/g, " ")}
+                              </span>
 
                             {booleanFields.has(header) ? (
                               <Select
@@ -493,7 +494,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                         ))}
                         <td className="block md:table-cell px-4 py-3 md:py-2">
                           <span className="font-medium capitalize text-muted-foreground md:hidden mb-1 block">
-                            Actions
+                            {t("exercise.exerciseImportCSV.actions", "Actions")}
                           </span>
                           <Button
                             type="button"
@@ -503,7 +504,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                             className="w-full md:w-auto"
                           >
                             <Trash2 size={14} className="md:mr-0" />
-                            <span className="ml-2 md:hidden">Delete Row</span>
+                            <span className="ml-2 md:hidden">{t("exercise.exerciseImportCSV.deleteRow", "Delete Row")}</span>
                           </Button>
                         </td>
                       </tr>
@@ -522,12 +523,12 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Importing...
+                {t("exercise.exerciseImportCSV.importing", "Importing...")}
               </>
             ) : (
               <>
-                <Upload size={16} /> Import
-                {csvData.length > 0 ? `${csvData.length} Records` : "Data"}
+                <Upload size={16} /> {t("exercise.exerciseImportCSV.import", "Import")}
+                {csvData.length > 0 ? `${csvData.length} ${t("exercise.exerciseImportCSV.records", "Records")}` : t("exercise.exerciseImportCSV.data", "Data")}
               </>
             )}
           </Button>
