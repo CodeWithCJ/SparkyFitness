@@ -156,7 +156,10 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
 
           case 'TotalCaloriesBurned':
             const aggregatedTotalCalories = await aggregateTotalCaloriesByDate(records);
-            const totalCaloriesSum = aggregatedTotalCalories.reduce((sum, record) => sum + record.value, 0);
+            // Filter to only include 'total_calories' entries, excluding 'Active Calories' entries
+            const totalCaloriesSum = aggregatedTotalCalories
+              .filter(record => record.type === 'total_calories')
+              .reduce((sum, record) => sum + record.value, 0);
             // Convert from calories to kilocalories (divide by 1000)
             displayValue = Math.round(totalCaloriesSum).toLocaleString();
             break;
