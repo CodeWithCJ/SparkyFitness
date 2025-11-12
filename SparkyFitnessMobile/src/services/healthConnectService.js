@@ -399,6 +399,10 @@ export const transformHealthRecords = (records, metricConfig) => {
         if (record.value !== undefined && record.date) {
           value = record.value;
           recordDate = record.date;
+          // Preserve the type from aggregated records (e.g., 'Active Calories' or 'total_calories')
+          if (record.type) {
+            outputType = record.type;
+          }
         }
       } else {
         switch (recordType) {
