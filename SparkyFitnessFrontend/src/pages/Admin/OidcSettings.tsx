@@ -25,8 +25,8 @@ const OidcSettings: React.FC = () => {
       const fetchedProviders = await oidcSettingsService.getProviders();
       setProviders(fetchedProviders);
     } catch (err: any) {
-      setError(err.message || t('admin.oidcSettings.errorLoadingProviders'));
-      toast({ title: t('admin.oidcSettings.error'), description: t('admin.oidcSettings.errorLoadingProviders'), variant: "destructive" });
+      setError(err.message || t('admin.oidcSettings.errorLoadingProviders', 'Failed to fetch OIDC providers.'));
+      toast({ title: t('admin.oidcSettings.error', 'Error'), description: t('admin.oidcSettings.errorLoadingProviders', 'Failed to fetch OIDC providers.'), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -59,13 +59,13 @@ const OidcSettings: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm(t('admin.oidcSettings.deleteConfirm'))) {
+    if (window.confirm(t('admin.oidcSettings.deleteConfirm', 'Are you sure you want to delete this provider?'))) {
       try {
         await oidcSettingsService.deleteProvider(id);
-        toast({ title: t('success'), description: t('admin.oidcSettings.deleteSuccess') });
+        toast({ title: t('success', 'Success'), description: t('admin.oidcSettings.deleteSuccess', 'OIDC provider deleted successfully.') });
         fetchProviders();
       } catch (err: any) {
-        toast({ title: t('admin.oidcSettings.error'), description: t('admin.oidcSettings.deleteFailed'), variant: "destructive" });
+        toast({ title: t('admin.oidcSettings.error', 'Error'), description: t('admin.oidcSettings.deleteFailed', 'Failed to delete OIDC provider.'), variant: "destructive" });
       }
     }
   };
@@ -74,15 +74,15 @@ const OidcSettings: React.FC = () => {
     try {
       if (provider.id) {
         await oidcSettingsService.updateProvider(provider.id, provider);
-        toast({ title: t('success'), description: t('admin.oidcSettings.updateSuccess') });
+        toast({ title: t('success', 'Success'), description: t('admin.oidcSettings.updateSuccess', 'OIDC provider updated successfully.') });
       } else {
         await oidcSettingsService.createProvider(provider);
-        toast({ title: t('success'), description: t('admin.oidcSettings.createSuccess') });
+        toast({ title: t('success', 'Success'), description: t('admin.oidcSettings.createSuccess', 'OIDC provider created successfully.') });
       }
       setIsDialogOpen(false);
       fetchProviders();
     } catch (err: any) {
-      toast({ title: t('admin.oidcSettings.error'), description: t('admin.oidcSettings.saveFailed'), variant: "destructive" });
+      toast({ title: t('admin.oidcSettings.error', 'Error'), description: t('admin.oidcSettings.saveFailed', 'Failed to save OIDC provider.'), variant: "destructive" });
     }
   };
 
@@ -90,36 +90,36 @@ const OidcSettings: React.FC = () => {
     const updatedProvider = { ...provider, [field]: !(provider[field] || false) };
     try {
       await oidcSettingsService.updateProvider(updatedProvider.id!, updatedProvider);
-      toast({ title: t('success'), description: t('admin.oidcSettings.statusUpdated', { field: field === 'is_active' ? 'status' : 'auto-register' }) });
+      toast({ title: t('success', 'Success'), description: t('admin.oidcSettings.statusUpdated', { field: field === 'is_active' ? 'status' : 'auto-register', defaultValue: `Provider ${field === 'is_active' ? 'status' : 'auto-register'} updated.` }) });
       fetchProviders();
     } catch (err: any) {
-      toast({ title: t('admin.oidcSettings.error'), description: t('admin.oidcSettings.failedToUpdateProvider'), variant: "destructive" });
+      toast({ title: t('admin.oidcSettings.error', 'Error'), description: t('admin.oidcSettings.failedToUpdateProvider', 'Failed to update provider.'), variant: "destructive" });
     }
   };
 
-  if (loading) return <div>{t('admin.oidcSettings.loadingProviders')}</div>;
-  if (error) return <div className="text-red-500">{t('admin.oidcSettings.error')}: {error}</div>;
+  if (loading) return <div>{t('admin.oidcSettings.loadingProviders', 'Loading OIDC providers...')}</div>;
+  if (error) return <div className="text-red-500">{t('admin.oidcSettings.error', 'Error')}: {error}</div>;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('admin.oidcSettings.title')}</CardTitle>
-        <CardDescription>{t('admin.oidcSettings.description')}</CardDescription>
+        <CardTitle>{t('admin.oidcSettings.title', 'OIDC Authentication Providers')}</CardTitle>
+        <CardDescription>{t('admin.oidcSettings.description', 'Manage OIDC providers for user authentication.')}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex justify-end mb-4">
           <Button onClick={handleAddNew}>
-            <PlusCircle className="mr-2 h-4 w-4" /> {t('admin.oidcSettings.addNewProvider')}
+            <PlusCircle className="mr-2 h-4 w-4" /> {t('admin.oidcSettings.addNewProvider', 'Add New Provider')}
           </Button>
         </div>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t('admin.oidcSettings.logo')}</TableHead>
-              <TableHead>{t('admin.oidcSettings.displayName')}</TableHead>
-              <TableHead>{t('admin.oidcSettings.active')}</TableHead>
-              <TableHead>{t('admin.oidcSettings.autoRegister')}</TableHead>
-              <TableHead className="text-right">{t('admin.oidcSettings.actions')}</TableHead>
+              <TableHead>{t('admin.oidcSettings.logo', 'Logo')}</TableHead>
+              <TableHead>{t('admin.oidcSettings.displayName', 'Display Name')}</TableHead>
+              <TableHead>{t('admin.oidcSettings.active', 'Active')}</TableHead>
+              <TableHead>{t('admin.oidcSettings.autoRegister', 'Auto Register')}</TableHead>
+              <TableHead className="text-right">{t('admin.oidcSettings.actions', 'Actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -180,7 +180,7 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
       profile_signing_algorithm: 'none',
       timeout: 30000,
     }));
-    toast({ title: t('admin.oidcSettings.defaultsRestored'), description: t('admin.oidcSettings.defaultsRestored') });
+    toast({ title: t('admin.oidcSettings.defaultsRestored', 'Defaults Restored'), description: t('admin.oidcSettings.defaultsRestored', 'OIDC provider fields have been reset to their default values.') });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -211,7 +211,7 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
         const uploadResponse = await oidcSettingsService.uploadLogo(providerToSave.id, logoFile);
         providerToSave.logo_url = uploadResponse.logoUrl;
       } catch (err) {
-        toast({ title: t('admin.oidcSettings.error'), description: t('admin.oidcSettings.uploadFailed'), variant: "destructive" });
+        toast({ title: t('admin.oidcSettings.error', 'Error'), description: t('admin.oidcSettings.uploadFailed', 'Failed to upload logo.'), variant: "destructive" });
         return; // Stop the save process if logo upload fails
       }
     }
@@ -223,52 +223,52 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
       <DialogContent className="sm:max-w-[800px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{editedProvider.id ? t('admin.oidcSettings.editProvider') : t('admin.oidcSettings.addProvider')}</DialogTitle>
-            <DialogDescription>{t('admin.oidcSettings.fillDetails')}</DialogDescription>
+            <DialogTitle>{editedProvider.id ? t('admin.oidcSettings.editProvider', 'Edit OIDC Provider') : t('admin.oidcSettings.addProvider', 'Add OIDC Provider')}</DialogTitle>
+            <DialogDescription>{t('admin.oidcSettings.fillDetails', 'Fill in the details for the OIDC provider.')}</DialogDescription>
           </DialogHeader>
           <div className="max-h-[70vh] overflow-y-auto p-4">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="display_name">{t('admin.oidcSettings.displayName')}</Label>
+                <Label htmlFor="display_name">{t('admin.oidcSettings.displayName', 'Display Name')}</Label>
                 <Input id="display_name" value={editedProvider.display_name || ''} onChange={handleChange} />
               </div>
               <div className="flex items-center justify-between pt-4">
                 <div className="flex items-center space-x-2">
                     <Switch id="is_active" checked={editedProvider.is_active} onCheckedChange={(c) => handleSwitchChange('is_active', c)} />
-                    <Label htmlFor="is_active">{t('admin.oidcSettings.active')}</Label>
+                    <Label htmlFor="is_active">{t('admin.oidcSettings.active', 'Active')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                     <Switch id="auto_register" checked={editedProvider.auto_register || false} onCheckedChange={(c) => handleSwitchChange('auto_register', c)} />
-                    <Label htmlFor="auto_register">{t('admin.oidcSettings.autoRegister')}</Label>
+                    <Label htmlFor="auto_register">{t('admin.oidcSettings.autoRegister', 'Auto Register')}</Label>
                 </div>
               </div>
               <div>
-                <Label htmlFor="logo_file">{t('admin.oidcSettings.logoFile')}</Label>
+                <Label htmlFor="logo_file">{t('admin.oidcSettings.logoFile', 'Logo File')}</Label>
                 <Input id="logo_file" type="file" onChange={handleFileChange} />
               </div>
               <div>
-                <Label htmlFor="logo_url">{t('admin.oidcSettings.logoUrl')}</Label>
-                <Input id="logo_url" value={editedProvider.logo_url || ''} onChange={handleChange} readOnly placeholder={t('admin.oidcSettings.willBeSetOnUpload')} />
+                <Label htmlFor="logo_url">{t('admin.oidcSettings.logoUrl', 'Logo URL')}</Label>
+                <Input id="logo_url" value={editedProvider.logo_url || ''} onChange={handleChange} readOnly placeholder={t('admin.oidcSettings.willBeSetOnUpload', 'Will be set on upload')} />
               </div>
               <div>
-                <Label htmlFor="issuer_url">{t('admin.oidcSettings.issuerUrl')}</Label>
+                <Label htmlFor="issuer_url">{t('admin.oidcSettings.issuerUrl', 'Issuer URL')}</Label>
                 <Input id="issuer_url" value={editedProvider.issuer_url} onChange={handleChange} />
               </div>
               <div>
-                <Label htmlFor="client_id">{t('admin.oidcSettings.clientId')}</Label>
+                <Label htmlFor="client_id">{t('admin.oidcSettings.clientId', 'Client ID')}</Label>
                 <Input id="client_id" value={editedProvider.client_id} onChange={handleChange} autoComplete="off" />
               </div>
               <div>
-                <Label htmlFor="client_secret">{t('admin.oidcSettings.clientSecret')}</Label>
-                <Input id="client_secret" type="password" onChange={handleChange} placeholder={t('admin.oidcSettings.leaveUnchanged')} autoComplete="new-password" />
+                <Label htmlFor="client_secret">{t('admin.oidcSettings.clientSecret', 'Client Secret')}</Label>
+                <Input id="client_secret" type="password" onChange={handleChange} placeholder={t('admin.oidcSettings.leaveUnchanged', 'Leave unchanged if *****')} autoComplete="new-password" />
               </div>
               <div>
-                <Label htmlFor="scope">{t('admin.oidcSettings.scope')}</Label>
+                <Label htmlFor="scope">{t('admin.oidcSettings.scope', 'Scope')}</Label>
                 <Input id="scope" value={editedProvider.scope} onChange={handleChange} />
               </div>
               <div>
-                <Label htmlFor="redirect_uris">{t('admin.oidcSettings.redirectUri')}</Label>
-                <Input id="redirect_uris" value={editedProvider.redirect_uris.join(', ')} onChange={handleChange} placeholder={t('admin.oidcSettings.redirectUriPlaceholder', { origin: window.location.origin })} />
+                <Label htmlFor="redirect_uris">{t('admin.oidcSettings.redirectUri', 'Redirect URI')}</Label>
+                <Input id="redirect_uris" value={editedProvider.redirect_uris.join(', ')} onChange={handleChange} placeholder={t('admin.oidcSettings.redirectUriPlaceholder', { origin: window.location.origin, defaultValue: `e.g., ${window.location.origin}/oidc-callback` })} />
               </div>
               <div>
                 <Label htmlFor="token_endpoint_auth_method">{t('admin.oidcSettings.tokenEndpointAuthMethod')}</Label>
@@ -284,20 +284,20 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
                 </select>
               </div>
               <div>
-                <Label htmlFor="signing_algorithm">{t('admin.oidcSettings.idTokenSignedAlg')}</Label>
+                <Label htmlFor="signing_algorithm">{t('admin.oidcSettings.idTokenSignedAlg', 'ID Token Signed Alg')}</Label>
                 <Input id="signing_algorithm" value={editedProvider.signing_algorithm || ''} onChange={handleChange} />
               </div>
               <div>
-                <Label htmlFor="profile_signing_algorithm">{t('admin.oidcSettings.userinfoSignedAlg')}</Label>
+                <Label htmlFor="profile_signing_algorithm">{t('admin.oidcSettings.userinfoSignedAlg', 'Userinfo Signed Alg')}</Label>
                 <Input id="profile_signing_algorithm" value={editedProvider.profile_signing_algorithm || ''} onChange={handleChange} />
               </div>
               <div>
-                <Label htmlFor="timeout">{t('admin.oidcSettings.requestTimeout')}</Label>
+                <Label htmlFor="timeout">{t('admin.oidcSettings.requestTimeout', 'Request Timeout (ms)')}</Label>
                 <Input id="timeout" type="number" value={editedProvider.timeout || ''} onChange={handleChange} />
               </div>
             </div>
             <div className="text-sm text-muted-foreground mt-4">
-              <p>{t('admin.oidcSettings.redirectUriInfo')}</p>
+              <p>{t('admin.oidcSettings.redirectUriInfo', 'The Redirect URI for your OIDC provider should be: SPARKY_FITNESS_FRONTEND_URL/oidc-callback')}</p>
               <div className="flex items-center">
                 <code className="font-mono bg-gray-100 p-1 rounded">{`${window.location.origin}/oidc-callback`}</code>
                 <Button
@@ -307,14 +307,14 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
                   className="ml-2 h-5 w-5"
                   onClick={() => {
                     navigator.clipboard.writeText(`${window.location.origin}/oidc-callback`);
-                    toast({ title: t('copied'), description: t('admin.oidcSettings.redirectUriCopied') });
+                    toast({ title: t('copied', 'Copied!'), description: t('admin.oidcSettings.redirectUriCopied', 'Redirect URI copied to clipboard.') });
                   }}
                 >
                   <ClipboardCopy className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="mt-1">{t('admin.oidcSettings.localhostWarning')}</p>
-              <p className="mt-2">{t('admin.oidcSettings.proxyWarning')}</p>
+              <p className="mt-1">{t('admin.oidcSettings.localhostWarning', 'Ensure your OIDC provider allows localhost or your local IP for development.')}</p>
+              <p className="mt-2">{t('admin.oidcSettings.proxyWarning', 'If using a proxy like Nginx Proxy Manager, ensure the following headers are configured:')}</p>
               <div className="relative group mt-2">
                 <pre id="proxy-config-code" className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">
                   <code>
@@ -335,7 +335,7 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
                     const codeBlock = document.getElementById('proxy-config-code');
                     if (codeBlock) {
                       navigator.clipboard.writeText(codeBlock.innerText);
-                      toast({ title: t('copied'), description: t('admin.oidcSettings.proxyConfigCopied') });
+                      toast({ title: t('copied', 'Copied!'), description: t('admin.oidcSettings.proxyConfigCopied', 'Proxy configuration copied to clipboard.') });
                     }
                   }}
                 >
@@ -345,9 +345,9 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
             </div>
           </div>
           <DialogFooter className="pt-4 border-t">
-            <Button type="button" variant="outline" onClick={handleResetToDefaults}>{t('admin.oidcSettings.resetToDefaults')}</Button>
-            <Button type="button" variant="outline" onClick={onClose}>{t('admin.oidcSettings.cancel')}</Button>
-            <Button type="submit">{t('admin.oidcSettings.save')}</Button>
+            <Button type="button" variant="outline" onClick={handleResetToDefaults}>{t('admin.oidcSettings.resetToDefaults', 'Reset to Defaults')}</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{t('admin.oidcSettings.cancel', 'Cancel')}</Button>
+            <Button type="submit">{t('admin.oidcSettings.save', 'Save')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

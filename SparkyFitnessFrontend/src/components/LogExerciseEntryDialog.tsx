@@ -1,4 +1,5 @@
 import React, { useState, useEffect, ChangeEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,7 @@ interface LogExerciseEntryDialogProps {
   initialImageUrl?: string;
 }
 
-const SortableSetItem = React.memo(({ set, index, handleSetChange, handleDuplicateSet, handleRemoveSet, weightUnit }: { set: WorkoutPresetSet, index: number, handleSetChange: Function, handleDuplicateSet: Function, handleRemoveSet: Function, weightUnit: string }) => {
+const SortableSetItem = React.memo(({ set, index, handleSetChange, handleDuplicateSet, handleRemoveSet, weightUnit, t }: { set: WorkoutPresetSet, index: number, handleSetChange: Function, handleDuplicateSet: Function, handleRemoveSet: Function, weightUnit: string, t: Function }) => {
   const {
     attributes,
     listeners,
@@ -50,8 +51,8 @@ const SortableSetItem = React.memo(({ set, index, handleSetChange, handleDuplica
         <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-8 gap-2 flex-grow">
-        <div className="md:col-span-1"><Label>Set</Label><p className="font-medium p-2">{set.set_number}</p></div>
-        <div className="md:col-span-2"><Label>Type</Label>
+        <div className="md:col-span-1"><Label>{t("exercise.logExerciseEntryDialog.setLabel", "Set")}</Label><p className="font-medium p-2">{set.set_number}</p></div>
+        <div className="md:col-span-2"><Label>{t("exercise.logExerciseEntryDialog.typeLabel", "Type")}</Label>
           <Select value={set.set_type} onValueChange={(value) => handleSetChange(index, 'set_type', value)}>
             <SelectTrigger><SelectValue/></SelectTrigger>
             <SelectContent>
@@ -63,11 +64,11 @@ const SortableSetItem = React.memo(({ set, index, handleSetChange, handleDuplica
             </SelectContent>
           </Select>
         </div>
-        <div className="md:col-span-1"><Label className="flex items-center"><Repeat className="h-4 w-4 mr-1" style={{ color: '#3b82f6' }} />Reps</Label><Input type="number" value={set.reps ?? ''} onChange={(e) => handleSetChange(index, 'reps', Number(e.target.value))} /></div>
-        <div className="md:col-span-1"><Label className="flex items-center"><Weight className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} />Weight ({weightUnit})</Label><Input type="number" value={set.weight ?? ''} onChange={(e) => handleSetChange(index, 'weight', Number(e.target.value))} /></div>
-        <div className="md:col-span-1"><Label className="flex items-center"><Timer className="h-4 w-4 mr-1" style={{ color: '#f97316' }} />Duration</Label><Input type="number" value={set.duration ?? ''} onChange={(e) => handleSetChange(index, 'duration', Number(e.target.value))} /></div>
-        <div className="md:col-span-1"><Label className="flex items-center"><Timer className="h-4 w-4 mr-1" style={{ color: '#8b5cf6' }} />Rest (s)</Label><Input type="number" value={set.rest_time ?? ''} onChange={(e) => handleSetChange(index, 'rest_time', Number(e.target.value))} /></div>
-        <div className="col-span-1 md:col-span-8"><Label>Notes</Label><Textarea value={set.notes ?? ''} onChange={(e) => handleSetChange(index, 'notes', e.target.value)} /></div>
+        <div className="md:col-span-1"><Label className="flex items-center"><Repeat className="h-4 w-4 mr-1" style={{ color: '#3b82f6' }} />{t("exercise.logExerciseEntryDialog.repsLabel", "Reps")}</Label><Input type="number" value={set.reps ?? ''} onChange={(e) => handleSetChange(index, 'reps', Number(e.target.value))} /></div>
+        <div className="md:col-span-1"><Label className="flex items-center"><Weight className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} />{t("exercise.logExerciseEntryDialog.weightLabel", "Weight")} ({weightUnit})</Label><Input type="number" value={set.weight ?? ''} onChange={(e) => handleSetChange(index, 'weight', Number(e.target.value))} /></div>
+        <div className="md:col-span-1"><Label className="flex items-center"><Timer className="h-4 w-4 mr-1" style={{ color: '#f97316' }} />{t("exercise.logExerciseEntryDialog.durationLabel", "Duration")}</Label><Input type="number" value={set.duration ?? ''} onChange={(e) => handleSetChange(index, 'duration', Number(e.target.value))} /></div>
+        <div className="md:col-span-1"><Label className="flex items-center"><Timer className="h-4 w-4 mr-1" style={{ color: '#8b5cf6' }} />{t("exercise.logExerciseEntryDialog.restLabel", "Rest (s)")}</Label><Input type="number" value={set.rest_time ?? ''} onChange={(e) => handleSetChange(index, 'rest_time', Number(e.target.value))} /></div>
+        <div className="col-span-1 md:col-span-8"><Label>{t("exercise.logExerciseEntryDialog.notesLabel", "Notes")}</Label><Textarea value={set.notes ?? ''} onChange={(e) => handleSetChange(index, 'notes', e.target.value)} /></div>
       </div>
       <div className="flex flex-col space-y-1">
         <Button variant="ghost" size="icon" onClick={() => handleDuplicateSet(index)}><Copy className="h-4 w-4" /></Button>
@@ -87,6 +88,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   initialNotes,
   initialImageUrl,
 }) => {
+  const { t } = useTranslation();
   const { loggingLevel, weightUnit, distanceUnit, convertWeight, convertDistance } = usePreferences();
   const { toast } = useToast();
 
@@ -189,7 +191,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
 
   const handleSave = async () => {
     if (!exercise) {
-      warn(loggingLevel, "LogExerciseEntryDialog: Attempted to save without a selected exercise.");
+      warn(loggingLevel, t("exercise.logExerciseEntryDialog.noExerciseSelected", "LogExerciseEntryDialog: Attempted to save without a selected exercise."));
       return;
     }
 
@@ -218,8 +220,8 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
       await createExerciseEntry(entryData);
       info(loggingLevel, `LogExerciseEntryDialog: Exercise entry saved successfully for ${exercise.name}`);
       toast({
-        title: "Success",
-        description: `Exercise "${exercise.name}" logged successfully.`,
+        title: t("exercise.logExerciseEntryDialog.successTitle", "Success"),
+        description: t("exercise.logExerciseEntryDialog.successDescription", "Exercise \"{{exerciseName}}\" logged successfully.", { exerciseName: exercise.name }),
         variant: "default",
       });
       onSaveSuccess();
@@ -227,8 +229,8 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     } catch (err) {
       error(loggingLevel, "LogExerciseEntryDialog: Error saving exercise entry:", err);
       toast({
-        title: "Error",
-        description: `Failed to log exercise: ${err instanceof Error ? err.message : String(err)}`,
+        title: t("exercise.logExerciseEntryDialog.errorTitle", "Error"),
+        description: t("exercise.logExerciseEntryDialog.errorDescription", "Failed to log exercise: {{errorMessage}}", { errorMessage: err instanceof Error ? err.message : String(err) }),
         variant: "destructive",
       });
     } finally {
@@ -240,9 +242,9 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Log Exercise: {exercise?.name}</DialogTitle>
+          <DialogTitle>{t("exercise.logExerciseEntryDialog.logExercise", "Log Exercise: {{exerciseName}}", { exerciseName: exercise?.name })}</DialogTitle>
           <DialogDescription>
-            Enter details for your exercise session on {selectedDate}.
+            {t("exercise.logExerciseEntryDialog.enterDetails", "Enter details for your exercise session on {{selectedDate}}.", { selectedDate })}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -250,61 +252,61 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
             <SortableContext items={sets.map((_, index) => `set-${index}`)}>
               <div className="space-y-2">
                 {sets.map((set, index) => (
-                  <SortableSetItem key={`set-${index}`} set={set} index={index} handleSetChange={handleSetChange} handleDuplicateSet={handleDuplicateSet} handleRemoveSet={handleRemoveSet} weightUnit={weightUnit} />
+                  <SortableSetItem key={`set-${index}`} set={set} index={index} handleSetChange={handleSetChange} handleDuplicateSet={handleDuplicateSet} handleRemoveSet={handleRemoveSet} weightUnit={weightUnit} t={t} />
                 ))}
               </div>
             </SortableContext>
           </DndContext>
           <Button type="button" variant="outline" onClick={handleAddSet}>
-            <Plus className="h-4 w-4 mr-2" /> Add Set
+            <Plus className="h-4 w-4 mr-2" /> {t("exercise.logExerciseEntryDialog.addSet", "Add Set")}
           </Button>
           <div className="space-y-2">
-            <Label htmlFor="calories-burned">Calories Burned (Optional)</Label>
+            <Label htmlFor="calories-burned">{t("exercise.logExerciseEntryDialog.caloriesBurnedOptional", "Calories Burned (Optional)")}</Label>
             <Input
               id="calories-burned"
               type="number"
               value={caloriesBurnedInput}
               onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Number(e.target.value))}
-              placeholder="Enter calories burned"
+              placeholder={t("exercise.logExerciseEntryDialog.enterCaloriesBurned", "Enter calories burned")}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="distance">Distance ({distanceUnit})</Label>
+            <Label htmlFor="distance">{t("exercise.logExerciseEntryDialog.distanceLabel", "Distance ({{distanceUnit}})", { distanceUnit })}</Label>
             <Input
               id="distance"
               type="number"
               value={distanceInput}
               onChange={(e) => setDistanceInput(e.target.value === '' ? '' : Number(e.target.value))}
-              placeholder={`Enter distance in ${distanceUnit}`}
+              placeholder={t("exercise.logExerciseEntryDialog.enterDistance", "Enter distance in {{distanceUnit}}", { distanceUnit })}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="avg-heart-rate">Average Heart Rate (bpm)</Label>
+            <Label htmlFor="avg-heart-rate">{t("exercise.logExerciseEntryDialog.avgHeartRateLabel", "Average Heart Rate (bpm)")}</Label>
             <Input
               id="avg-heart-rate"
               type="number"
               value={avgHeartRateInput}
               onChange={(e) => setAvgHeartRateInput(e.target.value === '' ? '' : Number(e.target.value))}
-              placeholder="Enter average heart rate"
+              placeholder={t("exercise.logExerciseEntryDialog.enterAvgHeartRate", "Enter average heart rate")}
             />
           </div>
           <div className="space-y-2">
-            <Label>Custom Activity Details</Label>
+            <Label>{t("exercise.logExerciseEntryDialog.customActivityDetails", "Custom Activity Details")}</Label>
             <ExerciseActivityDetailsEditor
               initialData={activityDetails}
               onChange={setActivityDetails}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="notes">Session Notes</Label>
+            <Label htmlFor="notes">{t("exercise.logExerciseEntryDialog.sessionNotes", "Session Notes")}</Label>
             <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="image">Upload Image</Label>
+            <Label htmlFor="image">{t("exercise.logExerciseEntryDialog.uploadImage", "Upload Image")}</Label>
             <Input id="image" type="file" accept="image/*" onChange={handleImageUpload} />
             {imageFile && (
               <div className="mt-2">
-                <img src={URL.createObjectURL(imageFile)} alt="Preview" className="h-24 w-24 object-cover rounded-md" />
+                <img src={URL.createObjectURL(imageFile)} alt={t("exercise.logExerciseEntryDialog.imagePreviewAlt", "Preview")} className="h-24 w-24 object-cover rounded-md" />
               </div>
             )}
           </div>
@@ -312,10 +314,10 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         {exercise && <ExerciseHistoryDisplay exerciseId={exercise.id} />}
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={loading}>
-            Cancel
+            {t("exercise.logExerciseEntryDialog.cancel", "Cancel")}
           </Button>
           <Button onClick={handleSave} disabled={loading || !exercise}>
-            {loading ? "Saving..." : "Save Entry"}
+            {loading ? t("exercise.logExerciseEntryDialog.saving", "Saving...") : t("exercise.logExerciseEntryDialog.saveEntry", "Save Entry")}
           </Button>
         </DialogFooter>
       </DialogContent>

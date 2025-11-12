@@ -172,7 +172,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
       items.push(
         { value: "checkin", label: "Check-In", icon: Activity },
         { value: "foods", label: "Foods", icon: Utensils },
-        { value: "exercises", label: "Exercises", icon: Dumbbell },
+        { value: "exercises", label: t('exercise.title', 'Exercises'), icon: Dumbbell },
         { value: "goals", label: "Goals", icon: Target }
       );
     } else {
@@ -195,7 +195,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
       mobileTabs.push(
         { value: "home", label: t('nav.diary'), icon: Home },
         { value: "reports", label: t('nav.reports'), icon: BarChart3 },
-        { value: "Add", label: "Add", icon: isAddCompOpen ? X : Home },
+        { value: "Add", label: t('common.add', 'Add'), icon: isAddCompOpen ? X : Home },
         { value: "settings", label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
@@ -243,7 +243,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
         { value: "checkin", label: t('nav.checkin'), icon: Activity },
         { value: "reports", label: t('nav.reports'), icon: BarChart3 },
         { value: "foods", label: t('nav.foods'), icon: Utensils },
-        { value: "exercises", label: t('nav.exercises'), icon: Dumbbell },
+        { value: "exercises", label: t('exercise.title', 'Exercises'), icon: Dumbbell },
         { value: "goals", label: t('nav.goals'), icon: Target },
         { value: "settings", label: t('nav.settings'), icon: SettingsIcon }
       );

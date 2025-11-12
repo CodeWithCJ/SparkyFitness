@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +91,7 @@ const nutrientDetails: {
 };
 
 const FoodDatabaseManager: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const { nutrientDisplayPreferences, loggingLevel } = usePreferences();
@@ -176,10 +178,10 @@ const FoodDatabaseManager: React.FC = () => {
       await togglePublicSharing(foodId, currentState);
 
       toast({
-        title: "Success",
+        title: t("common.success", "Success"),
         description: !currentState
-          ? "Food shared with public"
-          : "Food made private",
+          ? t("foodDatabaseManager.foodSharedWithPublic", "Food shared with public")
+          : t("foodDatabaseManager.foodMadePrivate", "Food made private"),
       });
 
       fetchFoodsData();
@@ -198,8 +200,8 @@ const FoodDatabaseManager: React.FC = () => {
     } catch (error: any) {
       console.error("Error fetching deletion impact:", error);
       toast({
-        title: "Error",
-        description: error.message || "Could not fetch deletion impact. Please try again.",
+        title: t("common.error", "Error"),
+        description: error.message || t("foodDatabaseManager.failedToFetchDeletionImpact", "Could not fetch deletion impact. Please try again."),
         variant: "destructive",
       });
     }
@@ -211,15 +213,15 @@ const FoodDatabaseManager: React.FC = () => {
     try {
       const result = await deleteFoodService(foodToDelete.id, activeUserId, force);
       toast({
-        title: "Success",
+        title: t("common.success", "Success"),
         description: result.message, // Use the message from the backend
       });
       fetchFoodsData();
     } catch (error: any) { // Add type annotation for error
       console.error("Error deleting food:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to delete food.", // Use error message from backend if available
+        title: t("common.error", "Error"),
+        description: error.message || t("foodDatabaseManager.failedToDeleteFood", "Failed to delete food."), // Use error message from backend if available
         variant: "destructive",
       });
     } finally {
@@ -244,8 +246,8 @@ const FoodDatabaseManager: React.FC = () => {
     setShowFoodSearchDialog(false);
     fetchFoodsData();
     toast({
-      title: "Food Added",
-      description: `${food.name} has been added to your database.`,
+      title: t("foodDatabaseManager.foodAdded", "Food Added"),
+      description: t("foodDatabaseManager.foodAddedSuccess", { foodName: food.name, defaultValue: `${food.name} has been added to your database.` }),
     });
   };
 
@@ -257,8 +259,8 @@ const FoodDatabaseManager: React.FC = () => {
   ) => {
     if (!user || !activeUserId) {
       toast({
-        title: "Error",
-        description: "User not authenticated.",
+        title: t("common.error", "Error"),
+        description: t("foodDatabaseManager.userNotAuthenticated", "User not authenticated."),
         variant: "destructive",
       });
       return;
@@ -276,16 +278,16 @@ const FoodDatabaseManager: React.FC = () => {
       });
 
       toast({
-        title: "Success",
-        description: `${food.name} has been added to your meal.`,
+        title: t("common.success", "Success"),
+        description: t("foodDatabaseManager.foodAddedToMealSuccess", { foodName: food.name, defaultValue: `${food.name} has been added to your meal.` }),
       });
       setShowFoodUnitSelectorDialog(false);
       setFoodToAddToMeal(null);
     } catch (error: any) {
       console.error("Error adding food to meal:", error);
       toast({
-        title: "Error",
-        description: `Failed to add ${food.name} to meal.`,
+        title: t("common.error", "Error"),
+        description: t("foodDatabaseManager.failedToAddFoodToMeal", { foodName: food.name, defaultValue: `Failed to add ${food.name} to meal.` }),
         variant: "destructive",
       });
     }
@@ -304,7 +306,7 @@ const FoodDatabaseManager: React.FC = () => {
     if (!food.user_id) {
       return (
         <Badge variant="outline" className="text-xs w-fit">
-          System
+          {t("foodDatabaseManager.system", "System")}
         </Badge>
       );
     }
@@ -312,7 +314,7 @@ const FoodDatabaseManager: React.FC = () => {
     if (food.user_id === user?.id) {
       return (
         <Badge variant="secondary" className="text-xs w-fit">
-          Private
+          {t("foodDatabaseManager.private", "Private")}
         </Badge>
       );
     }
@@ -323,7 +325,7 @@ const FoodDatabaseManager: React.FC = () => {
           variant="outline"
           className="text-xs w-fit bg-blue-50 text-blue-700"
         >
-          Family
+          {t("foodDatabaseManager.family", "Family")}
         </Badge>
       );
     }
@@ -333,41 +335,41 @@ const FoodDatabaseManager: React.FC = () => {
   const getFilterTitle = () => {
     switch (foodFilter) {
       case "all":
-        return `All Foods (${totalCount})`;
+        return t("foodDatabaseManager.allFoodsCount", { count: totalCount, defaultValue: `All Foods (${totalCount})` });
       case "mine":
-        return `My Foods (${totalCount})`;
+        return t("foodDatabaseManager.myFoodsCount", { count: totalCount, defaultValue: `My Foods (${totalCount})` });
       case "family":
-        return `Family Foods (${totalCount})`;
+        return t("foodDatabaseManager.familyFoodsCount", { count: totalCount, defaultValue: `Family Foods (${totalCount})` });
       case "public":
-        return `Public Foods (${totalCount})`;
+        return t("foodDatabaseManager.publicFoodsCount", { count: totalCount, defaultValue: `Public Foods (${totalCount})` });
       case "needs-review":
-        return `Foods Needing Review (${totalCount})`;
+        return t("foodDatabaseManager.foodsNeedingReviewCount", { count: totalCount, defaultValue: `Foods Needing Review (${totalCount})` });
       default:
-        return `Foods (${totalCount})`;
+        return t("foodDatabaseManager.foodsCount", { count: totalCount, defaultValue: `Foods (${totalCount})` });
     }
   };
 
   const getEmptyMessage = () => {
     switch (foodFilter) {
       case "all":
-        return "No foods found";
+        return t("foodDatabaseManager.noFoodsFound", "No foods found");
       case "mine":
-        return "No foods created by you found";
+        return t("foodDatabaseManager.noFoodsCreatedByYouFound", "No foods created by you found");
       case "family":
-        return "No family foods found";
+        return t("foodDatabaseManager.noFamilyFoodsFound", "No family foods found");
       case "public":
-        return "No public foods found";
+        return t("foodDatabaseManager.noPublicFoodsFound", "No public foods found");
       case "needs-review":
-        return "No foods need your review";
+        return t("foodDatabaseManager.noFoodsNeedYourReview", "No foods need your review");
       default:
-        return "No foods found";
+        return t("foodDatabaseManager.noFoodsFound", "No foods found");
     }
   };
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   if (!user || !activeUserId) {
-    return <div>Please sign in to manage your food database.</div>;
+    return <div>{t("foodDatabaseManager.pleaseSignInToManageFoodDatabase", "Please sign in to manage your food database.")}</div>;
   }
 
   return (
@@ -375,13 +377,13 @@ const FoodDatabaseManager: React.FC = () => {
       {/* Food Database Section */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-2xl font-bold">Food Database</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t("foodDatabaseManager.foodDatabase", "Food Database")}</CardTitle>
           <Button
             className="whitespace-nowrap"
             onClick={() => setShowFoodSearchDialog(true)}
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add New Food
+            {t("foodDatabaseManager.addNewFood", "Add New Food")}
           </Button>
         </CardHeader>
         <CardContent>
@@ -392,7 +394,7 @@ const FoodDatabaseManager: React.FC = () => {
               <div className="relative flex-1 min-w-[180px]">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search foods..."
+                  placeholder={t("foodDatabaseManager.searchFoodsPlaceholder", "Search foods...")}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -404,14 +406,14 @@ const FoodDatabaseManager: React.FC = () => {
                 <Filter className="h-4 w-4 text-gray-500" />
                 <Select value={foodFilter} onValueChange={(value: FoodFilter) => setFoodFilter(value)}>
                   <SelectTrigger className="w-32">
-                    <SelectValue />
+                    <SelectValue placeholder={t("foodDatabaseManager.all", "All")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="mine">My Foods</SelectItem>
-                    <SelectItem value="family">Family</SelectItem>
-                    <SelectItem value="public">Public</SelectItem>
-                    <SelectItem value="needs-review">Needs Review</SelectItem>
+                    <SelectItem value="all">{t("foodDatabaseManager.all", "All")}</SelectItem>
+                    <SelectItem value="mine">{t("foodDatabaseManager.myFoods", "My Foods")}</SelectItem>
+                    <SelectItem value="family">{t("foodDatabaseManager.family", "Family")}</SelectItem>
+                    <SelectItem value="public">{t("foodDatabaseManager.public", "Public")}</SelectItem>
+                    <SelectItem value="needs-review">{t("foodDatabaseManager.needsReview", "Needs Review")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -420,19 +422,19 @@ const FoodDatabaseManager: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-4">
               {/* Sort by dropdown */}
               <div className="flex items-center gap-2 whitespace-nowrap">
-                <span className="text-sm">Sort by:</span>
+                <span className="text-sm">{t("foodDatabaseManager.sortBy", "Sort by:")}</span>
                 <Select value={sortOrder} onValueChange={setSortOrder}>
                   <SelectTrigger className="w-32">
-                    <SelectValue />
+                    <SelectValue placeholder={t("foodDatabaseManager.nameAsc", "Name (A-Z)")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="name:asc">Name (A-Z)</SelectItem>
-                    <SelectItem value="name:desc">Name (Z-A)</SelectItem>
+                    <SelectItem value="name:asc">{t("foodDatabaseManager.nameAsc", "Name (A-Z)")}</SelectItem>
+                    <SelectItem value="name:desc">{t("foodDatabaseManager.nameDesc", "Name (Z-A)")}</SelectItem>
                     <SelectItem value="calories:asc">
-                      Calories (Low to High)
+                      {t("foodDatabaseManager.caloriesLowToHigh", "Calories (Low to High)")}
                     </SelectItem>
                     <SelectItem value="calories:desc">
-                      Calories (High to Low)
+                      {t("foodDatabaseManager.caloriesHighToLow", "Calories (High to Low)")}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -440,7 +442,7 @@ const FoodDatabaseManager: React.FC = () => {
 
               {/* Items per page selector */}
               <div className="flex items-center gap-2 whitespace-nowrap">
-                <span className="text-sm">Items per page:</span>
+                <span className="text-sm">{t("foodDatabaseManager.itemsPerPage", "Items per page:")}</span>
                 <Select
                   value={itemsPerPage.toString()}
                   onValueChange={(value) => setItemsPerPage(Number(value))}
@@ -459,7 +461,7 @@ const FoodDatabaseManager: React.FC = () => {
           </div>
 
           {loading ? (
-            <div>Loading foods...</div>
+            <div>{t("foodDatabaseManager.loadingFoods", "Loading foods...")}</div>
           ) : (
             <>
               {foods.length === 0 ? (
@@ -488,13 +490,16 @@ const FoodDatabaseManager: React.FC = () => {
                               className="text-xs w-fit bg-green-50 text-green-700"
                             >
                               <Share2 className="h-3 w-3 mr-1" />
-                              Public
+                              {t("foodDatabaseManager.public", "Public")}
                             </Badge>
                           )}
                         </div>
                         <div className="text-xs text-gray-500">
-                          Per {food.default_variant?.serving_size || 0}{" "}
-                          {food.default_variant?.serving_unit || ""}
+                          {t("foodDatabaseManager.perServing", {
+                            servingSize: food.default_variant?.serving_size || 0,
+                            servingUnit: food.default_variant?.serving_unit || "",
+                            defaultValue: `Per ${food.default_variant?.serving_size || 0} ${food.default_variant?.serving_unit || ""}`
+                          })}
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -542,13 +547,13 @@ const FoodDatabaseManager: React.FC = () => {
                                 <p>
                                   {canEdit(food)
                                     ? food.shared_with_public
-                                      ? "Make private"
-                                      : "Share with public"
-                                    : "Not editable"}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                                      ? t("foodDatabaseManager.makePrivate", "Make private")
+                                        : t("foodDatabaseManager.shareWithPublic", "Share with public")
+                                      : t("foodDatabaseManager.notEditable", "Not editable")}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
 
                           {/* Edit Button */}
                           <TooltipProvider>
@@ -564,7 +569,7 @@ const FoodDatabaseManager: React.FC = () => {
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>{canEdit(food) ? "Edit food" : "Not editable"}</p>
+                                <p>{canEdit(food) ? t("foodDatabaseManager.editFood", "Edit food") : t("foodDatabaseManager.notEditable", "Not editable")}</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -583,7 +588,7 @@ const FoodDatabaseManager: React.FC = () => {
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>{canEdit(food) ? "Delete food" : "Not editable"}</p>
+                                <p>{canEdit(food) ? t("foodDatabaseManager.deleteFood", "Delete food") : t("foodDatabaseManager.notEditable", "Not editable")}</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -658,7 +663,7 @@ const FoodDatabaseManager: React.FC = () => {
       {/* Meal Management Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Meal Management</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t("foodDatabaseManager.mealManagement", "Meal Management")}</CardTitle>
         </CardHeader>
         <CardContent>
           <MealManagement />
@@ -669,7 +674,7 @@ const FoodDatabaseManager: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-bold">
-            Meal Plan Calendar
+            {t("foodDatabaseManager.mealPlanCalendar", "Meal Plan Calendar")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -680,9 +685,9 @@ const FoodDatabaseManager: React.FC = () => {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Food</DialogTitle>
+            <DialogTitle>{t("foodDatabaseManager.editFoodDialogTitle", "Edit Food")}</DialogTitle>
             <DialogDescription>
-              Edit the details of the selected food item.
+              {t("foodDatabaseManager.editFoodDialogDescription", "Edit the details of the selected food item.")}
             </DialogDescription>
           </DialogHeader>
           {editingFood && (
@@ -709,43 +714,42 @@ const FoodDatabaseManager: React.FC = () => {
         <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Delete {foodToDelete.name}?</DialogTitle>
+              <DialogTitle>{t("foodDatabaseManager.deleteFoodConfirmTitle", { foodName: foodToDelete.name, defaultValue: `Delete ${foodToDelete.name}?` })}</DialogTitle>
             </DialogHeader>
             <div>
-              <p>This food is used in:</p>
+              <p>{t("foodDatabaseManager.foodUsedIn", "This food is used in:")}</p>
               <ul className="list-disc pl-5 mt-2">
-                <li>{deletionImpact.foodEntriesCount} diary entries</li>
-                <li>{deletionImpact.mealFoodsCount} meal components</li>
-                <li>{deletionImpact.mealPlansCount} meal plan entries</li>
+                <li>{t("foodDatabaseManager.diaryEntries", { count: deletionImpact.foodEntriesCount, defaultValue: `${deletionImpact.foodEntriesCount} diary entries` })}</li>
+                <li>{t("foodDatabaseManager.mealComponents", { count: deletionImpact.mealFoodsCount, defaultValue: `${deletionImpact.mealFoodsCount} meal components` })}</li>
+                <li>{t("foodDatabaseManager.mealPlanEntries", { count: deletionImpact.mealPlansCount, defaultValue: `${deletionImpact.mealPlansCount} meal plan entries` })}</li>
                 <li>
-                  {deletionImpact.mealPlanTemplateAssignmentsCount} meal plan
-                  template entries
+                  {t("foodDatabaseManager.mealPlanTemplateEntries", { count: deletionImpact.mealPlanTemplateAssignmentsCount, defaultValue: `${deletionImpact.mealPlanTemplateAssignmentsCount} meal plan template entries` })}
                 </li>
               </ul>
               {deletionImpact.otherUserReferences > 0 && (
                 <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded-md">
-                  <p className="font-bold">Warning!</p>
-                  <p>This food is used by other users. You can only hide it. Hiding will prevent other users from adding this food in the future, but it will not affect their existing history, meals, or meal plans.</p>
+                  <p className="font-bold">{t("foodDatabaseManager.warning", "Warning!")}</p>
+                  <p>{t("foodDatabaseManager.foodUsedByOtherUsersWarning", "This food is used by other users. You can only hide it. Hiding will prevent other users from adding this food in the future, but it will not affect their existing history, meals, or meal plans.")}</p>
                 </div>
               )}
             </div>
             <div className="flex justify-end space-x-2 mt-4">
               <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>
-                Cancel
+                {t("foodDatabaseManager.cancel", "Cancel")}
               </Button>
               {deletionImpact.totalReferences === 0 ? (
                 <Button variant="destructive" onClick={() => confirmDelete(true)}>
-                  Delete
+                  {t("foodDatabaseManager.delete", "Delete")}
                 </Button>
               ) : deletionImpact.otherUserReferences > 0 ? (
-                <Button onClick={() => confirmDelete(false)}>Hide</Button>
+                <Button onClick={() => confirmDelete(false)}>{t("foodDatabaseManager.hide", "Hide")}</Button>
               ) : (
                 <>
                   <Button variant="outline" onClick={() => confirmDelete(false)}>
-                    Hide
+                    {t("foodDatabaseManager.hide", "Hide")}
                   </Button>
                   <Button variant="destructive" onClick={() => confirmDelete(true)}>
-                    Force Delete
+                    {t("foodDatabaseManager.forceDelete", "Force Delete")}
                   </Button>
                 </>
               )}
@@ -758,8 +762,8 @@ const FoodDatabaseManager: React.FC = () => {
         open={showFoodSearchDialog}
         onOpenChange={setShowFoodSearchDialog}
         onFoodSelect={handleFoodSelected}
-        title="Add Food to Database"
-        description="Search for foods to add to your personal database."
+        title={t("foodDatabaseManager.addFoodToDatabaseTitle", "Add Food to Database")}
+        description={t("foodDatabaseManager.addFoodToDatabaseDescription", "Search for foods to add to your personal database.")}
         hideDatabaseTab={true}
         hideMealTab={true}
       />

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -146,6 +147,7 @@ const ReportsTables = ({
   onExportCustomMeasurements,
   onExportExerciseEntries, // Destructure new prop
 }: ReportsTablesProps) => {
+  const { t } = useTranslation();
   const { loggingLevel, dateFormat, formatDateInUserTimezone, nutrientDisplayPreferences, weightUnit, convertWeight } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
@@ -313,7 +315,7 @@ const ReportsTables = ({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Food Diary Table</CardTitle>
+            <CardTitle>{t('reportsTables.foodDiaryTable', 'Food Diary Table')}</CardTitle>
             <Button
               onClick={onExportFoodDiary}
               variant="outline"
@@ -328,15 +330,15 @@ const ReportsTables = ({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Meal</TableHead>
-                  <TableHead className="min-w-[250px]">Food</TableHead>
-                  <TableHead>Quantity</TableHead>
+                  <TableHead>{t('reportsTables.date', 'Date')}</TableHead>
+                  <TableHead>{t('reportsTables.meal', 'Meal')}</TableHead>
+                  <TableHead className="min-w-[250px]">{t('reportsTables.food', 'Food')}</TableHead>
+                  <TableHead>{t('reportsTables.quantity', 'Quantity')}</TableHead>
                   {visibleNutrients.map(nutrient => {
                     // Create a human-friendly label and only show unit when available
                     const rawLabel = nutrient.replace(/_/g, ' ');
                     const toTitleCase = (s: string) => s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                    const label = nutrient === 'glycemic_index' ? 'Glycemic Index' : toTitleCase(rawLabel);
+                    const label = nutrient === 'glycemic_index' ? t('reports.foodDiaryExportHeaders.glycemicIndex', 'Glycemic Index') : toTitleCase(rawLabel);
                     const unit = getNutrientUnit(nutrient);
                     return <TableHead key={nutrient}>{label}{unit ? ` (${unit})` : ''}</TableHead>;
                   })}
@@ -383,7 +385,7 @@ const ReportsTables = ({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Exercise Entries Table</CardTitle>
+            <CardTitle>{t('reportsTables.exerciseEntriesTable', 'Exercise Entries Table')}</CardTitle>
             <Button
               onClick={onExportExerciseEntries}
               variant="outline"
@@ -394,13 +396,13 @@ const ReportsTables = ({
           </div>
           <div className="flex items-center space-x-2 mt-4">
             <Input
-              placeholder="Filter by exercise name..."
+              placeholder={t('reportsTables.filterByExerciseName', 'Filter by exercise name...')}
               value={exerciseNameFilter}
               onChange={(e) => setExerciseNameFilter(e.target.value)}
               className="max-w-sm"
             />
             <Input
-              placeholder="Filter by set type..."
+              placeholder={t('reportsTables.filterBySetType', 'Filter by set type...')}
               value={setTypeFilter}
               onChange={(e) => setSetTypeFilter(e.target.value)}
               className="max-w-sm"
@@ -412,17 +414,17 @@ const ReportsTables = ({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead onClick={() => requestSort('entry_date')}>Date</TableHead>
-                  <TableHead onClick={() => requestSort('exercise_name')}>Exercise</TableHead>
-                  <TableHead onClick={() => requestSort('set_number')}>Set</TableHead>
-                  <TableHead onClick={() => requestSort('set_type')}>Type</TableHead>
-                  <TableHead onClick={() => requestSort('reps')}>Reps</TableHead>
-                  <TableHead onClick={() => requestSort('weight')}>Weight ({weightUnit})</TableHead>
-                  <TableHead>Tonnage</TableHead>
-                  <TableHead onClick={() => requestSort('duration')}>Duration (min)</TableHead>
-                  <TableHead onClick={() => requestSort('rest_time')}>Rest (s)</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead onClick={() => requestSort('calories_burned')}>Calories Burned</TableHead>
+                  <TableHead onClick={() => requestSort('entry_date')}>{t('reportsTables.date', 'Date')}</TableHead>
+                  <TableHead onClick={() => requestSort('exercise_name')}>{t('reportsTables.exercise', 'Exercise')}</TableHead>
+                  <TableHead onClick={() => requestSort('set_number')}>{t('reportsTables.set', 'Set')}</TableHead>
+                  <TableHead onClick={() => requestSort('set_type')}>{t('reportsTables.type', 'Type')}</TableHead>
+                  <TableHead onClick={() => requestSort('reps')}>{t('reportsTables.reps', 'Reps')}</TableHead>
+                  <TableHead onClick={() => requestSort('weight')}>{t('reportsTables.weight', 'Weight')} ({weightUnit})</TableHead>
+                  <TableHead>{t('reportsTables.tonnage', 'Tonnage')}</TableHead>
+                  <TableHead onClick={() => requestSort('duration')}>{t('reportsTables.durationMin', 'Duration (min)')}</TableHead>
+                  <TableHead onClick={() => requestSort('rest_time')}>{t('reportsTables.restS', 'Rest (s)')}</TableHead>
+                  <TableHead>{t('reportsTables.notes', 'Notes')}</TableHead>
+                  <TableHead onClick={() => requestSort('calories_burned')}>{t('reportsTables.caloriesBurned', 'Calories Burned')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -487,7 +489,7 @@ const ReportsTables = ({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Body Measurements Table</CardTitle>
+            <CardTitle>{t('reportsTables.bodyMeasurementsTable', 'Body Measurements Table')}</CardTitle>
             <Button
               onClick={onExportBodyMeasurements}
               variant="outline"
@@ -502,14 +504,14 @@ const ReportsTables = ({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Weight ({showWeightInKg ? 'kg' : 'lbs'})</TableHead>
-                  <TableHead>Neck ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
-                  <TableHead>Waist ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
-                  <TableHead>Hips ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
-                  <TableHead>Steps</TableHead>
-                  <TableHead>Height ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
-                  <TableHead>Body Fat %</TableHead>
+                  <TableHead>{t('reportsTables.date', 'Date')}</TableHead>
+                  <TableHead>{t('reportsTables.weight', 'Weight')} ({showWeightInKg ? 'kg' : 'lbs'})</TableHead>
+                  <TableHead>{t('reportsTables.neck', 'Neck')} ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
+                  <TableHead>{t('reportsTables.waist', 'Waist')} ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
+                  <TableHead>{t('reportsTables.hips', 'Hips')} ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
+                  <TableHead>{t('reportsTables.steps', 'Steps')}</TableHead>
+                  <TableHead>{t('reportsTables.height', 'Height')} ({showMeasurementsInCm ? 'cm' : 'inches'})</TableHead>
+                  <TableHead>{t('reportsTables.bodyFatPercentage', 'Body Fat %')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -559,10 +561,10 @@ const ReportsTables = ({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Value ({category.measurement_type})</TableHead>
-                      <TableHead>Notes</TableHead>
+                      <TableHead>{t('reportsTables.date', 'Date')}</TableHead>
+                      <TableHead>{t('reports.customMeasurementsExportHeaders.time', 'Time')}</TableHead>
+                      <TableHead>{t('reports.customMeasurementsExportHeaders.value', 'Value')} ({category.measurement_type})</TableHead>
+                      <TableHead>{t('reportsTables.notes', 'Notes')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

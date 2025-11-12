@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, ScatterChart, Scatter } from 'recharts'; // Added ScatterChart, Scatter
@@ -42,6 +43,7 @@ import { getExerciseProgressData } from '@/services/exerciseEntryService'; // Im
 import { getExerciseDashboardData, getSleepAnalyticsData } from '@/services/reportsService'; // Import new dashboard data function
 
 const Reports = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const { weightUnit: defaultWeightUnit, measurementUnit: defaultMeasurementUnit, convertWeight, convertMeasurement, formatDateInUserTimezone, parseDateInUserTimezone, loggingLevel, timezone } = usePreferences();
@@ -111,7 +113,7 @@ const Reports = () => {
       window.removeEventListener('measurementsRefresh', handleRefresh);
       window.removeEventListener('exerciseRefresh', handleRefresh); // Clean up exercise refresh listener
       };
-    }, [user, activeUserId, startDate, endDate, loggingLevel, formatDateInUserTimezone, parseDateInUserTimezone, defaultWeightUnit, defaultMeasurementUnit]); // Added showWeightInKg, showMeasurementsInCm, defaultWeightUnit, defaultMeasurementUnit to dependencies
+    }, [user, activeUserId, startDate, endDate, loggingLevel, formatDateInUserTimezone, parseDateInUserTimezone, defaultWeightUnit, defaultMeasurementUnit, t]); // Added showWeightInKg, showMeasurementsInCm, defaultWeightUnit, defaultMeasurementUnit to dependencies
 
 
   const loadReports = async () => {
@@ -160,8 +162,8 @@ const Reports = () => {
     } catch (error) {
       error(loggingLevel, 'Reports: Error loading reports:', error);
       toast({
-        title: "Error",
-        description: "Failed to load reports.",
+        title: t('reports.errorToastTitle', "Error"),
+        description: t('reports.errorLoadingReports', "Failed to load reports."),
         variant: "destructive",
       });
     } finally {
@@ -176,19 +178,19 @@ const Reports = () => {
       if (!tabularData.length) {
         warn(loggingLevel, 'Reports: No food diary data to export.');
         toast({
-          title: "No Data",
-          description: "No food diary data to export",
+          title: t('reports.noData', "No Data"),
+          description: t('reports.noFoodDiaryDataToExport', "No food diary data to export"),
           variant: "destructive",
           });
         return;
       }
 
       const csvHeaders = [
-        'Date', 'Meal', 'Food', 'Brand', 'Quantity', 'Unit',
-        'Calories', 'Protein (g)', 'Carbs (g)', 'Fat (g)',
-        'Saturated Fat (g)', 'Polyunsaturated Fat (g)', 'Monounsaturated Fat (g)', 'Trans Fat (g)',
-        'Cholesterol (mg)', 'Sodium (mg)', 'Potassium (mg)', 'Dietary Fiber (g)', 'Sugars (g)',
-        'Vitamin A (μg)', 'Vitamin C (mg)', 'Calcium (mg)', 'Iron (mg)'
+        t('reports.foodDiaryExportHeaders.date', 'Date'), t('reports.foodDiaryExportHeaders.meal', 'Meal'), t('reports.foodDiaryExportHeaders.food', 'Food'), t('reports.foodDiaryExportHeaders.brand', 'Brand'), t('reports.foodDiaryExportHeaders.quantity', 'Quantity'), t('reports.foodDiaryExportHeaders.unit', 'Unit'),
+        t('reports.foodDiaryExportHeaders.calories', 'Calories'), t('reports.foodDiaryExportHeaders.protein', 'Protein (g)'), t('reports.foodDiaryExportHeaders.carbs', 'Carbs (g)'), t('reports.foodDiaryExportHeaders.fat', 'Fat (g)'),
+        t('reports.foodDiaryExportHeaders.saturatedFat', 'Saturated Fat (g)'), t('reports.foodDiaryExportHeaders.polyunsaturatedFat', 'Polyunsaturated Fat (g)'), t('reports.foodDiaryExportHeaders.monounsaturatedFat', 'Monounsaturated Fat (g)'), t('reports.foodDiaryExportHeaders.transFat', 'Trans Fat (g)'),
+        t('reports.foodDiaryExportHeaders.cholesterol', 'Cholesterol (mg)'), t('reports.foodDiaryExportHeaders.sodium', 'Sodium (mg)'), t('reports.foodDiaryExportHeaders.potassium', 'Potassium (mg)'), t('reports.foodDiaryExportHeaders.dietaryFiber', 'Dietary Fiber (g)'), t('reports.foodDiaryExportHeaders.sugars', 'Sugars (g)'),
+        t('reports.foodDiaryExportHeaders.vitaminA', 'Vitamin A (μg)'), t('reports.foodDiaryExportHeaders.vitaminC', 'Vitamin C (mg)'), t('reports.foodDiaryExportHeaders.calcium', 'Calcium (mg)'), t('reports.foodDiaryExportHeaders.iron', 'Iron (mg)')
       ];
 
       // Group data by date and include totals
@@ -275,7 +277,7 @@ const Reports = () => {
           const totals = calculateFoodDayTotal(entries);
           csvRows.push([
             formatDateInUserTimezone(date, 'MMM dd, yyyy'), // Format date for display
-            'Total',
+            t('reports.foodDiaryExportTotals.total', 'Total'),
             '',
             '',
             '',
@@ -316,14 +318,14 @@ a.click();
 
       info(loggingLevel, 'Reports: Food diary exported successfully.');
       toast({
-        title: "Success",
-        description: "Food diary exported successfully",
+        title: t('reports.foodDiaryExportSuccess', "Success"),
+        description: t('reports.foodDiaryExportSuccess', "Food diary exported successfully"),
       });
     } catch (err) {
       error(loggingLevel, 'Reports: Error exporting food diary:', err);
       toast({
-        title: "Error",
-        description: "Failed to export food diary",
+        title: t('reports.errorToastTitle', "Error"),
+        description: t('reports.foodDiaryExportError', "Failed to export food diary"),
         variant: "destructive",
       });
     }
@@ -335,17 +337,17 @@ a.click();
       if (!exerciseEntries.length) {
         warn(loggingLevel, 'Reports: No exercise entries to export.');
         toast({
-          title: "No Data",
-          description: "No exercise entries to export",
+          title: t('reports.noData', "No Data"),
+          description: t('reports.noExerciseEntriesToExport', "No exercise entries to export"),
           variant: "destructive",
         });
         return;
       }
 
       const csvHeaders = [
-        'Date', 'Exercise Name', 'Duration (minutes)', 'Calories Burned',
-        'Sets', 'Reps', 'Weight', 'Notes', 'Category', 'Equipment',
-        'Primary Muscles', 'Secondary Muscles'
+        t('reports.exerciseEntriesExportHeaders.date', 'Date'), t('reports.exerciseEntriesExportHeaders.exerciseName', 'Exercise Name'), t('reports.exerciseEntriesExportHeaders.durationMinutes', 'Duration (minutes)'), t('reports.exerciseEntriesExportHeaders.caloriesBurned', 'Calories Burned'),
+        t('reports.exerciseEntriesExportHeaders.sets', 'Sets'), t('reports.exerciseEntriesExportHeaders.reps', 'Reps'), t('reports.exerciseEntriesExportHeaders.weight', 'Weight'), t('reports.exerciseEntriesExportHeaders.notes', 'Notes'), t('reports.exerciseEntriesExportHeaders.category', 'Category'), t('reports.exerciseEntriesExportHeaders.equipment', 'Equipment'),
+        t('reports.exerciseEntriesExportHeaders.primaryMuscles', 'Primary Muscles'), t('reports.exerciseEntriesExportHeaders.secondaryMuscles', 'Secondary Muscles')
       ];
 
       const csvRows = exerciseEntries.map(entry => [
@@ -379,14 +381,14 @@ a.click();
 
       info(loggingLevel, 'Reports: Exercise entries exported successfully.');
       toast({
-        title: "Success",
-        description: "Exercise entries exported successfully",
+        title: t('reports.exerciseEntriesExportSuccess', "Success"),
+        description: t('reports.exerciseEntriesExportSuccess', "Exercise entries exported successfully"),
       });
     } catch (err) {
       error(loggingLevel, 'Reports: Error exporting exercise entries:', err);
       toast({
-        title: "Error",
-        description: "Failed to export exercise entries",
+        title: t('reports.errorToastTitle', "Error"),
+        description: t('reports.exerciseEntriesExportError', "Failed to export exercise entries"),
         variant: "destructive",
       });
     }
@@ -402,8 +404,8 @@ a.click();
       if (!measurements || measurements.length === 0) {
         warn(loggingLevel, 'Reports: No body measurements to export.');
         toast({
-          title: "No Data",
-          description: "No body measurements to export",
+          title: t('reports.noData', "No Data"),
+          description: t('reports.noBodyMeasurementsToExport', "No body measurements to export"),
           variant: "destructive",
         });
         return;
@@ -412,14 +414,14 @@ a.click();
       info(loggingLevel, `Reports: Fetched ${measurements.length} body measurement entries for export.`);
 
       const csvHeaders = [
-        'Date',
-        `Weight (${defaultWeightUnit})`,
-        `Neck (${defaultMeasurementUnit})`,
-        `Waist (${defaultMeasurementUnit})`,
-        `Hips (${defaultMeasurementUnit})`,
-        'Steps',
-        `Height (${defaultMeasurementUnit})`,
-        'Body Fat %'
+        t('reports.bodyMeasurementsExportHeaders.date', 'Date'),
+        t('reports.bodyMeasurementsExportHeaders.weight', `Weight (${defaultWeightUnit})`),
+        t('reports.bodyMeasurementsExportHeaders.neck', `Neck (${defaultMeasurementUnit})`),
+        t('reports.bodyMeasurementsExportHeaders.waist', `Waist (${defaultMeasurementUnit})`),
+        t('reports.bodyMeasurementsExportHeaders.hips', `Hips (${defaultMeasurementUnit})`),
+        t('reports.bodyMeasurementsExportHeaders.steps', 'Steps'),
+        t('reports.bodyMeasurementsExportHeaders.height', `Height (${defaultMeasurementUnit})`),
+        t('reports.bodyMeasurementsExportHeaders.bodyFatPercentage', 'Body Fat %')
       ];
 
       const csvRows = measurements
@@ -459,14 +461,14 @@ a.click();
 
       info(loggingLevel, 'Reports: Body measurements exported successfully.');
       toast({
-        title: "Success",
-        description: "Body measurements exported successfully",
+        title: t('reports.bodyMeasurementsExportSuccess', "Success"),
+        description: t('reports.bodyMeasurementsExportSuccess', "Body measurements exported successfully"),
       });
     } catch (err) {
       error(loggingLevel, 'Reports: Error exporting body measurements:', err);
       toast({
-        title: "Error",
-        description: "Failed to export body measurements",
+        title: t('reports.errorToastTitle', "Error"),
+        description: t('reports.bodyMeasurementsExportError', "Failed to export body measurements"),
         variant: "destructive",
       });
     }
@@ -479,8 +481,8 @@ a.click();
       if (!measurements || measurements.length === 0) {
         warn(loggingLevel, `Reports: No custom measurement data to export for category: ${category.name}.`);
         toast({
-          title: "No Data",
-          description: `No ${category.name} data to export`,
+          title: t('reports.noData', "No Data"),
+          description: t('reports.noCustomMeasurementDataToExport', `No ${category.name} data to export`, { categoryName: category.name }),
           variant: "destructive",
         });
         return;
@@ -493,7 +495,11 @@ a.click();
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
 
-      const csvHeaders = ['Date', 'Time', 'Value'];
+      const csvHeaders = [
+        t('reports.customMeasurementsExportHeaders.date', 'Date'),
+        t('reports.customMeasurementsExportHeaders.time', 'Time'),
+        t('reports.customMeasurementsExportHeaders.value', 'Value')
+      ];
       const csvRows = sortedMeasurements.map(measurement => {
         const timestamp = new Date(measurement.timestamp);
         const hour = timestamp.getHours();
@@ -523,14 +529,14 @@ a.click();
 
       info(loggingLevel, `Reports: Custom measurements exported successfully for category: ${category.name}.`);
       toast({
-        title: "Success",
-        description: `${category.name} data exported successfully`,
+        title: t('reports.customMeasurementsExportSuccess', "Success"),
+        description: t('reports.customMeasurementsExportSuccess', `${category.name} data exported successfully`, { categoryName: category.name }),
       });
     } catch (err) {
-      error(loggingLevel, 'Reports: Error exporting custom measurements for category ${category.name}:', err);
+      error(loggingLevel, `Reports: Error exporting custom measurements for category ${category.name}:`, err);
       toast({
-        title: "Error",
-        description: "Failed to export data",
+        title: t('reports.errorToastTitle', "Error"),
+        description: t('reports.customMeasurementsExportError', "Failed to export data"),
         variant: "destructive",
       });
     }
@@ -615,7 +621,7 @@ a.click();
 
   if (!user || !activeUserId) {
     info(loggingLevel, 'Reports: User not signed in, displaying sign-in message.');
-    return <div>Please sign in to view reports.</div>;
+    return <div>{t('reports.signInMessage', "Please sign in to view reports.")}</div>;
   }
 
   info(loggingLevel, 'Reports: Rendering reports component.');
@@ -629,29 +635,29 @@ a.click();
           onEndDateChange={handleEndDateChange}
         />
       ) : (
-        <div>Loading date controls...</div> // Or a loading spinner
+        <div>{t('reports.loadingDateControls', "Loading date controls...")}</div> // Or a loading spinner
       )}
 
       {loading ? (
-        <div>Loading reports...</div>
+        <div>{t('reports.loadingReports', "Loading reports...")}</div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4"> {/* Changed to 4 columns */}
             <TabsTrigger value="charts" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
-              Charts
+              {t('reports.chartsTab', "Charts")}
             </TabsTrigger>
             <TabsTrigger value="exercise-charts" className="flex items-center gap-2"> {/* New tab for exercise charts */}
               <Dumbbell className="w-4 h-4" />
-              Exercise Progress
+              {t('reports.exerciseProgressTab', "Exercise Progress")}
             </TabsTrigger>
             <TabsTrigger value="sleep-analytics" className="flex items-center gap-2">
               <BedDouble className="w-4 h-4" />
-              Sleep
+              {t('reports.sleepTab', "Sleep")}
             </TabsTrigger>
             <TabsTrigger value="table" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
-              Table View
+              {t('reports.tableTab', "Table View")}
             </TabsTrigger>
           </TabsList>
 
@@ -666,14 +672,14 @@ a.click();
             {/* Custom Measurements Charts */}
             {customCategories.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Custom Measurements</h3>
+                <h3 className="text-lg font-semibold">{t('reports.customMeasurementsTitle', "Custom Measurements")}</h3>
                 <div className="space-y-4">
                   {customCategories.filter(c => c.data_type === 'numeric').map((category) => {
                     const data = customMeasurementsData[category.id] || [];
                     const chartData = formatCustomChartData(category, data);
                     
                     return (
-                      <ZoomableChart key={category.id} title={`${category.name} (${category.measurement_type})`}>
+                      <ZoomableChart key={category.id} title={t('reports.customMeasurementChartTitle', '{{categoryName}} ({{measurementType}})', { categoryName: category.name, measurementType: category.measurement_type })}>
                         <Card>
                           <CardHeader>
                             <CardTitle className="flex items-center">
@@ -714,9 +720,9 @@ a.click();
                                           {!isNaN(numericValue) ? (
                                             <p className="intro">{`${numericValue.toFixed(1)} ${unit}`}</p>
                                           ) : (
-                                            <p className="intro">N/A</p>
+                                            <p className="intro">{t('reports.notApplicable', 'N/A')}</p>
                                           )}
-                                          {data.notes && <p className="desc" style={{ marginTop: '5px' }}>{`Notes: ${data.notes}`}</p>}
+                                          {data.notes && <p className="desc" style={{ marginTop: '5px' }}>{t('reports.notes', 'Notes: ') + data.notes}</p>}
                                         </div>
                                       );
                                     }
