@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,7 +82,6 @@ interface ExerciseCardProps {
   onExerciseChange: () => void;
   initialExercisesToLog?: PresetExercise[]; // Change type to PresetExercise[]
   onExercisesLogged: () => void; // New prop to signal that exercises have been logged
-  t: any; // Add t prop
 }
 
 // Extend ExerciseEntry to include sets, reps, weight
@@ -96,8 +96,8 @@ const ExerciseCard = ({
   onExerciseChange,
   initialExercisesToLog, // Destructure new prop
   onExercisesLogged, // Destructure new prop
-  t, // Destructure t prop
 }: ExerciseCardProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const { loggingLevel, itemDisplayLimit, weightUnit, convertWeight } = usePreferences(); // Get logging level
