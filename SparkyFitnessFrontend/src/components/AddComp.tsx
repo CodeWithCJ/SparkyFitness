@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -21,6 +22,8 @@ const AddComp: React.FC<AddCompProps> = ({
   items,
   onNavigate,
 }) => {
+  const { t } = useTranslation();
+
   if (!isVisible) {
     return null;
   }
@@ -48,7 +51,7 @@ const AddComp: React.FC<AddCompProps> = ({
         </button>
 
         <h2 className="text-2xl font-bold text-foreground mb-4 text-center mt-2">
-          Add New
+          {t("addComp.addNew", "Add New")}
         </h2>
 
         <div className="grid grid-cols-2 gap-4 mt-4">
