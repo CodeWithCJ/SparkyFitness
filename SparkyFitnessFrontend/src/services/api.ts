@@ -16,6 +16,7 @@ export const API_BASE_URL = "/api";
 
 // Global flag to prevent multiple simultaneous redirects to login
 let isRedirectingToLogin = false;
+let redirectAttemptTime = 0;
 
 export async function apiCall(endpoint: string, options?: ApiCallOptions): Promise<any> {
   const userLoggingLevel = getUserLoggingLevel();
@@ -139,13 +140,18 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
     // The browser sees this as a CORS error and throws NetworkError
     // Check if this might be an authentication issue
     if (err.message && (err.message.includes('NetworkError') || err.message.includes('Failed to fetch'))) {
+      const now = Date.now();
+
       // Only trigger redirect once, even if multiple API calls fail simultaneously
-      if (!isRedirectingToLogin) {
+      // Also prevent redirect loops by checking if we tried recently (within 5 seconds)
+      if (!isRedirectingToLogin && (now - redirectAttemptTime > 5000)) {
         isRedirectingToLogin = true;
+        redirectAttemptTime = now;
 
         // This is likely Authentik redirecting us to login
-        // Clear any cached data
+        // Clear any cached data and sessionStorage to prevent loops
         localStorage.removeItem('token');
+        sessionStorage.clear();
 
         toast({
           title: "Session Expired",
@@ -153,16 +159,21 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
           variant: "destructive",
         });
 
-        // Redirect immediately (no setTimeout) for better browser compatibility
-        // Some browsers (especially iOS Safari/WebKit) don't allow redirects
-        // from within async error handlers if they're delayed
+        // Use window.location.replace() instead of href for more aggressive redirect
+        // This prevents back button issues and ensures the redirect happens
+        // Also prevents the current page from staying in browser history
         try {
-          window.location.href = '/';
+          window.location.replace('/');
         } catch (redirectError) {
-          // If direct redirect fails, try after a short delay
-          setTimeout(() => {
+          // If replace fails, try href as fallback
+          try {
             window.location.href = '/';
-          }, 100);
+          } catch (hrefError) {
+            // Last resort: try with setTimeout
+            setTimeout(() => {
+              window.location.replace('/');
+            }, 100);
+          }
         }
       }
 
