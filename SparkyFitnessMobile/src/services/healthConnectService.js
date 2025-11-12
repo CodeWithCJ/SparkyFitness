@@ -303,7 +303,7 @@ export const aggregateTotalCaloriesByDate = async (records) => {
   const result = Object.keys(aggregatedData).map(date => ({
     date,
     value: aggregatedData[date] + sedentaryTDEE, // Add sedentary TDEE to active calories
-    type: 'total_calories',
+    type: 'active_calories',
   }));
 
   addLog(`[HealthConnectService] Aggregated total calories data into ${result.length} daily entries (BMR × 1.2 + active = ${sedentaryTDEE.toFixed(0)} + active)`);
@@ -426,7 +426,7 @@ export const transformHealthRecords = (records, metricConfig) => {
             break;
 
           case 'TotalCaloriesBurned':
-            if (record.value !== undefined && record.date && record.type === 'total_calories') {
+            if (record.value !== undefined && record.date && record.type === 'active_calories') {
               // Already aggregated and converted to kcal
               value = record.value;
               recordDate = record.date;
