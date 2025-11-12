@@ -303,7 +303,7 @@ export const aggregateTotalCaloriesByDate = async (records) => {
   const result = Object.keys(aggregatedData).map(date => ({
     date,
     value: aggregatedData[date] + sedentaryTDEE, // Add sedentary TDEE to active calories
-    type: 'active_calories',
+    type: 'Active Calories',
   }));
 
   addLog(`[HealthConnectService] Aggregated total calories data into ${result.length} daily entries (BMR × 1.2 + active = ${sedentaryTDEE.toFixed(0)} + active)`);
@@ -347,7 +347,7 @@ export const aggregateActiveCaloriesByDate = (records) => {
   const result = Object.keys(aggregatedData).map(date => ({
     date,
     value: aggregatedData[date],
-    type: 'active_calories',
+    type: 'Active Calories',
   }));
 
   addLog(`[HealthConnectService] Aggregated active calories data into ${result.length} daily entries`);
@@ -395,7 +395,7 @@ export const transformHealthRecords = (records, metricConfig) => {
 
           case 'ActiveCaloriesBurned':
             // Check if this is an aggregated record or raw record
-            if (record.value !== undefined && record.date && record.type === 'active_calories') {
+            if (record.value !== undefined && record.date && record.type === 'Active Calories') {
               // Already aggregated from aggregateActiveCaloriesByDate
               value = record.value;
               recordDate = record.date;
@@ -426,7 +426,7 @@ export const transformHealthRecords = (records, metricConfig) => {
             break;
 
           case 'TotalCaloriesBurned':
-            if (record.value !== undefined && record.date && record.type === 'active_calories') {
+            if (record.value !== undefined && record.date && record.type === 'Active Calories') {
               // Already aggregated and converted to kcal
               value = record.value;
               recordDate = record.date;
