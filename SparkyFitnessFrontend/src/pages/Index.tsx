@@ -30,6 +30,7 @@ import {
   Dumbbell, // Used for Exercises
   Target, // Used for Goals
   Shield,
+  Plus,
   X, // Add X here for the close icon
 } from "lucide-react";
 import { LucideIcon } from "lucide-react"; // Import LucideIcon
@@ -195,7 +196,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
       mobileTabs.push(
         { value: "home", label: t('nav.diary'), icon: Home },
         { value: "reports", label: t('nav.reports'), icon: BarChart3 },
-        { value: "Add", label: t('common.add', 'Add'), icon: isAddCompOpen ? X : Home },
+        { value: "Add", label: t('common.add', 'Add'), icon: isAddCompOpen ? X : Plus },
         { value: "settings", label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
