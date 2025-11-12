@@ -15,7 +15,8 @@ export const API_BASE_URL = "/api";
 //export const API_BASE_URL = 'http://192.168.1.111:3010';
 
 // Key for tracking redirect attempts in localStorage (persists across page reloads)
-const REDIRECT_TRACKING_KEY = 'sparky_auth_redirect_time';
+// Exported so other modules can clear this when authentication succeeds
+export const REDIRECT_TRACKING_KEY = 'sparky_auth_redirect_time';
 
 // Global flag to prevent multiple simultaneous redirects within the same page session
 let isRedirectingToLogin = false;
@@ -149,11 +150,15 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
       const lastRedirectTime = lastRedirectTimeStr ? parseInt(lastRedirectTimeStr, 10) : 0;
       const timeSinceLastRedirect = now - lastRedirectTime;
 
+      debug(userLoggingLevel, `NetworkError detected. Last redirect: ${timeSinceLastRedirect}ms ago. Threshold: 5000ms`);
+
       // Only trigger redirect once, even if multiple API calls fail simultaneously
-      // Also prevent redirect loops by checking if we tried recently (within 10 seconds)
-      // Using 10 seconds to give Authentik enough time to handle the redirect
-      if (!isRedirectingToLogin && timeSinceLastRedirect > 10000) {
+      // Also prevent redirect loops by checking if we tried recently (within 5 seconds)
+      // Using 5 seconds to give Authentik enough time to handle the redirect
+      if (!isRedirectingToLogin && timeSinceLastRedirect > 5000) {
         isRedirectingToLogin = true;
+
+        warn(userLoggingLevel, `Triggering redirect to login. Last redirect was ${timeSinceLastRedirect}ms ago.`);
 
         // Store redirect time in localStorage so it persists across page reloads
         localStorage.setItem(REDIRECT_TRACKING_KEY, now.toString());
@@ -173,22 +178,25 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
 
         // Do a hard reload to force Authentik to intercept
         // This clears all caches and forces a fresh request
-        // The reload() method with true parameter forces a reload from server, not cache
+        // The reload() method forces a reload from server, not cache
         try {
+          warn(userLoggingLevel, 'Calling window.location.reload() to force Authentik intercept');
           // Force reload from server (bypasses cache)
           window.location.reload();
         } catch (reloadError) {
           // If reload fails, try replace as fallback
+          warn(userLoggingLevel, 'Reload failed, trying window.location.replace()');
           try {
             window.location.replace('/');
           } catch (replaceError) {
             // Last resort
+            warn(userLoggingLevel, 'Replace failed, trying window.location.href');
             window.location.href = '/';
           }
         }
       } else {
         // We recently redirected - don't redirect again to prevent loops
-        warn(userLoggingLevel, `Skipping redirect to prevent loop (last redirect was ${timeSinceLastRedirect}ms ago)`);
+        warn(userLoggingLevel, `Skipping redirect to prevent loop (last redirect was ${timeSinceLastRedirect}ms ago, threshold is 5000ms)`);
       }
 
       // Don't throw error - just return a rejected promise

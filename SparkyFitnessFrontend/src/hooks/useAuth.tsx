@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { REDIRECT_TRACKING_KEY } from '@/services/api';
 
 interface User {
   id: string;
@@ -34,6 +35,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               const role = userData.role || 'user';
               setUser({ id: userData.userId, email: userData.email, role: role });
               userAuthenticated = true;
+
+              // Clear redirect tracking timestamp when successfully authenticated
+              // This ensures the next session expiration can trigger a redirect
+              localStorage.removeItem(REDIRECT_TRACKING_KEY);
+              console.debug('Cleared redirect tracking - OIDC session is valid');
             }
           } else if (oidcResponse.status === 401 || oidcResponse.status === 403) {
             // Session expired or unauthorized - this is expected when behind Authentik proxy
@@ -54,6 +60,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 const role = userData.role || 'user';
                 setUser({ id: userData.userId, email: userData.email, role: role });
                 userAuthenticated = true;
+
+                // Clear redirect tracking timestamp when successfully authenticated
+                // This ensures the next session expiration can trigger a redirect
+                localStorage.removeItem(REDIRECT_TRACKING_KEY);
+                console.debug('Cleared redirect tracking - password session is valid');
               }
             } else if (passwordResponse.status === 401 || passwordResponse.status === 403) {
               // No valid session found - this triggers when Authentik session expires
@@ -122,6 +133,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signIn = (userId: string, userEmail: string, userRole: string, authType: 'oidc' | 'password') => {
     // authType is no longer stored in localStorage; session is managed by httpOnly cookies.
     setUser({ id: userId, email: userEmail, role: userRole });
+
+    // Clear redirect tracking timestamp when user signs in
+    // This ensures the next session expiration can trigger a redirect
+    localStorage.removeItem(REDIRECT_TRACKING_KEY);
+    console.debug('Cleared redirect tracking - user signed in via', authType);
   };
 
   const value = {
