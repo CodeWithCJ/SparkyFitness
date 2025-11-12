@@ -14,6 +14,9 @@ interface ApiCallOptions extends RequestInit {
 export const API_BASE_URL = "/api";
 //export const API_BASE_URL = 'http://192.168.1.111:3010';
 
+// Global flag to prevent multiple simultaneous redirects to login
+let isRedirectingToLogin = false;
+
 export async function apiCall(endpoint: string, options?: ApiCallOptions): Promise<any> {
   const userLoggingLevel = getUserLoggingLevel();
   let url = options?.externalApi ? endpoint : `${API_BASE_URL}${endpoint}`;
@@ -136,22 +139,36 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
     // The browser sees this as a CORS error and throws NetworkError
     // Check if this might be an authentication issue
     if (err.message && (err.message.includes('NetworkError') || err.message.includes('Failed to fetch'))) {
-      // This is likely Authentik redirecting us to login
-      // Clear any cached data and redirect
-      localStorage.removeItem('token');
+      // Only trigger redirect once, even if multiple API calls fail simultaneously
+      if (!isRedirectingToLogin) {
+        isRedirectingToLogin = true;
 
-      toast({
-        title: "Session Expired",
-        description: "Your session has expired. Redirecting to login...",
-        variant: "destructive",
-      });
+        // This is likely Authentik redirecting us to login
+        // Clear any cached data
+        localStorage.removeItem('token');
 
-      // Redirect to trigger Authentik login
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 1000);
+        toast({
+          title: "Session Expired",
+          description: "Your session has expired. Redirecting to login...",
+          variant: "destructive",
+        });
 
-      throw new Error('Session expired - redirecting to login');
+        // Redirect immediately (no setTimeout) for better browser compatibility
+        // Some browsers (especially iOS Safari/WebKit) don't allow redirects
+        // from within async error handlers if they're delayed
+        try {
+          window.location.href = '/';
+        } catch (redirectError) {
+          // If direct redirect fails, try after a short delay
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 100);
+        }
+      }
+
+      // Don't throw error - just return a rejected promise
+      // This prevents upstream error handlers from interfering with redirect
+      return Promise.reject(new Error('Session expired - redirecting to login'));
     }
 
     // For other network errors, show generic error
