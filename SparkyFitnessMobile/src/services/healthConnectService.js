@@ -393,6 +393,7 @@ export const transformHealthRecords = (records, metricConfig) => {
     try {
       let value = null;
       let recordDate = null;
+      let outputType = type; // Default to metricConfig type, but can be overridden
 
       if (['Steps', 'HeartRate', 'ActiveCaloriesBurned', 'TotalCaloriesBurned'].includes(recordType)) {
         if (record.value !== undefined && record.date) {
@@ -446,6 +447,7 @@ export const transformHealthRecords = (records, metricConfig) => {
               // Already aggregated and converted to kcal
               value = record.value;
               recordDate = record.date;
+              outputType = record.type; // Preserve the original type from aggregated data
               if (index === 0) {
                 addLog(`[Transform] TotalCalories (aggregated as ${record.type}): ${value} kcal on ${recordDate}`, 'debug');
               }
@@ -913,7 +915,7 @@ export const transformHealthRecords = (records, metricConfig) => {
       if (value !== null && value !== undefined && !isNaN(value) && recordDate) {
         transformedData.push({
           value: parseFloat(value.toFixed(2)),
-          type: type,
+          type: outputType,
           date: recordDate,
           unit: unit,
         });
