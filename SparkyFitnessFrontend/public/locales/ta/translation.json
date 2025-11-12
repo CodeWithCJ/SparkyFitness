@@ -126,6 +126,36 @@
       "valuePlaceholder": "எ.கா., 'சன்னி', 'ஆற்றல்மிக்க'",
       "addCustomFieldButton": "தனிப்பயன் புலத்தைச் சேர்"
     },
+    "logExerciseEntryDialog": {
+      "logExercise": "உடற்பயிற்சியைப் பதிவுசெய்: {{exerciseName}}",
+      "enterDetails": "உங்கள் உடற்பயிற்சி அமர்வுக்கான விவரங்களை {{selectedDate}} அன்று உள்ளிடவும்.",
+      "setLabel": "தொகுப்பு",
+      "typeLabel": "வகை",
+      "repsLabel": "மீண்டும்",
+      "weightLabel": "எடை",
+      "durationLabel": "கால அளவு",
+      "restLabel": "ஓய்வு (வி)",
+      "notesLabel": "குறிப்புகள்",
+      "addSet": "தொகுப்பைச் சேர்",
+      "caloriesBurnedOptional": "எரிக்கப்பட்ட கலோரிகள் (விரும்பினால்)",
+      "enterCaloriesBurned": "எரிக்கப்பட்ட கலோரிகளை உள்ளிடவும்",
+      "distanceLabel": "தூரம் ({{distanceUnit}})",
+      "enterDistance": "{{distanceUnit}} இல் தூரத்தை உள்ளிடவும்",
+      "avgHeartRateLabel": "சராசரி இதய துடிப்பு (bpm)",
+      "enterAvgHeartRate": "சராசரி இதய துடிப்பை உள்ளிடவும்",
+      "customActivityDetails": "தனிப்பயன் செயல்பாட்டு விவரங்கள்",
+      "sessionNotes": "அமர்வு குறிப்புகள்",
+      "uploadImage": "படத்தைப் பதிவேற்று",
+      "imagePreviewAlt": "முன்னோட்டம்",
+      "cancel": "ரத்துசெய்",
+      "saveEntry": "உள்ளீட்டைச் சேமி",
+      "saving": "சேமிக்கிறது...",
+      "successTitle": "வெற்றி",
+      "successDescription": "உடற்பயிற்சி \"{{exerciseName}}\" வெற்றிகரமாகப் பதிவுசெய்யப்பட்டது.",
+      "errorTitle": "பிழை",
+      "errorDescription": "உடற்பயிற்சியைப் பதிவுசெய்யத் தவறிவிட்டது: {{errorMessage}}",
+      "noExerciseSelected": "தேர்ந்தெடுக்கப்பட்ட உடற்பயிற்சி இல்லாமல் சேமிக்க முயற்சித்தது."
+    },
     "databaseManager": {
       "errorLoadingExercises": "உடற்பயிற்சிகளை ஏற்றும்போது பிழை:",
       "failedToLoadExercises": "உடற்பயிற்சிகளை ஏற்றத் தவறிவிட்டது",
@@ -191,6 +221,41 @@
       "syncConfirmationTitle": "கடந்த உள்ளீடுகளை ஒத்திசைக்கவா?",
       "syncConfirmationDescription": "இந்த உடற்பயிற்சிக்கான உங்கள் கடந்த நாட்குறிப்பு உள்ளீடுகள் அனைத்தையும் புதிய தகவலுடன் புதுப்பிக்க விரும்புகிறீர்களா?",
       "addExerciseButton": "உடற்பயிற்சி சேர்"
+    },
+    "exerciseImportCSV": {
+      "importExerciseData": "உடற்பயிற்சி தரவை இறக்குமதி செய்",
+      "standardValuesForDropdowns": "கீழ்தோன்றும் பெட்டிகளுக்கான நிலையான மதிப்புகள்",
+      "standardValuesDescription": "உடற்பயிற்சிகளை இறக்குமதி செய்யும் போது, 'நிலை', 'விசை' மற்றும் 'இயந்திரவியல்' ஆகியவற்றிற்கான மதிப்புகள் இந்த நிலையான விருப்பங்களுடன் பொருந்துகின்றன என்பதை உறுதிப்படுத்தவும். ஒவ்வொரு புலத்திற்கும் செல்லுபடியாகும் மதிப்புகளின் பட்டியலை விரைவாக நகலெடுக்க நகல் ஐகானைக் கிளிக் செய்யலாம்.",
+      "levelLabel": "நிலை:",
+      "forceLabel": "விசை:",
+      "mechanicLabel": "இயந்திரவியல்:",
+      "copyTooltip": "'{{value}}' ஐ நகலெடு",
+      "addRow": "வரிசையைச் சேர்",
+      "uploadCSV": "CSV ஐ பதிவேற்று",
+      "downloadTemplate": "வார்ப்புருவைப் பதிவிறக்கு",
+      "clearData": "தரவை அழி",
+      "loadedRecords": "{{count}} பதிவுகள் வெற்றிகரமாக ஏற்றப்பட்டன.",
+      "actions": "செயல்கள்",
+      "deleteRow": "வரிசையை நீக்கு",
+      "importing": "இறக்குமதி செய்கிறது...",
+      "import": "இறக்குமதி",
+      "records": "பதிவுகள்",
+      "data": "தரவு",
+      "importError": "இறக்குமதி பிழை",
+      "emptyFile": "தேர்ந்தெடுக்கப்பட்ட கோப்பு காலியாக உள்ளது.",
+      "invalidCSVFormat": "தவறான CSV வடிவம்",
+      "invalidCSVFormatDescription": "CSV தலைப்புகள் தேவையான வடிவம் அல்லது வரிசையுடன் பொருந்தவில்லை. வார்ப்புருவைப் பதிவிறக்கவும்.",
+      "noDataFound": "தரவு கண்டறியப்படவில்லை",
+      "noDataFoundDescription": "CSV கோப்பில் தலைப்புகள் உள்ளன, ஆனால் தரவு வரிசைகள் இல்லை.",
+      "validationError": "சரிபார்ப்பு பிழை",
+      "nameEmptyError": "'பெயர்' புலம் காலியாக இருக்கக்கூடாது.",
+      "copied": "நகலெடுக்கப்பட்டது!",
+      "copiedToClipboard": "'{{value}}' கிளிப்போர்டுக்கு நகலெடுக்கப்பட்டது."
+    },
+    "playbackModal": {
+      "voiceLabel": "குரல்:",
+      "selectVoicePlaceholder": "ஒரு குரலைத் தேர்ந்தெடுக்கவும்",
+      "stepCount": "படி {{currentInstructionIndex}} / {{totalInstructions}}"
     }
   },
   "workoutPresetsManager": {
@@ -1482,5 +1547,15 @@
     "maxWeight": "அதிகபட்ச எடை",
     "maxReps": "அதிகபட்ச ரெப்ஸ்",
     "setPerformanceAnalysis": "செட் செயல்திறன் பகுப்பாய்வு"
+  },
+  "exerciseHistoryDisplay": {
+    "loadingHistory": "வரலாற்றை ஏற்றுகிறது...",
+    "noPreviousEntries": "இந்த உடற்பயிற்சிக்கான முந்தைய உள்ளீடுகள் எதுவும் கண்டறியப்படவில்லை.",
+    "lastEntries": "கடைசி {{limit}} உள்ளீடுகள்",
+    "setsLabel": "செட்கள்:",
+    "durationLabel": "கால அளவு:",
+    "caloriesLabel": "கலோரிகள்:",
+    "notesLabel": "குறிப்புகள்:",
+    "exerciseImageAlt": "உடற்பயிற்சி"
   }
 }

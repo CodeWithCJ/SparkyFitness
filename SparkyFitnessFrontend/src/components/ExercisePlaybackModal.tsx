@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
   onClose,
   exercise,
 }) => {
+  const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
   const [currentInstructionIndex, setCurrentInstructionIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -315,21 +317,21 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
             </Button>
           </div>
           <div className="flex items-center space-x-2 mt-2">
-            <Label htmlFor="voice-select" className="text-sm">Voice:</Label>
+            <Label htmlFor="voice-select" className="text-sm">{t("exercise.playbackModal.voiceLabel", "Voice:")}</Label>
             <Select
               value={selectedVoiceURI || ""}
               onValueChange={(value) => {
                info(loggingLevel, `[Select.onValueChange] Voice changed to: ${value}`);
-                setSelectedVoiceURI(value);
-                window.speechSynthesis.cancel(); // Cancel current speech to apply new voice
-                // If playing, restart speech with new voice
-                if (isPlayingRef.current) {
-                  speakInstruction(instructions[currentInstructionIndex], currentInstructionIndex);
-                }
-              }}
+                 setSelectedVoiceURI(value);
+                 window.speechSynthesis.cancel(); // Cancel current speech to apply new voice
+                 // If playing, restart speech with new voice
+                 if (isPlayingRef.current) {
+                   speakInstruction(instructions[currentInstructionIndex], currentInstructionIndex);
+                 }
+               }}
             >
               <SelectTrigger id="voice-select" className="w-[180px]">
-                <SelectValue placeholder="Select a voice" />
+                <SelectValue placeholder={t("exercise.playbackModal.selectVoicePlaceholder", "Select a voice")} />
               </SelectTrigger>
               <SelectContent>
                 {voices.map((voice) => (
@@ -341,7 +343,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
             </Select>
           </div>
           <div className="text-sm text-gray-500 mt-2">
-            Step {currentInstructionIndex + 1} of {instructions.length}
+            {t("exercise.playbackModal.stepCount", "Step {{currentInstructionIndex}} of {{totalInstructions}}", { currentInstructionIndex: currentInstructionIndex + 1, totalInstructions: instructions.length })}
           </div>
         </div>
       </DialogContent>
