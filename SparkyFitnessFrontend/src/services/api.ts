@@ -158,9 +158,12 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
         // Store redirect time in localStorage so it persists across page reloads
         localStorage.setItem(REDIRECT_TRACKING_KEY, now.toString());
 
-        // Clear auth token but keep the redirect tracking
-        localStorage.removeItem('token');
+        // Clear ALL storage to prevent cache issues
+        localStorage.clear();
         sessionStorage.clear();
+
+        // Re-set the redirect tracking after clearing
+        localStorage.setItem(REDIRECT_TRACKING_KEY, now.toString());
 
         toast({
           title: "Session Expired",
@@ -168,20 +171,19 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
           variant: "destructive",
         });
 
-        // Use window.location.replace() instead of href for more aggressive redirect
-        // This prevents back button issues and ensures the redirect happens
-        // Also prevents the current page from staying in browser history
+        // Do a hard reload to force Authentik to intercept
+        // This clears all caches and forces a fresh request
+        // The reload() method with true parameter forces a reload from server, not cache
         try {
-          window.location.replace('/');
-        } catch (redirectError) {
-          // If replace fails, try href as fallback
+          // Force reload from server (bypasses cache)
+          window.location.reload();
+        } catch (reloadError) {
+          // If reload fails, try replace as fallback
           try {
+            window.location.replace('/');
+          } catch (replaceError) {
+            // Last resort
             window.location.href = '/';
-          } catch (hrefError) {
-            // Last resort: try with setTimeout
-            setTimeout(() => {
-              window.location.replace('/');
-            }, 100);
           }
         }
       } else {
