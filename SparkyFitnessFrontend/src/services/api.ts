@@ -14,9 +14,11 @@ interface ApiCallOptions extends RequestInit {
 export const API_BASE_URL = "/api";
 //export const API_BASE_URL = 'http://192.168.1.111:3010';
 
-// Global flag to prevent multiple simultaneous redirects to login
+// Key for tracking redirect attempts in localStorage (persists across page reloads)
+const REDIRECT_TRACKING_KEY = 'sparky_auth_redirect_time';
+
+// Global flag to prevent multiple simultaneous redirects within the same page session
 let isRedirectingToLogin = false;
-let redirectAttemptTime = 0;
 
 export async function apiCall(endpoint: string, options?: ApiCallOptions): Promise<any> {
   const userLoggingLevel = getUserLoggingLevel();
@@ -142,14 +144,21 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
     if (err.message && (err.message.includes('NetworkError') || err.message.includes('Failed to fetch'))) {
       const now = Date.now();
 
-      // Only trigger redirect once, even if multiple API calls fail simultaneously
-      // Also prevent redirect loops by checking if we tried recently (within 5 seconds)
-      if (!isRedirectingToLogin && (now - redirectAttemptTime > 5000)) {
-        isRedirectingToLogin = true;
-        redirectAttemptTime = now;
+      // Check last redirect time from localStorage (persists across page reloads)
+      const lastRedirectTimeStr = localStorage.getItem(REDIRECT_TRACKING_KEY);
+      const lastRedirectTime = lastRedirectTimeStr ? parseInt(lastRedirectTimeStr, 10) : 0;
+      const timeSinceLastRedirect = now - lastRedirectTime;
 
-        // This is likely Authentik redirecting us to login
-        // Clear any cached data and sessionStorage to prevent loops
+      // Only trigger redirect once, even if multiple API calls fail simultaneously
+      // Also prevent redirect loops by checking if we tried recently (within 10 seconds)
+      // Using 10 seconds to give Authentik enough time to handle the redirect
+      if (!isRedirectingToLogin && timeSinceLastRedirect > 10000) {
+        isRedirectingToLogin = true;
+
+        // Store redirect time in localStorage so it persists across page reloads
+        localStorage.setItem(REDIRECT_TRACKING_KEY, now.toString());
+
+        // Clear auth token but keep the redirect tracking
         localStorage.removeItem('token');
         sessionStorage.clear();
 
@@ -175,6 +184,9 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
             }, 100);
           }
         }
+      } else {
+        // We recently redirected - don't redirect again to prevent loops
+        warn(userLoggingLevel, `Skipping redirect to prevent loop (last redirect was ${timeSinceLastRedirect}ms ago)`);
       }
 
       // Don't throw error - just return a rejected promise
