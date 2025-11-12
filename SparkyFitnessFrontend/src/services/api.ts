@@ -18,6 +18,26 @@ export const API_BASE_URL = "/api";
 // Exported so other modules can clear this when authentication succeeds
 export const REDIRECT_TRACKING_KEY = 'sparky_auth_redirect_time';
 
+// Clean up stale redirect timestamps on app initialization
+// This prevents old timestamps from blocking redirects after browser restart
+(function cleanupStaleTimestamp() {
+  const lastRedirectTimeStr = localStorage.getItem(REDIRECT_TRACKING_KEY);
+  if (lastRedirectTimeStr) {
+    const lastRedirectTime = parseInt(lastRedirectTimeStr, 10);
+    const now = Date.now();
+    const age = now - lastRedirectTime;
+
+    // If timestamp is older than 30 seconds, it's stale - clear it
+    // This ensures old timestamps from previous sessions don't block redirects
+    if (age > 30000) {
+      console.debug(`Clearing stale redirect timestamp (${age}ms old)`);
+      localStorage.removeItem(REDIRECT_TRACKING_KEY);
+    } else {
+      console.debug(`Keeping recent redirect timestamp (${age}ms old)`);
+    }
+  }
+})();
+
 // Global flag to prevent multiple simultaneous redirects within the same page session
 let isRedirectingToLogin = false;
 
@@ -150,7 +170,9 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
       const lastRedirectTime = lastRedirectTimeStr ? parseInt(lastRedirectTimeStr, 10) : 0;
       const timeSinceLastRedirect = now - lastRedirectTime;
 
-      debug(userLoggingLevel, `NetworkError detected. Last redirect: ${timeSinceLastRedirect}ms ago. Threshold: 5000ms`);
+      const detectMessage = `NetworkError detected. Last redirect: ${timeSinceLastRedirect}ms ago. Threshold: 5000ms`;
+      debug(userLoggingLevel, detectMessage);
+      console.log('SPARKY AUTH:', detectMessage); // Also log to console for visibility
 
       // Only trigger redirect once, even if multiple API calls fail simultaneously
       // Also prevent redirect loops by checking if we tried recently (within 5 seconds)
@@ -196,7 +218,9 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
         }
       } else {
         // We recently redirected - don't redirect again to prevent loops
-        warn(userLoggingLevel, `Skipping redirect to prevent loop (last redirect was ${timeSinceLastRedirect}ms ago, threshold is 5000ms)`);
+        const skipMessage = `Skipping redirect to prevent loop (last redirect was ${timeSinceLastRedirect}ms ago, threshold is 5000ms)`;
+        warn(userLoggingLevel, skipMessage);
+        console.warn('SPARKY AUTH:', skipMessage); // Also log to console for visibility
       }
 
       // Don't throw error - just return a rejected promise
