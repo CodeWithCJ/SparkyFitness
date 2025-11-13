@@ -80,6 +80,7 @@ async function performRedirectToLogin() {
   // Unregister ALL Service Workers and clear their caches
   // Service Workers can serve cached content even after caches are cleared
   // We must unregister them to force network requests
+  let hadServiceWorker = false;
   if ('serviceWorker' in navigator) {
     try {
       console.log('SPARKY AUTH: Checking for Service Workers');
@@ -89,6 +90,7 @@ async function performRedirectToLogin() {
 
       // If there are Service Workers, unregister them
       if (registrations.length > 0) {
+        hadServiceWorker = true;
         console.log(`SPARKY AUTH: Found ${registrations.length} Service Worker(s), unregistering...`);
 
         // Mark that we're unregistering SWs
@@ -109,34 +111,42 @@ async function performRedirectToLogin() {
 
         console.log('SPARKY AUTH: Service Workers unregistered, will navigate after delay...');
       } else {
-        console.log('SPARKY AUTH: No Service Workers found');
+        console.log('SPARKY AUTH: No Service Workers found, using clean navigation');
       }
     } catch (err) {
       console.warn('SPARKY AUTH: Failed to check/unregister Service Workers:', err);
     }
   }
 
-  // Navigate to root path with cache-busting parameter to force Authentik intercept
-  // The cache-busting parameter forces a network request instead of serving from cache
-  // This ensures Authentik proxy can intercept the request and redirect to login
-  const cacheBustUrl = `/?_auth=${now}`;
+  // Choose navigation URL based on whether we had a Service Worker
+  // Fresh sessions (no SW): use clean '/' for best Authentik compatibility
+  // Repeat sessions (had SW): use cache-busting to prevent serving from cache
+  const navigationUrl = hadServiceWorker ? `/?_auth=${now}` : '/';
 
-  // Longer delay for iOS to ensure Service Worker is fully unregistered
-  // iOS WebKit needs time to properly unregister SWs before navigation
+  // Delay navigation to ensure Service Worker unregistration completes (if needed)
+  // Fresh sessions get shorter delay, SW sessions get longer delay for iOS
+  const delay = hadServiceWorker ? 500 : 100;
+
   setTimeout(() => {
     try {
-      warn(userLoggingLevel, `Navigating to ${cacheBustUrl} to trigger Authentik intercept`);
-      console.log('SPARKY AUTH: Navigating to', cacheBustUrl);
+      warn(userLoggingLevel, `Navigating to ${navigationUrl} to trigger Authentik intercept`);
+      console.log('SPARKY AUTH: Navigating to', navigationUrl);
 
-      // Use location.href for iOS compatibility (works better than replace on WebKit)
-      window.location.href = cacheBustUrl;
+      // Use window.location.replace for clean navigation (no history entry)
+      window.location.replace(navigationUrl);
     } catch (error) {
-      // Fallback to reload if navigation fails
-      warn(userLoggingLevel, 'Navigation failed, trying reload');
-      console.warn('SPARKY AUTH: Navigation failed, falling back to reload:', error);
-      window.location.reload();
+      // Fallback to href if replace fails
+      warn(userLoggingLevel, 'Replace failed, trying href');
+      console.warn('SPARKY AUTH: Replace failed, falling back to href:', error);
+      try {
+        window.location.href = navigationUrl;
+      } catch (hrefError) {
+        // Last resort - reload
+        console.warn('SPARKY AUTH: href also failed, reloading');
+        window.location.reload();
+      }
     }
-  }, 500);  // 500ms delay to ensure Service Worker unregistration completes on iOS
+  }, delay);
 }
 
 export async function apiCall(endpoint: string, options?: ApiCallOptions): Promise<any> {
