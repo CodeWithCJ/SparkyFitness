@@ -43,6 +43,59 @@ export const REDIRECT_TRACKING_KEY = 'sparky_auth_redirect_time';
 // Global flag to prevent multiple simultaneous redirects within the same page session
 let isRedirectingToLogin = false;
 
+// Track scheduled redirect timeout to prevent multiple scheduled redirects
+let scheduledRedirectTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// Function to cancel any scheduled redirect (called when auth succeeds)
+export function cancelScheduledRedirect() {
+  if (scheduledRedirectTimeout) {
+    clearTimeout(scheduledRedirectTimeout);
+    scheduledRedirectTimeout = null;
+    console.debug('Cancelled scheduled redirect - authentication succeeded');
+  }
+}
+
+// Function to perform the actual redirect to login
+function performRedirectToLogin() {
+  const userLoggingLevel = getUserLoggingLevel();
+  const now = Date.now();
+
+  // Store redirect time in localStorage so it persists across page reloads
+  localStorage.setItem(REDIRECT_TRACKING_KEY, now.toString());
+
+  // Clear ALL storage to prevent cache issues
+  localStorage.clear();
+  sessionStorage.clear();
+
+  // Re-set the redirect tracking after clearing
+  localStorage.setItem(REDIRECT_TRACKING_KEY, now.toString());
+
+  toast({
+    title: "Session Expired",
+    description: "Your session has expired. Redirecting to login...",
+    variant: "destructive",
+  });
+
+  // Navigate to root path to trigger Authentik intercept
+  // Using replace() instead of reload() to force a full navigation
+  // This allows Authentik proxy to intercept the request and redirect to login
+  try {
+    warn(userLoggingLevel, 'Calling window.location.replace(\'/\') to force Authentik intercept');
+    // Replace current page with root (no history entry)
+    window.location.replace('/');
+  } catch (replaceError) {
+    // If replace fails, try href as fallback
+    warn(userLoggingLevel, 'Replace failed, trying window.location.href');
+    try {
+      window.location.href = '/';
+    } catch (hrefError) {
+      // Last resort - reload
+      warn(userLoggingLevel, 'href failed, trying window.location.reload()');
+      window.location.reload();
+    }
+  }
+}
+
 export async function apiCall(endpoint: string, options?: ApiCallOptions): Promise<any> {
   const userLoggingLevel = getUserLoggingLevel();
   let url = options?.externalApi ? endpoint : `${API_BASE_URL}${endpoint}`;
@@ -183,46 +236,38 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
         isRedirectingToLogin = true;
 
         warn(userLoggingLevel, `Triggering redirect to login. Last redirect was ${timeSinceLastRedirect}ms ago.`);
+        console.log('SPARKY AUTH: Triggering immediate redirect');
 
-        // Store redirect time in localStorage so it persists across page reloads
-        localStorage.setItem(REDIRECT_TRACKING_KEY, now.toString());
-
-        // Clear ALL storage to prevent cache issues
-        localStorage.clear();
-        sessionStorage.clear();
-
-        // Re-set the redirect tracking after clearing
-        localStorage.setItem(REDIRECT_TRACKING_KEY, now.toString());
-
-        toast({
-          title: "Session Expired",
-          description: "Your session has expired. Redirecting to login...",
-          variant: "destructive",
-        });
-
-        // Navigate to root path to trigger Authentik intercept
-        // Using replace() instead of reload() to force a full navigation
-        // This allows Authentik proxy to intercept the request and redirect to login
-        try {
-          warn(userLoggingLevel, 'Calling window.location.replace(\'/\') to force Authentik intercept');
-          // Replace current page with root (no history entry)
-          window.location.replace('/');
-        } catch (replaceError) {
-          // If replace fails, try href as fallback
-          warn(userLoggingLevel, 'Replace failed, trying window.location.href');
-          try {
-            window.location.href = '/';
-          } catch (hrefError) {
-            // Last resort - reload
-            warn(userLoggingLevel, 'href failed, trying window.location.reload()');
-            window.location.reload();
-          }
+        // Clear any scheduled redirect since we're redirecting now
+        if (scheduledRedirectTimeout) {
+          clearTimeout(scheduledRedirectTimeout);
+          scheduledRedirectTimeout = null;
         }
-      } else {
-        // We recently redirected - don't redirect again to prevent loops
-        const skipMessage = `Skipping redirect to prevent loop (last redirect was ${timeSinceLastRedirect}ms ago, threshold is 3000ms)`;
+
+        // Perform the redirect
+        performRedirectToLogin();
+      } else if (!scheduledRedirectTimeout) {
+        // We recently redirected - don't redirect immediately to prevent loops
+        // Instead, schedule an automatic redirect after the threshold time passes
+        const remainingTime = 3000 - timeSinceLastRedirect;
+        const skipMessage = `Skipping immediate redirect to prevent loop (last redirect was ${timeSinceLastRedirect}ms ago, threshold is 3000ms)`;
         warn(userLoggingLevel, skipMessage);
-        console.warn('SPARKY AUTH:', skipMessage); // Also log to console for visibility
+        console.warn('SPARKY AUTH:', skipMessage);
+
+        // Schedule automatic redirect after remaining time
+        const scheduleMessage = `Scheduling automatic redirect in ${remainingTime}ms`;
+        warn(userLoggingLevel, scheduleMessage);
+        console.log('SPARKY AUTH:', scheduleMessage);
+
+        scheduledRedirectTimeout = setTimeout(() => {
+          console.log('SPARKY AUTH: Executing scheduled redirect');
+          isRedirectingToLogin = true;
+          scheduledRedirectTimeout = null;
+          performRedirectToLogin();
+        }, remainingTime);
+      } else {
+        // Already have a scheduled redirect, don't schedule another
+        console.log('SPARKY AUTH: Redirect already scheduled, waiting...');
       }
 
       // Don't throw error - just return a rejected promise
