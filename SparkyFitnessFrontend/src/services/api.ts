@@ -19,7 +19,7 @@ export const API_BASE_URL = "/api";
 export const REDIRECT_TRACKING_KEY = 'sparky_auth_redirect_time';
 
 // Clean up stale redirect timestamps on app initialization
-// This prevents old timestamps from blocking redirects after browser restart
+// This prevents old timestamps from blocking redirects
 (function cleanupStaleTimestamp() {
   const lastRedirectTimeStr = localStorage.getItem(REDIRECT_TRACKING_KEY);
   if (lastRedirectTimeStr) {
@@ -27,13 +27,15 @@ export const REDIRECT_TRACKING_KEY = 'sparky_auth_redirect_time';
     const now = Date.now();
     const age = now - lastRedirectTime;
 
-    // If timestamp is older than 30 seconds, it's stale - clear it
-    // This ensures old timestamps from previous sessions don't block redirects
-    if (age > 30000) {
+    // If timestamp is older than 3 seconds, it's stale - clear it
+    // Using 3 seconds because:
+    // - If redirect succeeded, auth would have cleared it already
+    // - If we're still here after 3s, the redirect failed and we should retry
+    if (age > 3000) {
       console.debug(`Clearing stale redirect timestamp (${age}ms old)`);
       localStorage.removeItem(REDIRECT_TRACKING_KEY);
     } else {
-      console.debug(`Keeping recent redirect timestamp (${age}ms old)`);
+      console.debug(`Keeping recent redirect timestamp (${age}ms old) - will clear after 3s`);
     }
   }
 })();
@@ -170,14 +172,14 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
       const lastRedirectTime = lastRedirectTimeStr ? parseInt(lastRedirectTimeStr, 10) : 0;
       const timeSinceLastRedirect = now - lastRedirectTime;
 
-      const detectMessage = `NetworkError detected. Last redirect: ${timeSinceLastRedirect}ms ago. Threshold: 5000ms`;
+      const detectMessage = `NetworkError detected. Last redirect: ${timeSinceLastRedirect}ms ago. Threshold: 3000ms`;
       debug(userLoggingLevel, detectMessage);
       console.log('SPARKY AUTH:', detectMessage); // Also log to console for visibility
 
       // Only trigger redirect once, even if multiple API calls fail simultaneously
-      // Also prevent redirect loops by checking if we tried recently (within 5 seconds)
-      // Using 5 seconds to give Authentik enough time to handle the redirect
-      if (!isRedirectingToLogin && timeSinceLastRedirect > 5000) {
+      // Also prevent redirect loops by checking if we tried recently (within 3 seconds)
+      // Using 3 seconds to balance between preventing loops and allowing retries
+      if (!isRedirectingToLogin && timeSinceLastRedirect > 3000) {
         isRedirectingToLogin = true;
 
         warn(userLoggingLevel, `Triggering redirect to login. Last redirect was ${timeSinceLastRedirect}ms ago.`);
@@ -198,27 +200,27 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
           variant: "destructive",
         });
 
-        // Do a hard reload to force Authentik to intercept
-        // This clears all caches and forces a fresh request
-        // The reload() method forces a reload from server, not cache
+        // Navigate to root path to trigger Authentik intercept
+        // Using replace() instead of reload() to force a full navigation
+        // This allows Authentik proxy to intercept the request and redirect to login
         try {
-          warn(userLoggingLevel, 'Calling window.location.reload() to force Authentik intercept');
-          // Force reload from server (bypasses cache)
-          window.location.reload();
-        } catch (reloadError) {
-          // If reload fails, try replace as fallback
-          warn(userLoggingLevel, 'Reload failed, trying window.location.replace()');
+          warn(userLoggingLevel, 'Calling window.location.replace(\'/\') to force Authentik intercept');
+          // Replace current page with root (no history entry)
+          window.location.replace('/');
+        } catch (replaceError) {
+          // If replace fails, try href as fallback
+          warn(userLoggingLevel, 'Replace failed, trying window.location.href');
           try {
-            window.location.replace('/');
-          } catch (replaceError) {
-            // Last resort
-            warn(userLoggingLevel, 'Replace failed, trying window.location.href');
             window.location.href = '/';
+          } catch (hrefError) {
+            // Last resort - reload
+            warn(userLoggingLevel, 'href failed, trying window.location.reload()');
+            window.location.reload();
           }
         }
       } else {
         // We recently redirected - don't redirect again to prevent loops
-        const skipMessage = `Skipping redirect to prevent loop (last redirect was ${timeSinceLastRedirect}ms ago, threshold is 5000ms)`;
+        const skipMessage = `Skipping redirect to prevent loop (last redirect was ${timeSinceLastRedirect}ms ago, threshold is 3000ms)`;
         warn(userLoggingLevel, skipMessage);
         console.warn('SPARKY AUTH:', skipMessage); // Also log to console for visibility
       }
