@@ -81,27 +81,45 @@ async function performRedirectToLogin() {
   // We must unregister them to force network requests
   if ('serviceWorker' in navigator) {
     try {
-      console.log('SPARKY AUTH: Unregistering all Service Workers');
+      console.log('SPARKY AUTH: Checking for Service Workers');
 
       // Get all Service Worker registrations
       const registrations = await navigator.serviceWorker.getRegistrations();
 
-      // Unregister each one
-      for (const registration of registrations) {
-        await registration.unregister();
-        console.log('SPARKY AUTH: Unregistered Service Worker:', registration.scope);
+      // If there are Service Workers, we need to unregister them and reload
+      // On iOS WebKit, Service Workers remain active even after unregister() until page reload
+      if (registrations.length > 0) {
+        console.log(`SPARKY AUTH: Found ${registrations.length} Service Worker(s), unregistering...`);
+
+        // Unregister each one
+        for (const registration of registrations) {
+          await registration.unregister();
+          console.log('SPARKY AUTH: Unregistered Service Worker:', registration.scope);
+        }
+
+        // Also clear all caches
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+          console.log('SPARKY AUTH: Cleared all caches');
+        }
+
+        console.log('SPARKY AUTH: Service Workers unregistered, reloading to complete removal...');
+
+        // On iOS, Service Worker remains active until page reloads
+        // Do a full reload to ensure it's completely gone
+        // Use setTimeout to ensure unregistration completes
+        setTimeout(() => {
+          window.location.reload();
+        }, 300);
+
+        // Exit early - the reload will bring us back and we'll proceed without SW
+        return;
       }
 
-      // Also clear all caches
-      if ('caches' in window) {
-        const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map(name => caches.delete(name)));
-        console.log('SPARKY AUTH: Cleared all caches');
-      }
-
-      console.log('SPARKY AUTH: All Service Workers unregistered and caches cleared');
+      console.log('SPARKY AUTH: No Service Workers found, proceeding with redirect');
     } catch (err) {
-      console.warn('SPARKY AUTH: Failed to unregister Service Workers:', err);
+      console.warn('SPARKY AUTH: Failed to check/unregister Service Workers:', err);
     }
   }
 
@@ -110,7 +128,7 @@ async function performRedirectToLogin() {
   // This ensures Authentik proxy can intercept the request and redirect to login
   const cacheBustUrl = `/?_auth=${now}`;
 
-  // Small delay to ensure Service Workers are fully unregistered before navigation
+  // Small delay to ensure any cleanup is complete before navigation
   setTimeout(() => {
     try {
       warn(userLoggingLevel, `Calling window.location.replace('${cacheBustUrl}') to force Authentik intercept`);
