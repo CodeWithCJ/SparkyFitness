@@ -76,15 +76,32 @@ async function performRedirectToLogin() {
     variant: "destructive",
   });
 
-  // Clear Service Worker caches if present (they can prevent Authentik from intercepting)
-  if ('serviceWorker' in navigator && 'caches' in window) {
+  // Unregister ALL Service Workers and clear their caches
+  // Service Workers can serve cached content even after caches are cleared
+  // We must unregister them to force network requests
+  if ('serviceWorker' in navigator) {
     try {
-      console.log('SPARKY AUTH: Clearing Service Worker caches');
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map(name => caches.delete(name)));
-      console.log('SPARKY AUTH: Service Worker caches cleared');
+      console.log('SPARKY AUTH: Unregistering all Service Workers');
+
+      // Get all Service Worker registrations
+      const registrations = await navigator.serviceWorker.getRegistrations();
+
+      // Unregister each one
+      for (const registration of registrations) {
+        await registration.unregister();
+        console.log('SPARKY AUTH: Unregistered Service Worker:', registration.scope);
+      }
+
+      // Also clear all caches
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+        console.log('SPARKY AUTH: Cleared all caches');
+      }
+
+      console.log('SPARKY AUTH: All Service Workers unregistered and caches cleared');
     } catch (err) {
-      console.warn('SPARKY AUTH: Failed to clear Service Worker caches:', err);
+      console.warn('SPARKY AUTH: Failed to unregister Service Workers:', err);
     }
   }
 
@@ -93,10 +110,11 @@ async function performRedirectToLogin() {
   // This ensures Authentik proxy can intercept the request and redirect to login
   const cacheBustUrl = `/?_auth=${now}`;
 
-  // Small delay to ensure caches are fully cleared before navigation
+  // Small delay to ensure Service Workers are fully unregistered before navigation
   setTimeout(() => {
     try {
       warn(userLoggingLevel, `Calling window.location.replace('${cacheBustUrl}') to force Authentik intercept`);
+      console.log('SPARKY AUTH: Navigating to', cacheBustUrl);
       // Replace current page with root + cache buster (no history entry, forces network request)
       window.location.replace(cacheBustUrl);
     } catch (replaceError) {
@@ -110,7 +128,7 @@ async function performRedirectToLogin() {
         window.location.reload();
       }
     }
-  }, 100);  // 100ms delay for cache clearing
+  }, 200);  // 200ms delay to ensure Service Worker unregistration completes
 }
 
 export async function apiCall(endpoint: string, options?: ApiCallOptions): Promise<any> {
