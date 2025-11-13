@@ -62,7 +62,7 @@ const CheckIn = () => {
   const [steps, setSteps] = useState("");
   const [height, setHeight] = useState("");
   const [bodyFatPercentage, setBodyFatPercentage] = useState("");
-  const [mood, setMood] = useState<number | null>(40); // Initialize mood to 50
+  const [mood, setMood] = useState<number | null>(50); // Initialize mood to 50
   const [moodNotes, setMoodNotes] = useState<string>(""); // New state for mood notes
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [customValues, setCustomValues] = useState<{[key: string]: string}>({});
@@ -332,9 +332,9 @@ const CheckIn = () => {
     e.preventDefault();
 
     // Always attempt to save the mood entry.
-    // The mood state is initialized to 40, so it will always have a value.
+    // The mood state is initialized to 50, so it will always have a value.
     try {
-      const moodToSend = mood ?? 40;
+      const moodToSend = mood ?? 50;
       info(loggingLevel, "Attempting to save mood entry with moodToSend:", moodToSend, "and moodNotes:", moodNotes, "and selectedDate:", selectedDate);
       await saveMoodEntry(moodToSend, moodNotes, selectedDate);
       info(loggingLevel, "Mood entry saved successfully.");
