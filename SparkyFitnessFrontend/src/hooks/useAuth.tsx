@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { REDIRECT_TRACKING_KEY } from '@/services/api';
+import { REDIRECT_TRACKING_KEY, cancelScheduledRedirect } from '@/services/api';
 
 interface User {
   id: string;
@@ -39,6 +39,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               // Clear redirect tracking timestamp when successfully authenticated
               // This ensures the next session expiration can trigger a redirect
               localStorage.removeItem(REDIRECT_TRACKING_KEY);
+              cancelScheduledRedirect(); // Cancel any pending redirect
               console.debug('Cleared redirect tracking - OIDC session is valid');
             }
           } else if (oidcResponse.status === 401 || oidcResponse.status === 403) {
@@ -64,6 +65,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 // Clear redirect tracking timestamp when successfully authenticated
                 // This ensures the next session expiration can trigger a redirect
                 localStorage.removeItem(REDIRECT_TRACKING_KEY);
+                cancelScheduledRedirect(); // Cancel any pending redirect
                 console.debug('Cleared redirect tracking - password session is valid');
               }
             } else if (passwordResponse.status === 401 || passwordResponse.status === 403) {
@@ -137,6 +139,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Clear redirect tracking timestamp when user signs in
     // This ensures the next session expiration can trigger a redirect
     localStorage.removeItem(REDIRECT_TRACKING_KEY);
+    cancelScheduledRedirect(); // Cancel any pending redirect
     console.debug('Cleared redirect tracking - user signed in via', authType);
   };
 
