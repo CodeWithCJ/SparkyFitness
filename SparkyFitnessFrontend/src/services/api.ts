@@ -17,6 +17,7 @@ export const API_BASE_URL = "/api";
 // Key for tracking redirect attempts in localStorage (persists across page reloads)
 // Exported so other modules can clear this when authentication succeeds
 export const REDIRECT_TRACKING_KEY = 'sparky_auth_redirect_time';
+export const SW_UNREGISTERED_KEY = 'sparky_sw_unregistered';
 
 // Clean up stale redirect timestamps on app initialization
 // This prevents old timestamps from blocking redirects
@@ -86,10 +87,12 @@ async function performRedirectToLogin() {
       // Get all Service Worker registrations
       const registrations = await navigator.serviceWorker.getRegistrations();
 
-      // If there are Service Workers, we need to unregister them and reload
-      // On iOS WebKit, Service Workers remain active even after unregister() until page reload
+      // If there are Service Workers, unregister them
       if (registrations.length > 0) {
         console.log(`SPARKY AUTH: Found ${registrations.length} Service Worker(s), unregistering...`);
+
+        // Mark that we're unregistering SWs
+        localStorage.setItem(SW_UNREGISTERED_KEY, 'true');
 
         // Unregister each one
         for (const registration of registrations) {
@@ -104,20 +107,10 @@ async function performRedirectToLogin() {
           console.log('SPARKY AUTH: Cleared all caches');
         }
 
-        console.log('SPARKY AUTH: Service Workers unregistered, reloading to complete removal...');
-
-        // On iOS, Service Worker remains active until page reloads
-        // Do a full reload to ensure it's completely gone
-        // Use setTimeout to ensure unregistration completes
-        setTimeout(() => {
-          window.location.reload();
-        }, 300);
-
-        // Exit early - the reload will bring us back and we'll proceed without SW
-        return;
+        console.log('SPARKY AUTH: Service Workers unregistered, will navigate after delay...');
+      } else {
+        console.log('SPARKY AUTH: No Service Workers found');
       }
-
-      console.log('SPARKY AUTH: No Service Workers found, proceeding with redirect');
     } catch (err) {
       console.warn('SPARKY AUTH: Failed to check/unregister Service Workers:', err);
     }
@@ -128,25 +121,22 @@ async function performRedirectToLogin() {
   // This ensures Authentik proxy can intercept the request and redirect to login
   const cacheBustUrl = `/?_auth=${now}`;
 
-  // Small delay to ensure any cleanup is complete before navigation
+  // Longer delay for iOS to ensure Service Worker is fully unregistered
+  // iOS WebKit needs time to properly unregister SWs before navigation
   setTimeout(() => {
     try {
-      warn(userLoggingLevel, `Calling window.location.replace('${cacheBustUrl}') to force Authentik intercept`);
+      warn(userLoggingLevel, `Navigating to ${cacheBustUrl} to trigger Authentik intercept`);
       console.log('SPARKY AUTH: Navigating to', cacheBustUrl);
-      // Replace current page with root + cache buster (no history entry, forces network request)
-      window.location.replace(cacheBustUrl);
-    } catch (replaceError) {
-      // If replace fails, try href as fallback
-      warn(userLoggingLevel, 'Replace failed, trying window.location.href');
-      try {
-        window.location.href = cacheBustUrl;
-      } catch (hrefError) {
-        // Last resort - reload
-        warn(userLoggingLevel, 'href failed, trying window.location.reload()');
-        window.location.reload();
-      }
+
+      // Use location.href for iOS compatibility (works better than replace on WebKit)
+      window.location.href = cacheBustUrl;
+    } catch (error) {
+      // Fallback to reload if navigation fails
+      warn(userLoggingLevel, 'Navigation failed, trying reload');
+      console.warn('SPARKY AUTH: Navigation failed, falling back to reload:', error);
+      window.location.reload();
     }
-  }, 200);  // 200ms delay to ensure Service Worker unregistration completes
+  }, 500);  // 500ms delay to ensure Service Worker unregistration completes on iOS
 }
 
 export async function apiCall(endpoint: string, options?: ApiCallOptions): Promise<any> {
