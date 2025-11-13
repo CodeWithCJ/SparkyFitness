@@ -56,7 +56,7 @@ export function cancelScheduledRedirect() {
 }
 
 // Function to perform the actual redirect to login
-function performRedirectToLogin() {
+async function performRedirectToLogin() {
   const userLoggingLevel = getUserLoggingLevel();
   const now = Date.now();
 
@@ -76,25 +76,41 @@ function performRedirectToLogin() {
     variant: "destructive",
   });
 
+  // Clear Service Worker caches if present (they can prevent Authentik from intercepting)
+  if ('serviceWorker' in navigator && 'caches' in window) {
+    try {
+      console.log('SPARKY AUTH: Clearing Service Worker caches');
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
+      console.log('SPARKY AUTH: Service Worker caches cleared');
+    } catch (err) {
+      console.warn('SPARKY AUTH: Failed to clear Service Worker caches:', err);
+    }
+  }
+
   // Navigate to root path with cache-busting parameter to force Authentik intercept
   // The cache-busting parameter forces a network request instead of serving from cache
   // This ensures Authentik proxy can intercept the request and redirect to login
   const cacheBustUrl = `/?_auth=${now}`;
-  try {
-    warn(userLoggingLevel, `Calling window.location.replace('${cacheBustUrl}') to force Authentik intercept`);
-    // Replace current page with root + cache buster (no history entry, forces network request)
-    window.location.replace(cacheBustUrl);
-  } catch (replaceError) {
-    // If replace fails, try href as fallback
-    warn(userLoggingLevel, 'Replace failed, trying window.location.href');
+
+  // Small delay to ensure caches are fully cleared before navigation
+  setTimeout(() => {
     try {
-      window.location.href = cacheBustUrl;
-    } catch (hrefError) {
-      // Last resort - reload
-      warn(userLoggingLevel, 'href failed, trying window.location.reload()');
-      window.location.reload();
+      warn(userLoggingLevel, `Calling window.location.replace('${cacheBustUrl}') to force Authentik intercept`);
+      // Replace current page with root + cache buster (no history entry, forces network request)
+      window.location.replace(cacheBustUrl);
+    } catch (replaceError) {
+      // If replace fails, try href as fallback
+      warn(userLoggingLevel, 'Replace failed, trying window.location.href');
+      try {
+        window.location.href = cacheBustUrl;
+      } catch (hrefError) {
+        // Last resort - reload
+        warn(userLoggingLevel, 'href failed, trying window.location.reload()');
+        window.location.reload();
+      }
     }
-  }
+  }, 100);  // 100ms delay for cache clearing
 }
 
 export async function apiCall(endpoint: string, options?: ApiCallOptions): Promise<any> {
