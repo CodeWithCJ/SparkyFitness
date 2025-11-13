@@ -76,18 +76,19 @@ function performRedirectToLogin() {
     variant: "destructive",
   });
 
-  // Navigate to root path to trigger Authentik intercept
-  // Using replace() instead of reload() to force a full navigation
-  // This allows Authentik proxy to intercept the request and redirect to login
+  // Navigate to root path with cache-busting parameter to force Authentik intercept
+  // The cache-busting parameter forces a network request instead of serving from cache
+  // This ensures Authentik proxy can intercept the request and redirect to login
+  const cacheBustUrl = `/?_auth=${now}`;
   try {
-    warn(userLoggingLevel, 'Calling window.location.replace(\'/\') to force Authentik intercept');
-    // Replace current page with root (no history entry)
-    window.location.replace('/');
+    warn(userLoggingLevel, `Calling window.location.replace('${cacheBustUrl}') to force Authentik intercept`);
+    // Replace current page with root + cache buster (no history entry, forces network request)
+    window.location.replace(cacheBustUrl);
   } catch (replaceError) {
     // If replace fails, try href as fallback
     warn(userLoggingLevel, 'Replace failed, trying window.location.href');
     try {
-      window.location.href = '/';
+      window.location.href = cacheBustUrl;
     } catch (hrefError) {
       // Last resort - reload
       warn(userLoggingLevel, 'href failed, trying window.location.reload()');
