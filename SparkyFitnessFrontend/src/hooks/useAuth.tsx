@@ -40,6 +40,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               // This ensures the next session expiration can trigger a redirect
               localStorage.removeItem(REDIRECT_TRACKING_KEY);
               localStorage.removeItem(SW_UNREGISTERED_KEY);
+              // Mark that user has been authenticated - allows Service Worker registration
+              localStorage.setItem('sparky_user_was_authenticated', 'true');
+
+              // Register Service Worker now that user is authenticated
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').catch((err) => {
+                  console.warn('SW registration after auth failed:', err);
+                });
+              }
+
               cancelScheduledRedirect(); // Cancel any pending redirect
               console.debug('Cleared redirect tracking - OIDC session is valid');
             }
@@ -67,6 +77,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 // This ensures the next session expiration can trigger a redirect
                 localStorage.removeItem(REDIRECT_TRACKING_KEY);
                 localStorage.removeItem(SW_UNREGISTERED_KEY);
+                // Mark that user has been authenticated - allows Service Worker registration
+                localStorage.setItem('sparky_user_was_authenticated', 'true');
+
+                // Register Service Worker now that user is authenticated
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.register('/sw.js').catch((err) => {
+                    console.warn('SW registration after auth failed:', err);
+                  });
+                }
+
                 cancelScheduledRedirect(); // Cancel any pending redirect
                 console.debug('Cleared redirect tracking - password session is valid');
               }
@@ -142,6 +162,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // This ensures the next session expiration can trigger a redirect
     localStorage.removeItem(REDIRECT_TRACKING_KEY);
     localStorage.removeItem(SW_UNREGISTERED_KEY);
+    // Mark that user has been authenticated - allows Service Worker registration
+    localStorage.setItem('sparky_user_was_authenticated', 'true');
+
+    // Register Service Worker now that user is authenticated
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
+        console.warn('SW registration after auth failed:', err);
+      });
+    }
+
     cancelScheduledRedirect(); // Cancel any pending redirect
     console.debug('Cleared redirect tracking - user signed in via', authType);
   };
