@@ -482,7 +482,7 @@ a.click();
         warn(loggingLevel, `Reports: No custom measurement data to export for category: ${category.name}.`);
         toast({
           title: t('reports.noData', "No Data"),
-          description: t('reports.noCustomMeasurementDataToExport', `No ${category.name} data to export`, { categoryName: category.name }),
+          description: t('reports.noCustomMeasurementDataToExport', `No ${category.display_name || category.name} data to export`, { categoryName: category.display_name || category.name }),
           variant: "destructive",
         });
         return;
@@ -521,7 +521,7 @@ a.click();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${category.name.toLowerCase().replace(/\s+/g, '-')}-${startDate}-to-${endDate}.csv`;
+      a.download = `${(category.display_name || category.name).toLowerCase().replace(/\s+/g, '-')}-${startDate}-to-${endDate}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -530,7 +530,7 @@ a.click();
       info(loggingLevel, `Reports: Custom measurements exported successfully for category: ${category.name}.`);
       toast({
         title: t('reports.customMeasurementsExportSuccess', "Success"),
-        description: t('reports.customMeasurementsExportSuccess', `${category.name} data exported successfully`, { categoryName: category.name }),
+        description: t('reports.customMeasurementsExportSuccess', `${category.display_name || category.name} data exported successfully`, { categoryName: category.display_name || category.name }),
       });
     } catch (err) {
       error(loggingLevel, `Reports: Error exporting custom measurements for category ${category.name}:`, err);
@@ -679,14 +679,14 @@ a.click();
                     const chartData = formatCustomChartData(category, data);
                     
                     return (
-                      <ZoomableChart key={category.id} title={t('reports.customMeasurementChartTitle', '{{categoryName}} ({{measurementType}})', { categoryName: category.name, measurementType: category.measurement_type })}>
+                      <ZoomableChart key={category.id} title={t('reports.customMeasurementChartTitle', '{{categoryName}} ({{measurementType}})', { categoryName: category.display_name || category.name, measurementType: category.measurement_type })}>
                         <Card>
                           <CardHeader>
                             <CardTitle className="flex items-center">
                               <Activity className="w-5 h-5 mr-2" />
                               {category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
-                                ? `${category.name} (${defaultMeasurementUnit})`
-                                : `${category.name} (${category.measurement_type})`}
+                                ? `${category.display_name || category.name} (${defaultMeasurementUnit})`
+                                : `${category.display_name || category.name} (${category.measurement_type})`}
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
