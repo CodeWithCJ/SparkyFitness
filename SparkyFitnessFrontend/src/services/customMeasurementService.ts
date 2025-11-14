@@ -3,6 +3,7 @@ import { apiCall } from './api';
 export interface CustomCategory {
   id: string;
   name: string;
+  display_name?: string | null;
   measurement_type: string;
   frequency: string;
   data_type: string;
@@ -18,6 +19,7 @@ export interface CustomMeasurement {
   entry_timestamp: string;
   custom_categories: {
     name: string;
+    display_name?: string | null;
     measurement_type: string;
     frequency: string;
     data_type: string;
