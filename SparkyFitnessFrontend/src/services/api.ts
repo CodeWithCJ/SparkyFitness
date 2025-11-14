@@ -81,6 +81,7 @@ async function performRedirectToLogin() {
   // Service Workers can serve cached content even after caches are cleared
   // We must unregister them to force network requests
   let hadServiceWorker = false;
+  let wasAfterSwRemoval = false;
   if ('serviceWorker' in navigator) {
     try {
       console.log('SPARKY AUTH: Checking for Service Workers');
@@ -128,25 +129,35 @@ async function performRedirectToLogin() {
         } else {
           // Second time: SW was already unregistered, now it should be gone
           console.log('SPARKY AUTH: Second load after SW unregistration - SW should be gone now');
+          wasAfterSwRemoval = true;
           // Clear the flag so next session expiration works
           localStorage.removeItem(SW_UNREGISTERED_KEY);
         }
       } else {
-        console.log('SPARKY AUTH: No Service Workers found, using clean navigation');
-        // Clear the flag in case it's lingering from previous session
-        localStorage.removeItem(SW_UNREGISTERED_KEY);
+        console.log('SPARKY AUTH: No Service Workers found');
+        // Check if we just removed SW (flag is set but no SW found)
+        const swUnregisteredFlag = localStorage.getItem(SW_UNREGISTERED_KEY);
+        if (swUnregisteredFlag) {
+          console.log('SPARKY AUTH: This is after SW removal (flag set, no SW detected)');
+          wasAfterSwRemoval = true;
+          localStorage.removeItem(SW_UNREGISTERED_KEY);
+        } else {
+          console.log('SPARKY AUTH: Fresh session, no SW ever present');
+        }
       }
     } catch (err) {
       console.warn('SPARKY AUTH: Failed to check/unregister Service Workers:', err);
     }
   }
 
-  // Choose navigation URL based on whether we had a Service Worker
-  // Fresh sessions (no SW): use clean '/' for best Authentik compatibility
-  // After SW unregistration: also use clean '/' since SW is now gone
-  const navigationUrl = '/';
+  // Choose navigation URL based on session type
+  // Fresh session (no SW, no flag): use clean '/' for best Authentik compatibility
+  // After SW removal (flag was set): use cache-busting to force network request on iOS
+  const navigationUrl = wasAfterSwRemoval ? `/?_auth=${now}` : '/';
 
-  // Short delay for all cases since SW should be gone now
+  console.log(`SPARKY AUTH: Navigation strategy - wasAfterSwRemoval: ${wasAfterSwRemoval}, URL: ${navigationUrl}`);
+
+  // Short delay for navigation
   const delay = 100;
 
   setTimeout(() => {
