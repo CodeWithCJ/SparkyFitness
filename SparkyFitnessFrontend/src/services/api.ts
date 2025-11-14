@@ -93,9 +93,6 @@ async function performRedirectToLogin() {
         hadServiceWorker = true;
         console.log(`SPARKY AUTH: Found ${registrations.length} Service Worker(s), unregistering...`);
 
-        // Mark that we're unregistering SWs
-        localStorage.setItem(SW_UNREGISTERED_KEY, 'true');
-
         // Unregister each one
         for (const registration of registrations) {
           await registration.unregister();
@@ -109,9 +106,35 @@ async function performRedirectToLogin() {
           console.log('SPARKY AUTH: Cleared all caches');
         }
 
-        console.log('SPARKY AUTH: Service Workers unregistered, will navigate after delay...');
+        // On iOS WebKit, Service Workers remain active until page reloads
+        // We need a two-step process:
+        // Step 1: Unregister SW and reload to clear it from memory
+        // Step 2: After reload (no SW), navigate to trigger Authentik
+
+        // Check if this is the first time (just unregistered) or second time (after reload)
+        const swUnregisteredFlag = localStorage.getItem(SW_UNREGISTERED_KEY);
+
+        if (!swUnregisteredFlag) {
+          // First time: Mark that we unregistered and reload to clear SW from memory
+          console.log('SPARKY AUTH: First detection - marking SW as unregistered and reloading...');
+          localStorage.setItem(SW_UNREGISTERED_KEY, 'true');
+
+          setTimeout(() => {
+            console.log('SPARKY AUTH: Reloading to clear Service Worker from memory');
+            window.location.reload();
+          }, 300);
+
+          return; // Exit early - reload will bring us back
+        } else {
+          // Second time: SW was already unregistered, now it should be gone
+          console.log('SPARKY AUTH: Second load after SW unregistration - SW should be gone now');
+          // Clear the flag so next session expiration works
+          localStorage.removeItem(SW_UNREGISTERED_KEY);
+        }
       } else {
         console.log('SPARKY AUTH: No Service Workers found, using clean navigation');
+        // Clear the flag in case it's lingering from previous session
+        localStorage.removeItem(SW_UNREGISTERED_KEY);
       }
     } catch (err) {
       console.warn('SPARKY AUTH: Failed to check/unregister Service Workers:', err);
@@ -120,12 +143,11 @@ async function performRedirectToLogin() {
 
   // Choose navigation URL based on whether we had a Service Worker
   // Fresh sessions (no SW): use clean '/' for best Authentik compatibility
-  // Repeat sessions (had SW): use cache-busting to prevent serving from cache
-  const navigationUrl = hadServiceWorker ? `/?_auth=${now}` : '/';
+  // After SW unregistration: also use clean '/' since SW is now gone
+  const navigationUrl = '/';
 
-  // Delay navigation to ensure Service Worker unregistration completes (if needed)
-  // Fresh sessions get shorter delay, SW sessions get longer delay for iOS
-  const delay = hadServiceWorker ? 500 : 100;
+  // Short delay for all cases since SW should be gone now
+  const delay = 100;
 
   setTimeout(() => {
     try {
