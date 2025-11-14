@@ -34,6 +34,28 @@
         <script type="module" src="/src/main.tsx"></script>
         <script>
             if ("serviceWorker" in navigator) {
+                // CRITICAL: Unregister persisting Service Workers IMMEDIATELY, before page load
+                // On iOS, Service Workers can persist from normal mode to incognito and intercept
+                // requests BEFORE the page load event fires. We must unregister them synchronously.
+                const userWasAuthenticated = localStorage.getItem('sparky_user_was_authenticated');
+
+                if (!userWasAuthenticated) {
+                    console.log('Fresh session detected - checking for persisting Service Workers');
+
+                    // Unregister any existing Service Workers immediately
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                        if (registrations.length > 0) {
+                            console.log('Found ' + registrations.length + ' persisting SW(s) in fresh session - unregistering immediately');
+                            for(let registration of registrations) {
+                                registration.unregister();
+                            }
+                        } else {
+                            console.log('No persisting Service Workers found - auth flow should work');
+                        }
+                    });
+                }
+
+                // Then handle conditional registration on page load
                 window.addEventListener("load", () => {
                     // Check if we're in the middle of unregistering SW for auth flow
                     // If SW_UNREGISTERED_KEY is set, skip registration to allow clean Authentik redirect
@@ -50,18 +72,6 @@
 
                     if (!userWasAuthenticated) {
                         console.log('SW registration skipped - user not yet authenticated (fresh session)');
-
-                        // IMPORTANT: On iOS, Service Workers can persist from normal mode to incognito
-                        // We must actively unregister any existing SW to prevent interference
-                        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                            if (registrations.length > 0) {
-                                console.log('Found existing SW in fresh session - unregistering to prevent auth interference');
-                                for(let registration of registrations) {
-                                    registration.unregister();
-                                }
-                            }
-                        });
-
                         return; // Don't register SW until after first login
                     }
 
