@@ -203,7 +203,7 @@ const CustomMeasurements = () => {
                   <Card key={category.id} className="h-fit">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium">
-                        {category.name}
+                        {category.display_name || category.name}
                       </CardTitle>
                       <p className="text-xs text-muted-foreground">
                         {category.measurement_type} • {category.frequency} • {category.data_type || 'numeric'}
@@ -271,7 +271,7 @@ const CustomMeasurements = () => {
                 >
                   <div>
                     <div className="font-medium">
-                      {measurement.custom_categories.name}: {measurement.value} {measurement.custom_categories.measurement_type}
+                      {measurement.custom_categories.display_name || measurement.custom_categories.name}: {measurement.value} {measurement.custom_categories.measurement_type}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {new Date(measurement.entry_date).toLocaleDateString()}
