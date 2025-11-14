@@ -256,7 +256,7 @@ async function getCustomCategories(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT id, name, frequency, measurement_type, data_type FROM custom_categories WHERE user_id = $1',
+      'SELECT id, name, display_name, frequency, measurement_type, data_type FROM custom_categories WHERE user_id = $1',
       [userId]
     );
     return result.rows;
@@ -269,9 +269,9 @@ async function createCustomCategory(categoryData) {
   const client = await getClient(categoryData.created_by_user_id); // User-specific operation, using created_by_user_id for RLS context
   try {
     const result = await client.query(
-      `INSERT INTO custom_categories (user_id, name, frequency, measurement_type, data_type, created_by_user_id, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, now(), now()) RETURNING id`,
-      [categoryData.user_id, categoryData.name, categoryData.frequency, categoryData.measurement_type, categoryData.data_type, categoryData.created_by_user_id]
+      `INSERT INTO custom_categories (user_id, name, display_name, frequency, measurement_type, data_type, created_by_user_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now()) RETURNING id`,
+      [categoryData.user_id, categoryData.name, categoryData.display_name, categoryData.frequency, categoryData.measurement_type, categoryData.data_type, categoryData.created_by_user_id]
     );
     return result.rows[0];
   } finally {
@@ -285,14 +285,15 @@ async function updateCustomCategory(id, userId, updatedByUserId, updateData) {
     const result = await client.query(
       `UPDATE custom_categories SET
         name = COALESCE($1, name),
-        frequency = COALESCE($2, frequency),
-        measurement_type = COALESCE($3, measurement_type),
-        data_type = COALESCE($4, data_type),
+        display_name = COALESCE($2, display_name),
+        frequency = COALESCE($3, frequency),
+        measurement_type = COALESCE($4, measurement_type),
+        data_type = COALESCE($5, data_type),
         updated_at = now(),
-        updated_by_user_id = $5
-      WHERE id = $6 AND user_id = $7
+        updated_by_user_id = $6
+      WHERE id = $7 AND user_id = $8
       RETURNING *`,
-      [updateData.name, updateData.frequency, updateData.measurement_type, updateData.data_type, updatedByUserId, id, userId]
+      [updateData.name, updateData.display_name, updateData.frequency, updateData.measurement_type, updateData.data_type, updatedByUserId, id, userId]
     );
     return result.rows[0];
   } finally {
@@ -347,6 +348,7 @@ async function getCustomMeasurementEntries(userId, limit, orderBy, filter) {
       SELECT cm.*, cm.entry_date::TEXT,
              json_build_object(
                'name', cc.name,
+               'display_name', cc.display_name,
                'measurement_type', cc.measurement_type,
                'frequency', cc.frequency,
                'data_type', cc.data_type
@@ -400,6 +402,7 @@ async function getCustomMeasurementEntriesByDate(userId, date) {
       `SELECT cm.*,
              json_build_object(
                'name', cc.name,
+               'display_name', cc.display_name,
                'measurement_type', cc.measurement_type,
                'frequency', cc.frequency,
                'data_type', cc.data_type
