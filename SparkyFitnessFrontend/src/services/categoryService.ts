@@ -3,6 +3,7 @@ import { apiCall } from "./api";
 interface CustomCategory {
   id: string;
   name: string;
+  display_name?: string | null;
   measurement_type: string;
   frequency: string;
 }
@@ -10,12 +11,14 @@ interface CustomCategory {
 interface NewCategoryData {
   user_id: string;
   name: string;
+  display_name?: string;
   measurement_type: string;
   frequency: string;
 }
 
 interface UpdateCategoryData {
   name?: string;
+  display_name?: string;
   measurement_type?: string;
   frequency?: string;
 }
