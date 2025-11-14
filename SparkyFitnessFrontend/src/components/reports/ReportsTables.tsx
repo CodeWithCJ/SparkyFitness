@@ -104,6 +104,7 @@ interface MeasurementData {
 interface CustomCategory {
   id: string;
   name: string;
+  display_name?: string | null;
   measurement_type: string;
   frequency: string;
   data_type: string;
@@ -546,7 +547,7 @@ const ReportsTables = ({
           <Card key={category.id}>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>{category.name} ({category.measurement_type})</CardTitle>
+                <CardTitle>{category.display_name || category.name} ({category.measurement_type})</CardTitle>
                 <Button
                   onClick={() => onExportCustomMeasurements(category)}
                   variant="outline"

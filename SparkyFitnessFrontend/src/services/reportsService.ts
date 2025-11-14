@@ -128,6 +128,7 @@ export interface ExerciseProgressData {
 export interface CustomCategory {
   id: string;
   name: string;
+  display_name?: string | null;
   measurement_type: string;
   frequency: string;
   data_type: string;

@@ -34,6 +34,7 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
   const [editingCategory, setEditingCategory] = useState<CustomCategory | null>(null);
   const [newCategory, setNewCategory] = useState({
     name: '',
+    display_name: '',
     measurement_type: '',
     frequency: 'Daily',
     data_type: 'numeric'
@@ -72,6 +73,7 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
       const data = await addCategory({
         user_id: user.id,
         name: newCategory.name.trim(),
+        display_name: newCategory.display_name.trim() || undefined,
         measurement_type: newCategory.measurement_type.trim(),
         frequency: newCategory.frequency,
         data_type: newCategory.data_type
@@ -79,7 +81,7 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
       // Refetch categories to ensure the new one with the correct ID and all fields is displayed
       const fetchedCategories = await getCategories(loggingLevel);
       onCategoriesChange(fetchedCategories || []);
-      setNewCategory({ name: '', measurement_type: '', frequency: 'Daily', data_type: 'numeric' });
+      setNewCategory({ name: '', display_name: '', measurement_type: '', frequency: 'Daily', data_type: 'numeric' });
       setIsAddDialogOpen(false);
       
       toast({
@@ -109,6 +111,7 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
     try {
       const updatedData = await updateCategory(editingCategory.id, {
         name: editingCategory.name.trim(),
+        display_name: editingCategory.display_name?.trim() || undefined,
         measurement_type: editingCategory.measurement_type.trim(),
         frequency: editingCategory.frequency,
         data_type: editingCategory.data_type
@@ -205,6 +208,18 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
                   placeholder={t('customCategoryManager.namePlaceholder', 'e.g., Blood Sugar')}
                   maxLength={50}
                 />
+                <p className="text-xs text-gray-500 mt-1">{t('customCategoryManager.nameHelp', 'Internal identifier used for syncing')}</p>
+              </div>
+              <div>
+                <Label htmlFor="display_name">{t('customCategoryManager.displayNameLabel', 'Display Name (optional, max 100 characters)')}</Label>
+                <Input
+                  id="display_name"
+                  value={newCategory.display_name}
+                  onChange={(e) => setNewCategory({ ...newCategory, display_name: e.target.value.slice(0, 100) })}
+                  placeholder={t('customCategoryManager.displayNamePlaceholder', 'e.g., Morning Blood Sugar Level')}
+                  maxLength={100}
+                />
+                <p className="text-xs text-gray-500 mt-1">{t('customCategoryManager.displayNameHelp', 'Optional custom name shown in the app')}</p>
               </div>
               <div>
                 <Label htmlFor="measurement_type">{t('customCategoryManager.measurementTypeLabel', 'Measurement Type (max 50 characters)')}</Label>
@@ -261,7 +276,10 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
           {categories.map((category, index) => (
             <div key={category.id || `UNDEFINED_ID-${index}`} className="flex items-center justify-between p-3 border rounded">
               <div>
-                <div className="font-medium">{category.name}</div>
+                <div className="font-medium">{category.display_name || category.name}</div>
+                {category.display_name && (
+                  <div className="text-xs text-gray-400">({category.name})</div>
+                )}
                 <div className="text-sm text-gray-500">
                   {category.measurement_type} • {category.frequency} • {category.data_type}
                 </div>
@@ -306,7 +324,20 @@ const CustomCategoryManager = ({ categories, onCategoriesChange }: CustomCategor
                   onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value.slice(0, 50) })}
                   placeholder={t('customCategoryManager.namePlaceholder', 'e.g., Blood Sugar')}
                   maxLength={50}
+                  disabled
                 />
+                <p className="text-xs text-gray-500 mt-1">{t('customCategoryManager.nameHelp', 'Internal identifier used for syncing')}</p>
+              </div>
+              <div>
+                <Label htmlFor="edit-display_name">{t('customCategoryManager.displayNameLabel', 'Display Name (optional, max 100 characters)')}</Label>
+                <Input
+                  id="edit-display_name"
+                  value={editingCategory.display_name || ''}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, display_name: e.target.value.slice(0, 100) || null })}
+                  placeholder={t('customCategoryManager.displayNamePlaceholder', 'e.g., Morning Blood Sugar Level')}
+                  maxLength={100}
+                />
+                <p className="text-xs text-gray-500 mt-1">{t('customCategoryManager.displayNameHelp', 'Optional custom name shown in the app')}</p>
               </div>
               <div>
                 <Label htmlFor="edit-measurement_type">{t('customCategoryManager.measurementTypeLabel', 'Measurement Type (max 50 characters)')}</Label>
