@@ -157,7 +157,7 @@ const CheckIn = () => {
           entry_timestamp: m.entry_timestamp,
           value: m.value,
           type: 'custom',
-          display_name: m.custom_categories.name,
+          display_name: m.custom_categories.display_name || m.custom_categories.name,
           display_unit: m.custom_categories.measurement_type,
           custom_categories: m.custom_categories, // Keep original custom_categories for conversion logic
         };
@@ -707,7 +707,7 @@ const CheckIn = () => {
                 return (
                   <div key={category.id}>
                     <Label htmlFor={`custom-${category.id}`}>
-                      {category.name} ({isConvertible ? defaultMeasurementUnit : category.measurement_type})
+                      {category.display_name || category.name} ({isConvertible ? defaultMeasurementUnit : category.measurement_type})
                     </Label>
                     <Input
                       id={`custom-${category.id}`}
@@ -720,7 +720,7 @@ const CheckIn = () => {
                           [category.id]: e.target.value
                         }));
                       }}
-                      placeholder={t('checkIn.enterCustomCategory', { categoryName: category.name.toLowerCase(), defaultValue: `Enter ${category.name.toLowerCase()}` })}
+                      placeholder={t('checkIn.enterCustomCategory', { categoryName: (category.display_name || category.name).toLowerCase(), defaultValue: `Enter ${(category.display_name || category.name).toLowerCase()}` })}
                     />
                     <Input
                       id={`custom-notes-${category.id}`}
