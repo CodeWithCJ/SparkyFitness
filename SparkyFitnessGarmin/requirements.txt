@@ -3,3 +3,4 @@ uvicorn==0.30.1
 garminconnect==0.2.30
 garth==0.5.17
 python-dotenv==1.0.0
+pytz
