@@ -50,6 +50,18 @@
 
                     if (!userWasAuthenticated) {
                         console.log('SW registration skipped - user not yet authenticated (fresh session)');
+
+                        // IMPORTANT: On iOS, Service Workers can persist from normal mode to incognito
+                        // We must actively unregister any existing SW to prevent interference
+                        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                            if (registrations.length > 0) {
+                                console.log('Found existing SW in fresh session - unregistering to prevent auth interference');
+                                for(let registration of registrations) {
+                                    registration.unregister();
+                                }
+                            }
+                        });
+
                         return; // Don't register SW until after first login
                     }
 
