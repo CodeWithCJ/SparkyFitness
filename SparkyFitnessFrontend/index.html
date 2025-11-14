@@ -35,9 +35,20 @@
         <script>
             if ("serviceWorker" in navigator) {
                 window.addEventListener("load", () => {
+                    // Check if we're in the middle of unregistering SW for auth flow
+                    // If SW_UNREGISTERED_KEY is set, skip registration to allow clean Authentik redirect
+                    const swUnregistered = localStorage.getItem('sparky_sw_unregistered');
+
+                    if (swUnregistered) {
+                        console.log('SW registration skipped - auth flow in progress');
+                        return; // Don't re-register, let auth flow complete
+                    }
+
                     navigator.serviceWorker
                         .register("/sw.js")
-                        .then((registration) => {})
+                        .then((registration) => {
+                            console.log('SW registered successfully');
+                        })
                         .catch((registrationError) => {
                             console.log(
                                 "SW registration failed: ",
