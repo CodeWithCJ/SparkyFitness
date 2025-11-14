@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Polyline, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -14,8 +15,9 @@ interface ActivityReportMapProps {
 }
 
 const ActivityReportMap: React.FC<ActivityReportMapProps> = ({ polylineData }) => {
+  const { t } = useTranslation();
   if (!polylineData || polylineData.length === 0) {
-    return <div>No map data available.</div>;
+    return <div>{t('reports.noMapDataAvailable', 'No map data available.')}</div>;
   }
 
   const positions: [number, number][] = polylineData.map(p => [p.lat, p.lon]);

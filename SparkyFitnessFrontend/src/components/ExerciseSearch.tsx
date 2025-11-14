@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // New import
@@ -29,6 +30,7 @@ interface ExerciseSearchProps {
 }
  
 const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate, onLogSuccess = () => {}, disableTabs = false, initialSearchSource }: ExerciseSearchProps) => {
+  const { t } = useTranslation();
   const { loggingLevel, itemDisplayLimit } = usePreferences(); // Get itemDisplayLimit from preferences
   const { user } = useAuth(); // New
   const { toast } = useToast();
@@ -73,8 +75,8 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
       } catch (err) {
         error(loggingLevel, "ExerciseSearch: Error fetching recent/top exercises:", err);
         toast({
-          title: "Error",
-          description: "Failed to load recent and top exercises.",
+          title: t("common.errorOccurred", "Error"),
+          description: t("exercise.exerciseSearch.failedToLoadRecentTopExercises", "Failed to load recent and top exercises."),
           variant: "destructive"
         });
       }
@@ -102,8 +104,8 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
     } catch (err) {
       error(loggingLevel, "ExerciseSearch: Error searching exercises:", err);
       toast({
-        title: "Error",
-        description: `Failed to search exercises: ${err instanceof Error ? err.message : String(err)}`,
+        title: t("common.errorOccurred", "Error"),
+        description: t("exercise.exerciseSearch.failedToSearchExercises", "Failed to search exercises: {{errorMessage}}", { errorMessage: err instanceof Error ? err.message : String(err) }),
         variant: "destructive"
       });
     } finally {
@@ -130,16 +132,16 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
       
       if (newExercise) {
         toast({
-          title: "Success",
-          description: `${exercise.name} added to your exercises. You can now log it from the diary page.`,
+          title: t("common.success", "Success"),
+          description: t("exercise.exerciseSearch.addExternalExerciseSuccess", "{{exerciseName}} added to your exercises. You can now log it from the diary page.", { exerciseName: exercise.name }),
         });
         onExerciseSelect(newExercise, 'external'); // Call onExerciseSelect to trigger logging in parent
       }
       return newExercise;
     } catch (error) {
       toast({
-        title: "Error",
-        description: `Failed to add exercise: ${error instanceof Error ? error.message : String(error)}`,
+        title: t("common.errorOccurred", "Error"),
+        description: t("exercise.exerciseSearch.addExternalExerciseError", "Failed to add exercise: {{errorMessage}}", { errorMessage: error instanceof Error ? error.message : String(error) }),
         variant: "destructive"
       });
       return undefined;
@@ -200,8 +202,8 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
       } catch (err) {
         error(loggingLevel, "ExerciseSearch: Error fetching equipment types or muscle groups:", err);
         toast({
-          title: "Error",
-          description: `Failed to load filter options: ${err instanceof Error ? err.message : String(err)}`,
+          title: t("common.errorOccurred", "Error"),
+          description: t("exercise.exerciseSearch.failedToLoadFilterOptions", "Failed to load filter options: {{errorMessage}}", { errorMessage: err instanceof Error ? err.message : String(err) }),
           variant: "destructive"
         });
       }
@@ -258,8 +260,8 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
       window.speechSynthesis.speak(utterance);
     } else {
       toast({
-        title: "Text-to-Speech Not Supported",
-        description: "Your browser does not support the Web Speech API.",
+        title: t("exercise.exerciseSearch.textToSpeechNotSupported", "Text-to-Speech Not Supported"),
+        description: t("exercise.exerciseSearch.textToSpeechNotSupportedDescription", "Your browser does not support the Web Speech API."),
         variant: "destructive"
       });
     }
@@ -288,7 +290,7 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
           <div className="flex space-x-2 items-center">
             <Input
               type="text"
-              placeholder="Search your exercises..."
+              placeholder={t("exercise.exerciseSearch.searchYourExercises", "Search your exercises...")}
               value={searchTerm}
               onChange={(e) => {
                 debug(loggingLevel, "ExerciseSearch: Internal search term input changed:", e.target.value);
@@ -321,29 +323,29 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
               </Button>
             ))}
           </div>
- 
+  
           {/* Muscle Group Filters (Body Map) */}
           <BodyMapFilter
             selectedMuscles={muscleGroupFilter}
             onMuscleToggle={handleMuscleToggle}
             availableMuscleGroups={availableMuscleGroups}
           />
- 
-          {loading && <div>Searching...</div>}
+  
+          {loading && <div>{t("exercise.exerciseSearch.loading", "Searching...")}</div>}
           {searchTerm.trim().length === 0 && !loading && (
             <>
               {recentExercises.length > 0 && (
                 <div>
-                  <h3 className="text-md font-semibold mb-2">Recent Exercises</h3>
+                  <h3 className="text-md font-semibold mb-2">{t("exercise.exerciseSearch.recentExercises", "Recent Exercises")}</h3>
                   <div className="max-h-40 overflow-y-auto space-y-2 border-b pb-4 mb-4">
                     {recentExercises.map((exercise) => (
                       <div key={`recent-${exercise.id}`} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
                           <div className="font-medium">{exercise.name}</div>
-                          <div className="text-sm text-gray-500">{exercise.category} • {exercise.calories_per_hour} cal/hour</div>
+                          <div className="text-sm text-gray-500">{exercise.category} • {exercise.calories_per_hour} {t("exercise.exerciseSearch.calPerHour", "cal/hour")}</div>
                           {exercise.description && <div className="text-xs text-gray-400">{exercise.description}</div>}
                         </div>
-                        <Button onClick={() => onExerciseSelect(exercise, 'internal')}>Select</Button>
+                        <Button onClick={() => onExerciseSelect(exercise, 'internal')}>{t("exercise.exerciseSearch.selectButton", "Select")}</Button>
                       </div>
                     ))}
                   </div>
@@ -351,23 +353,23 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
               )}
               {topExercises.length > 0 && (
                 <div>
-                  <h3 className="text-md font-semibold mb-2">Top Exercises</h3>
+                  <h3 className="text-md font-semibold mb-2">{t("exercise.exerciseSearch.topExercises", "Top Exercises")}</h3>
                   <div className="max-h-40 overflow-y-auto space-y-2">
                     {topExercises.map((exercise) => (
                       <div key={`top-${exercise.id}`} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
                           <div className="font-medium">{exercise.name}</div>
-                          <div className="text-sm text-gray-500">{exercise.category} • {exercise.calories_per_hour} cal/hour</div>
+                          <div className="text-sm text-gray-500">{exercise.category} • {exercise.calories_per_hour} {t("exercise.exerciseSearch.calPerHour", "cal/hour")}</div>
                           {exercise.description && <div className="text-xs text-gray-400">{exercise.description}</div>}
                         </div>
-                        <Button onClick={() => onExerciseSelect(exercise, 'internal')}>Select</Button>
+                        <Button onClick={() => onExerciseSelect(exercise, 'internal')}>{t("exercise.exerciseSearch.selectButton", "Select")}</Button>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
               {recentExercises.length === 0 && topExercises.length === 0 && (
-                <div className="text-center text-gray-500">No recent or top exercises found.</div>
+                <div className="text-center text-gray-500">{t("exercise.exerciseSearch.noRecentOrTopExercises", "No recent or top exercises found.")}</div>
               )}
             </>
           )}
@@ -387,21 +389,21 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
                         ))}
                     </div>
                     <div className="text-sm text-gray-500">
-                      {exercise.category} • {exercise.calories_per_hour} cal/hour
+                      {exercise.category} • {exercise.calories_per_hour} {t("exercise.exerciseSearch.calPerHour", "cal/hour")}
                     </div>
                     {exercise.description && (
                       <div className="text-xs text-gray-400">{exercise.description}</div>
                     )}
                   </div>
                   <Button onClick={() => onExerciseSelect(exercise, 'internal')}>
-                    Select
+                    {t("exercise.exerciseSearch.selectButton", "Select")}
                   </Button>
                 </div>
               ))}
             </div>
           )}
           {searchTerm && !loading && exercises.length === 0 && recentExercises.length === 0 && topExercises.length === 0 && (
-            <div className="text-center text-gray-500">No exercises found in your database.</div>
+            <div className="text-center text-gray-500">{t("exercise.exerciseSearch.noExercisesFoundInDatabase", "No exercises found in your database.")}</div>
           )}
         </div>
       )}
@@ -413,7 +415,7 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
             setSelectedProviderType(provider ? provider.provider_type : null);
           }}>
             <SelectTrigger className="w-full mb-2">
-              <SelectValue placeholder="Select a provider" />
+              <SelectValue placeholder={t("exercise.exerciseSearch.selectProviderPlaceholder", "Select a provider")} />
             </SelectTrigger>
             <SelectContent>
               {providers.map(provider => (
@@ -426,7 +428,7 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
           <div className="flex space-x-2 items-center">
             <Input
               type="text"
-              placeholder={selectedProviderType === 'nutritionix' ? "Describe your exercise (e.g., 'ran 3 miles', 'swam for 30 minutes')" : `Search ${selectedProviderType || 'Online'} database...`}
+              placeholder={selectedProviderType === 'nutritionix' ? t("exercise.exerciseSearch.describeYourExercise", "Describe your exercise (e.g., 'ran 3 miles', 'swam for 30 minutes')") : t("exercise.exerciseSearch.searchOnlineDatabase", "Search {{providerName}} database...", { providerName: selectedProviderType || 'Online' })}
               value={searchTerm}
               onChange={(e) => {
                 debug(loggingLevel, "ExerciseSearch: External search term input changed:", e.target.value);
@@ -463,20 +465,20 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
               </Button>
             ))}
           </div>
- 
+  
           {/* Muscle Group Filters (Body Map) */}
           <BodyMapFilter
             selectedMuscles={muscleGroupFilter}
             onMuscleToggle={handleMuscleToggle}
             availableMuscleGroups={availableMuscleGroups}
           />
- 
-          {loading && <div>Searching...</div>}
+  
+          {loading && <div>{t("exercise.exerciseSearch.loading", "Searching...")}</div>}
           {!hasSearchedExternal && !loading && (
-            <div className="text-center text-gray-500">Enter a search term and click the search button to find exercises.</div>
+            <div className="text-center text-gray-500">{t("exercise.exerciseSearch.enterSearchTerm", "Enter a search term and click the search button to find exercises.")}</div>
           )}
           {hasSearchedExternal && !loading && exercises.length === 0 && (
-            <div className="text-center text-gray-500">No exercises found in {selectedProviderType || 'Online'} database for "{searchTerm}".</div>
+            <div className="text-center text-gray-500">{t("exercise.exerciseSearch.noExercisesFoundOnline", "No exercises found in {{providerName}} database for \"{{searchTerm}}\".", { providerName: selectedProviderType || 'Online', searchTerm })}</div>
           )}
           <div className="max-h-60 overflow-y-auto space-y-2">
             {exercises.map((exercise) => (
@@ -486,39 +488,39 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
                     {exercise.name}
                     {exercise.source === 'wger' && (
                       <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
-                        Wger
+                        {t("exercise.exerciseSearch.wgerSource", "Wger")}
                       </span>
                     )}
                     {exercise.source === 'free-exercise-db' && (
                       <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">
-                        Free Exercise DB
+                        {t("exercise.exerciseSearch.freeExerciseDBSource", "Free Exercise DB")}
                       </span>
                     )}
                     {exercise.source === 'nutritionix' && (
                       <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
-                        Nutritionix
+                        {t("exercise.exerciseSearch.nutritionixSource", "Nutritionix")}
                       </span>
                     )}
                   </div>
                   <div className="text-sm text-gray-500">
                     {exercise.category}
-                    {exercise.calories_per_hour && ` • ${exercise.calories_per_hour} cal/hour`}
-                    {exercise.level && ` • Level: ${exercise.level}`}
-                    {exercise.force && ` • Force: ${exercise.force}`}
-                    {exercise.mechanic && ` • Mechanic: ${exercise.mechanic}`}
+                    {exercise.calories_per_hour && ` • ${exercise.calories_per_hour} ${t("exercise.exerciseSearch.calPerHour", "cal/hour")}`}
+                    {exercise.level && ` • ${t("exercise.exerciseCard.level", "Level")}: ${exercise.level}`}
+                    {exercise.force && ` • ${t("exercise.exerciseCard.force", "Force")}: ${exercise.force}`}
+                    {exercise.mechanic && ` • ${t("exercise.exerciseCard.mechanic", "Mechanic")}: ${exercise.mechanic}`}
                   </div>
                   {exercise.equipment && exercise.equipment.length > 0 && (
-                    <div className="text-xs text-gray-400">Equipment: {exercise.equipment.join(', ')}</div>
+                    <div className="text-xs text-gray-400">{t("exercise.exerciseCard.equipment", "Equipment")}: {exercise.equipment.join(', ')}</div>
                   )}
                   {exercise.primary_muscles && exercise.primary_muscles.length > 0 && (
-                    <div className="text-xs text-gray-400">Primary Muscles: {exercise.primary_muscles.join(', ')}</div>
+                    <div className="text-xs text-gray-400">{t("exercise.exerciseCard.primaryMuscles", "Primary Muscles")}: {exercise.primary_muscles.join(', ')}</div>
                   )}
                   {exercise.secondary_muscles && exercise.secondary_muscles.length > 0 && (
-                    <div className="text-xs text-gray-400">Secondary Muscles: {exercise.secondary_muscles.join(', ')}</div>
+                    <div className="text-xs text-gray-400">{t("exercise.exerciseCard.secondaryMuscles", "Secondary Muscles")}: {exercise.secondary_muscles.join(', ')}</div>
                   )}
                   {exercise.instructions && exercise.instructions.length > 0 && (
                     <div className="text-xs text-gray-400 flex items-center">
-                      Instructions: {exercise.instructions[0]}...
+                      {t("exercise.exerciseCard.instructions", "Instructions")}: {exercise.instructions[0]}...
                       <Button
                         variant="ghost"
                         size="icon"
@@ -565,7 +567,7 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
                     onExerciseSelect(newExercise, 'external');
                   }
                 }}>
-                  {selectedProviderType === 'nutritionix' ? 'Select' : <><Plus className="h-4 w-4 mr-2" /> Add</>}
+                  {selectedProviderType === 'nutritionix' ? t("exercise.exerciseSearch.selectButton", "Select") : <><Plus className="h-4 w-4 mr-2" /> {t("exercise.exerciseSearch.add", "Add")}</>}
                 </Button>
               </div>
             ))}

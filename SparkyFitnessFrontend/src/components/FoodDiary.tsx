@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -78,6 +79,7 @@ const FoodDiary = ({
   initialExercisesToLog,
   onExercisesLogged,
 }: FoodDiaryProps) => {
+  const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
   const {
     formatDate,
@@ -242,10 +244,10 @@ const FoodDiary = ({
     (mealType: string): { name: string; type: string; entries: FoodEntry[]; targetCalories: number } => {
       debug(loggingLevel, "Getting meal data for meal type:", mealType);
       const mealNames = {
-        breakfast: "Breakfast",
-        lunch: "Lunch",
-        dinner: "Dinner",
-        snacks: "Snacks",
+        breakfast: t("common.breakfast", "Breakfast"),
+        lunch: t("common.lunch", "Lunch"),
+        dinner: t("common.dinner", "Dinner"),
+        snacks: t("common.snacks", "Snacks"),
       };
 
       const entries = foodEntries.filter(
@@ -302,15 +304,15 @@ const FoodDiary = ({
         );
         info(loggingLevel, "Food entries copied successfully.");
         toast({
-          title: "Success",
-          description: "Food entries copied successfully",
+          title: t("foodDiary.success", "Success"),
+          description: t("foodDiary.entryCopied", "Food entries copied successfully"),
         });
         handleDataChange(); // Refresh data after copy
       } catch (err) {
         error(loggingLevel, "Error copying food entries:", err);
         toast({
-          title: "Error",
-          description: "Failed to copy food entries.",
+          title: t("foodDiary.error", "Error"),
+          description: t("foodDiary.entryCopyError", "Failed to copy food entries."),
           variant: "destructive",
         });
       } finally {
@@ -338,15 +340,15 @@ const FoodDiary = ({
         await copyFoodEntriesFromYesterday(mealType, selectedDate);
         info(loggingLevel, "Food entries copied from yesterday successfully.");
         toast({
-          title: "Success",
-          description: "Food entries copied from yesterday successfully",
+          title: t("foodDiary.success", "Success"),
+          description: t("foodDiary.copiedFromYesterday", "Food entries copied from yesterday successfully"),
         });
         handleDataChange(); // Refresh data after copy
       } catch (err) {
         error(loggingLevel, "Error copying food entries from yesterday:", err);
         toast({
-          title: "Error",
-          description: "Failed to copy food entries from yesterday.",
+          title: t("foodDiary.error", "Error"),
+          description: t("foodDiary.copyFromYesterdayError", "Failed to copy food entries from yesterday."),
           variant: "destructive",
         });
       }
@@ -440,15 +442,15 @@ const FoodDiary = ({
         try {
           await addMealToDiary(meal.id, mealType, selectedDate);
           toast({
-            title: "Success",
-            description: `Meal "${meal.name}" added to diary.`,
+            title: t("foodDiary.success", "Success"),
+            description: t("foodDiary.mealAdded", { mealName: meal.name, defaultValue: `Meal "${meal.name}" added to diary.` }),
           });
           handleDataChange();
         } catch (err) {
           error(loggingLevel, "Error adding meal to diary:", err);
           toast({
-            title: "Error",
-            description: "Failed to add meal to diary.",
+            title: t("foodDiary.error", "Error"),
+            description: t("foodDiary.mealAddError", "Failed to add meal to diary."),
             variant: "destructive",
           });
         }
@@ -491,8 +493,8 @@ const FoodDiary = ({
         });
         info(loggingLevel, "Food entry added successfully.");
         toast({
-          title: "Success",
-          description: "Food entry added successfully",
+          title: t("foodDiary.success", "Success"),
+          description: t("foodDiary.entryAdded", "Food entry added successfully"),
         });
         handleDataChange();
       } catch (err) {
@@ -522,8 +524,8 @@ const FoodDiary = ({
         await removeFoodEntry(entryId);
         info(loggingLevel, "Food entry removed successfully.");
         toast({
-          title: "Success",
-          description: "Food entry removed successfully",
+          title: t("foodDiary.success", "Success"),
+          description: t("foodDiary.entryRemoved", "Food entry removed successfully"),
         });
         handleDataChange();
       } catch (err) {
@@ -584,7 +586,7 @@ const FoodDiary = ({
       <Card className="dark:text-slate-300">
         <CardHeader>
           <div className="flex flex-col space-y-4 items-center sm:flex-row sm:justify-between sm:space-y-0">
-            <CardTitle className="text-xl font-semibold ">Food Diary</CardTitle>
+            <CardTitle className="text-xl font-semibold ">{t("foodDiary.title", "Food Diary")}</CardTitle>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -605,7 +607,7 @@ const FoodDiary = ({
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? formatDate(date) : <span>Pick a date</span>}
+                    {date ? formatDate(date) : <span>{t("foodDiary.pickADate", "Pick a Date")}</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -705,6 +707,7 @@ const FoodDiary = ({
               initialExercisesToLog={initialExercisesToLog} // Pass the new prop directly
               onExercisesLogged={onExercisesLogged} // Pass the new prop directly
               key={`exercise-${externalRefreshTrigger}`}
+              t={t} // Pass the t function
             />
           </div>
         </>

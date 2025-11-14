@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2, Share2, Lock, Repeat, Weight, Timer, ListOrdered, CalendarPlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -21,6 +22,7 @@ interface WorkoutPresetsManagerProps {
 }
 
 const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // Removed onUsePreset prop
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { loggingLevel } = usePreferences();
   const [presets, setPresets] = useState<WorkoutPreset[]>([]);
@@ -65,8 +67,8 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
     } catch (err) {
       error(loggingLevel, 'Error loading workout presets:', err);
       toast({
-        title: "Error",
-        description: "Failed to load workout presets.",
+        title: t('common.error', 'Error'),
+        description: t('workoutPresetsManager.failedToLoadPresets', 'Failed to load workout presets.'),
         variant: "destructive",
       });
     } finally {
@@ -87,16 +89,16 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
       await createWorkoutPreset({ ...newPresetData, user_id: user.id });
       info(loggingLevel, "WorkoutPresetsManager: Workout preset created successfully.");
       toast({
-        title: "Success",
-        description: "Workout preset created successfully.",
+        title: t('common.success', 'Success'),
+        description: t('workoutPresetsManager.createSuccess', 'Workout preset created successfully.'),
       });
       loadPresets();
       setIsAddPresetDialogOpen(false);
     } catch (err) {
       error(loggingLevel, 'WorkoutPresetsManager: Error creating workout preset:', err);
       toast({
-        title: "Error",
-        description: "Failed to create workout preset.",
+        title: t('common.error', 'Error'),
+        description: t('workoutPresetsManager.createError', 'Failed to create workout preset.'),
         variant: "destructive",
       });
     }
@@ -109,8 +111,8 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
       await updateWorkoutPreset(presetId, updatedPresetData);
       info(loggingLevel, `WorkoutPresetsManager: Workout preset ${presetId} updated successfully.`);
       toast({
-        title: "Success",
-        description: "Workout preset updated successfully.",
+        title: t('common.success', 'Success'),
+        description: t('workoutPresetsManager.updateSuccess', 'Workout preset updated successfully.'),
       });
       loadPresets();
       setIsEditDialogOpen(false);
@@ -118,8 +120,8 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
     } catch (err) {
       error(loggingLevel, 'WorkoutPresetsManager: Error updating workout preset:', err);
       toast({
-        title: "Error",
-        description: "Failed to update workout preset.",
+        title: t('common.error', 'Error'),
+        description: t('workoutPresetsManager.updateError', 'Failed to update workout preset.'),
         variant: "destructive",
       });
     }
@@ -132,15 +134,15 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
       await deleteWorkoutPreset(presetId);
       info(loggingLevel, `WorkoutPresetsManager: Workout preset ${presetId} deleted successfully.`);
       toast({
-        title: "Success",
-        description: "Workout preset deleted successfully.",
+        title: t('common.success', 'Success'),
+        description: t('workoutPresetsManager.deleteSuccess', 'Workout preset deleted successfully.'),
       });
       loadPresets();
     } catch (err) {
       error(loggingLevel, 'WorkoutPresetsManager: Error deleting workout preset:', err);
       toast({
-        title: "Error",
-        description: "Failed to delete workout preset.",
+        title: t('common.error', 'Error'),
+        description: t('workoutPresetsManager.deleteError', 'Failed to delete workout preset.'),
         variant: "destructive",
       });
     }
@@ -152,14 +154,14 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
       const today = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
       await logWorkoutPreset(preset.id, today);
       toast({
-        title: "Success",
-        description: `Workout preset "${preset.name}" logged to diary.`,
+        title: t('common.success', 'Success'),
+        description: t('workoutPresetsManager.logSuccess', { presetName: preset.name, defaultValue: `Workout preset "${preset.name}" logged to diary.` }),
       });
     } catch (err) {
       error(loggingLevel, 'Error logging workout preset to diary:', err);
       toast({
-        title: "Error",
-        description: `Failed to log workout preset "${preset.name}" to diary.`,
+        title: t('common.error', 'Error'),
+        description: t('workoutPresetsManager.logError', { presetName: preset.name, defaultValue: `Failed to log workout preset "${preset.name}" to diary.` }),
         variant: "destructive",
       });
     }
@@ -170,11 +172,11 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
       <div className="flex flex-row items-center justify-end space-y-0 pb-2">
         <Button size="sm" onClick={() => setIsAddPresetDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Add Preset
+          {t('workoutPresetsManager.addPresetButton', 'Add Preset')}
         </Button>
       </div>
       {presets.length === 0 ? (
-        <p className="text-center text-muted-foreground">No workout presets found. Create one to get started!</p>
+        <p className="text-center text-muted-foreground">{t('workoutPresetsManager.noPresetsFound', 'No workout presets found. Create one to get started!')}</p>
       ) : (
         <div className="space-y-4">
           {presets.map((preset) => (
@@ -192,7 +194,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">No exercises in this preset</p>
+                  <p className="text-xs text-muted-foreground">{t('workoutPresetsManager.noExercisesInPreset', 'No exercises in this preset')}</p>
                 )}
               </div>
               <div className="flex items-center space-x-2">
@@ -204,7 +206,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Log preset to diary</p>
+                      <p>{t('workoutPresetsManager.logPresetToDiaryTooltip', 'Log preset to diary')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -226,7 +228,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{preset.is_public ? "Make this preset private" : "Share this preset with the community"}</p>
+                        <p>{preset.is_public ? t('workoutPresetsManager.makePresetPrivateTooltip', 'Make this preset private') : t('workoutPresetsManager.sharePresetTooltip', 'Share this preset with the community')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -239,7 +241,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Edit this preset</p>
+                      <p>{t('workoutPresetsManager.editPresetTooltip', 'Edit this preset')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -251,7 +253,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Delete this preset</p>
+                      <p>{t('workoutPresetsManager.deletePresetTooltip', 'Delete this preset')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -263,7 +265,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
       {hasMore && (
         <div className="flex justify-center">
           <Button onClick={() => loadPresets(true)} disabled={loading}>
-            {loading ? 'Loading...' : 'Load More'}
+            {loading ? t('workoutPresetsManager.loading', 'Loading...') : t('workoutPresetsManager.loadMore', 'Load More')}
           </Button>
         </div>
       )}

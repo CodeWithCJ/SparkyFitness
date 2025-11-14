@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { WorkoutPreset } from "@/types/workout";
@@ -16,6 +17,7 @@ interface WorkoutPresetSelectorProps {
 const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
   onPresetSelected,
 }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { loggingLevel } = usePreferences();
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,8 +42,8 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
     } catch (err) {
       error(loggingLevel, "WorkoutPresetSelector: Failed to load workout presets:", err);
       toast({
-        title: "Error",
-        description: "Failed to load workout presets.",
+        title: t("common.errorOccurred", "Error"),
+        description: t("workoutPresetsManager.failedToLoadPresets", "Failed to load workout presets."),
         variant: "destructive",
       });
     }
@@ -67,7 +69,7 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
   return (
     <div className="flex-grow overflow-y-auto py-4">
       <Input
-        placeholder="Search your workout presets..."
+        placeholder={t("exercise.workoutPresetSelector.searchPlaceholder", "Search your workout presets...")}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className="mb-4"
@@ -75,7 +77,7 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
 
       {searchTerm === "" ? (
         <>
-          <h3 className="text-lg font-semibold mb-2">Recent Presets</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("exercise.workoutPresetSelector.recentPresetsTitle", "Recent Presets")}</h3>
           <div className="space-y-2 mb-4">
             {recentPresets.length > 0 ? (
               recentPresets.map((preset) => (
@@ -87,11 +89,11 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
                 </Card>
               ))
             ) : (
-              <p className="text-muted-foreground">No recent presets.</p>
+              <p className="text-muted-foreground">{t("exercise.workoutPresetSelector.noRecentPresets", "No recent presets.")}</p>
             )}
           </div>
 
-          <h3 className="text-lg font-semibold mb-2">Top Presets</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("exercise.workoutPresetSelector.topPresetsTitle", "Top Presets")}</h3>
           <div className="space-y-2">
             {topPresets.length > 0 ? (
               topPresets.map((preset) => (
@@ -103,13 +105,13 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
                 </Card>
               ))
             ) : (
-              <p className="text-muted-foreground">No top presets.</p>
+              <p className="text-muted-foreground">{t("exercise.workoutPresetSelector.noTopPresets", "No top presets.")}</p>
             )}
           </div>
         </>
       ) : (
         <>
-          <h3 className="text-lg font-semibold mb-2">Search Results</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("exercise.workoutPresetSelector.searchResultsTitle", "Search Results")}</h3>
           <div className="space-y-2">
             {filteredPresets.length > 0 ? (
               filteredPresets.map((preset) => (
@@ -121,7 +123,7 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
                 </Card>
               ))
             ) : (
-              <p className="text-muted-foreground">No presets found matching your search.</p>
+              <p className="text-muted-foreground">{t("exercise.workoutPresetSelector.noMatchingPresets", "No presets found matching your search.")}</p>
             )}
           </div>
         </>

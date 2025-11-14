@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ import { api } from '@/services/api'; // Import the API service
 import SleepEntrySection from './SleepEntrySection'; // Import SleepEntrySection
 
 const CheckIn = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const {
@@ -155,7 +157,7 @@ const CheckIn = () => {
           entry_timestamp: m.entry_timestamp,
           value: m.value,
           type: 'custom',
-          display_name: m.custom_categories.name,
+          display_name: m.custom_categories.display_name || m.custom_categories.name,
           display_unit: m.custom_categories.measurement_type,
           custom_categories: m.custom_categories, // Keep original custom_categories for conversion logic
         };
@@ -186,7 +188,7 @@ const CheckIn = () => {
       info(loggingLevel, "All recent measurements fetched successfully:", combined.slice(0, 20));
     } catch (err) {
       error(loggingLevel, 'Error fetching all recent measurements:', err);
-      sonnerToast.error('Failed to load recent measurements');
+      sonnerToast.error(t('checkIn.failedToLoadRecentMeasurements', 'Failed to load recent measurements'));
     }
   };
 
@@ -225,12 +227,12 @@ const CheckIn = () => {
         });
       }
       info(loggingLevel, 'CheckIn: Measurement deleted successfully:', measurement.id);
-      sonnerToast.success('Measurement deleted successfully');
+      sonnerToast.success(t('checkIn.measurementDeletedSuccessfully', 'Measurement deleted successfully'));
       fetchAllRecentMeasurements();
       loadExistingData(); // Reload today's values
     } catch (err) {
       error(loggingLevel, 'CheckIn: Error deleting measurement:', err);
-      sonnerToast.error('Failed to delete measurement');
+      sonnerToast.error(t('checkIn.failedToDeleteMeasurement', 'Failed to delete measurement'));
     }
   };
 
@@ -279,7 +281,7 @@ const CheckIn = () => {
       if (moodEntry) {
         info(loggingLevel, "Existing mood entry loaded:", moodEntry);
         setMood(moodEntry.mood_value);
-        setMoodNotes(moodEntry.notes);
+        setMoodNotes(moodEntry.notes || "");
       } else {
         info(loggingLevel, `CheckIn: No existing mood entry for date ${selectedDate}, setting to default.`);
         setMood(50); // Default mood value
@@ -305,7 +307,7 @@ const CheckIn = () => {
                       const converted = convertMeasurement(measurement.value, 'cm', defaultMeasurementUnit);
                       return typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "";
                     })()
-                  : measurement.value.toString();
+                  : (measurement.value !== null && measurement.value !== undefined ? measurement.value.toString() : '');
               } else {
                 newCustomValues[measurement.category_id] = measurement.value || '';
               }
@@ -339,8 +341,8 @@ const CheckIn = () => {
     } catch (err) {
       error(loggingLevel, 'Error saving mood entry:', err);
       toast({
-        title: "Error",
-        description: "Failed to save mood entry",
+        title: t('common.error', 'Error'),
+        description: t('checkIn.failedToSaveMoodEntry', 'Failed to save mood entry'),
         variant: "destructive",
       });
     }
@@ -348,8 +350,8 @@ const CheckIn = () => {
     if (!currentUserId) {
       warn(loggingLevel, "CheckIn: Submit called with no current user ID.");
       toast({
-        title: "Error",
-        description: "You must be logged in to save check-in data",
+        title: t('common.error', 'Error'),
+        description: t('checkIn.mustBeLoggedInToSave', 'You must be logged in to save check-in data'),
         variant: "destructive",
       });
       return;
@@ -432,8 +434,8 @@ const CheckIn = () => {
 
       info(loggingLevel, "CheckIn: Check-in data saved successfully!");
       toast({
-        title: "Success",
-        description: "Check-in data saved successfully!",
+        title: t('common.success', 'Success'),
+        description: t('checkIn.checkInSavedSuccessfully', 'Check-in data saved successfully!'),
       });
 
       // Refresh recent measurements after saving
@@ -441,8 +443,8 @@ const CheckIn = () => {
     } catch (err) {
       error(loggingLevel, 'CheckIn: Error saving check-in data:', err);
       toast({
-        title: "Error",
-        description: "Failed to save check-in data",
+        title: t('common.error', 'Error'),
+        description: t('checkIn.failedToSaveCheckIn', 'Failed to save check-in data'),
         variant: "destructive",
       });
     } finally {
@@ -458,12 +460,12 @@ const CheckIn = () => {
 
       if (!userProfile) {
         error(loggingLevel, "CheckIn: Error calculating body fat: userProfile is null or undefined.");
-        toast({ title: "Error", description: "Could not load user profile for calculation." });
+        toast({ title: t('common.error', 'Error'), description: t('checkIn.couldNotLoadUserProfile', 'Could not load user profile for calculation.') });
         return;
       }
       if (!prefs) {
         error(loggingLevel, "CheckIn: Error calculating body fat: preferences are null or undefined.");
-        toast({ title: "Error", description: "Could not load user preferences for calculation." });
+        toast({ title: t('common.error', 'Error'), description: t('checkIn.couldNotLoadUserPreferences', 'Could not load user preferences for calculation.') });
         return;
       }
 
@@ -505,33 +507,33 @@ const CheckIn = () => {
 
       let bfp = 0;
       let errorMessage = "";
-
-      if (prefs.body_fat_algorithm === 'BMI Method') {
-        if (isNaN(weightKg) || isNaN(heightCm) || age === 0 || !gender) {
-          errorMessage = "Weight, height, age, and gender are required for BMI Method.";
-        } else {
-          bfp = calculateBodyFatBmi(weightKg, heightCm, age, gender);
-        }
-      } else { // Default to U.S. Navy
-        if (!gender || isNaN(heightCm) || isNaN(waistCm) || isNaN(neckCm) || (gender === 'female' && isNaN(hipsCm))) {
-          errorMessage = "Gender, height, waist, neck, and (if female) hips measurements are required for U.S. Navy Method.";
-        } else {
-          bfp = calculateBodyFatNavy(gender, heightCm, waistCm, neckCm, hipsCm);
-        }
-      }
-
-      if (errorMessage) {
-        error(loggingLevel, `CheckIn: Error calculating body fat: ${errorMessage}`);
-        toast({ title: "Error", description: `Failed to calculate body fat: ${errorMessage}`, variant: "destructive" });
-      } else {
-        setBodyFatPercentage(bfp.toFixed(2));
-        toast({ title: "Success", description: "Body fat percentage calculated." });
-      }
-    } catch (err: any) {
-      error(loggingLevel, 'CheckIn: Error calculating body fat:', err);
-      toast({ title: "Error", description: `Failed to calculate body fat: ${err.message || "An unknown error occurred."}`, variant: "destructive" });
-    }
-  };
+ 
+       if (prefs.body_fat_algorithm === 'BMI Method') {
+         if (isNaN(weightKg) || isNaN(heightCm) || age === 0 || !gender) {
+           errorMessage = t('checkIn.bmiMethodRequiredFields', "Weight, height, age, and gender are required for BMI Method.");
+         } else {
+           bfp = calculateBodyFatBmi(weightKg, heightCm, age, gender);
+         }
+       } else { // Default to U.S. Navy
+         if (!gender || isNaN(heightCm) || isNaN(waistCm) || isNaN(neckCm) || (gender === 'female' && isNaN(hipsCm))) {
+           errorMessage = t('checkIn.usNavyMethodRequiredFields', "Gender, height, waist, neck, and (if female) hips measurements are required for U.S. Navy Method.");
+         } else {
+           bfp = calculateBodyFatNavy(gender, heightCm, waistCm, neckCm, hipsCm);
+         }
+       }
+ 
+       if (errorMessage) {
+         error(loggingLevel, `CheckIn: Error calculating body fat: ${errorMessage}`);
+         toast({ title: t('common.error', 'Error'), description: `${t('checkIn.failedToCalculateBodyFat', 'Failed to calculate body fat:')} ${errorMessage}`, variant: "destructive" });
+       } else {
+         setBodyFatPercentage(bfp.toFixed(2));
+         toast({ title: t('common.success', 'Success'), description: t('checkIn.bodyFatCalculated', 'Body fat percentage calculated.') });
+       }
+     } catch (err: any) {
+       error(loggingLevel, 'CheckIn: Error calculating body fat:', err);
+       toast({ title: t('common.error', 'Error'), description: `${t('checkIn.failedToCalculateBodyFat', 'Failed to calculate body fat:')} ${err.message || t('checkIn.anUnknownErrorOccurred', "An unknown error occurred.")}`, variant: "destructive" });
+     }
+   };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -546,14 +548,31 @@ const CheckIn = () => {
       />
 
       {/* Mood Meter Section */}
-      <MoodMeter
-        onMoodChange={(newMood, newNotes) => {
-          setMood(newMood);
-          setMoodNotes(newNotes);
-        }}
-        initialMood={mood}
-        initialNotes={moodNotes}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('checkIn.howAreYouFeelingToday', 'How are you feeling today?')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MoodMeter
+            onMoodChange={(newMood, newNotes) => {
+              setMood(newMood);
+              setMoodNotes(newNotes);
+            }}
+            initialMood={mood}
+            initialNotes={moodNotes}
+          />
+          <div className="mt-4">
+            <Label htmlFor="mood-notes">{t('checkIn.notesOptional', 'Notes (optional)')}</Label>
+            <Input
+              id="mood-notes"
+              type="text"
+              value={moodNotes}
+              onChange={(e) => setMoodNotes(e.target.value)}
+              placeholder={t('checkIn.anyThoughtsOrFeelings', "Any thoughts or feelings you'd like to add?")}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Sleep Entry Section */}
       <SleepEntrySection selectedDate={selectedDate} />
@@ -561,13 +580,13 @@ const CheckIn = () => {
       {/* Check-In Form */}
       <Card>
         <CardHeader>
-          <CardTitle>Daily Check-In</CardTitle>
+          <CardTitle>{t('checkIn.dailyCheckIn', 'Daily Check-In')}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="weight">Weight ({defaultWeightUnit})</Label>
+                <Label htmlFor="weight">{t('checkIn.weight', 'Weight')} ({defaultWeightUnit})</Label>
                 <Input
                   id="weight"
                   type="number"
@@ -576,12 +595,12 @@ const CheckIn = () => {
                   onChange={(e) => {
                     setWeight(e.target.value);
                   }}
-                  placeholder={`Enter weight in ${defaultWeightUnit}`}
+                  placeholder={`${t('checkIn.enterWeight', 'Enter weight in')} ${defaultWeightUnit}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="steps">Steps</Label>
+                <Label htmlFor="steps">{t('checkIn.steps', 'Steps')}</Label>
                 <Input
                   id="steps"
                   type="number"
@@ -589,12 +608,12 @@ const CheckIn = () => {
                   onChange={(e) => {
                     setSteps(e.target.value);
                   }}
-                  placeholder="Enter daily steps"
+                  placeholder={t('checkIn.enterDailySteps', 'Enter daily steps')}
                 />
               </div>
 
               <div>
-                <Label htmlFor="neck">Neck ({defaultMeasurementUnit})</Label>
+                <Label htmlFor="neck">{t('checkIn.neck', 'Neck')} ({defaultMeasurementUnit})</Label>
                 <Input
                   id="neck"
                   type="number"
@@ -603,12 +622,12 @@ const CheckIn = () => {
                   onChange={(e) => {
                     setNeck(e.target.value);
                   }}
-                  placeholder={`Enter neck measurement in ${defaultMeasurementUnit}`}
+                  placeholder={`${t('checkIn.enterNeckMeasurement', 'Enter neck measurement in')} ${defaultMeasurementUnit}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="waist">Waist ({defaultMeasurementUnit})</Label>
+                <Label htmlFor="waist">{t('checkIn.waist', 'Waist')} ({defaultMeasurementUnit})</Label>
                 <Input
                   id="waist"
                   type="number"
@@ -617,12 +636,12 @@ const CheckIn = () => {
                   onChange={(e) => {
                     setWaist(e.target.value);
                   }}
-                  placeholder={`Enter waist measurement in ${defaultMeasurementUnit}`}
+                  placeholder={`${t('checkIn.enterWaistMeasurement', 'Enter waist measurement in')} ${defaultMeasurementUnit}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="hips">Hips ({defaultMeasurementUnit})</Label>
+                <Label htmlFor="hips">{t('checkIn.hips', 'Hips')} ({defaultMeasurementUnit})</Label>
                 <Input
                   id="hips"
                   type="number"
@@ -631,25 +650,25 @@ const CheckIn = () => {
                   onChange={(e) => {
                     setHips(e.target.value);
                   }}
-                  placeholder={`Enter hips measurement in ${defaultMeasurementUnit}`}
+                  placeholder={`${t('checkIn.enterHipsMeasurement', 'Enter hips measurement in')} ${defaultMeasurementUnit}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="height">Height ({defaultMeasurementUnit})</Label>
+                <Label htmlFor="height">{t('checkIn.height', 'Height')} ({defaultMeasurementUnit})</Label>
                 <Input
                   id="height"
                   type="number"
                   step="0.1"
                   value={height}
                   onChange={(e) => setHeight(e.target.value)}
-                  placeholder={`Enter height in ${defaultMeasurementUnit}`}
+                  placeholder={`${t('checkIn.enterHeight', 'Enter height in')} ${defaultMeasurementUnit}`}
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="bodyFat">Body Fat %</Label>
+                  <Label htmlFor="bodyFat">{t('checkIn.bodyFatPercentage', 'Body Fat %')}</Label>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -659,11 +678,11 @@ const CheckIn = () => {
                             checked={useMostRecentForCalculation}
                             onCheckedChange={setUseMostRecentForCalculation}
                           />
-                          <Label htmlFor="use-most-recent-toggle">Use Recent</Label>
+                          <Label htmlFor="use-most-recent-toggle">{t('checkIn.useRecent', 'Use Recent')}</Label>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Use most recent Weight, Height, Waist, Neck, and Hips for body fat calculation</p>
+                        <p>{t('checkIn.useMostRecentForCalculation', 'Use most recent Weight, Height, Waist, Neck, and Hips for body fat calculation')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -675,9 +694,9 @@ const CheckIn = () => {
                     step="0.1"
                     value={bodyFatPercentage}
                     onChange={(e) => setBodyFatPercentage(e.target.value)}
-                    placeholder="Enter body fat percentage"
+                    placeholder={t('checkIn.enterBodyFatPercentage', 'Enter body fat percentage')}
                   />
-                  <Button type="button" onClick={handleCalculateBodyFat} className="ml-2">Calculate</Button>
+                  <Button type="button" onClick={handleCalculateBodyFat} className="ml-2">{t('checkIn.calculate', 'Calculate')}</Button>
                 </div>
               </div>
               {/* Custom Categories */}
@@ -688,7 +707,7 @@ const CheckIn = () => {
                 return (
                   <div key={category.id}>
                     <Label htmlFor={`custom-${category.id}`}>
-                      {category.name} ({isConvertible ? defaultMeasurementUnit : category.measurement_type})
+                      {category.display_name || category.name} ({isConvertible ? defaultMeasurementUnit : category.measurement_type})
                     </Label>
                     <Input
                       id={`custom-${category.id}`}
@@ -701,7 +720,7 @@ const CheckIn = () => {
                           [category.id]: e.target.value
                         }));
                       }}
-                      placeholder={`Enter ${category.name.toLowerCase()}`}
+                      placeholder={t('checkIn.enterCustomCategory', { categoryName: (category.display_name || category.name).toLowerCase(), defaultValue: `Enter ${(category.display_name || category.name).toLowerCase()}` })}
                     />
                     <Input
                       id={`custom-notes-${category.id}`}
@@ -713,7 +732,7 @@ const CheckIn = () => {
                           [category.id]: e.target.value
                         }));
                       }}
-                      placeholder="Notes (optional)"
+                      placeholder={t('checkIn.notesOptional', 'Notes (optional)')}
                       className="mt-2"
                     />
                   </div>
@@ -723,7 +742,7 @@ const CheckIn = () => {
 
             <div className="flex justify-center">
               <Button type="submit" disabled={loading} size="sm">
-                {loading ? 'Saving...' : 'Save Check-In'}
+                {loading ? t('checkIn.saving', 'Saving...') : t('checkIn.saveCheckIn', 'Save Check-In')}
               </Button>
             </div>
           </form>
@@ -733,12 +752,12 @@ const CheckIn = () => {
       {/* Recent Measurements */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Recent Measurements (Last 20)</CardTitle>
+          <CardTitle className="text-lg">{t('checkIn.recentMeasurements', 'Recent Measurements (Last 20)')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             {recentMeasurements.length === 0 ? (
-              <p className="text-muted-foreground">No measurements recorded yet</p>
+              <p className="text-muted-foreground">{t('checkIn.noMeasurementsRecorded', 'No measurements recorded yet')}</p>
             ) : (
               recentMeasurements.map((measurement: CombinedMeasurement) => { // Explicitly cast here
                 let displayValue = measurement.value;
@@ -779,7 +798,7 @@ const CheckIn = () => {
                       <div className="text-sm text-muted-foreground">
                         {formatDateInUserTimezone(measurement.entry_date, 'PPP')}
                         {measurement.entry_hour !== null && (
-                          <span> at {measurement.entry_hour.toString().padStart(2, '0')}:00</span>
+                          <span> {t('checkIn.at', 'at')} {measurement.entry_hour.toString().padStart(2, '0')}:00</span>
                         )}
                       </div>
                     </div>

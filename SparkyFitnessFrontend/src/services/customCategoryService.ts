@@ -5,6 +5,7 @@ import { UserLoggingLevel } from '@/utils/logging';
 export interface CustomCategory {
   id: string;
   name: string;
+  display_name?: string | null;
   measurement_type: string;
   frequency: string;
   data_type: string;
@@ -26,7 +27,7 @@ export const getCategories = async (loggingLevel: UserLoggingLevel): Promise<Cus
   }).map((cat: any) => ({ ...cat, id: String(cat.id) })); // Ensure ID is string for valid categories
 };
 
-export const addCategory = async (categoryData: { user_id: string; name: string; measurement_type: string; frequency: string; data_type: string }, loggingLevel: UserLoggingLevel): Promise<CustomCategory> => {
+export const addCategory = async (categoryData: { user_id: string; name: string; display_name?: string; measurement_type: string; frequency: string; data_type: string }, loggingLevel: UserLoggingLevel): Promise<CustomCategory> => {
   const response = await apiCall('/measurements/custom-categories', {
     method: 'POST',
     body: categoryData,
@@ -40,7 +41,7 @@ export const addCategory = async (categoryData: { user_id: string; name: string;
   return { ...response, id: id };
 };
 
-export const updateCategory = async (categoryId: string, categoryData: { name: string; measurement_type: string; frequency: string; data_type: string }, loggingLevel: UserLoggingLevel): Promise<CustomCategory> => {
+export const updateCategory = async (categoryId: string, categoryData: { name?: string; display_name?: string; measurement_type?: string; frequency?: string; data_type?: string }, loggingLevel: UserLoggingLevel): Promise<CustomCategory> => {
   const response = await apiCall(`/measurements/custom-categories/${categoryId}`, {
     method: 'PUT',
     body: categoryData,

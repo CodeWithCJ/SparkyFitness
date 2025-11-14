@@ -9,7 +9,7 @@ router.post('/', authenticate, async (req, res, next) => {
     const { mood_value, notes, entry_date } = req.body;
     const userId = req.userId; // Changed from req.user.id
 
-    if (!mood_value) {
+    if (mood_value == null) { //0 is a valid 'mood' value
       return res.status(400).json({ message: 'Mood value is required.' });
     }
 

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ const SortableSetItem = React.memo(
     handleRemoveSet: Function;
     weightUnit: string;
   }) => {
+    const { t } = useTranslation();
     const { attributes, listeners, setNodeRef, transform, transition } =
       useSortable({ id: `set-${setIndex}` });
 
@@ -88,11 +90,11 @@ const SortableSetItem = React.memo(
           </div>
           <div className="grid grid-cols-1 md:grid-cols-8 gap-2 flex-grow items-center">
             <div className="md:col-span-1">
-              <Label>Set</Label>
+              <Label>{t('exercise.editExerciseEntryDialog.setLabel', 'Set')}</Label>
               <p className="font-medium p-2">{set.set_number}</p>
             </div>
             <div className="md:col-span-2">
-              <Label>Type</Label>
+              <Label>{t('exercise.editExerciseEntryDialog.typeLabel', 'Type')}</Label>
               <Select
                 value={set.set_type}
                 onValueChange={(value) =>
@@ -100,7 +102,7 @@ const SortableSetItem = React.memo(
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Set Type" />
+                  <SelectValue placeholder={t('exercise.editExerciseEntryDialog.setTypePlaceholder', 'Set Type')} />
                 </SelectTrigger>
                 <SelectContent>
                   {excerciseWorkoutSetTypes.map((type) => (
@@ -120,7 +122,7 @@ const SortableSetItem = React.memo(
                   className="h-4 w-4 mr-1"
                   style={{ color: "#3b82f6" }}
                 />{" "}
-                Reps
+                {t('exercise.editExerciseEntryDialog.repsLabel', 'Reps')}
               </Label>
               <Input
                 id={`reps-${setIndex}`}
@@ -140,7 +142,7 @@ const SortableSetItem = React.memo(
                   className="h-4 w-4 mr-1"
                   style={{ color: "#ef4444" }}
                 />{" "}
-                Weight ({weightUnit})
+                {t('exercise.editExerciseEntryDialog.weightLabel', 'Weight')} ({weightUnit})
               </Label>
               <Input
                 id={`weight-${setIndex}`}
@@ -160,7 +162,7 @@ const SortableSetItem = React.memo(
                   className="h-4 w-4 mr-1"
                   style={{ color: "#f97316" }}
                 />{" "}
-                Duration (min)
+                {t('exercise.editExerciseEntryDialog.durationLabel', 'Duration (min)')}
               </Label>
               <Input
                 id={`duration-${setIndex}`}
@@ -180,7 +182,7 @@ const SortableSetItem = React.memo(
                   className="h-4 w-4 mr-1"
                   style={{ color: "#8b5cf6" }}
                 />{" "}
-                Rest (s)
+                {t('exercise.editExerciseEntryDialog.restLabel', 'Rest (s)')}
               </Label>
               <Input
                 id={`rest-${setIndex}`}
@@ -214,7 +216,7 @@ const SortableSetItem = React.memo(
           </div>
         </div>
         <div className="pl-8">
-          <Label htmlFor={`notes-${setIndex}`}>Notes</Label>
+          <Label htmlFor={`notes-${setIndex}`}>{t('exercise.editExerciseEntryDialog.notesLabel', 'Notes')}</Label>
           <Textarea
             id={`notes-${setIndex}`}
             value={set.notes ?? ""}
@@ -233,6 +235,7 @@ const EditExerciseEntryDialog = ({
   onOpenChange,
   onSave,
 }: EditExerciseEntryDialogProps) => {
+  const { t } = useTranslation();
   const { loggingLevel, weightUnit, distanceUnit, convertWeight, convertDistance } = usePreferences();
   debug(
     loggingLevel,
@@ -437,8 +440,8 @@ const EditExerciseEntryDialog = ({
         entry.id
       );
       toast({
-        title: "Success",
-        description: "Exercise entry updated successfully.",
+        title: t('common.success', 'Success'),
+        description: t('exercise.editExerciseEntryDialog.updateSuccess', 'Exercise entry updated successfully.'),
       });
       onOpenChange(false);
       onSave();
@@ -449,8 +452,8 @@ const EditExerciseEntryDialog = ({
         err
       );
       toast({
-        title: "Error",
-        description: "Failed to update exercise entry.",
+        title: t('common.error', 'Error'),
+        description: t('exercise.editExerciseEntryDialog.updateError', 'Failed to update exercise entry.'),
         variant: "destructive",
       });
     } finally {
@@ -476,17 +479,16 @@ const EditExerciseEntryDialog = ({
     >
       <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Exercise Entry</DialogTitle>
+          <DialogTitle>{t('exercise.editExerciseEntryDialog.title', 'Edit Exercise Entry')}</DialogTitle>
           <DialogDescription>
-            Make changes to your exercise entry here. Click save when you're
-            done.
+            {t('exercise.editExerciseEntryDialog.description', 'Make changes to your exercise entry here. Click save when you\'re done.')}
           </DialogDescription>
         </DialogHeader>
 
         {showCaloriesWarning && (
           <Alert variant="default" className="bg-yellow-100 border-yellow-400 text-yellow-700 p-0.25 relative">
             <AlertDescription>
-              Calories burned will be recalculated on save. Enter a value to override.
+              {t('exercise.editExerciseEntryDialog.caloriesWarning', 'Calories burned will be recalculated on save. Enter a value to override.')}
             </AlertDescription>
             <button onClick={() => setShowCaloriesWarning(false)} className="absolute top-1/2 right-2 -translate-y-1/2">
               <X className="h-4 w-4" />
@@ -495,10 +497,10 @@ const EditExerciseEntryDialog = ({
         )}
         <div className="space-y-2">
           <div>
-            <Label htmlFor="exercise-name">Exercise</Label>
+            <Label htmlFor="exercise-name">{t('exercise.editExerciseEntryDialog.exerciseLabel', 'Exercise')}</Label>
             <Input
               id="exercise-name"
-              value={entry.exercises?.name || "Unknown Exercise"}
+              value={entry.exercises?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise')}
               disabled
               className="bg-gray-100 dark:bg-gray-800"
             />
@@ -530,19 +532,19 @@ const EditExerciseEntryDialog = ({
             </DndContext>
           )}
           <Button type="button" variant="outline" onClick={handleAddSet}>
-            <Plus className="h-4 w-4 mr-2" /> Add Set
+            <Plus className="h-4 w-4 mr-2" /> {t('exercise.editExerciseEntryDialog.addSetButton', 'Add Set')}
           </Button>
           <ExerciseHistoryDisplay exerciseId={entry.exercise_id} />
 
           <div>
-            <Label htmlFor="calories-burned">Calories Burned (Optional)</Label>
+            <Label htmlFor="calories-burned">{t('exercise.editExerciseEntryDialog.caloriesBurnedOptionalLabel', 'Calories Burned (Optional)')}</Label>
             <div className="relative">
               <Input
                 id="calories-burned"
                 type="number"
                 value={caloriesBurnedInput}
                 onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="Enter calories burned to override calculation"
+                placeholder={t('exercise.editExerciseEntryDialog.caloriesBurnedPlaceholder', 'Enter calories burned to override calculation')}
                 className="pr-8"
               />
               {caloriesBurnedInput !== '' && (
@@ -561,35 +563,35 @@ const EditExerciseEntryDialog = ({
             </div>
             {caloriesBurnedInput === '' && (
               <p className="text-sm text-muted-foreground mt-1">
-                Calories will be automatically calculated on save if left blank.
+                {t('exercise.editExerciseEntryDialog.caloriesBurnedHint', 'Calories will be automatically calculated on save if left blank.')}
               </p>
             )}
           </div>
 
           <div>
-            <Label htmlFor="distance">Distance ({distanceUnit})</Label>
+            <Label htmlFor="distance">{t('exercise.editExerciseEntryDialog.distanceLabel', 'Distance')} ({distanceUnit})</Label>
             <Input
               id="distance"
               type="number"
               value={distanceInput}
               onChange={(e) => setDistanceInput(e.target.value === '' ? '' : Number(e.target.value))}
-              placeholder={`Enter distance in ${distanceUnit}`}
+              placeholder={t('exercise.editExerciseEntryDialog.distancePlaceholder', 'Enter distance in {{distanceUnit}}', { distanceUnit })}
             />
           </div>
 
           <div>
-            <Label htmlFor="avg-heart-rate">Average Heart Rate (bpm)</Label>
+            <Label htmlFor="avg-heart-rate">{t('exercise.editExerciseEntryDialog.avgHeartRateLabel', 'Average Heart Rate (bpm)')}</Label>
             <Input
               id="avg-heart-rate"
               type="number"
               value={avgHeartRateInput}
               onChange={(e) => setAvgHeartRateInput(e.target.value === '' ? '' : Number(e.target.value))}
-              placeholder="Enter average heart rate"
+              placeholder={t('exercise.editExerciseEntryDialog.avgHeartRatePlaceholder', 'Enter average heart rate')}
             />
           </div>
 
           <div>
-            <Label>Custom Activity Details</Label>
+            <Label>{t('exercise.editExerciseEntryDialog.customActivityDetailsLabel', 'Custom Activity Details')}</Label>
             <ExerciseActivityDetailsEditor
               initialData={activityDetails}
               onChange={setActivityDetails}
@@ -597,7 +599,7 @@ const EditExerciseEntryDialog = ({
           </div>
 
           <div>
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">{t('exercise.editExerciseEntryDialog.notesLabel', 'Notes')}</Label>
             <Textarea
               id="notes"
               value={notes}
@@ -609,12 +611,12 @@ const EditExerciseEntryDialog = ({
                 );
                 setNotes(e.target.value);
               }}
-              placeholder="Add any notes about this exercise..."
+              placeholder={t('exercise.editExerciseEntryDialog.notesPlaceholder', 'Add any notes about this exercise...')}
             />
           </div>
 
           <div>
-            <Label htmlFor="image">Image</Label>
+            <Label htmlFor="image">{t('exercise.editExerciseEntryDialog.imageLabel', 'Image')}</Label>
             <Input id="image" type="file" accept="image/*" onChange={handleImageUpload} />
             {(imageUrl || imageFile) && (
               <div className="mt-2 relative w-24 h-24">
@@ -647,10 +649,10 @@ const EditExerciseEntryDialog = ({
               onOpenChange(false);
             }}
           >
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </Button>
           <Button onClick={handleSave} disabled={loading}>
-            {loading ? "Saving..." : "Save Changes"}
+            {loading ? t('common.saving', 'Saving...') : t('common.saveChanges', 'Save Changes')}
           </Button>
         </div>
       </DialogContent>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -147,6 +148,7 @@ const EnhancedFoodSearch = ({
 }: EnhancedFoodSearchProps) => {
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
+  const { t } = useTranslation();
   const {
     defaultFoodDataProviderId,
     setDefaultFoodDataProviderId,
@@ -713,7 +715,7 @@ const EnhancedFoodSearch = ({
             variant={activeTab === "database" ? "default" : "outline"}
             onClick={() => setActiveTab("database")}
           >
-            Database
+            {t("enhancedFoodSearch.database", "Database")}
           </Button>
         )}
         {!hideMealTab && (
@@ -722,14 +724,14 @@ const EnhancedFoodSearch = ({
             onClick={() => setActiveTab("meal")}
           >
             <BookText className="w-4 h-4 mr-2" />
-            Meals
+            {t("enhancedFoodSearch.meals", "Meals")}
           </Button>
         )}
         <Button
           variant={activeTab === "online" ? "default" : "outline"}
           onClick={() => setActiveTab("online")}
         >
-          Online
+          {t("enhancedFoodSearch.online", "Online")}
         </Button>
         <Button
           variant={activeTab === "barcode" ? "default" : "outline"}
@@ -738,25 +740,25 @@ const EnhancedFoodSearch = ({
             setShowBarcodeScanner(true);
           }}
         >
-          <Camera className="w-4 h-4 mr-2" /> Scan Barcode
+          <Camera className="w-4 h-4 mr-2" /> {t("enhancedFoodSearch.scanBarcode", "Scan Barcode")}
         </Button>
         <Button
           onClick={() => setShowAddFoodDialog(true)}
           className="whitespace-nowrap"
         >
-          <Plus className="w-4 h-4 mr-2" /> Custom Food
+          <Plus className="w-4 h-4 mr-2" /> {t("enhancedFoodSearch.customFood", "Custom Food")}
         </Button>
         <Button
           onClick={() => setShowImportFromCsvDialog(true)}
           className="whitespace-nowrap"
         >
-          <Plus className="w-4 h-4 mr-2" /> Import from CSV
+          <Plus className="w-4 h-4 mr-2" /> {t("enhancedFoodSearch.importFromCSV", "Import from CSV")}
         </Button>
       </div>
 
       <div className="flex space-x-2 items-center">
         <Input
-          placeholder="Search for foods..."
+          placeholder={t("enhancedFoodSearch.searchFoodsPlaceholder", "Search for foods...")}
           value={searchTerm}
           autoFocus
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -787,7 +789,7 @@ const EnhancedFoodSearch = ({
             }}
           >
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select Provider" />
+              <SelectValue placeholder={t("enhancedFoodSearch.selectProvider", "Select Provider")} />
             </SelectTrigger>
             <SelectContent>
               {foodDataProviders
@@ -812,7 +814,7 @@ const EnhancedFoodSearch = ({
         {loading && (
           <div className="text-center py-8 text-gray-500">
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-            Searching foods...
+            {t("enhancedFoodSearch.searchingFoods", "Searching foods...")}
           </div>
         )}
 
@@ -820,7 +822,7 @@ const EnhancedFoodSearch = ({
           <>
             {recentFoods.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Recent Foods </h3>
+                <h3 className="text-lg font-semibold">{t("enhancedFoodSearch.recentFoods", "Recent Foods")}</h3>
                 {recentFoods.map((food) => (
                   <Card
                     key={food.id}
@@ -839,17 +841,17 @@ const EnhancedFoodSearch = ({
                             )}
                            {food.user_id === activeUserId && (
                              <Badge variant="outline" className="text-xs">
-                               Private
+                               {t("enhancedFoodSearch.private", "Private")}
                              </Badge>
                            )}
                            {food.shared_with_public && (
                              <Badge variant="outline" className="text-xs">
-                               <Share2 className="h-3 w-3 mr-1" /> Public
+                               <Share2 className="h-3 w-3 mr-1" /> {t("enhancedFoodSearch.public", "Public")}
                              </Badge>
                            )}
                            {food.user_id !== activeUserId && !food.shared_with_public && (
                              <Badge variant="outline" className="text-xs">
-                               Family
+                               {t("enhancedFoodSearch.family", "Family")}
                              </Badge>
                            )}
                              {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
@@ -873,7 +875,7 @@ const EnhancedFoodSearch = ({
 
             {topFoods.length > 0 && (
               <div className="space-y-2 mt-4">
-                <h3 className="text-lg font-semibold">Top Foods</h3>
+                <h3 className="text-lg font-semibold">{t("enhancedFoodSearch.topFoods", "Top Foods")}</h3>
                 {topFoods.map((food) => (
                   <Card
                     key={food.id}
@@ -892,17 +894,17 @@ const EnhancedFoodSearch = ({
                             )}
                            {food.user_id === activeUserId && (
                              <Badge variant="outline" className="text-xs">
-                               Private
+                               {t("enhancedFoodSearch.private", "Private")}
                              </Badge>
                            )}
                            {food.shared_with_public && (
                              <Badge variant="outline" className="text-xs">
-                               <Share2 className="h-3 w-3 mr-1" /> Public
+                               <Share2 className="h-3 w-3 mr-1" /> {t("enhancedFoodSearch.public", "Public")}
                              </Badge>
                            )}
                            {food.user_id !== activeUserId && !food.shared_with_public && (
                              <Badge variant="outline" className="text-xs">
-                               Family
+                               {t("enhancedFoodSearch.family", "Family")}
                              </Badge>
                            )}
                              {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
@@ -926,8 +928,7 @@ const EnhancedFoodSearch = ({
 
             {recentFoods.length === 0 && topFoods.length === 0 && (
               <div className="text-center py-8 text-gray-500">
-                No recent or top foods found. Start logging foods to see them
-                here.
+                {t("enhancedFoodSearch.noRecentOrTopFoods", "No recent or top foods found. Start logging foods to see them here.")}
               </div>
             )}
           </>
@@ -939,7 +940,7 @@ const EnhancedFoodSearch = ({
           foods.length === 0 &&
           meals.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              No items found in your database for "{searchTerm}".
+              {t("enhancedFoodSearch.noItemsFoundInDatabase", { searchTerm, defaultValue: `No items found in your database for "${searchTerm}".` })}
             </div>
           )}
 
@@ -947,7 +948,7 @@ const EnhancedFoodSearch = ({
           activeTab === "online" &&
           !hasOnlineSearchBeenPerformed && (
             <div className="text-center py-8 text-gray-500">
-              Click the search icon to search online.
+              {t("enhancedFoodSearch.clickSearchIconOnline", "Click the search icon to search online.")}
             </div>
           )}
 
@@ -959,7 +960,7 @@ const EnhancedFoodSearch = ({
           fatSecretResults.length === 0 &&
           foods.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              No foods found from the selected online provider.
+              {t("enhancedFoodSearch.noFoodsFoundOnline", "No foods found from the selected online provider.")}
             </div>
           )}
 
@@ -981,7 +982,7 @@ const EnhancedFoodSearch = ({
                         </Badge>
                       )}
                       <Badge variant="outline" className="text-xs">
-                        Mealie
+                        {t("enhancedFoodSearch.mealie", "Mealie")}
                       </Badge>
                       {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
                         <Badge variant="outline" className="text-xs">
@@ -1001,7 +1002,7 @@ const EnhancedFoodSearch = ({
                     className="ml-2"
                   >
                     <Edit className="w-4 h-4 mr-1" />
-                    Edit & Add
+                    {t("enhancedFoodSearch.editAndAdd", "Edit & Add")}
                   </Button>
                 </div>
               </CardContent>
@@ -1021,7 +1022,7 @@ const EnhancedFoodSearch = ({
                     <div className="flex items-center space-x-2 mb-2">
                       <h3 className="font-medium">{meal.name}</h3>
                       <Badge variant="outline" className="text-xs">
-                        Meal
+                        {t("enhancedFoodSearch.meal", "Meal")}
                       </Badge>
                     </div>
                     <p className="text-sm text-gray-500">
@@ -1053,17 +1054,17 @@ const EnhancedFoodSearch = ({
                       )}
                       {food.user_id === activeUserId && (
                         <Badge variant="outline" className="text-xs">
-                          Private
+                          {t("enhancedFoodSearch.private", "Private")}
                         </Badge>
                       )}
                       {food.shared_with_public && (
                         <Badge variant="outline" className="text-xs">
-                          <Share2 className="h-3 w-3 mr-1" /> Public
+                          <Share2 className="h-3 w-3 mr-1" /> {t("enhancedFoodSearch.public", "Public")}
                         </Badge>
                       )}
                       {food.user_id !== activeUserId && !food.shared_with_public && (
                         <Badge variant="outline" className="text-xs">
-                          Family
+                          {t("enhancedFoodSearch.family", "Family")}
                         </Badge>
                       )}
                       {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
@@ -1101,7 +1102,7 @@ const EnhancedFoodSearch = ({
                         </Badge>
                       )}
                       <Badge variant="outline" className="text-xs">
-                        OpenFoodFacts
+                        {t("enhancedFoodSearch.openFoodFacts", "OpenFoodFacts")}
                       </Badge>
                     </div>
                     <NutrientGrid food={{
@@ -1122,7 +1123,7 @@ const EnhancedFoodSearch = ({
                     className="ml-2"
                   >
                     <Edit className="w-4 h-4 mr-1" />
-                    Edit & Add
+                    {t("enhancedFoodSearch.editAndAdd", "Edit & Add")}
                   </Button>
                 </div>
               </CardContent>
@@ -1147,7 +1148,7 @@ const EnhancedFoodSearch = ({
                         </Badge>
                       )}
                       <Badge variant="outline" className="text-xs">
-                        Nutritionix
+                        {t("enhancedFoodSearch.nutritionix", "Nutritionix")}
                       </Badge>
                     </div>
                     {item.image && (
@@ -1173,7 +1174,7 @@ const EnhancedFoodSearch = ({
                     className="ml-2"
                   >
                     <Edit className="w-4 h-4 mr-1" />
-                    Edit & Add
+                    {t("enhancedFoodSearch.editAndAdd", "Edit & Add")}
                   </Button>
                 </div>
               </CardContent>
@@ -1198,7 +1199,7 @@ const EnhancedFoodSearch = ({
                         </Badge>
                       )}
                       <Badge variant="outline" className="text-xs">
-                        FatSecret
+                        {t("enhancedFoodSearch.fatSecret", "FatSecret")}
                       </Badge>
                     </div>
                     {item.calories !== undefined &&
@@ -1220,7 +1221,7 @@ const EnhancedFoodSearch = ({
                     className="ml-2"
                   >
                     <Edit className="w-4 h-4 mr-1" />
-                    Edit & Add
+                    {t("enhancedFoodSearch.editAndAdd", "Edit & Add")}
                   </Button>
                 </div>
               </CardContent>
@@ -1232,9 +1233,9 @@ const EnhancedFoodSearch = ({
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Food Details</DialogTitle>
+            <DialogTitle>{t("enhancedFoodSearch.editFoodDetails", "Edit Food Details")}</DialogTitle>
             <DialogDescription>
-              Adjust the food details before adding it to your custom database.
+              {t("enhancedFoodSearch.editFoodDetailsDescription", "Adjust the food details before adding it to your custom database.")}
             </DialogDescription>
           </DialogHeader>
           {editingProduct && (
@@ -1263,9 +1264,9 @@ const EnhancedFoodSearch = ({
       <Dialog open={showAddFoodDialog} onOpenChange={setShowAddFoodDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Food</DialogTitle>
+            <DialogTitle>{t("enhancedFoodSearch.addNewFood", "Add New Food")}</DialogTitle>
             <DialogDescription>
-              Enter the details for a new food item to add to your database.
+              {t("enhancedFoodSearch.addNewFoodDescription", "Enter the details for a new food item to add to your database.")}
             </DialogDescription>
           </DialogHeader>
           <EnhancedCustomFoodForm onSave={handleSaveEditedFood} />
@@ -1276,9 +1277,9 @@ const EnhancedFoodSearch = ({
       <Dialog open={showBarcodeScanner} onOpenChange={setShowBarcodeScanner}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Scan Barcode</DialogTitle>
+            <DialogTitle>{t("enhancedFoodSearch.scanBarcode", "Scan Barcode")}</DialogTitle>
             <DialogDescription>
-              Position the product barcode in front of your camera.
+              {t("enhancedFoodSearch.scanBarcodeDescription", "Position the product barcode in front of your camera.")}
             </DialogDescription>
           </DialogHeader>
           <BarcodeScanner
@@ -1299,9 +1300,9 @@ const EnhancedFoodSearch = ({
       >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Import from CSV</DialogTitle>
+            <DialogTitle>{t("enhancedFoodSearch.importFromCSV", "Import from CSV")}</DialogTitle>
             <DialogDescription>
-              Import a CSV file to add multiple foods at once.
+              {t("enhancedFoodSearch.importFromCSVDescription", "Import a CSV file to add multiple foods at once.")}
             </DialogDescription>
           </DialogHeader>
           <ImportFromCSV onSave={handleImportFromCSV} />

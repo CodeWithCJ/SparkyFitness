@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -13,6 +14,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const MoodReports: React.FC = () => {
+  const { t } = useTranslation(); // Initialize t function
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const { formatDateInUserTimezone } = usePreferences();
@@ -27,7 +29,7 @@ const MoodReports: React.FC = () => {
 
   const fetchMoodData = async () => {
     if (!currentUserId) {
-      setError('User not authenticated.');
+      setError(t('moodReports.userNotAuthenticated'));
       return;
     }
     setLoading(true);
@@ -37,7 +39,7 @@ const MoodReports: React.FC = () => {
       setMoodEntries(data);
     } catch (err) {
       console.error('Failed to fetch mood entries:', err);
-      setError('Failed to load mood data. Please try again.');
+      setError(t('moodReports.failedToLoadMoodData'));
     } finally {
       setLoading(false);
     }
@@ -45,7 +47,7 @@ const MoodReports: React.FC = () => {
 
   useEffect(() => {
     fetchMoodData();
-  }, [currentUserId, startDate, endDate]);
+  }, [currentUserId, startDate, endDate, t]); // Add t to dependency array
 
   const chartData = moodEntries.map(entry => ({
     date: formatDateInUserTimezone(entry.entry_date, 'MMM dd'),
@@ -56,12 +58,12 @@ const MoodReports: React.FC = () => {
     <div className="container mx-auto p-6 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Mood Reports</CardTitle>
+          <CardTitle>{t('moodReports.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
-              <Label htmlFor="startDate">Start Date</Label>
+              <Label htmlFor="startDate">{t('moodReports.startDate')}</Label>
               <Input
                 id="startDate"
                 type="date"
@@ -70,7 +72,7 @@ const MoodReports: React.FC = () => {
               />
             </div>
             <div>
-              <Label htmlFor="endDate">End Date</Label>
+              <Label htmlFor="endDate">{t('moodReports.endDate')}</Label>
               <Input
                 id="endDate"
                 type="date"
@@ -80,7 +82,7 @@ const MoodReports: React.FC = () => {
             </div>
             <div className="md:col-span-2">
               <Button onClick={fetchMoodData} disabled={loading}>
-                {loading ? 'Loading...' : 'Apply Filters'}
+                {loading ? t('moodReports.loading') : t('moodReports.applyFilters')}
               </Button>
             </div>
           </div>
@@ -88,10 +90,10 @@ const MoodReports: React.FC = () => {
           {error && <p className="text-red-500">{error}</p>}
 
           {moodEntries.length === 0 && !loading && !error ? (
-            <p>No mood data available for the selected period.</p>
+            <p>{t('moodReports.noMoodDataAvailable')}</p>
           ) : (
             <>
-              <h3 className="text-lg font-semibold mb-4">Mood Trend</h3>
+              <h3 className="text-lg font-semibold mb-4">{t('moodReports.moodTrend')}</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -102,15 +104,15 @@ const MoodReports: React.FC = () => {
                 </LineChart>
               </ResponsiveContainer>
 
-              <h3 className="text-lg font-semibold mt-8 mb-4">Detailed Mood Entries</h3>
+              <h3 className="text-lg font-semibold mt-8 mb-4">{t('moodReports.detailedMoodEntries')}</h3>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Mood Value</TableHead>
-                      <TableHead>Notes</TableHead>
-                      <TableHead>Created At</TableHead>
+                      <TableHead>{t('moodReports.tableHeadDate')}</TableHead>
+                      <TableHead>{t('moodReports.tableHeadMoodValue')}</TableHead>
+                      <TableHead>{t('moodReports.tableHeadNotes')}</TableHead>
+                      <TableHead>{t('moodReports.tableHeadCreatedAt')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -118,7 +120,7 @@ const MoodReports: React.FC = () => {
                       <TableRow key={entry.id}>
                         <TableCell>{formatDateInUserTimezone(entry.entry_date, 'PPP')}</TableCell>
                         <TableCell>{entry.mood_value}</TableCell>
-                        <TableCell>{entry.notes || '-'}</TableCell>
+                        <TableCell>{entry.notes || t('common.notApplicable')}</TableCell>
                         <TableCell>{formatDateInUserTimezone(entry.created_at, 'PPP p')}</TableCell>
                       </TableRow>
                     ))}

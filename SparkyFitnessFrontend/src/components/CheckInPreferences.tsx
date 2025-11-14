@@ -11,6 +11,7 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { cn } from "@/lib/utils";
 import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
 import { format } from 'date-fns'; // Import format from date-fns
+import { useTranslation } from "react-i18next";
 
 
 interface CheckInPreferencesProps {
@@ -22,6 +23,7 @@ const CheckInPreferences = ({
   selectedDate,
   onDateChange,
 }: CheckInPreferencesProps) => {
+  const { t } = useTranslation();
   const {
     formatDate,
     parseDateInUserTimezone,
@@ -89,7 +91,7 @@ const CheckInPreferences = ({
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? formatDate(date) : <span>Pick a date</span>}
+                    {date ? formatDate(date) : <span>{t('common.pickADate', 'Pick a Date')}</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">

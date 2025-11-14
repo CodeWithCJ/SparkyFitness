@@ -1,4 +1,5 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
+import { useTranslation } from "react-i18next";
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -31,6 +32,7 @@ interface ExerciseActivityDetailsEditorProps {
 }
 
 const ExerciseActivityDetailsEditor: React.FC<ExerciseActivityDetailsEditorProps> = ({ initialData, onChange }) => {
+  const { t } = useTranslation();
   const [pairs, setPairs] = useState<ActivityDetailKeyValuePair[]>(initialData);
 
   useEffect(() => {
@@ -97,22 +99,22 @@ const ExerciseActivityDetailsEditor: React.FC<ExerciseActivityDetailsEditorProps
       {pairs.map((pair, index) => (
         <div key={pair.id || index} className="flex items-end space-x-2">
           <div className="flex-1">
-            <Label htmlFor={`key-${index}`}>Field Name</Label>
+            <Label htmlFor={`key-${index}`}>{t('exercise.activityDetailsEditor.fieldNameLabel', 'Field Name')}</Label>
             <Input
               id={`key-${index}`}
               value={pair.key}
               onChange={(e) => handleKeyChange(index, e)}
-              placeholder="e.g., 'Weather', 'Mood'"
+              placeholder={t('exercise.activityDetailsEditor.fieldNamePlaceholder', "e.g., 'Weather', 'Mood'")}
             />
           </div>
           <div className="flex-1">
-            <Label htmlFor={`value-${index}`}>Value</Label>
+            <Label htmlFor={`value-${index}`}>{t('exercise.activityDetailsEditor.valueLabel', 'Value')}</Label>
             {isValidJson(pair.value) ? (
               <Textarea
                 id={`value-${index}`}
                 value={pair.value}
                 onChange={(e) => handleValueChange(index, e)}
-                placeholder="e.g., 'Sunny', 'Energetic'"
+                placeholder={t('exercise.activityDetailsEditor.valuePlaceholder', "e.g., 'Sunny', 'Energetic'")}
                 rows={6} // Provide enough rows for JSON
                 className="font-mono" // Use monospace font for JSON
               />
@@ -121,7 +123,7 @@ const ExerciseActivityDetailsEditor: React.FC<ExerciseActivityDetailsEditorProps
                 id={`value-${index}`}
                 value={pair.value}
                 onChange={(e) => handleValueChange(index, e)}
-                placeholder="e.g., 'Sunny', 'Energetic'"
+                placeholder={t('exercise.activityDetailsEditor.valuePlaceholder', "e.g., 'Sunny', 'Energetic'")}
               />
             )}
           </div>
@@ -131,7 +133,7 @@ const ExerciseActivityDetailsEditor: React.FC<ExerciseActivityDetailsEditorProps
         </div>
       ))}
       <Button type="button" variant="outline" onClick={handleAddPair}>
-        <Plus className="h-4 w-4 mr-2" /> Add Custom Field
+        <Plus className="h-4 w-4 mr-2" /> {t('exercise.activityDetailsEditor.addCustomFieldButton', 'Add Custom Field')}
       </Button>
     </div>
   );
