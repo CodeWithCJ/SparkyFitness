@@ -28,6 +28,7 @@ BEGIN
     'exercise_entries',
     'exercise_entry_sets',
     'exercises',
+    'exercise_preset_entries',
     'external_data_providers',
     'family_access',
     'food_entries',
@@ -187,6 +188,17 @@ SELECT create_diary_policy('check_in_measurements');
 SELECT create_diary_policy('custom_categories');
 SELECT create_diary_policy('custom_measurements');
 SELECT create_diary_policy('exercise_entries');
+-- Custom policy for exercise_entries to allow access if linked to an owned exercise_preset_entry
+CREATE POLICY select_exercise_preset_entry_linked_policy ON public.exercise_entries FOR SELECT TO PUBLIC
+USING (
+  exercise_preset_entry_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.exercise_preset_entries epe
+    WHERE epe.id = exercise_entries.exercise_preset_entry_id AND has_diary_access(epe.user_id)
+  )
+);
+-- The modify policy for exercise_entries is already handled by create_diary_policy('exercise_entries')
+
+SELECT create_diary_policy('exercise_preset_entries');
 SELECT create_diary_policy('sleep_entries');
 SELECT create_diary_policy('sleep_entry_stages');
 SELECT create_diary_policy('water_intake');

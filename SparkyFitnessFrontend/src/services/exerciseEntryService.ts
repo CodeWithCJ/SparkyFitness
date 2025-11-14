@@ -17,34 +17,103 @@ export interface ExerciseEntry {
   image_url?: string;
   distance?: number;
   avg_heart_rate?: number;
-  exercises: Exercise;
+  exercise_snapshot: Exercise; // Renamed from 'exercises' to 'exercise_snapshot'
   activity_details?: ActivityDetailKeyValuePair[]; // New field
+  exercise_preset_entry_id?: string; // New field
+  created_at: string; // Add created_at for sorting
 }
 
-export const fetchExerciseEntries = async (selectedDate: string): Promise<ExerciseEntry[]> => {
+// Define a type for the grouped entries returned by the backend
+export interface GroupedExerciseEntry {
+  type: 'individual' | 'preset';
+  id: string; // UUID for individual exercise entry or exercise preset entry
+  created_at: string; // For sorting
+  // Common fields for individual exercise entries
+  exercise_id?: string;
+  duration_minutes?: number;
+  calories_burned?: number;
+  entry_date?: string;
+  notes?: string;
+  workout_plan_assignment_id?: number;
+  image_url?: string;
+  created_by_user_id?: string;
+  exercise_name?: string;
+  calories_per_hour?: number;
+  updated_by_user_id?: string;
+  category?: string;
+  source?: string;
+  source_id?: string;
+  force?: string;
+  level?: string;
+  mechanic?: string;
+  equipment?: string[];
+  primary_muscles?: string[];
+  secondary_muscles?: string[];
+  instructions?: string[];
+  images?: string[];
+  distance?: number;
+  avg_heart_rate?: number;
+  sets?: WorkoutPresetSet[];
+  exercise_snapshot?: Exercise; // Snapshot of exercise details
+
+  // Fields specific to preset entries
+  workout_preset_id?: number;
+  name?: string; // Name of the preset entry
+  description?: string;
+  // Array of individual exercise entries within this preset
+  exercises?: ExerciseEntry[]; // This will hold the individual exercise entries
+}
+
+
+export const fetchExerciseEntries = async (selectedDate: string): Promise<GroupedExerciseEntry[]> => {
   const response = await getDailyExerciseEntries(selectedDate);
   
-  const parsedEntries = response.map((entry: any) => ({
-    ...entry,
-    exercises: entry.exercises ? {
-      ...entry.exercises,
-      equipment: parseJsonArray(entry.exercises.equipment),
-      primary_muscles: parseJsonArray(entry.exercises.primary_muscles),
-      secondary_muscles: parseJsonArray(entry.exercises.secondary_muscles),
-      instructions: parseJsonArray(entry.exercises.instructions),
-      images: parseJsonArray(entry.exercises.images),
-    } : entry.exercises,
-    activity_details: entry.activity_details ? entry.activity_details
-      .map((detail: any) => {
-        return {
-          id: detail.id,
-          key: detail.detail_type,
-          value: typeof detail.detail_data === 'object' ? JSON.stringify(detail.detail_data, null, 2) : detail.detail_data,
-          provider_name: detail.provider_name,
-          detail_type: detail.detail_type,
-        };
-      }) : [],
-  }));
+  const parsedEntries: GroupedExerciseEntry[] = response.map((entry: any) => {
+    if (entry.type === 'preset') {
+      return {
+        ...entry,
+        exercises: entry.exercises ? entry.exercises.map((ex: any) => ({
+          ...ex,
+          exercise_snapshot: ex.exercises ? {
+            ...ex.exercises,
+            equipment: parseJsonArray(ex.exercises.equipment),
+            primary_muscles: parseJsonArray(ex.exercises.primary_muscles),
+            secondary_muscles: parseJsonArray(ex.exercises.secondary_muscles),
+            instructions: parseJsonArray(ex.exercises.instructions),
+            images: parseJsonArray(ex.exercises.images),
+          } : ex.exercises,
+          activity_details: ex.activity_details ? ex.activity_details
+            .map((detail: any) => ({
+              id: detail.id,
+              key: detail.detail_type,
+              value: typeof detail.detail_data === 'object' ? JSON.stringify(detail.detail_data, null, 2) : detail.detail_data,
+              provider_name: detail.provider_name,
+              detail_type: detail.detail_type,
+            })) : [],
+        })) : [],
+      };
+    } else {
+      return {
+        ...entry,
+        exercise_snapshot: entry.exercises ? {
+          ...entry.exercises,
+          equipment: parseJsonArray(entry.exercises.equipment),
+          primary_muscles: parseJsonArray(entry.exercises.primary_muscles),
+          secondary_muscles: parseJsonArray(entry.exercises.secondary_muscles),
+          instructions: parseJsonArray(entry.exercises.instructions),
+          images: parseJsonArray(entry.exercises.images),
+        } : entry.exercises,
+        activity_details: entry.activity_details ? entry.activity_details
+          .map((detail: any) => ({
+            id: detail.id,
+            key: detail.detail_type,
+            value: typeof detail.detail_data === 'object' ? JSON.stringify(detail.detail_data, null, 2) : detail.detail_data,
+            provider_name: detail.provider_name,
+            detail_type: detail.detail_type,
+          })) : [],
+      };
+    }
+  });
  
   console.log('DEBUG', 'fetchExerciseEntries: Parsed entries with activity details:', parsedEntries);
   return parsedEntries;
@@ -103,7 +172,7 @@ export const createExerciseEntry = async (payload: {
 };
 
 export const logWorkoutPreset = async (workoutPresetId: string, entryDate: string): Promise<ExerciseEntry[]> => {
-  return apiCall('/exercise-entries/from-preset', {
+  return apiCall('/exercise-preset-entries', {
     method: 'POST',
     body: JSON.stringify({ workout_preset_id: workoutPresetId, entry_date: entryDate }),
   });
@@ -111,6 +180,12 @@ export const logWorkoutPreset = async (workoutPresetId: string, entryDate: strin
 
 export const deleteExerciseEntry = async (entryId: string): Promise<void> => {
   return apiCall(`/exercise-entries/${entryId}`, {
+    method: 'DELETE',
+  });
+};
+
+export const deleteExercisePresetEntry = async (presetEntryId: string): Promise<void> => {
+  return apiCall(`/exercise-preset-entries/${presetEntryId}`, {
     method: 'DELETE',
   });
 };

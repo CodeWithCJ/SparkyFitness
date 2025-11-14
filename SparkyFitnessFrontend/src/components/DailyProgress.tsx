@@ -204,9 +204,9 @@ const DailyProgress = ({
 
         exerciseData.forEach(entry => {
           if (entry.exercises?.name === 'Active Calories') {
-            activeCaloriesFromExercise += Number(entry.calories_burned);
+            activeCaloriesFromExercise += Number(entry.calories_burned || 0);
           } else {
-            otherExerciseCalories += Number(entry.calories_burned);
+            otherExerciseCalories += Number(entry.calories_burned || 0);
           }
         });
 
@@ -504,7 +504,7 @@ const DailyProgress = ({
                   {stepsCalories > 0 && activeCaloriesFromExercise === 0 && (
                     <p>{t('exercise.dailyProgress.stepsCalories', 'Steps: {{dailySteps}} = {{stepsCalories}} cal', { dailySteps: dailySteps.toLocaleString(), stepsCalories })}</p>
                   )}
-                  {includeBmrInNetCalories && bmr && (
+                  {includeBmrInNetCalories && bmr && !isNaN(bmr) && (
                     <p>{t('exercise.dailyProgress.bmrCalories', 'BMR: {{bmr}} cal', { bmr: Math.round(bmr) })}</p>
                   )}
                   <p>{t('exercise.dailyProgress.totalCaloriesBurned', 'Total: {{totalCaloriesBurned}} cal', { totalCaloriesBurned })}</p>
@@ -544,7 +544,7 @@ const DailyProgress = ({
                   {t('exercise.dailyProgress.stepsCalories', 'Steps: {{dailySteps}} = {{stepsCalories}} cal', { dailySteps: dailySteps.toLocaleString(), stepsCalories })}
                 </div>
               )}
-              {bmr && (
+              {bmr && !isNaN(bmr) && (
                 <div className="text-xs text-blue-600">
                   {t('exercise.dailyProgress.bmrCalories', 'BMR: {{bmr}} cal', { bmr: Math.round(bmr) })}
                 </div>

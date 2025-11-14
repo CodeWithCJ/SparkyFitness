@@ -3,6 +3,7 @@ const format = require('pg-format');
 const { log } = require('../config/logging');
 const exerciseRepository = require('./exercise');
 const activityDetailsRepository = require('./activityDetailsRepository'); // New import
+const exercisePresetEntryRepository = require('./exercisePresetEntryRepository'); // New import
 
 async function upsertExerciseEntryData(userId, createdByUserId, exerciseId, caloriesBurned, date) {
   log('info', "upsertExerciseEntryData received date parameter:", date);
@@ -204,7 +205,7 @@ async function _updateExerciseEntryWithClient(client, id, userId, updateData, up
   return getExerciseEntryById(id, userId); // Refetch to get full data
 }
 
-async function createExerciseEntry(userId, entryData, createdByUserId, entrySource = 'Manual') {
+async function createExerciseEntry(userId, entryData, createdByUserId, entrySource = 'Manual', exercisePresetEntryId = null) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
@@ -243,34 +244,35 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
            workout_plan_assignment_id, image_url, created_by_user_id,
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
-           distance, avg_heart_rate
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING id`,
-        [
-          userId,
-          entryData.exercise_id,
-          typeof entryData.duration_minutes === 'number' ? entryData.duration_minutes : 0,
-          entryData.calories_burned,
-          entryData.entry_date,
-          entryData.notes,
-          entryData.workout_plan_assignment_id || null,
-          entryData.image_url || null,
-          createdByUserId,
-          snapshot.name, // exercise_name
-          snapshot.calories_per_hour,
-          snapshot.category,
-          entrySource, // Use entrySource for the entry's source
-          snapshot.source_id, // source_id still comes from the exercise definition
-          snapshot.force,
-          snapshot.level,
-          snapshot.mechanic,
-          snapshot.equipment,
-          snapshot.primary_muscles,
-          snapshot.secondary_muscles,
-          snapshot.instructions,
-          snapshot.images,
-          entryData.distance || null,
-          entryData.avg_heart_rate || null,
-        ]
+           distance, avg_heart_rate, exercise_preset_entry_id
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) RETURNING id`,
+         [
+           userId,
+           entryData.exercise_id,
+           typeof entryData.duration_minutes === 'number' ? entryData.duration_minutes : 0,
+           entryData.calories_burned,
+           entryData.entry_date,
+           entryData.notes,
+           entryData.workout_plan_assignment_id || null,
+           entryData.image_url || null,
+           createdByUserId,
+           snapshot.name, // exercise_name
+           snapshot.calories_per_hour,
+           snapshot.category,
+           entrySource, // Use entrySource for the entry's source
+           snapshot.source_id, // source_id still comes from the exercise definition
+           snapshot.force,
+           snapshot.level,
+           snapshot.mechanic,
+           snapshot.equipment,
+           snapshot.primary_muscles,
+           snapshot.secondary_muscles,
+           snapshot.instructions,
+           snapshot.images,
+           entryData.distance || null,
+           entryData.avg_heart_rate || null,
+           exercisePresetEntryId, // New parameter
+         ]
       );
       newEntryId = entryResult.rows[0].id;
 
@@ -411,7 +413,18 @@ async function deleteExerciseEntry(id, userId) {
 async function getExerciseEntriesByDate(userId, selectedDate) {
   const client = await getClient(userId);
   try {
-    const result = await client.query(
+    // 1. Fetch all exercise preset entries for the given date and user
+    const presetEntriesResult = await client.query(
+      `SELECT id, workout_preset_id, name, description, notes
+       FROM exercise_preset_entries
+       WHERE user_id = $1 AND entry_date = $2
+       ORDER BY created_at ASC`,
+      [userId, selectedDate]
+    );
+    const presetEntries = presetEntriesResult.rows;
+
+    // 2. Fetch all individual exercise entries for the given date and user
+    const individualEntriesResult = await client.query(
       `SELECT
          ee.*,
          COALESCE(
@@ -430,11 +443,30 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
            WHERE ead.exercise_entry_id = ee.id
           ) AS activity_details
         FROM exercise_entries ee
-        WHERE ee.user_id = $1 AND ee.entry_date = $2`,
+        WHERE ee.user_id = $1 AND ee.entry_date = $2
+        ORDER BY ee.created_at ASC`,
       [userId, selectedDate]
     );
+    const allExerciseEntries = individualEntriesResult.rows;
 
-    const entriesWithDetails = await Promise.all(result.rows.map(async row => {
+    // Map to store grouped exercises
+    const groupedEntries = new Map();
+
+    // Initialize grouped entries with preset entries
+    presetEntries.forEach(preset => {
+      groupedEntries.set(preset.id, {
+        type: 'preset',
+        id: preset.id,
+        workout_preset_id: preset.workout_preset_id,
+        name: preset.name,
+        description: preset.description,
+        notes: preset.notes,
+        exercises: [], // This will hold the individual exercise entries
+      });
+    });
+
+    // Process individual exercise entries
+    const entriesWithDetails = await Promise.all(allExerciseEntries.map(async row => {
       const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(userId, row.id);
       const {
         exercise_name, category, calories_per_hour, source, source_id, force, level, mechanic,
@@ -443,7 +475,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
 
       return {
         ...entryData,
-        exercises: {
+        exercises: { // Renamed from 'exercises' to 'exercise_snapshot' to avoid confusion with the grouping
           name: exercise_name,
           category: category,
           calories_per_hour: calories_per_hour,
@@ -462,8 +494,30 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
       };
     }));
 
-    log('debug', `getExerciseEntriesByDate: Returning entries with details for user ${userId} on ${selectedDate}:`, entriesWithDetails);
-    return entriesWithDetails;
+    // Group exercises under their respective preset entries or as individual entries
+    const finalEntries = [];
+    entriesWithDetails.forEach(entry => {
+      if (entry.exercise_preset_entry_id && groupedEntries.has(entry.exercise_preset_entry_id)) {
+        groupedEntries.get(entry.exercise_preset_entry_id).exercises.push(entry);
+      } else {
+        // Add individual exercises that are not part of any preset
+        finalEntries.push({
+          type: 'individual',
+          ...entry,
+        });
+      }
+    });
+
+    // Add preset entries (with their grouped exercises) to the final list
+    groupedEntries.forEach(preset => {
+      finalEntries.push(preset);
+    });
+
+    // Sort final entries by created_at for consistent display
+    finalEntries.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    log('debug', `getExerciseEntriesByDate: Returning grouped entries for user ${userId} on ${selectedDate}:`, finalEntries);
+    return finalEntries;
   } finally {
     client.release();
   }

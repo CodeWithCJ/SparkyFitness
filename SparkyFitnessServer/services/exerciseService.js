@@ -289,9 +289,13 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
 
 async function deleteExerciseEntry(authenticatedUserId, id) {
   try {
-    const entry = await exerciseEntryDb.getExerciseEntryById(id, authenticatedUserId);
-    if (!entry) {
+    const entryOwnerId = await exerciseEntryDb.getExerciseEntryOwnerId(id, authenticatedUserId);
+    if (!entryOwnerId) {
       throw new Error('Exercise entry not found.');
+    }
+    const entry = await exerciseEntryDb.getExerciseEntryById(id, entryOwnerId);
+    if (!entry) {
+      throw new Error('Exercise entry not found.'); // Should not happen if entryOwnerId was found
     }
 
     // If an image is associated with the entry, delete it from the filesystem
@@ -303,7 +307,7 @@ async function deleteExerciseEntry(authenticatedUserId, id) {
       }
     }
 
-    const success = await exerciseEntryDb.deleteExerciseEntry(id, authenticatedUserId);
+    const success = await exerciseEntryDb.deleteExerciseEntry(id, entryOwnerId);
     if (!success) {
       throw new Error('Exercise entry not found or not authorized to delete.');
     }

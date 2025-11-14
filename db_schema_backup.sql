@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict XgfRGu5ggmKHmqQOwJt09ll0WrfL4bSgbaOeVKashmpZLQJ3WjncrvwVHdpCdBa
+\restrict iprrQ9D9Ivr6WeErRAGtqXnTdcvw3nDCDGkLofw0md8YuBGVeDq0DqWxAyoo3iS
 
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 18.0
@@ -806,13 +806,6 @@ CREATE TABLE public.check_in_measurements (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     height numeric,
     body_fat_percentage numeric,
-    resting_heart_rate integer,
-    sleep_duration_hours numeric(4,2),
-    sleep_quality_score integer,
-    stress_level_score integer,
-    muscle_mass_kg numeric,
-    body_water_percentage numeric,
-    visceral_fat_level integer,
     created_by_user_id uuid,
     updated_by_user_id uuid
 );
@@ -833,8 +826,16 @@ CREATE TABLE public.custom_categories (
     data_type text DEFAULT 'numeric'::text,
     created_by_user_id uuid,
     updated_by_user_id uuid,
+    display_name character varying(100),
     CONSTRAINT custom_categories_frequency_check CHECK ((frequency = ANY (ARRAY['All'::text, 'Daily'::text, 'Hourly'::text])))
 );
+
+
+--
+-- Name: COLUMN custom_categories.display_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.custom_categories.display_name IS 'User-editable display name for the category. If NULL, the name field is used for display. The name field serves as the stable identifier for syncing and lookups.';
 
 
 --
@@ -1407,6 +1408,42 @@ CREATE TABLE public.session (
     sid character varying NOT NULL,
     sess json NOT NULL,
     expire timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: sleep_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sleep_entries (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    user_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    bedtime timestamp with time zone NOT NULL,
+    wake_time timestamp with time zone NOT NULL,
+    duration_in_seconds integer NOT NULL,
+    time_asleep_in_seconds integer,
+    sleep_score numeric,
+    source character varying(50) NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+--
+-- Name: sleep_entry_stages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sleep_entry_stages (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    entry_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    stage_type character varying(50) NOT NULL,
+    start_time timestamp with time zone NOT NULL,
+    end_time timestamp with time zone NOT NULL,
+    duration_in_seconds integer NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );
 
 
@@ -2214,6 +2251,22 @@ ALTER TABLE ONLY public.session
 
 
 --
+-- Name: sleep_entries sleep_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entries
+    ADD CONSTRAINT sleep_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sleep_entry_stages sleep_entry_stages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entry_stages
+    ADD CONSTRAINT sleep_entry_stages_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: mood_entries unique_user_date; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2452,6 +2505,41 @@ CREATE UNIQUE INDEX idx_exercises_source_source_id_unique ON public.exercises US
 --
 
 CREATE INDEX idx_foods_provider_external_id_provider_type ON public.foods USING btree (provider_external_id, provider_type);
+
+
+--
+-- Name: idx_sleep_entries_entry_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sleep_entries_entry_date ON public.sleep_entries USING btree (entry_date);
+
+
+--
+-- Name: idx_sleep_entries_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sleep_entries_user_id ON public.sleep_entries USING btree (user_id);
+
+
+--
+-- Name: idx_sleep_entry_stages_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sleep_entry_stages_entry_id ON public.sleep_entry_stages USING btree (entry_id);
+
+
+--
+-- Name: idx_sleep_entry_stages_start_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sleep_entry_stages_start_time ON public.sleep_entry_stages USING btree (start_time);
+
+
+--
+-- Name: idx_sleep_entry_stages_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sleep_entry_stages_user_id ON public.sleep_entry_stages USING btree (user_id);
 
 
 --
@@ -2956,6 +3044,30 @@ ALTER TABLE ONLY public.onboarding_status
 
 
 --
+-- Name: sleep_entries sleep_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entries
+    ADD CONSTRAINT sleep_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sleep_entry_stages sleep_entry_stages_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entry_stages
+    ADD CONSTRAINT sleep_entry_stages_entry_id_fkey FOREIGN KEY (entry_id) REFERENCES public.sleep_entries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sleep_entry_stages sleep_entry_stages_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entry_stages
+    ADD CONSTRAINT sleep_entry_stages_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_ignored_updates user_ignored_updates_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3375,6 +3487,20 @@ CREATE POLICY modify_policy ON public.meals USING ((public.current_user_id() = u
 
 
 --
+-- Name: sleep_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.sleep_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: sleep_entry_stages modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.sleep_entry_stages USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
 -- Name: water_intake modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -3672,6 +3798,20 @@ CREATE POLICY select_policy ON public.meal_plan_templates FOR SELECT USING (publ
 --
 
 CREATE POLICY select_policy ON public.meals FOR SELECT USING (public.has_library_access_with_public(user_id, is_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]));
+
+
+--
+-- Name: sleep_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.sleep_entries FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: sleep_entry_stages select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.sleep_entry_stages FOR SELECT USING (public.has_diary_access(user_id));
 
 
 --
@@ -4126,6 +4266,24 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_uat;
 
 
 --
+-- Name: TABLE sleep_entries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_uat;
+
+
+--
+-- Name: TABLE sleep_entry_stages; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_uat;
+
+
+--
 -- Name: TABLE sparky_chat_history; Type: ACL; Schema: public; Owner: -
 --
 
@@ -4393,5 +4551,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict XgfRGu5ggmKHmqQOwJt09ll0WrfL4bSgbaOeVKashmpZLQJ3WjncrvwVHdpCdBa
+\unrestrict iprrQ9D9Ivr6WeErRAGtqXnTdcvw3nDCDGkLofw0md8YuBGVeDq0DqWxAyoo3iS
 
