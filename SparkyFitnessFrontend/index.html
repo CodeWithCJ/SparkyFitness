@@ -44,6 +44,15 @@
                         return; // Don't re-register, let auth flow complete
                     }
 
+                    // Only register Service Worker if user has been authenticated before
+                    // This prevents SW from interfering with Authentik's initial login flow
+                    const userWasAuthenticated = localStorage.getItem('sparky_user_was_authenticated');
+
+                    if (!userWasAuthenticated) {
+                        console.log('SW registration skipped - user not yet authenticated (fresh session)');
+                        return; // Don't register SW until after first login
+                    }
+
                     navigator.serviceWorker
                         .register("/sw.js")
                         .then((registration) => {
