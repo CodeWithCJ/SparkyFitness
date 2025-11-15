@@ -74,14 +74,14 @@ export const fetchExerciseEntries = async (selectedDate: string): Promise<Groupe
         ...entry,
         exercises: entry.exercises ? entry.exercises.map((ex: any) => ({
           ...ex,
-          exercise_snapshot: ex.exercises ? {
-            ...ex.exercises,
-            equipment: parseJsonArray(ex.exercises.equipment),
-            primary_muscles: parseJsonArray(ex.exercises.primary_muscles),
-            secondary_muscles: parseJsonArray(ex.exercises.secondary_muscles),
-            instructions: parseJsonArray(ex.exercises.instructions),
-            images: parseJsonArray(ex.exercises.images),
-          } : ex.exercises,
+          exercise_snapshot: {
+            ...ex.exercise_snapshot, // Use the existing snapshot
+            equipment: parseJsonArray(ex.exercise_snapshot.equipment),
+            primary_muscles: parseJsonArray(ex.exercise_snapshot.primary_muscles),
+            secondary_muscles: parseJsonArray(ex.exercise_snapshot.secondary_muscles),
+            instructions: parseJsonArray(ex.exercise_snapshot.instructions),
+            images: parseJsonArray(ex.exercise_snapshot.images),
+          },
           activity_details: ex.activity_details ? ex.activity_details
             .map((detail: any) => ({
               id: detail.id,
@@ -95,14 +95,14 @@ export const fetchExerciseEntries = async (selectedDate: string): Promise<Groupe
     } else {
       return {
         ...entry,
-        exercise_snapshot: entry.exercises ? {
-          ...entry.exercises,
-          equipment: parseJsonArray(entry.exercises.equipment),
-          primary_muscles: parseJsonArray(entry.exercises.primary_muscles),
-          secondary_muscles: parseJsonArray(entry.exercises.secondary_muscles),
-          instructions: parseJsonArray(entry.exercises.instructions),
-          images: parseJsonArray(entry.exercises.images),
-        } : entry.exercises,
+        exercise_snapshot: {
+          ...entry.exercise_snapshot, // Use the existing snapshot
+          equipment: parseJsonArray(entry.exercise_snapshot.equipment),
+          primary_muscles: parseJsonArray(entry.exercise_snapshot.primary_muscles),
+          secondary_muscles: parseJsonArray(entry.exercise_snapshot.secondary_muscles),
+          instructions: parseJsonArray(entry.exercise_snapshot.instructions),
+          images: parseJsonArray(entry.exercise_snapshot.images),
+        },
         activity_details: entry.activity_details ? entry.activity_details
           .map((detail: any) => ({
             id: detail.id,

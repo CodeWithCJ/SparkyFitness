@@ -8,9 +8,9 @@ async function createExercisePresetEntry(userId, entryData, createdByUserId) {
     await client.query('BEGIN');
 
     const result = await client.query(
-      `INSERT INTO exercise_preset_entries (user_id, workout_preset_id, name, description, entry_date, created_by_user_id, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [userId, entryData.workout_preset_id, entryData.name, entryData.description, entryData.entry_date, createdByUserId, entryData.notes]
+      `INSERT INTO exercise_preset_entries (user_id, workout_preset_id, name, description, entry_date, created_by_user_id, notes, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [userId, entryData.workout_preset_id, entryData.name, entryData.description, entryData.entry_date, createdByUserId, entryData.notes, entryData.source]
     );
     const newEntryId = result.rows[0].id;
 
@@ -31,8 +31,8 @@ async function getExercisePresetEntryById(id, userId) {
     const result = await client.query(
       `SELECT id, user_id, workout_preset_id, name, description, entry_date, created_at, updated_at, created_by_user_id, notes
        FROM exercise_preset_entries
-       WHERE id = $1`,
-      [id]
+       WHERE id = $1 AND user_id = $2`,
+      [id, userId]
     );
     return result.rows[0];
   } finally {

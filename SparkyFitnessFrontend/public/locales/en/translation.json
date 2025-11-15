@@ -341,7 +341,7 @@
     "nutritionixSource": "Nutritionix",
     "customSource": "Custom",
     "activeCalories": "active calories",
-    "minutesUnit": "minutes",
+    "minutesUnit": "MinS",
     "caloriesUnit": "calories",
     "setsLabel": "Sets",
     "repsLabel": "Reps",
@@ -794,7 +794,8 @@
     "snacks": "Snacks",
     "errorOccurred": "An Error Occurred",
     "confirm": "Confirm",
-    "notApplicable": "N/A"
+    "notApplicable": "N/A",
+    "totalSets": "Total Sets"
   },
   "diary": {
     "nutritionSummary": "Nutrition Summary",

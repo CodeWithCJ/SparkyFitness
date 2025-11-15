@@ -2,8 +2,8 @@ const { getClient, getSystemClient } = require('../db/poolManager');
 const format = require('pg-format');
 const { log } = require('../config/logging');
 const exerciseRepository = require('./exercise');
-const activityDetailsRepository = require('./activityDetailsRepository'); // New import
-const exercisePresetEntryRepository = require('./exercisePresetEntryRepository'); // New import
+const activityDetailsRepository = require('./activityDetailsRepository');
+const exercisePresetEntryRepository = require('./exercisePresetEntryRepository');
 
 async function upsertExerciseEntryData(userId, createdByUserId, exerciseId, caloriesBurned, date) {
   log('info', "upsertExerciseEntryData received date parameter:", date);
@@ -85,15 +85,15 @@ async function _updateExerciseEntryWithClient(client, id, userId, updateData, up
   const mergedData = {
     ...currentEntry, // Start with existing data
     ...updateData,    // Overlay with new data
-    exercise_id: updateData.exercise_id || currentEntry.exercise_id,
-    duration_minutes: typeof updateData.duration_minutes === 'number' ? updateData.duration_minutes : currentEntry.duration_minutes,
-    calories_burned: updateData.calories_burned || currentEntry.calories_burned,
-    entry_date: updateData.entry_date || currentEntry.entry_date,
-    notes: updateData.notes || currentEntry.notes,
-    workout_plan_assignment_id: updateData.workout_plan_assignment_id || currentEntry.workout_plan_assignment_id,
-    image_url: updateData.image_url === null ? null : (updateData.image_url || currentEntry.image_url),
-    distance: updateData.distance || currentEntry.distance,
-    avg_heart_rate: updateData.avg_heart_rate || currentEntry.avg_heart_rate,
+    exercise_id: updateData.exercise_id !== undefined ? updateData.exercise_id : currentEntry.exercise_id,
+    duration_minutes: updateData.duration_minutes !== undefined ? updateData.duration_minutes : currentEntry.duration_minutes,
+    calories_burned: updateData.calories_burned !== undefined ? updateData.calories_burned : currentEntry.calories_burned,
+    entry_date: updateData.entry_date !== undefined ? updateData.entry_date : currentEntry.entry_date,
+    notes: updateData.notes !== undefined ? updateData.notes : currentEntry.notes,
+    workout_plan_assignment_id: updateData.workout_plan_assignment_id !== undefined ? updateData.workout_plan_assignment_id : currentEntry.workout_plan_assignment_id,
+    image_url: updateData.image_url === null ? null : (updateData.image_url !== undefined ? updateData.image_url : currentEntry.image_url),
+    distance: updateData.distance !== undefined ? updateData.distance : currentEntry.distance,
+    avg_heart_rate: updateData.avg_heart_rate !== undefined ? updateData.avg_heart_rate : currentEntry.avg_heart_rate,
     // Snapshot fields - these should ideally come from the exercise itself if exercise_id is updated
     exercise_name: updateData.exercise_name || currentEntry.exercise_name,
     calories_per_hour: updateData.calories_per_hour || currentEntry.calories_per_hour,
@@ -249,7 +249,7 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
          [
            userId,
            entryData.exercise_id,
-           typeof entryData.duration_minutes === 'number' ? entryData.duration_minutes : 0,
+           entryData.duration_minutes,
            entryData.calories_burned,
            entryData.entry_date,
            entryData.notes,
@@ -269,8 +269,8 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
            snapshot.secondary_muscles,
            snapshot.instructions,
            snapshot.images,
-           entryData.distance || null,
-           entryData.avg_heart_rate || null,
+           entryData.distance,
+           entryData.avg_heart_rate,
            exercisePresetEntryId, // New parameter
          ]
       );
@@ -462,12 +462,13 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
         description: preset.description,
         notes: preset.notes,
         exercises: [], // This will hold the individual exercise entries
+        total_duration_minutes: 0, // Initialize total duration for the preset
       });
     });
 
     // Process individual exercise entries
     const entriesWithDetails = await Promise.all(allExerciseEntries.map(async row => {
-      const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(userId, row.id);
+      const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(userId, row.id, null);
       const {
         exercise_name, category, calories_per_hour, source, source_id, force, level, mechanic,
         equipment, primary_muscles, secondary_muscles, instructions, images, ...entryData
@@ -475,7 +476,8 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
 
       return {
         ...entryData,
-        exercises: { // Renamed from 'exercises' to 'exercise_snapshot' to avoid confusion with the grouping
+        exercise_snapshot: { // Renamed from 'exercises' to 'exercise_snapshot' to avoid confusion with the grouping
+          id: entryData.exercise_id, // Add the exercise_id here
           name: exercise_name,
           category: category,
           calories_per_hour: calories_per_hour,
@@ -495,23 +497,33 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
     }));
 
     // Group exercises under their respective preset entries or as individual entries
-    const finalEntries = [];
+    const finalEntriesMap = new Map(); // Use a Map to ensure unique top-level entries
+
+    // Process individual exercise entries first, associating them with presets
     entriesWithDetails.forEach(entry => {
       if (entry.exercise_preset_entry_id && groupedEntries.has(entry.exercise_preset_entry_id)) {
-        groupedEntries.get(entry.exercise_preset_entry_id).exercises.push(entry);
+        const preset = groupedEntries.get(entry.exercise_preset_entry_id);
+        preset.exercises.push(entry);
+        preset.total_duration_minutes += entry.duration_minutes || 0; // Sum duration for the preset
       } else {
         // Add individual exercises that are not part of any preset
-        finalEntries.push({
+        finalEntriesMap.set(entry.id, {
           type: 'individual',
           ...entry,
         });
       }
     });
 
-    // Add preset entries (with their grouped exercises) to the final list
-    groupedEntries.forEach(preset => {
-      finalEntries.push(preset);
-    });
+    // Now add the preset entries (which now contain their associated exercises) to the final list
+    for (const preset of groupedEntries.values()) {
+      // Fetch activity details for the preset entry itself
+      const presetActivityDetails = await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(userId, null, preset.id);
+      preset.activity_details = presetActivityDetails;
+      finalEntriesMap.set(preset.id, preset); // Add preset to map, overwriting if already present (shouldn't happen for presets)
+    }
+
+    const finalEntries = Array.from(finalEntriesMap.values()); // Convert map values to an array
+
 
     // Sort final entries by created_at for consistent display
     finalEntries.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));

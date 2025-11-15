@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Vm1T2sUQmzjdVZuCNEa24kfe0gcTORnRvwDoZOwbdinQZvSdwYGTHIk70c2NUvB
+\restrict TbYNAruPBfUq3j1eBpR0tlcNVTH9Gtsv8VvoncUwd9sWphqzkvoJ8ZDNKU5Vc9q
 
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 18.0
@@ -902,7 +902,7 @@ CREATE TABLE public.exercise_entries (
 
 CREATE TABLE public.exercise_entry_activity_details (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
-    exercise_entry_id uuid NOT NULL,
+    exercise_entry_id uuid,
     provider_name text NOT NULL,
     detail_type text NOT NULL,
     detail_data jsonb NOT NULL,
@@ -4674,5 +4674,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Vm1T2sUQmzjdVZuCNEa24kfe0gcTORnRvwDoZOwbdinQZvSdwYGTHIk70c2NUvB
+\unrestrict TbYNAruPBfUq3j1eBpR0tlcNVTH9Gtsv8VvoncUwd9sWphqzkvoJ8ZDNKU5Vc9q
 

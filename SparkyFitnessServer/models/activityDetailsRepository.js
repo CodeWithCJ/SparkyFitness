@@ -70,19 +70,39 @@ async function createActivityDetail(userId, detail) {
     }
 }
 
-async function getActivityDetailsByEntryId(userId, entryId) {
+async function getActivityDetailsByEntryOrPresetId(userId, entryId = null, presetEntryId = null) {
     const client = await getClient(userId);
-    const query = `
-        SELECT eead.*
-        FROM exercise_entry_activity_details eead
-        LEFT JOIN exercise_entries ee ON eead.exercise_entry_id = ee.id
-        LEFT JOIN exercise_preset_entries epe ON eead.exercise_preset_entry_id = epe.id
-        WHERE (eead.exercise_entry_id = $1 AND ee.user_id = $2)
-           OR (eead.exercise_preset_entry_id = $1 AND epe.user_id = $2)
-           AND eead.detail_type IN ('full_activity_data', 'full_workout_data');
-    `;
+    let query;
+    let values;
+
+    if (entryId && presetEntryId) {
+        throw new Error("Cannot query activity details by both entryId and presetEntryId simultaneously.");
+    }
+
+    if (entryId) {
+        query = `
+            SELECT eead.*
+            FROM exercise_entry_activity_details eead
+            WHERE eead.exercise_entry_id = $1
+              AND eead.detail_type IN ('full_activity_data', 'full_workout_data')
+              AND eead.created_by_user_id = $2;
+        `;
+        values = [entryId, userId];
+    } else if (presetEntryId) {
+        query = `
+            SELECT eead.*
+            FROM exercise_entry_activity_details eead
+            WHERE eead.exercise_preset_entry_id = $1
+              AND eead.detail_type IN ('full_activity_data', 'full_workout_data')
+              AND eead.created_by_user_id = $2;
+        `;
+        values = [presetEntryId, userId];
+    } else {
+        throw new Error("Either entryId or presetEntryId must be provided.");
+    }
+
     try {
-        const result = await client.query(query, [entryId, userId]);
+        const result = await client.query(query, values);
         return result.rows.map(row => {
             // Recursively parse detail_data until it's not a JSON string anymore.
             // This handles cases where data might be double-stringified.
@@ -97,7 +117,7 @@ async function getActivityDetailsByEntryId(userId, entryId) {
             return row;
         });
     } catch (error) {
-        log('error', `Failed to get activity details for entry ID ${entryId}: ${error.message}`, { error });
+        log('error', `Failed to get activity details for entryId ${entryId} or presetEntryId ${presetEntryId}: ${error.message}`, { error });
         throw new Error(`Failed to get activity details: ${error.message}`);
     } finally {
         client.release();
@@ -206,7 +226,7 @@ async function deleteActivityDetailsByEntryIdAndProvider(userId, entryId, provid
 
 module.exports = {
     createActivityDetail,
-    getActivityDetailsByEntryId,
+    getActivityDetailsByEntryOrPresetId,
     updateActivityDetail,
     deleteActivityDetail,
     deleteActivityDetailsByEntryIdAndProvider

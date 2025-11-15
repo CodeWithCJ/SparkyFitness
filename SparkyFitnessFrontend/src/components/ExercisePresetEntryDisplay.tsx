@@ -42,15 +42,49 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   return (
     <Card key={presetEntry.id} className="bg-gray-50 dark:bg-gray-800 border-l-4 border-blue-500">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-semibold flex items-center justify-between">
+        <CardTitle className="text-lg font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={toggleExpansion}>
               {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
-            <span>{presetEntry.name || t("exerciseCard.workoutPreset", "Workout Preset")}</span>
+            <div className="flex flex-col">
+              <span>{presetEntry.name || t("exerciseCard.workoutPreset", "Workout Preset")}</span>
+              {presetEntry.exercise_snapshot?.category && (
+                <p className="text-gray-500 text-[0.65rem] uppercase">{presetEntry.exercise_snapshot.category}</p>
+              )}
+            </div>
           </div>
           <div className="flex items-center space-x-1">
-            {/* Add actions for the preset itself if needed, e.g., edit preset entry details */}
+            {presetEntry.exercises && presetEntry.exercises.length > 0 && (
+              <>
+                <div className="text-center">
+                  <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+                    {presetEntry.exercises.reduce((sum, ex) => sum + (ex.sets?.length || 0), 0)}
+                  </div>
+                  <div className="text-xs text-gray-500">{t("common.totalSets", "Total Sets")}</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+                    {presetEntry.exercises.reduce((sum, ex) => sum + (ex.sets ? ex.sets.reduce((setSum, set) => setSum + (set.duration || 0), 0) : 0), 0).toFixed(0)}
+                  </div>
+                  <div className="text-xs text-gray-500">{t("common.minutesUnit", "Min")}</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+                    {presetEntry.exercises.filter(ex => ex.avg_heart_rate).length > 0
+                      ? Math.round(presetEntry.exercises.reduce((sum, ex) => sum + (ex.avg_heart_rate || 0), 0) / presetEntry.exercises.filter(ex => ex.avg_heart_rate).length)
+                      : 0}
+                  </div>
+                  <div className="text-xs text-gray-500">{t("common.avgHrUnit", "Avg HR")}</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+                    {Math.round(presetEntry.exercises.reduce((sum, ex) => sum + (ex.calories_burned || 0), 0))}
+                  </div>
+                  <div className="text-xs text-gray-500">{t("common.caloriesUnit", "Calories")}</div>
+                </div>
+              </>
+            )}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -58,9 +92,6 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                      // Handle editing the preset entry (name, description, notes)
-                      // This would open a dialog similar to EditExerciseEntryDialog
-                      // For now, just log
                       debug(loggingLevel, "Edit preset entry clicked:", presetEntry.id);
                     }}
                     className="h-8 w-8"
@@ -79,7 +110,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(presetEntry.id)} // This will delete the preset entry and cascade to exercises
+                    onClick={() => handleDelete(presetEntry.id)}
                     className="h-8 w-8 hover:bg-gray-200 dark:hover:bg-gray-800"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -104,7 +135,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                 exerciseEntry={exerciseEntry}
                 currentUserId={currentUserId}
                 handleEdit={handleEdit}
-                handleDelete={handleDeleteExerciseEntry} // Pass the correct handler for individual entries
+                handleDelete={handleDeleteExerciseEntry}
                 handleEditExerciseDatabase={handleEditExerciseDatabase}
                 setExerciseToPlay={setExerciseToPlay}
                 setIsPlaybackModalOpen={setIsPlaybackModalOpen}

@@ -77,7 +77,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
                 {exerciseEntry.sets.map((set, index) => (
                   <span key={index}>
                     {set.reps && ` • Reps: ${String(set.reps)}`}
-                    {set.weight && ` • Weight: ${String(convertWeight(set.weight, 'lbs', weightUnit))} ${weightUnit}`}
+                    {set.weight && ` • Weight: ${convertWeight(set.weight, 'lbs', weightUnit).toFixed(2)} ${weightUnit}`}
                   </span>
                 ))}
               </>

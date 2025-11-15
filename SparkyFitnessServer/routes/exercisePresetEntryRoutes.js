@@ -79,6 +79,8 @@ router.post(
             sets: exercise.sets, // Copy sets from preset exercise
             duration_minutes: durationMinutes,
             calories_burned: caloriesBurned,
+            avg_heart_rate: null, // Set to null as it's not available from preset definition
+            // max_heart_rate is not directly stored in ExerciseEntry, it's derived on frontend
           };
           const newEntry = await exerciseEntryRepository.createExerciseEntry(
             userId,

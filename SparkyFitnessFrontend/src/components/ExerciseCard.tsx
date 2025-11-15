@@ -537,6 +537,46 @@ const ExerciseCard = ({
     return sum;
   }, 0);
 
+  const totalDurationMinutes = exerciseEntries.reduce((sum, groupedEntry) => {
+    let entryDuration = 0;
+    if (groupedEntry.type === 'individual' && groupedEntry.sets) {
+      entryDuration = groupedEntry.sets.reduce((setSum, set) => setSum + (set.duration || 0), 0);
+    } else if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
+      entryDuration = groupedEntry.exercises.reduce((presetSum, entry) => {
+        return presetSum + (entry.sets ? entry.sets.reduce((setSum, set) => setSum + (set.duration || 0), 0) : 0);
+      }, 0);
+    }
+    return sum + entryDuration;
+  }, 0);
+
+  const totalSets = exerciseEntries.reduce((sum, groupedEntry) => {
+    if (groupedEntry.type === 'individual' && groupedEntry.sets) {
+      return sum + groupedEntry.sets.length;
+    } else if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
+      return sum + groupedEntry.exercises.reduce((presetSum, entry) => {
+        return presetSum + (entry.sets ? entry.sets.length : 0);
+      }, 0);
+    }
+    return sum;
+  }, 0);
+
+  const totalHeartRates = exerciseEntries.reduce((acc, groupedEntry) => {
+    if (groupedEntry.type === 'individual' && groupedEntry.avg_heart_rate) {
+      acc.sum += groupedEntry.avg_heart_rate;
+      acc.count++;
+    } else if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
+      groupedEntry.exercises.forEach(entry => {
+        if (entry.avg_heart_rate) {
+          acc.sum += entry.avg_heart_rate;
+          acc.count++;
+        }
+      });
+    }
+    return acc;
+  }, { sum: 0, count: 0 });
+
+  const averageHeartRate = totalHeartRates.count > 0 ? totalHeartRates.sum / totalHeartRates.count : 0;
+
   return (
     <Card>
       <CardHeader>
@@ -604,12 +644,30 @@ const ExerciseCard = ({
             })}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-2 gap-4">
               <span className="font-semibold">{t("exerciseCard.exerciseTotal", "Exercise Total")}:</span>
-              <div className="grid grid-cols-1 gap-2 sm:gap-4 text-xs sm:text-sm">
+              <div className="grid grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
+                <div className="text-center">
+                  <div className="font-bold text-gray-900 dark:text-gray-100">
+                    {totalSets}
+                  </div>
+                  <div className="text-xs text-gray-500">{t("common.totalSets", "Total Sets")}</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-gray-900 dark:text-gray-100">
+                    {totalDurationMinutes.toFixed(1)}
+                  </div>
+                  <div className="text-xs text-gray-500">{t("common.minutesUnit", "Min")}</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-gray-900 dark:text-gray-100">
+                    {averageHeartRate > 0 ? Math.round(averageHeartRate) : 0}
+                  </div>
+                  <div className="text-xs text-gray-500">{t("common.avgHrUnit", "Avg HR")}</div>
+                </div>
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100">
                     {String(Math.round(totalExerciseCaloriesBurned))}
                   </div>
-                  <div className="text-xs text-gray-500">{t("common.caloriesUnit", "cal")}</div>
+                  <div className="text-xs text-gray-500">{t("common.caloriesUnit", "Calories")}</div>
                 </div>
               </div>
             </div>
