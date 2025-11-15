@@ -15,6 +15,7 @@ async function createActivityDetail(userId, detail) {
     const client = await getClient(userId);
     const {
         exercise_entry_id,
+        exercise_preset_entry_id, // New parameter
         provider_name,
         detail_type,
         detail_data,
@@ -36,18 +37,20 @@ async function createActivityDetail(userId, detail) {
     const query = `
         INSERT INTO exercise_entry_activity_details (
             exercise_entry_id,
+            exercise_preset_entry_id,
             provider_name,
             detail_type,
             detail_data,
             created_by_user_id,
             updated_by_user_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *;
     `;
 
     const values = [
         exercise_entry_id,
+        exercise_preset_entry_id,
         provider_name,
         detail_type,
         processedDetailData,
@@ -57,26 +60,49 @@ async function createActivityDetail(userId, detail) {
 
     try {
         const result = await client.query(query, values);
-        log('debug', `[activityDetailsRepository] Successfully created activity detail in DB for exercise_entry_id: ${exercise_entry_id}, detail_type: ${detail_type}`);
+        log('debug', `[activityDetailsRepository] Successfully created activity detail in DB for entry ID: ${exercise_entry_id || exercise_preset_entry_id}, detail_type: ${detail_type}`);
         return result.rows[0];
     } catch (error) {
-        log('error', `Failed to create activity detail for exercise_entry_id ${exercise_entry_id}: ${error.message}`, { query, values, error });
+        log('error', `Failed to create activity detail for entry ID ${exercise_entry_id || exercise_preset_entry_id}: ${error.message}`, { query, values, error });
         throw new Error(`Failed to create activity detail: ${error.message}`);
     } finally {
         client.release();
     }
 }
 
-async function getActivityDetailsByEntryId(userId, exerciseEntryId) {
+async function getActivityDetailsByEntryOrPresetId(userId, entryId = null, presetEntryId = null) {
     const client = await getClient(userId);
-    const query = `
-        SELECT eead.*
-        FROM exercise_entry_activity_details eead
-        JOIN exercise_entries ee ON eead.exercise_entry_id = ee.id
-        WHERE eead.exercise_entry_id = $1 AND ee.user_id = $2 AND eead.detail_type IN ('full_activity_data', 'full_workout_data');
-    `;
+    let query;
+    let values;
+
+    if (entryId && presetEntryId) {
+        throw new Error("Cannot query activity details by both entryId and presetEntryId simultaneously.");
+    }
+
+    if (entryId) {
+        query = `
+            SELECT eead.*
+            FROM exercise_entry_activity_details eead
+            WHERE eead.exercise_entry_id = $1
+              AND eead.detail_type IN ('full_activity_data', 'full_workout_data')
+              AND eead.created_by_user_id = $2;
+        `;
+        values = [entryId, userId];
+    } else if (presetEntryId) {
+        query = `
+            SELECT eead.*
+            FROM exercise_entry_activity_details eead
+            WHERE eead.exercise_preset_entry_id = $1
+              AND eead.detail_type IN ('full_activity_data', 'full_workout_data')
+              AND eead.created_by_user_id = $2;
+        `;
+        values = [presetEntryId, userId];
+    } else {
+        throw new Error("Either entryId or presetEntryId must be provided.");
+    }
+
     try {
-        const result = await client.query(query, [exerciseEntryId, userId]);
+        const result = await client.query(query, values);
         return result.rows.map(row => {
             // Recursively parse detail_data until it's not a JSON string anymore.
             // This handles cases where data might be double-stringified.
@@ -91,7 +117,7 @@ async function getActivityDetailsByEntryId(userId, exerciseEntryId) {
             return row;
         });
     } catch (error) {
-        log('error', `Failed to get activity details for exercise_entry_id ${exerciseEntryId}: ${error.message}`, { error });
+        log('error', `Failed to get activity details for entryId ${entryId} or presetEntryId ${presetEntryId}: ${error.message}`, { error });
         throw new Error(`Failed to get activity details: ${error.message}`);
     } finally {
         client.release();
@@ -116,7 +142,8 @@ async function updateActivityDetail(userId, id, detail) {
             updated_by_user_id = $4,
             updated_at = NOW()
         WHERE id = $5
-          AND exercise_entry_id IN (SELECT id FROM exercise_entries WHERE user_id = $6)
+          AND (exercise_entry_id IN (SELECT id FROM exercise_entries WHERE user_id = $6)
+               OR exercise_preset_entry_id IN (SELECT id FROM exercise_preset_entries WHERE user_id = $6))
         RETURNING *;
     `;
 
@@ -158,7 +185,8 @@ async function deleteActivityDetail(userId, id) {
     const query = `
         DELETE FROM exercise_entry_activity_details
         WHERE id = $1
-          AND exercise_entry_id IN (SELECT id FROM exercise_entries WHERE user_id = $2);
+          AND (exercise_entry_id IN (SELECT id FROM exercise_entries WHERE user_id = $2)
+               OR exercise_preset_entry_id IN (SELECT id FROM exercise_preset_entries WHERE user_id = $2));
     `;
     try {
         const result = await client.query(query, [id, userId]);
@@ -175,20 +203,21 @@ async function deleteActivityDetail(userId, id) {
     }
 }
 
-async function deleteActivityDetailsByEntryIdAndProvider(userId, exerciseEntryId, providerName) {
+async function deleteActivityDetailsByEntryIdAndProvider(userId, entryId, providerName) {
     const client = await getClient(userId);
     const query = `
         DELETE FROM exercise_entry_activity_details
-        WHERE exercise_entry_id = $1
+        WHERE (exercise_entry_id = $1 OR exercise_preset_entry_id = $1)
           AND provider_name = $2
-          AND exercise_entry_id IN (SELECT id FROM exercise_entries WHERE user_id = $3);
+          AND (exercise_entry_id IN (SELECT id FROM exercise_entries WHERE user_id = $3)
+               OR exercise_preset_entry_id IN (SELECT id FROM exercise_preset_entries WHERE user_id = $3));
     `;
     try {
-        const result = await client.query(query, [exerciseEntryId, providerName, userId]);
-        log('debug', `Successfully deleted ${result.rowCount} activity details for exercise_entry_id ${exerciseEntryId} and provider ${providerName}.`);
+        const result = await client.query(query, [entryId, providerName, userId]);
+        log('debug', `Successfully deleted ${result.rowCount} activity details for entry ID ${entryId} and provider ${providerName}.`);
         return { message: `${result.rowCount} activity details deleted successfully.` };
     } catch (error) {
-        log('error', `Failed to delete activity details for exercise_entry_id ${exerciseEntryId} and provider ${providerName}: ${error.message}`, { error });
+        log('error', `Failed to delete activity details for entry ID ${entryId} and provider ${providerName}: ${error.message}`, { error });
         throw new Error(`Failed to delete activity details: ${error.message}`);
     } finally {
         client.release();
@@ -197,7 +226,7 @@ async function deleteActivityDetailsByEntryIdAndProvider(userId, exerciseEntryId
 
 module.exports = {
     createActivityDetail,
-    getActivityDetailsByEntryId,
+    getActivityDetailsByEntryOrPresetId,
     updateActivityDetail,
     deleteActivityDetail,
     deleteActivityDetailsByEntryIdAndProvider

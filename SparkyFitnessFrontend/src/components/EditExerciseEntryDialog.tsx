@@ -275,9 +275,9 @@ const EditExerciseEntryDialog = ({
     setNotes(entry.notes || "");
     setImageUrl(entry.image_url || null);
     setImageFile(null);
-    setCaloriesBurnedInput(entry.calories_burned !== null && entry.calories_burned !== undefined ? Math.round(entry.calories_burned) : '');
+    setCaloriesBurnedInput(entry.calories_burned !== null && entry.calories_burned !== undefined ? entry.calories_burned : '');
     setDistanceInput(entry.distance ? Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1)) : '');
-    setAvgHeartRateInput(entry.avg_heart_rate || '');
+    setAvgHeartRateInput(entry.avg_heart_rate !== null && entry.avg_heart_rate !== undefined ? entry.avg_heart_rate : '');
     // Initialize activity details from entry
     setActivityDetails(entry.activity_details || []);
   }, [entry, loggingLevel, weightUnit, distanceUnit, convertWeight, convertDistance]);
@@ -500,7 +500,7 @@ const EditExerciseEntryDialog = ({
             <Label htmlFor="exercise-name">{t('exercise.editExerciseEntryDialog.exerciseLabel', 'Exercise')}</Label>
             <Input
               id="exercise-name"
-              value={entry.exercises?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise')}
+              value={entry.exercise_snapshot?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise')}
               disabled
               className="bg-gray-100 dark:bg-gray-800"
             />

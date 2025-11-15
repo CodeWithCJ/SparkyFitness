@@ -87,6 +87,7 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
 
         const response = await axios.get(apiUrl);
         setActivityData(response.data);
+        info(loggingLevel, "Fetched activity data:", JSON.stringify(response.data, null, 2));
       } catch (err) {
         setError(t('reports.activityReport.error', { error: `Failed to fetch ${providerName} activity details.` }));
         logError(loggingLevel, t('reports.activityReport.error', { error: `Failed to fetch ${providerName} activity details.` }), err);
@@ -138,17 +139,58 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
    const runCadenceDescriptor = metricDescriptors.find((d: any) => d.key === 'directRunCadence');
    const elevationDescriptor = metricDescriptors.find((d: any) => d.key === 'directElevation');
 
-   const timestampIndex = timestampDescriptor?.metricsIndex ?? metricDescriptors.indexOf(timestampDescriptor);
-   const distanceIndex = distanceDescriptor?.metricsIndex ?? metricDescriptors.indexOf(distanceDescriptor);
-   const speedIndex = speedDescriptor?.metricsIndex ?? metricDescriptors.indexOf(speedDescriptor);
-   const heartRateIndex = heartRateDescriptor?.metricsIndex ?? metricDescriptors.indexOf(heartRateDescriptor);
-   const elevationIndex = elevationDescriptor?.metricsIndex ?? metricDescriptors.indexOf(elevationDescriptor);
+   const metricKeyToDataIndexMap: { [key: string]: number } = {};
+   let currentDataIndex = 0;
+
+   // Build a map of metric key to its actual index in the 'metrics' array
+   // by iterating through metricDescriptors and assigning sequential indices
+   // to the metrics that are actually present in the 'metrics' array.
+   // This assumes that the order of metrics in the 'metrics' array corresponds
+   // to the order of the relevant descriptors in 'metricDescriptors'.
+   metricDescriptors.forEach((descriptor: any) => {
+     // Only map the keys we are interested in for the chart
+     // This list should match the order of metrics in activityDetailMetrics[0].metrics
+     if (descriptor.key === 'directHeartRate') {
+       metricKeyToDataIndexMap['directHeartRate'] = currentDataIndex;
+       currentDataIndex++;
+     } else if (descriptor.key === 'sumElapsedDuration') {
+       metricKeyToDataIndexMap['sumElapsedDuration'] = currentDataIndex;
+       currentDataIndex++;
+     } else if (descriptor.key === 'directAirTemperature') {
+       metricKeyToDataIndexMap['directAirTemperature'] = currentDataIndex;
+       currentDataIndex++;
+     } else if (descriptor.key === 'directTimestamp') {
+       metricKeyToDataIndexMap['directTimestamp'] = currentDataIndex;
+       currentDataIndex++;
+     } else if (descriptor.key === 'sumDistance') {
+       metricKeyToDataIndexMap['sumDistance'] = currentDataIndex;
+       currentDataIndex++;
+     } else if (descriptor.key === 'directSpeed') {
+       metricKeyToDataIndexMap['directSpeed'] = currentDataIndex;
+       currentDataIndex++;
+     } else if (descriptor.key === 'directRunCadence') {
+       metricKeyToDataIndexMap['directRunCadence'] = currentDataIndex;
+       currentDataIndex++;
+     } else if (descriptor.key === 'directElevation') {
+       metricKeyToDataIndexMap['directElevation'] = currentDataIndex;
+       currentDataIndex++;
+     }
+   });
+
+   const timestampIndex = metricKeyToDataIndexMap['directTimestamp'];
+   const distanceIndex = metricKeyToDataIndexMap['sumDistance'];
+   const speedIndex = metricKeyToDataIndexMap['directSpeed'];
+   const heartRateIndex = metricKeyToDataIndexMap['directHeartRate'];
+   const runCadenceIndex = metricKeyToDataIndexMap['directRunCadence'];
+   const elevationIndex = metricKeyToDataIndexMap['directElevation'];
 
    // Add a defensive check for heartRateDescriptor
    if (!heartRateDescriptor) {
      warn(loggingLevel, t('reports.activityReport.heartRateDescriptorNotFound'));
+   } else {
+     info(loggingLevel, `Heart Rate Descriptor found at index: ${heartRateIndex}`);
    }
-   const runCadenceIndex = runCadenceDescriptor?.metricsIndex ?? metricDescriptors.indexOf(runCadenceDescriptor);
+   // Removed redundant runCadenceIndex declaration
 
    if (timestampIndex === undefined || distanceIndex === undefined) {
      logError(loggingLevel, t('reports.activityReport.missingTimestampOrDistanceDescriptor'));
@@ -212,7 +254,10 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
      const heartRate = heartRateIndex !== undefined && metric.metrics[heartRateIndex] !== undefined ? metric.metrics[heartRateIndex] : null;
      const runCadence = runCadenceIndex !== undefined && metric.metrics[runCadenceIndex] !== undefined ? metric.metrics[runCadenceIndex] : 0;
      const elevation = elevationIndex !== undefined && metric.metrics[elevationIndex] !== undefined ? metric.metrics[elevationIndex] : null;
-    
+     
+     if (heartRate !== null) {
+       //info(loggingLevel, `Extracted Heart Rate: ${heartRate} at timestamp: ${currentTimestamp}`);
+     }
 
      const paceMinutesPerKm = speed > 0 ? (1000 / (speed * 60)) : 0; // Convert m/s to min/km
      const activityDurationSeconds = (currentTimestamp - activityStartTime) / 1000; // Duration in seconds (assuming directTimestamp is in milliseconds)
@@ -253,13 +298,14 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
  const allChartData = processChartData(activityData.activity?.details?.activityDetailMetrics);
 
  const paceData = allChartData.filter((data: any) => data.speed > 0); // Filter out zero speeds for meaningful pace
- const heartRateData = allChartData.filter((data: any) => data.heartRate > 0);
+ const heartRateData = allChartData.filter((data: any) => data.heartRate !== null && data.heartRate > 0);
  const runCadenceData = allChartData.filter((data: any) => data.runCadence > 0);
  const elevationData = allChartData.filter((data: any) => data.elevation !== null);
  
  info(loggingLevel, "Pace Data Timestamps:", paceData.map((d: any) => d.timestamp));
  info(loggingLevel, "Heart Rate Data Timestamps:", heartRateData.map((d: any) => d.timestamp));
  info(loggingLevel, "Elevation Data Timestamps:", elevationData.map((d: any) => d.timestamp));
+ info(loggingLevel, "Filtered Heart Rate Data:", heartRateData);
  
 
  const hrInTimezonesData = activityData.activity?.hr_in_timezones?.map((zone: any) => ({

@@ -27,6 +27,7 @@ const weeklyGoalPlanRoutes = require('./routes/weeklyGoalPlanRoutes');
 const mealPlanTemplateRoutes = require('./routes/mealPlanTemplateRoutes');
 const exerciseRoutes = require('./routes/exerciseRoutes');
 const exerciseEntryRoutes = require('./routes/exerciseEntryRoutes');
+const exercisePresetEntryRoutes = require('./routes/exercisePresetEntryRoutes'); // New import
 const freeExerciseDBRoutes = require('./routes/freeExerciseDBRoutes'); // Import freeExerciseDB routes
 const healthDataRoutes = require('./integrations/healthData/healthDataRoutes');
 const sleepRoutes = require('./routes/sleepRoutes');
@@ -283,6 +284,7 @@ app.use('/weekly-goal-plans', weeklyGoalPlanRoutes);
 app.use('/meal-plan-templates', mealPlanTemplateRoutes);
 app.use('/exercises', exerciseRoutes);
 app.use('/exercise-entries', exerciseEntryRoutes);
+app.use('/exercise-preset-entries', exercisePresetEntryRoutes); // New route
 app.use('/freeexercisedb', freeExerciseDBRoutes); // Add freeExerciseDB routes
 app.use('/api/health-data', healthDataRoutes);
 app.use('/sleep', sleepRoutes);
