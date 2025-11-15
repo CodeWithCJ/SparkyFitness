@@ -34,17 +34,17 @@ const MoodMeter: React.FC<MoodMeterProps> = ({ onMoodChange, initialMood = null,
   };
 
   const getMoodDisplay = (value: number | null) => {
-    if (value === null) return { emoji: '😐', label: t('moodMeter.neutral', 'Neutral') };
-    if (value <= 10) return { emoji: '😴', label: t('moodMeter.tired', 'Tired') }; // 0-10
-    if (value <= 20) return { emoji: '😢', label: t('moodMeter.sad', 'Sad') }; // 11-20
-    if (value <= 30) return { emoji: '😠', label: t('moodMeter.angry', 'Angry') }; // 21-30
-    if (value <= 40) return { emoji: '😟', label: t('moodMeter.worried', 'Worried') }; // 31-40
-    if (value <= 50) return { emoji: '😐', label: t('moodMeter.neutral', 'Neutral') }; // 41-50
-    if (value <= 60) return { emoji: '🤔', label: t('moodMeter.thoughtful', 'Thoughtful') }; // 51-60
-    if (value <= 70) return { emoji: '🙂', label: t('moodMeter.calm', 'Calm') }; // 61-70
-    if (value <= 80) return { emoji: '😎', label: t('moodMeter.confident', 'Confident') }; // 71-80
-    if (value <= 90) return { emoji: '😀', label: t('moodMeter.happy', 'Happy') }; // 81-90
-    return { emoji: '😍', label: t('moodMeter.excited', 'Excited') }; // 91-100
+    if (value === null) return { emoji: '😐', label: t('moodMeter.neutral', 'Neutral') }; //default/null
+    if (value == 10) return { emoji: '😴', label: t('moodMeter.tired', 'Tired') }; //0
+    if (value <= 20) return { emoji: '😢', label: t('moodMeter.sad', 'Sad') }; //0-10
+    if (value <= 30) return { emoji: '😠', label: t('moodMeter.angry', 'Angry') }; //11-20
+    if (value <= 40) return { emoji: '😟', label: t('moodMeter.worried', 'Worried') }; //21-30
+    if (value <= 50) return { emoji: '😐', label: t('moodMeter.neutral', 'Neutral') }; //31-40
+    if (value <= 60) return { emoji: '🤔', label: t('moodMeter.thoughtful', 'Thoughtful') }; //41-50
+    if (value <= 70) return { emoji: '🙂', label: t('moodMeter.calm', 'Calm') }; //51-60
+    if (value <= 80) return { emoji: '😎', label: t('moodMeter.confident', 'Confident') }; //61-70
+    if (value <= 90) return { emoji: '😀', label: t('moodMeter.happy', 'Happy') }; //71-80
+    return { emoji: '😍', label: t('moodMeter.excited', 'Excited') }; //>=81
   };
 
   return (
@@ -57,6 +57,7 @@ const MoodMeter: React.FC<MoodMeterProps> = ({ onMoodChange, initialMood = null,
           <span className="text-4xl">{getMoodDisplay(mood).emoji}</span>
           <Slider
             value={[mood === null ? 50 : mood]}
+            min={10}
             max={100}
             step={10}
             onValueChange={handleMoodChange}
