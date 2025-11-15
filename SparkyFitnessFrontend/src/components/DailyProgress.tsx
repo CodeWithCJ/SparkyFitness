@@ -24,6 +24,7 @@ import {
   ExerciseEntry,
   CheckInMeasurement,
 } from "@/services/dailyProgressService";
+import { GroupedExerciseEntry } from "@/services/exerciseEntryService"; // Corrected import path
 import { getMostRecentMeasurement } from "@/services/checkInService";
 import { FoodEntry } from "@/types/food"; // Import FoodEntry from src/types/food
 import { Skeleton } from "./ui/skeleton";
@@ -193,7 +194,7 @@ const DailyProgress = ({
       // Load exercise calories burned
       debug(loggingLevel, "DailyProgress: Fetching exercise entries...");
       try {
-        const exerciseData = await getExerciseEntriesForDate(selectedDate);
+        const exerciseData: GroupedExerciseEntry[] = await getExerciseEntriesForDate(selectedDate); // Update type
         info(
           loggingLevel,
           `DailyProgress: Fetched ${exerciseData.length} exercise entries.`,
@@ -202,11 +203,21 @@ const DailyProgress = ({
         let activeCaloriesFromExercise = 0;
         let otherExerciseCalories = 0;
 
-        exerciseData.forEach(entry => {
-          if (entry.exercises?.name === 'Active Calories') {
-            activeCaloriesFromExercise += Number(entry.calories_burned || 0);
-          } else {
-            otherExerciseCalories += Number(entry.calories_burned || 0);
+        exerciseData.forEach(groupedEntry => {
+          if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
+            groupedEntry.exercises.forEach(entry => {
+              if (entry.exercise_snapshot?.name === 'Active Calories') {
+                activeCaloriesFromExercise += Number(entry.calories_burned || 0);
+              } else {
+                otherExerciseCalories += Number(entry.calories_burned || 0);
+              }
+            });
+          } else if (groupedEntry.type === 'individual') {
+            if (groupedEntry.exercise_snapshot?.name === 'Active Calories') {
+              activeCaloriesFromExercise += Number(groupedEntry.calories_burned || 0);
+            } else {
+              otherExerciseCalories += Number(groupedEntry.calories_burned || 0);
+            }
           }
         });
 

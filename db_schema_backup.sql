@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict iprrQ9D9Ivr6WeErRAGtqXnTdcvw3nDCDGkLofw0md8YuBGVeDq0DqWxAyoo3iS
+\restrict Vm1T2sUQmzjdVZuCNEa24kfe0gcTORnRvwDoZOwbdinQZvSdwYGTHIk70c2NUvB
 
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 18.0
@@ -891,7 +891,8 @@ CREATE TABLE public.exercise_entries (
     instructions text,
     images text,
     distance numeric,
-    avg_heart_rate integer
+    avg_heart_rate integer,
+    exercise_preset_entry_id uuid
 );
 
 
@@ -908,7 +909,9 @@ CREATE TABLE public.exercise_entry_activity_details (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     created_by_user_id uuid,
-    updated_by_user_id uuid
+    updated_by_user_id uuid,
+    exercise_preset_entry_id uuid,
+    CONSTRAINT chk_exercise_entry_id_or_preset_id CHECK ((((exercise_entry_id IS NOT NULL) AND (exercise_preset_entry_id IS NULL)) OR ((exercise_entry_id IS NULL) AND (exercise_preset_entry_id IS NOT NULL))))
 );
 
 
@@ -949,6 +952,25 @@ CREATE SEQUENCE public.exercise_entry_sets_id_seq
 --
 
 ALTER SEQUENCE public.exercise_entry_sets_id_seq OWNED BY public.exercise_entry_sets.id;
+
+
+--
+-- Name: exercise_preset_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.exercise_preset_entries (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    user_id uuid NOT NULL,
+    workout_preset_id integer,
+    name character varying(255) NOT NULL,
+    description text,
+    entry_date date NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id uuid,
+    notes text,
+    source text DEFAULT 'manual'::text NOT NULL
+);
 
 
 --
@@ -2107,6 +2129,14 @@ ALTER TABLE ONLY public.exercise_entry_sets
 
 
 --
+-- Name: exercise_preset_entries exercise_preset_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_preset_entries
+    ADD CONSTRAINT exercise_preset_entries_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: exercises exercises_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2459,6 +2489,13 @@ CREATE INDEX idx_custom_measurements_user_id ON public.custom_measurements USING
 
 
 --
+-- Name: idx_exercise_entries_exercise_preset_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exercise_entries_exercise_preset_entry_id ON public.exercise_entries USING btree (exercise_preset_entry_id);
+
+
+--
 -- Name: idx_exercise_entry_activity_details_entry_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2477,6 +2514,20 @@ CREATE INDEX idx_exercise_entry_activity_details_provider_type ON public.exercis
 --
 
 CREATE INDEX idx_exercise_entry_sets_entry_id ON public.exercise_entry_sets USING btree (exercise_entry_id);
+
+
+--
+-- Name: idx_exercise_preset_entries_entry_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exercise_preset_entries_entry_date ON public.exercise_preset_entries USING btree (entry_date);
+
+
+--
+-- Name: idx_exercise_preset_entries_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exercise_preset_entries_user_id ON public.exercise_preset_entries USING btree (user_id);
 
 
 --
@@ -2804,6 +2855,14 @@ ALTER TABLE ONLY public.exercise_entries
 
 
 --
+-- Name: exercise_entries exercise_entries_exercise_preset_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entries
+    ADD CONSTRAINT exercise_entries_exercise_preset_entry_id_fkey FOREIGN KEY (exercise_preset_entry_id) REFERENCES public.exercise_preset_entries(id) ON DELETE CASCADE;
+
+
+--
 -- Name: exercise_entries exercise_entries_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2836,6 +2895,14 @@ ALTER TABLE ONLY public.exercise_entry_activity_details
 
 
 --
+-- Name: exercise_entry_activity_details exercise_entry_activity_details_exercise_preset_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_activity_details
+    ADD CONSTRAINT exercise_entry_activity_details_exercise_preset_entry_id_fkey FOREIGN KEY (exercise_preset_entry_id) REFERENCES public.exercise_preset_entries(id) ON DELETE CASCADE;
+
+
+--
 -- Name: exercise_entry_activity_details exercise_entry_activity_details_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2849,6 +2916,30 @@ ALTER TABLE ONLY public.exercise_entry_activity_details
 
 ALTER TABLE ONLY public.exercise_entry_sets
     ADD CONSTRAINT exercise_entry_sets_exercise_entry_id_fkey FOREIGN KEY (exercise_entry_id) REFERENCES public.exercise_entries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exercise_preset_entries exercise_preset_entries_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_preset_entries
+    ADD CONSTRAINT exercise_preset_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: exercise_preset_entries exercise_preset_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_preset_entries
+    ADD CONSTRAINT exercise_preset_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exercise_preset_entries exercise_preset_entries_workout_preset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_preset_entries
+    ADD CONSTRAINT exercise_preset_entries_workout_preset_id_fkey FOREIGN KEY (workout_preset_id) REFERENCES public.workout_presets(id) ON DELETE SET NULL;
 
 
 --
@@ -3423,6 +3514,13 @@ CREATE POLICY modify_policy ON public.exercise_entry_sets USING ((EXISTS ( SELEC
 
 
 --
+-- Name: exercise_preset_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.exercise_preset_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
 -- Name: exercises modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -3706,6 +3804,15 @@ CREATE POLICY select_and_modify_policy ON public.food_variants USING ((EXISTS ( 
 
 
 --
+-- Name: exercise_entries select_exercise_preset_entry_linked_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_exercise_preset_entry_linked_policy ON public.exercise_entries FOR SELECT USING (((exercise_preset_entry_id IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM public.exercise_preset_entries epe
+  WHERE ((epe.id = exercise_entries.exercise_preset_entry_id) AND public.has_diary_access(epe.user_id))))));
+
+
+--
 -- Name: check_in_measurements select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -3740,6 +3847,13 @@ CREATE POLICY select_policy ON public.exercise_entries FOR SELECT USING (public.
 CREATE POLICY select_policy ON public.exercise_entry_sets FOR SELECT USING ((EXISTS ( SELECT 1
    FROM public.exercise_entries ee
   WHERE ((ee.id = exercise_entry_sets.exercise_entry_id) AND public.has_diary_access(ee.user_id)))));
+
+
+--
+-- Name: exercise_preset_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.exercise_preset_entries FOR SELECT USING (public.has_diary_access(user_id));
 
 
 --
@@ -4065,6 +4179,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_
 GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_app;
 GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_uat;
+
+
+--
+-- Name: TABLE exercise_preset_entries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_uat;
 
 
 --
@@ -4551,5 +4674,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict iprrQ9D9Ivr6WeErRAGtqXnTdcvw3nDCDGkLofw0md8YuBGVeDq0DqWxAyoo3iS
+\unrestrict Vm1T2sUQmzjdVZuCNEa24kfe0gcTORnRvwDoZOwbdinQZvSdwYGTHIk70c2NUvB
 

@@ -9,6 +9,7 @@ export interface Goals {
 }
 
 import { FoodEntry } from '@/types/food'; // Import FoodEntry from the central types file
+import { GroupedExerciseEntry } from './exerciseEntryService'; // Import GroupedExerciseEntry
 
 export interface ExerciseEntry {
   id: string;
@@ -61,7 +62,7 @@ export const getFoodEntriesForDate = async (date: string): Promise<FoodEntry[]> 
   return data || []; // Return empty array if 404 (no food entries found)
 };
 
-export const getExerciseEntriesForDate = async (date: string): Promise<ExerciseEntry[]> => {
+export const getExerciseEntriesForDate = async (date: string): Promise<GroupedExerciseEntry[]> => {
   const params = new URLSearchParams({ selectedDate: date });
   const data = await apiCall(`/exercise-entries/by-date?${params.toString()}`, {
     method: 'GET',

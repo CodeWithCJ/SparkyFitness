@@ -524,13 +524,13 @@ const ExerciseCard = ({
   }
   debug(loggingLevel, "ExerciseCard finished loading.");
 
-  const totalExerciseCaloriesBurned = exerciseEntries.reduce((sum, entry) => {
-    if (entry.type === 'individual') {
-      const calories = parseFloat(entry.calories_burned as any);
+  const totalExerciseCaloriesBurned = exerciseEntries.reduce((sum, groupedEntry) => {
+    if (groupedEntry.type === 'individual') {
+      const calories = parseFloat(groupedEntry.calories_burned as any);
       return sum + (isNaN(calories) ? 0 : calories);
-    } else if (entry.type === 'preset' && entry.exercises) {
-      return sum + entry.exercises.reduce((presetSum, ex) => {
-        const calories = parseFloat(ex.calories_burned as any);
+    } else if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
+      return sum + groupedEntry.exercises.reduce((presetSum, entry) => {
+        const calories = parseFloat(entry.calories_burned as any);
         return presetSum + (isNaN(calories) ? 0 : calories);
       }, 0);
     }
