@@ -3,7 +3,7 @@ import uuid
 import time
 import os
 import json # Import the json module
-from datetime import date, timedelta # Import date and timedelta
+from datetime import date, timedelta, datetime # Import date and timedelta
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse, JSONResponse
 from urllib.parse import urlencode, parse_qs
@@ -11,6 +11,8 @@ from pydantic import BaseModel
 import uvicorn
 from garminconnect import Garmin
 from garth.exc import GarthHTTPError, GarthException
+import pytz
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -237,40 +239,164 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             # Heart Rates
             if "heart_rates" in metric_types_to_fetch:
                 try:
-                    heart_rate_data = garmin.get_heart_rates(current_date)
-                    if heart_rate_data:
-                        health_data["heart_rates"].append({"date": current_date, "resting_heart_rate": heart_rate_data.get("restingHeartRate")})
+                    data = []
+                    data["date"] = current_date
+                    data["HeartRate"] = []
+                    hr_list = garmin.get_heart_rates(current_date).get("heartRateValues") or []
+                    for entry in hr_list:
+                        if entry[1]:
+                            data["HeartRate"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry[1]})
+                    health_data["heart_rates"].append(data)
                 except Exception as e:
                     logger.warning(f"Could not retrieve heart rate data for {current_date}: {e}")
 
             # Sleep
             if "sleep" in metric_types_to_fetch:
                 try:
-                    sleep_data = garmin.get_sleep_data(current_date)
-                    if sleep_data:
-                        health_data["sleep"].append({"date": current_date, "sleep_duration": sleep_data.get("durationInSeconds")})
+                    data = {}
+                    data["date"] = current_date
+                    data["sleepTimeSeconds"] = None
+                    data["deepSleepSeconds"] = None
+                    data["lightSleepSeconds"] = None 
+                    data["remSleepSeconds"] = None
+                    data["awakeSleepSeconds"] = None
+                    data["averageSpO2Value"] = None
+                    data["lowestSpO2Value"] = None
+                    data["highestSpO2Value"] = None
+                    data["averageRespirationValue"] = None
+                    data["lowestRespirationValue"] = None
+                    data["highestRespirationValue"] = None 
+                    data["awakeCount"] = None
+                    data["avgSleepStress"] = None
+                    data["sleepScore"] = None
+                    data["restlessMomentsCount"] = None
+                    data["avgOvernightHrv"] = None
+                    data["bodyBatteryChange"] = None
+                    data["restingHeartRate"] = None
+                    data["SleepMovementActivityLevel"] = []
+                    data["SleepMovementActivitySeconds"] = []
+                    data["SleepStageLevel"] = []
+                    data["SleepStageSeconds"] = []
+                    data["sleepRestlessValue"] = []
+                    data["spo2Reading"] = []
+                    data["respirationValue"] = []
+                    data["heartRate"] = []
+                    data["stressValue"] = []
+                    data["bodyBattery"] = []
+                    data["hrvData"] = []
+
+                    all_sleep_data = garmin.get_sleep_data(current_date)
+
+                    # Capture Sleep Summary
+                    if all_sleep_data:
+                        sleep_json = all_sleep_data.get("dailySleepDTO", None)
+                        if sleep_json["sleepEndTimestampGMT"]:
+                            data["sleepTimeSeconds"] = sleep_json.get("sleepTimeSeconds"),
+                            data["deepSleepSeconds"] = sleep_json.get("deepSleepSeconds"),
+                            data["lightSleepSeconds"] = sleep_json.get("lightSleepSeconds"),
+                            data["remSleepSeconds"] = sleep_json.get("remSleepSeconds"),
+                            data["awakeSleepSeconds"] = sleep_json.get("awakeSleepSeconds"),
+                            data["averageSpO2Value"] = sleep_json.get("averageSpO2Value"),
+                            data["lowestSpO2Value"] = sleep_json.get("lowestSpO2Value"),
+                            data["highestSpO2Value"] = sleep_json.get("highestSpO2Value"),
+                            data["averageRespirationValue"] = sleep_json.get("averageRespirationValue"),
+                            data["lowestRespirationValue"] = sleep_json.get("lowestRespirationValue"),
+                            data["highestRespirationValue"] = sleep_json.get("highestRespirationValue"),
+                            data["awakeCount"] = sleep_json.get("awakeCount"),
+                            data["avgSleepStress"] = sleep_json.get("avgSleepStress"),
+                            data["sleepScore"] = ((sleep_json.get("sleepScores") or {}).get("overall") or {}).get("value"),
+                            data["restlessMomentsCount"] = all_sleep_data.get("restlessMomentsCount"),
+                            data["avgOvernightHrv"] = all_sleep_data.get("avgOvernightHrv"),
+                            data["bodyBatteryChange"] = all_sleep_data.get("bodyBatteryChange"),
+                            data["restingHeartRate"] = all_sleep_data.get("restingHeartRate")
+                    
+                    # Capture Sleep Movement
+                    sleep_movement_intraday = all_sleep_data.get("sleepMovement")
+                    if sleep_movement_intraday:
+                        for entry in sleep_movement_intraday:
+                            time = pytz.timezone("UTC").localize(datetime.strptime(entry["startGMT"], "%Y-%m-%dT%H:%M:%S.%f")).isoformat()
+                            data["SleepMovementActivityLevel"].append({"time": time, "data": entry.get("activityLevel",-1)})
+                            data["SleepMovementActivitySeconds"].append({"time": time, "data": int((datetime.strptime(entry["endGMT"], "%Y-%m-%dT%H:%M:%S.%f") - datetime.strptime(entry["startGMT"], "%Y-%m-%dT%H:%M:%S.%f")).total_seconds())})
+                    
+                    # Capture Sleep Levels
+                    sleep_levels_intraday = all_sleep_data.get("sleepLevels")
+                    if sleep_levels_intraday:
+                        for entry in sleep_levels_intraday:
+                            if entry.get("activityLevel") or entry.get("activityLevel") == 0: # Include 0 for Deepsleep but not None - Refer to issue #43
+                                time = pytz.timezone("UTC").localize(datetime.strptime(entry["startGMT"], "%Y-%m-%dT%H:%M:%S.%f")).isoformat()
+                                data["SleepStageLevel"].append({"time": time, "data": entry.get("activityLevel")})
+                                data["SleepStageSeconds"].append({"time": time, "data": int((datetime.strptime(entry["endGMT"], "%Y-%m-%dT%H:%M:%S.%f") - datetime.strptime(entry["startGMT"], "%Y-%m-%dT%H:%M:%S.%f")).total_seconds())})
+
+                    # Capture Sleep Restless Moments
+                    sleep_restlessness_intraday = all_sleep_data.get("sleepRestlessMoments")  
+                    if sleep_restlessness_intraday:
+                        for entry in sleep_restlessness_intraday:
+                            data["sleepRestlessValue"].append({"time": datetime.fromtimestamp(entry["startGMT"]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry.get("value")})
+
+                    # Capture sleep spo2
+                    sleep_spo2_intraday = all_sleep_data.get("wellnessEpochSPO2DataDTOList")
+                    if sleep_spo2_intraday:
+                        for entry in sleep_spo2_intraday:
+                            if entry.get("spo2Reading"):
+                                data["spo2Reading"].append({"time": pytz.timezone("UTC").localize(datetime.strptime(entry["epochTimestamp"], "%Y-%m-%dT%H:%M:%S.%f")).isoformat(), "data": entry.get("spo2Reading")})
+                    
+                    # Capture respiration data
+                    sleep_respiration_intraday = all_sleep_data.get("wellnessEpochRespirationDataDTOList")
+                    if sleep_respiration_intraday:
+                        for entry in sleep_respiration_intraday:
+                            if entry.get("respirationValue"):
+                                data["respirationValue"].append({"time": datetime.fromtimestamp(entry["startTimeGMT"]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry.get("respirationValue")})
+                    
+                    # Capture sleepHeartRate
+                    sleep_heart_rate_intraday = all_sleep_data.get("sleepHeartRate")
+                    if sleep_heart_rate_intraday:
+                        for entry in sleep_heart_rate_intraday:
+                            data["heartRate"].append({"time": datetime.fromtimestamp(entry["startGMT"]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry.get("value")})
+                    
+                    # Capture sleepStress
+                    sleep_stress_intraday = all_sleep_data.get("sleepStress")
+                    if sleep_stress_intraday:
+                        for entry in sleep_stress_intraday:
+                            if entry.get("value"):
+                                data["stressValue"].append({"time": datetime.fromtimestamp(entry["startGMT"]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry.get("value")})
+                    
+                    # Capture sleepBodyBattery
+                    sleep_bb_intraday = all_sleep_data.get("sleepBodyBattery")
+                    if sleep_bb_intraday:
+                        for entry in sleep_bb_intraday:
+                            if entry.get("value"):
+                                data["bodyBattery"].append({"time": datetime.fromtimestamp(entry["startGMT"]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry.get("value")})
+                    
+                    # Capture sleep HRV
+                    sleep_hrv_intraday = all_sleep_data.get("hrvData")
+                    if sleep_hrv_intraday:
+                        for entry in sleep_hrv_intraday:
+                            if entry.get("value"):
+                                data["hrvData"].append({"time": datetime.fromtimestamp(entry["startGMT"]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry.get("value")})
+
+                    health_data["sleep"].append(data)
+
                 except Exception as e:
                     logger.warning(f"Could not retrieve sleep data for {current_date}: {e}")
 
             # Stress
             if "stress" in metric_types_to_fetch:
                 try:
-                    stress_data = garmin.get_all_day_stress(current_date)
-                    if stress_data:
-                        health_data["stress"].append({
-                            "date": current_date,
-                            "stress_level": stress_data.get("overallStressLevel"),
-                            "stress_duration_total": stress_data.get("totalStressDuration"),
-                            "stress_duration_rest": stress_data.get("restStressDuration"),
-                            "stress_duration_activity": stress_data.get("activityStressDuration"),
-                            "stress_duration_uncategorized": stress_data.get("uncategorizedStressDuration"),
-                            "stress_duration_low": stress_data.get("lowStressDuration"),
-                            "stress_duration_medium": stress_data.get("mediumStressDuration"),
-                            "stress_duration_high": stress_data.get("highStressDuration"),
-                            "stress_percentage_low": stress_data.get("lowStressPercentage"),
-                            "stress_percentage_medium": stress_data.get("mediumStressPercentage"),
-                            "stress_percentage_high": stress_data.get("highStressPercentage")
-                        })
+                    data = {}
+                    data["date"] = current_date
+                    data["stressLevel"] = []
+                    data["BodyBatteryLevel"] = []
+                    stress_list = garmin.get_stress_data(current_date).get('stressValuesArray') or []
+                    for entry in stress_list:
+                        if entry[1] or entry[1] == 0:
+                            data["stressLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry[1]})
+                    
+                    bb_list = garmin.get_stress_data(current_date).get('bodyBatteryValuesArray') or []
+                    for entry in bb_list:
+                        if entry[2] or entry[2] == 0:
+                            data["BodyBatteryLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry[2]})
+                    
+                    health_data["stress"].append(data)
                 except Exception as e:
                     logger.warning(f"Could not retrieve stress data for {current_date}: {e}")
 
@@ -331,9 +457,15 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             # HRV
             if "hrv" in metric_types_to_fetch:
                 try:
-                    hrv_data = garmin.get_hrv_data(current_date)
-                    if hrv_data:
-                        health_data["hrv"].append({"date": current_date, "average_overnight_hrv": hrv_data.get("hrvSummary", {}).get("weeklyAvg")})
+                    data = {}
+                    data["date"] = current_date
+                    data["hrvValue"] = []
+                    hrv_list = (garmin.get_hrv_data(current_date) or {}).get('hrvReadings') or []
+                    for entry in hrv_list:
+                        if entry.get('hrvValue'):
+                            data["hrvValue"].append({"time": pytz.timezone("UTC").localize(datetime.strptime(entry['readingTimeGMT'],"%Y-%m-%dT%H:%M:%S.%f")).isoformat(), "data": entry.get('hrvValue')})
+
+                    health_data["hrv"].append(data)
                 except Exception as e:
                     logger.warning(f"Could not retrieve HRV data for {current_date}: {e}")
 
