@@ -13,19 +13,48 @@ from garminconnect import Garmin
 from garth.exc import GarthHTTPError, GarthException
 import pytz
 import json
+import os # Ensure os is imported for path operations
+from dotenv import load_dotenv # Import load_dotenv
+
+load_dotenv() # Load environment variables from .env file
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+MOCK_DATA_DIR = "mock_data"
+
+def _save_to_local_file(filename: str, data: dict):
+    """Saves data to a local JSON file within the mock_data directory."""
+    os.makedirs(MOCK_DATA_DIR, exist_ok=True)
+    filepath = os.path.join(MOCK_DATA_DIR, filename)
+    with open(filepath, "w") as f:
+        json.dump(data, f, indent=4)
+    logger.info(f"Data saved to local file: {filepath}")
+
+def _load_from_local_file(filename: str) -> dict | None:
+    """Loads data from a local JSON file within the mock_data directory."""
+    filepath = os.path.join(MOCK_DATA_DIR, filename)
+    if os.path.exists(filepath):
+        with open(filepath, "r") as f:
+            data = json.load(f)
+        logger.info(f"Data loaded from local file: {filepath}")
+        return data
+    logger.warning(f"Local file not found: {filepath}")
+    return None
 
 app = FastAPI()
 
 # Get port from environment variable or use default
 PORT = int(os.getenv("GARMIN_SERVICE_PORT", 8000))
 IS_CN = bool(os.getenv("GARMIN_SERVICE_IS_CN", "false").lower() == "true")
+GARMIN_DATA_SOURCE = os.getenv("GARMIN_DATA_SOURCE", "garmin").lower() # "garmin" or "local"
+
 logger.info(f"Garmin service configured to run on port: {PORT}")
 if IS_CN:
     logger.info("Configured for Garmin China (CN) region.")
+logger.info(f"Garmin data source configured to: {GARMIN_DATA_SOURCE}")
+
 # Define a Pydantic model for login credentials
 
 MFA_STATE_STORE: dict[str, object] = {}
@@ -170,12 +199,51 @@ async def read_root():
 async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
     """
     Retrieves a wide range of health, wellness, and achievement metrics from Garmin.
+    user_id = request_data.user_id
+    start_date = request_data.start_date
+    end_date = request_data.end_date
+
+    filename = "health_and_wellness_data.json"
+
+    if GARMIN_DATA_SOURCE == "local":
+        local_data = _load_from_local_file(filename)
+        if local_data:
+            logger.info(f"Returning local health and wellness data for user {user_id} from {start_date} to {end_date}.")
+            return local_data
+        else:
+            raise HTTPException(status_code=404, detail=f"Local data not found for {start_date} to {end_date}. Please set GARMIN_DATA_SOURCE to 'garmin' to fetch and save data.")
+
+    user_id = request_data.user_id
+    start_date = request_data.start_date
+    end_date = request_data.end_date
+
+    filename = "health_and_wellness_data.json"
+
+    if GARMIN_DATA_SOURCE == "local":
+        local_data = _load_from_local_file(filename)
+        if local_data:
+            logger.info(f"Returning local health and wellness data for user {user_id} from {start_date} to {end_date}.")
+            return local_data
+        else:
+            raise HTTPException(status_code=404, detail=f"Local data not found for {start_date} to {end_date}. Please set GARMIN_DATA_SOURCE to 'garmin' to fetch and save data.")
+
     """
+    user_id = request_data.user_id
+    start_date = request_data.start_date
+    end_date = request_data.end_date
+
+    filename = "health_and_wellness_data.json"
+
+    if GARMIN_DATA_SOURCE == "local":
+        local_data = _load_from_local_file(filename)
+        if local_data:
+            logger.info(f"Returning local health and wellness data for user {user_id} from {start_date} to {end_date}.")
+            return local_data
+        else:
+            raise HTTPException(status_code=404, detail=f"Local data not found for {start_date} to {end_date}. Please set GARMIN_DATA_SOURCE to 'garmin' to fetch and save data.")
+
     try:
-        user_id = request_data.user_id
         tokens_b64 = request_data.tokens
-        start_date = request_data.start_date
-        end_date = request_data.end_date
         metric_types_to_fetch = request_data.metric_types if request_data.metric_types else ALL_HEALTH_METRICS
 
         if not user_id or not tokens_b64 or not start_date or not end_date:
@@ -219,7 +287,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 logger.warning(f"Could not retrieve pregnancy summary data: {e}")
 
         for current_date in dates_to_fetch:
-            # Daily Summary (steps, total_distance, active_seconds, sedentary_seconds)
+            # Daily Summary (steps, total_distance, highly_active_seconds, active_seconds, sedentary_seconds)
             if any(metric in metric_types_to_fetch for metric in ["steps", "total_distance", "highly_active_seconds", "active_seconds", "sedentary_seconds"]):
                 try:
                     summary_data = garmin.get_user_summary(current_date)
@@ -267,9 +335,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             # Heart Rates
             if "heart_rates" in metric_types_to_fetch:
                 try:
-                    data = []
-                    data["date"] = current_date
-                    data["HeartRate"] = []
+                    data = {"date": current_date, "HeartRate": []} # Initialize as dict
                     hr_list = garmin.get_heart_rates(current_date).get("heartRateValues") or []
                     for entry in hr_list:
                         if entry[1]:
@@ -598,9 +664,16 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
 
         # Further filter to remove null or empty values before returning
         final_health_data = {k: v for k, v in cleaned_health_data.items() if v} # Filter out empty lists
+        
+        # Save data to local file if GARMIN_DATA_SOURCE is not "local"
+        _save_to_local_file(filename, {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data})
 
         logger.debug(f"Final health data being returned: {final_health_data}")
         logger.info(f"Successfully retrieved and cleaned health and wellness data for user {user_id} from {start_date} to {end_date}. Data: {final_health_data}")
+        
+        # Save data to local file if GARMIN_DATA_SOURCE is not "local"
+        _save_to_local_file(filename, {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data})
+
         return {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data}
 
     except GarthHTTPError as e:
@@ -625,12 +698,23 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
     """
     Retrieves detailed activity and workout data from Garmin.
     """
+    user_id = request_data.user_id
+    start_date = request_data.start_date
+    end_date = request_data.end_date
+    activity_type = request_data.activity_type
+
+    filename = "activities_and_workouts_data.json"
+
+    if GARMIN_DATA_SOURCE == "local":
+        local_data = _load_from_local_file(filename)
+        if local_data:
+            logger.info(f"Returning local activities and workouts data for user {user_id} from {start_date} to {end_date}.")
+            return local_data
+        else:
+            raise HTTPException(status_code=404, detail=f"Local data not found for {start_date} to {end_date}. Please set GARMIN_DATA_SOURCE to 'garmin' to fetch and save data.")
+
     try:
-        user_id = request_data.user_id
         tokens_b64 = request_data.tokens
-        start_date = request_data.start_date
-        end_date = request_data.end_date
-        activity_type = request_data.activity_type
 
         if not user_id or not tokens_b64 or not start_date or not end_date:
             raise HTTPException(status_code=400, detail="Missing user_id, tokens, start_date, or end_date.")
@@ -694,6 +778,16 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
         cleaned_workouts =  clean_garmin_data(detailed_workouts)
 
         logger.info(f"Successfully retrieved and cleaned activities and workouts for user {user_id} from {start_date} to {end_date}. Activities: {cleaned_activities}, Workouts: {cleaned_workouts}")
+        
+        # Save data to local file if GARMIN_DATA_SOURCE is not "local"
+        _save_to_local_file(filename, {
+            "user_id": user_id,
+            "start_date": start_date,
+            "end_date": end_date,
+            "activities": cleaned_activities,
+            "workouts": cleaned_workouts
+        })
+
         return {
             "user_id": user_id,
             "start_date": start_date,
