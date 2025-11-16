@@ -4,6 +4,7 @@ const exerciseRepository = require('../models/exercise');
 const activityDetailsRepository = require('../models/activityDetailsRepository');
 const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepository');
 const workoutPresetRepository = require('../models/workoutPresetRepository'); // New import
+const measurementService = require('./measurementService'); // Import measurementService
 
 async function processActivitiesAndWorkouts(userId, data, startDate, endDate) {
   const { activities, workouts } = data;
@@ -376,9 +377,38 @@ async function processGarminSimpleActivity(userId, activityData) {
   });
 }
 
+async function processGarminSleepData(userId, actingUserId, sleepDataArray) {
+    const processedResults = [];
+    const errors = [];
+
+    for (const sleepEntry of sleepDataArray) {
+        try {
+            const result = await measurementService.processSleepEntry(userId, actingUserId, sleepEntry);
+            processedResults.push({ status: 'success', data: result });
+        } catch (error) {
+            log('error', `Error processing Garmin sleep entry for user ${userId}:`, error);
+            errors.push({ status: 'error', message: error.message, entry: sleepEntry });
+        }
+    }
+
+    if (errors.length > 0) {
+        throw new Error(JSON.stringify({
+            message: "Some Garmin sleep entries could not be processed.",
+            processed: processedResults,
+            errors: errors
+        }));
+    } else {
+        return {
+            message: "All Garmin sleep data successfully processed.",
+            processed: processedResults
+        };
+    }
+}
+
 module.exports = {
   processActivitiesAndWorkouts,
   processGarminWorkoutSession,
   processGarminWorkoutDefinition,
   processGarminSimpleActivity,
+  processGarminSleepData,
 };

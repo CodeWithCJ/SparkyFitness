@@ -117,10 +117,16 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
             measurementServiceResult = await measurementService.processHealthData(processedHealthData, userId, userId);
         }
 
+        let processedSleepData = {};
+        if (healthWellnessData.data && healthWellnessData.data.sleep && healthWellnessData.data.sleep.length > 0) {
+            processedSleepData = await garminService.processGarminSleepData(userId, userId, healthWellnessData.data.sleep);
+        }
+
         res.status(200).json({
             message: 'Health and wellness sync completed.',
             garminRawData: healthWellnessData, // Keep raw data for debugging/reference
-            processedMeasurements: measurementServiceResult
+            processedMeasurements: measurementServiceResult,
+            processedSleep: processedSleepData
         });
     } catch (error) {
         next(error);
@@ -191,6 +197,22 @@ router.post('/unlink', authenticate, async (req, res, next) => {
         } else {
             res.status(400).json({ error: "Garmin Connect account not found for this user." });
         }
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.post('/sleep_data', authenticate, async (req, res, next) => {
+    try {
+        const userId = req.userId;
+        const { sleepData } = req.body; // Expecting an array of sleep entries
+
+        if (!sleepData || !Array.isArray(sleepData)) {
+            return res.status(400).json({ error: 'Invalid sleepData format. Expected an array.' });
+        }
+
+        const result = await garminService.processGarminSleepData(userId, userId, sleepData);
+        res.status(200).json(result);
     } catch (error) {
         next(error);
     }
