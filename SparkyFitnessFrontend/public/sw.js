@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sparky-fitness-cache-v2';
+const CACHE_NAME = 'sparky-fitness-cache-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -39,6 +39,17 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // CRITICAL: Never intercept API requests
+  // API requests must go directly to the network so Authentik can handle authentication
+  // If the SW intercepted API calls and they fail due to CORS (Authentik 302), it would cause Network Errors
+  if (event.request.url.includes('/api/') ||
+      event.request.url.includes('/openid/') ||
+      event.request.url.includes('/health-data/') ||
+      event.request.url.includes('/uploads/')) {
+    // Let API requests pass through without SW interception
+    return;
+  }
+
   // CRITICAL: Use network-first for navigation requests (HTML pages)
   // This ensures Authentik proxy can intercept and check authentication
   // If we used cache-first, the SW would serve cached HTML and bypass Authentik entirely
@@ -63,7 +74,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // For all other requests (JS, CSS, images, API), use cache-first
+  // For all other requests (JS, CSS, images), use cache-first
   event.respondWith(
     caches.match(event.request)
       .then(response => {
