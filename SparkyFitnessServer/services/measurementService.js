@@ -602,9 +602,21 @@ async function calculateSleepScore(sleepEntryData, stageEvents, age = null, gend
 
 async function processSleepEntry(userId, actingUserId, sleepEntryData) {
     try {
-        const { stage_events, entry_date, bedtime, wake_time, duration_in_seconds, source, sleep_score: incomingSleepScore, ...rest } = sleepEntryData;
+        let { stage_events, entry_date, bedtime, wake_time, duration_in_seconds, source, sleep_score: incomingSleepScore, ...rest } = sleepEntryData;
+
+        // If no stage events are provided, create a default "light sleep" stage
+        if (!stage_events || stage_events.length === 0) {
+            log('info', `No sleep stage events provided for entry on ${entry_date}. Creating default 'light' sleep stage.`);
+            stage_events = [{
+                stage_type: 'light',
+                start_time: bedtime,
+                end_time: wake_time,
+                duration_in_seconds: duration_in_seconds,
+            }];
+        }
 
         let timeAsleepInSeconds = 0;
+        // This check is now redundant but harmless as stage_events will always have at least one entry
         if (stage_events && stage_events.length > 0) {
             timeAsleepInSeconds = stage_events
                 .filter(event => event.stage_type !== 'awake')
@@ -748,6 +760,7 @@ module.exports = {
   updateSleepEntry,
   getSleepEntriesByUserIdAndDateRange: sleepRepository.getSleepEntriesByUserIdAndDateRange,
   deleteSleepEntry: sleepRepository.deleteSleepEntry, // Export the new delete function
+  getOrCreateCustomCategory, // Export getOrCreateCustomCategory
 };
 
 async function upsertCustomMeasurementEntry(authenticatedUserId, actingUserId, payload) {

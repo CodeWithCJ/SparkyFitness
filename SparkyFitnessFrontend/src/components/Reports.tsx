@@ -15,6 +15,7 @@ import MeasurementChartsGrid from "./reports/MeasurementChartsGrid";
 import ReportsTables from "./reports/ReportsTables";
 import ExerciseReportsDashboard from "./reports/ExerciseReportsDashboard"; // Import ExerciseReportsDashboard
 import SleepReport from "./reports/SleepReport"; // Import SleepReport
+import StressChart from "./StressChart"; // Import StressChart
 import { log, debug, info, warn, error, UserLoggingLevel } from "@/utils/logging";
 import { format, parseISO, addDays } from 'date-fns'; // Import format, parseISO, addDays from date-fns
 import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
@@ -41,6 +42,7 @@ import {
 import { SleepAnalyticsData } from '@/types'; // Import SleepAnalyticsData
 import { getExerciseProgressData } from '@/services/exerciseEntryService'; // Import getExerciseProgressData
 import { getExerciseDashboardData, getSleepAnalyticsData } from '@/services/reportsService'; // Import new dashboard data function
+import { getCategories as getCustomCategories } from '@/services/customCategoryService'; // Import getCategories as getCustomCategories
 
 const Reports = () => {
   const { t } = useTranslation();
@@ -54,6 +56,7 @@ const Reports = () => {
   const [exerciseDashboardData, setExerciseDashboardData] = useState<ExerciseDashboardData | null>(null); // New state for exercise dashboard data
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [customMeasurementsData, setCustomMeasurementsData] = useState<Record<string, CustomMeasurementData[]>>({});
+  const [rawStressCategoryId, setRawStressCategoryId] = useState<string | null>(null); // New state for Raw Stress Data category ID
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
@@ -157,7 +160,15 @@ const Reports = () => {
 
       setCustomCategories(fetchedCustomCategories);
       setCustomMeasurementsData(fetchedCustomMeasurementsData);
-      // setSleepAnalyticsData(fetchedSleepAnalyticsData); // Remove this line as SleepReport will manage its own state
+
+      // Find the category ID for "Raw Stress Data"
+      const rawStressCategory = fetchedCustomCategories.find(cat => cat.name === "Raw Stress Data");
+      if (rawStressCategory) {
+        setRawStressCategoryId(rawStressCategory.id);
+      } else {
+        warn(loggingLevel, 'Reports: "Raw Stress Data" custom category not found.');
+      }
+
       info(loggingLevel, 'Reports: Reports loaded successfully.');
     } catch (error) {
       error(loggingLevel, 'Reports: Error loading reports:', error);
@@ -642,7 +653,7 @@ a.click();
         <div>{t('reports.loadingReports', "Loading reports...")}</div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4"> {/* Changed to 4 columns */}
+          <TabsList className="grid w-full grid-cols-5"> {/* Changed to 5 columns */}
             <TabsTrigger value="charts" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               {t('reports.chartsTab', "Charts")}
@@ -654,6 +665,10 @@ a.click();
             <TabsTrigger value="sleep-analytics" className="flex items-center gap-2">
               <BedDouble className="w-4 h-4" />
               {t('reports.sleepTab', "Sleep")}
+            </TabsTrigger>
+            <TabsTrigger value="stress-analytics" className="flex items-center gap-2"> {/* New tab for Stress */}
+              <Activity className="w-4 h-4" /> {/* Using Activity icon for stress */}
+              {t('reports.stressTab', "Stress")}
             </TabsTrigger>
             <TabsTrigger value="table" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
@@ -755,6 +770,21 @@ a.click();
           <TabsContent value="sleep-analytics" className="space-y-6">
             <SleepReport startDate={startDate} endDate={endDate} />
           </TabsContent>
+
+          <TabsContent value="stress-analytics" className="space-y-6">
+            {rawStressCategoryId && customMeasurementsData[rawStressCategoryId] ? (
+              <StressChart
+                title={t('reports.stressChartTitle', "Daily Stress Levels")}
+                data={customMeasurementsData[rawStressCategoryId].map(d => ({
+                  time: d.timestamp,
+                  data: parseFloat(d.value as string), // Assuming stress data is numeric
+                }))}
+              />
+            ) : (
+              <p>{t('reports.noStressData', "No stress data available.")}</p>
+            )}
+          </TabsContent>
+
 
           <TabsContent value="table" className="space-y-6">
             <ReportsTables
