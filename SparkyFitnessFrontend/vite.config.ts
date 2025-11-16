@@ -42,7 +42,8 @@ export default defineConfig(({ mode }) => {
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt", // Changed from autoUpdate to prevent automatic registration
+      injectRegister: null, // Don't inject any registration code - we handle it manually in index.html
       manifest: {
         name: "SparkyFitness",
         short_name: "SparkyFitness",
