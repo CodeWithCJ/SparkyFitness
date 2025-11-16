@@ -106,8 +106,6 @@ const BackupSettings: React.FC = () => {
         title: t('success', 'Success'),
         description: message,
       });
-      // Re-fetch settings to get the most up-to-date status from the backend
-      await fetchBackupSettings();
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || t('admin.backupSettings.backupFailed', 'Manual backup failed.');
       console.error('Backup error message:', errorMessage); // Added for debugging
