@@ -48,5 +48,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>This app needs access to your health data to track and sync your fitness metrics including steps, heart rate, calories, weight, and other health information to help you monitor your wellness goals.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>This app may write health data to HealthKit for tracking purposes.</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>healthkit</string>
+	</array>
 </dict>
 </plist>

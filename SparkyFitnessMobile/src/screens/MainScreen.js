@@ -10,7 +10,7 @@ import {
   aggregateStepsByDate,
   readActiveCaloriesRecords,
   aggregateActiveCaloriesByDate,
-  aggregateTotalCaloriesByDate, // ADD THIS LINE
+  aggregateTotalCaloriesByDate,
   readHeartRateRecords,
   aggregateHeartRateByDate,
   loadHealthPreference,
@@ -18,8 +18,8 @@ import {
   loadStringPreference,
   getSyncStartDate,
   readHealthRecords,
-} from '../services/healthConnectService';
-import { syncHealthData as healthConnectSyncData } from '../services/healthConnectService';
+  syncHealthData as healthConnectSyncData,
+} from '../services/healthService';
 import { saveTimeRange, loadTimeRange } from '../services/storage'; // Import saveTimeRange and loadTimeRange
 import * as api from '../services/api'; // Keep api import for checkServerConnection
 import { addLog } from '../services/LogService';
