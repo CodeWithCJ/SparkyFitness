@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../services/api'; // Assuming an API service exists
 import { useAuth } from '../../hooks/useAuth'; // Import useAuth hook
@@ -21,8 +21,7 @@ const BackupSettings: React.FC = () => {
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   // Fetch current backup settings and status from backend
-  useEffect(() => {
-    const fetchBackupSettings = async () => {
+  const fetchBackupSettings = async () => {
     try {
       const response = await api.get('/admin/backup/settings');
       const data = response || {}; // Ensure data is an object even if response is null/undefined
@@ -47,15 +46,17 @@ const BackupSettings: React.FC = () => {
         setLastBackupStatus(data.lastBackupStatus || 'N/A');
       }
       setBackupLocation(data.backupLocation || '/app/SparkyFitnessServer/backup'); // Use fetched or default
-      } catch (error) {
-        toast({
-          title: t('admin.backupSettings.error', 'Error'),
-          description: t('admin.backupSettings.failedToFetchSettings', 'Failed to fetch backup settings.'),
-          variant: 'destructive',
-        });
-        console.error('Error fetching backup settings:', error);
-      }
-    };
+    } catch (error) {
+      toast({
+        title: t('admin.backupSettings.error', 'Error'),
+        description: t('admin.backupSettings.failedToFetchSettings', 'Failed to fetch backup settings.'),
+        variant: 'destructive',
+      });
+      console.error('Error fetching backup settings:', error);
+    }
+  };
+
+  useEffect(() => {
     fetchBackupSettings();
   }, [t]);
 
