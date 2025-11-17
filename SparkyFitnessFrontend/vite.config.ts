@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-import { VitePWA } from "vite-plugin-pwa";
+// Removed VitePWA import - we handle Service Worker registration manually
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -41,31 +41,8 @@ export default defineConfig(({ mode }) => {
   plugins: [
     react(),
     mode === "development" && componentTagger(),
-    VitePWA({
-      registerType: "prompt", // Changed from autoUpdate to prevent automatic registration
-      injectRegister: null, // Don't inject any registration code - we handle it manually in index.html
-      manifest: {
-        name: "SparkyFitness",
-        short_name: "SparkyFitness",
-        description: "Your personal fitness companion",
-        theme_color: "#000000",
-        icons: [
-          {
-            src: "images/icons/icon-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "images/icons/icon-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-        ],
-      },
-      workbox: {
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
-      },
-    }),
+    // Removed VitePWA plugin - we handle Service Worker and manifest manually
+    // This prevents VitePWA from injecting registerSW.js script tags
   ].filter(Boolean),
   resolve: {
     alias: {
