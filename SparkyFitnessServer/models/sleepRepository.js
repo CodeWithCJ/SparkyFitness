@@ -362,6 +362,28 @@ async function deleteSleepStageEventsByEntryId(userId, entryId) {
     }
 }
 
+async function deleteSleepEntriesByEntrySourceAndDate(userId, entrySource, startDate, endDate) {
+    const client = await getClient(userId);
+    try {
+        await client.query('BEGIN');
+        const query = `
+            DELETE FROM sleep_entries
+            WHERE user_id = $1 AND source = $2 AND entry_date BETWEEN $3 AND $4
+            RETURNING id;
+        `;
+        const result = await client.query(query, [userId, entrySource, startDate, endDate]);
+        await client.query('COMMIT');
+        log('info', `Deleted ${result.rows.length} sleep entries for user ${userId} from source ${entrySource} between ${startDate} and ${endDate}.`);
+        return { message: `Deleted ${result.rows.length} sleep entries.` };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        log('error', `Error deleting sleep entries for user ${userId} from source ${entrySource} between ${startDate} and ${endDate}:`, error);
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
 module.exports = {
     upsertSleepEntry,
     upsertSleepStageEvent,
@@ -370,6 +392,7 @@ module.exports = {
     deleteSleepStageEventsByEntryId,
     deleteSleepEntry,
     getSleepEntriesWithStagesByUserIdAndDateRange,
+    deleteSleepEntriesByEntrySourceAndDate,
 };
 
 async function getSleepEntriesWithStagesByUserIdAndDateRange(userId, startDate, endDate) {

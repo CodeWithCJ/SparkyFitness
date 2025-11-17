@@ -13,19 +13,48 @@ from garminconnect import Garmin
 from garth.exc import GarthHTTPError, GarthException
 import pytz
 import json
+import os # Ensure os is imported for path operations
+from dotenv import load_dotenv # Import load_dotenv
+
+load_dotenv() # Load environment variables from .env file
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+MOCK_DATA_DIR = "mock_data"
+
+def _save_to_local_file(filename: str, data: dict):
+    """Saves data to a local JSON file within the mock_data directory."""
+    os.makedirs(MOCK_DATA_DIR, exist_ok=True)
+    filepath = os.path.join(MOCK_DATA_DIR, filename)
+    with open(filepath, "w") as f:
+        json.dump(data, f, indent=4)
+    logger.info(f"Data saved to local file: {filepath}")
+
+def _load_from_local_file(filename: str) -> dict | None:
+    """Loads data from a local JSON file within the mock_data directory."""
+    filepath = os.path.join(MOCK_DATA_DIR, filename)
+    if os.path.exists(filepath):
+        with open(filepath, "r") as f:
+            data = json.load(f)
+        logger.info(f"Data loaded from local file: {filepath}")
+        return data
+    logger.warning(f"Local file not found: {filepath}")
+    return None
 
 app = FastAPI()
 
 # Get port from environment variable or use default
 PORT = int(os.getenv("GARMIN_SERVICE_PORT", 8000))
 IS_CN = bool(os.getenv("GARMIN_SERVICE_IS_CN", "false").lower() == "true")
+GARMIN_DATA_SOURCE = os.getenv("GARMIN_DATA_SOURCE", "garmin").lower() # "garmin" or "local"
+
 logger.info(f"Garmin service configured to run on port: {PORT}")
 if IS_CN:
     logger.info("Configured for Garmin China (CN) region.")
+logger.info(f"Garmin data source configured to: {GARMIN_DATA_SOURCE}")
+
 # Define a Pydantic model for login credentials
 
 MFA_STATE_STORE: dict[str, object] = {}
@@ -112,12 +141,41 @@ def convert_user_summary_units(summary):
     # Add other summary-level conversions here if needed
     return summary
 
+def map_garmin_stress_to_mood(stress_level):
+    """
+    Maps Garmin stress level (0-100) to SparkyFitness mood value (0-100).
+    -1, -2 indicate no data.
+    """
+    if stress_level is None or stress_level < 0:
+        return None, None # No mood if no valid stress data
+
+    if 0 <= stress_level <= 10:
+        return 95, "Excited" # 91-100
+    elif 11 <= stress_level <= 25:
+        return 85, "Happy" # 81-90
+    elif 26 <= stress_level <= 35:
+        return 75, "Confident" # 71-80
+    elif 36 <= stress_level <= 50:
+        return 65, "Calm" # 61-70
+    elif 51 <= stress_level <= 60:
+        return 55, "Thoughtful" # 51-60
+    elif 61 <= stress_level <= 75:
+        return 45, "Neutral" # 41-50
+    elif 76 <= stress_level <= 85:
+        return 35, "Worried" # 31-40
+    elif 86 <= stress_level <= 95:
+        return 25, "Angry" # 21-30
+    elif 96 <= stress_level <= 100:
+        return 15, "Sad/Tired" # 10-20
+    else:
+        return 50, "Neutral" # Default or unhandled range
 
 ALL_HEALTH_METRICS = [
     "heart_rates", "sleep", "stress", "respiration", "spo2",
     "intensity_minutes", "training_readiness", "training_status", "max_metrics",
     "hrv", "lactate_threshold", "endurance_score", "hill_score", "race_predictions",
-    "blood_pressure", "body_battery", "menstrual_data", "floors", "fitness_age", "body_composition", "hydration"
+    "blood_pressure", "body_battery", "menstrual_data", "floors", "fitness_age", "body_composition", "hydration",
+    "recovery_time", "training_load", "acute_load"
 ]
 
 class HealthAndWellnessRequest(BaseModel):
@@ -142,12 +200,51 @@ async def read_root():
 async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
     """
     Retrieves a wide range of health, wellness, and achievement metrics from Garmin.
+    user_id = request_data.user_id
+    start_date = request_data.start_date
+    end_date = request_data.end_date
+
+    filename = "health_and_wellness_data.json"
+
+    if GARMIN_DATA_SOURCE == "local":
+        local_data = _load_from_local_file(filename)
+        if local_data:
+            logger.info(f"Returning local health and wellness data for user {user_id} from {start_date} to {end_date}.")
+            return local_data
+        else:
+            raise HTTPException(status_code=404, detail=f"Local data not found for {start_date} to {end_date}. Please set GARMIN_DATA_SOURCE to 'garmin' to fetch and save data.")
+
+    user_id = request_data.user_id
+    start_date = request_data.start_date
+    end_date = request_data.end_date
+
+    filename = "health_and_wellness_data.json"
+
+    if GARMIN_DATA_SOURCE == "local":
+        local_data = _load_from_local_file(filename)
+        if local_data:
+            logger.info(f"Returning local health and wellness data for user {user_id} from {start_date} to {end_date}.")
+            return local_data
+        else:
+            raise HTTPException(status_code=404, detail=f"Local data not found for {start_date} to {end_date}. Please set GARMIN_DATA_SOURCE to 'garmin' to fetch and save data.")
+
     """
+    user_id = request_data.user_id
+    start_date = request_data.start_date
+    end_date = request_data.end_date
+
+    filename = "health_and_wellness_data.json"
+
+    if GARMIN_DATA_SOURCE == "local":
+        local_data = _load_from_local_file(filename)
+        if local_data:
+            logger.info(f"Returning local health and wellness data for user {user_id} from {start_date} to {end_date}.")
+            return local_data
+        else:
+            raise HTTPException(status_code=404, detail=f"Local data not found for {start_date} to {end_date}. Please set GARMIN_DATA_SOURCE to 'garmin' to fetch and save data.")
+
     try:
-        user_id = request_data.user_id
         tokens_b64 = request_data.tokens
-        start_date = request_data.start_date
-        end_date = request_data.end_date
         metric_types_to_fetch = request_data.metric_types if request_data.metric_types else ALL_HEALTH_METRICS
 
         if not user_id or not tokens_b64 or not start_date or not end_date:
@@ -191,7 +288,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 logger.warning(f"Could not retrieve pregnancy summary data: {e}")
 
         for current_date in dates_to_fetch:
-            # Daily Summary (steps, total_distance, active_seconds, sedentary_seconds)
+            # Daily Summary (steps, total_distance, highly_active_seconds, active_seconds, sedentary_seconds)
             if any(metric in metric_types_to_fetch for metric in ["steps", "total_distance", "highly_active_seconds", "active_seconds", "sedentary_seconds"]):
                 try:
                     summary_data = garmin.get_user_summary(current_date)
@@ -239,9 +336,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             # Heart Rates
             if "heart_rates" in metric_types_to_fetch:
                 try:
-                    data = []
-                    data["date"] = current_date
-                    data["HeartRate"] = []
+                    data = {"date": current_date, "HeartRate": []} # Initialize as dict
                     hr_list = garmin.get_heart_rates(current_date).get("heartRateValues") or []
                     for entry in hr_list:
                         if entry[1]:
@@ -352,21 +447,46 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             # Stress
             if "stress" in metric_types_to_fetch:
                 try:
-                    data = {}
-                    data["date"] = current_date
-                    data["stressLevel"] = []
-                    data["BodyBatteryLevel"] = []
+                    stress_data_entry = {
+                        "date": current_date,
+                        "stressLevel": [],
+                        "BodyBatteryLevel": []
+                    }
+                    
                     stress_list = garmin.get_stress_data(current_date).get('stressValuesArray') or []
+                    valid_stress_values = []
                     for entry in stress_list:
-                        if entry[1] or entry[1] == 0:
-                            data["stressLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry[1]})
+                        # Only include valid stress data points (0-100)
+                        if entry[1] is not None and entry[1] >= 0:
+                            stress_data_entry["stressLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry[1]})
+                            valid_stress_values.append(entry[1])
                     
                     bb_list = garmin.get_stress_data(current_date).get('bodyBatteryValuesArray') or []
                     for entry in bb_list:
-                        if entry[2] or entry[2] == 0:
-                            data["BodyBatteryLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry[2]})
+                        if entry[2] is not None and entry[2] >= 0: # Assuming BodyBatteryLevel is also non-negative
+                            stress_data_entry["BodyBatteryLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry[2]})
                     
-                    health_data["stress"].append(data)
+                    # Calculate average stress and map to mood
+                    average_stress = None
+                    derived_mood_value = None
+                    derived_mood_notes = None
+
+                    if valid_stress_values:
+                        average_stress = sum(valid_stress_values) / len(valid_stress_values)
+                        derived_mood_value, derived_mood_category = map_garmin_stress_to_mood(average_stress)
+                        if derived_mood_value is not None:
+                            derived_mood_notes = f"Derived from Garmin Stress: Average {average_stress:.0f} ({derived_mood_category})"
+                    
+                    # Add derived mood and raw stress data to the stress entry
+                    stress_data_entry["raw_stress_data"] = json.dumps(stress_data_entry["stressLevel"]) # Store raw stressLevel as JSON string
+                    stress_data_entry["derived_mood_value"] = derived_mood_value
+                    stress_data_entry["derived_mood_notes"] = derived_mood_notes
+                    
+                    # Only append stress_data_entry if there's valid raw stress data or derived mood data
+                    if stress_data_entry["stressLevel"] or stress_data_entry["derived_mood_value"] is not None:
+                        health_data["stress"].append(stress_data_entry)
+                    else:
+                        logger.info(f"No valid stress data or derived mood for {current_date}, skipping entry.")
                 except Exception as e:
                     logger.warning(f"Could not retrieve stress data for {current_date}: {e}")
 
@@ -539,15 +659,62 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 except Exception as e:
                     logger.warning(f"Could not retrieve body composition data for {current_date}: {e}")
 
+            # Recovery Time
+            if "recovery_time" in metric_types_to_fetch:
+                try:
+                    training_readiness_data = garmin.get_training_readiness(current_date)
+                    if training_readiness_data and len(training_readiness_data) > 0:
+                        recovery_time_value = training_readiness_data[0].get("recoveryTime")
+                        if recovery_time_value is not None:
+                            health_data["recovery_time"].append({"date": current_date, "value": recovery_time_value})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve recovery time data for {current_date}: {e}")
+
+            # Training Load and Acute Load
+            if "training_load" in metric_types_to_fetch or "acute_load" in metric_types_to_fetch:
+                try:
+                    training_status_data = garmin.get_training_status(current_date)
+                    if training_status_data and training_status_data.get("mostRecentTrainingStatus"):
+                        # Assuming there's only one device or we take the first one
+                        ts_dict = next(iter(training_status_data["mostRecentTrainingStatus"].get("latestTrainingStatusData", {}).values()), None)
+                        if ts_dict:
+                            if "training_load" in metric_types_to_fetch:
+                                weekly_load = ts_dict.get("weeklyTrainingLoad")
+                                daily_acute_load_ts = (ts_dict.get("acuteTrainingLoadDTO") or {}).get("dailyTrainingLoadAcute")
+                                daily_chronic_load = (ts_dict.get("acuteTrainingLoadDTO") or {}).get("dailyTrainingLoadChronic")
+                                if weekly_load is not None or daily_acute_load_ts is not None or daily_chronic_load is not None:
+                                    health_data["training_load"].append({
+                                        "date": current_date,
+                                        "weekly_training_load": weekly_load,
+                                        "daily_acute_training_load": daily_acute_load_ts,
+                                        "daily_chronic_training_load": daily_chronic_load
+                                    })
+                            if "acute_load" in metric_types_to_fetch:
+                                # Acute load also available from training readiness
+                                training_readiness_data = garmin.get_training_readiness(current_date)
+                                if training_readiness_data and len(training_readiness_data) > 0:
+                                    acute_load_value = training_readiness_data[0].get("acuteLoad")
+                                    if acute_load_value is not None:
+                                        health_data["acute_load"].append({"date": current_date, "value": acute_load_value})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve training load/acute load data for {current_date}: {e}")
+
         logger.debug(f"Health data before cleaning: {health_data}")
         # Clean and filter the data
         cleaned_health_data = clean_garmin_data(health_data)
 
         # Further filter to remove null or empty values before returning
         final_health_data = {k: v for k, v in cleaned_health_data.items() if v} # Filter out empty lists
+        
+        # Save data to local file if GARMIN_DATA_SOURCE is not "local"
+        _save_to_local_file(filename, {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data})
 
         logger.debug(f"Final health data being returned: {final_health_data}")
         logger.info(f"Successfully retrieved and cleaned health and wellness data for user {user_id} from {start_date} to {end_date}. Data: {final_health_data}")
+        
+        # Save data to local file if GARMIN_DATA_SOURCE is not "local"
+        _save_to_local_file(filename, {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data})
+
         return {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data}
 
     except GarthHTTPError as e:
@@ -572,12 +739,23 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
     """
     Retrieves detailed activity and workout data from Garmin.
     """
+    user_id = request_data.user_id
+    start_date = request_data.start_date
+    end_date = request_data.end_date
+    activity_type = request_data.activity_type
+
+    filename = "activities_and_workouts_data.json"
+
+    if GARMIN_DATA_SOURCE == "local":
+        local_data = _load_from_local_file(filename)
+        if local_data:
+            logger.info(f"Returning local activities and workouts data for user {user_id} from {start_date} to {end_date}.")
+            return local_data
+        else:
+            raise HTTPException(status_code=404, detail=f"Local data not found for {start_date} to {end_date}. Please set GARMIN_DATA_SOURCE to 'garmin' to fetch and save data.")
+
     try:
-        user_id = request_data.user_id
         tokens_b64 = request_data.tokens
-        start_date = request_data.start_date
-        end_date = request_data.end_date
-        activity_type = request_data.activity_type
 
         if not user_id or not tokens_b64 or not start_date or not end_date:
             raise HTTPException(status_code=400, detail="Missing user_id, tokens, start_date, or end_date.")
@@ -608,8 +786,29 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
                 activity_exercise_sets = garmin.get_activity_exercise_sets(activity_id)
                 activity_gear = garmin.get_activity_gear(activity_id)
 
+                # Extract Cadence and Power from activity_details if available
+                extracted_cadence = None
+                extracted_power = None
+                if activity_details and isinstance(activity_details, dict):
+                    # Common keys for cadence and power in activity details
+                    # These might be nested, so we'll look for them in common places
+                    # This is a heuristic based on typical Garmin data structures
+                    if activity_details.get("metrics"):
+                        for metric in activity_details["metrics"]:
+                            if metric.get("metricName") == "cadence":
+                                extracted_cadence = metric.get("value")
+                            if metric.get("metricName") == "power":
+                                extracted_power = metric.get("value")
+                    # Also check top-level or other common locations
+                    extracted_cadence = extracted_cadence or activity_details.get("avgCadence") or activity_details.get("averageCadence")
+                    extracted_power = extracted_power or activity_details.get("avgPower") or activity_details.get("averagePower")
+
                 detailed_activities.append({
-                    "activity": activity,
+                    "activity": {
+                        **activity,
+                        "cadence": extracted_cadence,
+                        "power": extracted_power
+                    },
                     "details": json.dumps(clean_garmin_data(activity_details)) if activity_details else None,
                     "splits": json.dumps(clean_garmin_data(activity_splits)) if activity_splits else None,
                     "weather": json.dumps(clean_garmin_data(activity_weather)) if activity_weather else None,
@@ -641,6 +840,16 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
         cleaned_workouts =  clean_garmin_data(detailed_workouts)
 
         logger.info(f"Successfully retrieved and cleaned activities and workouts for user {user_id} from {start_date} to {end_date}. Activities: {cleaned_activities}, Workouts: {cleaned_workouts}")
+        
+        # Save data to local file if GARMIN_DATA_SOURCE is not "local"
+        _save_to_local_file(filename, {
+            "user_id": user_id,
+            "start_date": start_date,
+            "end_date": end_date,
+            "activities": cleaned_activities,
+            "workouts": cleaned_workouts
+        })
+
         return {
             "user_id": user_id,
             "start_date": start_date,

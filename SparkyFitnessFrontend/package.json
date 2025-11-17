@@ -75,6 +75,7 @@
     "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.462.0",
+    "moment": "^2.30.1",
     "next-themes": "^0.3.0",
     "node-cache": "^5.1.2",
     "openid-client": "^6.6.2",

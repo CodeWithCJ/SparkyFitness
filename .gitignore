@@ -130,3 +130,6 @@ __pycache__/
 SparkyFitnessServer/uploads/
 SparkyFitnessServer/backup/
 SparkyFitnessServer/temp_uploads/
+
+# SparkyFitnessGarmin specific ignores
+SparkyFitnessGarmin/mock_data/

@@ -52,6 +52,7 @@ const MoodReports: React.FC = () => {
   const chartData = moodEntries.map(entry => ({
     date: formatDateInUserTimezone(entry.entry_date, 'MMM dd'),
     mood: entry.mood_value,
+    notes: entry.notes, // Include notes for tooltip
   })).reverse(); // Reverse to show chronological order on chart
 
   return (
@@ -99,7 +100,7 @@ const MoodReports: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis domain={[0, 100]} />
-                  <Tooltip />
+                  <Tooltip formatter={(value, name, props) => [`${value} (${props.payload.notes || 'No notes'})`, 'Mood']}/>
                   <Line type="monotone" dataKey="mood" stroke="#8884d8" activeDot={{ r: 8 }} />
                 </LineChart>
               </ResponsiveContainer>
