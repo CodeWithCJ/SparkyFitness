@@ -58,7 +58,7 @@ const BackupSettings: React.FC = () => {
 
   useEffect(() => {
     fetchBackupSettings();
-  }, [fetchBackupSettings, t]);
+  }, [t]);
 
   const handleDayChange = (day: string) => {
     const updatedDays = backupDays.includes(day)

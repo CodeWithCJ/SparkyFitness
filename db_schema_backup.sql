@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict XgfRGu5ggmKHmqQOwJt09ll0WrfL4bSgbaOeVKashmpZLQJ3WjncrvwVHdpCdBa
+\restrict TbYNAruPBfUq3j1eBpR0tlcNVTH9Gtsv8VvoncUwd9sWphqzkvoJ8ZDNKU5Vc9q
 
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 18.0
@@ -806,13 +806,6 @@ CREATE TABLE public.check_in_measurements (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     height numeric,
     body_fat_percentage numeric,
-    resting_heart_rate integer,
-    sleep_duration_hours numeric(4,2),
-    sleep_quality_score integer,
-    stress_level_score integer,
-    muscle_mass_kg numeric,
-    body_water_percentage numeric,
-    visceral_fat_level integer,
     created_by_user_id uuid,
     updated_by_user_id uuid
 );
@@ -833,8 +826,16 @@ CREATE TABLE public.custom_categories (
     data_type text DEFAULT 'numeric'::text,
     created_by_user_id uuid,
     updated_by_user_id uuid,
+    display_name character varying(100),
     CONSTRAINT custom_categories_frequency_check CHECK ((frequency = ANY (ARRAY['All'::text, 'Daily'::text, 'Hourly'::text])))
 );
+
+
+--
+-- Name: COLUMN custom_categories.display_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.custom_categories.display_name IS 'User-editable display name for the category. If NULL, the name field is used for display. The name field serves as the stable identifier for syncing and lookups.';
 
 
 --
@@ -890,7 +891,8 @@ CREATE TABLE public.exercise_entries (
     instructions text,
     images text,
     distance numeric,
-    avg_heart_rate integer
+    avg_heart_rate integer,
+    exercise_preset_entry_id uuid
 );
 
 
@@ -900,14 +902,16 @@ CREATE TABLE public.exercise_entries (
 
 CREATE TABLE public.exercise_entry_activity_details (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
-    exercise_entry_id uuid NOT NULL,
+    exercise_entry_id uuid,
     provider_name text NOT NULL,
     detail_type text NOT NULL,
     detail_data jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     created_by_user_id uuid,
-    updated_by_user_id uuid
+    updated_by_user_id uuid,
+    exercise_preset_entry_id uuid,
+    CONSTRAINT chk_exercise_entry_id_or_preset_id CHECK ((((exercise_entry_id IS NOT NULL) AND (exercise_preset_entry_id IS NULL)) OR ((exercise_entry_id IS NULL) AND (exercise_preset_entry_id IS NOT NULL))))
 );
 
 
@@ -948,6 +952,25 @@ CREATE SEQUENCE public.exercise_entry_sets_id_seq
 --
 
 ALTER SEQUENCE public.exercise_entry_sets_id_seq OWNED BY public.exercise_entry_sets.id;
+
+
+--
+-- Name: exercise_preset_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.exercise_preset_entries (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    user_id uuid NOT NULL,
+    workout_preset_id integer,
+    name character varying(255) NOT NULL,
+    description text,
+    entry_date date NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id uuid,
+    notes text,
+    source text DEFAULT 'manual'::text NOT NULL
+);
 
 
 --
@@ -1407,6 +1430,42 @@ CREATE TABLE public.session (
     sid character varying NOT NULL,
     sess json NOT NULL,
     expire timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: sleep_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sleep_entries (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    user_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    bedtime timestamp with time zone NOT NULL,
+    wake_time timestamp with time zone NOT NULL,
+    duration_in_seconds integer NOT NULL,
+    time_asleep_in_seconds integer,
+    sleep_score numeric,
+    source character varying(50) NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+--
+-- Name: sleep_entry_stages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sleep_entry_stages (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    entry_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    stage_type character varying(50) NOT NULL,
+    start_time timestamp with time zone NOT NULL,
+    end_time timestamp with time zone NOT NULL,
+    duration_in_seconds integer NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );
 
 
@@ -2070,6 +2129,14 @@ ALTER TABLE ONLY public.exercise_entry_sets
 
 
 --
+-- Name: exercise_preset_entries exercise_preset_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_preset_entries
+    ADD CONSTRAINT exercise_preset_entries_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: exercises exercises_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2211,6 +2278,22 @@ ALTER TABLE ONLY public.onboarding_status
 
 ALTER TABLE ONLY public.session
     ADD CONSTRAINT session_pkey PRIMARY KEY (sid);
+
+
+--
+-- Name: sleep_entries sleep_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entries
+    ADD CONSTRAINT sleep_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sleep_entry_stages sleep_entry_stages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entry_stages
+    ADD CONSTRAINT sleep_entry_stages_pkey PRIMARY KEY (id);
 
 
 --
@@ -2406,6 +2489,13 @@ CREATE INDEX idx_custom_measurements_user_id ON public.custom_measurements USING
 
 
 --
+-- Name: idx_exercise_entries_exercise_preset_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exercise_entries_exercise_preset_entry_id ON public.exercise_entries USING btree (exercise_preset_entry_id);
+
+
+--
 -- Name: idx_exercise_entry_activity_details_entry_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2424,6 +2514,20 @@ CREATE INDEX idx_exercise_entry_activity_details_provider_type ON public.exercis
 --
 
 CREATE INDEX idx_exercise_entry_sets_entry_id ON public.exercise_entry_sets USING btree (exercise_entry_id);
+
+
+--
+-- Name: idx_exercise_preset_entries_entry_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exercise_preset_entries_entry_date ON public.exercise_preset_entries USING btree (entry_date);
+
+
+--
+-- Name: idx_exercise_preset_entries_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exercise_preset_entries_user_id ON public.exercise_preset_entries USING btree (user_id);
 
 
 --
@@ -2452,6 +2556,41 @@ CREATE UNIQUE INDEX idx_exercises_source_source_id_unique ON public.exercises US
 --
 
 CREATE INDEX idx_foods_provider_external_id_provider_type ON public.foods USING btree (provider_external_id, provider_type);
+
+
+--
+-- Name: idx_sleep_entries_entry_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sleep_entries_entry_date ON public.sleep_entries USING btree (entry_date);
+
+
+--
+-- Name: idx_sleep_entries_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sleep_entries_user_id ON public.sleep_entries USING btree (user_id);
+
+
+--
+-- Name: idx_sleep_entry_stages_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sleep_entry_stages_entry_id ON public.sleep_entry_stages USING btree (entry_id);
+
+
+--
+-- Name: idx_sleep_entry_stages_start_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sleep_entry_stages_start_time ON public.sleep_entry_stages USING btree (start_time);
+
+
+--
+-- Name: idx_sleep_entry_stages_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sleep_entry_stages_user_id ON public.sleep_entry_stages USING btree (user_id);
 
 
 --
@@ -2716,6 +2855,14 @@ ALTER TABLE ONLY public.exercise_entries
 
 
 --
+-- Name: exercise_entries exercise_entries_exercise_preset_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entries
+    ADD CONSTRAINT exercise_entries_exercise_preset_entry_id_fkey FOREIGN KEY (exercise_preset_entry_id) REFERENCES public.exercise_preset_entries(id) ON DELETE CASCADE;
+
+
+--
 -- Name: exercise_entries exercise_entries_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2748,6 +2895,14 @@ ALTER TABLE ONLY public.exercise_entry_activity_details
 
 
 --
+-- Name: exercise_entry_activity_details exercise_entry_activity_details_exercise_preset_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_activity_details
+    ADD CONSTRAINT exercise_entry_activity_details_exercise_preset_entry_id_fkey FOREIGN KEY (exercise_preset_entry_id) REFERENCES public.exercise_preset_entries(id) ON DELETE CASCADE;
+
+
+--
 -- Name: exercise_entry_activity_details exercise_entry_activity_details_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2761,6 +2916,30 @@ ALTER TABLE ONLY public.exercise_entry_activity_details
 
 ALTER TABLE ONLY public.exercise_entry_sets
     ADD CONSTRAINT exercise_entry_sets_exercise_entry_id_fkey FOREIGN KEY (exercise_entry_id) REFERENCES public.exercise_entries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exercise_preset_entries exercise_preset_entries_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_preset_entries
+    ADD CONSTRAINT exercise_preset_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: exercise_preset_entries exercise_preset_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_preset_entries
+    ADD CONSTRAINT exercise_preset_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exercise_preset_entries exercise_preset_entries_workout_preset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_preset_entries
+    ADD CONSTRAINT exercise_preset_entries_workout_preset_id_fkey FOREIGN KEY (workout_preset_id) REFERENCES public.workout_presets(id) ON DELETE SET NULL;
 
 
 --
@@ -2953,6 +3132,30 @@ ALTER TABLE ONLY public.onboarding_data
 
 ALTER TABLE ONLY public.onboarding_status
     ADD CONSTRAINT onboarding_status_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sleep_entries sleep_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entries
+    ADD CONSTRAINT sleep_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sleep_entry_stages sleep_entry_stages_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entry_stages
+    ADD CONSTRAINT sleep_entry_stages_entry_id_fkey FOREIGN KEY (entry_id) REFERENCES public.sleep_entries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sleep_entry_stages sleep_entry_stages_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entry_stages
+    ADD CONSTRAINT sleep_entry_stages_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 
 --
@@ -3311,6 +3514,13 @@ CREATE POLICY modify_policy ON public.exercise_entry_sets USING ((EXISTS ( SELEC
 
 
 --
+-- Name: exercise_preset_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.exercise_preset_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
 -- Name: exercises modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -3372,6 +3582,20 @@ CREATE POLICY modify_policy ON public.meal_plan_templates USING ((public.current
 --
 
 CREATE POLICY modify_policy ON public.meals USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
+-- Name: sleep_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.sleep_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: sleep_entry_stages modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.sleep_entry_stages USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
@@ -3580,6 +3804,15 @@ CREATE POLICY select_and_modify_policy ON public.food_variants USING ((EXISTS ( 
 
 
 --
+-- Name: exercise_entries select_exercise_preset_entry_linked_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_exercise_preset_entry_linked_policy ON public.exercise_entries FOR SELECT USING (((exercise_preset_entry_id IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM public.exercise_preset_entries epe
+  WHERE ((epe.id = exercise_entries.exercise_preset_entry_id) AND public.has_diary_access(epe.user_id))))));
+
+
+--
 -- Name: check_in_measurements select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -3614,6 +3847,13 @@ CREATE POLICY select_policy ON public.exercise_entries FOR SELECT USING (public.
 CREATE POLICY select_policy ON public.exercise_entry_sets FOR SELECT USING ((EXISTS ( SELECT 1
    FROM public.exercise_entries ee
   WHERE ((ee.id = exercise_entry_sets.exercise_entry_id) AND public.has_diary_access(ee.user_id)))));
+
+
+--
+-- Name: exercise_preset_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.exercise_preset_entries FOR SELECT USING (public.has_diary_access(user_id));
 
 
 --
@@ -3672,6 +3912,20 @@ CREATE POLICY select_policy ON public.meal_plan_templates FOR SELECT USING (publ
 --
 
 CREATE POLICY select_policy ON public.meals FOR SELECT USING (public.has_library_access_with_public(user_id, is_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]));
+
+
+--
+-- Name: sleep_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.sleep_entries FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: sleep_entry_stages select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.sleep_entry_stages FOR SELECT USING (public.has_diary_access(user_id));
 
 
 --
@@ -3928,6 +4182,15 @@ GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_uat;
 
 
 --
+-- Name: TABLE exercise_preset_entries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_uat;
+
+
+--
 -- Name: TABLE exercises; Type: ACL; Schema: public; Owner: -
 --
 
@@ -4123,6 +4386,24 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_uat;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_app;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_uat;
+
+
+--
+-- Name: TABLE sleep_entries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_uat;
+
+
+--
+-- Name: TABLE sleep_entry_stages; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_uat;
 
 
 --
@@ -4393,5 +4674,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict XgfRGu5ggmKHmqQOwJt09ll0WrfL4bSgbaOeVKashmpZLQJ3WjncrvwVHdpCdBa
+\unrestrict TbYNAruPBfUq3j1eBpR0tlcNVTH9Gtsv8VvoncUwd9sWphqzkvoJ8ZDNKU5Vc9q
 
