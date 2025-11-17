@@ -174,7 +174,8 @@ ALL_HEALTH_METRICS = [
     "heart_rates", "sleep", "stress", "respiration", "spo2",
     "intensity_minutes", "training_readiness", "training_status", "max_metrics",
     "hrv", "lactate_threshold", "endurance_score", "hill_score", "race_predictions",
-    "blood_pressure", "body_battery", "menstrual_data", "floors", "fitness_age", "body_composition", "hydration"
+    "blood_pressure", "body_battery", "menstrual_data", "floors", "fitness_age", "body_composition", "hydration",
+    "recovery_time", "training_load", "acute_load"
 ]
 
 class HealthAndWellnessRequest(BaseModel):
@@ -658,6 +659,46 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 except Exception as e:
                     logger.warning(f"Could not retrieve body composition data for {current_date}: {e}")
 
+            # Recovery Time
+            if "recovery_time" in metric_types_to_fetch:
+                try:
+                    training_readiness_data = garmin.get_training_readiness(current_date)
+                    if training_readiness_data and len(training_readiness_data) > 0:
+                        recovery_time_value = training_readiness_data[0].get("recoveryTime")
+                        if recovery_time_value is not None:
+                            health_data["recovery_time"].append({"date": current_date, "value": recovery_time_value})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve recovery time data for {current_date}: {e}")
+
+            # Training Load and Acute Load
+            if "training_load" in metric_types_to_fetch or "acute_load" in metric_types_to_fetch:
+                try:
+                    training_status_data = garmin.get_training_status(current_date)
+                    if training_status_data and training_status_data.get("mostRecentTrainingStatus"):
+                        # Assuming there's only one device or we take the first one
+                        ts_dict = next(iter(training_status_data["mostRecentTrainingStatus"].get("latestTrainingStatusData", {}).values()), None)
+                        if ts_dict:
+                            if "training_load" in metric_types_to_fetch:
+                                weekly_load = ts_dict.get("weeklyTrainingLoad")
+                                daily_acute_load_ts = (ts_dict.get("acuteTrainingLoadDTO") or {}).get("dailyTrainingLoadAcute")
+                                daily_chronic_load = (ts_dict.get("acuteTrainingLoadDTO") or {}).get("dailyTrainingLoadChronic")
+                                if weekly_load is not None or daily_acute_load_ts is not None or daily_chronic_load is not None:
+                                    health_data["training_load"].append({
+                                        "date": current_date,
+                                        "weekly_training_load": weekly_load,
+                                        "daily_acute_training_load": daily_acute_load_ts,
+                                        "daily_chronic_training_load": daily_chronic_load
+                                    })
+                            if "acute_load" in metric_types_to_fetch:
+                                # Acute load also available from training readiness
+                                training_readiness_data = garmin.get_training_readiness(current_date)
+                                if training_readiness_data and len(training_readiness_data) > 0:
+                                    acute_load_value = training_readiness_data[0].get("acuteLoad")
+                                    if acute_load_value is not None:
+                                        health_data["acute_load"].append({"date": current_date, "value": acute_load_value})
+                except Exception as e:
+                    logger.warning(f"Could not retrieve training load/acute load data for {current_date}: {e}")
+
         logger.debug(f"Health data before cleaning: {health_data}")
         # Clean and filter the data
         cleaned_health_data = clean_garmin_data(health_data)
@@ -745,8 +786,29 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
                 activity_exercise_sets = garmin.get_activity_exercise_sets(activity_id)
                 activity_gear = garmin.get_activity_gear(activity_id)
 
+                # Extract Cadence and Power from activity_details if available
+                extracted_cadence = None
+                extracted_power = None
+                if activity_details and isinstance(activity_details, dict):
+                    # Common keys for cadence and power in activity details
+                    # These might be nested, so we'll look for them in common places
+                    # This is a heuristic based on typical Garmin data structures
+                    if activity_details.get("metrics"):
+                        for metric in activity_details["metrics"]:
+                            if metric.get("metricName") == "cadence":
+                                extracted_cadence = metric.get("value")
+                            if metric.get("metricName") == "power":
+                                extracted_power = metric.get("value")
+                    # Also check top-level or other common locations
+                    extracted_cadence = extracted_cadence or activity_details.get("avgCadence") or activity_details.get("averageCadence")
+                    extracted_power = extracted_power or activity_details.get("avgPower") or activity_details.get("averagePower")
+
                 detailed_activities.append({
-                    "activity": activity,
+                    "activity": {
+                        **activity,
+                        "cadence": extracted_cadence,
+                        "power": extracted_power
+                    },
                     "details": json.dumps(clean_garmin_data(activity_details)) if activity_details else None,
                     "splits": json.dumps(clean_garmin_data(activity_splits)) if activity_splits else None,
                     "weather": json.dumps(clean_garmin_data(activity_weather)) if activity_weather else None,
