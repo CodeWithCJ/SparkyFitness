@@ -4,7 +4,7 @@ import styles from './SettingsScreenStyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
-import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference, saveSyncDuration, loadSyncDuration, saveStringPreference, loadStringPreference } from '../services/healthService';
+import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference, saveSyncDuration, loadSyncDuration, saveStringPreference, loadStringPreference } from '../services/healthConnectService';
 import { checkServerConnection } from '../services/api';
 import { HEALTH_METRICS } from '../constants/HealthMetrics';
 import ServerConfig from '../components/ServerConfig';

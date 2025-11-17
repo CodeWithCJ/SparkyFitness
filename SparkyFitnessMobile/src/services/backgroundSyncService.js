@@ -1,7 +1,8 @@
 import BackgroundFetch from 'react-native-background-fetch';
 import { syncHealthData } from './api';
 import { addLog } from './LogService';
-import { loadHealthPreference, getSyncStartDate, readHealthRecords, aggregateStepsByDate, aggregateActiveCaloriesByDate } from './healthService';
+import { loadHealthPreference, getSyncDuration } from './healthConnectService';
+import { readStepRecords, aggregateStepsByDate, readActiveCaloriesRecords, aggregateActiveCaloriesByDate } from './healthConnectService';
 
 const BACKGROUND_FETCH_TASK_ID = 'healthDataSync';
 
@@ -66,13 +67,13 @@ export const configureBackgroundSync = async () => {
         let allAggregatedData = [];
 
         if (isStepsEnabled) {
-          const stepRecords = await readHealthRecords('Steps', startDate, endDate);
+          const stepRecords = await readStepRecords(startDate, endDate);
           const aggregatedStepsData = aggregateStepsByDate(stepRecords);
           allAggregatedData = allAggregatedData.concat(aggregatedStepsData);
         }
 
         if (isActiveCaloriesEnabled) {
-          const activeCaloriesRecords = await readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
+          const activeCaloriesRecords = await readActiveCaloriesRecords(startDate, endDate);
           const aggregatedActiveCaloriesData = aggregateActiveCaloriesByDate(activeCaloriesRecords);
           allAggregatedData = allAggregatedData.concat(aggregatedActiveCaloriesData);
         }
