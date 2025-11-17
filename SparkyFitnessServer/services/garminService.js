@@ -4,6 +4,8 @@ const exerciseRepository = require('../models/exercise');
 const activityDetailsRepository = require('../models/activityDetailsRepository');
 const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepository');
 const workoutPresetRepository = require('../models/workoutPresetRepository'); // New import
+const measurementService = require('./measurementService'); // Import measurementService
+const moodRepository = require('../models/moodRepository'); // Import moodRepository
 
 async function processActivitiesAndWorkouts(userId, data, startDate, endDate) {
   const { activities, workouts } = data;
@@ -38,6 +40,90 @@ async function processActivitiesAndWorkouts(userId, data, startDate, endDate) {
   }
 
   return { processedEntries: processedCount };
+}
+
+async function processGarminHealthAndWellnessData(userId, actingUserId, healthData, startDate, endDate) {
+  log('info', `[garminService] Processing Garmin health and wellness data for user ${userId} from ${startDate} to ${endDate}.`);
+  const processedResults = [];
+  const errors = [];
+
+  try {
+    // Process Stress Data
+    if (healthData.stress && Array.isArray(healthData.stress)) {
+      for (const stressEntry of healthData.stress) {
+        const { date, raw_stress_data, derived_mood_value, derived_mood_notes } = stressEntry;
+
+        // Store raw stress data as a custom measurement
+        if (raw_stress_data) {
+          try {
+            const customCategory = await measurementService.getOrCreateCustomCategory(
+              userId,
+              actingUserId,
+              "Raw Stress Data",
+              "text",
+              "JSON"
+            );
+
+            await measurementService.upsertCustomMeasurementEntry(
+              userId,
+              actingUserId,
+              {
+                category_id: customCategory.id,
+                value: raw_stress_data,
+                entry_date: date,
+                notes: `Source: Garmin`,
+                source: 'garmin',
+              }
+            );
+            processedResults.push({ type: 'raw_stress_data', status: 'success', date });
+          } catch (error) {
+            log('error', `Error storing raw stress data for user ${userId} on ${date}:`, error);
+            errors.push({ type: 'raw_stress_data', status: 'error', date, message: error.message });
+          }
+        }
+
+        // Store derived mood value
+        if (derived_mood_value !== null && derived_mood_value !== undefined) {
+          try {
+            await moodRepository.createOrUpdateMoodEntry(
+              userId,
+              derived_mood_value,
+              derived_mood_notes,
+              date
+            );
+            processedResults.push({ type: 'derived_mood_value', status: 'success', date });
+          } catch (error) {
+            log('error', `Error storing derived mood value for user ${userId} on ${date}:`, error);
+            errors.push({ type: 'derived_mood_value', status: 'error', date, message: error.message });
+          }
+        }
+      }
+    }
+    // Add processing for other health metrics here as needed in the future
+    // For example:
+    // if (healthData.heart_rates && Array.isArray(healthData.heart_rates)) {
+    //   for (const hrEntry of healthData.heart_rates) {
+    //     // Process heart rate data
+    //   }
+    // }
+
+  } catch (error) {
+    log('error', `[garminService] Unexpected error in processGarminHealthAndWellnessData for user ${userId}:`, error);
+    errors.push({ type: 'general', status: 'error', message: error.message });
+  }
+
+  if (errors.length > 0) {
+    throw new Error(JSON.stringify({
+      message: "Some Garmin health and wellness data entries could not be processed.",
+      processed: processedResults,
+      errors: errors
+    }));
+  } else {
+    return {
+      message: "All Garmin health and wellness data successfully processed.",
+      processed: processedResults
+    };
+  }
 }
 
 // Helper function to process a Garmin workout session (e.g., Wokroutv2.txt)
@@ -376,9 +462,45 @@ async function processGarminSimpleActivity(userId, activityData) {
   });
 }
 
+const sleepRepository = require('../models/sleepRepository'); // Import sleepRepository
+
+async function processGarminSleepData(userId, actingUserId, sleepDataArray, startDate, endDate) {
+    const processedResults = [];
+    const errors = [];
+
+    // Comprehensive cleanup for Garmin-sourced sleep data for the date range
+    log('info', `[garminService] Performing comprehensive cleanup for Garmin sleep data for user ${userId} from ${startDate} to ${endDate}.`);
+    await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(userId, 'garmin', startDate, endDate);
+
+    for (const sleepEntry of sleepDataArray) {
+        try {
+            const result = await measurementService.processSleepEntry(userId, actingUserId, sleepEntry);
+            processedResults.push({ status: 'success', data: result });
+        } catch (error) {
+            log('error', `Error processing Garmin sleep entry for user ${userId}:`, error);
+            errors.push({ status: 'error', message: error.message, entry: sleepEntry });
+        }
+    }
+
+    if (errors.length > 0) {
+        throw new Error(JSON.stringify({
+            message: "Some Garmin sleep entries could not be processed.",
+            processed: processedResults,
+            errors: errors
+        }));
+    } else {
+        return {
+            message: "All Garmin sleep data successfully processed.",
+            processed: processedResults
+        };
+    }
+}
+
 module.exports = {
   processActivitiesAndWorkouts,
   processGarminWorkoutSession,
   processGarminWorkoutDefinition,
   processGarminSimpleActivity,
+  processGarminSleepData,
+  processGarminHealthAndWellnessData,
 };

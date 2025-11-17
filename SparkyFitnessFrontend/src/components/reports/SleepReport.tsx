@@ -116,10 +116,18 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
         const totalSleepDuration = entry.duration_in_seconds / 60; // in minutes
         const timeAsleep = entry.time_asleep_in_seconds ? entry.time_asleep_in_seconds / 60 : 0; // in minutes
 
-        const aggregatedStages = entry.stage_events?.reduce((acc, event) => {
+        const safeStageEvents = entry.stage_events?.filter(event => event != null && event.stage_type != null) || [];
+
+        const aggregatedStages = safeStageEvents.reduce((acc, event) => {
           acc[event.stage_type] = (acc[event.stage_type] || 0) + (event.duration_in_seconds / 60); // in minutes
           return acc;
         }, {} as Record<SleepStageEvent['stage_type'], number>);
+
+        // If no detailed stage events, consider the entire timeAsleep as light sleep
+        let lightSleepDuration = aggregatedStages?.light || 0;
+        if (safeStageEvents.length === 0 && timeAsleep > 0) {
+          lightSleepDuration = timeAsleep;
+        }
 
         // Calculate sleep efficiency and sleep debt.
         // For now, using a fixed 8 hours as recommended sleep duration. This will be enhanced in future releases to use user-defined goals.
@@ -139,11 +147,11 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
           stagePercentages: {
             deep: aggregatedStages?.deep || 0,
             rem: aggregatedStages?.rem || 0,
-            light: aggregatedStages?.light || 0,
+            light: lightSleepDuration, // Use the potentially adjusted light sleep duration
             awake: aggregatedStages?.awake || 0,
             unspecified: 0,
           },
-          awakePeriods: entry.stage_events?.filter(e => e.stage_type === 'awake').length || 0,
+          awakePeriods: safeStageEvents.filter(e => e.stage_type === 'awake').length || 0,
           totalAwakeDuration: aggregatedStages?.awake || 0,
         };
 
@@ -157,7 +165,7 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
   const processSleepChartData = (): SleepChartData[] => {
     return sleepEntries.map(entry => ({
       date: entry.entry_date,
-      segments: entry.stage_events || [],
+      segments: entry.stage_events?.filter(event => event != null) || [], // Add null check here
     }));
   };
 
