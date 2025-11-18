@@ -17,7 +17,7 @@ interface AddExternalProviderFormProps {
   getProviderTypes: () => { value: string; label: string }[];
   onAddSuccess: () => void;
   handleConnectWithings: (providerId: string) => Promise<void>;
-  handleConnectGarmin: (providerId: string) => Promise<void>;
+  onGarminMfaRequired: (clientState: string) => void; // New prop for MFA handling
 }
 
 const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
@@ -27,7 +27,7 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
   getProviderTypes,
   onAddSuccess,
   handleConnectWithings,
-  handleConnectGarmin,
+  onGarminMfaRequired,
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -111,7 +111,16 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
           // We should use `data.provider` for subsequent operations if needed, but for now,
           // the `onAddSuccess()` call will trigger a refresh of the provider list.
           // No direct assignment to `data` is needed here as the `onAddSuccess` handles the refresh.
-        } else {
+        } else if (data && data.status === 'needs_mfa' && data.client_state) {
+          onGarminMfaRequired(data.client_state);
+          toast({
+            title: "Garmin MFA Required",
+            description: "Please complete Multi-Factor Authentication for Garmin.",
+          });
+          setShowAddForm(false); // Close the form after initiating MFA
+          return; // Exit the function as MFA flow is initiated
+        }
+        else {
           throw new Error(data.error || 'Garmin login failed.');
         }
       } else {
@@ -344,7 +353,9 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
                 />
               </div>
               <p className="text-sm text-muted-foreground col-span-2">
-                Garmin integration uses direct login. Your credentials are sent securely to the backend for authentication with Garmin Connect.
+                    Note: Garmin Connect integration is tested with few metrics only. Ensure your Docker Compose is updated to include Garmin section.
+                    <br />
+                    Sparky Fitness does not store your Garmin email or password. They are used only during login to obtain secure tokens.
               </p>
             </>
           )}
