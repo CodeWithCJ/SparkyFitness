@@ -7,13 +7,19 @@ import { apiCall } from '@/services/api';
 import { useAuth } from "@/hooks/useAuth";
 import TooltipWarning from './TooltipWarning';
 
-const GarminConnectSettings: React.FC<{ onStatusChange: () => void }> = ({ onStatusChange }) => {
+interface GarminConnectSettingsProps {
+  onStatusChange: () => void;
+  initialClientState?: string | null;
+  onMfaComplete?: () => void;
+}
+
+const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusChange, initialClientState, onMfaComplete }) => {
   const { user } = useAuth();
   const [garminEmail, setGarminEmail] = useState('');
   const [garminPassword, setGarminPassword] = useState('');
   const [garminMfaCode, setGarminMfaCode] = useState('');
-  const [garminClientState, setGarminClientState] = useState(null);
-  const [showGarminMfaInput, setShowGarminMfaInput] = useState(false);
+  const [garminClientState, setGarminClientState] = useState<string | null>(initialClientState || null);
+  const [showGarminMfaInput, setShowGarminMfaInput] = useState(!!initialClientState);
   const [garminData, setGarminData] = useState({ steps: null, weight: null });
   const [loading, setLoading] = useState(false);
   const [isGarminLinked, setIsGarminLinked] = useState(false);
@@ -40,6 +46,17 @@ const GarminConnectSettings: React.FC<{ onStatusChange: () => void }> = ({ onSta
   useEffect(() => {
     fetchGarminStatus();
   }, [user]);
+
+  useEffect(() => {
+    if (initialClientState) {
+      setGarminClientState(initialClientState);
+      setShowGarminMfaInput(true);
+    } else {
+      setGarminClientState(null);
+      setShowGarminMfaInput(false);
+      setGarminMfaCode('');
+    }
+  }, [initialClientState]);
 
   const syncGarminData = async () => {
     if (!user) return;
@@ -121,6 +138,9 @@ const GarminConnectSettings: React.FC<{ onStatusChange: () => void }> = ({ onSta
         // After successful login, fetch status to update UI and notify parent
         fetchGarminStatus();
         onStatusChange();
+        if (onMfaComplete) {
+          onMfaComplete();
+        }
       }
     } catch (error: any) {
       console.error('Login Error:', error);
@@ -157,9 +177,20 @@ const GarminConnectSettings: React.FC<{ onStatusChange: () => void }> = ({ onSta
         });
         setShowGarminMfaInput(false);
         setGarminMfaCode('');
+        setGarminClientState(null); // Clear client state on success
         // After successful MFA, fetch status to update UI and notify parent
         fetchGarminStatus();
         onStatusChange();
+        if (onMfaComplete) {
+          onMfaComplete();
+        }
+      } else {
+        // Handle other potential statuses or errors from the backend
+        toast({
+          title: "MFA Error",
+          description: result.message || "Failed to submit MFA code. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
       console.error('MFA Error:', error);
@@ -257,7 +288,7 @@ const GarminConnectSettings: React.FC<{ onStatusChange: () => void }> = ({ onSta
       <p className="text-sm text-muted-foreground">
         Sparky Fitness does not store your Garmin email or password. They are used only during login to obtain secure tokens.
       </p>
-      {!garminStatus.isLinked && !showGarminMfaInput && ( // Show login form if not linked and not in MFA
+      {!garminStatus.isLinked && !showGarminMfaInput && !initialClientState && ( // Show login form if not linked and not in MFA
         <form onSubmit={(e) => { e.preventDefault(); handleGarminLogin(); }} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -291,7 +322,7 @@ const GarminConnectSettings: React.FC<{ onStatusChange: () => void }> = ({ onSta
         </form>
       )}
 
-      {!garminStatus.isLinked && showGarminMfaInput && ( // Show MFA input if not linked and MFA is required
+      {showGarminMfaInput && ( // Show MFA input if MFA is required
         <>
           <Label htmlFor="garmin-mfa-code">Garmin MFA Code</Label>
           <Input

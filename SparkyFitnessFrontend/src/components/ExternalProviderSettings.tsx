@@ -41,6 +41,8 @@ const ExternalProviderSettings = () => {
   const [editData, setEditData] = useState<Partial<ExternalDataProvider>>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showGarminMfaInputFromAddForm, setShowGarminMfaInputFromAddForm] = useState(false);
+  const [garminClientStateFromAddForm, setGarminClientStateFromAddForm] = useState<string | null>(null);
 
   const loadProviders = useCallback(async () => {
     if (!user) return;
@@ -127,6 +129,11 @@ const ExternalProviderSettings = () => {
   const handleAddProviderSuccess = () => {
     setShowAddForm(false);
     loadProviders();
+  };
+
+  const handleGarminMfaRequiredFromAddForm = (clientState: string) => {
+    setShowGarminMfaInputFromAddForm(true);
+    setGarminClientStateFromAddForm(clientState);
   };
 
   const handleUpdateProvider = async (providerId: string) => {
@@ -452,12 +459,24 @@ const ExternalProviderSettings = () => {
             loading={loading}
             getProviderTypes={getProviderTypes}
             handleConnectWithings={handleConnectWithings}
-            handleConnectGarmin={handleConnectGarmin}
+            onGarminMfaRequired={handleGarminMfaRequiredFromAddForm}
           />
 
-          {providers.length > 0 && (
-            <>
-              <Separator />
+          {showGarminMfaInputFromAddForm && garminClientStateFromAddForm && (
+            <GarminConnectSettings
+              initialClientState={garminClientStateFromAddForm}
+              onMfaComplete={() => {
+                setShowGarminMfaInputFromAddForm(false);
+                setGarminClientStateFromAddForm(null);
+                loadProviders();
+              }}
+              onStatusChange={loadProviders}
+            />
+          )}
+ 
+           {providers.length > 0 && (
+             <>
+               <Separator />
               <h3 className="text-lg font-medium">Configured External Data Providers</h3>
 
               <ExternalProviderList
