@@ -197,35 +197,30 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
               {editData.provider_type === 'garmin' && (
                 <>
                   <div>
-                    <Label>Client ID</Label>
+                    <Label>Garmin Email</Label>
                     <Input
-                      type="text"
+                      type="email"
                       value={editData.app_id || ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, app_id: e.target.value }))}
-                      placeholder="Enter Garmin Client ID"
-                      autoComplete="off"
+                      placeholder="Enter Garmin Email"
+                      autoComplete="username"
                     />
                   </div>
                   <div>
-                    <Label>Client Secret</Label>
+                    <Label>Garmin Password</Label>
                     <Input
                       type="password"
                       value={editData.app_key || ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, app_key: e.target.value }))}
-                      placeholder="Enter Garmin Client Secret"
-                      autoComplete="off"
+                      placeholder="Enter Garmin Password"
+                      autoComplete="current-password"
                     />
                   </div>
                   <p className="text-sm text-muted-foreground col-span-2">
                     Note: Garmin Connect integration is tested with few metrics only. Ensure your Docker Compose is updated to include Garmin section.
                     <br />
                     Sparky Fitness does not store your Garmin email or password. They are used only during login to obtain secure tokens.
-                  </p>
-                  <p className="text-sm text-muted-foreground col-span-2">
-                    Note: Garmin Connect integration is tested with few metrics only. Ensure your Docker Compose is updated to include Garmin section.
-                    <br />
-                    Sparky Fitness does not store your Garmin email or password. They are used only during login to obtain secure tokens.
-                  </p>
+                  </p>                  
                 </>
               )}
               {(editData.provider_type === 'withings' || editData.provider_type === 'garmin') && (
