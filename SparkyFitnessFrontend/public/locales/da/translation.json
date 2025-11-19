@@ -1,0 +1,62 @@
+{
+    "nav": {
+        "diary": "Dagbog",
+        "reports": "Rapporter",
+        "goals": "Mål",
+        "settings": "Indstillinger",
+        "admin": "Admin",
+        "checkin": "Tjek ind",
+        "foods": "Fødevare"
+    },
+    "aboutDialog": {
+        "title": "Om SparkyFitness",
+        "description1": "SparkyFitness: Bygget til familier. Drevet af AI. Track mad, fitness, vand og sundhed – sammen.",
+        "joinDiscord": "Bliv en del af vores fællesskab på Discord: ",
+        "discordLink": "discord.gg/vcnMT5cPEA",
+        "gotIt": "Forstået",
+        "close": "Luk",
+        "applicationVersion": "Applikation Version ",
+        "moreInfoVisit": "For mere information, besøg ",
+        "githubRepo": "GitHub repository",
+        "wgerApi": "Wger API (Øvelses Data)",
+        "foodDataApis": "Fødevare API'er:",
+        "nutritionixApi": "Nutritionix API"
+    },
+    "exercise": {
+        "title": "Øvelser",
+        "addExerciseDialog": {
+            "title": "Tilføj motion",
+            "myExercisesTab": "Mine øvelser",
+            "onlineTab": "Online",
+            "categoryLabel": "Kategori",
+            "selectCategoryPlaceholder": "Vælg en kategori",
+            "categoryGeneral": "Generelt",
+            "categoryStrength": "Styrke",
+            "categoryCardio": "Konditionstræning",
+            "categoryYoga": "Yoga",
+            "caloriesPerHourLabel": "Kalorier/Time",
+            "descriptionLabel": "Beskrivelse",
+            "forcePull": "Træk",
+            "forcePush": "Skub",
+            "levelBeginner": "Begynder",
+            "imagesLabel": "Billeder",
+            "description": "Tilføj en ny øvelse til din database, enten ved at tilføje en brugerdefineret eller importere en fra en ekstern kilde.",
+            "addCustomTab": "Tilføj Brugerdefineret",
+            "importCSVTab": "Importer CSV",
+            "nameLabel": "Navn",
+            "caloriesPerHourHint": "Lad feltet stå tomt for at lade systemet beregne kalorier per time ({{newExerciseCalories}} kal/time).",
+            "sourceLabel": "Kilde",
+            "forceLabel": "Kraft",
+            "selectForcePlaceholder": "Vælg Kraft",
+            "forceStatic": "Statisk",
+            "levelLabel": "Niveau",
+            "selectLevelPlaceholder": "Vælg niveau",
+            "levelIntermediate": "Øvet",
+            "levelExpert": "Ekspert",
+            "mechanicLabel": "Teknik",
+            "selectMechanicPlaceholder": "Vælg teknik",
+            "mechanicIsolation": "Isolering",
+            "workoutPresetTab": "Træningsskabelon"
+        }
+    }
+}

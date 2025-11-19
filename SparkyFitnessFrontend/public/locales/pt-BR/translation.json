@@ -96,5 +96,31 @@
             "title": "Gerenciamento de chaves de API",
             "description": "Gerar e gerenciar chaves de API para integrações externas"
         }
+    },
+    "aboutDialog": {
+        "title": "Sobre SparkyFitness",
+        "description1": "SparkyFitness: Feito para famílias. Com tecnologia de IA. Sigue a alimentação, o exercício, a hidratação e a saúde — tudo junto.",
+        "applicationVersion": "Versão da aplicação: ",
+        "joinDiscord": "Junte-se à nossa comunidade no Discord: ",
+        "discordLink": "discord.gg/vcnMT5cPEA",
+        "moreInfoVisit": "Para mais informação, visite ",
+        "githubRepo": "Repositório GitHub",
+        "technologiesUsed": "Tecnologias utilizadas:",
+        "frontend": "Frontend:",
+        "backend": "Backend:",
+        "externalApis": "APIs externa:",
+        "wgerApi": "API Wger (Dados de Exercício)",
+        "foodDataApis": "APIs de dados alimentares:",
+        "nutritionixApi": "API Nutritionix",
+        "fatsecretApi": "API FatSecret",
+        "openFoodFactsApi": "API Open Food Facts",
+        "gotIt": "Entendi",
+        "close": "Fecha"
+    },
+    "exercise": {
+        "title": "Exercícios",
+        "addExerciseDialog": {
+            "title": "Adicionar exercício"
+        }
     }
 }

@@ -1,0 +1,116 @@
+{
+    "nav": {
+        "diary": "Dagbok",
+        "checkin": "Incheckning",
+        "reports": "Rapporter",
+        "foods": "Mat",
+        "goals": "Mål",
+        "settings": "Inställningar",
+        "admin": "Administrator"
+    },
+    "aboutDialog": {
+        "title": "Om SparkyFitness",
+        "description1": "SparkyFitness: Byggd för familjer. Driven av AI. Spåra mat, träning, vattenintag och hälsa - tillsammans.",
+        "applicationVersion": "Applikations Version: ",
+        "joinDiscord": "Gå med i våran gemenskap på Discord: ",
+        "discordLink": "discord.gg/vcnMT5cPEA",
+        "moreInfoVisit": "För mer information, besök ",
+        "githubRepo": "GitHub-arkiv",
+        "technologiesUsed": "Teknologier som används:",
+        "frontend": "Frontend:",
+        "backend": "Backend:",
+        "externalApis": "Externa API:er:",
+        "close": "Stäng"
+    },
+    "exerciseSearch": {
+        "loading": "Laddar..."
+    },
+    "exerciseReportsDashboard": {
+        "weight": "Vikt",
+        "kg": "kg",
+        "lbs": "lbs",
+        "neck": "Nacke",
+        "repsShort": "repetitioner",
+        "cm": "cm",
+        "inches": "tum",
+        "waist": "Midja",
+        "hips": "Höfter",
+        "dailySteps": "Dagliga steg"
+    },
+    "reportsTables": {
+        "date": "Datum",
+        "exercise": "Övning",
+        "neck": "Nacke",
+        "notes": "Anteckningar"
+    },
+    "moodReports": {
+        "startDate": "Start datum",
+        "endDate": "Slut datum",
+        "loading": "Laddar...",
+        "applyFilters": "Använd filter",
+        "noMoodDataAvailable": "Ingen humördata tillgänglig för den valda perioden.",
+        "moodTrend": "Humörtrend",
+        "detailedMoodEntries": "Detaljerade humörinlägg",
+        "tableHeadDate": "Datum",
+        "tableHeadMoodValue": "Humörvärde",
+        "tableHeadNotes": "Anteckningar",
+        "tableHeadCreatedAt": "Skapad vid"
+    },
+    "nutritionCharts": {
+        "calories": "Kalorier",
+        "fat": "Fett",
+        "protein": "Protein",
+        "carbs": "Kolhydrater",
+        "saturated_fat": "Mättat fett",
+        "polyunsaturated_fat": "Fleromättat fett",
+        "monounsaturated_fat": "Enkelomättat fett",
+        "trans_fat": "Transfett",
+        "cholesterol": "Kolesterol",
+        "sodium": "Natrium",
+        "potassium": "Kalium",
+        "dietary_fiber": "Kostfiber",
+        "sugars": "Socker",
+        "vitamin_a": "Vitamin A",
+        "vitamin_c": "Vitamin C",
+        "calcium": "Kalcium",
+        "iron": "Järn"
+    },
+    "muscleGroupRecovery": {
+        "title": "Återhämtning av muskelgrupp",
+        "noRecoveryData": "Inga data om återhämtning av muskelgrupp tillgänglig."
+    },
+    "prProgressionChart": {
+        "title": "Personliga rekordprogressioner",
+        "weightKg": "Vikt (kg)",
+        "reps": "Repetationer",
+        "estimated1RM": "Uppskattad 1RM",
+        "maxWeight": "Maxvikt",
+        "maxReps": "Max antal repetitioner"
+    },
+    "muscleGroups": {
+        "chest": "Bröst",
+        "back": "Rygg",
+        "shoulders": "Axlar",
+        "biceps": "Biceps",
+        "triceps": "Triceps",
+        "legs": "Ben",
+        "abs": "Magmuskler",
+        "calves": "Vader",
+        "forearms": "Underarmar"
+    },
+    "sleepAnalyticsCharts": {
+        "sleepStages": "Sömnstadier",
+        "deep": "Djup",
+        "rem": "REM",
+        "light": "Lätt",
+        "awake": "Vaken"
+    },
+    "exercise": {
+        "addExerciseDialog": {
+            "description": "Lägg till en ny övning i din databas, antingen genom att skapa en anpassad övning eller importera den från en extern källa.",
+            "myExercisesTab": "Mina Övningar",
+            "categoryLabel": "Kategori",
+            "selectCategoryPlaceholder": "Välj en kategori"
+        }
+    }
+}

@@ -101,9 +101,9 @@ case $ACTION in
     "up")
         echo "Starting services..."
         if [ "$ENVIRONMENT" = "dev" ]; then
-            docker compose -f "$COMPOSE_FILE" up --build -d
+            docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" up --build -d
         else
-            docker compose -f "$COMPOSE_FILE" up -d
+            docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" up -d
         fi
         echo "✅ Services started successfully!"
         echo ""
