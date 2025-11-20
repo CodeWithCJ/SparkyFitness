@@ -402,7 +402,7 @@ const scheduleGarminSyncs = async () => {
 
           if ((now.getTime() - lastSyncAt.getTime()) >= (60 * 60 * 1000)) {
             log('info', `Hourly Garmin sync for user ${userId}`);
-            await garminConnectService.getGarminDailySummary(userId, now.toISOString().split('T')[0]);
+            await garminConnectService.syncGarminHealthAndWellness(userId, now.toISOString().split('T')[0], now.toISOString().split('T')[0], []);
             await externalProviderRepository.updateProviderLastSync(provider.id, now);
           }
         }
@@ -425,7 +425,7 @@ const scheduleGarminSyncs = async () => {
 
           if (now.getDate() !== lastSyncAt.getDate() || now.getMonth() !== lastSyncAt.getMonth() || now.getFullYear() !== lastSyncAt.getFullYear()) {
             log('info', `Daily Garmin sync for user ${userId}`);
-            await garminConnectService.getGarminDailySummary(userId, now.toISOString().split('T')[0]);
+            await garminConnectService.syncGarminHealthAndWellness(userId, now.toISOString().split('T')[0], now.toISOString().split('T')[0], []);
             await externalProviderRepository.updateProviderLastSync(provider.id, now);
           }
         }
