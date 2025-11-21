@@ -80,6 +80,16 @@ const AuthenticationSettings: React.FC = () => {
                   onCheckedChange={(checked) => handleSwitchChange('is_oidc_active', checked)}
                 />
               </div>
+              <div className="flex items-center justify-between p-4 border rounded-md">
+                <Label htmlFor="is_mfa_mandatory" className="font-medium">
+                  {t('admin.authenticationSettings.loginManagement.enforceMfaForAllUsers', 'Enforce MFA for all users')}
+                </Label>
+                <Switch
+                  id="is_mfa_mandatory"
+                  checked={settings.is_mfa_mandatory}
+                  onCheckedChange={(checked) => handleSwitchChange('is_mfa_mandatory', checked)}
+                />
+              </div>
             </>
           )}
           <div className="flex items-start p-4 mt-2 text-sm text-muted-foreground bg-secondary/20 border border-secondary/40 rounded-lg">

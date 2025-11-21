@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Search, Edit, Trash2, UserCog, KeyRound } from 'lucide-react';
+import { Users, Search, Edit, Trash2, UserCog, KeyRound, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { userManagementService, type User } from '../../services/userManagementService';
 
 const UserManagement: React.FC = () => {
@@ -182,6 +188,32 @@ const UserManagement: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const handleResetMfa = async (userId: string, userName: string) => {
+    if (!window.confirm(t('admin.userManagement.resetMfaConfirm', { userName, defaultValue: `Are you sure you want to reset MFA for ${userName}? This will require the user to set up MFA again.` }))) {
+      return;
+    }
+    setLoading(true);
+    try {
+      await userManagementService.resetUserMfa(userId);
+      setUsers(prevUsers =>
+        prevUsers.map(u => (u.id === userId ? { ...u, mfa_totp_enabled: false, mfa_email_enabled: false } : u))
+      );
+      toast({
+        title: t('success', 'Success'),
+        description: t('admin.userManagement.resetMfaSuccess', { userName, defaultValue: `MFA for ${userName} reset successfully.` }),
+      });
+    } catch (err: any) {
+      setError(err.message || t('admin.userManagement.resetMfaFailed', 'Failed to reset MFA.'));
+      toast({
+        title: t('admin.userManagement.error', 'Error'),
+        description: t('admin.userManagement.resetMfaFailed', 'Failed to reset MFA.'),
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
  
   if (loading) {
     return <div>{t('admin.userManagement.loadingUsers', 'Loading user data...')}</div>;
@@ -236,7 +268,7 @@ const UserManagement: React.FC = () => {
   };
  
   return (
-    <Accordion type="multiple" className="w-full" value={accordionOpen} onValueChange={setAccordionOpen}>
+    <Accordion type="multiple" className="w-full" value={["user-management"]} onValueChange={setAccordionOpen}>
       <AccordionItem value="user-management" className="border rounded-lg mb-4">
         <AccordionTrigger
           className="flex items-center gap-2 p-4 hover:no-underline"
@@ -297,6 +329,18 @@ const UserManagement: React.FC = () => {
                       >
                         {t('admin.userManagement.lastLogin', 'Last Login')} {sortBy === 'last_login_at' && (sortOrder === 'asc' ? '▲' : '▼')}
                       </TableHead>
+                      <TableHead
+                        className="cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); handleSortChange('mfa_totp_enabled'); }}
+                      >
+                        {t('admin.userManagement.totpEnabled', 'TOTP')} {sortBy === 'mfa_totp_enabled' && (sortOrder === 'asc' ? '▲' : '▼')}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); handleSortChange('mfa_email_enabled'); }}
+                      >
+                        {t('admin.userManagement.emailMfaEnabled', 'Email MFA')} {sortBy === 'mfa_email_enabled' && (sortOrder === 'asc' ? '▲' : '▼')}
+                      </TableHead>
                       <TableHead className="text-right">{t('admin.userManagement.actions', 'Actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -346,15 +390,61 @@ const UserManagement: React.FC = () => {
                         <TableCell>
                           {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : t('common.notApplicable', 'N/A')}
                         </TableCell>
+                        <TableCell>
+                          <Switch
+                            id={`mfa_totp_enabled-${user.id}`}
+                            checked={user.mfa_totp_enabled}
+                            disabled
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            id={`mfa_email_enabled-${user.id}`}
+                            checked={user.mfa_email_enabled}
+                            disabled
+                          />
+                        </TableCell>
                         <TableCell className="text-right">
-                          <>
-                            <Button variant="outline" size="sm" onClick={() => handleResetPassword(user.id, user.full_name)} disabled={loading} className="mr-2">
-                              <KeyRound className="h-4 w-4" />
-                            </Button>
-                            <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)} disabled={loading}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
+                          <div className="flex justify-end space-x-2">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="outline" size="sm" onClick={() => handleResetPassword(user.id, user.full_name)} disabled={loading}>
+                                    <KeyRound className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{t('admin.userManagement.resetPassword', 'Reset Password')}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)} disabled={loading}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{t('admin.userManagement.deleteUser', 'Delete User')}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="outline" size="sm" onClick={() => handleResetMfa(user.id, user.full_name)} disabled={loading}>
+                                    <Lock className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{t('admin.userManagement.resetMfa', 'Reset MFA')}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

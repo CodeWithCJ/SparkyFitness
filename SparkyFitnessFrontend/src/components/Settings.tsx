@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar as CalendarIcon } from "lucide-react"; // Import CalendarIcon
 import { Calendar } from "@/components/ui/calendar"; // Import Calendar component
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Import Popover components
-import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles } from "lucide-react";
+import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles, QrCode, Mail } from "lucide-react";
 import { apiCall } from '@/services/api'; // Assuming a common API utility
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ import { parse } from "date-fns"; // Import parse for parsing user-entered date 
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"; // Import Accordion components
 import CalculationSettings from "@/pages/CalculationSettings";
 import TooltipWarning from "./TooltipWarning";
+import MFASettings from "./MFASettings"; // Import MFASettings component
 
 interface Profile {
  id: string;
@@ -935,7 +936,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         <AccordionItem value="account-security" className="border rounded-lg mb-4">
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.accountSecurity.description', 'Change your email or password')}
+            description={t('settings.accountSecurity.description', 'Change your email or password and manage MFA')}
           >
             <Lock className="h-5 w-5" />
             {t('settings.accountSecurity.title', 'Account Security')}
@@ -1010,6 +1011,8 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 {loading ? t('settings.accountSecurity.updating', 'Updating...') : t('settings.accountSecurity.updatePassword', 'Update Password')}
               </Button>
             </form>
+            <Separator />
+            <MFASettings />
           </AccordionContent>
         </AccordionItem>
       </Accordion>

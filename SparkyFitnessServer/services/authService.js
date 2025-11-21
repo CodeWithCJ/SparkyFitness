@@ -2,8 +2,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto'); // For generating secure tokens
-const { log } = require('../config/logging');
-const { JWT_SECRET } = require('../security/encryption');
+const { JWT_SECRET, ENCRYPTION_KEY, encrypt, decrypt } = require('../security/encryption'); // Added encrypt and decrypt
+const { TOTP, Secret } = require('otpauth'); // Import OTPAuth library
 const userRepository = require('../models/userRepository');
 const familyAccessRepository = require('../models/familyAccessRepository');
 const oidcProviderRepository = require('../models/oidcProviderRepository');
@@ -11,6 +11,7 @@ const globalSettingsRepository = require('../models/globalSettingsRepository');
 const adminActivityLogRepository = require('../models/adminActivityLogRepository'); // Import admin activity log repository
 const { getClient, getSystemClient } = require('../db/poolManager');
 const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
+const { log } = require('../config/logging'); // Import log explicitly
 const emailService = require('./emailService');
 
 async function registerUser(email, password, full_name) {
@@ -42,6 +43,7 @@ async function loginUser(email, password, loginSettings) {
     }
 
     const user = await userRepository.findUserByEmail(email);
+    log('debug', `User object after findUserByEmail in loginUser:`, user);
 
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       throw new Error("Invalid credentials.");
@@ -423,7 +425,6 @@ module.exports = {
   createFamilyAccessEntry,
   updateFamilyAccessEntry,
   deleteFamilyAccessEntry,
-  deleteFamilyAccessEntry,
   forgotPassword,
   resetPassword,
   getAllUsers,
@@ -432,6 +433,18 @@ module.exports = {
   updateUserRole,
   updateUserFullName,
   logAdminAction,
+  generateTotpSecret,
+  verifyTotpCode,
+  generateEmailMfaCode,
+  sendEmailMfaCode,
+  verifyEmailMfaCode,
+  generateRecoveryCodes,
+  verifyRecoveryCode,
+  resetUserMfa,
+  requestMagicLink,
+  verifyMagicLink,
+  getMfaStatus, // Add this line
+  updateUserMfaSettings, // Add this line
 };
 
 async function registerOidcUser(email, fullName, providerId, oidcSub) {
@@ -574,6 +587,358 @@ async function logAdminAction(adminUserId, targetUserId, actionType, details) {
       error
     );
     // Do not re-throw, logging should not block the main operation
+  }
+}
+
+// MFA Functions
+async function generateTotpSecret(userId, email) {
+  try {
+    const totp = new TOTP({
+      issuer: "SparkyFitness",
+      label: email,
+      algorithm: "SHA1",
+      digits: 6,
+      period: 30,
+      secret: new Secret({ size: 20 }), // Generate a random 20-byte secret
+    });
+    const { encryptedText, iv, tag } = await encrypt(totp.secret.base32, ENCRYPTION_KEY);
+    const encryptedSecret = JSON.stringify({ encryptedText, iv, tag });
+    // Store secret, but don't enable yet. mfaTotpEnabled will be set to false during setup.
+    await userRepository.updateUserMfaSettings(userId, encryptedSecret, false, null, null, null, null, null);
+    const otpauthUrl = totp.toString();
+    return { secret: totp.secret.base32, otpauthUrl };
+  } catch (error) {
+    log('error', `Error generating TOTP secret for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+async function verifyTotpCode(userId, code) {
+  try {
+    const user = await userRepository.findUserById(userId);
+    if (!user || !user.mfa_secret) {
+      throw new Error("TOTP not set up for this user.");
+    }
+    const { encryptedText, iv, tag } = JSON.parse(user.mfa_secret);
+    const decryptedSecret = await decrypt(encryptedText, iv, tag, ENCRYPTION_KEY);
+    if (!decryptedSecret) {
+      throw new Error("Failed to decrypt TOTP secret.");
+    }
+
+    const totp = new TOTP({
+      issuer: "SparkyFitness",
+      label: user.email,
+      algorithm: "SHA1",
+      digits: 6,
+      period: 30,
+      secret: Secret.fromBase32(decryptedSecret),
+    });
+
+    const delta = totp.validate({ token: code, window: 6 }); // Allow for 6 steps (180 seconds = 3 minutes) time difference
+
+    if (delta === null) {
+      return false; // Invalid code
+    }
+    return true;
+  } catch (error) {
+    log('error', `Error verifying TOTP code for user ${userId}: ${error.message}`, error);
+    throw error;
+  }
+}
+
+async function generateEmailMfaCode(userId) {
+  try {
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+    const { encryptedText, iv, tag } = await encrypt(code, ENCRYPTION_KEY);
+    const encryptedCode = JSON.stringify({ encryptedText, iv, tag });
+    log('debug', `Generated encryptedCode for storage for user ${userId}:`, encryptedCode);
+
+    // Pass all parameters, setting only email_mfa_code and email_mfa_expires_at
+    await userRepository.updateUserMfaSettings(userId, null, null, null, null, null, encryptedCode, expiresAt);
+    return code;
+  } catch (error) {
+    log('error', `Error generating email MFA code for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+async function verifyEmailMfaCode(userId, code) {
+  try {
+    const user = await userRepository.findUserById(userId);
+    if (!user || !user.email_mfa_code || !user.email_mfa_expires_at) {
+      throw new Error("Email MFA code not found or expired.");
+    }
+    log('debug', `Stored email_mfa_code for user ${userId} before JSON.parse:`, user.email_mfa_code);
+
+    let parsedCode;
+    try {
+      parsedCode = JSON.parse(user.email_mfa_code);
+    } catch (parseError) {
+      log('error', `Error parsing stored email_mfa_code for user ${userId}:`, parseError);
+      return false; // Failed to parse, assume invalid
+    }
+    const { encryptedText, iv, tag } = parsedCode;
+    const decryptedCode = await decrypt(encryptedText, iv, tag, ENCRYPTION_KEY);
+    log('debug', `Decrypted code from DB for user ${userId}: ${decryptedCode}`);
+    log('debug', `User provided code: ${code}`);
+
+    if (!decryptedCode || decryptedCode !== code) {
+      log('warn', `MFA code mismatch for user ${userId}. Decrypted: ${decryptedCode}, Provided: ${code}`);
+      return false;
+    }
+
+    log('debug', `Stored expiration for user ${userId}: ${user.email_mfa_expires_at}`);
+    log('debug', `Current time: ${new Date()}`);
+
+    if (new Date() > new Date(user.email_mfa_expires_at)) {
+      return false; // Code expired
+    }
+
+    // Clear the code after successful verification
+    // Clear only email_mfa_code and email_mfa_expires_at after successful verification
+    await userRepository.updateUserMfaSettings(userId, undefined, undefined, undefined, undefined, undefined, null, null);
+    return user;
+  } catch (error) {
+    log('error', `Error verifying email MFA code for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+async function generateRecoveryCodes(userId) {
+  try {
+    const codes = Array.from({ length: 10 }, () =>
+      crypto.randomBytes(8).toString('hex').toUpperCase()
+    );
+    const { encryptedText, iv, tag } = await encrypt(JSON.stringify(codes), ENCRYPTION_KEY);
+    // Store the encrypted object directly, as the DB column is likely JSONB and will handle parsing
+    const encryptedRecoveryCodesObject = { encryptedText, iv, tag };
+    await userRepository.updateUserMfaSettings(userId, null, null, null, encryptedRecoveryCodesObject, null, null, null);
+    return codes;
+  } catch (error) {
+    log('error', `Error generating recovery codes for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+async function verifyRecoveryCode(userId, code) {
+  try {
+    const user = await userRepository.findUserById(userId);
+    if (!user || !user.mfa_recovery_codes) {
+      return false;
+    }
+    const normalizedCode = code.trim().toUpperCase(); // Normalize the input code
+    const { encryptedText: recoveryEncryptedText, iv: recoveryIv, tag: recoveryTag } = user.mfa_recovery_codes;
+    const decryptedCodes = JSON.parse(await decrypt(recoveryEncryptedText, recoveryIv, recoveryTag, ENCRYPTION_KEY));
+    const index = decryptedCodes.indexOf(normalizedCode); // Use the normalized code for comparison
+    if (index === -1) {
+      return false; // Code not found
+    }
+
+    // Remove used code
+    decryptedCodes.splice(index, 1);
+    const { encryptedText: updatedRecoveryEncryptedText, iv: updatedRecoveryIv, tag: updatedRecoveryTag } = await encrypt(JSON.stringify(decryptedCodes), ENCRYPTION_KEY);
+    const updatedEncryptedCodes = JSON.stringify({ encryptedText: updatedRecoveryEncryptedText, iv: updatedRecoveryIv, tag: updatedRecoveryTag });
+    await userRepository.updateUserMfaSettings(userId, null, null, null, updatedEncryptedCodes, null, null, null);
+    return true;
+  } catch (error) {
+    log('error', `Error verifying recovery code for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+async function resetUserMfa(adminUserId, targetUserId) {
+  try {
+    // Admins can reset MFA for any user
+    await userRepository.updateUserMfaSettings(targetUserId, null, false, false, null, false, null, null);
+    await logAdminAction(adminUserId, targetUserId, 'MFA Reset', `MFA reset for user ${targetUserId}`);
+    return true;
+  } catch (error) {
+    log('error', `Error resetting MFA for user ${targetUserId} by admin ${adminUserId}:`, error);
+    throw error;
+  }
+}
+
+
+async function sendEmailMfaCode(email, code) {
+  try {
+    await emailService.sendEmailMfaCode(email, code);
+    log('info', `Email MFA code sent to ${email}`);
+  } catch (error) {
+    log('error', `Error sending email MFA code to ${email}:`, error);
+    throw error;
+  }
+}
+
+// Magic Link Functions
+async function requestMagicLink(email) {
+  try {
+    const user = await userRepository.findUserByEmail(email);
+    if (!user) {
+      log("info", `Magic link requested for non-existent email: ${email}`);
+      return; // For security, don't reveal if user exists or not
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes validity
+
+    await userRepository.storeMagicLinkToken(user.id, token, expires);
+
+    const magicLinkUrl = `${process.env.SPARKY_FITNESS_FRONTEND_URL}/login/magic-link?token=${token}`;
+    await emailService.sendMagicLinkEmail(user.email, magicLinkUrl);
+
+    log("info", `Magic link sent to user: ${user.id}`);
+  } catch (error) {
+    log('error', `Error requesting magic link for email ${email}:`, error);
+    throw error;
+  }
+}
+
+async function verifyMagicLink(token) {
+  try {
+    const user = await userRepository.getMagicLinkToken(token);
+    if (!user || new Date() > new Date(user.magic_link_expires)) {
+      throw new Error("Magic link is invalid or has expired.");
+    }
+
+    // Clear the magic link token immediately after use
+    await userRepository.clearMagicLinkToken(user.id);
+
+    // After successful magic link verification, proceed to issue a JWT
+    // Check for MFA requirements for local users after magic link login
+    const globalMfaMandatory = await globalSettingsRepository.getMfaMandatorySetting();
+    const mfaEnabledForUser = user.mfa_totp_enabled || user.mfa_email_enabled;
+    const mfaEnforcedForUser = user.mfa_enforced;
+
+    if (globalMfaMandatory || mfaEnforcedForUser || mfaEnabledForUser) {
+      // Return a special status to the frontend indicating MFA is required
+      return {
+        status: 'MFA_REQUIRED',
+        userId: user.id,
+        email: user.email,
+        mfa_totp_enabled: user.mfa_totp_enabled,
+        mfa_email_enabled: user.mfa_email_enabled,
+        needs_mfa_setup: (globalMfaMandatory || mfaEnforcedForUser) && !mfaEnabledForUser,
+        mfaToken: jwt.sign({ userId: user.id, purpose: 'mfa_challenge' }, JWT_SECRET, { expiresIn: '5m' }), // Short-lived token for MFA challenge
+      };
+    }
+
+    await userRepository.updateUserLastLogin(user.id);
+
+    const authToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
+    return { userId: user.id, email: user.email, token: authToken, role: user.role };
+
+  } catch (error) {
+    log('error', `Error verifying magic link:`, error);
+    throw error;
+  }
+}
+
+
+// Modified loginUser function to incorporate MFA check
+async function loginUser(email, password, loginSettings) {
+  try {
+    if (!loginSettings.email.enabled) {
+      throw new Error("Email/Password login is disabled.");
+    }
+
+    const user = await userRepository.findUserByEmail(email);
+
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+      throw new Error("Invalid credentials.");
+    }
+
+    if (!user.is_active) {
+      throw new Error("Account is disabled. Please contact an administrator.");
+    }
+
+    // Check if user is an OIDC user
+    const isOidc = await userRepository.isOidcUser(user.id);
+    if (isOidc) {
+      // OIDC users bypass our MFA; their OIDC provider handles it
+      await userRepository.updateUserLastLogin(user.id);
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
+      return { userId: user.id, token, role: user.role };
+    }
+
+    // Check for MFA requirements for local users
+    const globalMfaMandatory = await globalSettingsRepository.getMfaMandatorySetting();
+    const mfaEnabledForUser = user.mfa_totp_enabled || user.mfa_email_enabled;
+    const mfaEnforcedForUser = user.mfa_enforced;
+
+    if (globalMfaMandatory || mfaEnforcedForUser || mfaEnabledForUser) {
+      // Return a special status to the frontend indicating MFA is required
+      return {
+        status: 'MFA_REQUIRED',
+        userId: user.id,
+        email: user.email,
+        mfa_totp_enabled: user.mfa_totp_enabled,
+        mfa_email_enabled: user.mfa_email_enabled,
+        needs_mfa_setup: (globalMfaMandatory || mfaEnforcedForUser) && !mfaEnabledForUser,
+        mfaToken: jwt.sign({ userId: user.id, purpose: 'mfa_challenge' }, JWT_SECRET, { expiresIn: '5m' }), // Short-lived token for MFA challenge
+      };
+    }
+
+    // If no MFA required, proceed with normal login
+    await userRepository.updateUserLastLogin(user.id);
+
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+      expiresIn: "30d",
+    });
+    return { userId: user.id, token, role: user.role };
+  } catch (error) {
+    log("error", "Error during user login in authService:", error);
+    throw error;
+  }
+}
+
+
+async function getMfaStatus(userId) {
+  try {
+    const user = await userRepository.findUserById(userId);
+    if (!user) {
+      throw new Error("User not found.");
+    }
+    return {
+      totp_enabled: user.mfa_totp_enabled,
+      email_mfa_enabled: user.mfa_email_enabled,
+      mfa_enforced: user.mfa_enforced
+    };
+  } catch (error) {
+    log('error', `Error fetching MFA status for user ${userId}:`, error);
+    throw error;
+  }
+  
+}
+
+async function updateUserMfaSettings(
+  userId,
+  mfaSecret,
+  mfaTotpEnabled,
+  mfaEmailEnabled,
+  mfaRecoveryCodes,
+  mfaEnforced,
+  emailMfaCode,
+  emailMfaExpiresAt
+) {
+  try {
+    const success = await userRepository.updateUserMfaSettings(
+      userId,
+      mfaSecret,
+      mfaTotpEnabled,
+      mfaEmailEnabled,
+      mfaRecoveryCodes,
+      mfaEnforced,
+      emailMfaCode,
+      emailMfaExpiresAt
+    );
+    if (!success) {
+      throw new Error("User not found or MFA settings could not be updated.");
+    }
+    return true;
+  } catch (error) {
+    log('error', `Error updating MFA settings for user ${userId} in authService:`, error);
+    throw error;
   }
 }
 

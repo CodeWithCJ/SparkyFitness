@@ -22,13 +22,21 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
     const queryParams = new URLSearchParams(options.params).toString();
     url = `${url}?${queryParams}`;
   }
-  const headers: HeadersInit = {
-    ...options?.headers,
+  const headers: Record<string, string> = {
+    ...(options?.headers as Record<string, string> || {}), // Merge existing headers first
   };
 
-  if (!options?.isFormData) {
+  // Set Content-Type for JSON bodies unless it's FormData or already set
+  if (!options?.isFormData && options?.body && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
+
+  // If body is FormData, ensure Content-Type is not set to application/json
+  if (options?.isFormData) {
+    delete headers['Content-Type'];
+  }
+
+  // debug(userLoggingLevel, `API Call: Final headers for ${endpoint}:`, headers);
 
   // The Authorization header is no longer needed as authentication is handled by httpOnly cookies.
 

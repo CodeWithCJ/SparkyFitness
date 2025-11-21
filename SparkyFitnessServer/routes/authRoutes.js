@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const { registerValidation, loginValidation, forgotPasswordValidation, resetPasswordValidation } = require('../validation/authValidation');
+const jwt = require('jsonwebtoken'); // Import jsonwebtoken
+const { authenticate, authorize } = require('../middleware/authMiddleware'); // Added authorize
+const { registerValidation, loginValidation, forgotPasswordValidation, resetPasswordValidation, mfaValidation, emailMfaValidation, verifyRecoveryCodeValidation, magicLinkRequestValidation } = require('../validation/authValidation'); // Added new validations
 const { validationResult } = require('express-validator');
 const authService = require('../services/authService');
 const oidcProviderRepository = require('../models/oidcProviderRepository');
 const { log } = require('../config/logging');
+const globalSettingsRepository = require('../models/globalSettingsRepository'); // Added globalSettingsRepository
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -65,14 +67,19 @@ router.post('/login', loginValidation, async (req, res, next) => {
         settings.email.enabled = true;
     }
 
-    const { userId, token, role } = await authService.loginUser(email, password, settings);
-    res.cookie('token', token, {
+    const authResult = await authService.loginUser(email, password, settings);
+
+    if (authResult.status === 'MFA_REQUIRED') {
+      return res.status(202).json(authResult);
+    }
+
+    res.cookie('token', authResult.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
-    res.status(200).json({ message: 'Login successful', userId, role });
+    res.status(200).json({ message: 'Login successful', userId: authResult.userId, role: authResult.role });
   } catch (error) {
     if (error.message === 'Invalid credentials.' || error.message === 'Email/Password login is disabled.') {
       return res.status(401).json({ error: error.message });
@@ -533,5 +540,250 @@ router.post('/reset-password', resetPasswordValidation, async (req, res, next) =
     next(error);
   }
 });
+
+router.get('/mfa/status', authenticate, async (req, res, next) => {
+  try {
+    const status = await authService.getMfaStatus(req.userId);
+    res.status(200).json(status);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/mfa/setup/totp', authenticate, async (req, res, next) => {
+  try {
+    const user = await authService.getUser(req.userId);
+    const { secret, otpauthUrl } = await authService.generateTotpSecret(user.id, user.email);
+    res.status(200).json({ secret, otpauthUrl });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/mfa/verify/totp', authenticate, mfaValidation, async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  const { code } = req.body;
+  try {
+    const isValid = await authService.verifyTotpCode(req.userId, code);
+    if (isValid) {
+      // If authenticating as part of a login challenge, issue a new JWT token.
+      // If this route is hit during MFA setup, the token will just allow proceeding, but the frontend context should handle this distinction.
+      const user = await authService.getUser(req.userId); // Fetch user details to create a full login token
+      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "30d" });
+
+      // Update MFA settings to mark TOTP as enabled if this is the setup flow,
+      // or simply acknowledge verification for login flow.
+      await authService.updateUserMfaSettings(req.userId, null, true, null, null, null, null, null);
+
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      });
+      res.status(200).json({ message: 'TOTP verified and login successful.', userId: user.id, email: user.email, role: user.role, token });
+    } else {
+      res.status(401).json({ error: 'Invalid TOTP code.' });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/mfa/enable/totp', authenticate, mfaValidation, async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  const { code } = req.body;
+  try {
+    const isValid = await authService.verifyTotpCode(req.userId, code);
+    if (isValid) {
+      await authService.updateUserMfaSettings(req.userId, null, true, null, null, null, null, null);
+      res.status(200).json({ message: 'TOTP enabled successfully.' });
+    } else {
+      res.status(401).json({ error: 'Invalid TOTP code.' });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+router.post('/mfa/disable/totp', authenticate, async (req, res, next) => {
+  try {
+    // Optionally require password re-authentication here
+    await authService.updateUserMfaSettings(req.userId, null, false, null, null, null, null, null);
+    res.status(200).json({ message: 'TOTP disabled successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/mfa/enable/email', authenticate, async (req, res, next) => {
+  try {
+    await authService.updateUserMfaSettings(req.userId, null, null, true, null, null, null, null);
+    res.status(200).json({ message: 'Email MFA enabled successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/mfa/disable/email', authenticate, async (req, res, next) => {
+  try {
+    // Optionally require password re-authentication here
+    await authService.updateUserMfaSettings(req.userId, null, null, false, null, null, null, null);
+    res.status(200).json({ message: 'Email MFA disabled successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/mfa/request-email-code', authenticate, async (req, res, next) => {
+  try {
+    const user = await authService.getUser(req.userId); // Get user to send email
+    if (!user.mfa_email_enabled) {
+      return res.status(400).json({ error: 'Email MFA is not enabled for this user.' });
+    }
+    const code = await authService.generateEmailMfaCode(req.userId);
+    await authService.sendEmailMfaCode(user.email, code);
+    res.status(200).json({ message: 'Email MFA code sent.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/mfa/verify-email-code', authenticate, mfaValidation, async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  const { code, userId: bodyUserId } = req.body; // Extract userId from body for clarity
+  try {
+    // The userId for verification should come from the authenticated token, not the request body
+    // The middleware already sets req.userId from the X-MFA-Token
+    const user = await authService.verifyEmailMfaCode(req.userId, code);
+    if (user) {
+      // After successful email code verification, issue a JWT
+      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "30d" });
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      });
+      res.status(200).json({ message: 'Email MFA code verified. Login successful.', userId: user.id, email: user.email, role: user.role, token });
+    } else {
+      res.status(401).json({ error: 'Invalid or expired email MFA code.' });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/mfa/recovery-codes', authenticate, async (req, res, next) => {
+  try {
+    const codes = await authService.generateRecoveryCodes(req.userId);
+    res.status(200).json({ recoveryCodes: codes });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/mfa/verify-recovery-code', verifyRecoveryCodeValidation, async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  const { code, userId } = req.body; // userId is needed if MFA is being verified during initial login
+
+  try {
+    const targetUserId = userId; // Use userId from body as it's required by validation
+    const isValid = await authService.verifyRecoveryCode(targetUserId, code);
+    if (isValid) {
+      // Fetch user details to get the role
+      const user = await authService.getUser(targetUserId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found after recovery code verification.' });
+      }
+      // After successful recovery code verification, issue a new JWT
+      const token = jwt.sign({ userId: targetUserId }, process.env.JWT_SECRET, { expiresIn: "30d" });
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      });
+      res.status(200).json({ message: 'Recovery code verified. Login successful.', userId: targetUserId, role: user.role, token });
+    } else {
+      res.status(401).json({ error: 'Invalid recovery code.' });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Magic Link routes
+router.post('/request-magic-link', magicLinkRequestValidation, async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  const { email } = req.body;
+  try {
+    await authService.requestMagicLink(email);
+    res.status(200).json({ message: 'If an account with that email exists, a magic link has been sent.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/magic-link-login', async (req, res, next) => {
+  const { token } = req.query;
+  if (!token) {
+    return res.status(400).json({ error: 'Magic link token is missing.' });
+  }
+
+  try {
+    const authResult = await authService.verifyMagicLink(token);
+
+    // If MFA is required after magic link login
+    if (authResult.status === 'MFA_REQUIRED') {
+      // Instead of redirecting with query params, send the MFA details in the response
+      // The frontend will then navigate using react-router's state
+      return res.status(202).json({
+        status: 'MFA_REQUIRED',
+        userId: authResult.userId,
+        email: authResult.email,
+        mfa_totp_enabled: authResult.mfa_totp_enabled,
+        mfa_email_enabled: authResult.mfa_email_enabled,
+        needs_mfa_setup: authResult.needs_mfa_setup,
+        mfaToken: authResult.mfaToken,
+      });
+    }
+
+    res.cookie('token', authResult.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+    // Respond with a success message and token to the frontend
+    res.status(200).json({
+      message: 'Magic link login successful',
+      token: authResult.token,
+      userId: authResult.userId,
+      role: authResult.role, // Assuming role is part of authResult for full login
+    });
+  } catch (error) {
+    log('error', 'Error in magic-link-login route:', error);
+    // Send error response to frontend
+    res.status(401).json({ error: error.message || 'Magic link login failed.' });
+  }
+});
+
 
 module.exports = router;
