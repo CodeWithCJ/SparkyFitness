@@ -1,4 +1,16 @@
-import AppleHealthKit from 'react-native-health';
+// Lazy load react-native-health to avoid crashes during module initialization
+// Use dynamic require with error handling instead of static import
+let AppleHealthKit = null;
+let healthKitLoadError = null;
+
+try {
+  AppleHealthKit = require('react-native-health').default || require('react-native-health');
+  console.log('[HealthKitService] Successfully loaded react-native-health module');
+} catch (error) {
+  console.warn('[HealthKitService] Failed to load react-native-health:', error);
+  healthKitLoadError = error;
+}
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addLog } from './LogService';
 import * as api from './api';
@@ -12,6 +24,17 @@ let isHealthKitAvailable = false;
 // HealthKit permissions - built dynamically to avoid crashes from missing constants
 const getHealthKitPermissions = () => {
   try {
+    // If HealthKit module didn't load, return empty permissions
+    if (!AppleHealthKit || healthKitLoadError) {
+      console.warn('[HealthKitService] Cannot build permissions - module not loaded');
+      return {
+        permissions: {
+          read: [],
+          write: [],
+        },
+      };
+    }
+
     const permissions = [];
 
     // List of permissions to request - only add if they exist
@@ -72,6 +95,15 @@ const getHealthKitPermissions = () => {
 export const initHealthKit = async () => {
   return new Promise((resolve, reject) => {
     try {
+      // Check if the module loaded successfully
+      if (!AppleHealthKit || healthKitLoadError) {
+        addLog(`[HealthKitService] HealthKit module failed to load: ${healthKitLoadError?.message || 'Module not available'}`, 'error', 'ERROR');
+        console.error('[HealthKitService] HealthKit module not loaded', healthKitLoadError);
+        isHealthKitAvailable = false;
+        resolve(false);
+        return;
+      }
+
       // Check if HealthKit is available on this device
       AppleHealthKit.isAvailable((err, available) => {
         if (err) {
