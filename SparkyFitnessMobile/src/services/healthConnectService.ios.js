@@ -6,6 +6,9 @@ import { HEALTH_METRICS } from '../constants/HealthMetrics';
 
 const SYNC_DURATION_KEY = '@HealthKit:syncDuration';
 
+// Track if HealthKit is available on this device
+let isHealthKitAvailable = false;
+
 // HealthKit permissions mapping
 const HEALTHKIT_PERMISSIONS = {
   permissions: {
@@ -40,16 +43,48 @@ const HEALTHKIT_PERMISSIONS = {
 
 export const initHealthKit = async () => {
   return new Promise((resolve, reject) => {
-    AppleHealthKit.initHealthKit(HEALTHKIT_PERMISSIONS, (err, results) => {
-      if (err) {
-        addLog(`[HealthKitService] Failed to initialize HealthKit: ${err}`, 'error', 'ERROR');
-        console.error('[HealthKitService] Failed to initialize HealthKit', err);
-        resolve(false);
-      } else {
-        addLog('[HealthKitService] HealthKit initialized successfully', 'info', 'SUCCESS');
-        resolve(true);
-      }
-    });
+    try {
+      // Check if HealthKit is available on this device
+      AppleHealthKit.isAvailable((err, available) => {
+        if (err) {
+          addLog(`[HealthKitService] Error checking HealthKit availability: ${err}`, 'warn', 'WARNING');
+          console.warn('[HealthKitService] HealthKit not available on this device', err);
+          resolve(false);
+          return;
+        }
+
+        if (!available) {
+          addLog('[HealthKitService] HealthKit is not available on this device (likely iPad without full support)', 'warn', 'WARNING');
+          console.warn('[HealthKitService] HealthKit not available');
+          resolve(false);
+          return;
+        }
+
+        // HealthKit is available, proceed with initialization
+        try {
+          AppleHealthKit.initHealthKit(HEALTHKIT_PERMISSIONS, (err, results) => {
+            if (err) {
+              addLog(`[HealthKitService] Failed to initialize HealthKit: ${err}`, 'error', 'ERROR');
+              console.error('[HealthKitService] Failed to initialize HealthKit', err);
+              isHealthKitAvailable = false;
+              resolve(false);
+            } else {
+              addLog('[HealthKitService] HealthKit initialized successfully', 'info', 'SUCCESS');
+              isHealthKitAvailable = true;
+              resolve(true);
+            }
+          });
+        } catch (initError) {
+          addLog(`[HealthKitService] Exception during HealthKit initialization: ${initError.message}`, 'error', 'ERROR');
+          console.error('[HealthKitService] HealthKit initialization exception', initError);
+          resolve(false);
+        }
+      });
+    } catch (error) {
+      addLog(`[HealthKitService] Exception checking HealthKit availability: ${error.message}`, 'error', 'ERROR');
+      console.error('[HealthKitService] HealthKit availability check failed', error);
+      resolve(false);
+    }
   });
 };
 
@@ -90,6 +125,12 @@ export const getSyncStartDate = (duration) => {
 
 // Read health records from HealthKit
 export const readHealthRecords = async (recordType, startDate, endDate) => {
+  // If HealthKit is not available, return empty array
+  if (!isHealthKitAvailable) {
+    addLog(`[HealthKitService] HealthKit not available, returning empty records for ${recordType}`, 'warn', 'WARNING');
+    return [];
+  }
+
   return new Promise((resolve, reject) => {
     const options = {
       startDate: startDate.toISOString(),
