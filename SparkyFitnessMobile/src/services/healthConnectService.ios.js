@@ -6,50 +6,114 @@ import { HEALTH_METRICS } from '../constants/HealthMetrics';
 
 const SYNC_DURATION_KEY = '@HealthKit:syncDuration';
 
-// HealthKit permissions mapping
-const HEALTHKIT_PERMISSIONS = {
-  permissions: {
-    read: [
-      AppleHealthKit.Constants.Permissions.StepCount,
-      AppleHealthKit.Constants.Permissions.ActiveEnergyBurned,
-      AppleHealthKit.Constants.Permissions.BasalEnergyBurned,
-      AppleHealthKit.Constants.Permissions.HeartRate,
-      AppleHealthKit.Constants.Permissions.Weight,
-      AppleHealthKit.Constants.Permissions.BloodPressureSystolic,
-      AppleHealthKit.Constants.Permissions.BloodPressureDiastolic,
-      AppleHealthKit.Constants.Permissions.BodyFatPercentage,
-      AppleHealthKit.Constants.Permissions.BodyTemperature,
-      AppleHealthKit.Constants.Permissions.BloodGlucose,
-      AppleHealthKit.Constants.Permissions.Height,
-      AppleHealthKit.Constants.Permissions.LeanBodyMass,
-      AppleHealthKit.Constants.Permissions.BodyMass,
-      AppleHealthKit.Constants.Permissions.SleepAnalysis,
-      AppleHealthKit.Constants.Permissions.OxygenSaturation,
-      AppleHealthKit.Constants.Permissions.Vo2Max,
-      AppleHealthKit.Constants.Permissions.RestingHeartRate,
-      AppleHealthKit.Constants.Permissions.WalkingHeartRateAverage,
-      AppleHealthKit.Constants.Permissions.RespiratoryRate,
-      AppleHealthKit.Constants.Permissions.DistanceWalkingRunning,
-      AppleHealthKit.Constants.Permissions.FlightsClimbed,
-      AppleHealthKit.Constants.Permissions.Water,
-      AppleHealthKit.Constants.Permissions.Workout,
-    ],
-    write: [],
-  },
+// Track if HealthKit is available on this device
+let isHealthKitAvailable = false;
+
+// HealthKit permissions - built dynamically to avoid crashes from missing constants
+const getHealthKitPermissions = () => {
+  try {
+    const permissions = [];
+
+    // List of permissions to request - only add if they exist
+    const permissionNames = [
+      'StepCount',
+      'HeartRate',
+      'ActiveEnergyBurned',
+      'BasalEnergyBurned',
+      'Weight',
+      'Height',
+      'BodyFatPercentage',
+      'BloodPressureSystolic',
+      'BloodPressureDiastolic',
+      'SleepAnalysis',
+      'DistanceWalkingRunning',
+      'FlightsClimbed',
+      'Water',
+      'RestingHeartRate',
+      'OxygenSaturation',
+      'Vo2Max',
+      'BloodGlucose',
+      'BodyTemperature',
+      'LeanBodyMass',
+      'RespiratoryRate',
+      'Workout',
+    ];
+
+    permissionNames.forEach(permName => {
+      try {
+        if (AppleHealthKit?.Constants?.Permissions?.[permName]) {
+          permissions.push(AppleHealthKit.Constants.Permissions[permName]);
+        }
+      } catch (err) {
+        // Skip permissions that don't exist
+        console.warn(`[HealthKit] Skipping unavailable permission: ${permName}`);
+      }
+    });
+
+    addLog(`[HealthKitService] Built permission list with ${permissions.length} permissions`);
+
+    return {
+      permissions: {
+        read: permissions,
+        write: [],
+      },
+    };
+  } catch (error) {
+    addLog(`[HealthKitService] Error building permissions: ${error.message}`, 'error', 'ERROR');
+    return {
+      permissions: {
+        read: [],
+        write: [],
+      },
+    };
+  }
 };
 
 export const initHealthKit = async () => {
   return new Promise((resolve, reject) => {
-    AppleHealthKit.initHealthKit(HEALTHKIT_PERMISSIONS, (err, results) => {
-      if (err) {
-        addLog(`[HealthKitService] Failed to initialize HealthKit: ${err}`, 'error', 'ERROR');
-        console.error('[HealthKitService] Failed to initialize HealthKit', err);
-        resolve(false);
-      } else {
-        addLog('[HealthKitService] HealthKit initialized successfully', 'info', 'SUCCESS');
-        resolve(true);
-      }
-    });
+    try {
+      // Check if HealthKit is available on this device
+      AppleHealthKit.isAvailable((err, available) => {
+        if (err) {
+          addLog(`[HealthKitService] Error checking HealthKit availability: ${err}`, 'warn', 'WARNING');
+          console.warn('[HealthKitService] HealthKit not available on this device', err);
+          resolve(false);
+          return;
+        }
+
+        if (!available) {
+          addLog('[HealthKitService] HealthKit is not available on this device (likely iPad without full support)', 'warn', 'WARNING');
+          console.warn('[HealthKitService] HealthKit not available');
+          resolve(false);
+          return;
+        }
+
+        // HealthKit is available, proceed with initialization
+        try {
+          const permissions = getHealthKitPermissions();
+          AppleHealthKit.initHealthKit(permissions, (err, results) => {
+            if (err) {
+              addLog(`[HealthKitService] Failed to initialize HealthKit: ${err}`, 'error', 'ERROR');
+              console.error('[HealthKitService] Failed to initialize HealthKit', err);
+              isHealthKitAvailable = false;
+              resolve(false);
+            } else {
+              addLog('[HealthKitService] HealthKit initialized successfully', 'info', 'SUCCESS');
+              isHealthKitAvailable = true;
+              resolve(true);
+            }
+          });
+        } catch (initError) {
+          addLog(`[HealthKitService] Exception during HealthKit initialization: ${initError.message}`, 'error', 'ERROR');
+          console.error('[HealthKitService] HealthKit initialization exception', initError);
+          resolve(false);
+        }
+      });
+    } catch (error) {
+      addLog(`[HealthKitService] Exception checking HealthKit availability: ${error.message}`, 'error', 'ERROR');
+      console.error('[HealthKitService] HealthKit availability check failed', error);
+      resolve(false);
+    }
   });
 };
 
@@ -90,6 +154,12 @@ export const getSyncStartDate = (duration) => {
 
 // Read health records from HealthKit
 export const readHealthRecords = async (recordType, startDate, endDate) => {
+  // If HealthKit is not available, return empty array
+  if (!isHealthKitAvailable) {
+    addLog(`[HealthKitService] HealthKit not available, returning empty records for ${recordType}`, 'warn', 'WARNING');
+    return [];
+  }
+
   return new Promise((resolve, reject) => {
     const options = {
       startDate: startDate.toISOString(),
