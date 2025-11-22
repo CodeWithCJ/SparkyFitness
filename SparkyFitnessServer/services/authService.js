@@ -797,18 +797,28 @@ async function requestMagicLink(email) {
 async function verifyMagicLink(token) {
   try {
     const user = await userRepository.getMagicLinkToken(token);
-    if (!user || new Date() > new Date(user.magic_link_expires)) {
-      throw new Error("Magic link is invalid or has expired.");
+    if (!user) {
+      throw new Error("Magic link is invalid or has already been used.");
+    }
+    if (new Date() > new Date(user.magic_link_expires)) {
+      throw new Error("Magic link has expired.");
     }
 
-    // Clear the magic link token immediately after use
-    await userRepository.clearMagicLinkToken(user.id);
+    // Defer clearing the magic link token until after MFA check or full login
+    // await userRepository.clearMagicLinkToken(user.id);
 
     // After successful magic link verification, proceed to issue a JWT
     // Check for MFA requirements for local users after magic link login
     const globalMfaMandatory = await globalSettingsRepository.getMfaMandatorySetting();
     const mfaEnabledForUser = user.mfa_totp_enabled || user.mfa_email_enabled;
     const mfaEnforcedForUser = user.mfa_enforced;
+
+    log('debug', `Magic link login MFA check for user ${user.id}:`);
+    log('debug', `  Global MFA mandatory: ${globalMfaMandatory}`);
+    log('debug', `  User MFA enabled (TOTP or Email): ${mfaEnabledForUser}`);
+    log('debug', `  User MFA enforced: ${mfaEnforcedForUser}`);
+    log('debug', `  User object MFA details: mfa_totp_enabled=${user.mfa_totp_enabled}, mfa_email_enabled=${user.mfa_email_enabled}, mfa_enforced=${user.mfa_enforced}`);
+
 
     if (globalMfaMandatory || mfaEnforcedForUser || mfaEnabledForUser) {
       // Return a special status to the frontend indicating MFA is required
@@ -824,6 +834,8 @@ async function verifyMagicLink(token) {
     }
 
     await userRepository.updateUserLastLogin(user.id);
+    // Clear the magic link token now that the user is fully logged in without MFA
+    await userRepository.clearMagicLinkToken(user.id);
 
     const authToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
     return { userId: user.id, email: user.email, token: authToken, role: user.role };

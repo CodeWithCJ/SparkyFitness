@@ -119,7 +119,7 @@ const Auth = () => {
               description: "Logged in successfully via magic link!",
             });
             signIn(data.userId, data.email, data.role, 'magic_link');
-            navigate('/');
+            window.location.replace('/'); // Force a full page reload
           }
         } catch (err: any) {
           error(loggingLevel, "Auth: Magic link login failed:", err);
@@ -128,7 +128,7 @@ const Auth = () => {
             description: err.message || "Magic link is invalid or has expired.",
             variant: "destructive",
           });
-          navigate('/login'); // Redirect to login page on error
+          window.location.replace('/login'); // Force a full page reload to clear state
         } finally {
           setLoading(false);
         }

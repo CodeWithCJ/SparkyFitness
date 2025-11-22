@@ -515,7 +515,7 @@ async function getMagicLinkToken(token) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
-      'SELECT id, email, magic_link_expires FROM auth.users WHERE magic_link_token = $1',
+      'SELECT id, email, magic_link_expires, mfa_totp_enabled, mfa_email_enabled, mfa_enforced FROM auth.users WHERE magic_link_token = $1',
       [token]
     );
     return result.rows[0];
