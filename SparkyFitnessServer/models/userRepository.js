@@ -1,4 +1,5 @@
 const { getClient, getSystemClient } = require('../db/poolManager');
+const { log } = require('../config/logging'); // Import log
 
 async function createUser(userId, email, hashedPassword, full_name) {
   const client = await getSystemClient(); // System client for user creation
@@ -37,7 +38,7 @@ async function findUserByEmail(email) {
   const client = await getSystemClient(); // System client for finding user by email (authentication)
   try {
     const result = await client.query(
-      'SELECT id, email, password_hash, role, is_active FROM auth.users WHERE LOWER(email) = LOWER($1)',
+      'SELECT id, email, password_hash, role, is_active, mfa_secret, mfa_totp_enabled, mfa_email_enabled, mfa_recovery_codes, mfa_enforced, magic_link_token, magic_link_expires FROM auth.users WHERE LOWER(email) = LOWER($1)',
       [email]
     );
     return result.rows[0];
@@ -50,7 +51,7 @@ async function findUserById(userId) {
   const client = await getSystemClient(); // System client for finding user by ID (authentication/admin)
   try {
     const result = await client.query(
-      'SELECT id, email, role, created_at FROM auth.users WHERE id = $1',
+      'SELECT id, email, role, created_at, mfa_secret, mfa_totp_enabled, mfa_email_enabled, mfa_recovery_codes, mfa_enforced, magic_link_token, magic_link_expires, email_mfa_code, email_mfa_expires_at FROM auth.users WHERE id = $1',
       [userId]
     );
     return result.rows[0];
@@ -448,6 +449,108 @@ async function updateUserFullName(userId, fullName) {
   }
 }
 
+async function updateUserMfaSettings(userId, mfaSecret, mfaTotpEnabled, mfaEmailEnabled, mfaRecoveryCodes, mfaEnforced, emailMfaCode, emailMfaExpiresAt) {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      `UPDATE auth.users
+       SET mfa_secret = COALESCE($1, mfa_secret),
+           mfa_totp_enabled = COALESCE($2, mfa_totp_enabled),
+           mfa_email_enabled = COALESCE($3, mfa_email_enabled),
+           mfa_recovery_codes = $4,
+           mfa_enforced = COALESCE($5, mfa_enforced),
+           email_mfa_code = $6,
+           email_mfa_expires_at = $7,
+           updated_at = now()
+        WHERE id = $8 RETURNING id`,
+      [mfaSecret, mfaTotpEnabled, mfaEmailEnabled, mfaRecoveryCodes, mfaEnforced, emailMfaCode, emailMfaExpiresAt, userId]
+    );
+    log('debug', `Executing query for userId ${userId} with parameters:`, { mfaSecret, mfaTotpEnabled, mfaEmailEnabled, mfaRecoveryCodes, mfaEnforced, emailMfaCode, emailMfaExpiresAt, userId });
+    return result.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}
+
+async function getMfaSettings(userId) {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      'SELECT mfa_secret, mfa_totp_enabled, mfa_email_enabled, mfa_recovery_codes, mfa_enforced, email_mfa_code, email_mfa_expires_at FROM auth.users WHERE id = $1',
+      [userId]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function setMfaEnforced(userId, mfaEnforced) {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      'UPDATE auth.users SET mfa_enforced = $1, updated_at = now() WHERE id = $2 RETURNING id',
+      [mfaEnforced, userId]
+    );
+    return result.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}
+
+async function storeMagicLinkToken(userId, token, expires) {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      'UPDATE auth.users SET magic_link_token = $1, magic_link_expires = $2, updated_at = now() WHERE id = $3 RETURNING id',
+      [token, expires, userId]
+    );
+    return result.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}
+
+async function getMagicLinkToken(token) {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      'SELECT id, email, magic_link_expires, mfa_totp_enabled, mfa_email_enabled, mfa_enforced FROM auth.users WHERE magic_link_token = $1',
+      [token]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function clearMagicLinkToken(userId) {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      'UPDATE auth.users SET magic_link_token = NULL, magic_link_expires = NULL, updated_at = now() WHERE id = $1 RETURNING id',
+      [userId]
+    );
+    return result.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}
+
+async function isOidcUser(userId) {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      'SELECT EXISTS (SELECT 1 FROM public.user_oidc_links WHERE user_id = $1) AS is_oidc_user',
+      [userId]
+    );
+    return result.rows[0].is_oidc_user;
+  } finally {
+    client.release();
+  }
+}
+
+
 module.exports = {
   createUser,
   createOidcUser,
@@ -475,4 +578,11 @@ module.exports = {
   updateUserStatus,
   updateUserFullName,
   updateUserOidcLink,
+  updateUserMfaSettings,
+  getMfaSettings,
+  setMfaEnforced,
+  storeMagicLinkToken,
+  getMagicLinkToken,
+  clearMagicLinkToken,
+  isOidcUser,
 };

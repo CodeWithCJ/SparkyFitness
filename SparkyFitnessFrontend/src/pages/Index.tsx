@@ -17,6 +17,8 @@ import Settings from "@/components/Settings";
 import GoalsSettings from "@/components/GoalsSettings"; // Import GoalsSettings
 import ThemeToggle from "@/components/ThemeToggle";
 import ProfileSwitcher from "@/components/ProfileSwitcher";
+import GitHubStarCounter from "@/components/GitHubStarCounter"; // Import GitHubStarCounter
+import GitHubSponsorButton from "@/components/GitHubSponsorButton"; // Import GitHubSponsorButton
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import GlobalNotificationIcon from "@/components/GlobalNotificationIcon";
@@ -338,7 +340,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1"> {/* Adjusted gap for tighter spacing */}
             <img
               src="/images/SparkyFitness.png"
               alt="SparkyFitness Logo"
@@ -347,6 +349,8 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
             <h1 className="text-xl sm:text-2xl font-bold text-foreground dark:text-slate-300">
               SparkyFitness
             </h1>
+            <GitHubStarCounter owner="CodeWithCJ" repo="SparkyFitness" />
+            <GitHubSponsorButton owner="CodeWithCJ" />
           </div>
           <div className="flex items-center gap-2">
             <ProfileSwitcher />

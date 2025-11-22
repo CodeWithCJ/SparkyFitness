@@ -22,13 +22,21 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
     const queryParams = new URLSearchParams(options.params).toString();
     url = `${url}?${queryParams}`;
   }
-  const headers: HeadersInit = {
-    ...options?.headers,
+  const headers: Record<string, string> = {
+    ...(options?.headers as Record<string, string> || {}), // Merge existing headers first
   };
 
-  if (!options?.isFormData) {
+  // Set Content-Type for JSON bodies unless it's FormData or already set
+  if (!options?.isFormData && options?.body && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
+
+  // If body is FormData, ensure Content-Type is not set to application/json
+  if (options?.isFormData) {
+    delete headers['Content-Type'];
+  }
+
+  // debug(userLoggingLevel, `API Call: Final headers for ${endpoint}:`, headers);
 
   // The Authorization header is no longer needed as authentication is handled by httpOnly cookies.
 
@@ -51,7 +59,9 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
   }
 
   try {
+    debug(userLoggingLevel, `API Call: Sending request to ${url} with config:`, config);
     const response = await fetch(url, config);
+    debug(userLoggingLevel, `API Call: Received response from ${url} with status:`, response.status);
 
     if (!response.ok) {
       let errorData: any;
@@ -66,6 +76,7 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
         errorData = { message: await response.text() };
       }
       const errorMessage = errorData.error || errorData.message || `API call failed with status ${response.status}`;
+      error(userLoggingLevel, `API Call: Error response from ${url}:`, { status: response.status, errorData });
 
       // Special handling for 400 errors on recent/top endpoints
       if (
@@ -102,11 +113,15 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
 
     // Handle different response types
     if (options?.responseType === 'blob') {
-      return await response.blob();
+      const blobResponse = await response.blob();
+      debug(userLoggingLevel, `API Call: Received blob response from ${url}.`);
+      return blobResponse;
     }
     // Handle cases where the response might be empty (e.g., DELETE requests)
     const text = await response.text();
-    return text ? JSON.parse(text) : {};
+    const jsonResponse = text ? JSON.parse(text) : {};
+    debug(userLoggingLevel, `API Call: Received JSON response from ${url}:`, jsonResponse);
+    return jsonResponse;
   } catch (err: any) {
     error(userLoggingLevel, "API call network error:", err);
     toast({

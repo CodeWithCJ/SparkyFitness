@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 
 MOCK_DATA_DIR = "mock_data"
 
+# Ensure the mock_data directory exists at startup
+os.makedirs(MOCK_DATA_DIR, exist_ok=True)
+
 def _save_to_local_file(filename: str, data: dict):
     """Saves data to a local JSON file within the mock_data directory."""
     os.makedirs(MOCK_DATA_DIR, exist_ok=True)

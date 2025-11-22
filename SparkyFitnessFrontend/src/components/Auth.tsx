@@ -21,16 +21,19 @@ import {
   initiateOidcLogin,
   getOidcProviders,
   getLoginSettings,
+  verifyMagicLink,
+  requestMagicLink,
 } from "@/services/authService";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthResponse, LoginSettings, OidcProvider } from "../types/auth";
 import useToggle from "@/hooks/use-toggle";
 import PasswordToggle from "./PasswordToggle";
+import MfaChallenge from "../pages/MfaChallenge"; // Import the MfaChallenge component
 
 const Auth = () => {
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
   const { loggingLevel } = usePreferences();
-  const { signIn } = useAuth(); // Use the useAuth hook (no navigate argument needed here)
+  const { signIn } = useAuth();
   debug(loggingLevel, "Auth: Component rendered.");
 
   const [loading, setLoading] = useState(false);
@@ -45,6 +48,11 @@ const Auth = () => {
   });
   const [oidcProviders, setOidcProviders] = useState<OidcProvider[]>([]);
   const { isToggled: showPassword, toggleHandler: passwordToggleHandler } = useToggle();
+  // State for MFA challenge
+  const [showMfaChallenge, setShowMfaChallenge] = useState(false);
+  const [mfaChallengeProps, setMfaChallengeProps] = useState<any>(null); // Store MFA data
+  // State for Magic Link Request Dialog
+  const [isMagicLinkRequestDialogOpen, setIsMagicLinkRequestDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchAuthSettings = async () => {
@@ -56,7 +64,6 @@ const Auth = () => {
           const providers = await getOidcProviders();
           setOidcProviders(providers);
 
-          // If only OIDC is enabled and there is only one provider, redirect immediately
           if (!settings.email.enabled && providers.length === 1) {
             initiateOidcLogin(providers[0].id);
           }
@@ -72,6 +79,63 @@ const Auth = () => {
     };
     fetchAuthSettings();
   }, [loggingLevel]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const magicLinkToken = params.get('token');
+    const path = window.location.pathname;
+
+    if (path === '/login/magic-link' && magicLinkToken) {
+      info(loggingLevel, "Auth: Attempting magic link login.");
+      setLoading(true);
+      const handleMagicLinkLogin = async () => {
+        try {
+          const data: AuthResponse = await verifyMagicLink(magicLinkToken);
+
+          if (data.status === 'MFA_REQUIRED') {
+            info(loggingLevel, "Auth: MFA required after magic link login. Displaying MFA challenge.");
+            setMfaChallengeProps({
+              userId: data.userId,
+              email: data.email || email,
+              mfaTotpEnabled: data.mfa_totp_enabled,
+              mfaEmailEnabled: data.mfa_email_enabled,
+              needsMfaSetup: data.needs_mfa_setup,
+              mfaToken: data.mfaToken,
+              onMfaSuccess: () => {
+                setShowMfaChallenge(false);
+                navigate('/');
+              },
+              onMfaCancel: () => {
+                setShowMfaChallenge(false);
+                setLoading(false);
+                navigate('/login'); // Redirect back to login page on cancel
+              },
+            });
+            setShowMfaChallenge(true);
+          } else {
+            info(loggingLevel, "Auth: Magic link login successful.");
+            toast({
+              title: "Success",
+              description: "Logged in successfully via magic link!",
+            });
+            signIn(data.userId, data.email, data.role, 'magic_link');
+            window.location.replace('/'); // Force a full page reload
+          }
+        } catch (err: any) {
+          error(loggingLevel, "Auth: Magic link login failed:", err);
+          toast({
+            title: "Error",
+            description: err.message || "Magic link is invalid or has expired.",
+            variant: "destructive",
+          });
+          window.location.replace('/login'); // Force a full page reload to clear state
+        } finally {
+          setLoading(false);
+        }
+      };
+      handleMagicLinkLogin();
+    }
+  }, [loggingLevel, navigate, signIn, email]); // Add email to dependencies if it's used in mfaChallengeProps and might change.
 
   const validatePassword = (pwd: string) => {
     if (pwd.length < 6) {
@@ -114,7 +178,7 @@ const Auth = () => {
         title: "Success",
         description: "Account created successfully!",
       });
-      signIn(data.userId, email, data.token, data.role, 'password'); // Pass token, role, and authType to signIn
+      signIn(data.userId, email, data.role, 'password'); // Pass role and authType to signIn
     } catch (err: any) {
       error(loggingLevel, "Auth: Sign up failed:", err);
       toast({
@@ -129,25 +193,69 @@ const Auth = () => {
     debug(loggingLevel, "Auth: Sign up loading state set to false.");
   };
 
+  const handleRequestMagicLink = async (dialogEmail: string) => {
+    info(loggingLevel, "Auth: Attempting to request magic link.");
+    setLoading(true);
+    try {
+      await requestMagicLink(dialogEmail);
+      toast({
+        title: "Magic Link Sent",
+        description: "If an account with that email exists, a magic link has been sent to your inbox.",
+      });
+    } catch (err: any) {
+      error(loggingLevel, "Auth: Request magic link failed:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to request magic link.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     info(loggingLevel, "Auth: Attempting sign in.");
     setLoading(true);
 
     try {
-      const data: any = await loginUser(email, password);
+      const data: AuthResponse = await loginUser(email, password);
+
+      if (data.status === 'MFA_REQUIRED') {
+        info(loggingLevel, "Auth: MFA required for sign in. Displaying MFA challenge.");
+        setMfaChallengeProps({
+          userId: data.userId,
+          email: data.email || email, // Use data.email if available, otherwise fallback to input email
+          mfaTotpEnabled: data.mfa_totp_enabled,
+          mfaEmailEnabled: data.mfa_email_enabled,
+          needsMfaSetup: data.needs_mfa_setup,
+          mfaToken: data.mfaToken,
+          onMfaSuccess: () => {
+            setShowMfaChallenge(false); // Hide MFA challenge on success
+            navigate('/'); // Navigate to dashboard or home page
+          },
+          onMfaCancel: () => {
+            setShowMfaChallenge(false); // Hide MFA challenge on cancel
+            setLoading(false); // Reset loading state
+          },
+        });
+        setShowMfaChallenge(true);
+        setLoading(false); // Stop loading as MFA challenge is now displayed
+        return;
+      }
+
       info(loggingLevel, "Auth: Sign in successful.");
       toast({
         title: "Success",
         description: "Logged in successfully!",
       });
-      signIn(data.userId, email, data.token, data.role, 'password'); // Pass token, role, and authType to signIn
+      signIn(data.userId, email, data.role, 'password'); // Assuming password auth for initial login
     } catch (err: any) {
       error(loggingLevel, "Auth: Sign in failed:", err);
       toast({
         title: "Error",
-        description:
-          err.message || "An unexpected error occurred during sign in.",
+        description: err.message || "An unexpected error occurred during sign in.",
         variant: "destructive",
       });
     }
@@ -157,106 +265,108 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md dark:bg-gray-">
-        <CardHeader className="text-center">
-          <div className="flex items-center justify-center mb-4">
-            <img
-              src="/images/SparkyFitness.png"
-              alt="SparkyFitness Logo"
-              className="h-10 w-10 mr-2"
-            />
-            <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-300">
-              SparkyFitness
-            </CardTitle>
-          </div>
-          <CardDescription>
-            Built for Families. Powered by AI. Track food, fitness, water, and
-            health — together.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loginSettings.warning && (
-            <div className="mb-4 p-3 rounded-md bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">
-              <p className="font-semibold">Warning</p>
-              <p>{loginSettings.warning}</p>
-            </div>
-          )}
-          {loginSettings.email.enabled ? (
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger
-                  value="signin"
-                  onClick={() =>
-                    debug(loggingLevel, "Auth: Switched to Sign In tab.")
-                  }
-                >
-                  Sign In
-                </TabsTrigger>
-                <TabsTrigger
-                  value="signup"
-                  onClick={() =>
-                    debug(loggingLevel, "Auth: Switched to Sign Up tab.")
-                  }
-                >
-                  Sign Up
-                </TabsTrigger>
-              </TabsList>
+    <>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+        {showMfaChallenge ? (
+          <MfaChallenge {...mfaChallengeProps} />
+        ) : (
+          <Card className="w-full max-w-md dark:bg-gray-">
+            <CardHeader className="text-center">
+              <div className="flex items-center justify-center mb-4">
+                <img
+                  src="/images/SparkyFitness.png"
+                  alt="SparkyFitness Logo"
+                  className="h-10 w-10 mr-2"
+                />
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-300">
+                  SparkyFitness
+                </CardTitle>
+              </div>
+              <CardDescription>
+                Built for Families. Powered by AI. Track food, fitness, water, and
+                health — together.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loginSettings.warning && (
+                <div className="mb-4 p-3 rounded-md bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">
+                  <p className="font-semibold">Warning</p>
+                  <p>{loginSettings.warning}</p>
+                </div>
+              )}
+              {loginSettings.email.enabled ? (
+                <Tabs defaultValue="signin" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger
+                      value="signin"
+                      onClick={() =>
+                        debug(loggingLevel, "Auth: Switched to Sign In tab.")
+                      }
+                    >
+                      Sign In
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="signup"
+                      onClick={() =>
+                        debug(loggingLevel, "Auth: Switched to Sign Up tab.")
+                      }
+                    >
+                      Sign Up
+                    </TabsTrigger>
+                  </TabsList>
 
-              <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                  <Input
-                    id="signin-email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => {
-                      debug(loggingLevel, "Auth: Sign In email input changed.");
-                      setEmail(e.target.value);
-                    }}
-                    required
-                    autoComplete="username"
-                  />
-                </div>
-                <div className="space-y-2 relative">
-                  <Label htmlFor="signin-password">Password</Label>
-                  <Input
-                    id="signin-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => {
-                      debug(
-                        loggingLevel,
-                        "Auth: Sign In password input changed."
-                      );
-                      setPassword(e.target.value);
-                    }}
-                    required
-                    autoComplete="current-password"
-                  />
-                    <PasswordToggle showPassword = {showPassword} passwordToggleHandler = {passwordToggleHandler} />
-                </div>
-                <div className="text-right text-sm">
-                  <a
-                    href="/forgot-password"
-                    className="font-medium text-primary hover:underline"
-                  >
-                    Forgot password?
-                  </a>
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={loading}
-                >
-                  {loading ? "Signing in..." : "Sign In"}
-                </Button>
-                </form>
-                {loginSettings.oidc.enabled && (
-                  <>
+                  <TabsContent value="signin">
+                    <form onSubmit={handleSignIn} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signin-email">Email</Label>
+                        <Input
+                          id="signin-email"
+                          type="email"
+                          placeholder="Enter your email"
+                          value={email}
+                          onChange={(e) => {
+                            debug(loggingLevel, "Auth: Sign In email input changed.");
+                            setEmail(e.target.value);
+                          }}
+                          required
+                          autoComplete="username"
+                        />
+                      </div>
+                      <div className="space-y-2 relative">
+                        <Label htmlFor="signin-password">Password</Label>
+                        <Input
+                          id="signin-password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Enter your password"
+                          value={password}
+                          onChange={(e) => {
+                            debug(
+                              loggingLevel,
+                              "Auth: Sign In password input changed."
+                            );
+                            setPassword(e.target.value);
+                          }}
+                          required
+                          autoComplete="current-password"
+                        />
+                        <PasswordToggle showPassword={showPassword} passwordToggleHandler={passwordToggleHandler} />
+                      </div>
+                      <div className="text-right text-sm">
+                        <a
+                          href="/forgot-password"
+                          className="font-medium text-primary hover:underline"
+                        >
+                          Forgot password?
+                        </a>
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={loading}
+                      >
+                        {loading ? "Signing in..." : "Sign In"}
+                      </Button>
+                    </form>
                     <div className="relative my-6">
                       <div className="absolute inset-0 flex items-center">
                         <span className="w-full border-t" />
@@ -267,7 +377,103 @@ const Auth = () => {
                         </span>
                       </div>
                     </div>
-                    {oidcProviders.map((provider) => (
+                    <Button
+                      variant="outline"
+                      className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center mb-2"
+                      onClick={() => setIsMagicLinkRequestDialogOpen(true)}
+                    >
+                      <Zap className="h-4 w-4 mr-2" /> Request Magic Link
+                    </Button>
+                    {loginSettings.oidc.enabled && (
+                      <>
+                        {oidcProviders.map((provider) => (
+                          <Button
+                            key={provider.id}
+                            variant="outline"
+                            className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
+                            onClick={() => initiateOidcLogin(provider.id)}
+                          >
+                            {provider.logo_url && (
+                              <img src={provider.logo_url} alt={`${provider.display_name} logo`} className="h-5 w-5 mr-2" />
+                            )}
+                            {provider.display_name || "Sign In with OIDC"}
+                          </Button>
+                        ))}
+                      </>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="signup">
+                    <form onSubmit={handleSignUp} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-name">Full Name</Label>
+                        <Input
+                          id="signup-name"
+                          type="text"
+                          placeholder="Enter your full name"
+                          value={fullName}
+                          onChange={(e) => {
+                            debug(
+                              loggingLevel,
+                              "Auth: Sign Up full name input changed."
+                            );
+                            setFullName(e.target.value);
+                          }}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-email">Email</Label>
+                        <Input
+                          id="signup-email"
+                          type="email"
+                          placeholder="Enter your email"
+                          value={email}
+                          onChange={(e) => {
+                            debug(loggingLevel, "Auth: Sign Up email input changed.");
+                            setEmail(e.target.value);
+                          }}
+                          required
+                          autoComplete="username"
+                        />
+                      </div>
+                      <div className="space-y-2 relative">
+                        <Label htmlFor="signup-password">Password</Label>
+                        <Input
+                          id="signup-password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Create a password"
+                          value={password}
+                          onChange={(e) => {
+                            debug(
+                              loggingLevel,
+                              "Auth: Sign Up password input changed."
+                            );
+                            setPassword(e.target.value);
+                            setPasswordError(validatePassword(e.target.value));
+                          }}
+                          required
+                          autoComplete="new-password"
+                        />
+                        <PasswordToggle showPassword={showPassword} passwordToggleHandler={passwordToggleHandler} />
+                        {passwordError && (
+                          <p className="text-red-500 text-sm">{passwordError}</p>
+                        )}
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={loading || !!passwordError}
+                      >
+                        {loading ? "Creating account..." : "Sign Up"}
+                      </Button>
+                    </form>
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                <div>
+                  {loginSettings.oidc.enabled && oidcProviders.length > 0 ? (
+                    oidcProviders.map((provider) => (
                       <Button
                         key={provider.id}
                         variant="outline"
@@ -279,101 +485,90 @@ const Auth = () => {
                         )}
                         {provider.display_name || "Sign In with OIDC"}
                       </Button>
-                    ))}
-                  </>
-                )}
-              </TabsContent>
-
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="Enter your full name"
-                    value={fullName}
-                    onChange={(e) => {
-                      debug(
-                        loggingLevel,
-                        "Auth: Sign Up full name input changed."
-                      );
-                      setFullName(e.target.value);
-                    }}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => {
-                      debug(loggingLevel, "Auth: Sign Up email input changed.");
-                      setEmail(e.target.value);
-                    }}
-                    required
-                    autoComplete="username"
-                  />
-                </div>
-                <div className="space-y-2 relative">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input
-                    id="signup-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Create a password"
-                    value={password}
-                    onChange={(e) => {
-                      debug(
-                        loggingLevel,
-                        "Auth: Sign Up password input changed."
-                      );
-                      setPassword(e.target.value);
-                      setPasswordError(validatePassword(e.target.value));
-                    }}
-                    required
-                    autoComplete="new-password"
-                  />
-                    <PasswordToggle showPassword = {showPassword} passwordToggleHandler = {passwordToggleHandler} />
-                  {passwordError && (
-                    <p className="text-red-500 text-sm">{passwordError}</p>
+                    ))
+                  ) : (
+                    <p className="text-center text-red-500">
+                      No login methods are currently enabled. Please contact an administrator.
+                    </p>
                   )}
                 </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={loading || !!passwordError}
-                >
-                  {loading ? "Creating account..." : "Sign Up"}
-                </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <div>
-              {loginSettings.oidc.enabled && oidcProviders.length > 0 ? (
-                oidcProviders.map((provider) => (
-                  <Button
-                    key={provider.id}
-                    variant="outline"
-                    className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
-                    onClick={() => initiateOidcLogin(provider.id)}
-                  >
-                    {provider.logo_url && (
-                      <img src={provider.logo_url} alt={`${provider.display_name} logo`} className="h-5 w-5 mr-2" />
-                    )}
-                    {provider.display_name || "Sign In with OIDC"}
-                  </Button>
-                ))
-              ) : (
-                <p className="text-center text-red-500">
-                  No login methods are currently enabled. Please contact an administrator.
-                </p>
               )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+      <MagicLinkRequestDialog
+        isOpen={isMagicLinkRequestDialogOpen}
+        onClose={() => setIsMagicLinkRequestDialogOpen(false)}
+        onRequest={handleRequestMagicLink}
+        loading={loading}
+        initialEmail={email} // Pass the email from the main Auth component
+      />
+    </>
+  );
+};
+
+interface MagicLinkRequestDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onRequest: (email: string) => Promise<void>;
+  loading: boolean;
+  initialEmail?: string; // Add optional initialEmail prop
+}
+
+const MagicLinkRequestDialog: React.FC<MagicLinkRequestDialogProps> = ({
+  isOpen,
+  onClose,
+  onRequest,
+  loading,
+  initialEmail, // Add initialEmail prop
+}) => {
+  const [email, setEmail] = useState(initialEmail || ""); // Use initialEmail for default value
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("MagicLinkRequestDialog: Sending magic link request for email:", email); // Add logging
+    await onRequest(email);
+    onClose();
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setEmail(initialEmail || ""); // Reset email when dialog opens
+    }
+  }, [isOpen, initialEmail]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <Card className="w-full max-w-md p-6">
+        <CardHeader>
+          <CardTitle>Request Magic Link</CardTitle>
+          <CardDescription>Enter your email to receive a magic link for login.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="magic-link-email">Email</Label>
+              <Input
+                id="magic-link-email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
             </div>
-          )}
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Sending..." : "Send Magic Link"}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>
