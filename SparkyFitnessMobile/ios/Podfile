@@ -9,7 +9,7 @@ platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
 # Add NitroModules support for @kingstinct/react-native-healthkit
-pod 'NitroModules', :path => '../node_modules/nitro-modules'
+pod 'NitroModules', :path => '../node_modules/react-native-nitro-modules'
 
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
