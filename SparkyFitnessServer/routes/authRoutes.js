@@ -728,15 +728,19 @@ router.post('/mfa/verify-recovery-code', verifyRecoveryCodeValidation, async (re
 
 // Magic Link routes
 router.post('/request-magic-link', magicLinkRequestValidation, async (req, res, next) => {
+  log('debug', `Received request for magic link. Body:`, req.body);
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    log('warn', `Magic link request validation errors:`, errors.array());
     return res.status(400).json({ errors: errors.array() });
   }
   const { email } = req.body;
   try {
     await authService.requestMagicLink(email);
+    log('info', `Magic link requested for email: ${email}`);
     res.status(200).json({ message: 'If an account with that email exists, a magic link has been sent.' });
   } catch (error) {
+    log('error', `Error requesting magic link for email ${email}:`, error);
     next(error);
   }
 });

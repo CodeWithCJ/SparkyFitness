@@ -193,11 +193,11 @@ const Auth = () => {
     debug(loggingLevel, "Auth: Sign up loading state set to false.");
   };
 
-  const handleRequestMagicLink = async () => {
+  const handleRequestMagicLink = async (dialogEmail: string) => {
     info(loggingLevel, "Auth: Attempting to request magic link.");
     setLoading(true);
     try {
-      await requestMagicLink(email);
+      await requestMagicLink(dialogEmail);
       toast({
         title: "Magic Link Sent",
         description: "If an account with that email exists, a magic link has been sent to your inbox.",
@@ -502,6 +502,7 @@ const Auth = () => {
         onClose={() => setIsMagicLinkRequestDialogOpen(false)}
         onRequest={handleRequestMagicLink}
         loading={loading}
+        initialEmail={email} // Pass the email from the main Auth component
       />
     </>
   );
