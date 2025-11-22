@@ -31,7 +31,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: SparkyFitnessMobile/ios/Pods
-        key: ${{ runner.os }}-pods-${{ hashFiles('SparkyFitnessMobile/ios/Podfile', 'SparkyFitnessMobile/package.json') }}
+        key: ${{ runner.os }}-pods-${{ hashFiles('SparkyFitnessMobile/ios/Podfile') }}
         restore-keys: |
           ${{ runner.os }}-pods-
 
