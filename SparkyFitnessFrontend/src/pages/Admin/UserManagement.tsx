@@ -268,7 +268,7 @@ const UserManagement: React.FC = () => {
   };
  
   return (
-    <Accordion type="multiple" className="w-full" value={["user-management"]} onValueChange={setAccordionOpen}>
+    <Accordion type="multiple" className="w-full" value={accordionOpen} onValueChange={setAccordionOpen}>
       <AccordionItem value="user-management" className="border rounded-lg mb-4">
         <AccordionTrigger
           className="flex items-center gap-2 p-4 hover:no-underline"
