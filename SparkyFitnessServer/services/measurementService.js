@@ -431,10 +431,10 @@ async function deleteCustomCategory(authenticatedUserId, id) {
   }
 }
 
-async function getCustomMeasurementEntries(authenticatedUserId, limit, orderBy, filter) {
+async function getCustomMeasurementEntries(authenticatedUserId, limit, orderBy, filterObj) { // Renamed 'filter' to 'filterObj' for clarity
   try {
     // The targetUserId is implicitly the authenticatedUserId for this endpoint
-    const entries = await measurementRepository.getCustomMeasurementEntries(authenticatedUserId, limit, orderBy, filter);
+    const entries = await measurementRepository.getCustomMeasurementEntries(authenticatedUserId, limit, orderBy, filterObj); // Pass filterObj
     return entries;
   } catch (error) {
     log('error', `Error fetching custom measurement entries for user ${authenticatedUserId}:`, error);

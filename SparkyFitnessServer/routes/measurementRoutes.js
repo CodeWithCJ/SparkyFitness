@@ -406,9 +406,9 @@ router.get('/custom-entries/:date', authenticate, checkPermissionMiddleware('che
 
 // Endpoint to fetch custom measurement entries
 router.get('/custom-entries', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { limit, orderBy, filter } = req.query;
+  const { limit, orderBy, filter, category_id } = req.query; // Extract category_id
   try {
-    const entries = await measurementService.getCustomMeasurementEntries(req.userId, limit, orderBy, filter);
+    const entries = await measurementService.getCustomMeasurementEntries(req.userId, limit, orderBy, { ...filter, category_id }); // Pass category_id in filter object
     res.status(200).json(entries);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {

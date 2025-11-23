@@ -371,6 +371,8 @@ async function deleteSleepEntriesByEntrySourceAndDate(userId, entrySource, start
             WHERE user_id = $1 AND source = $2 AND entry_date BETWEEN $3 AND $4
             RETURNING id;
         `;
+        log('debug', `[sleepRepository.deleteSleepEntriesByEntrySourceAndDate] Deletion query: ${query}`);
+        log('debug', `[sleepRepository.deleteSleepEntriesByEntrySourceAndDate] Deletion parameters: userId=${userId}, entrySource=${entrySource}, startDate=${startDate}, endDate=${endDate}`);
         const result = await client.query(query, [userId, entrySource, startDate, endDate]);
         await client.query('COMMIT');
         log('info', `Deleted ${result.rows.length} sleep entries for user ${userId} from source ${entrySource} between ${startDate} and ${endDate}.`);

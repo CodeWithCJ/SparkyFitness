@@ -1,5 +1,5 @@
 import { api } from './api';
-import { MoodEntry } from '../types/index.d';
+import { MoodEntry } from '@/types/mood';
 import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
 import { getUserLoggingLevel } from "@/utils/userPreferences";
 
@@ -24,9 +24,11 @@ export const getMoodEntries = async (userId: string, startDate: string, endDate:
     const response = await api.get('/mood', {
       params: { userId, startDate, endDate },
     });
-    return response.data;
+    // Log the actual response data from the backend
+    debug(userLoggingLevel, 'moodService: Received response from /mood API:', response);
+    return response;
   } catch (err) {
-    error(getUserLoggingLevel(), 'Error fetching mood entries:', err);
+    error(getUserLoggingLevel(), 'moodService: Error fetching mood entries:', err);
     throw err;
   }
 };

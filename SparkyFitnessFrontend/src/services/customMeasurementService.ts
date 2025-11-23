@@ -26,6 +26,11 @@ export interface CustomMeasurement {
   };
 }
 
+export interface StressDataPoint {
+  time: string;
+  stress_level: number;
+}
+
 export const getCustomCategories = async (userId: string): Promise<CustomCategory[]> => {
   return apiCall(`/measurements/custom-categories?userId=${userId}`, {
     method: 'GET',
@@ -55,4 +60,38 @@ export const deleteCustomMeasurement = async (measurementId: string): Promise<vo
   return apiCall(`/measurements/custom-entries/${measurementId}`, {
     method: 'DELETE',
   });
+};
+
+export const getRawStressData = async (userId: string): Promise<StressDataPoint[]> => {
+  const categories = await getCustomCategories(userId);
+  const rawStressCategory = categories.find(cat => cat.name === 'Raw Stress Data');
+
+  if (!rawStressCategory) {
+    console.warn('Raw Stress Data category not found.');
+    return [];
+  }
+  console.log('Identified rawStressCategory:', rawStressCategory);
+
+  const customMeasurements: CustomMeasurement[] = await apiCall(
+    `/measurements/custom-entries?userId=${userId}&category_id=${rawStressCategory.id}`,
+    {
+      method: 'GET',
+    }
+  );
+
+  let allStressDataPoints: StressDataPoint[] = [];
+  console.log('Custom measurements received for raw stress data:', customMeasurements);
+
+  customMeasurements.forEach(measurement => {
+    try {
+      if (typeof measurement.value === 'string') {
+        const parsedValue: StressDataPoint[] = JSON.parse(measurement.value);
+        allStressDataPoints = allStressDataPoints.concat(parsedValue);
+      }
+    } catch (error) {
+      console.error('Error parsing stress data point:', error);
+    }
+  });
+
+  return allStressDataPoints;
 };
