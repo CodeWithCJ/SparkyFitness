@@ -178,6 +178,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     cancelScheduledRedirect(); // Cancel any pending redirect
     console.debug('Cleared redirect tracking - user signed in via', authType);
+
+    // Navigate to home after successful sign in (from upstream)
+    if (navigateOnSuccess) {
+      navigate('/');
+    }
   };
 
   const navigate = useNavigate();
