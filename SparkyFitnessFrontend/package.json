@@ -1,7 +1,7 @@
 {
   "name": "sparkyfitnessfrontend",
   "private": true,
-  "version": "0.15.9.1",
+  "version": "0.15.9.4",
   "homepage": "https://github.com/CodeWithCJ/SparkyFitness",
   "type": "module",
   "scripts": {
@@ -75,6 +75,7 @@
     "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.462.0",
+    "moment": "^2.30.1",
     "next-themes": "^0.3.0",
     "node-cache": "^5.1.2",
     "openid-client": "^6.6.2",
@@ -86,6 +87,7 @@
     "react-i18next": "^16.2.3",
     "react-icons": "^5.5.0",
     "react-leaflet": "^4.0.0",
+    "react-qr-code": "^2.0.18",
     "react-resizable-panels": "^2.1.3",
     "react-router-dom": "^6.26.2",
     "react-toastify": "^11.0.5",

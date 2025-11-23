@@ -26,9 +26,31 @@ const resetPasswordValidation = [
     .matches(/[!@#$%^&*(),.?":{}|<>]/).withMessage('Password must contain at least one special character'),
 ];
 
+const mfaValidation = [
+  body('code').notEmpty().withMessage('MFA code is required').isLength({ min: 6, max: 6 }).withMessage('MFA code must be 6 digits.'),
+  body('userId').optional().isUUID().withMessage('Invalid User ID format.'),
+];
+
+const verifyRecoveryCodeValidation = [
+  body('code').notEmpty().withMessage('Recovery code is required').isLength({ min: 16, max: 16 }).withMessage('Recovery code must be 16 characters long.'),
+  body('userId').isUUID().withMessage('User ID is required and must be a valid UUID.'),
+];
+
+const emailMfaValidation = [
+  body('code').notEmpty().withMessage('MFA code is required').isLength({ min: 6, max: 6 }).withMessage('MFA code must be 6 digits.'),
+];
+
+const magicLinkRequestValidation = [
+  body('email').isEmail().withMessage('Invalid email address'),
+];
+
 module.exports = {
   registerValidation,
   loginValidation,
   forgotPasswordValidation,
   resetPasswordValidation,
+  mfaValidation,
+  emailMfaValidation,
+  verifyRecoveryCodeValidation,
+  magicLinkRequestValidation,
 };

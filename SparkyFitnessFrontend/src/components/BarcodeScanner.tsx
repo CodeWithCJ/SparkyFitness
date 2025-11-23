@@ -1,5 +1,6 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BrowserMultiFormatReader, NotFoundException, Result } from '@zxing/library';
 import { Scan, Camera, Flashlight, FlashlightOff, Keyboard } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   isActive,
   cameraFacing,
 }) => {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [codeReader] = useState(() => new BrowserMultiFormatReader());
@@ -402,23 +404,23 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           <div className="absolute bottom-4 left-0 right-0 text-center">
             <p className="text-white text-sm bg-black bg-opacity-50 rounded px-3 py-1 inline-block">
               <Scan className="inline w-4 h-4 mr-1" />
-              {internalContinuousMode ? 'Scanning continuously...' : 'Align barcode within the frame'}
+              {internalContinuousMode ? t('barcodeScanner.status.scanningContinuously', 'Scanning continuously...') : t('barcodeScanner.status.alignBarcode', 'Align barcode within the frame')}
             </p>
           </div>
         </>
       ) : (
         <div className="p-4 flex flex-col items-center justify-center h-64">
-          <h3 className="text-white text-lg mb-4">Enter Barcode Manually</h3>
+          <h3 className="text-white text-lg mb-4">{t('barcodeScanner.manualInput.title', 'Enter Barcode Manually')}</h3>
           <form onSubmit={handleManualBarcodeSubmit} className="w-full max-w-xs space-y-4">
             <Input
               type="text"
-              placeholder="Enter barcode"
+              placeholder={t('barcodeScanner.manualInput.placeholder', 'Enter barcode')}
               value={manualBarcodeValue}
               onChange={(e) => setManualBarcodeValue(e.target.value)}
               className="w-full bg-gray-700 text-white border-gray-600"
             />
             <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
-              Submit Barcode
+              {t('barcodeScanner.manualInput.submitButton', 'Submit Barcode')}
             </Button>
           </form>
         </div>
@@ -434,7 +436,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             stopScanning(); // Stop camera scanning when switching to manual input
           }}
           className="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-full transition-colors"
-          title={showManualInput ? "Switch to Camera Scan" : "Enter Barcode Manually"}
+          title={showManualInput ? t('barcodeScanner.buttons.switchToCameraScan', 'Switch to Camera Scan') : t('barcodeScanner.buttons.enterBarcodeManually', 'Enter Barcode Manually')}
         >
           <Keyboard className="w-5 h-5" />
         </button>
@@ -448,7 +450,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 ? 'bg-green-500 hover:bg-green-600 text-white'
                 : 'bg-orange-500 hover:bg-orange-600 text-white'
             }`}
-            title={internalContinuousMode ? 'Switch to Single Scan Mode' : 'Switch to Continuous Scan Mode'}
+            title={internalContinuousMode ? t('barcodeScanner.buttons.switchToSingleScanMode', 'Switch to Single Scan Mode') : t('barcodeScanner.buttons.switchToContinuousScanMode', 'Switch to Continuous Scan Mode')}
           >
             <Scan className="w-5 h-5" />
           </button>
@@ -459,7 +461,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           <button
             onClick={forceScan}
             className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors"
-            title="Force Scan"
+            title={t('barcodeScanner.buttons.forceScan', 'Force Scan')}
           >
             <Camera className="w-5 h-5" />
           </button>
@@ -474,7 +476,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
                 : 'bg-gray-600 hover:bg-gray-700 text-white'
             }`}
-            title={torchEnabled ? 'Turn off flashlight' : 'Turn on flashlight'}
+            title={torchEnabled ? t('barcodeScanner.buttons.turnOffFlashlight', 'Turn off flashlight') : t('barcodeScanner.buttons.turnOnFlashlight', 'Turn on flashlight')}
           >
             {torchEnabled ? <Flashlight className="w-5 h-5" /> : <FlashlightOff className="w-5 h-5" />}
           </button>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -72,6 +73,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
   endDate,
   onDrilldown,
 }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { loggingLevel, formatDateInUserTimezone, weightUnit, convertWeight } = usePreferences();
   const [selectedExercisesForChart, setSelectedExercisesForChart] = useState<string[]>([]);
@@ -167,7 +169,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
       const allFetchedComparisonData: Record<string, ExerciseProgressData[]> = {};
 
       for (const exerciseId of selectedExercisesForChart) {
-        const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || 'Unknown Exercise';
+        const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise');
         const data = await getExerciseProgressData(exerciseId, startDate, endDate, aggregationLevel);
         allFetchedExerciseData[exerciseId] = data.map(entry => ({ ...entry, exercise_name: exerciseName }));
         info(loggingLevel, `ExerciseReportsDashboard: Fetched exercise progress data for ${exerciseName} (${exerciseId}) with aggregation ${aggregationLevel}:`, allFetchedExerciseData[exerciseId]);
@@ -183,25 +185,25 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
       setComparisonExerciseProgressData(allFetchedComparisonData);
 
     } catch (err) {
-      const message = "Failed to load exercise progress data.";
+      const message = t('exerciseReportsDashboard.failedToLoadExerciseProgressData', 'Failed to load exercise progress data.');
       setErrorMessage(message);
       error(loggingLevel, `ExerciseReportsDashboard: Error fetching exercise progress data:`, err);
       toast({
-        title: "Error",
+        title: t('reports.errorToastTitle', 'Error'),
         description: message,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  }, [selectedExercisesForChart, startDate, endDate, aggregationLevel, comparisonPeriod, loggingLevel, toast, selectedExercise]);
+  }, [selectedExercisesForChart, startDate, endDate, aggregationLevel, comparisonPeriod, loggingLevel, toast, selectedExercise, t]);
 
   useEffect(() => {
     fetchExerciseChartData();
   }, [fetchExerciseChartData]);
 
   if (!exerciseDashboardData) {
-    return <div>Loading exercise data...</div>;
+    return <div>{t('exerciseReportsDashboard.loadingExerciseData', 'Loading exercise data...')}</div>;
   }
 
   const totalTonnage = calculateTotalTonnage(exerciseDashboardData.exerciseEntries);
@@ -213,42 +215,42 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         return (
           <Card key={widgetId}>
             <CardHeader>
-              <CardTitle>Overall Performance Snapshot</CardTitle>
+              <CardTitle>{t('exerciseReportsDashboard.overallPerformanceSnapshot', 'Overall Performance Snapshot')}</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg h-full">
                 <span className="text-3xl font-bold">{formatNumber(exerciseDashboardData.keyStats.totalWorkouts)}</span>
-                <span className="text-sm text-center">Total Workouts</span>
+                <span className="text-sm text-center">{t('exerciseReportsDashboard.totalWorkouts', 'Total Workouts')}</span>
               </div>
               <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-green-500 to-teal-600 text-white shadow-lg h-full">
                 <span className="text-3xl font-bold">{formatNumber(convertWeight(totalTonnage, 'kg', weightUnit))} {weightUnit}</span>
-                <span className="text-sm text-center">Total Tonnage</span>
+                <span className="text-sm text-center">{t('exerciseReportsDashboard.totalTonnage', 'Total Tonnage')}</span>
               </div>
               <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-600 text-white shadow-lg h-full">
                 <span className="text-3xl font-bold">{formatNumber(convertWeight(exerciseDashboardData.keyStats.totalVolume, 'kg', weightUnit))} {weightUnit}</span>
-                <span className="text-sm text-center">Total Volume</span>
+                <span className="text-sm text-center">{t('exerciseReportsDashboard.totalVolume', 'Total Volume')}</span>
               </div>
               <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-red-500 to-pink-600 text-white shadow-lg h-full">
                 <span className="text-3xl font-bold">{formatNumber(exerciseDashboardData.keyStats.totalReps)}</span>
-                <span className="text-sm text-center">Total Reps</span>
+                <span className="text-sm text-center">{t('exerciseReportsDashboard.totalReps', 'Total Reps')}</span>
               </div>
               {exerciseDashboardData.consistencyData && (
                 <>
                   <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg h-full">
                     <span className="text-3xl font-bold">{exerciseDashboardData.consistencyData.currentStreak}</span>
-                    <span className="text-sm text-center">Current Streak (days)</span>
+                    <span className="text-sm text-center">{t('exerciseReportsDashboard.currentStreakDays', 'Current Streak (days)')}</span>
                   </div>
                   <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-600 text-white shadow-lg h-full">
                     <span className="text-3xl font-bold">{exerciseDashboardData.consistencyData.longestStreak}</span>
-                    <span className="text-sm text-center">Longest Streak (days)</span>
+                    <span className="text-sm text-center">{t('exerciseReportsDashboard.longestStreakDays', 'Longest Streak (days)')}</span>
                   </div>
                   <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-emerald-500 to-lime-600 text-white shadow-lg h-full">
                     <span className="text-3xl font-bold">{exerciseDashboardData.consistencyData.weeklyFrequency.toFixed(1)}</span>
-                    <span className="text-sm text-center">Weekly Frequency</span>
+                    <span className="text-sm text-center">{t('exerciseReportsDashboard.weeklyFrequency', 'Weekly Frequency')}</span>
                   </div>
                   <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-rose-500 to-fuchsia-600 text-white shadow-lg h-full">
                     <span className="text-3xl font-bold">{exerciseDashboardData.consistencyData.monthlyFrequency.toFixed(1)}</span>
-                    <span className="text-sm text-center">Monthly Frequency</span>
+                    <span className="text-sm text-center">{t('exerciseReportsDashboard.monthlyFrequency', 'Monthly Frequency')}</span>
                   </div>
                 </>
               )}
@@ -259,13 +261,13 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         return (
           <Card key="heatmap">
             <CardHeader>
-              <CardTitle>Workout Heatmap</CardTitle>
+              <CardTitle>{t('exerciseReportsDashboard.workoutHeatmap', 'Workout Heatmap')}</CardTitle>
             </CardHeader>
             <CardContent>
               {exerciseDashboardData?.exerciseEntries && exerciseDashboardData.exerciseEntries.length > 0 ? (
                 <WorkoutHeatmap workoutDates={Array.from(new Set(exerciseDashboardData.exerciseEntries.map(entry => entry.entry_date)))} />
               ) : (
-                <p className="text-center text-muted-foreground">No workout data available for heatmap.</p>
+                <p className="text-center text-muted-foreground">{t('exerciseReportsDashboard.noWorkoutDataAvailableForHeatmap', 'No workout data available for heatmap.')}</p>
               )}
             </CardContent>
           </Card>
@@ -274,28 +276,28 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         return (
           <Card key="filtersAggregation" className="lg:col-span-2">
             <CardHeader>
-              <CardTitle>Filters & Aggregation</CardTitle>
+              <CardTitle>{t('exerciseReportsDashboard.filtersAggregation', 'Filters & Aggregation')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <Select value={aggregationLevel} onValueChange={setAggregationLevel}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Aggregation" />
+                    <SelectValue placeholder={t('exerciseReportsDashboard.aggregation', 'Aggregation')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="daily">{t('exerciseReportsDashboard.daily', 'Daily')}</SelectItem>
+                    <SelectItem value="weekly">{t('exerciseReportsDashboard.weekly', 'Weekly')}</SelectItem>
+                    <SelectItem value="monthly">{t('exerciseReportsDashboard.monthly', 'Monthly')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={comparisonPeriod || 'none'} onValueChange={(value) => setComparisonPeriod(value === 'none' ? null : value)}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Compare to" />
+                    <SelectValue placeholder={t('exerciseReportsDashboard.compareTo', 'Compare to')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No Comparison</SelectItem>
-                    <SelectItem value="previous-period">Previous Period</SelectItem>
-                    <SelectItem value="last-year">Last Year</SelectItem>
+                    <SelectItem value="none">{t('exerciseReportsDashboard.noComparison', 'No Comparison')}</SelectItem>
+                    <SelectItem value="previous-period">{t('exerciseReportsDashboard.previousPeriod', 'Previous Period')}</SelectItem>
+                    <SelectItem value="last-year">{t('exerciseReportsDashboard.lastYear', 'Last Year')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -305,10 +307,10 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                   onValueChange={(value) => setSelectedEquipment(value === 'All' ? null : value)}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Filter by Equipment" />
+                    <SelectValue placeholder={t('exerciseReportsDashboard.filterByEquipment', 'Filter by Equipment')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="All">All Equipment</SelectItem>
+                    <SelectItem value="All">{t('exerciseReportsDashboard.allEquipment', 'All Equipment')}</SelectItem>
                     {availableEquipment.map(equipment => (
                       <SelectItem key={equipment} value={equipment}>{equipment}</SelectItem>
                     ))}
@@ -320,10 +322,10 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                   onValueChange={(value) => setSelectedMuscle(value === 'All' ? null : value)}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Filter by Muscle Group" />
+                    <SelectValue placeholder={t('exerciseReportsDashboard.filterByMuscleGroup', 'Filter by Muscle Group')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="All">All Muscles</SelectItem>
+                    <SelectItem value="All">{t('exerciseReportsDashboard.allMuscles', 'All Muscles')}</SelectItem>
                     {availableMuscles.map(muscle => (
                       <SelectItem key={muscle} value={muscle}>{muscle}</SelectItem>
                     ))}
@@ -335,12 +337,12 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                   onValueChange={(value) => setSelectedExercise(value)}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select exercises">
-                      {selectedExercise === 'All' ? 'All Exercises' : availableExercises.find(ex => ex.id === selectedExercise)?.name || 'Select exercises'}
+                    <SelectValue placeholder={t('exerciseReportsDashboard.selectExercises', 'Select exercises')}>
+                      {selectedExercise === 'All' ? t('exerciseReportsDashboard.allExercises', 'All Exercises') : availableExercises.find(ex => ex.id === selectedExercise)?.name || t('exerciseReportsDashboard.selectExercises', 'Select exercises')}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="All">All Exercises</SelectItem>
+                    <SelectItem value="All">{t('exerciseReportsDashboard.allExercises', 'All Exercises')}</SelectItem>
                     {availableExercises.map(exercise => (
                       <SelectItem key={exercise.id} value={exercise.id}>{exercise.name}</SelectItem>
                     ))}
@@ -358,10 +360,10 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
       case "prProgression":
         return selectedExercisesForChart.map(exerciseId => {
           const prProgressionData = exerciseDashboardData.prProgressionData[exerciseId] || [];
-          const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || 'Unknown Exercise';
+          const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise');
           return prProgressionData.length > 0 ? (
             <Card key={`prProgression-${exerciseId}`}>
-              <CardHeader><CardTitle>PR Progression - {exerciseName}</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('exerciseReportsDashboard.prProgression', `PR Progression - ${exerciseName}`, { exerciseName })}</CardTitle></CardHeader>
               <CardContent>
                 <PrProgressionChart prProgressionData={prProgressionData} />
               </CardContent>
@@ -395,30 +397,30 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         return volumeTrendData.length > 0 && volumeTrendData.some(d => d.volume > 0) ? (
           <Card key="volumeTrend">
             <CardHeader>
-              <CardTitle>Volume Trend</CardTitle>
+              <CardTitle>{t('exerciseReportsDashboard.volumeTrend', 'Volume Trend')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ZoomableChart title="Volume Trend">
+              <ZoomableChart title={t('exerciseReportsDashboard.volumeTrend', 'Volume Trend')}>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
                     data={volumeTrendData}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
-                    <YAxis label={{ value: `Volume (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
+                    <YAxis label={{ value: t('exerciseReportsDashboard.volumeCurrent', `Volume (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
                     <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                     <Legend />
                     <Bar
                       dataKey="volume"
                       fill="#8884d8"
-                      name="Volume (Current)"
+                      name={t('exerciseReportsDashboard.volumeCurrent', 'Volume (Current)')}
                     />
                     {comparisonPeriod && (
                       <Bar
                         dataKey="comparisonVolume"
                         fill="#8884d8"
                         opacity={0.6}
-                        name="Volume (Comparison)"
+                        name={t('exerciseReportsDashboard.volumeComparison', 'Volume (Comparison)')}
                       />
                     )}
                   </BarChart>
@@ -447,30 +449,30 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         return maxWeightTrendData.length > 0 && maxWeightTrendData.some(d => d.maxWeight > 0) ? (
           <Card key="maxWeightTrend">
             <CardHeader>
-              <CardTitle>Max Weight Trend</CardTitle>
+              <CardTitle>{t('exerciseReportsDashboard.maxWeightTrend', 'Max Weight Trend')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ZoomableChart title="Max Weight Trend">
+              <ZoomableChart title={t('exerciseReportsDashboard.maxWeightTrend', 'Max Weight Trend')}>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
                     data={maxWeightTrendData}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
-                    <YAxis label={{ value: `Max Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
+                    <YAxis label={{ value: t('exerciseReportsDashboard.maxWeightCurrent', `Max Weight (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
                     <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                     <Legend />
                     <Bar
                       dataKey="maxWeight"
                       fill="#82ca9d"
-                      name="Max Weight (Current)"
+                      name={t('exerciseReportsDashboard.maxWeightCurrent', 'Max Weight (Current)')}
                     />
                     {comparisonPeriod && (
                       <Bar
                         dataKey="comparisonMaxWeight"
                         fill="#82ca9d"
                         opacity={0.6}
-                        name="Max Weight (Comparison)"
+                        name={t('exerciseReportsDashboard.maxWeightComparison', 'Max Weight (Comparison)')}
                       />
                     )}
                   </BarChart>
@@ -499,30 +501,30 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         return estimated1RMTrendData.length > 0 && estimated1RMTrendData.some(d => d.estimated1RM > 0) ? (
           <Card key="estimated1RMTrend">
             <CardHeader>
-              <CardTitle>Estimated 1RM Trend</CardTitle>
+              <CardTitle>{t('exerciseReportsDashboard.estimated1RMTrend', 'Estimated 1RM Trend')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ZoomableChart title="Estimated 1RM Trend">
+              <ZoomableChart title={t('exerciseReportsDashboard.estimated1RMTrend', 'Estimated 1RM Trend')}>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
                     data={estimated1RMTrendData}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
-                    <YAxis label={{ value: `Estimated 1RM (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
+                    <YAxis label={{ value: t('exerciseReportsDashboard.estimated1RMCurrent', `Estimated 1RM (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
                     <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                     <Legend />
                     <Bar
                       dataKey="estimated1RM"
                       fill="#ffc658"
-                      name="Estimated 1RM (Current)"
+                      name={t('exerciseReportsDashboard.estimated1RMCurrent', 'Estimated 1RM (Current)')}
                     />
                     {comparisonPeriod && (
                       <Bar
                         dataKey="comparisonEstimated1RM"
                         fill="#ffc658"
                         opacity={0.6}
-                        name="Estimated 1RM (Comparison)"
+                        name={t('exerciseReportsDashboard.estimated1RMComparison', 'Estimated 1RM (Comparison)')}
                       />
                     )}
                   </BarChart>
@@ -541,19 +543,19 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                     weight: data.weight,
                   }))
                 : [];
-              const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || 'Unknown Exercise';
+              const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise');
               return bestSetRepRangeData.length > 0 && bestSetRepRangeData.some(d => d.weight > 0) ? (
                 <Card key={`bestSetRepRange-${exerciseId}`}>
                   <CardHeader>
-                    <CardTitle>Best Set by Rep Range - {exerciseName}</CardTitle>
+                    <CardTitle>{t('exerciseReportsDashboard.bestSetByRepRange', `Best Set by Rep Range - ${exerciseName}`, { exerciseName })}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ZoomableChart title="Best Set by Rep Range">
+                    <ZoomableChart title={t('exerciseReportsDashboard.bestSetByRepRangeTitle', 'Best Set by Rep Range')}>
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={bestSetRepRangeData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="range" />
-                          <YAxis label={{ value: `Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
+                          <YAxis label={{ value: t('exerciseReportsDashboard.maxWeight', `Weight (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
                           <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                           <Legend />
                           <Bar
@@ -579,14 +581,14 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         return trainingVolumeByMuscleGroupData.length > 0 && trainingVolumeByMuscleGroupData.some(d => d.volume > 0) ? (
           <Card key="trainingVolumeByMuscleGroup">
             <CardHeader>
-              <CardTitle>Training Volume by Muscle Group</CardTitle>
+              <CardTitle>{t('exerciseReportsDashboard.trainingVolumeByMuscleGroup', 'Training Volume by Muscle Group')}</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={trainingVolumeByMuscleGroupData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="muscle" />
-                  <YAxis label={{ value: `Volume (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
+                  <YAxis label={{ value: t('exerciseReportsDashboard.volumeCurrent', `Volume (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                   <Legend />
                   <Bar dataKey="volume" fill="#ff7300" />
@@ -616,21 +618,21 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               averageWeight: Math.round(totalWeight / count),
             })).sort((a, b) => a.reps - b.reps);
           })();
-          const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || 'Unknown Exercise';
+          const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise');
           return repsVsWeightScatterData.length > 0 && repsVsWeightScatterData.some(d => d.averageWeight > 0) ? (
             <Card key={`repsVsWeightScatter-${exerciseId}`}>
               <CardHeader>
-                <CardTitle>Reps vs Weight - {exerciseName}</CardTitle>
+                <CardTitle>{t('exerciseReportsDashboard.repsVsWeight', `Reps vs Weight - ${exerciseName}`, { exerciseName })}</CardTitle>
               </CardHeader>
               <CardContent>
-                <ZoomableChart title="Reps vs Weight">
+                <ZoomableChart title={t('exerciseReportsDashboard.repsVsWeight', 'Reps vs Weight', { exerciseName: '' })}>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
                       data={repsVsWeightScatterData}
                     >
                       <CartesianGrid />
-                      <XAxis dataKey="reps" name="Reps" />
-                      <YAxis label={{ value: `Average Weight (${weightUnit})`, angle: -90, position: 'insideLeft', offset: 10 }} />
+                      <XAxis dataKey="reps" name={t('exerciseReportsDashboard.reps', 'Reps')} />
+                      <YAxis label={{ value: t('exerciseReportsDashboard.averageWeight', `Average Weight (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
                       <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                       <Legend />
                       <Bar
@@ -652,21 +654,21 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
             timeUnderTension: d.sets.reduce((sum, set) => sum + (set.duration || 0), 0)
           })) || [];
-          const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || 'Unknown Exercise';
+          const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise');
           return timeUnderTensionData.length > 0 && timeUnderTensionData.some(d => d.timeUnderTension > 0) ? (
             <Card key={`timeUnderTension-${exerciseId}`}>
               <CardHeader>
-                <CardTitle>Time Under Tension Trend - {exerciseName}</CardTitle>
+                <CardTitle>{t('exerciseReportsDashboard.timeUnderTensionTrend', `Time Under Tension Trend - ${exerciseName}`, { exerciseName })}</CardTitle>
               </CardHeader>
               <CardContent>
-                <ZoomableChart title="Time Under Tension Trend">
+                <ZoomableChart title={t('exerciseReportsDashboard.timeUnderTensionTrendTitle', 'Time Under Tension Trend')}>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart
                       data={timeUnderTensionData}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
-                      <YAxis label={{ value: 'Time Under Tension (min)', angle: -90, position: 'insideLeft', offset: 10 }} />
+                      <YAxis label={{ value: t('exerciseReportsDashboard.timeUnderTensionMin', 'Time Under Tension (min)'), angle: -90, position: 'insideLeft', offset: 10 }} />
                       <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                       <Legend />
                       <Bar
@@ -684,11 +686,11 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
       case "prVisualization":
         return selectedExercisesForChart.map(exerciseId => {
           const prVisualizationData = exerciseDashboardData.prData[exerciseId] || null;
-          const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || 'Unknown Exercise';
+          const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise');
           return prVisualizationData && (prVisualizationData.oneRM > 0 || prVisualizationData.weight > 0 || prVisualizationData.reps > 0) ? (
             <Card key={`prVisualization-${exerciseId}`}>
               <CardHeader>
-                <CardTitle>Personal Records (PRs) - {exerciseName}</CardTitle>
+                <CardTitle>{t('exerciseReportsDashboard.personalRecords', `Personal Records (PRs) - ${exerciseName}`, { exerciseName })}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -696,10 +698,10 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                     <span className="text-xl font-bold">
                       {convertWeight(prVisualizationData.oneRM, 'kg', weightUnit).toFixed(1)} {weightUnit}
                     </span>
-                    <span className="text-sm text-muted-foreground">Estimated 1RM</span>
+                    <span className="text-sm text-muted-foreground">{t('exerciseReportsDashboard.estimated1RM', 'Estimated 1RM')}</span>
                     <span className="text-xs text-muted-foreground">
-                      ({prVisualizationData.reps} reps @{" "}
-                      {convertWeight(prVisualizationData.weight, 'kg', weightUnit)} {weightUnit} on{" "}
+                      ({prVisualizationData.reps} {t('exerciseReportsDashboard.repsAt', 'reps @')}{" "}
+                      {convertWeight(prVisualizationData.weight, 'kg', weightUnit)} {weightUnit} {t('exerciseReportsDashboard.on', 'on')}{" "}
                       {formatDateInUserTimezone(prVisualizationData.date, 'MMM dd, yyyy')})
                     </span>
                   </div>
@@ -707,19 +709,19 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                     <span className="text-xl font-bold">
                       {convertWeight(prVisualizationData.weight, 'kg', weightUnit).toFixed(1)} {weightUnit}
                     </span>
-                    <span className="text-sm text-muted-foreground">Max Weight</span>
+                    <span className="text-sm text-muted-foreground">{t('exerciseReportsDashboard.maxWeight', 'Max Weight')}</span>
                     <span className="text-xs text-muted-foreground">
-                      ({prVisualizationData.reps} reps on{" "}
+                      ({prVisualizationData.reps} {t('exerciseReportsDashboard.repsShort', 'reps')} {t('exerciseReportsDashboard.on', 'on')}{" "}
                       {formatDateInUserTimezone(prVisualizationData.date, 'MMM dd, yyyy')})
                     </span>
                   </div>
                   <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
                     <span className="text-xl font-bold">
-                      {prVisualizationData.reps} reps
+                      {prVisualizationData.reps} {t('exerciseReportsDashboard.repsShort', 'reps')}
                     </span>
-                    <span className="text-sm text-muted-foreground">Max Reps</span>
+                    <span className="text-sm text-muted-foreground">{t('exerciseReportsDashboard.maxReps', 'Max Reps')}</span>
                     <span className="text-xs text-muted-foreground">
-                      ({convertWeight(prVisualizationData.weight, 'kg', weightUnit)} {weightUnit} on{" "}
+                      ({convertWeight(prVisualizationData.weight, 'kg', weightUnit)} {weightUnit} {t('exerciseReportsDashboard.on', 'on')}{" "}
                       {formatDateInUserTimezone(prVisualizationData.date, 'MMM dd, yyyy')})
                     </span>
                   </div>
@@ -737,7 +739,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                 avgReps: data.avgReps,
               }))
             : [];
-          const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || 'Unknown Exercise';
+          const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise');
           return setPerformanceData.length > 0 && setPerformanceData.some(d => d.avgWeight > 0 || d.avgReps > 0) ? (
             <SetPerformanceAnalysisChart
               key={`setPerformance-${exerciseId}`}
@@ -777,21 +779,21 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {loading && <p>Loading charts...</p>}
+        {loading && <p>{t('exerciseReportsDashboard.loadingCharts', 'Loading charts...')}</p>}
         {errorMessage && <p className="text-red-500">{errorMessage}</p>}
         {!loading && !errorMessage && widgetLayout.map(widgetId => renderWidget(widgetId))}
       </div>
   
       {!loading && !errorMessage && selectedExercisesForChart.length > 0 && Object.keys(exerciseProgressData).length === 0 && (
         <p className="text-center text-muted-foreground">
-          No progress data available for the selected exercises in the chosen date range.
+          {t('exerciseReportsDashboard.noProgressDataAvailable', 'No progress data available for the selected exercises in the chosen date range.')}
         </p>
       )}
 
       {/* Render ActivityReportVisualizer for each Garmin activity entry */}
       {allGarminActivityEntries.length > 0 && (
         <div className="mt-8 space-y-8">
-          <h2 className="text-2xl font-bold">Activity Maps</h2>
+          <h2 className="text-2xl font-bold">{t('exerciseReportsDashboard.activityMaps', 'Activity Maps')}</h2>
           {allGarminActivityEntries.map((entry) => (
             <div key={entry.exercise_entry_id} className="border p-4 rounded-lg shadow-sm">
               <h3 className="text-xl font-semibold mb-2">

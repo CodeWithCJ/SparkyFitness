@@ -13,7 +13,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  signIn: (userId: string, userEmail: string, userRole: string, authType: 'oidc' | 'password', navigateOnSuccess?: boolean) => void;
+  signIn: (userId: string, userEmail: string, userRole: string, authType: 'oidc' | 'password' | 'magic_link', navigateOnSuccess?: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -158,6 +158,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signIn = (userId: string, userEmail: string, userRole: string, authType: 'oidc' | 'password', navigateOnSuccess = true) => {
     // authType is no longer stored in localStorage; session is managed by httpOnly cookies.
     setUser({ id: userId, email: userEmail, role: userRole });
+    if (navigateOnSuccess) {
+      navigate('/');
+    }
 
     // Clear redirect tracking timestamp when user signs in
     // This ensures the next session expiration can trigger a redirect

@@ -78,4 +78,105 @@ async function sendPasswordResetEmail(toEmail, resetUrl) {
 
 module.exports = {
   sendPasswordResetEmail,
+  sendEmailMfaCode,
+  sendMagicLinkEmail,
 };
+
+async function sendEmailMfaCode(toEmail, code) {
+  log('info', `Attempting to send email MFA code to ${toEmail}`);
+  log('debug', `Email Transporter Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${transporter.options.auth.user ? 'configured' : 'not configured'}`);
+
+  if (!transporter.options.host || !transporter.options.auth.user) {
+    log('warn', 'Email transporter is not fully configured (missing SMTP_HOST or SMTP_USER). Logging email content instead of sending.');
+    console.log(`
+      ------------------------------------
+      EMAIL MFA CODE (NOT SENT - EMAIL SERVICE NOT CONFIGURED)
+      To: ${toEmail}
+      Subject: Your SparkyFitness MFA Code
+      
+      Your Multi-Factor Authentication code is:
+      
+      ${code}
+      
+      This code is valid for 5 minutes.
+      ------------------------------------
+    `);
+    return false;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: process.env.SPARKY_FITNESS_EMAIL_FROM || 'noreply@sparkyfitness.com',
+      to: toEmail,
+      subject: 'Your SparkyFitness MFA Code',
+      html: `
+        <p>Your Multi-Factor Authentication code is:</p>
+        <h3>${code}</h3>
+        <p>This code is valid for 5 minutes.</p>
+        <p>If you did not request this code, please ignore this email.</p>
+      `,
+    });
+    log('info', `Email MFA code successfully sent to ${toEmail}.`);
+    return true;
+  } catch (error) {
+    log('error', `Failed to send email MFA code to ${toEmail}. Error details:`, error);
+    if (error.response) {
+      log('error', `SMTP Response: ${error.response}`);
+    }
+    if (error.responseCode) {
+      log('error', `SMTP Response Code: ${error.responseCode}`);
+    }
+    throw new Error(`Failed to send email MFA code: ${error.message}`);
+  }
+}
+
+async function sendMagicLinkEmail(toEmail, magicLinkUrl) {
+  log('info', `Attempting to send magic link email to ${toEmail} with URL: ${magicLinkUrl}`);
+  log('debug', `Email Transporter Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${transporter.options.auth.user ? 'configured' : 'not configured'}`);
+
+  if (!transporter.options.host || !transporter.options.auth.user) {
+    log('warn', 'Email transporter is not fully configured (missing SMTP_HOST or SMTP_USER). Logging email content instead of sending.');
+    console.log(`
+      ------------------------------------
+      MAGIC LINK EMAIL (NOT SENT - EMAIL SERVICE NOT CONFIGURED)
+      To: ${toEmail}
+      Subject: Your SparkyFitness Login Link
+      
+      You have requested a passwordless login to your SparkyFitness account.
+      Please click on the following link to log in:
+      
+      ${magicLinkUrl}
+      
+      This link will expire in 15 minutes and can only be used once.
+      If you did not request this, please ignore this email.
+      ------------------------------------
+    `);
+    return false;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: process.env.SPARKY_FITNESS_EMAIL_FROM || 'noreply@sparkyfitness.com',
+      to: toEmail,
+      subject: 'Your SparkyFitness Login Link',
+      html: `
+        <p>You have requested a passwordless login to your SparkyFitness account.</p>
+        <p>Please click on the following link to log in:</p>
+        <p><a href="${magicLinkUrl}">${magicLinkUrl}</a></p>
+        <p>This link will expire in 15 minutes and can only be used once.</p>
+        <p>If you did not request this, please ignore this email.</p>
+      `,
+    });
+    log('info', `Magic link email successfully sent to ${toEmail}.`);
+    return true;
+  } catch (error) {
+    log('error', `Failed to send magic link email to ${toEmail}. Error details:`, error);
+    if (error.response) {
+      log('error', `SMTP Response: ${error.response}`);
+    }
+    if (error.responseCode) {
+      log('error', `SMTP Response Code: ${error.responseCode}`);
+    }
+    throw new Error(`Failed to send magic link email: ${error.message}`);
+  }
+}

@@ -70,10 +70,17 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
         const healthWellnessData = await garminConnectService.syncGarminHealthAndWellness(userId, startDate, endDate, metricTypes);
         log('debug', `Raw healthWellnessData from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, healthWellnessData);
 
-        // Process the raw healthWellnessData using measurementService
+        // Process the raw healthWellnessData using garminService
+        // This will handle storing raw stress data and derived mood
+        const processedGarminHealthData = await garminService.processGarminHealthAndWellnessData(userId, userId, healthWellnessData.data, startDate, endDate);
+
+        // Existing processing for other metrics (if any)
         const processedHealthData = [];
 
         for (const metric in healthWellnessData.data) {
+            // Skip stress as it's handled by processGarminHealthAndWellnessData
+            if (metric === 'stress') continue;
+
             const dailyEntries = healthWellnessData.data[metric];
             if (Array.isArray(dailyEntries)) {
                 for (const entry of dailyEntries) {
@@ -117,10 +124,17 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
             measurementServiceResult = await measurementService.processHealthData(processedHealthData, userId, userId);
         }
 
+        let processedSleepData = {};
+        if (healthWellnessData.data && healthWellnessData.data.sleep && healthWellnessData.data.sleep.length > 0) {
+            processedSleepData = await garminService.processGarminSleepData(userId, userId, healthWellnessData.data.sleep, startDate, endDate);
+        }
+
         res.status(200).json({
             message: 'Health and wellness sync completed.',
             garminRawData: healthWellnessData, // Keep raw data for debugging/reference
-            processedMeasurements: measurementServiceResult
+            processedGarminHealthData: processedGarminHealthData,
+            processedMeasurements: measurementServiceResult,
+            processedSleep: processedSleepData
         });
     } catch (error) {
         next(error);
@@ -191,6 +205,25 @@ router.post('/unlink', authenticate, async (req, res, next) => {
         } else {
             res.status(400).json({ error: "Garmin Connect account not found for this user." });
         }
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.post('/sleep_data', authenticate, async (req, res, next) => {
+    try {
+        const userId = req.userId;
+        const { sleepData, startDate, endDate } = req.body; // Expecting an array of sleep entries, startDate, and endDate
+
+        if (!sleepData || !Array.isArray(sleepData)) {
+            return res.status(400).json({ error: 'Invalid sleepData format. Expected an array.' });
+        }
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required for sleep data sync.' });
+        }
+
+        const result = await garminService.processGarminSleepData(userId, userId, sleepData, startDate, endDate);
+        res.status(200).json(result);
     } catch (error) {
         next(error);
     }

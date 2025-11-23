@@ -21,6 +21,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
+# Create the mock_data directory and set permissions for the 'daemon' user
+RUN mkdir -p /app/mock_data && chown daemon:daemon /app/mock_data
+
 # Expose the port that FastAPI will run on
 EXPOSE 8000
 

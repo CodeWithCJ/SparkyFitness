@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkoutData } from './ActivityReportVisualizer';
 import SetPerformanceAnalysisChart from './reports/SetPerformanceAnalysisChart';
@@ -12,6 +13,7 @@ interface WorkoutReportVisualizerProps {
 }
 
 const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({ workoutData }) => {
+  const { t } = useTranslation();
   const { weightUnit, convertWeight } = usePreferences(); // Destructure convertWeight
 
   if (!workoutData) return null;
@@ -96,29 +98,29 @@ const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({ worko
   return (
     <>
       <div className="mb-8">
-        <h3 className="text-xl font-semibold mb-2">Workout Stats</h3>
+        <h3 className="text-xl font-semibold mb-2">{t("workoutReport.workoutStats", "Workout Stats")}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-              <CardTitle className="text-sm font-medium">Sport</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("workoutReport.sport", "Sport")}</CardTitle>
               <FaDumbbell className="h-5 w-5 text-blue-500" /> {/* Icon for Sport */}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{sportType?.sportTypeKey || 'N/A'}</div>
+              <div className="text-2xl font-bold">{sportType?.sportTypeKey || t("common.notApplicable", "N/A")}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-              <CardTitle className="text-sm font-medium">Est. Duration</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("workoutReport.estDuration", "Est. Duration")}</CardTitle>
               <FaClock className="h-5 w-5 text-green-500" /> {/* Icon for Duration */}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{estimatedDurationInSecs ? `${(estimatedDurationInSecs / 60).toFixed(0)} min` : 'N/A'}</div>
+              <div className="text-2xl font-bold">{estimatedDurationInSecs ? `${(estimatedDurationInSecs / 60).toFixed(0)} min` : t("common.notApplicable", "N/A")}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-              <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("workoutReport.totalVolume", "Total Volume")}</CardTitle>
               <FaWeightHanging className="h-5 w-5 text-purple-500" /> {/* Icon for Total Volume */}
             </CardHeader>
             <CardContent>
@@ -127,7 +129,7 @@ const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({ worko
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-              <CardTitle className="text-sm font-medium">Total Reps</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("workoutReport.totalReps", "Total Reps")}</CardTitle>
               <FaRedo className="h-5 w-5 text-orange-500" /> {/* Icon for Total Reps */}
             </CardHeader>
             <CardContent>
@@ -139,29 +141,29 @@ const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({ worko
 
       {description && (
         <div className="mb-8">
-          <h3 className="text-xl font-semibold mb-2">Description</h3>
+          <h3 className="text-xl font-semibold mb-2">{t("workoutReport.description", "Description")}</h3>
           <p>{description}</p>
         </div>
       )}
 
       {allExecutableSteps.length > 0 && (
         <div className="mb-8">
-          <h3 className="text-xl font-semibold mb-2">Workout Steps</h3>
+          <h3 className="text-xl font-semibold mb-2">{t("workoutReport.workoutSteps", "Workout Steps")}</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Step
+                    {t("workoutReport.step", "Step")}
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Exercise
+                    {t("workoutReport.exercise", "Exercise")}
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Target
+                    {t("workoutReport.target", "Target")}
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Weight ({weightUnit}) {/* Moved unit to header */}
+                    {t("workoutReport.weight", "Weight")} ({weightUnit}) {/* Moved unit to header */}
                   </th>
                 </tr>
               </thead>
@@ -169,12 +171,12 @@ const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({ worko
                 {allExecutableSteps.map((step: any, index: number) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{step.exerciseName || step.category || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{step.exerciseName || step.category || t("common.notApplicable", "N/A")}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {step.endConditionValue} {step.endCondition?.conditionTypeKey}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {step.weightValue ? `${formatNumber(Math.round(convertWeight(step.weightValue, step.weightUnit?.unitKey === 'pound' ? 'lbs' : step.weightUnit?.unitKey, weightUnit)))}` : 'N/A'} {/* Converted and rounded */}
+                      {step.weightValue ? `${formatNumber(Math.round(convertWeight(step.weightValue, step.weightUnit?.unitKey === 'pound' ? 'lbs' : step.weightUnit?.unitKey, weightUnit)))}` : t("common.notApplicable", "N/A")} {/* Converted and rounded */}
                     </td>
                   </tr>
                 ))}
@@ -186,7 +188,7 @@ const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({ worko
 
       {Object.keys(setPerformanceData).length > 0 && (
         <div className="mb-8">
-          <h3 className="text-xl font-semibold mb-2">Set Performance Analysis</h3>
+          <h3 className="text-xl font-semibold mb-2">{t("workoutReport.setPerformanceAnalysis", "Set Performance Analysis")}</h3>
           {Object.entries(setPerformanceData).map(([exerciseName, data]) => (
             <SetPerformanceAnalysisChart
               key={`set-performance-${exerciseName}`}
@@ -203,11 +205,11 @@ const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({ worko
 
       {Object.keys(prProgressionData).length > 0 && (
         <div className="mb-8">
-          <h3 className="text-xl font-semibold mb-2">Personal Records (PRs)</h3>
+          <h3 className="text-xl font-semibold mb-2">{t("workoutReport.personalRecords", "Personal Records (PRs)")}</h3>
           {Object.entries(prProgressionData).map(([exerciseName, data]) => (
             <Card key={`pr-progression-${exerciseName}`} className="mb-4">
               <CardHeader>
-                <CardTitle className="text-sm">PRs - {exerciseName}</CardTitle>
+                <CardTitle className="text-sm">{t("workoutReport.prs", "PRs - ")}{exerciseName}</CardTitle>
               </CardHeader>
               <CardContent>
                 {data.map((pr, index) => (
@@ -215,17 +217,17 @@ const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({ worko
                     <div className="flex flex-col items-center justify-center p-2 border rounded-lg">
                       <FaTrophy className="h-5 w-5 text-yellow-500 mb-1" />
                       <span className="text-lg font-bold">{formatNumber(Math.round(convertWeight(pr.oneRM, 'lbs', weightUnit)))} {weightUnit}</span> {/* Converted and rounded */}
-                      <span className="text-xs text-muted-foreground">Estimated 1RM</span>
+                      <span className="text-xs text-muted-foreground">{t("workoutReport.estimated1RM", "Estimated 1RM")}</span>
                     </div>
                     <div className="flex flex-col items-center justify-center p-2 border rounded-lg">
                       <FaWeight className="h-5 w-5 text-red-500 mb-1" />
                       <span className="text-lg font-bold">{formatNumber(Math.round(convertWeight(pr.weight, 'lbs', weightUnit)))} {weightUnit}</span> {/* Converted and rounded */}
-                      <span className="text-xs text-muted-foreground">Max Weight</span>
+                      <span className="text-xs text-muted-foreground">{t("workoutReport.maxWeight", "Max Weight")}</span>
                     </div>
                     <div className="flex flex-col items-center justify-center p-2 border rounded-lg">
                       <FaChartLine className="h-5 w-5 text-green-500 mb-1" />
-                      <span className="text-lg font-bold">{formatNumber(Math.round(pr.reps))} reps</span> {/* Rounded */}
-                      <span className="text-xs text-muted-foreground">Max Reps</span>
+                      <span className="text-lg font-bold">{formatNumber(Math.round(pr.reps))} {t("workoutReport.maxReps", "reps")}</span> {/* Rounded */}
+                      <span className="text-xs text-muted-foreground">{t("workoutReport.maxReps", "Max Reps")}</span>
                     </div>
                   </div>
                 ))}

@@ -1,6 +1,8 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
+import { t } from "i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +52,7 @@ interface CustomNutritionFormProps {
 }
 
 const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormProps) => {
+  const { t } = useTranslation();
   const [quantity, setQuantity] = useState(entry.quantity);
   const [unit, setUnit] = useState(entry.unit);
   const [loading, setLoading] = useState(false);
@@ -91,8 +94,8 @@ const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormPro
       });
 
       toast({
-        title: "Success",
-        description: "Food entry updated successfully",
+        title: t("customNutritionForm.toast.successTitle", "Success"),
+        description: t("customNutritionForm.toast.successDescription", "Food entry updated successfully"),
       });
 
       // Trigger a refresh of the food diary
@@ -109,8 +112,8 @@ const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormPro
     } catch (error) {
       console.error('Error updating food entry:', error);
       toast({
-        title: "Error",
-        description: "Failed to update food entry",
+        title: t("customNutritionForm.toast.errorTitle", "Error"),
+        description: t("customNutritionForm.toast.errorDescription", "Failed to update food entry"),
         variant: "destructive",
       });
     } finally {
@@ -121,9 +124,9 @@ const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormPro
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Nutrition Information for {entry.foods.name}</CardTitle>
+        <CardTitle>{t("customNutritionForm.title", "Nutrition Information for {{foodName}}", { foodName: entry.foods.name })}</CardTitle>
         <p className="text-sm text-gray-600">
-          Adjust the quantity to see the nutritional values update automatically.
+          {t("customNutritionForm.description", "Adjust the quantity to see the nutritional values update automatically.")}
         </p>
       </CardHeader>
       <CardContent>
@@ -131,7 +134,7 @@ const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormPro
           {/* Serving Information */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="quantity">Quantity</Label>
+              <Label htmlFor="quantity">{t("customNutritionForm.quantityLabel", "Quantity")}</Label>
               <Input
                 id="quantity"
                 type="number"
@@ -142,7 +145,7 @@ const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormPro
               />
             </div>
             <div>
-              <Label htmlFor="unit">Unit</Label>
+              <Label htmlFor="unit">{t("customNutritionForm.unitLabel", "Unit")}</Label>
               <Input
                 id="unit"
                 value={unit}
@@ -154,28 +157,28 @@ const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormPro
 
           {/* Main Macronutrients */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Macronutrients</h3>
+            <h3 className="text-lg font-semibold">{t("customNutritionForm.macronutrientsHeading", "Macronutrients")}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <Label>Calories</Label>
+                <Label>{t("customNutritionForm.caloriesLabel", "Calories")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.calories.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Protein (g)</Label>
+                <Label>{t("customNutritionForm.proteinLabel", "Protein (g)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.protein.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Carbs (g)</Label>
+                <Label>{t("customNutritionForm.carbsLabel", "Carbs (g)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.carbs.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Fat (g)</Label>
+                <Label>{t("customNutritionForm.fatLabel", "Fat (g)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.fat.toFixed(1)}
                 </div>
@@ -185,28 +188,28 @@ const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormPro
 
           {/* Detailed Fat Information */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Fat Breakdown</h3>
+            <h3 className="text-lg font-semibold">{t("customNutritionForm.fatBreakdownHeading", "Fat Breakdown")}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <Label>Saturated Fat (g)</Label>
+                <Label>{t("customNutritionForm.saturatedFatLabel", "Saturated Fat (g)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.saturated_fat.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Polyunsaturated Fat (g)</Label>
+                <Label>{t("customNutritionForm.polyunsaturatedFatLabel", "Polyunsaturated Fat (g)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.polyunsaturated_fat.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Monounsaturated Fat (g)</Label>
+                <Label>{t("customNutritionForm.monounsaturatedFatLabel", "Monounsaturated Fat (g)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.monounsaturated_fat.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Trans Fat (g)</Label>
+                <Label>{t("customNutritionForm.transFatLabel", "Trans Fat (g)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.trans_fat.toFixed(1)}
                 </div>
@@ -216,28 +219,28 @@ const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormPro
 
           {/* Minerals and Other Nutrients */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Minerals & Other Nutrients</h3>
+            <h3 className="text-lg font-semibold">{t("customNutritionForm.mineralsHeading", "Minerals & Other Nutrients")}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <Label>Cholesterol (mg)</Label>
+                <Label>{t("customNutritionForm.cholesterolLabel", "Cholesterol (mg)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.cholesterol.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Sodium (mg)</Label>
+                <Label>{t("customNutritionForm.sodiumLabel", "Sodium (mg)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.sodium.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Potassium (mg)</Label>
+                <Label>{t("customNutritionForm.potassiumLabel", "Potassium (mg)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.potassium.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Dietary Fiber (g)</Label>
+                <Label>{t("customNutritionForm.dietaryFiberLabel", "Dietary Fiber (g)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.dietary_fiber.toFixed(1)}
                 </div>
@@ -247,28 +250,28 @@ const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormPro
 
           {/* Sugars and Vitamins */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Sugars & Vitamins</h3>
+            <h3 className="text-lg font-semibold">{t("customNutritionForm.sugarsVitaminsHeading", "Sugars & Vitamins")}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <Label>Sugars (g)</Label>
+                <Label>{t("customNutritionForm.sugarsLabel", "Sugars (g)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.sugars.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Vitamin A (µg)</Label>
+                <Label>{t("customNutritionForm.vitaminALabel", "Vitamin A (µg)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.vitamin_a.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Vitamin C (mg)</Label>
+                <Label>{t("customNutritionForm.vitaminCLabel", "Vitamin C (mg)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.vitamin_c.toFixed(1)}
                 </div>
               </div>
               <div>
-                <Label>Calcium (mg)</Label>
+                <Label>{t("customNutritionForm.calciumLabel", "Calcium (mg)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.calcium.toFixed(1)}
                 </div>
@@ -280,7 +283,7 @@ const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormPro
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
-                <Label>Iron (mg)</Label>
+                <Label>{t("customNutritionForm.ironLabel", "Iron (mg)")}</Label>
                 <div className="p-2 bg-gray-50 rounded border text-center font-medium">
                   {calculatedValues.iron.toFixed(1)}
                 </div>
@@ -290,21 +293,26 @@ const CustomNutritionForm = ({ entry, onSave, onCancel }: CustomNutritionFormPro
 
           {/* Original Food Info for Reference */}
           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-            <h4 className="font-medium mb-2">Original Food Values (per {entry.foods.serving_size} {entry.foods.serving_unit}):</h4>
+            <h4 className="font-medium mb-2">
+              {t("customNutritionForm.originalValuesHeading", "Original Food Values (per {{servingSize}} {{servingUnit}}):", {
+                servingSize: entry.foods.serving_size,
+                servingUnit: entry.foods.serving_unit,
+              })}
+            </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <div>{entry.foods.calories} cal</div>
-              <div>{entry.foods.protein}g protein</div>
-              <div>{entry.foods.carbs}g carbs</div>
-              <div>{entry.foods.fat}g fat</div>
+              <div>{entry.foods.calories} {t("customNutritionForm.caloriesUnit", "cal")}</div>
+              <div>{entry.foods.protein}{t("customNutritionForm.proteinUnit", "g protein")}</div>
+              <div>{entry.foods.carbs}{t("customNutritionForm.carbsUnit", "g carbs")}</div>
+              <div>{entry.foods.fat}{t("customNutritionForm.fatUnit", "g fat")}</div>
             </div>
           </div>
 
           <div className="flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
+              {t("customNutritionForm.cancelButton", "Cancel")}
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading ? t("customNutritionForm.savingButton", "Saving...") : t("customNutritionForm.saveChangesButton", "Save Changes")}
             </Button>
           </div>
         </form>

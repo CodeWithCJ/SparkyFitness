@@ -20,7 +20,7 @@ const AuthenticationSettings: React.FC = () => {
         const fetchedSettings = await globalSettingsService.getSettings();
         setSettings(fetchedSettings);
       } catch (error) {
-        toast({ title: t('admin.authenticationSettings.errorLoadingSettings'), description: t('admin.authenticationSettings.errorLoadingSettingsDescription'), variant: "destructive" });
+        toast({ title: t('admin.authenticationSettings.errorLoadingSettings', 'Error'), description: t('admin.authenticationSettings.errorLoadingSettingsDescription', 'Failed to load authentication settings.'), variant: "destructive" });
       } finally {
         setLoading(false);
       }
@@ -36,15 +36,15 @@ const AuthenticationSettings: React.FC = () => {
 
     try {
       await globalSettingsService.saveSettings(newSettings);
-      toast({ title: t('admin.authenticationSettings.settingsSaved'), description: t('admin.authenticationSettings.loginSettingUpdated') });
+      toast({ title: t('admin.authenticationSettings.settingsSaved', 'Settings Saved'), description: t('admin.authenticationSettings.loginSettingUpdated', 'Login setting updated successfully.') });
     } catch (error) {
-      toast({ title: t('admin.authenticationSettings.error'), description: t('admin.authenticationSettings.failedToSaveLoginSettings'), variant: "destructive" });
+      toast({ title: t('admin.authenticationSettings.error', 'Error'), description: t('admin.authenticationSettings.failedToSaveLoginSettings', 'Failed to save login settings.'), variant: "destructive" });
       setSettings(settings); // Revert optimistic update on failure
     }
   };
 
   if (loading) {
-    return <div>{t('admin.authenticationSettings.loadingSettings')}</div>;
+    return <div>{t('admin.authenticationSettings.loadingSettings', 'Loading settings...')}</div>;
   }
 
   return (
@@ -52,17 +52,17 @@ const AuthenticationSettings: React.FC = () => {
       <AccordionItem value="login-management" className="border rounded-lg">
         <AccordionTrigger
           className="flex items-center gap-2 p-4 hover:no-underline"
-          description={t('admin.authenticationSettings.loginManagement.description')}
+          description={t('admin.authenticationSettings.loginManagement.description', 'Enable or disable different methods for users to log in.')}
         >
           <Info className="h-5 w-5" />
-          {t('admin.authenticationSettings.loginManagement.title')}
+          {t('admin.authenticationSettings.loginManagement.title', 'Login Management')}
         </AccordionTrigger>
         <AccordionContent className="p-4 pt-0 space-y-4">
           {settings && (
             <>
               <div className="flex items-center justify-between p-4 border rounded-md">
                 <Label htmlFor="enable_email_password_login" className="font-medium">
-                  {t('admin.authenticationSettings.loginManagement.enableEmailPasswordLogin')}
+                  {t('admin.authenticationSettings.loginManagement.enableEmailPasswordLogin', 'Enable Email & Password Login')}
                 </Label>
                 <Switch
                   id="enable_email_password_login"
@@ -72,7 +72,7 @@ const AuthenticationSettings: React.FC = () => {
               </div>
               <div className="flex items-center justify-between p-4 border rounded-md">
                 <Label htmlFor="is_oidc_active" className="font-medium">
-                  {t('admin.authenticationSettings.loginManagement.enableOidcLoginGlobal')}
+                  {t('admin.authenticationSettings.loginManagement.enableOidcLoginGlobal', 'Enable OIDC Login (Global)')}
                 </Label>
                 <Switch
                   id="is_oidc_active"
@@ -80,12 +80,22 @@ const AuthenticationSettings: React.FC = () => {
                   onCheckedChange={(checked) => handleSwitchChange('is_oidc_active', checked)}
                 />
               </div>
+              <div className="flex items-center justify-between p-4 border rounded-md">
+                <Label htmlFor="is_mfa_mandatory" className="font-medium">
+                  {t('admin.authenticationSettings.loginManagement.enforceMfaForAllUsers', 'Enforce MFA for all users')}
+                </Label>
+                <Switch
+                  id="is_mfa_mandatory"
+                  checked={settings.is_mfa_mandatory}
+                  onCheckedChange={(checked) => handleSwitchChange('is_mfa_mandatory', checked)}
+                />
+              </div>
             </>
           )}
           <div className="flex items-start p-4 mt-2 text-sm text-muted-foreground bg-secondary/20 border border-secondary/40 rounded-lg">
             <Info className="h-5 w-5 mr-3 mt-1 flex-shrink-0" />
             <div>
-              <strong>{t('admin.authenticationSettings.loginManagement.emergencyFailSafe')}</strong> {t('admin.authenticationSettings.loginManagement.emergencyFailSafeDescription')}
+              <strong>{t('admin.authenticationSettings.loginManagement.emergencyFailSafe', 'Emergency Fail-Safe:')}</strong> {t('admin.authenticationSettings.loginManagement.emergencyFailSafeDescription', 'If you are ever locked out of your account, you can force email/password login to be enabled by setting the following environment variable on your server and restarting it:')}
               <code className="font-mono bg-gray-200 dark:bg-gray-700 p-1 rounded flex items-center">
                 SPARKY_FITNESS_FORCE_EMAIL_LOGIN=true
                 <Button
@@ -94,7 +104,7 @@ const AuthenticationSettings: React.FC = () => {
                   className="ml-2 h-5 w-5"
                   onClick={() => {
                     navigator.clipboard.writeText('SPARKY_FITNESS_FORCE_EMAIL_LOGIN=true');
-                    toast({ title: t('copied'), description: t('admin.authenticationSettings.loginManagement.envVarCopied') });
+                    toast({ title: t('copied', 'Copied!'), description: t('admin.authenticationSettings.loginManagement.envVarCopied', 'Environment variable copied to clipboard.') });
                   }}
                 >
                   <Clipboard className="h-4 w-4" />
@@ -108,10 +118,10 @@ const AuthenticationSettings: React.FC = () => {
       <AccordionItem value="oidc-provider-settings" className="border rounded-lg">
         <AccordionTrigger
           className="flex items-center gap-2 p-4 hover:no-underline"
-          description={t('admin.authenticationSettings.oidcProviderManagement.description')}
+          description={t('admin.authenticationSettings.oidcProviderManagement.description', 'Configure your OpenID Connect (OIDC) providers.')}
         >
           <Lock className="h-5 w-5" />
-          {t('admin.authenticationSettings.oidcProviderManagement.title')}
+          {t('admin.authenticationSettings.oidcProviderManagement.title', 'OIDC Provider Management')}
         </AccordionTrigger>
         <AccordionContent className="p-4 pt-0">
           <OidcSettings />

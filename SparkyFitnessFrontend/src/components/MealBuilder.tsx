@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,7 @@ interface MealBuilderProps {
 
 
 const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) => {
+  const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
   const { loggingLevel, foodDisplayLimit } = usePreferences(); // Get foodDisplayLimit
   const [mealName, setMealName] = useState('');
@@ -48,8 +50,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
         } catch (err) {
           error(loggingLevel, 'Failed to fetch meal for editing:', err);
           toast({
-            title: 'Error',
-            description: 'Failed to load meal for editing.',
+            title: t('mealBuilder.errorTitle', 'Error'),
+            description: t('mealBuilder.loadMealError', 'Failed to load meal for editing.'),
             variant: 'destructive',
           });
         }
@@ -82,32 +84,32 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
     setIsFoodUnitSelectorOpen(false);
     setSelectedFoodForUnitSelection(null);
     toast({
-      title: 'Success',
-      description: `${food.name} added to meal.`,
+      title: t('mealBuilder.successTitle', 'Success'),
+      description: t('mealBuilder.foodAddedToMeal', { foodName: food.name, defaultValue: `${food.name} added to meal.` }),
     });
   }, []);
 
   const handleRemoveFoodFromMeal = useCallback((index: number) => {
     setMealFoods(prev => prev.filter((_, i) => i !== index));
     toast({
-      title: 'Removed',
-      description: 'Food removed from meal.',
+      title: t('mealBuilder.removedTitle', 'Removed'),
+      description: t('mealBuilder.foodRemovedFromMeal', 'Food removed from meal.'),
     });
   }, []);
 
   const handleSaveMeal = useCallback(async () => {
     if (!mealName.trim()) {
       toast({
-        title: 'Error',
-        description: 'Meal name cannot be empty.',
+        title: t('mealBuilder.errorTitle', 'Error'),
+        description: t('mealBuilder.mealNameEmptyError', 'Meal name cannot be empty.'),
         variant: 'destructive',
       });
       return;
     }
     if (mealFoods.length === 0) {
       toast({
-        title: 'Error',
-        description: 'A meal must contain at least one food item.',
+        title: t('mealBuilder.errorTitle', 'Error'),
+        description: t('mealBuilder.noFoodInMealError', 'A meal must contain at least one food item.'),
         variant: 'destructive',
       });
       return;
@@ -137,22 +139,22 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
       if (mealId) {
         resultMeal = await updateMeal(activeUserId!, mealId, mealData);
         toast({
-          title: 'Success',
-          description: 'Meal updated successfully!',
+          title: t('mealBuilder.successTitle', 'Success'),
+          description: t('mealBuilder.mealUpdatedSuccess', 'Meal updated successfully!'),
         });
       } else {
         resultMeal = await createMeal(activeUserId!, mealData);
         toast({
-          title: 'Success',
-          description: 'Meal created successfully!',
+          title: t('mealBuilder.successTitle', 'Success'),
+          description: t('mealBuilder.mealCreatedSuccess', 'Meal created successfully!'),
         });
       }
       onSave?.(resultMeal);
     } catch (err) {
       error(loggingLevel, 'Error saving meal:', err);
       toast({
-        title: 'Error',
-        description: `Failed to save meal: ${err instanceof Error ? err.message : String(err)}`,
+        title: t('mealBuilder.errorTitle', 'Error'),
+        description: t('mealBuilder.saveMealError', { error: err instanceof Error ? err.message : String(err), defaultValue: `Failed to save meal: ${err instanceof Error ? err.message : String(err)}` }),
         variant: 'destructive',
       });
     }
@@ -182,21 +184,21 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
   return (
     <div className="space-y-6 pt-4">
         <div className="space-y-2">
-          <Label htmlFor="mealName">Meal Name</Label>
+          <Label htmlFor="mealName">{t('mealBuilder.mealName', 'Meal Name')}</Label>
           <Input
             id="mealName"
             value={mealName}
             onChange={(e) => setMealName(e.target.value)}
-            placeholder="e.g., High Protein Breakfast"
+            placeholder={t('mealBuilder.mealNamePlaceholder', 'e.g., High Protein Breakfast')}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="mealDescription">Description (Optional)</Label>
+          <Label htmlFor="mealDescription">{t('mealBuilder.mealDescription', 'Description (Optional)')}</Label>
           <Input
             id="mealDescription"
             value={mealDescription}
             onChange={(e) => setMealDescription(e.target.value)}
-            placeholder="e.g., My go-to morning meal"
+            placeholder={t('mealBuilder.mealDescriptionPlaceholder', 'e.g., My go-to morning meal')}
           />
         </div>
         <div className="flex items-center space-x-2">
@@ -205,18 +207,18 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
             checked={isPublic}
             onCheckedChange={(checked: boolean) => setIsPublic(checked)}
           />
-          <Label htmlFor="isPublic">Share with Public</Label>
+          <Label htmlFor="isPublic">{t('mealBuilder.shareWithPublic', 'Share with Public')}</Label>
         </div>
         {isPublic && (
           <p className="text-sm text-muted-foreground mt-2">
-            Note: All foods in this meal will be marked as public.
+            {t('mealBuilder.shareWithPublicNote', 'Note: All foods in this meal will be marked as public.')}
           </p>
         )}
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Foods in Meal</h3>
+          <h3 className="text-lg font-semibold">{t('mealBuilder.foodsInMeal', 'Foods in Meal')}</h3>
           {mealFoods.length === 0 ? (
-            <p className="text-muted-foreground">No foods added to this meal yet.</p>
+            <p className="text-muted-foreground">{t('mealBuilder.noFoodsInMeal', 'No foods added to this meal yet.')}</p>
           ) : (
             <div className="space-y-2">
               {mealFoods.map((mf, index) => (
@@ -230,14 +232,19 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
             </div>
           )}
           <div className="text-sm text-muted-foreground">
-            Total Nutrition: Calories: {totalCalories.toFixed(0)}, Protein: {totalProtein.toFixed(1)}g, Carbs: {totalCarbs.toFixed(1)}g, Fat: {totalFat.toFixed(1)}g
+            {t('mealBuilder.totalNutrition', 'Total Nutrition: Calories: {{calories}}, Protein: {{protein}}g, Carbs: {{carbs}}g, Fat: {{fat}}g', {
+              calories: totalCalories.toFixed(0),
+              protein: totalProtein.toFixed(1),
+              carbs: totalCarbs.toFixed(1),
+              fat: totalFat.toFixed(1)
+            })}
           </div>
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Add Food to Meal</h3>
+          <h3 className="text-lg font-semibold">{t('mealBuilder.addFoodToMealTitle', 'Add Food to Meal')}</h3>
           <Button onClick={() => setShowFoodSearchDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Add Food
+            <Plus className="h-4 w-4 mr-2" /> {t('mealBuilder.addFoodButton', 'Add Food')}
           </Button>
         </div>
 
@@ -263,13 +270,13 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
               warn(loggingLevel, 'Meal selected in FoodSearchDialog, but MealBuilder expects Food.');
             }
           }}
-          title="Add Food to Meal"
-          description="Search for a food to add to this meal."
+          title={t('mealBuilder.addFoodToMealDialogTitle', 'Add Food to Meal')}
+          description={t('mealBuilder.addFoodToMealDialogDescription', 'Search for a food to add to this meal.')}
         />
 
         <div className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button onClick={handleSaveMeal}>Save Meal</Button>
+          <Button variant="outline" onClick={onCancel}>{t('common.cancel', 'Cancel')}</Button>
+          <Button onClick={handleSaveMeal}>{t('mealBuilder.saveMealButton', 'Save Meal')}</Button>
         </div>
     </div>
   );

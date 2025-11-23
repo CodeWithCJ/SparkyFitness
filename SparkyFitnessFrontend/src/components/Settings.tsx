@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar as CalendarIcon } from "lucide-react"; // Import CalendarIcon
 import { Calendar } from "@/components/ui/calendar"; // Import Calendar component
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Import Popover components
-import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles } from "lucide-react";
+import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles, QrCode, Mail } from "lucide-react";
 import { apiCall } from '@/services/api'; // Assuming a common API utility
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ import { parse } from "date-fns"; // Import parse for parsing user-entered date 
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"; // Import Accordion components
 import CalculationSettings from "@/pages/CalculationSettings";
 import TooltipWarning from "./TooltipWarning";
+import MFASettings from "./MFASettings"; // Import MFASettings component
 
 interface Profile {
  id: string;
@@ -470,10 +471,10 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         <AccordionItem value="profile-information" className="border rounded-lg mb-4">
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.profileInformation.description')}
+            description={t('settings.profileInformation.description', 'Manage your personal information and profile picture')}
           >
             <User className="h-5 w-5" />
-            {t('settings.profileInformation.title')}
+            {t('settings.profileInformation.title', 'Profile Information')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-6">
             {/* Profile Picture */}
@@ -492,7 +493,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   <Button variant="outline" size="sm" disabled={uploadingImage} asChild>
                     <span>
                       <Camera className="h-4 w-4 mr-2" />
-                      {uploadingImage ? t('settings.profileInformation.uploading') : t('settings.profileInformation.changePhoto')}
+                      {uploadingImage ? t('settings.profileInformation.uploading', 'Uploading...') : t('settings.profileInformation.changePhoto', 'Change Photo')}
                     </span>
                   </Button>
                 </Label>
@@ -504,7 +505,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   className="hidden"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {t('settings.profileInformation.photoSize')}
+                  {t('settings.profileInformation.photoSize', 'PNG, JPG up to 5MB')}
                 </p>
               </div>
             </div>
@@ -513,25 +514,25 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="full_name">{t('settings.profileInformation.fullName')}</Label>
+                <Label htmlFor="full_name">{t('settings.profileInformation.fullName', 'Full Name')}</Label>
                 <Input
                   id="full_name"
                   value={profileForm.full_name}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, full_name: e.target.value }))}
-                  placeholder={t('settings.profileInformation.enterFullName')}
+                  placeholder={t('settings.profileInformation.enterFullName', 'Enter your full name')}
                 />
               </div>
               <div>
-                <Label htmlFor="phone">{t('settings.profileInformation.phoneNumber')}</Label>
+                <Label htmlFor="phone">{t('settings.profileInformation.phoneNumber', 'Phone Number')}</Label>
                 <Input
                   id="phone"
                   value={profileForm.phone}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder={t('settings.profileInformation.enterPhoneNumber')}
+                  placeholder={t('settings.profileInformation.enterPhoneNumber', 'Enter your phone number')}
                 />
               </div>
               <div>
-                <Label htmlFor="date_of_birth">{t('settings.profileInformation.dateOfBirth')}</Label>
+                <Label htmlFor="date_of_birth">{t('settings.profileInformation.dateOfBirth', 'Date of Birth')}</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -542,7 +543,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                       {profileForm.date_of_birth ? (
                         <span>{formatDate(profileForm.date_of_birth)}</span> // Format for display
                       ) : (
-                        <span>{t('settings.profileInformation.pickADate')}</span>
+                        <span>{t('settings.profileInformation.pickADate', 'Pick a date')}</span>
                       )}
                     </Button>
                   </PopoverTrigger>
@@ -562,28 +563,28 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 </Popover>
               </div>
               <div>
-                <Label htmlFor="gender">{t('settings.profileInformation.gender')}</Label>
+                <Label htmlFor="gender">{t('settings.profileInformation.gender', 'Gender')}</Label>
                 <Select
                   value={profileForm.gender}
                   onValueChange={(value) => setProfileForm(prev => ({ ...prev, gender: value }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={t('settings.profileInformation.selectGender')} />
+                    <SelectValue placeholder={t('settings.profileInformation.selectGender', 'Select Gender')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">{t('settings.profileInformation.male')}</SelectItem>
-                    <SelectItem value="female">{t('settings.profileInformation.female')}</SelectItem>
-                    <SelectItem value="other">{t('settings.profileInformation.other')}</SelectItem>
+                    <SelectItem value="male">{t('settings.profileInformation.male', 'Male')}</SelectItem>
+                    <SelectItem value="female">{t('settings.profileInformation.female', 'Female')}</SelectItem>
+                    <SelectItem value="other">{t('settings.profileInformation.other', 'Other')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="md:col-span-2">
-                <Label htmlFor="bio">{t('settings.profileInformation.bio')}</Label>
+                <Label htmlFor="bio">{t('settings.profileInformation.bio', 'Bio')}</Label>
                 <Textarea
                   id="bio"
                   value={profileForm.bio}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, bio: e.target.value }))}
-                  placeholder={t('settings.profileInformation.tellAboutYourself')}
+                  placeholder={t('settings.profileInformation.tellAboutYourself', 'Tell us about yourself')}
                   rows={3}
                 />
               </div>
@@ -591,7 +592,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
 
             <Button onClick={handleProfileUpdate} disabled={loading}>
               <Save className="h-4 w-4 mr-2" />
-              {loading ? t('settings.profileInformation.saving') : t('settings.profileInformation.saveProfile')}
+              {loading ? t('settings.profileInformation.saving', 'Saving...') : t('settings.profileInformation.saveProfile', 'Save Profile')}
             </Button>
           </AccordionContent>
         </AccordionItem>
@@ -599,15 +600,15 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         <AccordionItem value="user-preferences" className="border rounded-lg mb-4">
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.preferences.description')}
+            description={t('settings.preferences.description', 'Customize your app settings and display preferences')}
           >
             <SettingsIcon className="h-5 w-5" />
-            {t('settings.preferences.title')}
+            {t('settings.preferences.title', 'Preferences')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="date_format">{t('settings.preferences.dateFormat')}</Label>
+                <Label htmlFor="date_format">{t('settings.preferences.dateFormat', 'Date Format')}</Label>
                 <Select
                   value={dateFormat}
                   onValueChange={setDateFormat}
@@ -625,7 +626,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="weight_unit">{t('settings.preferences.weightUnit')}</Label>
+                <Label htmlFor="weight_unit">{t('settings.preferences.weightUnit', 'Weight Unit')}</Label>
                 <Select
                   value={weightUnit}
                   onValueChange={setWeightUnit}
@@ -634,13 +635,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="kg">{t('settings.preferences.kilograms')}</SelectItem>
-                    <SelectItem value="lbs">{t('settings.preferences.pounds')}</SelectItem>
+                    <SelectItem value="kg">{t('settings.preferences.kilograms', 'Kilograms (kg)')}</SelectItem>
+                    <SelectItem value="lbs">{t('settings.preferences.pounds', 'Pounds (lbs)')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="measurement_unit">{t('settings.preferences.measurementUnit')}</Label>
+                <Label htmlFor="measurement_unit">{t('settings.preferences.measurementUnit', 'Measurement Unit')}</Label>
                 <Select
                   value={measurementUnit}
                   onValueChange={setMeasurementUnit}
@@ -649,13 +650,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cm">{t('settings.preferences.centimeters')}</SelectItem>
-                    <SelectItem value="inches">{t('settings.preferences.inches')}</SelectItem>
+                    <SelectItem value="cm">{t('settings.preferences.centimeters', 'Centimeters (cm)')}</SelectItem>
+                    <SelectItem value="inches">{t('settings.preferences.inches', 'Inches (in)')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="distance_unit">{t('settings.preferences.distanceUnit')}</Label>
+                <Label htmlFor="distance_unit">{t('settings.preferences.distanceUnit', 'Distance Unit')}</Label>
                 <Select
                   value={distanceUnit}
                   onValueChange={setDistanceUnit}
@@ -664,13 +665,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="km">{t('settings.preferences.kilometers')}</SelectItem>
-                    <SelectItem value="miles">{t('settings.preferences.miles')}</SelectItem>
+                    <SelectItem value="km">{t('settings.preferences.kilometers', 'Kilometers (km)')}</SelectItem>
+                    <SelectItem value="miles">{t('settings.preferences.miles', 'Miles (miles)')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="logging_level">{t('settings.preferences.loggingLevel')}</Label>
+                <Label htmlFor="logging_level">{t('settings.preferences.loggingLevel', 'Minimum Logging Level')}</Label>
                 <Select
                   value={localLoggingLevel}
                   onValueChange={(value) => setLocalLoggingLevel(value as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT')}
@@ -679,16 +680,16 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="DEBUG">{t('settings.preferences.debug')}</SelectItem>
-                    <SelectItem value="INFO">{t('settings.preferences.info')}</SelectItem>
-                    <SelectItem value="WARN">{t('settings.preferences.warn')}</SelectItem>
-                    <SelectItem value="ERROR">{t('settings.preferences.error')}</SelectItem>
-                    <SelectItem value="SILENT">{t('settings.preferences.silent')}</SelectItem>
+                    <SelectItem value="DEBUG">{t('settings.preferences.debug', 'DEBUG (Most Detailed)')}</SelectItem>
+                    <SelectItem value="INFO">{t('settings.preferences.info', 'INFO')}</SelectItem>
+                    <SelectItem value="WARN">{t('settings.preferences.warn', 'WARN')}</SelectItem>
+                    <SelectItem value="ERROR">{t('settings.preferences.error', 'ERROR')}</SelectItem>
+                    <SelectItem value="SILENT">{t('settings.preferences.silent', 'SILENT (No Logs)')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="item_display_limit">{t('settings.preferences.itemDisplayLimit')}</Label>
+                <Label htmlFor="item_display_limit">{t('settings.preferences.itemDisplayLimit', 'Search/Recent/Top Limit')}</Label>
                 <Select
                   value={String(itemDisplayLimit)}
                   onValueChange={(value) => setItemDisplayLimit(Number(value))}
@@ -697,15 +698,15 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="5">{t('settings.preferences.items', { count: 5 })}</SelectItem>
-                    <SelectItem value="10">{t('settings.preferences.items', { count: 10 })}</SelectItem>
-                    <SelectItem value="15">{t('settings.preferences.items', { count: 15 })}</SelectItem>
-                    <SelectItem value="20">{t('settings.preferences.items', { count: 20 })}</SelectItem>
+                    <SelectItem value="5">{t('settings.preferences.items', { count: 5, defaultValue: '{{count}} items' })}</SelectItem>
+                    <SelectItem value="10">{t('settings.preferences.items', { count: 10, defaultValue: '{{count}} items' })}</SelectItem>
+                    <SelectItem value="15">{t('settings.preferences.items', { count: 15, defaultValue: '{{count}} items' })}</SelectItem>
+                    <SelectItem value="20">{t('settings.preferences.items', { count: 20, defaultValue: '{{count}} items' })}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="language">{t('settings.preferences.language')}</Label>
+                <Label htmlFor="language">{t('settings.preferences.language', 'Language')}</Label>
                 <Select
                   value={language}
                   onValueChange={setLanguage}
@@ -725,7 +726,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             </div>
             <Button onClick={handlePreferencesUpdate} disabled={loading}>
               <Save className="h-4 w-4 mr-2" />
-              {loading ? t('settings.profileInformation.saving') : t('settings.preferences.savePreferences')}
+              {loading ? t('settings.profileInformation.saving', 'Saving...') : t('settings.preferences.savePreferences', 'Save Preferences')}
             </Button>
           </AccordionContent>
         </AccordionItem>
@@ -733,14 +734,14 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         <AccordionItem value="water-tracking" className="border rounded-lg mb-4">
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.waterTracking.description')}
+            description={t('settings.waterTracking.description', 'Configure your water intake tracking settings')}
           >
             <Droplet className="h-5 w-5" />
-            {t('settings.waterTracking.title')}
+            {t('settings.waterTracking.title', 'Water Tracking')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="water_display_unit">{t('settings.waterTracking.waterDisplayUnit')}</Label>
+              <Label htmlFor="water_display_unit">{t('settings.waterTracking.waterDisplayUnit', 'Water Display Unit')}</Label>
               <Select
                 value={water_display_unit}
                 onValueChange={setWaterDisplayUnit}
@@ -749,16 +750,16 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ml">{t('settings.waterTracking.milliliters')}</SelectItem>
-                  <SelectItem value="oz">{t('settings.waterTracking.fluidOunces')}</SelectItem>
-                  <SelectItem value="cup">{t('settings.waterTracking.cups')}</SelectItem>
+                  <SelectItem value="ml">{t('settings.waterTracking.milliliters', 'Milliliters (ml)')}</SelectItem>
+                  <SelectItem value="oz">{t('settings.waterTracking.fluidOunces', 'Fluid Ounces (oz)')}</SelectItem>
+                  <SelectItem value="cup">{t('settings.waterTracking.cups', 'Cups')}</SelectItem>
                 </SelectContent>
               </Select>
 
             </div>
             <Button onClick={handlePreferencesUpdate} disabled={loading}>
               <Save className="h-4 w-4 mr-2" />
-              {loading ? t('settings.profileInformation.saving') : t('settings.waterTracking.saveWaterDisplayUnit')}
+              {loading ? t('settings.profileInformation.saving', 'Saving...') : t('settings.waterTracking.saveWaterDisplayUnit', 'Save Water Display Unit')}
             </Button>
             <Separator />
             <WaterContainerManager />
@@ -768,10 +769,10 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         <AccordionItem value="nutrient-display" className="border rounded-lg mb-4">
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.nutrientDisplay.description')}
+            description={t('settings.nutrientDisplay.description', 'Choose which nutrients to display in food and meal views')}
           >
             <ListChecks className="h-5 w-5" />
-            {t('settings.nutrientDisplay.title')}
+            {t('settings.nutrientDisplay.title', 'Nutrient Display')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <NutrientDisplaySettings />
@@ -781,10 +782,10 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
        <AccordionItem value="calculation-settings" className="border rounded-lg mb-4">
          <AccordionTrigger
            className="flex items-center gap-2 p-4 hover:no-underline"
-           description={t('settings.calculationSettings.description')}
+           description={t('settings.calculationSettings.description', 'Manage BMR and Body Fat calculation preferences')}
          >
            <SettingsIcon className="h-5 w-5" />
-           {t('settings.calculationSettings.title')}
+           {t('settings.calculationSettings.title', 'Calculation Settings')}
          </AccordionTrigger>
          <AccordionContent className="p-4 pt-0">
            <CalculationSettings />
@@ -794,10 +795,10 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
        <AccordionItem value="family-access" className="border rounded-lg mb-4">
          <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.familyAccess.description')}
+            description={t('settings.familyAccess.description', 'Manage access to your data for family members')}
           >
             <Users className="h-5 w-5" />
-            {t('settings.familyAccess.title')}
+            {t('settings.familyAccess.title', 'Family Access')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <FamilyAccessManager />
@@ -807,10 +808,10 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         <AccordionItem value="custom-categories" className="border rounded-lg mb-4">
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.customCategories.description')}
+            description={t('settings.customCategories.description', 'Create and manage custom measurement categories')}
           >
             <Tag className="h-5 w-5" />
-            {t('settings.customCategories.title')}
+            {t('settings.customCategories.title', 'Custom Categories')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <CustomCategoryManager
@@ -823,13 +824,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         <AccordionItem value="food-and-exercise-data-providers" className="border rounded-lg mb-4">
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.foodExerciseDataProviders.description')}
+            description={t('settings.foodExerciseDataProviders.description', 'Configure external food and exercise data sources and synchronize data with Garmin Connect')}
           >
             <Cloud className="h-5 w-5" />
-            {t('settings.foodExerciseDataProviders.title')}
+            {t('settings.foodExerciseDataProviders.title', 'Food & Exercise Data Providers')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
-            <TooltipWarning warningMsg={t('settings.foodExerciseDataProviders.invalidKeyLengthWarning')} />
+            <TooltipWarning warningMsg={t('settings.foodExerciseDataProviders.invalidKeyLengthWarning', 'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.')} />
             <ExternalProviderSettings />
             <Separator />
           </AccordionContent>
@@ -838,13 +839,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         <AccordionItem value="ai-service" className="border rounded-lg mb-4">
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.aiService.description')}
+            description={t('settings.aiService.description', 'Manage settings for AI-powered features')}
           >
             <Sparkles className="h-5 w-5" />
-            {t('settings.aiService.title')}
+            {t('settings.aiService.title', 'AI Service')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
-            <TooltipWarning warningMsg={t('settings.aiService.invalidKeyLengthWarning')} />
+            <TooltipWarning warningMsg={t('settings.aiService.invalidKeyLengthWarning', 'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.')} />
             <AIServiceSettings />
           </AccordionContent>
         </AccordionItem>
@@ -852,28 +853,28 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         <AccordionItem value="api-key-management" className="border rounded-lg mb-4">
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.apiKeyManagement.description')}
+            description={t('settings.apiKeyManagement.description', 'Generate and manage API keys for external integrations')}
           >
             <KeyRound className="h-5 w-5" />
-            {t('settings.apiKeyManagement.title')}
+            {t('settings.apiKeyManagement.title', 'API Key Management')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             
             <p className="text-sm text-muted-foreground">
-              {t('settings.apiKeyManagement.infoText')}
+              {t('settings.apiKeyManagement.infoText', 'Generate API keys to securely submit data from external applications like iPhone Shortcuts. These keys are tied to your account and can be revoked at any time.')}
             </p>
 
-            <TooltipWarning warningMsg = {t('settings.apiKeyManagement.wikiWarning')} color="blue" />
+            <TooltipWarning warningMsg = {t('settings.apiKeyManagement.wikiWarning', 'Refer to the Wiki page in Github for sample setup instructions for iPhone and Android.')} color="blue" />
             <div className="flex flex-col sm:flex-row gap-2">
               <Input
-                placeholder={t('settings.apiKeyManagement.descriptionPlaceholder')}
+                placeholder={t('settings.apiKeyManagement.descriptionPlaceholder', "Description (e.g., 'iPhone Health Shortcut')")}
                 value={newApiKeyDescription}
                 onChange={(e) => setNewApiKeyDescription(e.target.value)}
                 className="flex-grow"
               />
               <Button onClick={handleGenerateApiKey} disabled={generatingApiKey}>
                 <Save className="h-4 w-4 mr-2" />
-                {generatingApiKey ? t('settings.apiKeyManagement.generating') : t('settings.apiKeyManagement.generateNewKey')}
+                {generatingApiKey ? t('settings.apiKeyManagement.generating', 'Generating...') : t('settings.apiKeyManagement.generateNewKey', 'Generate New Key')}
               </Button>
             </div>
 
@@ -881,12 +882,12 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
 
             <div className="space-y-3">
               {apiKeys.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('settings.apiKeyManagement.noApiKeys')}</p>
+                <p className="text-sm text-muted-foreground">{t('settings.apiKeyManagement.noApiKeys', 'No API keys generated yet.')}</p>
               ) : (
                 apiKeys.map((key) => (
                   <div key={key.id} className="flex items-center space-x-2 p-2 border rounded-md">
                     <div className="flex-grow">
-                      <p className="font-medium">{key.description || t('settings.apiKeyManagement.noDescription')}</p>
+                      <p className="font-medium">{key.description || t('settings.apiKeyManagement.noDescription', 'No Description')}</p>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span className="font-mono text-xs">
                           {showApiKey === key.id ? key.api_key : '********************'}
@@ -904,7 +905,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                           size="sm"
                           onClick={() => {
                             navigator.clipboard.writeText(key.api_key);
-                            toast({ title: t('settings.apiKeyManagement.copied'), description: t('settings.apiKeyManagement.apiKeyCopied') });
+                            toast({ title: t('settings.apiKeyManagement.copied', 'Copied!'), description: t('settings.apiKeyManagement.apiKeyCopied', 'API key copied to clipboard.') });
                           }}
                           className="h-auto p-1"
                         >
@@ -912,8 +913,8 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {t('settings.apiKeyManagement.created')} {new Date(key.created_at).toLocaleDateString()}
-                        {key.last_used_at && ` | ${t('settings.apiKeyManagement.lastUsed')} ${new Date(key.last_used_at).toLocaleDateString()}`}
+                        {t('settings.apiKeyManagement.created', 'Created:')} {new Date(key.created_at).toLocaleDateString()}
+                        {key.last_used_at && ` | ${t('settings.apiKeyManagement.lastUsed', 'Last Used:')} ${new Date(key.last_used_at).toLocaleDateString()}`}
                         {/* Removed Inactive status as per user request */}
                       </p>
                     </div>
@@ -935,29 +936,29 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         <AccordionItem value="account-security" className="border rounded-lg mb-4">
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.accountSecurity.description')}
+            description={t('settings.accountSecurity.description', 'Change your email or password and manage MFA')}
           >
             <Lock className="h-5 w-5" />
-            {t('settings.accountSecurity.title')}
+            {t('settings.accountSecurity.title', 'Account Security')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-6">
             {/* Email Change */}
             <div>
-              <Label htmlFor="current_email">{t('settings.accountSecurity.currentEmail')}</Label>
+              <Label htmlFor="current_email">{t('settings.accountSecurity.currentEmail', 'Current Email')}</Label>
               <div className="flex gap-2">
                 <Input
                   id="current_email"
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder={t('settings.accountSecurity.enterNewEmail')}
+                  placeholder={t('settings.accountSecurity.enterNewEmail', 'Enter new email address')}
                 />
                 <Button onClick={handleEmailChange} disabled={loading} variant="outline">
-                  {t('settings.accountSecurity.updateEmail')}
+                  {t('settings.accountSecurity.updateEmail', 'Update Email')}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {t('settings.accountSecurity.verifyNewEmail')}
+                {t('settings.accountSecurity.verifyNewEmail', 'You\'ll need to verify your new email address')}
               </p>
             </div>
 
@@ -965,7 +966,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
 
             {/* Password Change */}
             <form onSubmit={(e) => { e.preventDefault(); handlePasswordChange(); }} className="space-y-4">
-              <h3 className="text-lg font-medium">{t('settings.accountSecurity.changePassword')}</h3>
+              <h3 className="text-lg font-medium">{t('settings.accountSecurity.changePassword', 'Change Password')}</h3>
               {/* Hidden username field for password managers */}
               <Input
                 type="text"
@@ -980,25 +981,25 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="new_password">{t('settings.accountSecurity.newPassword')}</Label>
+                  <Label htmlFor="new_password">{t('settings.accountSecurity.newPassword', 'New Password')}</Label>
                   <Input
                     id="new_password"
                     type="password"
                     autoComplete="new-password"
                     value={passwordForm.new_password}
                     onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
-                    placeholder={t('settings.accountSecurity.enterNewPassword')}
+                    placeholder={t('settings.accountSecurity.enterNewPassword', 'Enter new password')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="confirm_password">{t('settings.accountSecurity.confirmNewPassword')}</Label>
+                  <Label htmlFor="confirm_password">{t('settings.accountSecurity.confirmNewPassword', 'Confirm New Password')}</Label>
                   <Input
                     id="confirm_password"
                     type="password"
                     autoComplete="new-password"
                     value={passwordForm.confirm_password}
                     onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
-                    placeholder={t('settings.accountSecurity.confirmNewPassword')}
+                    placeholder={t('settings.accountSecurity.confirmNewPassword', 'Confirm New Password')}
                   />
                 </div>
               </div>
@@ -1007,9 +1008,11 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 disabled={loading || !passwordForm.new_password || !passwordForm.confirm_password}
               >
                 <Lock className="h-4 w-4 mr-2" />
-                {loading ? t('settings.accountSecurity.updating') : t('settings.accountSecurity.updatePassword')}
+                {loading ? t('settings.accountSecurity.updating', 'Updating...') : t('settings.accountSecurity.updatePassword', 'Update Password')}
               </Button>
             </form>
+            <Separator />
+            <MFASettings />
           </AccordionContent>
         </AccordionItem>
       </Accordion>

@@ -8,6 +8,8 @@ export interface User {
   is_active: boolean;
   created_at: string;
   last_login_at: string;
+  mfa_totp_enabled: boolean;
+  mfa_email_enabled: boolean;
 }
 
 export interface UserProfile {
@@ -40,6 +42,10 @@ export const userManagementService = {
 
   updateUserRole: async (userId: string, role: 'user' | 'admin'): Promise<void> => {
     await api.put(`/admin/users/${userId}/role`, { body: { role } });
+  },
+
+  resetUserMfa: async (userId: string): Promise<void> => {
+    await api.post(`/admin/auth/users/${userId}/mfa/reset`);
   },
 
   getUserProfile: async (userId: string): Promise<UserProfile> => {

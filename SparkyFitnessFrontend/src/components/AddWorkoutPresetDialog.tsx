@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { WorkoutPreset } from "@/types/workout";
@@ -16,6 +17,7 @@ interface AddWorkoutPresetDialogProps {
 const AddWorkoutPresetDialog: React.FC<AddWorkoutPresetDialogProps> = ({
   onPresetSelected,
 }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { loggingLevel } = usePreferences();
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,14 +30,14 @@ const AddWorkoutPresetDialog: React.FC<AddWorkoutPresetDialogProps> = ({
     if (!user?.id) return;
     debug(loggingLevel, "AddWorkoutPresetDialog: Fetching workout presets.");
     try {
-      const presets = await getWorkoutPresets();
+      const presets = await getWorkoutPresets(1, 1000); // Fetch all presets, assuming 1000 is a sufficient limit
       info(loggingLevel, "AddWorkoutPresetDialog: Fetched presets:", presets);
-      setAllPresets(presets);
+      setAllPresets(presets.presets);
       // For now, just use a simple slice for recent/top.
       // In a real app, this would involve more sophisticated logic
       // based on user history or popularity.
-      setRecentPresets(presets.slice(0, 3));
-      setTopPresets(presets.slice(3, 6));
+      setRecentPresets(presets.presets.slice(0, 3));
+      setTopPresets(presets.presets.slice(3, 6));
     } catch (err) {
       error(loggingLevel, "AddWorkoutPresetDialog: Failed to load workout presets:", err);
       toast({
@@ -66,7 +68,7 @@ const AddWorkoutPresetDialog: React.FC<AddWorkoutPresetDialogProps> = ({
   return (
     <div className="flex-grow overflow-y-auto py-4">
       <Input
-        placeholder="Search your workout presets..."
+        placeholder={t("exercise.addWorkoutPresetDialog.searchPlaceholder", "Search your workout presets...")}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className="mb-4"
@@ -74,7 +76,7 @@ const AddWorkoutPresetDialog: React.FC<AddWorkoutPresetDialogProps> = ({
 
       {searchTerm === "" ? (
         <>
-          <h3 className="text-lg font-semibold mb-2">Recent Presets</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("exercise.addWorkoutPresetDialog.recentPresetsTitle", "Recent Presets")}</h3>
           <div className="space-y-2 mb-4">
             {recentPresets.length > 0 ? (
               recentPresets.map((preset) => (
@@ -86,11 +88,11 @@ const AddWorkoutPresetDialog: React.FC<AddWorkoutPresetDialogProps> = ({
                 </Card>
               ))
             ) : (
-              <p className="text-muted-foreground">No recent presets.</p>
+              <p className="text-muted-foreground">{t("exercise.addWorkoutPresetDialog.noRecentPresets", "No recent presets.")}</p>
             )}
           </div>
 
-          <h3 className="text-lg font-semibold mb-2">Top Presets</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("exercise.addWorkoutPresetDialog.topPresetsTitle", "Top Presets")}</h3>
           <div className="space-y-2">
             {topPresets.length > 0 ? (
               topPresets.map((preset) => (
@@ -102,13 +104,13 @@ const AddWorkoutPresetDialog: React.FC<AddWorkoutPresetDialogProps> = ({
                 </Card>
               ))
             ) : (
-              <p className="text-muted-foreground">No top presets.</p>
+              <p className="text-muted-foreground">{t("exercise.addWorkoutPresetDialog.noTopPresets", "No top presets.")}</p>
             )}
           </div>
         </>
       ) : (
         <>
-          <h3 className="text-lg font-semibold mb-2">Search Results</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("exercise.addWorkoutPresetDialog.searchResultsTitle", "Search Results")}</h3>
           <div className="space-y-2">
             {filteredPresets.length > 0 ? (
               filteredPresets.map((preset) => (
@@ -120,7 +122,7 @@ const AddWorkoutPresetDialog: React.FC<AddWorkoutPresetDialogProps> = ({
                 </Card>
               ))
             ) : (
-              <p className="text-muted-foreground">No presets found matching your search.</p>
+              <p className="text-muted-foreground">{t("exercise.addWorkoutPresetDialog.noMatchingPresets", "No presets found matching your search.")}</p>
             )}
           </div>
         </>

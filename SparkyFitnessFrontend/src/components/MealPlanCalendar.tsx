@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import MealPlanTemplateForm from './MealPlanTemplateForm';
 import { Edit, Trash2 } from 'lucide-react';
 
 const MealPlanCalendar: React.FC = () => {
+    const { t } = useTranslation();
     const { activeUserId } = useActiveUser();
     const { loggingLevel } = usePreferences(); // Get loggingLevel from preferences
     const [templates, setTemplates] = useState<MealPlanTemplate[]>([]);
@@ -28,7 +30,7 @@ const MealPlanCalendar: React.FC = () => {
             debug(loggingLevel, 'MealPlanCalendar: Fetched Templates:', fetchedTemplates); // Use debug
             setTemplates(fetchedTemplates.sort((a, b) => a.plan_name.localeCompare(b.plan_name)));
         } catch (error) {
-            toast({ title: 'Error', description: 'Failed to fetch meal plan templates.', variant: 'destructive' });
+            toast({ title: t('common.error'), description: t('mealPlanCalendar.fetchTemplatesError'), variant: 'destructive' });
             setTemplates([]);
         } finally {
             setIsLoading(false);
@@ -59,29 +61,29 @@ const MealPlanCalendar: React.FC = () => {
                 const updatedTemplate = await updateMealPlanTemplate(activeUserId, templateData.id, templateData, currentClientDate);
                 debug(loggingLevel, 'MealPlanCalendar: Updating template in state:', updatedTemplate); // Use debug
                 setTemplates(prev => prev.map(t => t.id === updatedTemplate.id ? updatedTemplate : t));
-                toast({ title: 'Success', description: 'Meal plan updated successfully.' });
+                toast({ title: t('common.success'), description: t('mealPlanCalendar.updateSuccess') });
             } else {
                 const newTemplate = await createMealPlanTemplate(activeUserId, templateData, currentClientDate);
                 debug(loggingLevel, 'MealPlanCalendar: Adding new template to state:', newTemplate); // Use debug
                 setTemplates(prev => [...prev, newTemplate]);
-                toast({ title: 'Success', description: 'Meal plan created successfully.' });
+                toast({ title: t('common.success'), description: t('mealPlanCalendar.createSuccess') });
             }
             setIsFormOpen(false);
             window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
             fetchTemplates(); // Refresh the list of templates after saving
         } catch (error) {
-            toast({ title: 'Error', description: 'Failed to save template.', variant: 'destructive' });
+            toast({ title: t('common.error'), description: t('mealPlanCalendar.saveTemplateError'), variant: 'destructive' });
         }
     };
 
     const handleDelete = async (templateId: string) => {
-        if (!activeUserId || !window.confirm('Are you sure you want to delete this template?')) return;
+        if (!activeUserId || !window.confirm(t('mealPlanCalendar.deleteTemplateConfirmation'))) return;
         try {
             await deleteMealPlanTemplate(activeUserId, templateId);
-            toast({ title: 'Success', description: 'Template deleted successfully.' });
+            toast({ title: t('common.success'), description: t('mealPlanCalendar.deleteSuccess') });
             fetchTemplates();
         } catch (error) {
-            toast({ title: 'Error', description: 'Failed to delete template.', variant: 'destructive' });
+            toast({ title: t('common.error'), description: t('mealPlanCalendar.deleteTemplateError'), variant: 'destructive' });
         }
     };
 
@@ -91,8 +93,8 @@ const MealPlanCalendar: React.FC = () => {
             const templateToUpdate = templates.find(t => t.id === templateId);
             if (!templateToUpdate) {
                 toast({
-                    title: "Error",
-                    description: "Could not find the meal plan to update.",
+                    title: t('common.error'),
+                    description: t('mealPlanCalendar.updateStatusError'),
                     variant: "destructive",
                 });
                 return;
@@ -100,14 +102,14 @@ const MealPlanCalendar: React.FC = () => {
             const currentClientDate = new Date().toISOString().split('T')[0];
             await updateMealPlanTemplate(activeUserId, templateId, { ...templateToUpdate, is_active: isActive }, currentClientDate);
             toast({
-                title: "Success",
-                description: `Meal plan ${isActive ? 'activated' : 'deactivated'} successfully.`,
+                title: t('common.success'),
+                description: t('mealPlanCalendar.toggleStatusSuccess', { status: isActive ? 'activated' : 'deactivated' }),
             });
             fetchTemplates();
         } catch (error) {
             toast({
-                title: "Error",
-                description: "Failed to toggle meal plan active status.",
+                title: t('common.error'),
+                description: t('mealPlanCalendar.toggleStatusError'),
                 variant: "destructive",
             });
         }
@@ -116,11 +118,11 @@ const MealPlanCalendar: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">Meal Plans</h1>
-                <Button onClick={handleCreate}>Create New Plan</Button>
+                <h1 className="text-2xl font-bold">{t('mealPlanCalendar.title')}</h1>
+                <Button onClick={handleCreate}>{t('mealPlanCalendar.createNewPlan')}</Button>
             </div>
             {isLoading ? (
-                <p>Loading templates...</p>
+                <p>{t('mealPlanCalendar.loadingTemplates')}</p>
             ) : (
                 <Card>
                     <CardContent className="p-0">
@@ -135,7 +137,7 @@ const MealPlanCalendar: React.FC = () => {
                                                 {new Date(template.start_date).toLocaleDateString()} - {template.end_date ? new Date(template.end_date).toLocaleDateString() : 'Indefinite'}
                                             </p>
                                             <p className="text-sm text-muted-foreground">
-                                                Weekly Meals: {template.assignments.length}
+                                                {t('mealPlanCalendar.weeklyMeals', { count: template.assignments.length })}
                                             </p>
                                         </div>
                                         <div className="flex items-center space-x-2">
@@ -147,7 +149,7 @@ const MealPlanCalendar: React.FC = () => {
                                                         </Button>
                                                     </TooltipTrigger>
                                                     <TooltipContent>
-                                                        <p>Edit Meal Plan</p>
+                                                        <p>{t('mealPlanCalendar.editMealPlan')}</p>
                                                     </TooltipContent>
                                                 </Tooltip>
                                                 <Tooltip>
@@ -157,7 +159,7 @@ const MealPlanCalendar: React.FC = () => {
                                                         </Button>
                                                     </TooltipTrigger>
                                                     <TooltipContent>
-                                                        <p>Delete Meal Plan</p>
+                                                        <p>{t('mealPlanCalendar.deleteMealPlan')}</p>
                                                     </TooltipContent>
                                                 </Tooltip>
                                                 <div className="flex items-center space-x-2">
@@ -173,7 +175,7 @@ const MealPlanCalendar: React.FC = () => {
                                                         </label>
                                                       </TooltipTrigger>
                                                       <TooltipContent>
-                                                        <p>{template.is_active ? 'Deactivate Plan' : 'Activate Plan'}</p>
+                                                        <p>{template.is_active ? t('mealPlanCalendar.deactivatePlan') : t('mealPlanCalendar.activatePlan')}</p>
                                                       </TooltipContent>
                                                     </Tooltip>
                                                   </div>
@@ -182,7 +184,7 @@ const MealPlanCalendar: React.FC = () => {
                                     </div>
                                 ))
                             ) : (
-                                <p className="p-4 text-center text-muted-foreground">No meal plans found. Create one to get started!</p>
+                                <p className="p-4 text-center text-muted-foreground">{t('mealPlanCalendar.noMealPlansFound')}</p>
                             )}
                         </div>
                     </CardContent>

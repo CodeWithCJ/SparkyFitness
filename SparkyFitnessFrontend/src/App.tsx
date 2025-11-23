@@ -19,6 +19,7 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import WithingsCallback from '@/pages/WithingsCallback';
 import ExternalProviderSettings from '@/components/ExternalProviderSettings'; // Import ExternalProviderSettings
+import Auth from '@/components/Auth'; // Import the Auth component
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const App = () => {
               <Routes>
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/login/magic-link" element={<Auth />} /> {/* New route for Magic Link Login */}
                 <Route path="/withings/callback" element={<WithingsCallback />} /> {/* New route for Withings callback */}
                 <Route path="/settings/integrations" element={<ExternalProviderSettings />} /> {/* Route for integrations settings */}
                 <Route path="*" element={<AppContent onShowAboutDialog={() => setShowAboutDialog(true)} />} />

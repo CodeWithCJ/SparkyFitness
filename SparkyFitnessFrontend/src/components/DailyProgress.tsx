@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Target, Zap, Utensils, Flame, Flag } from "lucide-react"; // Added Utensils, Flame, Flag
@@ -23,6 +24,7 @@ import {
   ExerciseEntry,
   CheckInMeasurement,
 } from "@/services/dailyProgressService";
+import { GroupedExerciseEntry } from "@/services/exerciseEntryService"; // Corrected import path
 import { getMostRecentMeasurement } from "@/services/checkInService";
 import { FoodEntry } from "@/types/food"; // Import FoodEntry from src/types/food
 import { Skeleton } from "./ui/skeleton";
@@ -37,6 +39,7 @@ const DailyProgress = ({
   selectedDate: string;
   refreshTrigger?: number;
 }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const { loggingLevel } = usePreferences();
@@ -191,7 +194,7 @@ const DailyProgress = ({
       // Load exercise calories burned
       debug(loggingLevel, "DailyProgress: Fetching exercise entries...");
       try {
-        const exerciseData = await getExerciseEntriesForDate(selectedDate);
+        const exerciseData: GroupedExerciseEntry[] = await getExerciseEntriesForDate(selectedDate); // Update type
         info(
           loggingLevel,
           `DailyProgress: Fetched ${exerciseData.length} exercise entries.`,
@@ -200,11 +203,21 @@ const DailyProgress = ({
         let activeCaloriesFromExercise = 0;
         let otherExerciseCalories = 0;
 
-        exerciseData.forEach(entry => {
-          if (entry.exercises?.name === 'Active Calories') {
-            activeCaloriesFromExercise += Number(entry.calories_burned);
-          } else {
-            otherExerciseCalories += Number(entry.calories_burned);
+        exerciseData.forEach(groupedEntry => {
+          if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
+            groupedEntry.exercises.forEach(entry => {
+              if (entry.exercise_snapshot?.name === 'Active Calories') {
+                activeCaloriesFromExercise += Number(entry.calories_burned || 0);
+              } else {
+                otherExerciseCalories += Number(entry.calories_burned || 0);
+              }
+            });
+          } else if (groupedEntry.type === 'individual') {
+            if (groupedEntry.exercise_snapshot?.name === 'Active Calories') {
+              activeCaloriesFromExercise += Number(groupedEntry.calories_burned || 0);
+            } else {
+              otherExerciseCalories += Number(groupedEntry.calories_burned || 0);
+            }
           }
         });
 
@@ -432,7 +445,7 @@ const DailyProgress = ({
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center space-x-2 text-base">
           <Target className="w-4 h-4 text-green-500" />
-          <span className="dark:text-slate-300">Daily Calorie Goal</span>
+          <span className="dark:text-slate-300">{t('exercise.dailyProgress.dailyCalorieGoal', 'Daily Calorie Goal')}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
@@ -465,7 +478,7 @@ const DailyProgress = ({
                   {Math.round(caloriesRemaining)}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  remaining
+                  {t('exercise.dailyProgress.remaining', 'remaining')}
                 </div>
               </div>
             </div>
@@ -478,7 +491,7 @@ const DailyProgress = ({
                 <Utensils className="w-4 h-4 mr-1" />
                 {Math.round(dailyIntake.calories)}
               </div>
-              <div className="text-xs text-gray-500">eaten</div>
+              <div className="text-xs text-gray-500">{t('exercise.dailyProgress.eaten', 'eaten')}</div>
             </div>
             <TooltipProvider>
               <Tooltip>
@@ -488,24 +501,24 @@ const DailyProgress = ({
                       <Flame className="w-4 h-4 mr-1" />
                       {totalCaloriesBurned}
                     </div>
-                    <div className="text-xs text-gray-500">burned</div>
+                    <div className="text-xs text-gray-500">{t('exercise.dailyProgress.burned', 'burned')}</div>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent className="bg-black text-white text-xs p-2 rounded-md">
-                  <p>Burned Calories Breakdown:</p>
+                  <p>{t('exercise.dailyProgress.burnedCaloriesBreakdown', 'Burned Calories Breakdown:')}</p>
                   {exerciseCalories > 0 && (
-                    <p>Other Exercise: {Math.round(exerciseCalories)} cal</p>
+                    <p>{t('exercise.dailyProgress.otherExerciseCalories', 'Other Exercise: {{exerciseCalories}} cal', { exerciseCalories: Math.round(exerciseCalories) })}</p>
                   )}
                   {activeCaloriesFromExercise > 0 && (
-                    <p>Active Calories: {Math.round(activeCaloriesFromExercise)} cal</p>
+                    <p>{t('exercise.dailyProgress.activeCalories', 'Active Calories: {{activeCaloriesFromExercise}} cal', { activeCaloriesFromExercise: Math.round(activeCaloriesFromExercise) })}</p>
                   )}
                   {stepsCalories > 0 && activeCaloriesFromExercise === 0 && (
-                    <p>Steps: {dailySteps.toLocaleString()} = {stepsCalories} cal</p>
+                    <p>{t('exercise.dailyProgress.stepsCalories', 'Steps: {{dailySteps}} = {{stepsCalories}} cal', { dailySteps: dailySteps.toLocaleString(), stepsCalories })}</p>
                   )}
-                  {includeBmrInNetCalories && bmr && (
-                    <p>BMR: {Math.round(bmr)} cal</p>
+                  {includeBmrInNetCalories && bmr && !isNaN(bmr) && (
+                    <p>{t('exercise.dailyProgress.bmrCalories', 'BMR: {{bmr}} cal', { bmr: Math.round(bmr) })}</p>
                   )}
-                  <p>Total: {totalCaloriesBurned} cal</p>
+                  <p>{t('exercise.dailyProgress.totalCaloriesBurned', 'Total: {{totalCaloriesBurned}} cal', { totalCaloriesBurned })}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -515,7 +528,7 @@ const DailyProgress = ({
                 {dailyGoals.calories}
               </div>
               <div className="text-xs dark:text-slate-400 text-gray-500 ">
-                goal
+                {t('exercise.dailyProgress.goal', 'goal')}
               </div>
             </div>
           </div>
@@ -524,27 +537,27 @@ const DailyProgress = ({
           {(exerciseCalories > 0 || stepsCalories > 0 || bmr) && (
             <div className="text-center p-2 bg-blue-50 rounded-lg space-y-1">
               <div className="text-sm font-medium text-blue-700">
-                Calories Burned Breakdown
+                {t('exercise.dailyProgress.caloriesBurnedBreakdownTitle', 'Calories Burned Breakdown')}
               </div>
               {exerciseCalories > 0 && (
                 <div className="text-xs text-blue-600">
-                  Other Exercise: {Math.round(exerciseCalories)} cal
+                  {t('exercise.dailyProgress.otherExerciseCalories', 'Other Exercise: {{exerciseCalories}} cal', { exerciseCalories: Math.round(exerciseCalories) })}
                 </div>
               )}
               {activeCaloriesFromExercise > 0 && (
                 <div className="text-xs text-blue-600">
-                  Active Calories: {Math.round(activeCaloriesFromExercise)} cal
+                  {t('exercise.dailyProgress.activeCalories', 'Active Calories: {{activeCaloriesFromExercise}} cal', { activeCaloriesFromExercise: Math.round(activeCaloriesFromExercise) })}
                 </div>
               )}
               {stepsCalories > 0 && activeCaloriesFromExercise === 0 && (
                 <div className="text-xs text-blue-600 flex items-center justify-center gap-1">
                   <Zap className="w-3 h-3" />
-                  Steps: {dailySteps.toLocaleString()} = {stepsCalories} cal
+                  {t('exercise.dailyProgress.stepsCalories', 'Steps: {{dailySteps}} = {{stepsCalories}} cal', { dailySteps: dailySteps.toLocaleString(), stepsCalories })}
                 </div>
               )}
-              {bmr && (
+              {bmr && !isNaN(bmr) && (
                 <div className="text-xs text-blue-600">
-                  BMR: {Math.round(bmr)} cal
+                  {t('exercise.dailyProgress.bmrCalories', 'BMR: {{bmr}} cal', { bmr: Math.round(bmr) })}
                 </div>
               )}
             </div>
@@ -553,18 +566,18 @@ const DailyProgress = ({
           {/* Net Calories Display - Compact */}
           <div className="text-center p-2 dark:bg-slate-300 bg-gray-50 rounded-lg">
             <div className="text-sm font-medium dark:text-black text-gray-700 ">
-              Net Calories: {Math.round(netCalories)}
+              {t('exercise.dailyProgress.netCalories', 'Net Calories: {{netCalories}}', { netCalories: Math.round(netCalories) })}
             </div>
             <div className="text-xs dark:text-black text-gray-600">
               {Math.round(dailyIntake.calories)} eaten - {Math.round(finalTotalCaloriesBurned)}{" "}
-              burned
+              {t('exercise.dailyProgress.netCaloriesBreakdown', '{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned', { dailyIntakeCalories: Math.round(dailyIntake.calories), finalTotalCaloriesBurned })}
             </div>
           </div>
 
           {/* Progress Bar - Compact */}
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
-              <span>Daily Progress</span>
+              <span>{t('exercise.dailyProgress.dailyProgress', 'Daily Progress')}</span>
               <span>{Math.round(calorieProgress)}%</span>
             </div>
             <Progress value={calorieProgress} className="h-2" />

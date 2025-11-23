@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +45,7 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
   onCopy,
   sourceMealType,
 }) => {
+  const { t } = useTranslation();
   const { formatDateInUserTimezone, loggingLevel } = usePreferences();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedMealType, setSelectedMealType] = useState<string>(sourceMealType);
@@ -78,15 +80,15 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Copy Food Entries</DialogTitle>
+          <DialogTitle>{t('copyFoodEntryDialog.title', 'Copy Food Entries')}</DialogTitle>
           <DialogDescription>
-            Select the target date and meal type to copy the food entries.
+            {t('copyFoodEntryDialog.description', 'Select the target date and meal type to copy the food entries.')}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="targetDate" className="text-right">
-              Target Date
+              {t('copyFoodEntryDialog.targetDate', 'Target Date')}
             </Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -98,7 +100,7 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                  {selectedDate ? format(selectedDate, "PPP") : <span>{t('common.pickADate', 'Pick a date')}</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -113,16 +115,16 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="mealType" className="text-right">
-              Meal Type
+              {t('copyFoodEntryDialog.mealType', 'Meal Type')}
             </Label>
             <Select onValueChange={handleMealTypeChange} value={selectedMealType}>
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select meal type" />
+                <SelectValue placeholder={t('copyFoodEntryDialog.selectMealTypePlaceholder', 'Select meal type')} />
               </SelectTrigger>
               <SelectContent>
                 {mealTypes.map((meal) => (
                   <SelectItem key={meal.value} value={meal.value}>
-                    {meal.label}
+                    {t(`common.${meal.value}`, meal.label)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -130,8 +132,8 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleCopyClick} disabled={!selectedDate}>Copy</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel', 'Cancel')}</Button>
+          <Button onClick={handleCopyClick} disabled={!selectedDate}>{t('copyFoodEntryDialog.copyButton', 'Copy')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

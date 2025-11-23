@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -24,6 +25,7 @@ import AddWorkoutPlanDialog from "./AddWorkoutPlanDialog";
 interface WorkoutPlansManagerProps {}
 
 const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { loggingLevel } = usePreferences();
   const [plans, setPlans] = useState<WorkoutPlanTemplate[]>([]);
@@ -45,8 +47,8 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
     } catch (err) {
       error(loggingLevel, 'Error loading workout plans:', err);
       toast({
-        title: "Error",
-        description: "Failed to load workout plans.",
+        title: t('common.error', 'Error'),
+        description: t('workoutPlansManager.failedToLoadPlans', 'Failed to load workout plans.'),
         variant: "destructive",
       });
     }
@@ -57,16 +59,16 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
     try {
       await createWorkoutPlanTemplate(user.id, newPlanData);
       toast({
-        title: "Success",
-        description: "Workout plan created successfully.",
+        title: t('common.success', 'Success'),
+        description: t('workoutPlansManager.createSuccess', 'Workout plan created successfully.'),
       });
       loadPlans();
       setIsAddPlanDialogOpen(false);
     } catch (err) {
       error(loggingLevel, 'Error creating workout plan:', err);
       toast({
-        title: "Error",
-        description: "Failed to create workout plan.",
+        title: t('common.error', 'Error'),
+        description: t('workoutPlansManager.createError', 'Failed to create workout plan.'),
         variant: "destructive",
       });
     }
@@ -77,8 +79,8 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
     try {
       await updateWorkoutPlanTemplate(planId, updatedPlanData);
       toast({
-        title: "Success",
-        description: "Workout plan updated successfully.",
+        title: t('common.success', 'Success'),
+        description: t('workoutPlansManager.updateSuccess', 'Workout plan updated successfully.'),
       });
       loadPlans();
       setIsEditDialogOpen(false);
@@ -86,8 +88,8 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
     } catch (err) {
       error(loggingLevel, 'Error updating workout plan:', err);
       toast({
-        title: "Error",
-        description: "Failed to update workout plan.",
+        title: t('common.error', 'Error'),
+        description: t('workoutPlansManager.updateError', 'Failed to update workout plan.'),
         variant: "destructive",
       });
     }
@@ -98,15 +100,15 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
     try {
       await deleteWorkoutPlanTemplate(planId);
       toast({
-        title: "Success",
-        description: "Workout plan deleted successfully.",
+        title: t('common.success', 'Success'),
+        description: t('workoutPlansManager.deleteSuccess', 'Workout plan deleted successfully.'),
       });
       loadPlans();
     } catch (err) {
       error(loggingLevel, 'Error deleting workout plan:', err);
       toast({
-        title: "Error",
-        description: "Failed to delete workout plan.",
+        title: t('common.error', 'Error'),
+        description: t('workoutPlansManager.deleteError', 'Failed to delete workout plan.'),
         variant: "destructive",
       });
     }
@@ -118,23 +120,23 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
       const planToUpdate = plans.find(p => p.id === planId);
       if (!planToUpdate) {
         toast({
-          title: "Error",
-          description: "Could not find the plan to update.",
+          title: t('common.error', 'Error'),
+          description: t('workoutPlansManager.updateStatusError', 'Could not find the plan to update.'),
           variant: "destructive",
         });
         return;
       }
       await updateWorkoutPlanTemplate(planId, { ...planToUpdate, is_active: isActive });
       toast({
-        title: "Success",
-        description: `Workout plan ${isActive ? 'activated' : 'deactivated'} successfully.`,
+        title: t('common.success', 'Success'),
+        description: t('workoutPlansManager.toggleStatusSuccess', { status: isActive ? 'activated' : 'deactivated', defaultValue: `Workout plan ${isActive ? 'activated' : 'deactivated'} successfully.` }),
       });
       loadPlans();
     } catch (err) {
       error(loggingLevel, 'Error toggling workout plan active status:', err);
       toast({
-        title: "Error",
-        description: "Failed to toggle workout plan active status.",
+        title: t('common.error', 'Error'),
+        description: t('workoutPlansManager.toggleStatusError', 'Failed to toggle workout plan active status.'),
         variant: "destructive",
       });
     }
@@ -145,11 +147,11 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
       <div className="flex flex-row items-center justify-end space-y-0 pb-2">
         <Button size="sm" onClick={() => setIsAddPlanDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Add Plan
+          {t('workoutPlansManager.addPlanButton', 'Add Plan')}
         </Button>
       </div>
       {plans.length === 0 ? (
-        <p className="text-center text-muted-foreground">No workout plans found. Create one to get started!</p>
+        <p className="text-center text-muted-foreground">{t('workoutPlansManager.noPlansFound', 'No workout plans found. Create one to get started!')}</p>
       ) : (
         <div className="space-y-4">
           {plans.map((plan) => (
@@ -167,10 +169,10 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
                       <span>{new Date(plan.end_date).toLocaleDateString()}</span>
                     </>
                   )}
-                  {!plan.end_date && <span>- Ongoing</span>}
+                  {!plan.end_date && <span>{t('workoutPlansManager.ongoingStatus', '- Ongoing')}</span>}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Status: {plan.is_active ? 'Active' : 'Inactive'}
+                  {t('workoutPlansManager.statusLabel', 'Status: ')} {plan.is_active ? t('workoutPlansManager.activeStatus', 'Active') : t('workoutPlansManager.inactiveStatus', 'Inactive')}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -182,7 +184,7 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Edit Workout Plan</p>
+                      <p>{t('workoutPlansManager.editPlanTooltip', 'Edit Workout Plan')}</p>
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>
@@ -192,7 +194,7 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Delete Workout Plan</p>
+                      <p>{t('workoutPlansManager.deletePlanTooltip', 'Delete Workout Plan')}</p>
                     </TooltipContent>
                   </Tooltip>
                   <div className="flex items-center space-x-2">
@@ -208,7 +210,7 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
                         </label>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{plan.is_active ? 'Deactivate Plan' : 'Activate Plan'}</p>
+                        <p>{plan.is_active ? t('workoutPlansManager.deactivatePlanTooltip', 'Deactivate Plan') : t('workoutPlansManager.activatePlanTooltip', 'Activate Plan')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>

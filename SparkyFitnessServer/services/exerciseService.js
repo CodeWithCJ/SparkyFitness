@@ -4,6 +4,7 @@ const exerciseRepository = require('../models/exerciseRepository');
 const exerciseDb = require('../models/exercise');
 const exerciseEntryDb = require('../models/exerciseEntry');
 const activityDetailsRepository = require('../models/activityDetailsRepository'); // New import
+const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepository'); // New import
 const userRepository = require('../models/userRepository');
 const preferenceRepository = require('../models/preferenceRepository');
 const { v4: uuidv4 } = require('uuid'); // New import for UUID generation
@@ -192,7 +193,7 @@ async function getExerciseEntryById(authenticatedUserId, id) {
     }
     const entry = await exerciseEntryDb.getExerciseEntryById(id, authenticatedUserId);
     // Fetch activity details
-    const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(authenticatedUserId, id);
+    const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(authenticatedUserId, id);
     return { ...entry, activity_details: activityDetails };
    } catch (error) {
      log('error', `Error fetching exercise entry ${id} by user ${authenticatedUserId}:`, error);
@@ -248,7 +249,7 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
     }
     // Handle activity details updates
    if (updateData.activity_details !== undefined) {
-     const existingActivityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(authenticatedUserId, id);
+     const existingActivityDetails = await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(authenticatedUserId, id);
      const incomingActivityDetails = updateData.activity_details || [];
 
      // Identify details to delete
@@ -289,9 +290,13 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
 
 async function deleteExerciseEntry(authenticatedUserId, id) {
   try {
-    const entry = await exerciseEntryDb.getExerciseEntryById(id, authenticatedUserId);
-    if (!entry) {
+    const entryOwnerId = await exerciseEntryDb.getExerciseEntryOwnerId(id, authenticatedUserId);
+    if (!entryOwnerId) {
       throw new Error('Exercise entry not found.');
+    }
+    const entry = await exerciseEntryDb.getExerciseEntryById(id, entryOwnerId);
+    if (!entry) {
+      throw new Error('Exercise entry not found.'); // Should not happen if entryOwnerId was found
     }
 
     // If an image is associated with the entry, delete it from the filesystem
@@ -303,7 +308,7 @@ async function deleteExerciseEntry(authenticatedUserId, id) {
       }
     }
 
-    const success = await exerciseEntryDb.deleteExerciseEntry(id, authenticatedUserId);
+    const success = await exerciseEntryDb.deleteExerciseEntry(id, entryOwnerId);
     if (!success) {
       throw new Error('Exercise entry not found or not authorized to delete.');
     }
@@ -441,7 +446,7 @@ async function getExerciseEntriesByDate(authenticatedUserId, targetUserId, selec
 
     // For each entry, fetch and attach its activity details
     const entriesWithDetails = await Promise.all(entries.map(async (entry) => {
-      const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(authenticatedUserId, entry.id);
+      const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(authenticatedUserId, entry.id, entry.exercise_preset_entry_id);
       return { ...entry, activity_details: activityDetails };
     }));
 
@@ -991,9 +996,31 @@ module.exports = {
   getActivityDetailsByExerciseEntryIdAndProvider, // Renamed export
 };
 
-async function getActivityDetailsByExerciseEntryIdAndProvider(authenticatedUserId, exerciseEntryId, providerName) {
+async function getActivityDetailsByExerciseEntryIdAndProvider(authenticatedUserId, entryId, providerName) {
   try {
-    const activityDetails = await activityDetailsRepository.getActivityDetailsByEntryId(authenticatedUserId, exerciseEntryId);
+    let activityDetails = [];
+
+    // First, try to find an exercise entry with the given ID
+    let exerciseEntry = await exerciseEntryDb.getExerciseEntryById(entryId, authenticatedUserId);
+    let targetId = entryId; // Default to the provided entryId
+
+    if (exerciseEntry) {
+      // If it's an exercise entry and linked to a preset, use the preset ID
+      if (exerciseEntry.exercise_preset_entry_id) {
+        targetId = exerciseEntry.exercise_preset_entry_id;
+        activityDetails = await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(authenticatedUserId, null, targetId);
+      } else {
+        // If it's an exercise entry but not linked to a preset, use its own ID
+        activityDetails = await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(authenticatedUserId, targetId, null);
+      }
+    } else {
+      // If not an exercise entry, try to find an exercise preset entry with the given ID
+      let presetEntry = await exercisePresetEntryRepository.getExercisePresetEntryById(entryId, authenticatedUserId);
+      if (presetEntry) {
+        targetId = entryId; // The provided ID is already a preset entry ID
+        activityDetails = await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(authenticatedUserId, null, targetId);
+      }
+    }
     
     // Find the full_activity_data and full_workout_data for the given provider
     const activityData = activityDetails.find(
@@ -1012,7 +1039,7 @@ async function getActivityDetailsByExerciseEntryIdAndProvider(authenticatedUserI
     }
     return null;
   } catch (error) {
-    log('error', `Error fetching activity details for exercise entry ${exerciseEntryId} from provider ${providerName} by user ${authenticatedUserId}:`, error);
+    log('error', `Error fetching activity details for entry ${entryId} from provider ${providerName} by user ${authenticatedUserId}:`, error);
     throw error;
   }
 }
