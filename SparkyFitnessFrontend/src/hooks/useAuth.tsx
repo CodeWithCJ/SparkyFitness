@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { REDIRECT_TRACKING_KEY, SW_UNREGISTERED_KEY, cancelScheduledRedirect } from '@/services/api';
 
 interface User {
   id: string;
@@ -35,7 +36,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               const role = userData.role || 'user';
               setUser({ id: userData.userId, email: userData.email, role: role });
               userAuthenticated = true;
+
+              // Clear redirect tracking timestamp when successfully authenticated
+              // This ensures the next session expiration can trigger a redirect
+              localStorage.removeItem(REDIRECT_TRACKING_KEY);
+              localStorage.removeItem(SW_UNREGISTERED_KEY);
+              // Mark that user has been authenticated - allows Service Worker registration
+              localStorage.setItem('sparky_user_was_authenticated', 'true');
+
+              // Register Service Worker now that user is authenticated
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').catch((err) => {
+                  console.warn('SW registration after auth failed:', err);
+                });
+              }
+
+              cancelScheduledRedirect(); // Cancel any pending redirect
+              console.debug('Cleared redirect tracking - OIDC session is valid');
             }
+          } else if (oidcResponse.status === 401 || oidcResponse.status === 403) {
+            // Session expired or unauthorized - this is expected when behind Authentik proxy
+            // Don't log as warning, just note it for debugging
+            console.debug('OIDC session not found (401/403) - will check password session or trigger Authentik redirect');
           }
         } catch (oidcError) {
           console.warn('OIDC session check failed:', oidcError);
@@ -51,7 +73,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 const role = userData.role || 'user';
                 setUser({ id: userData.userId, email: userData.email, role: role });
                 userAuthenticated = true;
+
+                // Clear redirect tracking timestamp when successfully authenticated
+                // This ensures the next session expiration can trigger a redirect
+                localStorage.removeItem(REDIRECT_TRACKING_KEY);
+                localStorage.removeItem(SW_UNREGISTERED_KEY);
+                // Mark that user has been authenticated - allows Service Worker registration
+                localStorage.setItem('sparky_user_was_authenticated', 'true');
+
+                // Register Service Worker now that user is authenticated
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.register('/sw.js').catch((err) => {
+                    console.warn('SW registration after auth failed:', err);
+                  });
+                }
+
+                cancelScheduledRedirect(); // Cancel any pending redirect
+                console.debug('Cleared redirect tracking - password session is valid');
               }
+            } else if (passwordResponse.status === 401 || passwordResponse.status === 403) {
+              // No valid session found - this triggers when Authentik session expires
+              console.debug('No valid session found (401/403) - user will need to re-authenticate');
             }
           } catch (passwordError) {
             console.warn('Password session check failed:', passwordError);
@@ -60,6 +102,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         if (!userAuthenticated) {
           setUser(null);
+          // Don't redirect here - let Authentik proxy handle initial authentication
+          // The redirect will happen when API calls fail (handled in api.ts)
         }
       } catch (error) {
         console.error('Error during session check:', error);
@@ -117,6 +161,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (navigateOnSuccess) {
       navigate('/');
     }
+
+    // Clear redirect tracking timestamp when user signs in
+    // This ensures the next session expiration can trigger a redirect
+    localStorage.removeItem(REDIRECT_TRACKING_KEY);
+    localStorage.removeItem(SW_UNREGISTERED_KEY);
+    // Mark that user has been authenticated - allows Service Worker registration
+    localStorage.setItem('sparky_user_was_authenticated', 'true');
+
+    // Register Service Worker now that user is authenticated
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
+        console.warn('SW registration after auth failed:', err);
+      });
+    }
+
+    cancelScheduledRedirect(); // Cancel any pending redirect
+    console.debug('Cleared redirect tracking - user signed in via', authType);
   };
 
   const navigate = useNavigate();
