@@ -388,14 +388,14 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                             "bedtime": bedtime_dt.isoformat(),
                             "wake_time": wake_time_dt.isoformat(),
                             "duration_in_seconds": duration_in_seconds,
-                            "time_asleep_in_seconds": (sleep_summary.get("deepSleepSeconds", 0) or 0) + (sleep_summary.get("lightSleepSeconds", 0) or 0) + (sleep_summary.get("remSleepSeconds", 0) or 0),
+                            "time_asleep_in_seconds": None, # Will be calculated from stage_events
                             "source": "garmin",
                             "sleep_score": ((sleep_summary.get("sleepScores") or {}).get("overall") or {}).get("value"),
                             # Other fields from sleep_summary
-                            "deepSleepSeconds": sleep_summary.get("deepSleepSeconds"),
-                            "lightSleepSeconds": sleep_summary.get("lightSleepSeconds"),
-                            "remSleepSeconds": sleep_summary.get("remSleepSeconds"),
-                            "awakeSleepSeconds": sleep_summary.get("awakeSleepSeconds"),
+                            "deepSleepSeconds": 0,
+                            "lightSleepSeconds": 0,
+                            "remSleepSeconds": 0,
+                            "awakeSleepSeconds": 0,
                             "averageSpO2Value": sleep_summary.get("averageSpO2Value"),
                             "lowestSpO2Value": sleep_summary.get("lowestSpO2Value"),
                             "highestSpO2Value": sleep_summary.get("highestSpO2Value"),
@@ -434,6 +434,22 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                         "end_time": end_time_dt.isoformat(),
                                         "duration_in_seconds": duration_in_seconds_stage
                                     })
+                                    # Sum up sleep stage durations
+                                    if stage_type == 'deep':
+                                        sleep_entry_data["deepSleepSeconds"] += duration_in_seconds_stage
+                                    elif stage_type == 'light':
+                                        sleep_entry_data["lightSleepSeconds"] += duration_in_seconds_stage
+                                    elif stage_type == 'rem':
+                                        sleep_entry_data["remSleepSeconds"] += duration_in_seconds_stage
+                                    elif stage_type == 'awake':
+                                        sleep_entry_data["awakeSleepSeconds"] += duration_in_seconds_stage
+
+                            # Calculate total time_asleep_in_seconds from summed stages
+                            sleep_entry_data["time_asleep_in_seconds"] = (
+                                sleep_entry_data["deepSleepSeconds"] +
+                                sleep_entry_data["lightSleepSeconds"] +
+                                sleep_entry_data["remSleepSeconds"]
+                            )
                         
                         # Only add to health_data if it's a valid sleep entry with at least basic info
                         if sleep_entry_data["duration_in_seconds"] is not None and sleep_entry_data["duration_in_seconds"] > 0:
@@ -461,13 +477,13 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                     for entry in stress_list:
                         # Only include valid stress data points (0-100)
                         if entry[1] is not None and entry[1] >= 0:
-                            stress_data_entry["stressLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry[1]})
+                            stress_data_entry["stressLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "stress_level": entry[1]})
                             valid_stress_values.append(entry[1])
                     
                     bb_list = garmin.get_stress_data(current_date).get('bodyBatteryValuesArray') or []
                     for entry in bb_list:
                         if entry[2] is not None and entry[2] >= 0: # Assuming BodyBatteryLevel is also non-negative
-                            stress_data_entry["BodyBatteryLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry[2]})
+                            stress_data_entry["BodyBatteryLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "stress_level": entry[2]})
                     
                     # Calculate average stress and map to mood
                     average_stress = None
@@ -481,7 +497,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                             derived_mood_notes = f"Derived from Garmin Stress: Average {average_stress:.0f} ({derived_mood_category})"
                     
                     # Add derived mood and raw stress data to the stress entry
-                    stress_data_entry["raw_stress_data"] = json.dumps(stress_data_entry["stressLevel"]) # Store raw stressLevel as JSON string
+                    stress_data_entry["raw_stress_data"] = stress_data_entry["stressLevel"] # Store raw stressLevel as list of dicts directly
                     stress_data_entry["derived_mood_value"] = derived_mood_value
                     stress_data_entry["derived_mood_notes"] = derived_mood_notes
                     
