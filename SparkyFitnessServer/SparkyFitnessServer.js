@@ -9,6 +9,7 @@ runPreflightChecks();
 const express = require('express');
 const cors = require('cors'); // Added this line
 const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit'); // Import rate-limit
 const { getRawOwnerPool } = require('./db/poolManager');
 const { log } = require('./config/logging');
 const { getDefaultModel } = require('./ai/config');
@@ -39,6 +40,7 @@ const withingsRoutes = require('./routes/withingsRoutes'); // Import Withings ro
 const withingsDataRoutes = require('./routes/withingsDataRoutes'); // Import Withings Data routes
 const moodRoutes = require('./routes/moodRoutes'); // Import Mood routes
 const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
+const adminAuthRoutes = require('./routes/adminAuthRoutes'); // Import new admin auth routes
 const { router: openidRoutes, initializeOidcClient } = require('./openidRoutes');
 const oidcSettingsRoutes = require('./routes/oidcSettingsRoutes');
 const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
@@ -242,6 +244,9 @@ app.use((req, res, next) => {
     "/auth/settings",
     "/auth/forgot-password", // Allow password reset request to be public
     "/auth/reset-password", // Allow password reset to be public
+    "/auth/mfa", // Allow MFA routes to be public
+    "/auth/request-magic-link", // Allow magic link request to be public
+    "/auth/magic-link-login", // Allow magic link login to be public
     "/api/health-data",
     "/health",
     "/openid", // All OIDC routes are handled by session, not JWT token
@@ -268,6 +273,18 @@ app.use((req, res, next) => {
   // For all other routes, apply JWT token authentication
   authenticate(req, res, next);
 });
+
+// Rate limiting for authentication-related routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many authentication attempts from this IP, please try again after 15 minutes',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Apply rate limiting to all /auth routes
+app.use('/auth/', authLimiter);
 
 // Link all routes
 app.use('/chat', chatRoutes);
@@ -302,6 +319,7 @@ app.use('/admin/oidc-settings', oidcSettingsRoutes); // Admin OIDC settings rout
 app.use('/admin/global-settings', globalSettingsRoutes);
 app.use('/version', versionRoutes); // Version routes
 app.use('/admin', adminRoutes); // Add admin routes
+app.use('/admin/auth', adminAuthRoutes); // Add admin auth routes
 log('debug', 'Registering /openid routes');
 app.use('/openid', openidRoutes); // Import OpenID routes
 app.use('/water-containers', waterContainerRoutes);
@@ -402,7 +420,7 @@ const scheduleGarminSyncs = async () => {
 
           if ((now.getTime() - lastSyncAt.getTime()) >= (60 * 60 * 1000)) {
             log('info', `Hourly Garmin sync for user ${userId}`);
-            await garminConnectService.getGarminDailySummary(userId, now.toISOString().split('T')[0]);
+            await garminConnectService.syncGarminHealthAndWellness(userId, now.toISOString().split('T')[0], now.toISOString().split('T')[0], []);
             await externalProviderRepository.updateProviderLastSync(provider.id, now);
           }
         }
@@ -425,7 +443,7 @@ const scheduleGarminSyncs = async () => {
 
           if (now.getDate() !== lastSyncAt.getDate() || now.getMonth() !== lastSyncAt.getMonth() || now.getFullYear() !== lastSyncAt.getFullYear()) {
             log('info', `Daily Garmin sync for user ${userId}`);
-            await garminConnectService.getGarminDailySummary(userId, now.toISOString().split('T')[0]);
+            await garminConnectService.syncGarminHealthAndWellness(userId, now.toISOString().split('T')[0], now.toISOString().split('T')[0], []);
             await externalProviderRepository.updateProviderLastSync(provider.id, now);
           }
         }

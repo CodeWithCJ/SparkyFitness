@@ -45,7 +45,15 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
   });
 
   const handleAddProvider = async () => {
-    if (!user || !newProvider.provider_name) {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "User not authenticated. Please log in again.",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (!newProvider.provider_name) {
       toast({
         title: "Error",
         description: "Please fill in the provider name",

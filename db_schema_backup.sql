@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict TbYNAruPBfUq3j1eBpR0tlcNVTH9Gtsv8VvoncUwd9sWphqzkvoJ8ZDNKU5Vc9q
+\restrict tWDGPlub8uQPDHFY84iJK5Lie69Rpyec4KXk28b7naVxgjMQWh2X2nq3ugthCRw
 
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 18.0
@@ -713,7 +713,16 @@ CREATE TABLE auth.users (
     password_reset_token character varying(255),
     password_reset_expires bigint,
     is_active boolean DEFAULT true,
-    last_login_at timestamp with time zone
+    last_login_at timestamp with time zone,
+    mfa_secret text,
+    mfa_totp_enabled boolean DEFAULT false,
+    mfa_email_enabled boolean DEFAULT false,
+    mfa_recovery_codes jsonb,
+    mfa_enforced boolean DEFAULT false,
+    magic_link_token text,
+    magic_link_expires timestamp with time zone,
+    email_mfa_code text,
+    email_mfa_expires_at timestamp with time zone
 );
 
 
@@ -1171,6 +1180,7 @@ CREATE TABLE public.global_settings (
     enable_email_password_login boolean DEFAULT true NOT NULL,
     is_oidc_active boolean DEFAULT false NOT NULL,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    mfa_mandatory boolean DEFAULT false,
     CONSTRAINT single_row_check CHECK ((id = 1))
 );
 
@@ -2430,6 +2440,13 @@ ALTER TABLE ONLY system.schema_migrations
 
 ALTER TABLE ONLY system.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_magic_link_token; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX idx_magic_link_token ON auth.users USING btree (magic_link_token);
 
 
 --
@@ -4674,5 +4691,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict TbYNAruPBfUq3j1eBpR0tlcNVTH9Gtsv8VvoncUwd9sWphqzkvoJ8ZDNKU5Vc9q
+\unrestrict tWDGPlub8uQPDHFY84iJK5Lie69Rpyec4KXk28b7naVxgjMQWh2X2nq3ugthCRw
 

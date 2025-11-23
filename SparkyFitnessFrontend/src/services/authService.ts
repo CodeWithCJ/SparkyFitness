@@ -1,5 +1,13 @@
 import { apiCall } from './api';
 import { AuthResponse, LoginSettings } from '../types/auth';
+import { NavigateFunction } from 'react-router-dom';
+
+export const requestMagicLink = async (email: string): Promise<void> => {
+  await apiCall('/auth/request-magic-link', {
+    method: 'POST',
+    body: { email },
+  });
+};
 
 export const registerUser = async (email: string, password: string, fullName: string): Promise<AuthResponse> => {
   const response = await apiCall('/auth/register', {
@@ -9,12 +17,32 @@ export const registerUser = async (email: string, password: string, fullName: st
   return response as AuthResponse;
 };
 
+
 export const loginUser = async (email: string, password: string): Promise<AuthResponse> => {
-  const response = await apiCall('/auth/login', {
-    method: 'POST',
-    body: { email, password },
-  });
-  return response as AuthResponse;
+  try {
+    const response = await apiCall('/auth/login', {
+      method: 'POST',
+      body: { email, password },
+    });
+
+    // If MFA is required, the response will contain the necessary MFA challenge details
+    if (response.status === 'MFA_REQUIRED') {
+      return {
+        status: 'MFA_REQUIRED',
+        userId: response.userId,
+        email: email,
+        mfa_totp_enabled: response.mfa_totp_enabled,
+        mfa_email_enabled: response.mfa_email_enabled,
+        needs_mfa_setup: response.needs_mfa_setup,
+        mfaToken: response.mfaToken,
+      } as AuthResponse;
+    }
+
+    return response as AuthResponse;
+  } catch (error) {
+    console.error('Error during login:', error);
+    throw error;
+  }
 };
 
 export const requestPasswordReset = async (email: string): Promise<void> => {
@@ -92,5 +120,26 @@ export const getLoginSettings = async (): Promise<LoginSettings> => {
       oidc: { enabled: false, providers: [] },
       warning: 'Could not load login settings from server. Defaulting to email login.'
     };
+  }
+};
+
+export const verifyMagicLink = async (token: string): Promise<AuthResponse> => {
+  try {
+    const response = await apiCall(`/auth/magic-link-login?token=${token}`);
+    if (response.status === 'MFA_REQUIRED') {
+      return {
+        status: 'MFA_REQUIRED',
+        userId: response.userId,
+        email: response.email,
+        mfa_totp_enabled: response.mfa_totp_enabled,
+        mfa_email_enabled: response.mfa_email_enabled,
+        needs_mfa_setup: response.needs_mfa_setup,
+        mfaToken: response.mfaToken,
+      } as AuthResponse;
+    }
+    return response as AuthResponse;
+  } catch (error) {
+    console.error('Error verifying magic link:', error);
+    throw error;
   }
 };

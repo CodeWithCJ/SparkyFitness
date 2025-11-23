@@ -40,6 +40,32 @@ const authenticate = async (req, res, next) => {
     return next();
   }
 
+  log("debug", `authenticate middleware: req.path = ${req.path}`);
+
+  // Allow MFA challenge related routes to be authenticated with a special MFA token
+  // This token is short-lived and only grants access to MFA endpoints.
+  // Handle MFA challenge routes with a special MFA token
+  if (req.originalUrl.startsWith("/auth/mfa/") && (req.originalUrl.includes("/request-email-code") || req.originalUrl.includes("/verify") || req.originalUrl.includes("/verify-email-code"))) {
+    log("debug", "authenticate middleware: Path matches MFA challenge route.");
+    // Access headers in a case-insensitive way to handle potential variations
+    const mfaToken = req.headers['x-mfa-token'] || req.headers['X-MFA-Token'];
+    
+    if (mfaToken) {
+      try {
+        const decoded = jwt.verify(mfaToken, JWT_SECRET);
+        if (decoded.purpose === 'mfa_challenge') {
+          req.userId = decoded.userId;
+          return next();
+        }
+      } catch (err) {
+        log("warn", `Authentication: Invalid or expired MFA challenge token. Error: ${err.message}`);
+        return res.status(401).json({ error: "Authentication: Invalid or expired MFA token." });
+      }
+    } else {
+      log("warn", "authenticate middleware: X-MFA-Token is missing for MFA challenge route.");
+    }
+  }
+
   // 1. Check for JWT token in cookie
   const token = req.cookies.token;
 
