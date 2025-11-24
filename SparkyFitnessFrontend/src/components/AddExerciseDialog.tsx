@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import ExerciseSearch from "./ExerciseSearch";
 import WorkoutPresetSelector from "./WorkoutPresetSelector"; // Import WorkoutPresetSelector
 import ExerciseImportCSV, { ExerciseCSVData } from "./ExerciseImportCSV"; // Renamed import and import ExerciseCSVData
+import ExerciseEntryHistoryImportCSV from "./ExerciseEntryHistoryImportCSV"; // Import new component
 import { createExercise, Exercise } from "@/services/exerciseService";
 import { WorkoutPreset } from "@/types/workout"; // Import WorkoutPreset type
 import { useAuth } from "@/hooks/useAuth";
@@ -26,7 +27,7 @@ import { apiCall } from "@/services/api"; // Import apiCall
 interface AddExerciseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onExerciseAdded: (exercise: Exercise, sourceMode: 'internal' | 'external' | 'custom' | 'preset') => void;
+  onExerciseAdded: (exercise?: Exercise, sourceMode?: 'internal' | 'external' | 'custom' | 'preset') => void;
   onWorkoutPresetSelected?: (preset: WorkoutPreset) => void; // New prop for selecting a workout preset
   mode: 'preset' | 'workout-plan' | 'diary' | 'database-manager';
 }
@@ -210,7 +211,7 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={activeTab === 'import-csv' ? "sm:max-w-[95vw] sm:max-h-[95vh] w-[95vw] h-[95vh] overflow-y-auto" : "sm:max-w-[625px] overflow-y-auto max-h-[90vh]"}>
+      <DialogContent className={activeTab === 'import-csv' || activeTab === 'import-history-csv' ? "sm:max-w-[95vw] sm:max-h-[95vh] w-[95vw] h-[95vh] overflow-y-auto" : "sm:max-w-[625px] overflow-y-auto max-h-[90vh]"}>
         <DialogHeader>
           <DialogTitle>{t('exercise.addExerciseDialog.title', 'Add Exercise')}</DialogTitle>
           <DialogDescription>
@@ -218,12 +219,13 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full grid-cols-${mode === 'database-manager' ? 3 : (mode === 'diary' || mode === 'workout-plan') ? 5 : 4}`}>
+          <TabsList className={`grid w-full grid-cols-${mode === 'database-manager' ? 4 : (mode === 'diary' || mode === 'workout-plan') ? 7 : 5}`}>
             {mode !== 'database-manager' && <TabsTrigger value="my-exercises">{t('exercise.addExerciseDialog.myExercisesTab', 'My Exercises')}</TabsTrigger>}
             {(mode === 'diary' || mode === 'workout-plan') && <TabsTrigger value="workout-preset">{t('exercise.addExerciseDialog.workoutPresetTab', 'Workout Preset')}</TabsTrigger>}
             <TabsTrigger value="online">{t('exercise.addExerciseDialog.onlineTab', 'Online')}</TabsTrigger>
             <TabsTrigger value="custom">{t('exercise.addExerciseDialog.addCustomTab', 'Add Custom')}</TabsTrigger>
-            <TabsTrigger value="import-csv">{t('exercise.addExerciseDialog.importCSVTab', 'Import CSV')}</TabsTrigger>
+            <TabsTrigger value="import-csv">{t('exercise.addExerciseDialog.importCSVTab', 'Import DB CSV')}</TabsTrigger>
+            {(mode === 'diary') && <TabsTrigger value="import-history-csv">{t('exercise.addExerciseDialog.importHistoryCSVTab', 'Import History CSV')}</TabsTrigger>}
           </TabsList>
           {mode !== 'database-manager' && (
             <TabsContent value="my-exercises">
@@ -448,6 +450,16 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
               />
             </div>
           </TabsContent>
+          {(mode === 'diary') && (
+            <TabsContent value="import-history-csv">
+              <div className="pt-4">
+                <ExerciseEntryHistoryImportCSV onImportComplete={() => {
+                  onOpenChange(false);
+                  onExerciseAdded(); // Trigger refresh in parent without passing a full exercise object
+                }} />
+              </div>
+            </TabsContent>
+          )}
           {(mode === 'diary' || mode === 'workout-plan') && (
             <TabsContent value="workout-preset">
               <div className="pt-4">

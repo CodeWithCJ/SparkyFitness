@@ -25,6 +25,8 @@ router.get('/', authenticate, async (req, res, next) => {
   try {
     const { userId, startDate, endDate } = req.query;
     const authenticatedUserId = req.userId; // Changed from req.user.id
+        // Log req.query
+    console.log('moodRoutes: GET /mood - Request Query:', { userId, startDate, endDate });
 
     if (!userId || !startDate || !endDate) {
       return res.status(400).json({ message: 'User ID, start date, and end date are required.' });

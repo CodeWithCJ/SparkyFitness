@@ -39,10 +39,13 @@ import {
   ExerciseProgressData, // Import ExerciseProgressData
   ExerciseDashboardData, // Import new type for dashboard data
 } from '@/services/reportsService';
-import { SleepAnalyticsData } from '@/types'; // Import SleepAnalyticsData
-import { getExerciseProgressData } from '@/services/exerciseEntryService'; // Import getExerciseProgressData
-import { getExerciseDashboardData, getSleepAnalyticsData } from '@/services/reportsService'; // Import new dashboard data function
-import { getCategories as getCustomCategories } from '@/services/customCategoryService'; // Import getCategories as getCustomCategories
+import { SleepAnalyticsData, MoodEntry, StressDataPoint } from '@/types';
+import { getExerciseProgressData } from '@/services/exerciseEntryService';
+import { getExerciseDashboardData, getSleepAnalyticsData } from '@/services/reportsService';
+import { getCategories as getCustomCategories } from '@/services/customCategoryService';
+import { getRawStressData } from '@/services/customMeasurementService';
+import { getMoodEntries } from '@/services/moodService';
+import MoodChart from './MoodChart';
 
 const Reports = () => {
   const { t } = useTranslation();
@@ -56,7 +59,8 @@ const Reports = () => {
   const [exerciseDashboardData, setExerciseDashboardData] = useState<ExerciseDashboardData | null>(null); // New state for exercise dashboard data
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [customMeasurementsData, setCustomMeasurementsData] = useState<Record<string, CustomMeasurementData[]>>({});
-  const [rawStressCategoryId, setRawStressCategoryId] = useState<string | null>(null); // New state for Raw Stress Data category ID
+  const [rawStressData, setRawStressData] = useState<StressDataPoint[]>([]); // New state for raw stress data
+  const [moodData, setMoodData] = useState<MoodEntry[]>([]); // New state for mood data
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
@@ -88,13 +92,15 @@ const Reports = () => {
 
   // Effect to load reports when user, activeUser, date range changes, or refresh events are triggered
   useEffect(() => {
-    info(loggingLevel, 'Reports: Component mounted/updated with:', {
-      user: !!user,
-      activeUserId,
-      startDate,
-      endDate,
-      loggingLevel
-    });
+info(loggingLevel, 'Reports: Component mounted/updated with:', {
+  user: !!user,
+  activeUserId,
+  startDate,
+  endDate,
+  loggingLevel
+});
+// Add logging for activeUserId, startDate, endDate before calling getMoodEntries
+debug(loggingLevel, 'Reports: Parameters for getMoodEntries - activeUserId:', activeUserId, 'startDate:', startDate, 'endDate:', endDate);
     
     if (user && activeUserId && startDate && endDate) { // Only load reports if dates are set
       loadReports();
@@ -124,49 +130,80 @@ const Reports = () => {
     try {
       setLoading(true);
       
-      const [
-        {
-          nutritionData: fetchedNutritionData,
-          tabularData: fetchedTabularData,
-          exerciseEntries: fetchedExerciseEntries,
-          measurementData: fetchedMeasurementData,
-          customCategories: fetchedCustomCategories,
-          customMeasurementsData: fetchedCustomMeasurementsData,
-          sleepAnalyticsData: fetchedSleepAnalyticsData, // Keep this line if SleepReport still needs it
-        },
-        fetchedExerciseDashboardData,
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         loadReportsData(activeUserId, startDate, endDate),
         getExerciseDashboardData(activeUserId, startDate, endDate, null, null, null),
+        getRawStressData(activeUserId),
+        getMoodEntries(activeUserId, startDate, endDate),
       ]);
 
-      setNutritionData(fetchedNutritionData);
-      setTabularData(fetchedTabularData);
-      setExerciseEntries(fetchedExerciseEntries);
-      setExerciseDashboardData(fetchedExerciseDashboardData);
-      
-      // Apply unit conversions to fetchedMeasurementData
-      const measurementDataFormatted = fetchedMeasurementData.map(m => ({
-        entry_date: m.entry_date,
-        weight: m.weight ? convertWeight(m.weight, 'kg', defaultWeightUnit) : undefined,
-        neck: m.neck ? convertMeasurement(m.neck, 'cm', defaultMeasurementUnit) : undefined,
-        waist: m.waist ? convertMeasurement(m.waist, 'cm', defaultMeasurementUnit) : undefined,
-        hips: m.hips ? convertMeasurement(m.hips, 'cm', defaultMeasurementUnit) : undefined,
-        steps: m.steps || undefined,
-        height: m.height ? convertMeasurement(m.height, 'cm', defaultMeasurementUnit) : undefined,
-        body_fat_percentage: m.body_fat_percentage || undefined,
-      }));
-      setMeasurementData(measurementDataFormatted);
-
-      setCustomCategories(fetchedCustomCategories);
-      setCustomMeasurementsData(fetchedCustomMeasurementsData);
-
-      // Find the category ID for "Raw Stress Data"
-      const rawStressCategory = fetchedCustomCategories.find(cat => cat.name === "Raw Stress Data");
-      if (rawStressCategory) {
-        setRawStressCategoryId(rawStressCategory.id);
+      // Process results from Promise.allSettled
+      const [
+        reportsDataResult,
+        exerciseDashboardResult,
+        rawStressDataResult,
+        moodEntriesResult,
+      ] = results;
+      debug(loggingLevel, 'Reports: moodEntriesResult after Promise.allSettled:', moodEntriesResult);
+      // Add logging for the status and value/reason of moodEntriesResult
+      if (moodEntriesResult.status === 'fulfilled') {
+        debug(loggingLevel, 'Reports: moodEntriesResult fulfilled with value:', moodEntriesResult.value);
       } else {
-        warn(loggingLevel, 'Reports: "Raw Stress Data" custom category not found.');
+        error(loggingLevel, 'Reports: moodEntriesResult rejected with reason:', moodEntriesResult.reason);
+      }
+
+      if (reportsDataResult.status === 'fulfilled') {
+        setNutritionData(reportsDataResult.value.nutritionData);
+        setTabularData(reportsDataResult.value.tabularData);
+        setExerciseEntries(reportsDataResult.value.exerciseEntries);
+        // Apply unit conversions to fetchedMeasurementData
+        const measurementDataFormatted = reportsDataResult.value.measurementData.map(m => ({
+          entry_date: m.entry_date,
+          weight: m.weight ? convertWeight(m.weight, 'kg', defaultWeightUnit) : undefined,
+          neck: m.neck ? convertMeasurement(m.neck, 'cm', defaultMeasurementUnit) : undefined,
+          waist: m.waist ? convertMeasurement(m.waist, 'cm', defaultMeasurementUnit) : undefined,
+          hips: m.hips ? convertMeasurement(m.hips, 'cm', defaultMeasurementUnit) : undefined,
+          steps: m.steps || undefined,
+          height: m.height ? convertMeasurement(m.height, 'cm', defaultMeasurementUnit) : undefined,
+          body_fat_percentage: m.body_fat_percentage || undefined,
+        }));
+        setMeasurementData(measurementDataFormatted);
+        setCustomCategories(reportsDataResult.value.customCategories);
+        setCustomMeasurementsData(reportsDataResult.value.customMeasurementsData);
+      } else {
+        error(loggingLevel, 'Reports: Failed to load core reports data:', reportsDataResult.reason);
+        setNutritionData([]);
+        setTabularData([]);
+        setExerciseEntries([]);
+        setMeasurementData([]);
+        setCustomCategories([]);
+        setCustomMeasurementsData({});
+      }
+
+      if (exerciseDashboardResult.status === 'fulfilled') {
+        setExerciseDashboardData(exerciseDashboardResult.value);
+      } else {
+        error(loggingLevel, 'Reports: Failed to load exercise dashboard data:', exerciseDashboardResult.reason);
+        setExerciseDashboardData(null);
+      }
+
+      if (rawStressDataResult.status === 'fulfilled') {
+        setRawStressData(rawStressDataResult.value);
+      } else {
+        error(loggingLevel, 'Reports: Failed to load raw stress data:', rawStressDataResult.reason);
+        setRawStressData([]);
+      }
+
+      if (moodEntriesResult.status === 'fulfilled') {
+        setMoodData(moodEntriesResult.value);       
+      } else {
+        error(loggingLevel, 'Reports: Failed to load mood entries:', moodEntriesResult.reason);
+        setMoodData([]); // Ensure moodData is always an array
+        toast({
+          title: "Mood Data Error",
+          description: "Failed to load mood entries.",
+          variant: "destructive",
+        });
       }
 
       info(loggingLevel, 'Reports: Reports loaded successfully.');
@@ -630,6 +667,7 @@ a.click();
     setEndDate(date);
   };
 
+
   if (!user || !activeUserId) {
     info(loggingLevel, 'Reports: User not signed in, displaying sign-in message.');
     return <div>{t('reports.signInMessage', "Please sign in to view reports.")}</div>;
@@ -772,16 +810,26 @@ a.click();
           </TabsContent>
 
           <TabsContent value="stress-analytics" className="space-y-6">
-            {rawStressCategoryId && customMeasurementsData[rawStressCategoryId] ? (
+            {rawStressData?.length > 0 ? (
               <StressChart
-                title={t('reports.stressChartTitle', "Daily Stress Levels")}
-                data={customMeasurementsData[rawStressCategoryId].map(d => ({
-                  time: d.timestamp,
-                  data: parseFloat(d.value as string), // Assuming stress data is numeric
-                }))}
+                title={t('reports.stressChartTitle', "Raw Stress Levels")}
+                data={rawStressData}
               />
             ) : (
-              <p>{t('reports.noStressData', "No stress data available.")}</p>
+              <p>{t('reports.noStressData', "No raw stress data available.")}</p>
+            )}
+
+            {moodData?.length > 0 ? (
+              <ZoomableChart title={t('reports.moodChartTitle', "Daily Mood")}>
+                <ZoomableChart title={t('reports.moodChartTitle', "Daily Mood")}>
+                  <MoodChart
+                    title={t('reports.moodChartTitle', "Daily Mood")}
+                    data={moodData}
+                  />
+                </ZoomableChart>
+              </ZoomableChart>
+            ) : (
+              <p>{t('reports.noMoodData', "No daily mood data available.")}</p>
             )}
           </TabsContent>
 

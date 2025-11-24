@@ -341,7 +341,7 @@ async function getCustomCategoryOwnerId(id, userId) {
   }
 }
 
-async function getCustomMeasurementEntries(userId, limit, orderBy, filter) {
+async function getCustomMeasurementEntries(userId, limit, orderBy, filterObj) { // Renamed filter to filterObj
   const client = await getClient(userId); // User-specific operation
   try {
     let query = `
@@ -362,12 +362,22 @@ async function getCustomMeasurementEntries(userId, limit, orderBy, filter) {
    // RLS will handle filtering by user_id, but we keep it here for explicit filtering
    // in case RLS is disabled or for clarity.
 
-    if (filter) {
-      const filterParts = filter.split('.');
-      if (filterParts.length === 3 && filterParts[0] === 'value' && filterParts[1] === 'gt') {
-        query += ` AND cm.value > $${paramIndex}`;
-        queryParams.push(parseFloat(filterParts[2]));
+    if (filterObj) {
+      if (filterObj.category_id) {
+        query += ` AND cm.category_id = $${paramIndex}`;
+        queryParams.push(filterObj.category_id);
         paramIndex++;
+      }
+      // Existing filter logic for 'value.gt.X' - needs to be adapted for filterObj
+      // For now, assuming the old filter string format might still be present,
+      // but primarily handling category_id.
+      if (typeof filterObj.filter === 'string') {
+        const filterParts = filterObj.filter.split('.');
+        if (filterParts.length === 3 && filterParts[0] === 'value' && filterParts[1] === 'gt') {
+          query += ` AND cm.value > $${paramIndex}`;
+          queryParams.push(parseFloat(filterParts[2]));
+          paramIndex++;
+        }
       }
     }
 

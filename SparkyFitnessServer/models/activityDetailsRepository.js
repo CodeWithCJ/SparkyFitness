@@ -84,7 +84,6 @@ async function getActivityDetailsByEntryOrPresetId(userId, entryId = null, prese
             SELECT eead.*
             FROM exercise_entry_activity_details eead
             WHERE eead.exercise_entry_id = $1
-              AND eead.detail_type IN ('full_activity_data', 'full_workout_data')
               AND eead.created_by_user_id = $2;
         `;
         values = [entryId, userId];
@@ -93,7 +92,6 @@ async function getActivityDetailsByEntryOrPresetId(userId, entryId = null, prese
             SELECT eead.*
             FROM exercise_entry_activity_details eead
             WHERE eead.exercise_preset_entry_id = $1
-              AND eead.detail_type IN ('full_activity_data', 'full_workout_data')
               AND eead.created_by_user_id = $2;
         `;
         values = [presetEntryId, userId];

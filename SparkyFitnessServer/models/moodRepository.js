@@ -22,6 +22,8 @@ async function createOrUpdateMoodEntry(userId, moodValue, notes, entryDate) {
 async function getMoodEntriesByUserId(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
+    // Log the parameters received by getMoodEntriesByUserId
+    console.log('moodRepository: getMoodEntriesByUserId - Parameters:', { userId, startDate, endDate });
     const result = await client.query(
       `SELECT id, user_id, mood_value, notes, entry_date, created_at, updated_at
        FROM mood_entries
@@ -29,6 +31,8 @@ async function getMoodEntriesByUserId(userId, startDate, endDate) {
        ORDER BY entry_date DESC, created_at DESC`,
       [userId, startDate, endDate]
     );
+    // Log the result.rows obtained from the SQL query
+    console.log('moodRepository: getMoodEntriesByUserId - Query Result Rows:', result.rows);
     return result.rows;
   } finally {
     client.release();
