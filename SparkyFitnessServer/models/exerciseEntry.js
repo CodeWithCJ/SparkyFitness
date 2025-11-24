@@ -211,10 +211,20 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
     await client.query('BEGIN');
 
     // Check for existing entry
-    const existingEntryResult = await client.query(
-      'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4',
-      [userId, entryData.exercise_id, entryData.entry_date, entrySource]
-    );
+    // Add exercise_preset_entry_id to the uniqueness check if it exists,
+    // otherwise, treat entries without a preset ID as unique if their exercise_id, entry_date, and source match.
+    let existingEntryResult;
+    if (exercisePresetEntryId) {
+      existingEntryResult = await client.query(
+        'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id = $5',
+        [userId, entryData.exercise_id, entryData.entry_date, entrySource, exercisePresetEntryId]
+      );
+    } else {
+      existingEntryResult = await client.query(
+        'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id IS NULL',
+        [userId, entryData.exercise_id, entryData.entry_date, entrySource]
+      );
+    }
 
     let newEntryId;
     if (existingEntryResult.rows.length > 0) {
@@ -249,7 +259,7 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
          [
            userId,
            entryData.exercise_id,
-           entryData.duration_minutes,
+           entryData.duration_minutes || 0, // Ensure duration_minutes is not null
            entryData.calories_burned,
            entryData.entry_date,
            entryData.notes,

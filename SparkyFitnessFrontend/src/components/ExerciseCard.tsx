@@ -297,7 +297,14 @@ const ExerciseCard = ({
     setNotes("");
   }, [loggingLevel]);
 
-  const handleExerciseSelect = (exercise: Exercise, sourceMode: 'internal' | 'external' | 'custom' | 'preset') => {
+  const handleExerciseSelect = (exercise?: Exercise, sourceMode?: 'internal' | 'external' | 'custom' | 'preset') => {
+    // If no exercise is provided, it's a general refresh signal
+    if (!exercise) {
+      debug(loggingLevel, "General refresh triggered (no specific exercise selected).");
+      handleDataChange(); // Trigger a full data refresh for the card
+      return;
+    }
+
     debug(loggingLevel, `Exercise selected in search from ${sourceMode}:`, exercise.id);
     // When selecting from search, it's a single exercise, so clear queue and set current
     setExercisesToLogQueue([{ ...exercise, duration: 0, sets: [], reps: 0, weight: 0 }]); // Create a new ExerciseToLog from Exercise, add default duration and empty sets
