@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware'); // Import the new middleware
 const exerciseService = require('../services/exerciseService');
+const exerciseEntryService = require('../services/exerciseEntryService'); // New import for exercise entry service
 const workoutPresetService = require('../services/workoutPresetService'); // Import workoutPresetService
 const multer = require('multer');
 const path = require('path');
@@ -339,6 +340,23 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     }
     if (error.message === 'Exercise entry not found or not authorized to delete.') {
       return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
+// Endpoint to import historical exercise entries
+router.post('/import-history-csv', authenticate, async (req, res, next) => {
+  try {
+    const { entries } = req.body;
+    if (!entries || !Array.isArray(entries)) {
+      return res.status(400).json({ error: 'Invalid data format. Expected an array of entries.' });
+    }
+    const result = await exerciseEntryService.importExerciseEntriesFromCsv(req.userId, req.originalUserId || req.userId, entries);
+    res.status(201).json(result);
+  } catch (error) {
+    if (error.status === 409) {
+      return res.status(409).json({ error: error.message, details: error.details });
     }
     next(error);
   }
