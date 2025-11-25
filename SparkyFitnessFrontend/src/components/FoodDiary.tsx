@@ -20,6 +20,7 @@ import EditFoodEntryDialog from "./EditFoodEntryDialog";
 import EnhancedCustomFoodForm from "./EnhancedCustomFoodForm";
 import FoodUnitSelector from "./FoodUnitSelector";
 import CopyFoodEntryDialog from "./CopyFoodEntryDialog"; // Import the new dialog component
+import ConvertToMealDialog from "./ConvertToMealDialog"; // Import the new ConvertToMealDialog
 import ExerciseSearch from "./ExerciseSearch"; // Import ExerciseSearch
 import EditMealFoodEntryDialog from "./EditMealFoodEntryDialog"; // Import the new dialog
 import { debug, info, warn, error } from "@/utils/logging"; // Import logging utility
@@ -115,6 +116,8 @@ const FoodDiary = ({
   const [isUnitSelectorOpen, setIsUnitSelectorOpen] = useState(false);
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false); // State for copy dialog
   const [copySourceMealType, setCopySourceMealType] = useState<string>(""); // State to hold the meal type from which copy was initiated
+  const [isConvertToMealDialogOpen, setIsConvertToMealDialogOpen] = useState(false); // New state for "Convert to Meal" dialog
+  const [convertToMealSourceMealType, setConvertToMealSourceMealType] = useState<string>(""); // New state for "Convert to Meal" source meal type
   const [exercisesToLogFromPreset, setExercisesToLogFromPreset] = useState<PresetExercise[]>([]); // State to hold exercises from a selected preset
   // Use initialExercisesToLog directly, no need for a separate state if it's only passed down
 
@@ -580,6 +583,15 @@ const FoodDiary = ({
     // setExercisesToLogFromPreset(preset.exercises.map(e => ({...e, reps: e.reps || null, weight: e.weight || null})) || []);
   }, [debug, loggingLevel]);
 
+  const handleConvertToMealClick = useCallback(
+    (mealType: string) => {
+      setConvertToMealSourceMealType(mealType);
+      setIsConvertToMealDialogOpen(true);
+      debug(loggingLevel, "Opening Convert to Meal dialog for meal type:", mealType);
+    },
+    [debug, loggingLevel],
+  );
+
   return (
     <div className="space-y-6">
       {/* Date Navigation */}
@@ -658,6 +670,7 @@ const FoodDiary = ({
               onMealAdded={handleDataChange}
               onCopyClick={handleCopyClick} // Pass the new handler
               onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
+              onConvertToMealClick={handleConvertToMealClick} // Pass the new handler
               key={`breakfast-${externalRefreshTrigger}`}
             />
             <MealCard
@@ -671,6 +684,7 @@ const FoodDiary = ({
               onMealAdded={handleDataChange}
               onCopyClick={handleCopyClick} // Pass the new handler
               onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
+              onConvertToMealClick={handleConvertToMealClick} // Pass the new handler
               key={`lunch-${externalRefreshTrigger}`}
             />
             <MealCard
@@ -684,6 +698,7 @@ const FoodDiary = ({
               onMealAdded={handleDataChange}
               onCopyClick={handleCopyClick} // Pass the new handler
               onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
+              onConvertToMealClick={handleConvertToMealClick} // Pass the new handler
               key={`dinner-${externalRefreshTrigger}`}
             />
             <MealCard
@@ -697,6 +712,7 @@ const FoodDiary = ({
               onMealAdded={handleDataChange}
               onCopyClick={handleCopyClick} // Pass the new handler
               onCopyFromYesterday={handleCopyFromYesterday} // Pass the new handler
+              onConvertToMealClick={handleConvertToMealClick} // Pass the new handler
               key={`snacks-${externalRefreshTrigger}`}
             />
 
@@ -707,7 +723,6 @@ const FoodDiary = ({
               initialExercisesToLog={initialExercisesToLog} // Pass the new prop directly
               onExercisesLogged={onExercisesLogged} // Pass the new prop directly
               key={`exercise-${externalRefreshTrigger}`}
-              t={t} // Pass the t function
             />
           </div>
         </>
@@ -751,6 +766,17 @@ const FoodDiary = ({
           open={true}
           onOpenChange={(open) => !open && setEditingMealId(null)}
           onSave={handleDataChange}
+        />
+      )}
+
+      {/* Convert to Meal Dialog */}
+      {isConvertToMealDialogOpen && (
+        <ConvertToMealDialog
+          isOpen={isConvertToMealDialogOpen}
+          onClose={() => setIsConvertToMealDialogOpen(false)}
+          selectedDate={formatDateInUserTimezone(date, "yyyy-MM-dd")} // Pass the formatted selected date
+          mealType={convertToMealSourceMealType}
+          onMealCreated={handleDataChange}
         />
       )}
     </div>

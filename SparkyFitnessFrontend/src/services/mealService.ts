@@ -63,3 +63,7 @@ export const logMealPlanEntryToDiary = async (userId: string, mealPlanId: string
 export const logDayMealPlanToDiary = async (userId: string, planDate: string, targetDate?: string): Promise<any[]> => {
   return await apiCall(`/meals/plan/log-day-to-diary`, { method: 'POST', body: { plan_date: planDate, target_date: targetDate } });
 };
+
+export const createMealFromDiary = async (date: string, mealType: string, mealName: string, description: string | null, isPublic: boolean): Promise<Meal> => {
+  return await apiCall(`/meals/create-meal-from-diary`, { method: 'POST', body: { date, mealType, mealName, description, isPublic } });
+};

@@ -1,5 +1,6 @@
 const mealRepository = require('../models/mealRepository');
 const foodRepository = require('../models/foodRepository');
+const foodEntryRepository = require('../models/foodEntry');
 const mealPlanTemplateRepository = require('../models/mealPlanTemplateRepository');
 const mealPlanTemplateService = require('./mealPlanTemplateService'); // Import the service
 const { log } = require('../config/logging');
@@ -342,6 +343,74 @@ async function updateMealEntriesSnapshot(authenticatedUserId, mealId) {
   }
 }
  
+async function createMealFromDiaryEntries(userId, date, mealType, mealName, description = null, isPublic = false) {
+  try {
+    // 1. Retrieve food entries for the specified date and meal type
+    const foodEntries = await foodEntryRepository.getFoodEntriesByDateAndMealType(userId, date, mealType);
+
+    if (foodEntries.length === 0) {
+      throw new Error(`No food entries found for ${mealType} on ${date}.`);
+    }
+
+    const mealFoods = [];
+    const missingFoods = [];
+
+    // 2. Validate existence of food_id and variant_id for each retrieved food entry
+    for (const entry of foodEntries) {
+      const food = await foodRepository.getFoodById(entry.food_id, userId);
+      if (!food) {
+        missingFoods.push(`${entry.food_name} (ID: ${entry.food_id})`);
+        continue; // Skip this entry and continue to the next
+      }
+
+      // Ensure the variant exists. Food entries store variant_id which links to food_variants
+      // For simplicity, we'll re-fetch the food to ensure all variant details are current
+      // (though foodEntry stores a snapshot, meal creation should use current data)
+      const variantExists = food.default_variant && food.default_variant.id === entry.variant_id;
+      if (!variantExists && entry.variant_id) { // Only check if a variant_id was explicitly recorded
+        // Attempt to find the specific variant, if not the default
+        const allFoodVariants = await foodRepository.getFoodVariants(entry.food_id, userId); // Assuming this function exists or is created
+        if (!allFoodVariants.some(v => v.id === entry.variant_id)) {
+          missingFoods.push(`${entry.food_name} (Variant ID: ${entry.variant_id})`);
+          continue;
+        }
+      } else if (!food.default_variant && !entry.variant_id) {
+        // If there's no default variant and no specific variant_id recorded, this is an issue.
+        missingFoods.push(`${entry.food_name} (No variant found)`);
+        continue;
+      }
+
+      // 3. Transform food entries into meal template format
+      mealFoods.push({
+        food_id: entry.food_id,
+        variant_id: entry.variant_id || food.default_variant.id, // Use entry's variant_id or default
+        quantity: entry.quantity,
+        unit: entry.unit,
+      });
+    }
+
+    if (missingFoods.length > 0) {
+      throw new Error(`Cannot create meal. The following foods or their variants are missing: ${missingFoods.join(', ')}. Please ensure they exist.`);
+    }
+
+    const defaultMealName = `${mealType} on ${date}`;
+    const mealData = {
+      user_id: userId,
+      name: mealName || defaultMealName,
+      description: description,
+      is_public: isPublic,
+      foods: mealFoods,
+    };
+
+    // 4. Call mealRepository.createMeal to create the new meal
+    const newMeal = await mealRepository.createMeal(mealData);
+    return newMeal;
+  } catch (error) {
+    log('error', `Error in mealService.createMealFromDiaryEntries for user ${userId}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   createMeal,
   getMeals,
@@ -358,4 +427,5 @@ module.exports = {
   getMealsNeedingReview,
   updateMealEntriesSnapshot,
   getMealDeletionImpact,
+  createMealFromDiaryEntries, // New function export
 };
