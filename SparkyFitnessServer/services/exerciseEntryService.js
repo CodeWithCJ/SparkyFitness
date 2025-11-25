@@ -27,31 +27,31 @@ async function importExerciseEntriesFromCsv(authenticatedUserId, actingUserId, e
       // 2. Lookup or Create Exercise
       let exercise = await exerciseRepository.findExerciseByNameAndUserId(entryGroup.exercise_name, authenticatedUserId);
       if (!exercise) {
-        exercise = await exerciseRepository.createExercise({
+        log('debug', `Creating new exercise from CSV for user ${authenticatedUserId}. entryGroup:`, entryGroup);
+        const newExerciseData = {
           user_id: authenticatedUserId,
           name: entryGroup.exercise_name,
           is_custom: true,
           shared_with_public: false,
-          source: 'CSV_Import',
-        });
+          source: entryGroup.exercise_source || 'CSV_Import', // Use provided source or default
+          category: entryGroup.exercise_category,
+          calories_per_hour: entryGroup.calories_per_hour ? parseFloat(entryGroup.calories_per_hour) : undefined,
+          description: entryGroup.exercise_description,
+          force: entryGroup.exercise_force,
+          level: entryGroup.exercise_level,
+          mechanic: entryGroup.exercise_mechanic,
+          equipment: entryGroup.exercise_equipment && entryGroup.exercise_equipment.length > 0 ? entryGroup.exercise_equipment : undefined,
+          primary_muscles: entryGroup.primary_muscles && entryGroup.primary_muscles.length > 0 ? entryGroup.primary_muscles : undefined,
+          secondary_muscles: entryGroup.secondary_muscles && entryGroup.secondary_muscles.length > 0 ? entryGroup.secondary_muscles : undefined,
+          instructions: entryGroup.instructions && entryGroup.instructions.length > 0 ? entryGroup.instructions : undefined,
+          // Images are not typically imported via CSV for exercise definitions
+        };
+        log('debug', `Calling createExercise with newExerciseData:`, newExerciseData);
+        exercise = await exerciseRepository.createExercise(newExerciseData);
       }
 
       // 3. Lookup or Create Workout Preset (if preset_name is provided)
-      let workoutPresetId = null;
-      if (entryGroup.preset_name) {
-        let workoutPreset = await workoutPresetRepository.getWorkoutPresetByName(authenticatedUserId, entryGroup.preset_name);
-        if (!workoutPreset) {
-          workoutPreset = await workoutPresetRepository.createWorkoutPreset({
-            user_id: authenticatedUserId,
-            name: entryGroup.preset_name,
-            description: `Auto-created from CSV import`,
-            is_public: false,
-          });
-        }
-        workoutPresetId = workoutPreset.id;
-      }
-
-      // 4. Convert Distance and Weight based on user preferences
+      // 3. Convert Distance and Weight based on user preferences and process sets
       const preferences = await preferenceRepository.getUserPreferences(authenticatedUserId);
       const distanceUnit = preferences?.distance_unit || 'km'; // Default to km
       const weightUnit = preferences?.weight_unit || 'kg';     // Default to kg
@@ -84,6 +84,38 @@ async function importExerciseEntriesFromCsv(authenticatedUserId, actingUserId, e
 
       // Calculate total duration from sets
       const totalDurationMinutes = setsWithConvertedWeight.reduce((sum, set) => sum + (set.duration || 0), 0);
+
+      // 4. Lookup or Create Workout Preset (if preset_name is provided)
+      let workoutPresetId = null; // Initialize workoutPresetId once
+      if (entryGroup.preset_name) {
+        let workoutPreset = await workoutPresetRepository.getWorkoutPresetByName(authenticatedUserId, entryGroup.preset_name);
+        if (!workoutPreset) {
+          log('debug', `Creating new workout preset from CSV for user ${authenticatedUserId}. preset_name: ${entryGroup.preset_name}`);
+          // Create new workout preset and its exercises/sets from current entryGroup
+          workoutPreset = await workoutPresetRepository.createWorkoutPreset({
+            user_id: authenticatedUserId,
+            name: entryGroup.preset_name,
+            description: `Auto-created from CSV import`,
+            is_public: false,
+            exercises: [{
+              exercise_id: exercise.id,
+              image_url: null, // CSV doesn't provide exercise image for preset def
+              sets: setsWithConvertedWeight.map(set => ({ // Use the processed sets
+                set_number: set.set_number,
+                set_type: set.set_type,
+                reps: set.reps,
+                weight: set.weight,
+                duration: set.duration,
+                rest_time: set.rest_time,
+                notes: set.notes,
+              }))
+            }]
+          });
+        } else {
+          log('debug', `Linking to existing workout preset from CSV for user ${authenticatedUserId}. preset_name: ${entryGroup.preset_name}`);
+        }
+        workoutPresetId = workoutPreset.id;
+      }
 
       // 5. Create Exercise Entry
       const newEntry = await exerciseEntryRepository.createExerciseEntry(authenticatedUserId, {
