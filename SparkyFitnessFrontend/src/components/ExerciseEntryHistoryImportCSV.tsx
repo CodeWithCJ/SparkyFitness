@@ -14,11 +14,17 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Upload, Download, Loader2, Plus, Trash2 } from "lucide-react"; // Added Plus and Trash2
+import { Upload, Download, Loader2, Plus, Trash2, Copy } from "lucide-react"; // Added Plus, Trash2, and Copy
 import { format, parse } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { getUserPreferences } from "@/services/preferenceService";
 import { UserPreferences } from "@/services/preferenceService";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Define the shape of a single row from the CSV
 interface CsvRow {
@@ -36,6 +42,19 @@ interface CsvRow {
   duration_min?: string; // Changed from duration_sec to duration_min
   rest_time_sec?: string;
   set_notes?: string;
+  // New Exercise Definition Fields
+  exercise_category?: string;
+  calories_per_hour?: string;
+  exercise_description?: string;
+  exercise_source?: string;
+  exercise_force?: string;
+  exercise_level?: string;
+  exercise_mechanic?: string;
+  exercise_equipment?: string; // Comma-separated
+  primary_muscles?: string; // Comma-separated
+  secondary_muscles?: string; // Comma-separated
+  instructions?: string; // Newline-separated
+  // Existing activity details
   activity_field_name?: string;
   activity_value?: string;
   [key: string]: string | undefined; // Allow for arbitrary additional columns
@@ -51,6 +70,18 @@ interface GroupedExerciseEntry {
   calories_burned?: number;
   distance?: number;
   avg_heart_rate?: number;
+  // Exercise definition fields
+  exercise_category?: string;
+  calories_per_hour?: number;
+  exercise_description?: string;
+  exercise_source?: string;
+  exercise_force?: string;
+  exercise_level?: string;
+  exercise_mechanic?: string;
+  exercise_equipment?: string[];
+  primary_muscles?: string[];
+  secondary_muscles?: string[];
+  instructions?: string[];
   sets: {
     set_number: number;
     set_type?: string;
@@ -116,9 +147,17 @@ const ExerciseEntryHistoryImportCSV = ({ onImportComplete }: ExerciseEntryHistor
     fetchPreferences();
   }, [user?.id, t]);
 
+const dropdownFields = new Set(["exercise_force", "exercise_level", "exercise_mechanic"]);
+const dropdownOptions: Record<string, string[]> = {
+  exercise_level: ["beginner", "intermediate", "expert"],
+  exercise_force: ["pull", "push", "static"],
+  exercise_mechanic: ["isolation", "compound"],
+};
+
   const requiredHeaders = [
     "entry_date",
     "exercise_name",
+    ...Array.from(dropdownFields), // Include dropdown fields in required headers for display purposes
   ];
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,6 +275,18 @@ const ExerciseEntryHistoryImportCSV = ({ onImportComplete }: ExerciseEntryHistor
           calories_burned: row.calories_burned ? parseFloat(row.calories_burned) : undefined,
           distance: row.distance ? parseFloat(row.distance) : undefined,
           avg_heart_rate: row.avg_heart_rate ? parseFloat(row.avg_heart_rate) : undefined,
+          // Exercise definition fields
+          exercise_category: row.exercise_category?.trim(),
+          calories_per_hour: row.calories_per_hour ? parseFloat(row.calories_per_hour) : undefined,
+          exercise_description: row.exercise_description?.trim(),
+          exercise_source: row.exercise_source?.trim(),
+          exercise_force: dropdownFields.has("exercise_force") ? (dropdownOptions["exercise_force"].find(option => option === row.exercise_force?.trim()?.toLowerCase()) || row.exercise_force?.trim()) : row.exercise_force?.trim(),
+          exercise_level: dropdownFields.has("exercise_level") ? (dropdownOptions["exercise_level"].find(option => option === row.exercise_level?.trim()?.toLowerCase()) || row.exercise_level?.trim()) : row.exercise_level?.trim(),
+          exercise_mechanic: dropdownFields.has("exercise_mechanic") ? (dropdownOptions["exercise_mechanic"].find(option => option === row.exercise_mechanic?.trim()?.toLowerCase()) || row.exercise_mechanic?.trim()) : row.exercise_mechanic?.trim(),
+          exercise_equipment: row.exercise_equipment ? row.exercise_equipment.split(',').map(s => s.trim()).filter(s => s) : undefined,
+          primary_muscles: row.primary_muscles ? row.primary_muscles.split(',').map(s => s.trim()).filter(s => s) : undefined,
+          secondary_muscles: row.secondary_muscles ? row.secondary_muscles.split(',').map(s => s.trim()).filter(s => s) : undefined,
+          instructions: row.instructions ? row.instructions.split('\n').map(s => s.trim()).filter(s => s) : undefined,
           sets: [],
           activity_details: [],
         };
@@ -357,11 +408,16 @@ const ExerciseEntryHistoryImportCSV = ({ onImportComplete }: ExerciseEntryHistor
       "entry_date", "exercise_name", "preset_name", "entry_notes", "calories_burned",
       "distance", "avg_heart_rate",
       "set_number", "set_type", "reps", "weight", "duration_min", "rest_time_sec", "set_notes",
+      // Exercise definition fields
+      "exercise_category", "calories_per_hour", "exercise_description", "exercise_source",
+      "exercise_force", "exercise_level", "exercise_mechanic", "exercise_equipment",
+      "primary_muscles", "secondary_muscles", "instructions",
+      // Activity details fields
       "activity_field_name", "activity_value"
     ];
     const dummyData = [
       {
-        entry_date: format(new Date(), "MM/dd/yyyy"), // Default to MM/dd/yyyy for template
+        entry_date: format(new Date(), "MM/dd/yyyy"),
         exercise_name: "Barbell Bench Press",
         preset_name: "Upper Body Strength",
         entry_notes: "Feeling strong today",
@@ -375,15 +431,27 @@ const ExerciseEntryHistoryImportCSV = ({ onImportComplete }: ExerciseEntryHistor
         duration_min: "1",
         rest_time_sec: "90",
         set_notes: "Controlled movement",
+        // Exercise definition fields for new exercise (if 'Barbell Bench Press' doesn't exist)
+        exercise_category: "strength",
+        calories_per_hour: "400",
+        exercise_description: "A compound exercise for chest, shoulders, and triceps.",
+        exercise_source: "CSV_Import",
+        exercise_force: "push",
+        exercise_level: "intermediate",
+        exercise_mechanic: "compound",
+        exercise_equipment: "barbell,bench",
+        primary_muscles: "chest,triceps",
+        secondary_muscles: "shoulders",
+        instructions: "Lie on bench.\nUnrack bar.\nLower to chest.\nPress up.",
         activity_field_name: "Mood",
         activity_value: "Energized"
       },
       {
-        entry_date: format(new Date(), "MM/dd/yyyy"), // Default to MM/dd/yyyy for template
+        entry_date: format(new Date(), "MM/dd/yyyy"),
         exercise_name: "Barbell Bench Press",
         preset_name: "Upper Body Strength",
-        entry_notes: "", // Only taken from first row for the group
-        calories_burned: "", // Only taken from first row for the group
+        entry_notes: "",
+        calories_burned: "",
         distance: "",
         avg_heart_rate: "",
         set_number: "2",
@@ -393,11 +461,12 @@ const ExerciseEntryHistoryImportCSV = ({ onImportComplete }: ExerciseEntryHistor
         duration_min: "1",
         rest_time_sec: "120",
         set_notes: "Push harder",
+        // No need for exercise definition fields on subsequent rows for the same exercise group
         activity_field_name: "RPE",
         activity_value: "8"
       },
       {
-        entry_date: format(new Date(), "MM/dd/yyyy"), // Default to MM/dd/yyyy for template
+        entry_date: format(new Date(), "MM/dd/yyyy"),
         exercise_name: "Deadlift",
         preset_name: "Lower Body Strength",
         entry_notes: "New PR attempt",
@@ -411,11 +480,23 @@ const ExerciseEntryHistoryImportCSV = ({ onImportComplete }: ExerciseEntryHistor
         duration_min: "1",
         rest_time_sec: "60",
         set_notes: "",
+        // Exercise definition fields for new exercise
+        exercise_category: "strength",
+        calories_per_hour: "500",
+        exercise_description: "A full-body strength exercise.",
+        exercise_source: "CSV_Import",
+        exercise_force: "pull",
+        exercise_level: "expert",
+        exercise_mechanic: "compound",
+        exercise_equipment: "barbell",
+        primary_muscles: "lower back,glutes,hamstrings",
+        secondary_muscles: "quadriceps,traps",
+        instructions: "Stand over bar.\nHinge at hips.\nLift with legs.",
         activity_field_name: "",
         activity_value: ""
       },
       {
-        entry_date: format(new Date(), "MM/dd/yyyy"), // Default to MM/dd/yyyy for template
+        entry_date: format(new Date(), "MM/dd/yyyy"),
         exercise_name: "Deadlift",
         preset_name: "Lower Body Strength",
         entry_notes: "",
@@ -433,7 +514,7 @@ const ExerciseEntryHistoryImportCSV = ({ onImportComplete }: ExerciseEntryHistor
         activity_value: "Good"
       },
       {
-        entry_date: format(new Date(), "MM/dd/yyyy"), // Default to MM/dd/yyyy for template
+        entry_date: format(new Date(), "MM/dd/yyyy"),
         exercise_name: "Outdoor Run",
         preset_name: "",
         entry_notes: "Enjoyed the fresh air",
@@ -447,6 +528,18 @@ const ExerciseEntryHistoryImportCSV = ({ onImportComplete }: ExerciseEntryHistor
         duration_min: "30",
         rest_time_sec: "",
         set_notes: "",
+        // Exercise definition fields for new exercise
+        exercise_category: "cardio",
+        calories_per_hour: "350",
+        exercise_description: "Running outdoors for cardiovascular fitness.",
+        exercise_source: "CSV_Import",
+        exercise_force: "",
+        exercise_level: "beginner",
+        exercise_mechanic: "",
+        exercise_equipment: "",
+        primary_muscles: "quadriceps,hamstrings,calves",
+        secondary_muscles: "",
+        instructions: "Run at a steady pace.",
         activity_field_name: "Route",
         activity_value: "Park Loop"
       },
@@ -487,6 +580,70 @@ const ExerciseEntryHistoryImportCSV = ({ onImportComplete }: ExerciseEntryHistor
       <CardContent>
         <p className="mb-4">{t("exercise.importHistoryCSV.description", "Upload a CSV file containing your historical exercise entries. The system will create new exercises or presets if they don't exist, and import your entries, sets, and activity details.")}</p>
         <p className="mb-4">{t("exercise.importHistoryCSV.customFieldsInfo", "Activity Field & Value are custom fields you can add to each exercise entry.")}</p>
+
+        <div className="mb-6 p-4 border rounded-lg bg-muted/50">
+          <h3 className="text-lg font-semibold mb-2">
+            {t(
+              "exercise.importHistoryCSV.standardValuesForDropdowns",
+              "Standard Values for Exercise Definition Dropdowns"
+            )}
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            {t(
+              "exercise.importHistoryCSV.standardValuesDescription",
+              "When importing exercise definitions, ensure that values for 'Level', 'Force', and 'Mechanic' match these standard options."
+            )}
+          </p>
+          <div className="grid grid-cols-1 gap-4">
+            {Object.keys(dropdownOptions).map((field) => (
+              <div key={field}>
+                <h4 className="font-medium mb-1 capitalize">
+                  {field.replace("exercise_", "").replace(/_/g, " ")}:
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {dropdownOptions[field].map((value) => (
+                    <TooltipProvider key={value}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 flex items-center gap-1"
+                            onClick={() => {
+                              navigator.clipboard.writeText(value);
+                              toast({
+                                title: t(
+                                  "exercise.importHistoryCSV.copied",
+                                  "Copied!"
+                                ),
+                                description: t(
+                                  "exercise.importHistoryCSV.copiedToClipboard",
+                                  `'${value}' copied to clipboard.`,
+                                  { value }
+                                ),
+                              });
+                            }}
+                          >
+                            {value} <Copy className="h-3 w-3" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            {t(
+                              "exercise.importHistoryCSV.copyTooltip",
+                              "Copy '{{value}}'",
+                              { value }
+                            )}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
         
         {userPreferences ? (
           <p className="mb-4 text-sm text-muted-foreground">
