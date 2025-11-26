@@ -78,7 +78,7 @@ const ConvertToMealDialog: React.FC<ConvertToMealDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{t("mealCreation.convertToMeal", "Convert Diary to Meal")}</DialogTitle>
+          <DialogTitle>{t("mealCreation.convertToMeal", "Create Meal from Diary")}</DialogTitle>
           <DialogDescription>
             {t("mealCreation.enterDetails", "Enter details for your new meal template.")}
           </DialogDescription>

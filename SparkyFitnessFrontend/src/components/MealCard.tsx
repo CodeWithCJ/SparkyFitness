@@ -247,7 +247,7 @@ const MealCard = ({
               <Button
                 size="default"
                 onClick={() => onConvertToMealClick(meal.type)}
-                title="Convert to Saved Meal"
+                title="Save as a new Meal"
               >
                 <PlusCircle className="w-4 h-4" />
               </Button>
