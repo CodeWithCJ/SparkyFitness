@@ -9,7 +9,7 @@ async function createWorkoutPlanTemplate(userId, planData, currentClientDate = n
     if (planData.assignments) {
         for (const assignment of planData.assignments) {
             if (assignment.workout_preset_id) {
-                const preset = await workoutPresetRepository.getWorkoutPresetById(assignment.workout_preset_id);
+                const preset = await workoutPresetRepository.getWorkoutPresetById(assignment.workout_preset_id, userId);
                 if (!preset) {
                     throw new Error(`Workout Preset with ID ${assignment.workout_preset_id} not found.`);
                 }
@@ -64,7 +64,7 @@ async function updateWorkoutPlanTemplate(userId, templateId, updateData, current
     if (updateData.assignments) {
         for (const assignment of updateData.assignments) {
             if (assignment.workout_preset_id) {
-                const preset = await workoutPresetRepository.getWorkoutPresetById(assignment.workout_preset_id);
+                const preset = await workoutPresetRepository.getWorkoutPresetById(assignment.workout_preset_id, userId);
                 if (!preset) {
                     throw new Error(`Workout Preset with ID ${assignment.workout_preset_id} not found.`);
                 }

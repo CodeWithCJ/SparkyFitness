@@ -20,6 +20,7 @@ import {
   History,
   Utensils,
   ClipboardCopy,
+  PlusCircle, // Adding PlusCircle icon for "Convert to Meal"
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
@@ -68,6 +69,7 @@ interface MealCardProps {
   onMealAdded: () => void; // Add onMealAdded to MealCardProps
   onCopyClick: (mealType: string) => void; // New prop for custom copy
   onCopyFromYesterday: (mealType: string) => void; // New prop for copy from yesterday
+  onConvertToMealClick: (mealType: string) => void; // New prop for converting to meal
 }
 
 const MealCard = ({
@@ -81,6 +83,7 @@ const MealCard = ({
   onMealAdded,
   onCopyClick, // Destructure new prop
   onCopyFromYesterday, // Destructure new prop
+  onConvertToMealClick, // Destructure new prop
 }: MealCardProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -240,6 +243,13 @@ const MealCard = ({
                 title="Copy food entries from yesterday's meal"
               >
                 <History className="w-4 h-4" />
+              </Button>
+              <Button
+                size="default"
+                onClick={() => onConvertToMealClick(meal.type)}
+                title="Save as a new Meal"
+              >
+                <PlusCircle className="w-4 h-4" />
               </Button>
             </div>
           </div>

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Added import
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Calendar as CalendarIcon } from "lucide-react"; // Import CalendarIcon
@@ -34,7 +35,7 @@ import TooltipWarning from "./TooltipWarning";
 import MFASettings from "./MFASettings"; // Import MFASettings component
 
 interface Profile {
- id: string;
+  id: string;
   full_name: string | null;
   phone_number: string | null; // Changed from 'phone' to 'phone_number' to match DB
   date_of_birth: string | null;
@@ -68,7 +69,8 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     saveAllPreferences, // Add saveAllPreferences from context
     formatDate, // Destructure formatDate
     water_display_unit, setWaterDisplayUnit,
-    language, setLanguage
+    language, setLanguage,
+    calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode // Add new preference
   } = usePreferences();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [avatarObjectURL, setAvatarObjectURL] = useState<string | null>(null); // State to hold the object URL for the avatar
@@ -260,7 +262,6 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
       });
     }
   };
-
 
 
   const handleProfileUpdate = async () => {
@@ -787,8 +788,34 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
            <SettingsIcon className="h-5 w-5" />
            {t('settings.calculationSettings.title', 'Calculation Settings')}
          </AccordionTrigger>
-         <AccordionContent className="p-4 pt-0">
+         <AccordionContent className="p-4 pt-0 space-y-4">
            <CalculationSettings />
+
+           {/* Calorie Goal Adjustment Mode */}
+           <Separator className="my-6" />
+           <h3 className="text-lg font-semibold mb-2">{t('settings.calorieGoalAdjustment.title', 'Calorie Goal Adjustment')}</h3>
+           <div className="flex flex-col space-y-2">
+             <RadioGroup
+               value={calorieGoalAdjustmentMode}
+               onValueChange={(value: 'dynamic' | 'fixed') => setCalorieGoalAdjustmentMode(value)}
+               className="flex flex-col space-y-1"
+             >
+               <div className="flex items-center space-x-2">
+                 <RadioGroupItem value="dynamic" id="dynamic-goal" />
+                 <Label htmlFor="dynamic-goal">
+                   <span className="font-medium">{t('settings.calorieGoalAdjustment.dynamicGoal', 'Dynamic Goal')}:</span>{' '}
+                   {t('settings.calorieGoalAdjustment.dynamicGoalDescription', 'Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily.')}
+                 </Label>
+               </div>
+               <div className="flex items-center space-x-2">
+                 <RadioGroupItem value="fixed" id="fixed-goal" />
+                 <Label htmlFor="fixed-goal">
+                   <span className="font-medium">{t('settings.calorieGoalAdjustment.fixedGoal', 'Fixed Goal')}:</span>{' '}
+                   {t('settings.calorieGoalAdjustment.fixedGoalDescription', 'Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target.')}
+                 </Label>
+               </div>
+             </RadioGroup>
+           </div>
          </AccordionContent>
        </AccordionItem>
 

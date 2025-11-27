@@ -231,4 +231,23 @@ router.post(
     }
   }
 );
+
+// Create a meal from diary entries
+router.post('/create-meal-from-diary', authenticate, async (req, res, next) => {
+  try {
+    const { date, mealType, mealName, description, isPublic } = req.body;
+    if (!date || !mealType) {
+      return res.status(400).json({ error: 'Date and mealType are required to create a meal from diary entries.' });
+    }
+    const newMeal = await mealService.createMealFromDiaryEntries(req.userId, date, mealType, mealName, description, isPublic);
+    res.status(201).json(newMeal);
+  } catch (error) {
+    log('error', `Error creating meal from diary entries:`, error);
+    if (error.message.startsWith('No food entries found') || error.message.startsWith('Cannot create meal')) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
 module.exports = router;

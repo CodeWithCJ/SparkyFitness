@@ -32,7 +32,7 @@ interface CustomFood {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
-  servingSize: number;
+  servingSize: number | ""; // Allow empty string
   servingUnit: string;
   is_quick_food?: boolean;
   glycemic_index?: GlycemicIndex;
@@ -66,7 +66,7 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
    vitamin_c: 0,
    calcium: 0,
    iron: 0,
-   servingSize: 100,
+   servingSize: "", // Initial value allows empty string
    servingUnit: "g",
    is_quick_food: false,
    glycemic_index: "None", // Default to 'None'
@@ -82,7 +82,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
        return;
      }
  
-     if (formData.servingSize <= 0 || isNaN(formData.servingSize)) {
+     const parsedServingSize = Number(formData.servingSize); // Parse to number for validation
+     if (parsedServingSize <= 0 || isNaN(parsedServingSize)) {
        setServingSizeError(t('customFoodForm.servingSizeError', "Serving size must be a positive number."));
        warn(loggingLevel, "CustomFoodForm: Serving size is invalid, submission aborted.");
        return;
@@ -112,7 +113,7 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
        vitamin_c: 0,
        calcium: 0,
        iron: 0,
-       servingSize: 100,
+       servingSize: "", // Reset value allows empty string
        servingUnit: "g",
        is_quick_food: false,
        glycemic_index: "None",
@@ -122,10 +123,13 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
  
   const handleInputChange = (field: keyof CustomFood, value: string | number | boolean | GlycemicIndex) => {
     debug(loggingLevel, `CustomFoodForm: Input change for field "${field}":`, value);
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      if (field === "servingSize") {
+        // Allow empty string, but store as number if valid, otherwise keep as string
+        return { ...prev, [field]: value === "" ? "" : Number(value) };
+      }
+      return { ...prev, [field]: value };
+    });
   };
  
   return (
@@ -192,7 +196,13 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="servingSize"
                 type="number"
                 value={formData.servingSize}
-                onChange={(e) => handleInputChange("servingSize", Number(e.target.value))}
+                onChange={(e) => handleInputChange("servingSize", e.target.value)} // Pass raw string
+                onBlur={(e) => { // Convert to number on blur if not empty
+                   const val = e.target.value;
+                   if (val !== "") {
+                       handleInputChange("servingSize", Number(val));
+                   }
+                }}
                 min="0"
                 step="0.1"
               />

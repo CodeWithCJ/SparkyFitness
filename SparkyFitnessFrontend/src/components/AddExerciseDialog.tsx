@@ -211,21 +211,21 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={activeTab === 'import-csv' || activeTab === 'import-history-csv' ? "sm:max-w-[95vw] sm:max-h-[95vh] w-[95vw] h-[95vh] overflow-y-auto" : "sm:max-w-[625px] overflow-y-auto max-h-[90vh]"}>
+      <DialogContent className={activeTab === 'import-csv' || activeTab === 'import-history-csv' ? "sm:max-w-[95vw] sm:max-h-[95vh] w-[95vw] h-[95vh] overflow-y-auto" : "sm:max-w-[800px] overflow-y-auto max-h-[90vh]"}>
         <DialogHeader>
-          <DialogTitle>{t('exercise.addExerciseDialog.title', 'Add Exercise')}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-center">{t('exercise.addExerciseDialog.title', 'Add Exercise')}</DialogTitle>
+          <DialogDescription className="text-center">
             {t('exercise.addExerciseDialog.description', 'Add a new exercise to your database, either by creating a custom one or importing from an external source.')}
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full grid-cols-${mode === 'database-manager' ? 4 : (mode === 'diary' || mode === 'workout-plan') ? 7 : 5}`}>
+          <TabsList className="flex w-full justify-center flex-wrap">
             {mode !== 'database-manager' && <TabsTrigger value="my-exercises">{t('exercise.addExerciseDialog.myExercisesTab', 'My Exercises')}</TabsTrigger>}
             {(mode === 'diary' || mode === 'workout-plan') && <TabsTrigger value="workout-preset">{t('exercise.addExerciseDialog.workoutPresetTab', 'Workout Preset')}</TabsTrigger>}
             <TabsTrigger value="online">{t('exercise.addExerciseDialog.onlineTab', 'Online')}</TabsTrigger>
             <TabsTrigger value="custom">{t('exercise.addExerciseDialog.addCustomTab', 'Add Custom')}</TabsTrigger>
-            <TabsTrigger value="import-csv">{t('exercise.addExerciseDialog.importCSVTab', 'Import DB CSV')}</TabsTrigger>
-            {(mode === 'diary') && <TabsTrigger value="import-history-csv">{t('exercise.addExerciseDialog.importHistoryCSVTab', 'Import History CSV')}</TabsTrigger>}
+            <TabsTrigger value="import-csv">{t('exercise.addExerciseDialog.importCSVTab', 'Import Exercises')}</TabsTrigger>
+            {(mode === 'diary') && <TabsTrigger value="import-history-csv">{t('exercise.addExerciseDialog.importHistoryCSVTab', 'Import History')}</TabsTrigger>}
           </TabsList>
           {mode !== 'database-manager' && (
             <TabsContent value="my-exercises">

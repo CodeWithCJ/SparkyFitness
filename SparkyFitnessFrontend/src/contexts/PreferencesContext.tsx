@@ -60,6 +60,7 @@ interface PreferencesContextType {
   timezone: string; // Add timezone
   foodDisplayLimit: number; // Explicitly add foodDisplayLimit
   itemDisplayLimit: number;
+  calorieGoalAdjustmentMode: 'dynamic' | 'fixed'; // Add new preference
   nutrientDisplayPreferences: NutrientPreference[];
   water_display_unit: 'ml' | 'oz' | 'liter';
   language: string;
@@ -72,6 +73,7 @@ interface PreferencesContextType {
   setDefaultFoodDataProviderId: (id: string | null) => void; // Add setter for default food data provider ID
   setTimezone: (timezone: string) => void; // Add setter for timezone
   setItemDisplayLimit: (limit: number) => void;
+  setCalorieGoalAdjustmentMode: (mode: 'dynamic' | 'fixed') => void; // Add setter for calorie goal adjustment mode
   loadNutrientDisplayPreferences: () => Promise<void>;
   setWaterDisplayUnit: (unit: 'ml' | 'oz' | 'liter') => void;
   setLanguage: (language: string) => void;
@@ -107,6 +109,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [timezone, setTimezoneState] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone); // Add state for timezone
   const [itemDisplayLimit, setItemDisplayLimitState] = useState<number>(10);
   const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10); // Add state for foodDisplayLimit
+  const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentModeState] = useState<'dynamic' | 'fixed'>('dynamic'); // New state for calorie goal adjustment
   const [nutrientDisplayPreferences, setNutrientDisplayPreferences] = useState<NutrientPreference[]>([]);
   const [waterDisplayUnit, setWaterDisplayUnitState] = useState<'ml' | 'oz' | 'liter'>('ml');
   const [language, setLanguageState] = useState<string>('en');
@@ -114,7 +117,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // Log initial state
   useEffect(() => {
     info(loggingLevel, "PreferencesProvider: Initializing PreferencesProvider.");
-    debug(loggingLevel, "PreferencesProvider: Initial state - weightUnit:", weightUnit, "measurementUnit:", measurementUnit, "dateFormat:", dateFormat, "autoClearHistory:", autoClearHistory, "loggingLevel:", loggingLevel);
+    debug(loggingLevel, "PreferencesProvider: Initial state - weightUnit:", weightUnit, "measurementUnit:", measurementUnit, "dateFormat:", dateFormat, "autoClearHistory:", autoClearHistory, "loggingLevel:", loggingLevel, "calorieGoalAdjustmentMode:", calorieGoalAdjustmentMode);
   }, []);
 
   useEffect(() => {
@@ -131,6 +134,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         const savedDistanceUnit = localStorage.getItem('distanceUnit') as 'km' | 'miles'; // Load distance unit
         const savedDateFormat = localStorage.getItem('dateFormat');
         const savedLanguage = localStorage.getItem('language');
+        const savedCalorieGoalAdjustmentMode = localStorage.getItem('calorieGoalAdjustmentMode') as 'dynamic' | 'fixed';
         // auto_clear_history and loggingLevel are not stored in localStorage, defaults to 'never' and 'INFO' respectively
 
         if (savedWeightUnit) {
@@ -152,6 +156,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (savedLanguage) {
           setLanguageState(savedLanguage);
           debug(loggingLevel, "PreferencesProvider: Loaded language from localStorage:", savedLanguage);
+        }
+        if (savedCalorieGoalAdjustmentMode) {
+          setCalorieGoalAdjustmentModeState(savedCalorieGoalAdjustmentMode);
+          debug(loggingLevel, "PreferencesProvider: Loaded calorieGoalAdjustmentMode from localStorage:", savedCalorieGoalAdjustmentMode);
         }
       }
     }
@@ -180,6 +188,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setFoodDisplayLimitState(data.food_display_limit || 10); // Set foodDisplayLimit state
         setWaterDisplayUnitState(data.water_display_unit || 'ml');
         setLanguageState(data.language || 'en');
+        setCalorieGoalAdjustmentModeState(data.calorie_goal_adjustment_mode || 'dynamic'); // Set calorie goal adjustment mode state
         info(loggingLevel, 'PreferencesContext: Preferences states updated from database.');
       } else {
         info(loggingLevel, 'PreferencesContext: No preferences found, creating default preferences.');
@@ -189,6 +198,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
     } catch (err) {
       error(loggingLevel, 'PreferencesContext: Unexpected error in loadPreferences:', err);
+      throw err;
     }
   };
 
@@ -226,6 +236,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         food_display_limit: 10, // Add default foodDisplayLimit
         water_display_unit: waterDisplayUnit, // Set default water display unit
         language: 'en',
+        calorie_goal_adjustment_mode: 'dynamic', // Add default for new preference
       };
 
 
@@ -262,6 +273,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     food_display_limit: number; // Add foodDisplayLimit to updates type
     water_display_unit: 'ml' | 'oz' | 'liter';
     language: string;
+    calorie_goal_adjustment_mode: 'dynamic' | 'fixed'; // Add new preference to updates type
   }>) => {
     debug(loggingLevel, "PreferencesProvider: Attempting to update preferences with:", updates);
     if (!user) {
@@ -286,6 +298,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (updates.language) {
         localStorage.setItem('language', updates.language);
         debug(loggingLevel, "PreferencesProvider: Saved language to localStorage:", updates.language);
+      }
+      if (updates.calorie_goal_adjustment_mode) {
+        localStorage.setItem('calorieGoalAdjustmentMode', updates.calorie_goal_adjustment_mode);
+        debug(loggingLevel, "PreferencesProvider: Saved calorieGoalAdjustmentMode to localStorage:", updates.calorie_goal_adjustment_mode);
       }
       // default_food_data_provider_id, logging_level and item_display_limit are not stored in localStorage
       // food_display_limit is also not stored in localStorage
@@ -352,6 +368,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const setLoggingLevel = (level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT') => {
     info(loggingLevel, "PreferencesProvider: Setting logging level to:", level);
     setLoggingLevelState(level);
+  };
+
+  const setCalorieGoalAdjustmentMode = (mode: 'dynamic' | 'fixed') => {
+    info(loggingLevel, "PreferencesProvider: Setting calorie goal adjustment mode to:", mode);
+    setCalorieGoalAdjustmentModeState(mode);
+    saveAllPreferences({ calorieGoalAdjustmentMode: mode }); // Persist the change
   };
 
   const convertWeight = (value: number | string | null | undefined, from: 'kg' | 'lbs', to: 'kg' | 'lbs') => {
@@ -478,6 +500,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       food_display_limit: foodDisplayLimit, // This is not in the context setters, so we use the state value
       water_display_unit: newPrefs?.water_display_unit ?? waterDisplayUnit,
       language: newPrefs?.language ?? language,
+      calorie_goal_adjustment_mode: newPrefs?.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode, // Include new preference
     };
 
     try {
@@ -525,6 +548,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       timezone, // Expose timezone
       itemDisplayLimit, // Expose itemDisplayLimit
       foodDisplayLimit, // Expose foodDisplayLimit
+      calorieGoalAdjustmentMode, // Expose new preference
       nutrientDisplayPreferences,
       water_display_unit: waterDisplayUnit,
       language,
@@ -537,6 +561,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setDefaultFoodDataProviderId, // Expose setDefaultFoodDataProviderId
       setTimezone, // Expose setTimezone
       setItemDisplayLimit,
+      setCalorieGoalAdjustmentMode, // Expose new setter
       loadNutrientDisplayPreferences,
       setWaterDisplayUnit: setWaterDisplayUnitState,
       setLanguage: setLanguageState,
