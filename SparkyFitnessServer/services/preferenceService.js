@@ -32,18 +32,23 @@ async function getUserPreferences(authenticatedUserId, targetUserId) {
   try {
     const preferences = await preferenceRepository.getUserPreferences(targetUserId);
     if (!preferences) {
-      return null; // Return null if no preferences found
+      // Return default preferences if none are found, ensuring calorie_goal_adjustment_mode is set
+      return { calorie_goal_adjustment_mode: 'dynamic' };
     }
     return preferences;
   } catch (error) {
     log('error', `Error fetching preferences for user ${targetUserId} by ${authenticatedUserId}:`, error);
-    return null; // Return null on error
+    return { calorie_goal_adjustment_mode: 'dynamic' }; // Return default on error as well
   }
 }
 
 async function upsertUserPreferences(authenticatedUserId, preferenceData) {
   try {
     preferenceData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
+    // Provide a default for calorie_goal_adjustment_mode if it's not present
+    if (!preferenceData.calorie_goal_adjustment_mode) {
+      preferenceData.calorie_goal_adjustment_mode = 'dynamic';
+    }
     const newPreferences = await preferenceRepository.upsertUserPreferences(preferenceData);
     return newPreferences;
   } catch (error) {

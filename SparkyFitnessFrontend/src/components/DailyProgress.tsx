@@ -42,11 +42,13 @@ const DailyProgress = ({
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
-  const { loggingLevel } = usePreferences();
+  const { loggingLevel, calorieGoalAdjustmentMode } = usePreferences(); // Import calorieGoalAdjustmentMode
   debug(
     loggingLevel,
     "DailyProgress: Component rendered for date:",
     selectedDate,
+    "Calorie Goal Adjustment Mode:",
+    calorieGoalAdjustmentMode,
   );
 
   const { water_display_unit } = usePreferences(); // Add water_display_unit from preferences
@@ -97,7 +99,7 @@ const DailyProgress = ({
     debug(
       loggingLevel,
       "DailyProgress: currentUserId, selectedDate, refreshTrigger useEffect triggered.",
-      { currentUserId, selectedDate, refreshTrigger },
+      { currentUserId, selectedDate, refreshTrigger, calorieGoalAdjustmentMode },
     );
     if (currentUserId) {
       loadGoalsAndIntake();
@@ -118,7 +120,7 @@ const DailyProgress = ({
       window.removeEventListener("foodDiaryRefresh", handleRefresh);
       window.removeEventListener("measurementsRefresh", handleRefresh);
     };
-  }, [currentUserId, selectedDate, refreshTrigger, loggingLevel]);
+  }, [currentUserId, selectedDate, refreshTrigger, loggingLevel, calorieGoalAdjustmentMode]);
 
   // Convert steps to calories (roughly 0.04 calories per step for average person)
   const convertStepsToCalories = (steps: number): number => {
@@ -397,7 +399,7 @@ const DailyProgress = ({
   // Calculate total calories burned based on user's refined logic:
   // Sum all exercise calories *except* those explicitly categorized as "Active Calories".
   // Then, add either the "Active Calories" (if present and greater than 0) or the "stepsCalories" (if "Active Calories" are 0 or not present).
-  let totalCaloriesBurned = Math.round(Number(exerciseCalories)); // This now holds 'otherExerciseCalories'
+  let totalOtherExerciseCaloriesBurned = Math.round(Number(exerciseCalories)); // This now holds 'otherExerciseCalories'
 
   let activeOrStepsCaloriesToAdd = 0;
   if (activeCaloriesFromExercise > 0) {
@@ -416,7 +418,7 @@ const DailyProgress = ({
     );
   }
 
-  totalCaloriesBurned += activeOrStepsCaloriesToAdd;
+  const totalCaloriesBurned = totalOtherExerciseCaloriesBurned + activeOrStepsCaloriesToAdd;
   info(
     loggingLevel,
     "DailyProgress: Total calories burned (Other Exercise + Active/Steps):",
@@ -426,8 +428,22 @@ const DailyProgress = ({
   const bmrCalories = includeBmrInNetCalories && bmr ? bmr : 0;
   const finalTotalCaloriesBurned = totalCaloriesBurned + bmrCalories;
 
-  const netCalories = Math.round(dailyIntake.calories) - finalTotalCaloriesBurned;
-  const caloriesRemaining = dailyGoals.calories - netCalories;
+  let netCalories: number;
+  let caloriesRemaining: number;
+
+  if (calorieGoalAdjustmentMode === 'dynamic') {
+    // Dynamic Goal: burned calories are added to the daily calorie goal
+    // Formula: Remaining = Goal + Burned - Eaten
+    // Effectively, netCalories in this context is Eaten - Burned
+    netCalories = Math.round(dailyIntake.calories) - finalTotalCaloriesBurned;
+    caloriesRemaining = dailyGoals.calories - netCalories;
+  } else {
+    // Fixed Goal: daily calorie goal remains constant regardless of exercise
+    // Formula: Remaining = Goal - Eaten
+    netCalories = Math.round(dailyIntake.calories); // Only eaten calories count towards net
+    caloriesRemaining = dailyGoals.calories - dailyIntake.calories;
+  }
+  
   const calorieProgress = Math.max(
     0,
     (netCalories / dailyGoals.calories) * 100,
@@ -437,6 +453,7 @@ const DailyProgress = ({
     netCalories,
     caloriesRemaining,
     calorieProgress,
+    calorieGoalAdjustmentMode,
   });
 
   info(loggingLevel, "DailyProgress: Rendering daily progress card.");
