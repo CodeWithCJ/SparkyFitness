@@ -41,6 +41,11 @@ const GlobalNotificationIcon: React.FC = () => {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Temporarily hide the notification. Remove this line to re-enable.
+  if (true) {
+    return null;
+  }
+
   if (!user || reviewCount === 0) {
     return null; // Don't show the icon if not logged in or no items to review
   }
