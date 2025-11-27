@@ -40,7 +40,8 @@ const HEALTHKIT_TYPE_MAP = {
   'LeanBodyMass': HKQuantityTypeIdentifier.leanBodyMass,
 };
 
-export const initHealthKit = async () => {
+// Alias for cross-platform compatibility - Android uses initHealthConnect
+export const initHealthConnect = async () => {
   try {
     // Check if HealthKit is available on this device
     const available = await isHealthDataAvailable();
@@ -810,3 +811,8 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
     return { success: true, message: "No health data to sync.", syncErrors };
   }
 };
+
+// Convenience functions for background sync compatibility with Android
+export const readStepRecords = async (startDate, endDate) => readHealthRecords('Steps', startDate, endDate);
+export const readActiveCaloriesRecords = async (startDate, endDate) => readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
+export const readHeartRateRecords = async (startDate, endDate) => readHealthRecords('HeartRate', startDate, endDate);
