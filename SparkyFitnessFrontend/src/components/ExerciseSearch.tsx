@@ -254,7 +254,7 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
   };
 
   const handleSpeakInstructions = (instructions: string | string[]) => {
-    if ('speechSynthesis' in window) {
+    if (window.speechSynthesis && window.speechSynthesis.speak) {
       const textToSpeak = Array.isArray(instructions) ? instructions.join('. ') : instructions;
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
       window.speechSynthesis.speak(utterance);
