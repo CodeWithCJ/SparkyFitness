@@ -157,17 +157,19 @@ async function saveSparkyChatHistory(authenticatedUserId, historyData) {
   }
 }
 
-async function processChatMessage(messages, serviceConfig, authenticatedUserId) {
+async function processChatMessage(messages, serviceConfigId, authenticatedUserId) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
     }
-    if (!serviceConfig) { // Check if serviceConfig is provided
-      throw new Error('AI service configuration is missing.');
+    if (!serviceConfigId) { // Check if serviceConfigId is provided
+      throw new Error('AI service configuration ID is missing.');
     }
 
-    // Use the serviceConfig passed from the frontend directly
-    const aiService = serviceConfig;
+    const aiService = await chatRepository.getAiServiceSettingForBackend(serviceConfigId, authenticatedUserId);
+    if (!aiService) {
+      throw new Error('AI service setting not found for the provided ID.');
+    }
     
     // Ensure API key is present, unless it's Ollama
     if (aiService.service_type !== 'ollama' && !aiService.api_key) {
@@ -328,6 +330,11 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
       case 'mistral':
       case 'groq':
       case 'custom':
+        log('debug', `[AI Service Request] Type: ${aiService.service_type}, URL: ${aiService.service_type === 'openai' ? 'https://api.openai.com/v1/chat/completions' :
+                               aiService.service_type === 'openai_compatible' ? `${aiService.custom_url}/chat/completions` :
+                               aiService.service_type === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' :
+                               aiService.service_type === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' :
+                               aiService.custom_url}, Model: ${model}, API Key Provided: ${!!aiService.api_key}`);
         response = await fetch(aiService.service_type === 'openai' ? 'https://api.openai.com/v1/chat/completions' :
                               aiService.service_type === 'openai_compatible' ? `${aiService.custom_url}/chat/completions` :
                               aiService.service_type === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' :
@@ -351,6 +358,7 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         break;
 
       case 'anthropic':
+        log('debug', `[AI Service Request] Type: Anthropic, URL: https://api.anthropic.com/v1/messages, Model: ${model}, API Key Provided: ${!!aiService.api_key}`);
         response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
@@ -435,6 +443,7 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         if (!aiService.api_key) {
           throw new Error('API key missing for Google AI service.');
         }
+        log('debug', `[AI Service Request] Type: Google, URL: https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=..., Model: ${model}, API Key Provided: ${!!aiService.api_key}`);
         response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${aiService.api_key}`, {
           method: 'POST',
           headers: {
@@ -479,6 +488,7 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         });
 
         try {
+        log('debug', `[AI Service Request] Type: Ollama, URL: ${aiService.custom_url}/api/chat, Model: ${model}, API Key Provided: ${!!aiService.api_key}`);
           response = await fetch(`${aiService.custom_url}/api/chat`, {
             method: 'POST',
             headers: {
@@ -516,8 +526,15 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
 
     if (!response.ok) {
       const errorBody = await response.text();
-      log('error', `AI service API call error for ${aiService.service_type}. Status: ${response.status}, StatusText: ${response.statusText}, Body: ${errorBody}`);
+      log('error', `AI service API call error for ${aiService.service_type}. Status: ${response.status}, StatusText: ${response.statusText}, Content-Type: ${response.headers.get('content-type')}, Body: ${errorBody}`);
       throw new Error(`AI service API call error: ${response.status} - ${response.statusText} - ${errorBody}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const errorBody = await response.text();
+      log('error', `AI service returned non-JSON response. Content-Type: ${contentType}, Body: ${errorBody}`);
+      throw new Error(`AI service returned non-JSON response. Expected application/json but got ${contentType}. Raw Body: ${errorBody.substring(0, 200)}...`);
     }
 
     const data = await response.json();
@@ -564,14 +581,16 @@ module.exports = {
   processFoodOptionsRequest, // Add the new function to exports
 };
 
-async function processFoodOptionsRequest(foodName, unit, authenticatedUserId, serviceConfig) { // Add serviceConfig
+async function processFoodOptionsRequest(foodName, unit, authenticatedUserId, serviceConfigId) { // Changed serviceConfig to serviceConfigId
   try {
-    if (!serviceConfig) { // Check if serviceConfig is provided
-      throw new Error('AI service configuration is missing.');
+    if (!serviceConfigId) { // Check if serviceConfigId is provided
+      throw new Error('AI service configuration ID is missing.');
     }
 
-    // Use the serviceConfig passed from the frontend directly
-    const aiService = serviceConfig;
+    const aiService = await chatRepository.getAiServiceSettingForBackend(serviceConfigId, authenticatedUserId);
+    if (!aiService) {
+      throw new Error('AI service setting not found for the provided ID.');
+    }
     
     // Ensure API key is present, unless it's Ollama
     if (aiService.service_type !== 'ollama' && !aiService.api_key) {
@@ -595,6 +614,11 @@ async function processFoodOptionsRequest(foodName, unit, authenticatedUserId, se
       case 'mistral':
       case 'groq':
       case 'custom':
+        log('debug', `[AI Service Request] Type: ${aiService.service_type} (Food Options), URL: ${aiService.service_type === 'openai' ? 'https://api.openai.com/v1/chat/completions' :
+                               aiService.service_type === 'openai_compatible' ? `${aiService.custom_url}/chat/completions` :
+                               aiService.service_type === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' :
+                               aiService.service_type === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' :
+                               aiService.custom_url}, Model: ${model}, API Key Provided: ${!!aiService.api_key}`);
         response = await fetch(aiService.service_type === 'openai' ? 'https://api.openai.com/v1/chat/completions' :
                                aiService.service_type === 'openai_compatible' ? `${aiService.custom_url}/chat/completions` :
                                aiService.service_type === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' :
@@ -618,6 +642,7 @@ async function processFoodOptionsRequest(foodName, unit, authenticatedUserId, se
         break;
 
       case 'anthropic':
+        log('debug', `[AI Service Request] Type: Anthropic (Food Options), URL: https://api.anthropic.com/v1/messages, Model: ${model}, API Key Provided: ${!!aiService.api_key}`);
         response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
@@ -668,6 +693,7 @@ async function processFoodOptionsRequest(foodName, unit, authenticatedUserId, se
         if (!aiService.api_key) {
           throw new Error('API key missing for Google AI service.');
         }
+        log('debug', `[AI Service Request] Type: Google (Food Options), URL: https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=..., Model: ${model}, API Key Provided: ${!!aiService.api_key}`);
         response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${aiService.api_key}`, {
           method: 'POST',
           headers: {
@@ -706,6 +732,7 @@ async function processFoodOptionsRequest(foodName, unit, authenticatedUserId, se
         });
 
         try {
+        log('debug', `[AI Service Request] Type: Ollama (Food Options), URL: ${aiService.custom_url}/api/chat, Model: ${model}, API Key Provided: ${!!aiService.api_key}`);
           response = await fetch(`${aiService.custom_url}/api/chat`, {
             method: 'POST',
             headers: {
@@ -736,8 +763,15 @@ async function processFoodOptionsRequest(foodName, unit, authenticatedUserId, se
 
     if (!response.ok) {
       const errorBody = await response.text();
-      log('error', `AI service API call error for food options (${aiService.service_type}). Status: ${response.status}, StatusText: ${response.statusText}, Body: ${errorBody}`);
+      log('error', `AI service API call error for food options (${aiService.service_type}). Status: ${response.status}, StatusText: ${response.statusText}, Content-Type: ${response.headers.get('content-type')}, Body: ${errorBody}`);
       throw new Error(`AI service API call error: ${response.status} - ${response.statusText} - ${errorBody}`);
+    }
+
+    const contentTypeFoodOptions = response.headers.get('content-type');
+    if (!contentTypeFoodOptions || !contentTypeFoodOptions.includes('application/json')) {
+      const errorBody = await response.text();
+      log('error', `AI service returned non-JSON response for food options. Content-Type: ${contentTypeFoodOptions}, Body: ${errorBody}`);
+      throw new Error(`AI service returned non-JSON response for food options. Expected application/json but got ${contentTypeFoodOptions}. Raw Body: ${errorBody.substring(0, 200)}...`);
     }
 
     const data = await response.json();

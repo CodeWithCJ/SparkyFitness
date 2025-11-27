@@ -55,11 +55,11 @@ async function upsertAiServiceSetting(settingData) {
   }
 }
 
-async function getAiServiceSettingById(id, userId) {
+async function getAiServiceSettingForBackend(id, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT encrypted_api_key, api_key_iv, api_key_tag, service_type, custom_url, model_name FROM ai_service_settings WHERE id = $1',
+      'SELECT * FROM ai_service_settings WHERE id = $1',
       [id]
     );
     const setting = result.rows[0];
@@ -74,6 +74,19 @@ async function getAiServiceSettingById(id, userId) {
       }
     }
     return { ...setting, api_key: decryptedApiKey };
+  } finally {
+    client.release();
+  }
+}
+
+async function getAiServiceSettingById(id, userId) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name FROM ai_service_settings WHERE id = $1',
+      [id]
+    );
+    return result.rows[0];
   } finally {
     client.release();
   }
@@ -96,7 +109,7 @@ async function getAiServiceSettingsByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT * FROM ai_service_settings ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name FROM ai_service_settings ORDER BY created_at DESC',
       []
     );
     return result.rows;
@@ -109,21 +122,10 @@ async function getActiveAiServiceSetting(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT * FROM ai_service_settings WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name FROM ai_service_settings WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 1',
       []
     );
-    const setting = result.rows[0];
-    if (!setting) return null;
-
-    let decryptedApiKey = null;
-    if (setting.encrypted_api_key && setting.api_key_iv && setting.api_key_tag) {
-      try {
-        decryptedApiKey = await decrypt(setting.encrypted_api_key, setting.api_key_iv, setting.api_key_tag, ENCRYPTION_KEY);
-      } catch (e) {
-        log('error', 'Error decrypting API key for active AI service setting:', setting.id, e);
-      }
-    }
-    return { ...setting, api_key: decryptedApiKey };
+    return result.rows[0];
   } finally {
     client.release();
   }
@@ -246,6 +248,7 @@ async function saveChatHistory(historyData) {
 module.exports = {
   upsertAiServiceSetting,
   getAiServiceSettingById,
+  getAiServiceSettingForBackend,
   deleteAiServiceSetting,
   getAiServiceSettingsByUserId,
   getActiveAiServiceSetting,

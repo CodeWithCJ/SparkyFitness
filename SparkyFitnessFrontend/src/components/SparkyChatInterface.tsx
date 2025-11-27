@@ -244,7 +244,7 @@ const SparkyChatInterface = () => {
           null, // lastBotMessageMetadata is not used for initial input
           userPreferences?.logging_level || 'INFO',
           formatDateInUserTimezone,
-          activeAIServiceSetting, // Pass the active AI service setting
+          activeAIServiceSetting, // Pass the active AI service setting object
           messages, // Pass the messages array
           userDate // Pass user's date
         );
@@ -270,7 +270,7 @@ const SparkyChatInterface = () => {
               lastBotMessage.metadata,
               userPreferences?.logging_level || 'INFO',
               formatDateInUserTimezone,
-              activeAIServiceSetting, // Pass the active AI service setting
+              activeAIServiceSetting, // Pass the ID of the active AI service setting
               messages, // Pass the messages array
               userDate // Pass user's date
             );
@@ -283,7 +283,7 @@ const SparkyChatInterface = () => {
               null, // No lastBotMessageMetadata
               userPreferences?.logging_level || 'INFO',
               formatDateInUserTimezone,
-              activeAIServiceSetting, // Pass the active AI service setting
+              activeAIServiceSetting, // Pass the active AI service setting object
               messages, // Pass the messages array
               userDate // Pass user's date
             );
@@ -297,7 +297,7 @@ const SparkyChatInterface = () => {
             null, // No lastBotMessageMetadata
             userPreferences?.logging_level || 'INFO',
             formatDateInUserTimezone,
-            activeAIServiceSetting, // Pass the active AI service setting
+            activeAIServiceSetting, // Pass the active AI service setting object
             messages, // Pass the messages array
             userDate // Pass user's date
           );
