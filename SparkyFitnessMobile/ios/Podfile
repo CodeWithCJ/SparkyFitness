@@ -8,6 +8,9 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
+# Add NitroModules support for @kingstinct/react-native-healthkit
+pod 'NitroModules', :path => '../node_modules/react-native-nitro-modules'
+
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
@@ -31,5 +34,19 @@ target 'SparkyFitnessMobile' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Fix for "Multiple commands produce" error with privacy manifests
+    # Remove duplicate privacy bundle targets
+    installer.pods_project.targets.each do |target|
+      if target.name.end_with?('-React-Core_privacy') && target.name.include?('common')
+        target.remove_from_project
+      end
+
+      target.build_configurations.each do |config|
+        config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ""
+        config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
+        config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+      end
+    end
   end
 end
