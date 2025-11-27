@@ -5,15 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, X, Search } from 'lucide-react';
+import { Plus, X, Search, Edit } from 'lucide-react';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 import { debug, info, warn, error } from '@/utils/logging';
-import { Food, FoodVariant, FoodSearchResult } from '@/types/food'; // Import FoodSearchResult
-import { Meal, MealFood, MealPayload } from '@/types/meal'; // Assuming you'll create this type
-import { createMeal, updateMeal, getMealById } from '@/services/mealService'; // Assuming you'll create this service
-import { searchFoods } from '@/services/foodService'; // Existing food service
+import { Food, FoodVariant, FoodSearchResult } from '@/types/food';
+import { Meal, MealFood, MealPayload } from '@/types/meal';
+import { createMeal, updateMeal, getMealById } from '@/services/mealService';
+import { searchFoods } from '@/services/foodService';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import FoodSearchDialog from './FoodSearchDialog';
 
@@ -35,6 +35,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
   const [isFoodUnitSelectorOpen, setIsFoodUnitSelectorOpen] = useState(false);
   const [showFoodSearchDialog, setShowFoodSearchDialog] = useState(false);
   const [selectedFoodForUnitSelection, setSelectedFoodForUnitSelection] = useState<Food | null>(null);
+  const [editingMealFood, setEditingMealFood] = useState<{ mealFood: MealFood; index: number } | null>(null);
 
   useEffect(() => {
     if (mealId) {
@@ -63,11 +64,37 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
 
   const handleAddFoodToMeal = useCallback((food: Food) => {
     setSelectedFoodForUnitSelection(food);
+    setEditingMealFood(null); // Clear editing state when adding new food
     setIsFoodUnitSelectorOpen(true);
   }, []);
 
+  const handleEditFoodInMeal = useCallback((index: number) => {
+    const mealFoodToEdit = mealFoods[index];
+    if (mealFoodToEdit) {
+      // Create a dummy Food object for FoodUnitSelector
+      // This is a workaround as FoodUnitSelector expects a Food object
+      const dummyFood: Food = {
+        id: mealFoodToEdit.food_id,
+        name: mealFoodToEdit.food_name || '',
+        is_custom: false, // Assuming foods added to meals are not always custom, or this property is not relevant for editing quantity/unit
+        default_variant: {
+          id: mealFoodToEdit.variant_id,
+          serving_size: mealFoodToEdit.serving_size || 1,
+          serving_unit: mealFoodToEdit.serving_unit || mealFoodToEdit.unit || 'serving',
+          calories: mealFoodToEdit.calories,
+          protein: mealFoodToEdit.protein,
+          carbs: mealFoodToEdit.carbs,
+          fat: mealFoodToEdit.fat,
+        },
+      };
+      setSelectedFoodForUnitSelection(dummyFood);
+      setEditingMealFood({ mealFood: mealFoodToEdit, index });
+      setIsFoodUnitSelectorOpen(true);
+    }
+  }, [mealFoods]);
+
   const handleFoodUnitSelected = useCallback((food: Food, quantity: number, unit: string, selectedVariant: FoodVariant) => {
-    const newMealFood: MealFood = {
+    const updatedMealFood: MealFood = {
       food_id: food.id,
       food_name: food.name,
       variant_id: selectedVariant.id,
@@ -80,14 +107,31 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
       serving_size: selectedVariant.serving_size,
       serving_unit: selectedVariant.serving_unit,
     };
-    setMealFoods(prev => [...prev, newMealFood]);
+
+    if (editingMealFood) {
+      // Update existing meal food
+      setMealFoods(prev => {
+        const newMealFoods = [...prev];
+        newMealFoods[editingMealFood.index] = updatedMealFood;
+        return newMealFoods;
+      });
+      toast({
+        title: t('mealBuilder.successTitle', 'Success'),
+        description: t('mealBuilder.foodUpdatedInMeal', { foodName: food.name, defaultValue: `${food.name} updated in meal.` }),
+      });
+    } else {
+      // Add new meal food
+      setMealFoods(prev => [...prev, updatedMealFood]);
+      toast({
+        title: t('mealBuilder.successTitle', 'Success'),
+        description: t('mealBuilder.foodAddedToMeal', { foodName: food.name, defaultValue: `${food.name} added to meal.` }),
+      });
+    }
+
     setIsFoodUnitSelectorOpen(false);
     setSelectedFoodForUnitSelection(null);
-    toast({
-      title: t('mealBuilder.successTitle', 'Success'),
-      description: t('mealBuilder.foodAddedToMeal', { foodName: food.name, defaultValue: `${food.name} added to meal.` }),
-    });
-  }, []);
+    setEditingMealFood(null); // Clear editing state
+  }, [editingMealFood, mealFoods]);
 
   const handleRemoveFoodFromMeal = useCallback((index: number) => {
     setMealFoods(prev => prev.filter((_, i) => i !== index));
@@ -224,9 +268,14 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
               {mealFoods.map((mf, index) => (
                 <div key={index} className="flex items-center justify-between p-2 border rounded-md">
                   <span>{mf.food_name} - {mf.quantity} {mf.unit}</span>
-                  <Button variant="ghost" size="icon" onClick={() => handleRemoveFoodFromMeal(index)}>
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center space-x-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditFoodInMeal(index)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveFoodFromMeal(index)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -254,6 +303,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
             open={isFoodUnitSelectorOpen}
             onOpenChange={setIsFoodUnitSelectorOpen}
             onSelect={handleFoodUnitSelected}
+            initialQuantity={editingMealFood?.mealFood.quantity}
+            initialUnit={editingMealFood?.mealFood.unit}
+            initialVariantId={editingMealFood?.mealFood.variant_id}
           />
         )}
 
