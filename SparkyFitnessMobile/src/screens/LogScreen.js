@@ -3,9 +3,11 @@ import { View, Text, FlatList, Button, StyleSheet, TouchableOpacity, Image, Aler
 import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getLogs, clearLogs, getLogSummary, getLogLevel, setLogLevel } from '../services/LogService';
+import { useTheme } from '../contexts/ThemeContext';
 
 const LogScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { colors, isDarkMode } = useTheme();
   const [logs, setLogs] = useState([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -105,7 +107,7 @@ const LogScreen = ({ navigation }) => {
 
 
   return (
-  <View style={styles.container}>
+  <View style={[styles.container, { backgroundColor: colors.background }]}>
     <FlatList
       data={logs}
       renderItem={({ item }) => (
@@ -196,7 +198,7 @@ const LogScreen = ({ navigation }) => {
       />
 
       {/* Bottom Navigation Bar */}
-      <View style={[styles.bottomNavBar, { paddingBottom: insets.bottom }]}>
+      <View style={[styles.bottomNavBar, { paddingBottom: insets.bottom, backgroundColor: colors.navBar }]}>
         <TouchableOpacity style={styles.navBarItem} onPress={() => navigation.navigate('Main')}>
           <Image source={require('../../assets/icons/home.png')} style={styles.navBarIcon} />
           <Text style={styles.navBarText}>Home</Text>
@@ -380,6 +382,11 @@ const styles = StyleSheet.create({
   logLevelCard: {
     paddingVertical: 10, // Reduced vertical padding
     marginBottom: 10, // Reduced margin bottom
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+    color: '#333',
   },
 });
 
