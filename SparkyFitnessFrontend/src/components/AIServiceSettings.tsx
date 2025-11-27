@@ -34,7 +34,7 @@ const AIServiceSettings = () => {
   const [newService, setNewService] = useState({
     service_name: '',
     service_type: 'openai',
-    api_key: '', // Initialize with empty string for the actual API key
+    api_key: '', // Initialize with empty string for API key input
     custom_url: '',
     system_prompt: '',
     is_active: false,
@@ -43,7 +43,8 @@ const AIServiceSettings = () => {
     showCustomModelInput: false // New state to control visibility
   });
   const [editingService, setEditingService] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<AIService & { showCustomModelInput?: boolean }>>({
+  const [editData, setEditData] = useState<Partial<AIService & { showCustomModelInput?: boolean; api_key?: string }>>({ // Add api_key to editData type
+    api_key: '', // Initialize with empty string for API key input
     custom_model_name: '', // Add custom_model_name to editData state
     showCustomModelInput: false // New state to control visibility
   });
@@ -159,18 +160,15 @@ const AIServiceSettings = () => {
     // Create a complete service object by merging original with edited data
     const serviceToUpdate: Partial<AIService> = {
       ...originalService, // Start with all original fields
-      ...editData,        // Overlay with edited fields
+      ...editData,        // Overlay with edited fields (including temporary api_key if provided)
       id: serviceId,      // Ensure ID is correct
       model_name: editData.showCustomModelInput ? editData.custom_model_name : editData.model_name || null // Prioritize custom_model_name if showCustomModelInput is true
     };
 
-    // Special handling for api_key: if editData.api_key is empty, it means user didn't change it,
-    // so we should retain the original (encrypted) api_key.
-    // If editData.api_key has a value, it means user entered a new one.
-    if (!editData.api_key) {
-      // If API key was not provided in editData, remove it from the payload
-      // so the backend doesn't try to update it with an empty string.
-      // The backend should then retain the existing encrypted key.
+    // If api_key is empty in editData, it means the user did not enter a new one.
+    // In this case, we explicitly remove it from the payload to instruct the backend
+    // to retain the existing encrypted key, rather than overwriting it with an empty string.
+    if (serviceToUpdate.api_key === '') {
       delete serviceToUpdate.api_key;
     }
 

@@ -4,7 +4,7 @@ const { authenticate, authorize } = require('../middleware/authMiddleware');
 const chatService = require('../services/chatService');
 
 router.post('/', authenticate, async (req, res, next) => {
-  const { messages, service_config, action, service_data } = req.body;
+  const { messages, service_config_id, action, service_data } = req.body;
 
   try {
     if (action === 'save_ai_service_settings') {
@@ -12,11 +12,14 @@ router.post('/', authenticate, async (req, res, next) => {
       return res.status(200).json(result);
     }
 
-    const { content } = await chatService.processChatMessage(messages, service_config, req.userId);
+    const { content } = await chatService.processChatMessage(messages, service_config_id, req.userId);
     return res.status(200).json({ content });
   } catch (error) {
-    if (error.message.startsWith('Invalid messages format') || error.message.startsWith('AI service configuration ID is missing') || error.message.startsWith('No valid content')) {
+    if (error.message.startsWith('Invalid messages format') || error.message.startsWith('No valid content')) {
       return res.status(400).json({ error: error.message });
+    }
+    if (error.message.startsWith('AI service configuration ID is missing')) {
+      return res.status(404).json({ error: error.message });
     }
     if (error.message.startsWith('AI service setting not found') || error.message.startsWith('API key missing')) {
       return res.status(404).json({ error: error.message });
@@ -187,13 +190,24 @@ router.post('/save-history', authenticate, authorize('chat_history'), async (req
 });
 
 router.post('/food-options', authenticate, async (req, res, next) => {
-  const { foodName, unit, service_config } = req.body; // Destructure service_config
+  const { foodName, unit, service_config_id } = req.body;
+  if (!service_config_id) {
+    return res.status(400).json({ error: 'AI service configuration ID is required.' });
+  }
   try {
-    const { content } = await chatService.processFoodOptionsRequest(foodName, unit, req.userId, service_config); // Pass service_config
+    const { content } = await chatService.processFoodOptionsRequest(foodName, unit, req.userId, service_config_id);
     return res.status(200).json({ content });
   } catch (error) {
-    if (error.message.startsWith('AI service setting not found') || error.message.startsWith('API key missing') || error.message.startsWith('AI service configuration is missing')) {
+    if (error.message.startsWith('AI service configuration ID is missing')) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message.startsWith('AI service setting not found') || error.message.startsWith('API key missing')) {
       return res.status(404).json({ error: error.message });
+    }
+    if (error.message.startsWith('AI service API call error')) {
+      const statusCodeMatch = error.message.match(/AI service API call error: (\d+) -/);
+      const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1], 10) : 500;
+      return res.status(statusCode).json({ error: error.message });
     }
     next(error);
   }

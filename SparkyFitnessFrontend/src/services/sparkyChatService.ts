@@ -7,6 +7,7 @@ import { processExerciseInput } from './Chatbot/Chatbot_ExerciseHandler';
 import { processMeasurementInput } from './Chatbot/Chatbot_MeasurementHandler';
 import { processWaterInput } from './Chatbot/Chatbot_WaterHandler';
 import { processChatInput } from './Chatbot/Chatbot_ChatHandler';
+import { AIService } from './aiServiceSettingsService';
 
 export interface Message {
   id: string;
@@ -77,9 +78,9 @@ export const processUserInput = async (
   lastBotMessageMetadata: any,
   userLoggingLevel: UserLoggingLevel,
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string,
-  activeAIServiceSetting: any,
-  messages: Message[], // Add messages parameter here
-  userDate: string // Add userDate parameter
+  activeAIServiceSetting: AIService | null,
+  messages: Message[],
+  userDate: string
 ): Promise<CoachResponse> => {
   try {
     // Check if the current input is a follow-up to a previous food options prompt
@@ -94,7 +95,10 @@ export const processUserInput = async (
       imageData = await fileToBase64(image);
     }
 
-    const aiResponse = await getAIResponse(input, imageData, transactionId, userLoggingLevel, activeAIServiceSetting, messages, userDate); // Pass userDate
+    if (!activeAIServiceSetting) {
+      throw new Error('Active AI service setting is missing.');
+    }
+    const aiResponse = await getAIResponse(input, imageData, transactionId, userLoggingLevel, activeAIServiceSetting as AIService, messages, userDate);
 
     let parsedResponse: { intent: string; data: any; response?: string; entryDate?: string };
     try {
@@ -123,7 +127,7 @@ export const processUserInput = async (
           info(userLoggingLevel, `[${transactionId}] Food not found in DB, requesting AI options...`);
           const { foodName, unit, mealType, quantity, entryDate } = foodResponse.metadata;
 
-          const foodOptions = await callAIForFoodOptions(foodName, unit, userLoggingLevel, activeAIServiceSetting); // Pass activeAIServiceSetting
+          const foodOptions = await callAIForFoodOptions(foodName, unit, userLoggingLevel, activeAIServiceSetting as AIService);
 
           if (foodOptions.length > 0) {
             info(userLoggingLevel, `[${transactionId}] Received AI food options:`, foodOptions);
@@ -201,7 +205,7 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-const getAIResponse = async (input: string, imageData: string | null = null, transactionId: string, userLoggingLevel: UserLoggingLevel, activeAIServiceSetting: any, messages: Message[], userDate: string): Promise<CoachResponse> => {
+const getAIResponse = async (input: string, imageData: string | null = null, transactionId: string, userLoggingLevel: UserLoggingLevel, activeAIServiceSetting: AIService, messages: Message[], userDate: string): Promise<CoachResponse> => {
   try {
     debug(userLoggingLevel, `[${transactionId}] Calling getAIResponse with input:`, input);
 
@@ -238,7 +242,7 @@ const getAIResponse = async (input: string, imageData: string | null = null, tra
 
     const response = await apiCall('/chat', {
       method: 'POST',
-      body: { messages: messagesToSend, service_config: activeAIServiceSetting, user_date: userDate },
+      body: { messages: messagesToSend, service_config_id: activeAIServiceSetting.id, user_date: userDate },
     });
 
     return {
@@ -261,11 +265,11 @@ const getAIResponse = async (input: string, imageData: string | null = null, tra
   }
 };
 
-const callAIForFoodOptions = async (foodName: string, unit: string, userLoggingLevel: UserLoggingLevel, activeAIServiceSetting: any): Promise<FoodOption[]> => {
+const callAIForFoodOptions = async (foodName: string, unit: string, userLoggingLevel: UserLoggingLevel, activeAIServiceSetting: AIService): Promise<FoodOption[]> => {
   try {
     const response = await apiCall('/chat/food-options', {
       method: 'POST',
-      body: { foodName, unit, service_config: activeAIServiceSetting }, // Pass service_config
+      body: { foodName, unit, service_config_id: activeAIServiceSetting.id }, // Pass service_config_id
     });
 
     const aiResponseContent = response?.content;
