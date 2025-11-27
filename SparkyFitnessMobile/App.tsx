@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StatusBar, StyleSheet } from 'react-native';
+import { StatusBar, StyleSheet, View, Text } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -20,10 +20,14 @@ function AppContent() {
     const initializeApp = async () => {
       // Remove the flag so the dashboard will auto-open on first MainScreen visit
       await AsyncStorage.removeItem('@HealthConnect:hasAutoOpenedDashboard');
-      await configureBackgroundSync();
     };
-    
+
     initializeApp();
+
+    // Configure background sync without blocking app startup
+    configureBackgroundSync().catch(error => {
+      console.error('[App] Failed to configure background sync:', error);
+    });
   }, []);
 
   return (

@@ -6,6 +6,7 @@ import {
   HKCategoryTypeIdentifier,
   queryCategorySamples,
 } from '@kingstinct/react-native-healthkit';
+import { Platform } from 'react-native';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addLog } from './LogService';
@@ -19,25 +20,25 @@ let isHealthKitAvailable = false;
 
 // Map health metric types to HealthKit identifiers
 const HEALTHKIT_TYPE_MAP = {
-  'Steps': HKQuantityTypeIdentifier.stepCount,
-  'HeartRate': HKQuantityTypeIdentifier.heartRate,
-  'ActiveCaloriesBurned': HKQuantityTypeIdentifier.activeEnergyBurned,
-  'TotalCaloriesBurned': HKQuantityTypeIdentifier.basalEnergyBurned,
-  'Weight': HKQuantityTypeIdentifier.bodyMass,
-  'Height': HKQuantityTypeIdentifier.height,
-  'BodyFat': HKQuantityTypeIdentifier.bodyFatPercentage,
-  'BloodPressureSystolic': HKQuantityTypeIdentifier.bloodPressureSystolic,
-  'BloodPressureDiastolic': HKQuantityTypeIdentifier.bloodPressureDiastolic,
-  'BodyTemperature': HKQuantityTypeIdentifier.bodyTemperature,
-  'BloodGlucose': HKQuantityTypeIdentifier.bloodGlucose,
-  'OxygenSaturation': HKQuantityTypeIdentifier.oxygenSaturation,
-  'Vo2Max': HKQuantityTypeIdentifier.vo2Max,
-  'RestingHeartRate': HKQuantityTypeIdentifier.restingHeartRate,
-  'RespiratoryRate': HKQuantityTypeIdentifier.respiratoryRate,
-  'Distance': HKQuantityTypeIdentifier.distanceWalkingRunning,
-  'FloorsClimbed': HKQuantityTypeIdentifier.flightsClimbed,
-  'Hydration': HKQuantityTypeIdentifier.dietaryWater,
-  'LeanBodyMass': HKQuantityTypeIdentifier.leanBodyMass,
+  'Steps': 'HKQuantityTypeIdentifierStepCount',
+  'HeartRate': 'HKQuantityTypeIdentifierHeartRate',
+  'ActiveCaloriesBurned': 'HKQuantityTypeIdentifierActiveEnergyBurned',
+  'TotalCaloriesBurned': 'HKQuantityTypeIdentifierBasalEnergyBurned',
+  'Weight': 'HKQuantityTypeIdentifierBodyMass',
+  'Height': 'HKQuantityTypeIdentifierHeight',
+  'BodyFat': 'HKQuantityTypeIdentifierBodyFatPercentage',
+  'BloodPressureSystolic': 'HKQuantityTypeIdentifierBloodPressureSystolic',
+  'BloodPressureDiastolic': 'HKQuantityTypeIdentifierBloodPressureDiastolic',
+  'BodyTemperature': 'HKQuantityTypeIdentifierBodyTemperature',
+  'BloodGlucose': 'HKQuantityTypeIdentifierBloodGlucose',
+  'OxygenSaturation': 'HKQuantityTypeIdentifierOxygenSaturation',
+  'Vo2Max': 'HKQuantityTypeIdentifierVO2Max',
+  'RestingHeartRate': 'HKQuantityTypeIdentifierRestingHeartRate',
+  'RespiratoryRate': 'HKQuantityTypeIdentifierRespiratoryRate',
+  'Distance': 'HKQuantityTypeIdentifierDistanceWalkingRunning',
+  'FloorsClimbed': 'HKQuantityTypeIdentifierFlightsClimbed',
+  'Hydration': 'HKQuantityTypeIdentifierDietaryWater',
+  'LeanBodyMass': 'HKQuantityTypeIdentifierLeanBodyMass',
 };
 
 // Alias for cross-platform compatibility - Android uses initHealthConnect
@@ -53,32 +54,52 @@ export const initHealthConnect = async () => {
       return false;
     }
 
+    // Skip HealthKit authorization in simulator - it doesn't work and causes hangs
+    // HealthKit authorization requires a physical iOS device
+    const isSimulator = __DEV__ && (
+      Platform.OS === 'ios' &&
+      (Platform.constants?.simulator === true || Platform.isPad === false)
+    );
+
+    if (isSimulator) {
+      addLog('[HealthKitService] Running in simulator - skipping HealthKit authorization', 'warn', 'WARNING');
+      console.warn('[HealthKitService] Simulator detected - HealthKit authorization skipped. Use a physical device for full functionality.');
+      isHealthKitAvailable = false;
+      return false;
+    }
+
     // Build list of permissions to request
     const readPermissions = [
-      HKQuantityTypeIdentifier.stepCount,
-      HKQuantityTypeIdentifier.heartRate,
-      HKQuantityTypeIdentifier.activeEnergyBurned,
-      HKQuantityTypeIdentifier.basalEnergyBurned,
-      HKQuantityTypeIdentifier.bodyMass,
-      HKQuantityTypeIdentifier.height,
-      HKQuantityTypeIdentifier.bodyFatPercentage,
-      HKQuantityTypeIdentifier.bloodPressureSystolic,
-      HKQuantityTypeIdentifier.bloodPressureDiastolic,
-      HKQuantityTypeIdentifier.bodyTemperature,
-      HKQuantityTypeIdentifier.bloodGlucose,
-      HKQuantityTypeIdentifier.oxygenSaturation,
-      HKQuantityTypeIdentifier.vo2Max,
-      HKQuantityTypeIdentifier.restingHeartRate,
-      HKQuantityTypeIdentifier.respiratoryRate,
-      HKQuantityTypeIdentifier.distanceWalkingRunning,
-      HKQuantityTypeIdentifier.flightsClimbed,
-      HKQuantityTypeIdentifier.dietaryWater,
-      HKQuantityTypeIdentifier.leanBodyMass,
-      HKCategoryTypeIdentifier.sleepAnalysis,
+      'HKQuantityTypeIdentifierStepCount',
+      'HKQuantityTypeIdentifierHeartRate',
+      'HKQuantityTypeIdentifierActiveEnergyBurned',
+      'HKQuantityTypeIdentifierBasalEnergyBurned',
+      'HKQuantityTypeIdentifierBodyMass',
+      'HKQuantityTypeIdentifierHeight',
+      'HKQuantityTypeIdentifierBodyFatPercentage',
+      'HKQuantityTypeIdentifierBloodPressureSystolic',
+      'HKQuantityTypeIdentifierBloodPressureDiastolic',
+      'HKQuantityTypeIdentifierBodyTemperature',
+      'HKQuantityTypeIdentifierBloodGlucose',
+      'HKQuantityTypeIdentifierOxygenSaturation',
+      'HKQuantityTypeIdentifierVO2Max',
+      'HKQuantityTypeIdentifierRestingHeartRate',
+      'HKQuantityTypeIdentifierRespiratoryRate',
+      'HKQuantityTypeIdentifierDistanceWalkingRunning',
+      'HKQuantityTypeIdentifierFlightsClimbed',
+      'HKQuantityTypeIdentifierDietaryWater',
+      'HKQuantityTypeIdentifierLeanBodyMass',
+      'HKCategoryTypeIdentifierSleepAnalysis',
     ];
 
-    // Request authorization
-    await requestAuthorization(readPermissions);
+    // Request authorization with timeout
+    console.log('[HealthKitService] Requesting authorization...');
+    const authPromise = requestAuthorization(readPermissions);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Authorization request timed out')), 10000)
+    );
+
+    await Promise.race([authPromise, timeoutPromise]);
 
     addLog('[HealthKitService] HealthKit initialized successfully', 'info', 'SUCCESS');
     isHealthKitAvailable = true;
@@ -140,7 +161,7 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
     // Handle special cases
     if (recordType === 'SleepSession') {
       // Sleep uses category samples instead of quantity samples
-      const samples = await queryCategorySamples(HKCategoryTypeIdentifier.sleepAnalysis, {
+      const samples = await queryCategorySamples('HKCategoryTypeIdentifierSleepAnalysis', {
         from: startDate,
         to: endDate,
       });
@@ -154,12 +175,12 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
 
     if (recordType === 'BloodPressure') {
       // Blood pressure requires reading both systolic and diastolic
-      const systolicSamples = await queryQuantitySamples(HKQuantityTypeIdentifier.bloodPressureSystolic, {
+      const systolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureSystolic', {
         from: startDate,
         to: endDate,
       });
 
-      const diastolicSamples = await queryQuantitySamples(HKQuantityTypeIdentifier.bloodPressureDiastolic, {
+      const diastolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureDiastolic', {
         from: startDate,
         to: endDate,
       });
