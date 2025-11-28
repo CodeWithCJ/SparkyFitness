@@ -74,3 +74,33 @@ export interface MealDeletionImpact {
   usedByOtherUsers: boolean;
   usedByCurrentUser: boolean;
 }
+
+// New interface for FoodEntryMeal
+export interface FoodEntryMeal {
+  id: string;
+  user_id: string;
+  meal_template_id?: string;
+  meal_type: string;
+  entry_date: string;
+  name: string;
+  description?: string;
+  foods: MealFood[]; // The component foods of this logged meal
+  calories?: number; // Aggregated calories
+  protein?: number; // Aggregated protein
+  carbs?: number; // Aggregated carbs
+  fat?: number; // Aggregated fat
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+  glycemic_index?: string; // Aggregated glycemic index
+}

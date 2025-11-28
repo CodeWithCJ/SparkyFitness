@@ -61,12 +61,13 @@ export interface FoodSearchResult {
 export interface FoodEntry {
   id: string;
   food_id?: string; // Make optional as it might be a meal_id
-  meal_id?: string; // New field for aggregated meals
+  meal_id?: string; // New field for aggregated meals - will be deprecated/null for new meal component entries
+  food_entry_meal_id?: string; // New field to link to food_entry_meals parent
   meal_type: string;
   quantity: number;
   unit: string;
   variant_id?: string;
-  foods: Food; // Still useful for relations
+  foods?: Food; // Still useful for relations
   food_variants?: FoodVariant;
   food_name?: string; // Snapshotted food name
   brand_name?: string; // Snapshotted brand name
@@ -116,14 +117,14 @@ export interface CSVData {
   saturated_fat?: number;
   polyunsaturated_fat?: number;
   monounsaturated_fat?: number;
-  trans_fat?: number;
-  cholesterol?: number;
-  sodium?: number;
-  potassium?: number;
-  dietary_fiber?: number;
-  sugars?: number;
-  vitamin_a?: number;
-  vitamin_c?: number;
-  calcium?: number;
-  iron?: number;
+  trans_fat: number;
+  cholesterol: number;
+  sodium: number;
+  potassium: number;
+  dietary_fiber: number;
+  sugars: number;
+  vitamin_a: number;
+  vitamin_c: number;
+  calcium: number;
+  iron: number;
 }

@@ -1,6 +1,6 @@
 import { toast } from "@/hooks/use-toast";
-import { warn, error, debug } from "@/utils/logging";
 import { getUserLoggingLevel } from "@/utils/userPreferences";
+import * as logging from "@/utils/logging";
 
 interface ApiCallOptions extends RequestInit {
   body?: any;
@@ -36,7 +36,7 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
     delete headers['Content-Type'];
   }
 
-  // debug(userLoggingLevel, `API Call: Final headers for ${endpoint}:`, headers);
+  // logging.debug(userLoggingLevel, `API Call: Final headers for ${endpoint}:`, headers);
 
   // The Authorization header is no longer needed as authentication is handled by httpOnly cookies.
 
@@ -50,7 +50,7 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
   }
 
   if (options?.body) {
-    debug(userLoggingLevel, `API Call: Request body for ${endpoint}:`, options.body);
+    logging.debug(userLoggingLevel, `API Call: Request body for ${endpoint}:`, options.body);
     if (!options.isFormData && typeof options.body === 'object') {
       config.body = JSON.stringify(options.body);
     } else {
@@ -59,9 +59,9 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
   }
 
   try {
-    debug(userLoggingLevel, `API Call: Sending request to ${url} with config:`, config);
+    logging.debug(userLoggingLevel, `API Call: Sending request to ${url} with config:`, config);
     const response = await fetch(url, config);
-    debug(userLoggingLevel, `API Call: Received response from ${url} with status:`, response.status);
+    logging.debug(userLoggingLevel, `API Call: Received response from ${url} with status:`, response.status);
 
     if (!response.ok) {
       let errorData: any;
@@ -75,27 +75,29 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
       } else {
         errorData = { message: await response.text() };
       }
-      const errorMessage = errorData.error || errorData.message || `API call failed with status ${response.status}`;
-      error(userLoggingLevel, `API Call: Error response from ${url}:`, { status: response.status, errorData });
+      const errorMessage = (errorData.error ? String(errorData.error) : '') ||
+                           (errorData.message ? String(errorData.message) : '') ||
+                           `API call failed with status ${response.status}`;
+      logging.error(userLoggingLevel, `API Call: Error response from ${url}:`, { status: response.status, errorData });
 
       // Special handling for 400 errors on recent/top endpoints
       if (
         response.status === 400 &&
         (endpoint === '/exercises/recent' || endpoint === '/exercises/top')
       ) {
-        debug(userLoggingLevel, `Frontend workaround triggered for ${endpoint}: Backend returned 400. Returning empty array.`);
+        logging.debug(userLoggingLevel, `Frontend workaround triggered for ${endpoint}: Backend returned 400. Returning empty array.`);
         return []; // Return empty array to gracefully handle 400 errors on these endpoints
       }
 
       // Special handling for 404 errors on exercise search endpoints
       if (response.status === 404 && endpoint.startsWith('/exercises/search/')) {
-        debug(userLoggingLevel, `Frontend workaround triggered for ${endpoint}: Backend returned 404. Returning empty array.`);
+        logging.debug(userLoggingLevel, `Frontend workaround triggered for ${endpoint}: Backend returned 404. Returning empty array.`);
         return []; // Return empty array to gracefully handle 404 errors on exercise search
       }
 
       // Suppress toast for 404 errors if suppress404Toast is true
       if (response.status === 404 && options?.suppress404Toast) {
-        debug(userLoggingLevel, `API call returned 404 for ${endpoint}, toast suppressed. Returning null.`);
+        logging.debug(userLoggingLevel, `API call returned 404 for ${endpoint}, toast suppressed. Returning null.`);
         return null; // Return null for 404 with suppression
       } else {
         toast({
@@ -114,22 +116,23 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
     // Handle different response types
     if (options?.responseType === 'blob') {
       const blobResponse = await response.blob();
-      debug(userLoggingLevel, `API Call: Received blob response from ${url}.`);
+      logging.debug(userLoggingLevel, `API Call: Received blob response from ${url}.`);
       return blobResponse;
     }
     // Handle cases where the response might be empty (e.g., DELETE requests)
     const text = await response.text();
     const jsonResponse = text ? JSON.parse(text) : {};
-    debug(userLoggingLevel, `API Call: Received JSON response from ${url}:`, jsonResponse);
+    logging.debug(userLoggingLevel, `API Call: Received JSON response from ${url}:`, jsonResponse);
     return jsonResponse;
   } catch (err: any) {
-    error(userLoggingLevel, "API call network error:", err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    logging.error(userLoggingLevel, "API call network error:", err); // Log the raw error object for better debugging
     toast({
       title: "Network Error",
-      description: err.message || "Could not connect to the server.",
+      description: errorMessage || "Could not connect to the server.",
       variant: "destructive",
     });
-    throw new Error(err.message);
+    throw new Error(errorMessage);
   }
 }
 

@@ -221,7 +221,7 @@ async function createFoodEntriesFromTemplate(
                 const meal = mealsMap.get(assignment.meal_id);
                 if (meal) {
                     foodEntriesToInsert.push([
-                        userId, null, assignment.meal_type, 1, 'meal', currentDate.toISOString().split('T')[0], null, templateId,
+                        userId, null, assignment.meal_type.toLowerCase(), 1, 'meal', currentDate.toISOString().split('T')[0], null, templateId,
                         meal.name, 'Meal', 1, 'meal',
                         totalCalories, totalProtein, totalCarbs, totalFat,
                         null, null, null, null, null, null, null, null, null, null, null, null, null, assignment.meal_id, userId
@@ -238,7 +238,7 @@ async function createFoodEntriesFromTemplate(
                 if (existingFoodEntries.has(entryKey)) continue;
 
                 foodEntriesToInsert.push([
-                    userId, assignment.food_id, assignment.meal_type, assignment.quantity, assignment.unit, currentDate.toISOString().split('T')[0], assignment.variant_id, templateId,
+                    userId, assignment.food_id, assignment.meal_type.toLowerCase(), assignment.quantity, assignment.unit, currentDate.toISOString().split('T')[0], assignment.variant_id, templateId,
                     food.name, food.brand, variant.serving_size, variant.serving_unit,
                     variant.calories, variant.protein, variant.carbs, variant.fat,
                     variant.saturated_fat, variant.polyunsaturated_fat, variant.monounsaturated_fat, variant.trans_fat,

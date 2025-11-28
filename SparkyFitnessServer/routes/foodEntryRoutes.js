@@ -27,37 +27,6 @@ router.post(
   }
 );
 
-router.post(
-  "/add-meal",
-  authenticate,
-  checkPermissionMiddleware('diary'), // Add permission check
-  async (req, res, next) => {
-    try {
-      const { mealId, mealType, entryDate } = req.body;
-      if (!mealId || !mealType || !entryDate) {
-        return res
-          .status(400)
-          .json({ error: "mealId, mealType, and entryDate are required." });
-      }
-      const createdEntries = await foodEntryService.addMealFoodsToDiary(
-        req.userId,
-        req.originalUserId || req.userId,
-        mealId,
-        mealType,
-        entryDate
-      );
-      res.status(201).json(createdEntries);
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      if (error.message === "Meal not found.") {
-        return res.status(404).json({ error: error.message });
-      }
-      next(error);
-    }
-  }
-);
 
 router.post(
   "/copy",
@@ -202,7 +171,7 @@ router.get(
 );
 
 router.get(
-  "/:date",
+  "/by-date/:date",
   authenticate,
   checkPermissionMiddleware('diary'), // Add permission check
   async (req, res, next) => {
@@ -280,5 +249,6 @@ router.get(
     }
   }
 );
+
 
 module.exports = router;

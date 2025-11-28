@@ -32,6 +32,7 @@ BEGIN
     'external_data_providers',
     'family_access',
     'food_entries',
+    'food_entry_meals',
     'food_variants',
     'foods',
     'goal_presets',
@@ -199,6 +200,7 @@ USING (
 -- The modify policy for exercise_entries is already handled by create_diary_policy('exercise_entries')
 
 SELECT create_diary_policy('exercise_preset_entries');
+SELECT create_diary_policy('food_entry_meals'); -- Add this line
 SELECT create_diary_policy('sleep_entries');
 SELECT create_diary_policy('sleep_entry_stages');
 SELECT create_diary_policy('water_intake');
