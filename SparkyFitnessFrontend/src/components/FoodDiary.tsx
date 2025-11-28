@@ -550,6 +550,9 @@ const FoodDiary = ({
       setSelectedFood,
       setSelectedMealType,
       setIsUnitSelectorOpen,
+      selectedDate, // Added selectedDate to dependencies
+      formatDateInUserTimezone, // Added to dependencies for clarity
+      parseDateInUserTimezone, // Added to dependencies for clarity
     ],
   );
 
@@ -602,6 +605,9 @@ const FoodDiary = ({
       toast,
       handleDataChange,
       error,
+      selectedDate, // Added selectedDate to dependencies
+      formatDateInUserTimezone, // Added to dependencies for clarity
+      parseDateInUserTimezone, // Added to dependencies for clarity
     ],
   );
 
