@@ -31,7 +31,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { debug, info, warn, error } from "@/utils/logging"; // Import logging utility
 
 import type { Food, FoodVariant, FoodEntry, GlycemicIndex } from "@/types/food";
-import { Meal } from '@/types/meal';
+import { Meal, FoodEntryMeal } from '@/types/meal'; // Import FoodEntryMeal
 
 interface MealTotals {
   calories: number;
@@ -39,7 +39,7 @@ interface MealTotals {
   carbs: number;
   fat: number;
   dietary_fiber: number;
-  sugar?: number;
+  sugars?: number;
   sodium?: number;
   cholesterol?: number;
   saturated_fat?: number;
@@ -56,20 +56,20 @@ interface MealCardProps {
   meal: {
     name: string;
     type: string;
-    entries: FoodEntry[];
+    entries: (FoodEntry | FoodEntryMeal)[]; // Updated to accept both types
     targetCalories?: number;
     selectedDate: string;
   };
   totals: MealTotals;
   onFoodSelect: (item: Food | Meal, mealType: string) => void;
-  onEditEntry: (entry: FoodEntry) => void;
+  onEditEntry: (entry: FoodEntry | FoodEntryMeal) => void; // Updated to accept both types
   onEditFood: (food: Food) => void;
-  onRemoveEntry: (entryId: string) => void;
-  getEntryNutrition: (entry: FoodEntry) => MealTotals;
-  onMealAdded: () => void; // Add onMealAdded to MealCardProps
-  onCopyClick: (mealType: string) => void; // New prop for custom copy
-  onCopyFromYesterday: (mealType: string) => void; // New prop for copy from yesterday
-  onConvertToMealClick: (mealType: string) => void; // New prop for converting to meal
+  onRemoveEntry: (itemId: string, itemType: 'foodEntry' | 'foodEntryMeal') => Promise<void>; // Updated signature to match FoodDiary's handleRemoveEntry
+  getEntryNutrition: (entry: FoodEntry | FoodEntryMeal) => MealTotals; // Updated to accept both types
+  onMealAdded: () => void;
+  onCopyClick: (mealType: string) => void;
+  onCopyFromYesterday: (mealType: string) => void;
+  onConvertToMealClick: (mealType: string) => void;
 }
 
 const MealCard = ({
@@ -81,37 +81,38 @@ const MealCard = ({
   onRemoveEntry,
   getEntryNutrition,
   onMealAdded,
-  onCopyClick, // Destructure new prop
-  onCopyFromYesterday, // Destructure new prop
-  onConvertToMealClick, // Destructure new prop
+  onCopyClick,
+  onCopyFromYesterday,
+  onConvertToMealClick,
 }: MealCardProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const { loggingLevel, nutrientDisplayPreferences } = usePreferences(); // Get logging level
+  const { loggingLevel, nutrientDisplayPreferences } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
   debug(loggingLevel, "MealCard: Component rendered for meal:", meal.name);
   debug(loggingLevel, "MealCard: meal.entries:", meal.entries);
-  const [editingFoodEntry, setEditingFoodEntry] = useState<FoodEntry | null>(
+  const [editingFood, setEditingFood] = useState<Food | null>( // Changed from editingFoodEntry to editingFood
     null,
   );
 
-  const handleEditFood = (entry: FoodEntry) => {
-    debug(loggingLevel, "MealCard: Handling edit food for entry:", entry.id);
-    setEditingFoodEntry(entry);
+  const handleEditFood = (food: Food) => { // This now expects a Food
+    debug(loggingLevel, "MealCard: Handling edit food for food:", food.id);
+    setEditingFood(food); // Set the food object to be edited
   };
 
   const handleSaveFood = () => {
     debug(loggingLevel, "MealCard: Handling save food.");
-    // Close the dialog and trigger refresh
-    setEditingFoodEntry(null);
-    onEditFood(editingFoodEntry!.foods); // Pass the Food object
+    if (editingFood) {
+      onEditFood(editingFood); // Pass the edited food
+    }
+    setEditingFood(null);
     info(loggingLevel, "MealCard: Food saved and refresh triggered.");
   };
 
   const handleCancelFood = () => {
     debug(loggingLevel, "MealCard: Handling cancel food.");
-    setEditingFoodEntry(null);
+    setEditingFood(null);
     info(loggingLevel, "MealCard: Food edit cancelled.");
   };
 
@@ -125,7 +126,7 @@ const MealCard = ({
   ) || nutrientDisplayPreferences.find(
     (p) => p.view_group === "food_database" && p.platform === "desktop",
   );
-  const summableNutrients = ["calories", "protein", "carbs", "fat", "dietary_fiber", "sugar", "sodium", "cholesterol", "saturated_fat", "trans_fat", "potassium", "vitamin_a", "vitamin_c", "iron", "calcium"];
+  const summableNutrients = ["calories", "protein", "carbs", "fat", "dietary_fiber", "sugars", "sodium", "cholesterol", "saturated_fat", "trans_fat", "potassium", "vitamin_a", "vitamin_c", "iron", "calcium"]; // Corrected 'sugar' to 'sugars'
   const allDisplayableNutrients = [...summableNutrients, "glycemic_index"];
 
   const defaultNutrients = ["calories", "protein", "carbs", "fat", "dietary_fiber"];
@@ -158,7 +159,7 @@ const MealCard = ({
     carbs: { color: "text-orange-600", label: "carbs", unit: "g" },
     fat: { color: "text-yellow-600", label: "fat", unit: "g" },
     dietary_fiber: { color: "text-green-600", label: "fiber", unit: "g" },
-    sugar: { color: "text-pink-500", label: "sugar", unit: "g" },
+    sugars: { color: "text-pink-500", label: "sugar", unit: "g" }, // Corrected 'sugar' to 'sugars'
     sodium: { color: "text-purple-500", label: "sodium", unit: "mg" },
     cholesterol: { color: "text-indigo-500", label: "cholesterol", unit: "mg" },
     saturated_fat: { color: "text-red-500", label: "sat fat", unit: "g" },
@@ -261,40 +262,39 @@ const MealCard = ({
             </div>
           ) : (
             <div className="space-y-3">
-              {meal.entries.map((entry) => {
-                const entryNutrition = getEntryNutrition(entry);
-                const isFromMealPlan = !!entry.meal_plan_template_id; // Corrected property name
+              {meal.entries.map((item) => { // Changed entry to item
+                const entryNutrition = getEntryNutrition(item);
+                const isFoodEntryMeal = 'foods' in item && 'entry_date' in item; // More robust check for FoodEntryMeal
+                const isFoodEntry = !isFoodEntryMeal;
+                const isFromMealPlan = isFoodEntry && (item as FoodEntry).meal_plan_template_id;
+
                 // Determine glycemic index directly from the entryNutrition object
                 const giValue: GlycemicIndex | undefined | null = entryNutrition.glycemic_index ?? null;
-
                 const validGiValues: GlycemicIndex[] = ['Very Low', 'Low', 'Medium', 'High', 'Very High'];
 
                 debug(
                   loggingLevel,
-                  `MealCard: Rendering entry for food: ${entry.food_name}, GI Value: ${giValue}, quickInfoNutrients includes GI: ${quickInfoNutrients.includes('glycemic_index')}, giValue is valid: ${giValue != null && validGiValues.includes(giValue as GlycemicIndex)}`,
+                  `MealCard: Rendering item: ${isFoodEntryMeal ? (item as FoodEntryMeal).name : (item as FoodEntry).food_name}, GI Value: ${giValue}, quickInfoNutrients includes GI: ${quickInfoNutrients.includes('glycemic_index')}, giValue is valid: ${giValue != null && validGiValues.includes(giValue as GlycemicIndex)}`,
                 );
-
-                // The food object is no longer directly available as a nested property.
-                // All necessary food details are now flattened directly onto the entry object.
-                // Therefore, the 'food data missing' check is no longer relevant in this form.
-                // If an entry itself is missing, it would be filtered out earlier or handled by the API.
-
+                
                 return (
                   <div
-                    key={entry.id}
+                    key={item.id} // Use item.id directly
                     className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4"
                   >
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                        <span className="font-medium">{entry.food_name}</span>
-                        {entry.brand_name && (
+                        <span className="font-medium">{isFoodEntryMeal ? (item as FoodEntryMeal).name : (item as FoodEntry).food_name}</span>
+                        {(isFoodEntryMeal && (item as FoodEntryMeal).description) || (isFoodEntry && (item as FoodEntry).brand_name) ? (
                           <Badge variant="secondary" className="text-xs w-fit">
-                            {entry.brand_name}
+                            {isFoodEntryMeal ? (item as FoodEntryMeal).description : (item as FoodEntry).brand_name}
                           </Badge>
+                        ) : null}
+                        {isFoodEntry && ( // Only show quantity/unit for FoodEntry
+                          <span className="text-sm text-gray-500">
+                            {(item as FoodEntry).quantity} {(item as FoodEntry).unit}
+                          </span>
                         )}
-                        <span className="text-sm text-gray-500">
-                          {entry.quantity} {entry.unit}
-                        </span>
                         {isFromMealPlan && (
                           <Badge variant="outline" className="text-xs w-fit">
                             From Plan
@@ -327,7 +327,6 @@ const MealCard = ({
                             </div>
                           );
                         })}
-                        {/* GI is shown as a badge beside the food title; do not duplicate in the nutrient grid */}
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -338,33 +337,14 @@ const MealCard = ({
                           debug(
                             loggingLevel,
                             "MealCard: Edit entry button clicked:",
-                            entry.id,
+                            item.id,
                           );
-                          onEditEntry(entry);
+                          onEditEntry(item); // Pass the item directly
                         }}
                         title="Edit entry"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="h-4 w-4" />
                       </Button>
-                      {/* The food.user_id check is no longer directly applicable here as the food object is flattened.
-                          If editing food details is still desired, it needs to be re-evaluated how to get the food object
-                          or if the food_entries table should contain user_id for the food itself.
-                          For now, this button is removed to prevent errors. */}
-                      {/* <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          debug(
-                            loggingLevel,
-                            "MealCard: Edit food details button clicked:",
-                            entry.food_id,
-                          );
-                          handleEditFood(entry);
-                        }}
-                        title="Edit food details"
-                      >
-                        <Settings className="w-4 h-4" />
-                      </Button> */}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -372,9 +352,9 @@ const MealCard = ({
                           debug(
                             loggingLevel,
                             "MealCard: Remove entry button clicked:",
-                            entry.id,
+                            item.id,
                           );
-                          onRemoveEntry(entry.id);
+                          onRemoveEntry(item.id, isFoodEntryMeal ? 'foodEntryMeal' : 'foodEntry');
                         }}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -417,10 +397,10 @@ const MealCard = ({
       </Card>
 
       {/* Edit Food Database Dialog */}
-      {editingFoodEntry && (
+      {editingFood && (
         <Dialog
           open={true}
-          onOpenChange={(open) => !open && setEditingFoodEntry(null)}
+          onOpenChange={(open) => !open && setEditingFood(null)}
         >
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -433,7 +413,7 @@ const MealCard = ({
                 This part needs to be re-evaluated if editing food details is still desired.
                 For now, commenting out to prevent errors. */}
             {/* <EnhancedCustomFoodForm
-              food={editingFoodEntry.foods}
+              food={editingFood}
               onSave={handleSaveFood}
               visibleNutrients={foodDatabaseVisibleNutrients}
             /> */}

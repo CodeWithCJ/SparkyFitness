@@ -5,42 +5,59 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, X, Search } from 'lucide-react';
+import { Plus, X, Search, Edit } from 'lucide-react';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 import { debug, info, warn, error } from '@/utils/logging';
-import { Food, FoodVariant, FoodSearchResult } from '@/types/food'; // Import FoodSearchResult
-import { Meal, MealFood, MealPayload } from '@/types/meal'; // Assuming you'll create this type
-import { createMeal, updateMeal, getMealById } from '@/services/mealService'; // Assuming you'll create this service
-import { searchFoods } from '@/services/foodService'; // Existing food service
+import { Food, FoodVariant, FoodSearchResult } from '@/types/food';
+import { Meal, MealFood, MealPayload } from '@/types/meal';
+import { createMeal, updateMeal, getMealById } from '@/services/mealService';
+import { searchFoods } from '@/services/foodService';
+import { createFoodEntryMeal, updateFoodEntryMeal, getFoodEntryMealWithComponents } from '@/services/foodEntryService'; // New imports
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import FoodSearchDialog from './FoodSearchDialog';
 
 interface MealBuilderProps {
-  mealId?: string; // Optional: if editing an existing meal
+  mealId?: string; // Optional: if editing an existing meal template
   onSave?: (meal: Meal) => void;
   onCancel?: () => void;
+initialFoods?: MealFood[]; // New prop for food diary entries
+  source?: 'meal-management' | 'food-diary'; // New prop to differentiate context
+  foodEntryId?: string; // ID of the FoodEntryMeal when editing a logged meal
+  foodEntryDate?: string; // New prop for food diary editing
+  foodEntryMealType?: string; // New prop for food diary editing
 }
 
-
-const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) => {
+const MealBuilder: React.FC<MealBuilderProps> = ({
+  mealId,
+  onSave,
+  onCancel,
+  initialFoods,
+  source = 'meal-management', // Default to meal-management
+  foodEntryId, // Using foodEntryId here as the actual ID of the FoodEntryMeal
+  foodEntryDate,
+  foodEntryMealType,
+}) => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
-  const { loggingLevel, foodDisplayLimit } = usePreferences(); // Get foodDisplayLimit
+  const { loggingLevel, foodDisplayLimit } = usePreferences();
   const [mealName, setMealName] = useState('');
   const [mealDescription, setMealDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
-  const [mealFoods, setMealFoods] = useState<MealFood[]>([]);
+  const [mealFoods, setMealFoods] = useState<MealFood[]>(initialFoods || []);
   const [isFoodUnitSelectorOpen, setIsFoodUnitSelectorOpen] = useState(false);
   const [showFoodSearchDialog, setShowFoodSearchDialog] = useState(false);
   const [selectedFoodForUnitSelection, setSelectedFoodForUnitSelection] = useState<Food | null>(null);
+  const [editingMealFood, setEditingMealFood] = useState<{ mealFood: MealFood; index: number } | null>(null);
 
   useEffect(() => {
-    if (mealId) {
-      const fetchMeal = async () => {
+    const fetchMealData = async () => {
+      if (!activeUserId) return;
+
+      if (source === 'meal-management' && mealId) {
         try {
-          const meal = await getMealById(activeUserId!, mealId);
+          const meal = await getMealById(activeUserId, mealId);
           if (meal) {
             setMealName(meal.name);
             setMealDescription(meal.description || '');
@@ -55,19 +72,67 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
             variant: 'destructive',
           });
         }
-      };
-      fetchMeal();
+      } else if (source === 'food-diary' && foodEntryId) { // Use foodEntryId for food-diary editing
+        try {
+          const loggedMeal = await getFoodEntryMealWithComponents(activeUserId, foodEntryId);
+          if (loggedMeal) {
+            setMealName(loggedMeal.name);
+            setMealDescription(loggedMeal.description || '');
+            setMealFoods(loggedMeal.foods || []);
+          }
+        } catch (err) {
+          error(loggingLevel, `Failed to fetch logged meal with components for foodEntryId ${foodEntryId}:`, err);
+          toast({
+            title: t('mealBuilder.errorTitle', 'Error'),
+            description: t('mealBuilder.loadFoodDiaryMealError', 'Failed to load food diary meal for editing.'),
+            variant: 'destructive',
+          });
+        }
+      } else if (initialFoods) { // For new food-diary entries or when initialFoods are pre-loaded
+        setMealFoods(initialFoods);
+        setMealName(foodEntryMealType || 'Logged Meal');
+        setMealDescription('');
+      }
+    };
+    if (activeUserId && (mealId || initialFoods || foodEntryId)) { // Check for foodEntryId
+      fetchMealData();
     }
-  }, [mealId, activeUserId, loggingLevel]);
+  }, [mealId, activeUserId, loggingLevel, source, initialFoods, foodEntryId, foodEntryMealType]); // Update dependency array
 
 
   const handleAddFoodToMeal = useCallback((food: Food) => {
     setSelectedFoodForUnitSelection(food);
+    setEditingMealFood(null); // Clear editing state when adding new food
     setIsFoodUnitSelectorOpen(true);
   }, []);
 
+  const handleEditFoodInMeal = useCallback((index: number) => {
+    const mealFoodToEdit = mealFoods[index];
+    if (mealFoodToEdit) {
+      // Create a dummy Food object for FoodUnitSelector
+      // This is a workaround as FoodUnitSelector expects a Food object
+      const dummyFood: Food = {
+        id: mealFoodToEdit.food_id,
+        name: mealFoodToEdit.food_name || '',
+        is_custom: false, // Assuming foods added to meals are not always custom, or this property is not relevant for editing quantity/unit
+        default_variant: {
+          id: mealFoodToEdit.variant_id,
+          serving_size: mealFoodToEdit.serving_size || 1,
+          serving_unit: mealFoodToEdit.serving_unit || mealFoodToEdit.unit || 'serving',
+          calories: mealFoodToEdit.calories,
+          protein: mealFoodToEdit.protein,
+          carbs: mealFoodToEdit.carbs,
+          fat: mealFoodToEdit.fat,
+        },
+      };
+      setSelectedFoodForUnitSelection(dummyFood);
+      setEditingMealFood({ mealFood: mealFoodToEdit, index });
+      setIsFoodUnitSelectorOpen(true);
+    }
+  }, [mealFoods]);
+
   const handleFoodUnitSelected = useCallback((food: Food, quantity: number, unit: string, selectedVariant: FoodVariant) => {
-    const newMealFood: MealFood = {
+    const updatedMealFood: MealFood = {
       food_id: food.id,
       food_name: food.name,
       variant_id: selectedVariant.id,
@@ -80,14 +145,31 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
       serving_size: selectedVariant.serving_size,
       serving_unit: selectedVariant.serving_unit,
     };
-    setMealFoods(prev => [...prev, newMealFood]);
+
+    if (editingMealFood) {
+      // Update existing meal food
+      setMealFoods(prev => {
+        const newMealFoods = [...prev];
+        newMealFoods[editingMealFood.index] = updatedMealFood;
+        return newMealFoods;
+      });
+      toast({
+        title: t('mealBuilder.successTitle', 'Success'),
+        description: t('mealBuilder.foodUpdatedInMeal', { foodName: food.name, defaultValue: `${food.name} updated in meal.` }),
+      });
+    } else {
+      // Add new meal food
+      setMealFoods(prev => [...prev, updatedMealFood]);
+      toast({
+        title: t('mealBuilder.successTitle', 'Success'),
+        description: t('mealBuilder.foodAddedToMeal', { foodName: food.name, defaultValue: `${food.name} added to meal.` }),
+      });
+    }
+
     setIsFoodUnitSelectorOpen(false);
     setSelectedFoodForUnitSelection(null);
-    toast({
-      title: t('mealBuilder.successTitle', 'Success'),
-      description: t('mealBuilder.foodAddedToMeal', { foodName: food.name, defaultValue: `${food.name} added to meal.` }),
-    });
-  }, []);
+    setEditingMealFood(null); // Clear editing state
+  }, [editingMealFood, mealFoods]);
 
   const handleRemoveFoodFromMeal = useCallback((index: number) => {
     setMealFoods(prev => prev.filter((_, i) => i !== index));
@@ -98,67 +180,126 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
   }, []);
 
   const handleSaveMeal = useCallback(async () => {
-    if (!mealName.trim()) {
-      toast({
-        title: t('mealBuilder.errorTitle', 'Error'),
-        description: t('mealBuilder.mealNameEmptyError', 'Meal name cannot be empty.'),
-        variant: 'destructive',
-      });
-      return;
-    }
     if (mealFoods.length === 0) {
-      toast({
-        title: t('mealBuilder.errorTitle', 'Error'),
-        description: t('mealBuilder.noFoodInMealError', 'A meal must contain at least one food item.'),
-        variant: 'destructive',
-      });
-      return;
+        toast({
+            title: t('mealBuilder.errorTitle', 'Error'),
+            description: t('mealBuilder.noFoodInMealError', 'A meal must contain at least one food item.'),
+            variant: 'destructive',
+        });
+        return;
     }
 
-    const mealData: MealPayload = {
-      name: mealName,
-      description: mealDescription,
-      is_public: isPublic,
-      foods: mealFoods.map(mf => ({
-        food_id: mf.food_id,
-        food_name: mf.food_name,
-        variant_id: mf.variant_id,
-        quantity: mf.quantity,
-        unit: mf.unit,
-        calories: mf.calories,
-        protein: mf.protein,
-        carbs: mf.carbs,
-        fat: mf.fat,
-        serving_size: mf.serving_size,
-        serving_unit: mf.serving_unit,
-      })),
-    };
-
-    try {
-      let resultMeal;
-      if (mealId) {
-        resultMeal = await updateMeal(activeUserId!, mealId, mealData);
+    if (source === 'meal-management') {
+      if (!mealName.trim()) {
         toast({
-          title: t('mealBuilder.successTitle', 'Success'),
-          description: t('mealBuilder.mealUpdatedSuccess', 'Meal updated successfully!'),
+          title: t('mealBuilder.errorTitle', 'Error'),
+          description: t('mealBuilder.mealNameEmptyError', 'Meal name cannot be empty.'),
+          variant: 'destructive',
         });
-      } else {
-        resultMeal = await createMeal(activeUserId!, mealData);
+        return;
+      }
+
+      const mealData: MealPayload = {
+        name: mealName,
+        description: mealDescription,
+        is_public: isPublic,
+        foods: mealFoods.map(mf => ({
+          food_id: mf.food_id,
+          food_name: mf.food_name,
+          variant_id: mf.variant_id,
+          quantity: mf.quantity,
+          unit: mf.unit,
+          calories: mf.calories,
+          protein: mf.protein,
+          carbs: mf.carbs,
+          fat: mf.fat,
+          serving_size: mf.serving_size,
+          serving_unit: mf.serving_unit,
+        })),
+      };
+
+      try {
+        let resultMeal;
+        if (mealId) {
+          resultMeal = await updateMeal(activeUserId!, mealId, mealData);
+          toast({
+            title: t('mealBuilder.successTitle', 'Success'),
+            description: t('mealBuilder.mealUpdatedSuccess', 'Meal updated successfully!'),
+          });
+        } else {
+          resultMeal = await createMeal(activeUserId!, mealData);
+          toast({
+            title: t('mealBuilder.successTitle', 'Success'),
+            description: t('mealBuilder.mealCreatedSuccess', 'Meal created successfully!'),
+          });
+        }
+        onSave?.(resultMeal);
+      } catch (err) {
+        error(loggingLevel, 'Error saving meal:', err);
         toast({
-          title: t('mealBuilder.successTitle', 'Success'),
-          description: t('mealBuilder.mealCreatedSuccess', 'Meal created successfully!'),
+          title: t('mealBuilder.errorTitle', 'Error'),
+          description: t('mealBuilder.saveMealError', { error: err instanceof Error ? err.message : String(err), defaultValue: `Failed to save meal: ${err instanceof Error ? err.message : String(err)}` }),
+          variant: 'destructive',
         });
       }
-      onSave?.(resultMeal);
-    } catch (err) {
-      error(loggingLevel, 'Error saving meal:', err);
-      toast({
-        title: t('mealBuilder.errorTitle', 'Error'),
-        description: t('mealBuilder.saveMealError', { error: err instanceof Error ? err.message : String(err), defaultValue: `Failed to save meal: ${err instanceof Error ? err.message : String(err)}` }),
-        variant: 'destructive',
-      });
+    } else if (source === 'food-diary') {
+      if (!foodEntryDate || !foodEntryMealType || !activeUserId) {
+        error(loggingLevel, 'Missing foodEntry context for food-diary save.');
+        toast({
+          title: t('mealBuilder.errorTitle', 'Error'),
+          description: t('mealBuilder.foodDiarySaveError', 'Cannot save food diary entry: missing context.'),
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const foodEntryMealData = {
+        meal_template_id: mealId, // Original meal template ID if it came from one
+        meal_type: foodEntryMealType,
+        entry_date: foodEntryDate,
+        name: mealName.trim() || 'Custom Meal', // Use edited name or default
+        description: mealDescription,
+        foods: mealFoods,
+      };
+
+      try {
+        if (foodEntryId) { // Use foodEntryId for an update
+          await updateFoodEntryMeal(foodEntryId, foodEntryMealData);
+          toast({
+            title: t('mealBuilder.successTitle', 'Success'),
+            description: t('mealBuilder.foodDiaryEntryUpdatedSuccess', 'Food diary meal entry updated successfully!'),
+          });
+        } else {
+          await createFoodEntryMeal(foodEntryMealData);
+          toast({
+            title: t('mealBuilder.successTitle', 'Success'),
+            description: t('mealBuilder.foodDiaryEntryCreatedSuccess', 'Food diary meal entry created successfully!'),
+          });
+        }
+        onSave?.({} as Meal); // onSave expects a Meal, pass a dummy or refactor if needed, ensure it's not null or undefined
+      } catch (err) {
+        error(loggingLevel, 'Error updating food diary meal entry:', err);
+        toast({
+          title: t('mealBuilder.errorTitle', 'Error'),
+          description: t('mealBuilder.foodDiarySaveError', { error: err instanceof Error ? err.message : String(err), defaultValue: `Failed to update food diary meal entry: ${err instanceof Error ? err.message : String(err)}` }),
+          variant: 'destructive',
+        });
+      }
     }
-  }, [mealName, mealDescription, isPublic, mealFoods, mealId, activeUserId, onSave, loggingLevel]);
+  }, [
+    mealName,
+    mealDescription,
+    isPublic,
+    mealFoods,
+    mealId,
+    activeUserId,
+    onSave,
+    loggingLevel,
+    source,
+    foodEntryId,
+    foodEntryDate,
+    foodEntryMealType,
+  ]);
 
   const calculateMealNutrition = useCallback(() => {
     let totalCalories = 0;
@@ -190,6 +331,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
             value={mealName}
             onChange={(e) => setMealName(e.target.value)}
             placeholder={t('mealBuilder.mealNamePlaceholder', 'e.g., High Protein Breakfast')}
+            disabled={source === 'food-diary'} // Disable name editing for food diary entries
           />
         </div>
         <div className="space-y-2">
@@ -199,6 +341,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
             value={mealDescription}
             onChange={(e) => setMealDescription(e.target.value)}
             placeholder={t('mealBuilder.mealDescriptionPlaceholder', 'e.g., My go-to morning meal')}
+            disabled={source === 'food-diary'} // Disable description editing for food diary entries
           />
         </div>
         <div className="flex items-center space-x-2">
@@ -206,6 +349,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
             id="isPublic"
             checked={isPublic}
             onCheckedChange={(checked: boolean) => setIsPublic(checked)}
+            disabled={source === 'food-diary'} // Disable public sharing for food diary entries
           />
           <Label htmlFor="isPublic">{t('mealBuilder.shareWithPublic', 'Share with Public')}</Label>
         </div>
@@ -224,9 +368,14 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
               {mealFoods.map((mf, index) => (
                 <div key={index} className="flex items-center justify-between p-2 border rounded-md">
                   <span>{mf.food_name} - {mf.quantity} {mf.unit}</span>
-                  <Button variant="ghost" size="icon" onClick={() => handleRemoveFoodFromMeal(index)}>
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center space-x-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditFoodInMeal(index)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveFoodFromMeal(index)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -254,6 +403,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
             open={isFoodUnitSelectorOpen}
             onOpenChange={setIsFoodUnitSelectorOpen}
             onSelect={handleFoodUnitSelected}
+            initialQuantity={editingMealFood?.mealFood.quantity}
+            initialUnit={editingMealFood?.mealFood.unit}
+            initialVariantId={editingMealFood?.mealFood.variant_id}
           />
         )}
 
@@ -276,7 +428,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({ mealId, onSave, onCancel }) =
 
         <div className="flex justify-end space-x-2">
           <Button variant="outline" onClick={onCancel}>{t('common.cancel', 'Cancel')}</Button>
-          <Button onClick={handleSaveMeal}>{t('mealBuilder.saveMealButton', 'Save Meal')}</Button>
+          <Button onClick={handleSaveMeal}>{source === 'food-diary' ? t('mealBuilder.updateEntryButton', 'Update Entry') : t('mealBuilder.saveMealButton', 'Save Meal')}</Button>
         </div>
     </div>
   );

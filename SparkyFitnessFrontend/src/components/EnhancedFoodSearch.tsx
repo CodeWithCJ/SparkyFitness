@@ -1014,7 +1014,7 @@ const EnhancedFoodSearch = ({
             <Card
               key={meal.id}
               className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
-              onClick={() => onFoodSelect(meal, 'meal')}
+              onClick={() => onFoodSelect(meal, 'meal')} // Pass the entire meal object
             >
               <CardContent className="p-4">
                 <div className="flex justify-between items-start">

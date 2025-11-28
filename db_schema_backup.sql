@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict tWDGPlub8uQPDHFY84iJK5Lie69Rpyec4KXk28b7naVxgjMQWh2X2nq3ugthCRw
+\restrict CX3mU04ZAtrgzYsIlqQRwHBZwQ3rtvM8xTsJQiI0f9bcdN9BGfQrGNsW91v1goj
 
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 18.0
@@ -148,6 +148,38 @@ BEGIN
     WHERE auto_clear_history = '7days'
   )
   AND created_at < now() - interval '7 days';
+END;
+$$;
+
+
+--
+-- Name: create_default_external_data_providers(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.create_default_external_data_providers(p_user_id uuid) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  -- Insert default 'free-exercise-db' provider
+  INSERT INTO public.external_data_providers (
+    user_id, provider_name, provider_type, is_active, shared_with_public, created_at, updated_at
+  ) VALUES (
+    p_user_id, 'Free Exercise DB', 'free-exercise-db', TRUE, FALSE, now(), now()
+  ) ON CONFLICT (user_id, provider_name) DO NOTHING;
+
+  -- Insert default 'wger' provider
+  INSERT INTO public.external_data_providers (
+    user_id, provider_name, provider_type, is_active, shared_with_public, created_at, updated_at
+  ) VALUES (
+    p_user_id, 'Wger', 'wger', TRUE, FALSE, now(), now()
+  ) ON CONFLICT (user_id, provider_name) DO NOTHING;
+
+  -- Insert default 'openfoodfacts' provider
+  INSERT INTO public.external_data_providers (
+    user_id, provider_name, provider_type, is_active, shared_with_public, created_at, updated_at
+  ) VALUES (
+    p_user_id, 'Open Food Facts', 'openfoodfacts', TRUE, FALSE, now(), now()
+  ) ON CONFLICT (user_id, provider_name) DO NOTHING;
 END;
 $$;
 
@@ -430,6 +462,10 @@ CREATE FUNCTION public.handle_new_user() RETURNS trigger
 BEGIN
   INSERT INTO public.onboarding_status (user_id)
   VALUES (new.id);
+
+  -- Call the new function to create default external data providers
+  PERFORM public.create_default_external_data_providers(new.id);
+
   RETURN new;
 END;
 $$;
@@ -1112,8 +1148,28 @@ CREATE TABLE public.food_entries (
     glycemic_index text,
     updated_by_user_id uuid,
     meal_id uuid,
+    food_entry_meal_id uuid,
     CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
     CONSTRAINT food_entries_meal_type_check CHECK ((meal_type = ANY (ARRAY['breakfast'::text, 'lunch'::text, 'dinner'::text, 'snacks'::text])))
+);
+
+
+--
+-- Name: food_entry_meals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.food_entry_meals (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    user_id uuid NOT NULL,
+    meal_template_id uuid,
+    meal_type character varying(50) NOT NULL,
+    entry_date date NOT NULL,
+    name character varying(255) NOT NULL,
+    description text,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id uuid NOT NULL,
+    updated_by_user_id uuid NOT NULL
 );
 
 
@@ -1660,6 +1716,7 @@ CREATE TABLE public.user_preferences (
     include_bmr_in_net_calories boolean DEFAULT false NOT NULL,
     default_distance_unit character varying(20) DEFAULT 'km'::character varying NOT NULL,
     language character varying(10) DEFAULT 'en'::character varying,
+    calorie_goal_adjustment_mode text DEFAULT 'dynamic'::text,
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text])))
 );
 
@@ -2155,6 +2212,14 @@ ALTER TABLE ONLY public.exercises
 
 
 --
+-- Name: food_entry_meals food_entry_meals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entry_meals
+    ADD CONSTRAINT food_entry_meals_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: food_variants food_variants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2312,6 +2377,14 @@ ALTER TABLE ONLY public.sleep_entry_stages
 
 ALTER TABLE ONLY public.mood_entries
     ADD CONSTRAINT unique_user_date UNIQUE (user_id, entry_date);
+
+
+--
+-- Name: external_data_providers unique_user_provider; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_data_providers
+    ADD CONSTRAINT unique_user_provider UNIQUE (user_id, provider_name);
 
 
 --
@@ -2566,6 +2639,27 @@ CREATE INDEX idx_exercises_source ON public.exercises USING btree (source);
 --
 
 CREATE UNIQUE INDEX idx_exercises_source_source_id_unique ON public.exercises USING btree (source, source_id) WHERE ((source IS NOT NULL) AND (source_id IS NOT NULL));
+
+
+--
+-- Name: idx_food_entries_food_entry_meal_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_food_entries_food_entry_meal_id ON public.food_entries USING btree (food_entry_meal_id);
+
+
+--
+-- Name: idx_food_entry_meals_meal_template_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_food_entry_meals_meal_template_id ON public.food_entry_meals USING btree (meal_template_id);
+
+
+--
+-- Name: idx_food_entry_meals_user_id_entry_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_food_entry_meals_user_id_entry_date ON public.food_entry_meals USING btree (user_id, entry_date);
 
 
 --
@@ -3016,6 +3110,14 @@ ALTER TABLE ONLY public.food_entries
 
 
 --
+-- Name: food_entries food_entries_food_entry_meal_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entries
+    ADD CONSTRAINT food_entries_food_entry_meal_id_fkey FOREIGN KEY (food_entry_meal_id) REFERENCES public.food_entry_meals(id) ON DELETE CASCADE;
+
+
+--
 -- Name: food_entries food_entries_meal_plan_template_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3029,6 +3131,38 @@ ALTER TABLE ONLY public.food_entries
 
 ALTER TABLE ONLY public.food_entries
     ADD CONSTRAINT food_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id);
+
+
+--
+-- Name: food_entry_meals food_entry_meals_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entry_meals
+    ADD CONSTRAINT food_entry_meals_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: food_entry_meals food_entry_meals_meal_template_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entry_meals
+    ADD CONSTRAINT food_entry_meals_meal_template_id_fkey FOREIGN KEY (meal_template_id) REFERENCES public.meals(id) ON DELETE SET NULL;
+
+
+--
+-- Name: food_entry_meals food_entry_meals_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entry_meals
+    ADD CONSTRAINT food_entry_meals_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: food_entry_meals food_entry_meals_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entry_meals
+    ADD CONSTRAINT food_entry_meals_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 
 --
@@ -3428,6 +3562,12 @@ ALTER TABLE public.family_access ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.food_entries ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: food_entry_meals; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.food_entry_meals ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: food_variants; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3563,6 +3703,13 @@ CREATE POLICY modify_policy ON public.family_access USING ((public.current_user_
 --
 
 CREATE POLICY modify_policy ON public.food_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: food_entry_meals modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.food_entry_meals USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
@@ -3899,6 +4046,13 @@ CREATE POLICY select_policy ON public.family_access FOR SELECT USING (((public.c
 --
 
 CREATE POLICY select_policy ON public.food_entries FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: food_entry_meals select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.food_entry_meals FOR SELECT USING (public.has_diary_access(user_id));
 
 
 --
@@ -4241,6 +4395,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_uat;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_app;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_uat;
+
+
+--
+-- Name: TABLE food_entry_meals; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_uat;
 
 
 --
@@ -4691,5 +4854,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict tWDGPlub8uQPDHFY84iJK5Lie69Rpyec4KXk28b7naVxgjMQWh2X2nq3ugthCRw
+\unrestrict CX3mU04ZAtrgzYsIlqQRwHBZwQ3rtvM8xTsJQiI0f9bcdN9BGfQrGNsW91v1goj
 

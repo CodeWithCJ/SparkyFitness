@@ -3,15 +3,15 @@ const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const goalService = require('../services/goalService');
 
-router.get('/', authenticate, async (req, res, next) => {
-  const { selectedDate } = req.query;
+router.get('/by-date/:date', authenticate, async (req, res, next) => {
+  const { date } = req.params;
  
-  if (!selectedDate) {
-    return res.status(400).json({ error: 'Selected date is required.' });
+  if (!date) {
+    return res.status(400).json({ error: 'Date is required.' });
   }
  
   try {
-    const goals = await goalService.getUserGoals(req.userId, selectedDate);
+    const goals = await goalService.getUserGoals(req.userId, date);
     res.status(200).json(goals);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {

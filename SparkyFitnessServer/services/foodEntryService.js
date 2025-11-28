@@ -1,6 +1,28 @@
 const foodRepository = require("../models/foodRepository");
+const foodEntryMealRepository = require("../models/foodEntryMealRepository"); // New import
 const mealService = require("./mealService");
 const { log } = require("../config/logging");
+
+// Helper functions (already defined)
+function getGlycemicIndexValue(category) {
+  switch (category) {
+    case 'Very Low': return 10;
+    case 'Low': return 30;
+    case 'Medium': return 60;
+    case 'High': return 80;
+    case 'Very High': return 100;
+    default: return null;
+  }
+}
+
+function getGlycemicIndexCategory(value) {
+  if (value === null) return 'None';
+  if (value <= 20) return 'Very Low';
+  if (value <= 50) return 'Low';
+  if (value <= 70) return 'Medium';
+  if (value <= 90) return 'High';
+  return 'Very High';
+}
 
 async function createFoodEntry(authenticatedUserId, actingUserId, entryData) {
   try {
@@ -180,155 +202,6 @@ async function getFoodEntriesByDateRange(
   }
 }
 
-async function addMealFoodsToDiary(
-  authenticatedUserId,
-  actingUserId,
-  mealId,
-  mealType,
-  entryDate
-) {
-  try {
-    const meal = await mealService.getMealById(authenticatedUserId, mealId);
-    if (!meal) {
-      throw new Error("Meal not found.");
-    }
-
-    let totalCalories = 0;
-    let totalProtein = 0;
-    let totalCarbs = 0;
-    let totalFat = 0;
-    let totalSaturatedFat = 0;
-    let totalPolyunsaturatedFat = 0;
-    let totalMonounsaturatedFat = 0;
-    let totalTransFat = 0;
-    let totalCholesterol = 0;
-    let totalSodium = 0;
-    let totalPotassium = 0;
-    let totalDietaryFiber = 0;
-    let totalSugars = 0;
-    let totalVitaminA = 0;
-    let totalVitaminC = 0;
-    let totalCalcium = 0;
-    let totalIron = 0;
-    let totalCarbsForGI = 0;
-    let weightedGIAccumulator = 0;
-
-    for (const foodItem of meal.foods) {
-      const food = await foodRepository.getFoodById(foodItem.food_id, authenticatedUserId);
-      if (!food) {
-        log("warn", `Food with ID ${foodItem.food_id} not found for meal ${mealId}. Skipping.`);
-        continue;
-      }
-
-      const variant = await foodRepository.getFoodVariantById(foodItem.variant_id, authenticatedUserId);
-      if (!variant) {
-        log("warn", `Food variant with ID ${foodItem.variant_id} not found for food ${foodItem.food_id} in meal ${mealId}. Skipping.`);
-        continue;
-      }
-
-      // Assuming foodItem.quantity and foodItem.unit are already normalized to a base unit or serving size
-      // For simplicity, we'll assume foodItem.quantity is in terms of variant.serving_size
-      // If units need conversion, that logic would go here.
-      const multiplier = foodItem.quantity / variant.serving_size;
-
-      totalCalories += (variant.calories || 0) * multiplier;
-      totalProtein += (variant.protein || 0) * multiplier;
-      totalCarbs += (variant.carbs || 0) * multiplier;
-      totalFat += (variant.fat || 0) * multiplier;
-      totalSaturatedFat += (variant.saturated_fat || 0) * multiplier;
-      totalPolyunsaturatedFat += (variant.polyunsaturated_fat || 0) * multiplier;
-      totalMonounsaturatedFat += (variant.monounsaturated_fat || 0) * multiplier;
-      totalTransFat += (variant.trans_fat || 0) * multiplier;
-      totalCholesterol += (variant.cholesterol || 0) * multiplier;
-      totalSodium += (variant.sodium || 0) * multiplier;
-      totalPotassium += (variant.potassium || 0) * multiplier;
-      totalDietaryFiber += (variant.dietary_fiber || 0) * multiplier;
-      totalSugars += (variant.sugars || 0) * multiplier;
-      totalVitaminA += (variant.vitamin_a || 0) * multiplier;
-      totalVitaminC += (variant.vitamin_c || 0) * multiplier;
-      totalCalcium += (variant.calcium || 0) * multiplier;
-      totalIron += (variant.iron || 0) * multiplier;
-
-      // For weighted average GI
-      if (variant.glycemic_index && variant.carbs) {
-        const giValue = getGlycemicIndexValue(variant.glycemic_index);
-        if (giValue !== null) {
-          weightedGIAccumulator += giValue * (variant.carbs * multiplier);
-          totalCarbsForGI += (variant.carbs * multiplier);
-        }
-      }
-    }
-
-    const aggregatedGlycemicIndex = totalCarbsForGI > 0 ? weightedGIAccumulator / totalCarbsForGI : null;
-
-    const newEntry = await foodRepository.createFoodEntry({
-      user_id: authenticatedUserId,
-      created_by_user_id: actingUserId,
-      meal_id: mealId, // Link to the meal
-      food_id: null, // No specific food_id for aggregated meal
-      meal_type: mealType,
-      quantity: 1, // One aggregated meal entry
-      unit: 'meal', // Unit is 'meal'
-      entry_date: entryDate,
-      variant_id: null, // No variant for aggregated meal
-
-      // Snapshot data for the aggregated meal
-      food_name: meal.name,
-      brand_name: 'Meal',
-      serving_size: 1,
-      serving_unit: 'meal',
-      calories: totalCalories,
-      protein: totalProtein,
-      carbs: totalCarbs,
-      fat: totalFat,
-      saturated_fat: totalSaturatedFat,
-      polyunsaturated_fat: totalPolyunsaturatedFat,
-      monounsaturated_fat: totalMonounsaturatedFat,
-      trans_fat: totalTransFat,
-      cholesterol: totalCholesterol,
-      sodium: totalSodium,
-      potassium: totalPotassium,
-      dietary_fiber: totalDietaryFiber,
-      sugars: totalSugars,
-      vitamin_a: totalVitaminA,
-      vitamin_c: totalVitaminC,
-      calcium: totalCalcium,
-      iron: totalIron,
-      glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
-    }, authenticatedUserId);
-
-    return [newEntry]; // Return as an array for consistency with previous behavior
-  } catch (error) {
-    log(
-      "error",
-      `Error adding meal foods to diary for user ${authenticatedUserId} by ${actingUserId}, meal ${mealId}:`,
-      error
-    );
-    throw error;
-  }
-}
-
-// Helper function to convert GlycemicIndex category to a numerical value for calculation
-function getGlycemicIndexValue(category) {
-  switch (category) {
-    case 'Very Low': return 10; // Example values, adjust as needed
-    case 'Low': return 30;
-    case 'Medium': return 60;
-    case 'High': return 80;
-    case 'Very High': return 100;
-    default: return null;
-  }
-}
-
-// Helper function to convert numerical GI back to category
-function getGlycemicIndexCategory(value) {
-  if (value === null) return 'None';
-  if (value <= 20) return 'Very Low';
-  if (value <= 50) return 'Low';
-  if (value <= 70) return 'Medium';
-  if (value <= 90) return 'High';
-  return 'Very High';
-}
 
 async function copyFoodEntries(
   authenticatedUserId,
@@ -458,15 +331,11 @@ async function copyFoodEntriesFromYesterday(
 
     // Create UTC date object
     const priorDay = new Date(Date.UTC(year, month - 1, day)); // month - 1 because Date.UTC expects 0-indexed month
-
-    // Check if the date object is valid
     if (isNaN(priorDay.getTime())) {
       throw new Error("Invalid date value generated for prior day.");
     }
 
     priorDay.setUTCDate(priorDay.getUTCDate() - 1); // Subtract one day in UTC
-
-    // Check again after subtraction
     if (isNaN(priorDay.getTime())) {
       throw new Error("Invalid date value generated after subtracting a day.");
     }
@@ -595,14 +464,345 @@ async function getDailyNutritionSummary(userId, date) {
   }
 }
 
+// New functions for food_entry_meals logic
+async function createFoodEntryMeal(authenticatedUserId, actingUserId, mealData) {
+  log("info", `createFoodEntryMeal in foodEntryService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, mealData: ${JSON.stringify(mealData)}`);
+  try {
+    // 1. Create the parent food_entry_meals record
+    const newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal({
+      user_id: authenticatedUserId,
+      meal_template_id: mealData.meal_template_id || null,
+      meal_type: mealData.meal_type,
+      entry_date: mealData.entry_date,
+      name: mealData.name,
+      description: mealData.description,
+    }, actingUserId);
+
+    let foodsToProcess = mealData.foods || [];
+
+    // If a meal_template_id is provided and no specific foods are given, fetch foods from the template
+    if (mealData.meal_template_id && (!mealData.foods || mealData.foods.length === 0)) {
+      log("info", `Fetching foods from meal template ${mealData.meal_template_id} for new food entry meal.`);
+      const mealTemplate = await mealService.getMealById(authenticatedUserId, mealData.meal_template_id);
+      if (mealTemplate && mealTemplate.foods) {
+        foodsToProcess = mealTemplate.foods;
+      } else {
+        log("warn", `Meal template ${mealData.meal_template_id} not found or has no foods when creating food entry meal.`);
+        // Continue without foods, or throw an error if template foods are mandatory
+      }
+    }
+
+    // 2. Create component food_entries records
+    const entriesToCreate = [];
+    for (const foodItem of foodsToProcess) {
+      const food = await foodRepository.getFoodById(foodItem.food_id, authenticatedUserId);
+      if (!food) {
+        log("warn", `Food with ID ${foodItem.food_id} not found when creating food entry meal. Skipping.`);
+        continue;
+      }
+      const variant = await foodRepository.getFoodVariantById(foodItem.variant_id, authenticatedUserId);
+      if (!variant) {
+        log("warn", `Food variant with ID ${foodItem.variant_id} not found for food ${foodItem.food_id} when creating food entry meal. Skipping.`);
+        continue;
+      }
+
+      const snapshot = {
+        food_name: food.name,
+        brand_name: food.brand,
+        serving_size: variant.serving_size,
+        serving_unit: variant.serving_unit,
+        calories: variant.calories,
+        protein: variant.protein,
+        carbs: variant.carbs,
+        fat: variant.fat,
+        saturated_fat: variant.saturated_fat,
+        polyunsaturated_fat: variant.polyunsaturated_fat,
+        monounsaturated_fat: variant.monounsaturated_fat,
+        trans_fat: variant.trans_fat,
+        cholesterol: variant.cholesterol,
+        sodium: variant.sodium,
+        potassium: variant.potassium,
+        dietary_fiber: variant.dietary_fiber,
+        sugars: variant.sugars,
+        vitamin_a: variant.vitamin_a,
+        vitamin_c: variant.vitamin_c,
+        calcium: variant.calcium,
+        iron: variant.iron,
+        glycemic_index: variant.glycemic_index,
+      };
+
+      entriesToCreate.push({
+        user_id: authenticatedUserId,
+        created_by_user_id: actingUserId,
+        food_id: foodItem.food_id,
+        meal_type: mealData.meal_type,
+        quantity: foodItem.quantity,
+        unit: foodItem.unit,
+        variant_id: foodItem.variant_id,
+        entry_date: mealData.entry_date,
+        food_entry_meal_id: newFoodEntryMeal.id, // Link to the new food_entry_meals ID
+        ...snapshot,
+      });
+    }
+
+    if (entriesToCreate.length > 0) {
+      await foodRepository.bulkCreateFoodEntries(entriesToCreate, authenticatedUserId);
+      log("info", `Created ${entriesToCreate.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}.`);
+    }
+
+    return newFoodEntryMeal;
+  } catch (error) {
+    log("error", `Error creating food entry meal for user ${authenticatedUserId}:`, error);
+    throw error;
+  }
+}
+
+async function updateFoodEntryMeal(authenticatedUserId, actingUserId, foodEntryMealId, updatedMealData) {
+  log("info", `updateFoodEntryMeal in foodEntryService: foodEntryMealId: ${foodEntryMealId}, updatedMealData: ${JSON.stringify(updatedMealData)}, authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}`);
+  try {
+    // 1. Update the parent food_entry_meals record's metadata
+    const updatedFoodEntryMeal = await foodEntryMealRepository.updateFoodEntryMeal(
+      foodEntryMealId,
+      {
+        name: updatedMealData.name,
+        description: updatedMealData.description,
+        meal_type: updatedMealData.meal_type, // Also allow updating meal type
+        entry_date: updatedMealData.entry_date, // And entry date
+        meal_template_id: updatedMealData.meal_template_id, // Pass meal_template_id
+      },
+      authenticatedUserId
+    );
+
+    if (!updatedFoodEntryMeal) {
+      throw new Error("Food entry meal not found or not authorized to update.");
+    }
+
+    // 2. Delete existing component food_entries
+    await foodRepository.deleteFoodEntryComponentsByFoodEntryMealId(foodEntryMealId, authenticatedUserId);
+    log("debug", `Deleted existing component food entries for food_entry_meal ${foodEntryMealId}.`);
+
+    // 3. Create new component food_entries records
+    const entriesToCreate = [];
+    for (const foodItem of updatedMealData.foods) {
+      const food = await foodRepository.getFoodById(foodItem.food_id, authenticatedUserId);
+      if (!food) {
+        log("warn", `Food with ID ${foodItem.food_id} not found when updating food entry meal. Skipping.`);
+        continue;
+      }
+      const variant = await foodRepository.getFoodVariantById(foodItem.variant_id, authenticatedUserId);
+      if (!variant) {
+        log("warn", `Food variant with ID ${foodItem.variant_id} not found for food ${foodItem.food_id} when updating food entry meal. Skipping.`);
+        continue;
+      }
+
+      const snapshot = {
+        food_name: food.name,
+        brand_name: food.brand,
+        serving_size: variant.serving_size,
+        serving_unit: variant.serving_unit,
+        calories: variant.calories,
+        protein: variant.protein,
+        carbs: variant.carbs,
+        fat: variant.fat,
+        saturated_fat: variant.saturated_fat,
+        polyunsaturated_fat: variant.polyunsaturated_fat,
+        monounsaturated_fat: variant.monounsaturated_fat,
+        trans_fat: variant.trans_fat,
+        cholesterol: variant.cholesterol,
+        sodium: variant.sodium,
+        potassium: variant.potassium,
+        dietary_fiber: variant.dietary_fiber,
+        sugars: variant.sugars,
+        vitamin_a: variant.vitamin_a,
+        vitamin_c: variant.vitamin_c,
+        calcium: variant.calcium,
+        iron: variant.iron,
+        glycemic_index: variant.glycemic_index,
+      };
+
+      entriesToCreate.push({
+        user_id: authenticatedUserId,
+        created_by_user_id: actingUserId,
+        food_id: foodItem.food_id,
+        meal_type: updatedMealData.meal_type,
+        quantity: foodItem.quantity,
+        unit: foodItem.unit,
+        variant_id: foodItem.variant_id,
+        entry_date: updatedMealData.entry_date,
+        food_entry_meal_id: foodEntryMealId, // Link to the existing food_entry_meals ID
+        ...snapshot,
+      });
+    }
+
+    if (entriesToCreate.length > 0) {
+      await foodRepository.bulkCreateFoodEntries(entriesToCreate, authenticatedUserId);
+      log("info", `Recreated ${entriesToCreate.length} component food entries for food_entry_meal ${foodEntryMealId}.`);
+    }
+
+    return updatedFoodEntryMeal;
+  } catch (error) {
+    log("error", `Error updating food entry meal ${foodEntryMealId} for user ${authenticatedUserId}:`, error);
+    throw error;
+  }
+}
+
+async function getFoodEntryMealWithComponents(authenticatedUserId, foodEntryMealId) {
+  log("info", `getFoodEntryMealWithComponents in foodEntryService: foodEntryMealId: ${foodEntryMealId}, authenticatedUserId: ${authenticatedUserId}`);
+  try {
+    const foodEntryMeal = await foodEntryMealRepository.getFoodEntryMealById(foodEntryMealId, authenticatedUserId);
+    if (!foodEntryMeal) {
+      return null;
+    }
+
+    const componentFoodEntries = await foodRepository.getFoodEntryComponentsByFoodEntryMealId(foodEntryMealId, authenticatedUserId);
+
+    // Aggregate nutritional data from componentFoodEntries (for frontend display)
+    let totalCalories = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+    let totalCarbsForGI = 0;
+    let weightedGIAccumulator = 0;
+
+    componentFoodEntries.forEach(entry => {
+      totalCalories += (entry.calories * entry.quantity) / (entry.serving_size || 1); // Ensure division by zero is handled
+      totalProtein += (entry.protein * entry.quantity) / (entry.serving_size || 1);
+      totalCarbs += (entry.carbs * entry.quantity) / (entry.serving_size || 1);
+      totalFat += (entry.fat * entry.quantity) / (entry.serving_size || 1);
+
+      if (entry.glycemic_index && entry.carbs) {
+        const giValue = getGlycemicIndexValue(entry.glycemic_index);
+        if (giValue !== null) {
+          weightedGIAccumulator += giValue * ((entry.carbs * entry.quantity) / (entry.serving_size || 1));
+          totalCarbsForGI += ((entry.carbs * entry.quantity) / (entry.serving_size || 1));
+        }
+      }
+    });
+
+    const aggregatedGlycemicIndex = totalCarbsForGI > 0 ? weightedGIAccumulator / totalCarbsForGI : null;
+
+    return {
+      ...foodEntryMeal,
+      foods: componentFoodEntries.map(entry => ({ // Map component food entries to MealFood structure
+        food_id: entry.food_id,
+        food_name: entry.food_name,
+        variant_id: entry.variant_id,
+        quantity: entry.quantity,
+        unit: entry.unit,
+        calories: entry.calories, // Store base value
+        protein: entry.protein,   // Store base value
+        carbs: entry.carbs,       // Store base value
+        fat: entry.fat,         // Store base value
+        serving_size: entry.serving_size,
+        serving_unit: entry.serving_unit,
+      })),
+      calories: totalCalories,
+      protein: totalProtein,
+      carbs: totalCarbs,
+      fat: totalFat,
+      glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
+      // Add other aggregated nutrients if needed
+    };
+
+  } catch (error) {
+    log("error", `Error getting food entry meal ${foodEntryMealId} with components for user ${authenticatedUserId}:`, error);
+    throw error;
+  }
+}
+
+async function getFoodEntryMealsByDate(authenticatedUserId, targetUserId, selectedDate) {
+  log("info", `getFoodEntryMealsByDate in foodEntryService: authenticatedUserId: ${authenticatedUserId}, targetUserId: ${targetUserId}, selectedDate: ${selectedDate}`);
+  try {
+    const foodEntryMeals = await foodEntryMealRepository.getFoodEntryMealsByDate(targetUserId, selectedDate);
+    const mealsWithComponents = [];
+
+    for (const meal of foodEntryMeals) {
+      const componentFoodEntries = await foodRepository.getFoodEntryComponentsByFoodEntryMealId(meal.id, authenticatedUserId);
+      
+      let totalCalories = 0;
+      let totalProtein = 0;
+      let totalCarbs = 0;
+      let totalFat = 0;
+      let totalCarbsForGI = 0;
+      let weightedGIAccumulator = 0;
+
+      componentFoodEntries.forEach(entry => {
+        totalCalories += (entry.calories * entry.quantity) / entry.serving_size;
+        totalProtein += (entry.protein * entry.quantity) / entry.serving_size;
+        totalCarbs += (entry.carbs * entry.quantity) / entry.serving_size;
+        totalFat += (entry.fat * entry.quantity) / entry.serving_size;
+
+        if (entry.glycemic_index && entry.carbs) {
+          const giValue = getGlycemicIndexValue(entry.glycemic_index);
+          if (giValue !== null) {
+            weightedGIAccumulator += giValue * ((entry.carbs * entry.quantity) / entry.serving_size);
+            totalCarbsForGI += ((entry.carbs * entry.quantity) / entry.serving_size);
+          }
+        }
+      });
+      const aggregatedGlycemicIndex = totalCarbsForGI > 0 ? weightedGIAccumulator / totalCarbsForGI : null;
+
+      mealsWithComponents.push({
+        ...meal,
+        foods: componentFoodEntries.map(entry => ({
+          food_id: entry.food_id,
+          food_name: entry.food_name,
+          variant_id: entry.variant_id,
+          quantity: entry.quantity,
+          unit: entry.unit,
+          calories: (entry.calories * entry.quantity) / entry.serving_size,
+          protein: (entry.protein * entry.quantity) / entry.serving_size,
+          carbs: (entry.carbs * entry.quantity) / entry.serving_size,
+          fat: (entry.fat * entry.quantity) / entry.serving_size,
+          serving_size: entry.serving_size,
+          serving_unit: entry.serving_unit,
+        })),
+        calories: totalCalories,
+        protein: totalProtein,
+        carbs: totalCarbs,
+        fat: totalFat,
+        glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
+      });
+    }
+
+    return mealsWithComponents;
+
+  } catch (error) {
+    log("error", `Error getting food entry meals by date for user ${authenticatedUserId}:`, error);
+    throw error;
+  }
+}
+
+async function deleteFoodEntryMeal(authenticatedUserId, foodEntryMealId) {
+  log("info", `deleteFoodEntryMeal in foodEntryService: authenticatedUserId: ${authenticatedUserId}, foodEntryMealId: ${foodEntryMealId}`);
+  try {
+    // foodRepository.deleteFoodEntryComponentsByFoodEntryMealId will be called due to ON DELETE CASCADE
+    // on the food_entries.food_entry_meal_id foreign key.
+    const success = await foodEntryMealRepository.deleteFoodEntryMeal(foodEntryMealId, authenticatedUserId);
+    if (!success) {
+      throw new Error("Food entry meal not found or not authorized to delete.");
+    }
+    return { message: "Food entry meal deleted successfully." };
+  } catch (error) {
+    log("error", `Error deleting food entry meal ${foodEntryMealId} for user ${authenticatedUserId}:`, error);
+    throw error;
+  }
+}
+
+
 module.exports = {
   createFoodEntry,
   deleteFoodEntry,
   updateFoodEntry,
   getFoodEntriesByDate,
+  // getFoodEntriesByDateAndMealType, // This function is used internally by the service, no need to export
   getFoodEntriesByDateRange,
-  addMealFoodsToDiary,
   copyFoodEntries,
   copyFoodEntriesFromYesterday,
   getDailyNutritionSummary,
+  createFoodEntryMeal,        // New export
+  updateFoodEntryMeal,        // New export
+  getFoodEntryMealWithComponents, // New export
+  getFoodEntryMealsByDate,    // New export
+  deleteFoodEntryMeal,        // New export
 };

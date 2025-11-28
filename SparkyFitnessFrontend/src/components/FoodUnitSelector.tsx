@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -17,9 +16,21 @@ interface FoodUnitSelectorProps {
   onOpenChange: (open: boolean) => void;
   onSelect: (food: Food, quantity: number, unit: string, selectedVariant: FoodVariant) => void;
   showUnitSelector?: boolean; // New prop to control visibility
+  initialQuantity?: number;
+  initialUnit?: string;
+  initialVariantId?: string;
 }
 
-const FoodUnitSelector = ({ food, open, onOpenChange, onSelect, showUnitSelector }: FoodUnitSelectorProps) => {
+const FoodUnitSelector = ({
+  food,
+  open,
+  onOpenChange,
+  onSelect,
+  showUnitSelector,
+  initialQuantity,
+  initialUnit,
+  initialVariantId,
+}: FoodUnitSelectorProps) => {
   const { loggingLevel } = usePreferences(); // Get logging level
   debug(loggingLevel, "FoodUnitSelector component rendered.", { food, open });
   const [variants, setVariants] = useState<FoodVariant[]>([]);
@@ -28,14 +39,12 @@ const FoodUnitSelector = ({ food, open, onOpenChange, onSelect, showUnitSelector
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    debug(loggingLevel, "FoodUnitSelector open/food useEffect triggered.", { open, food });
+    debug(loggingLevel, "FoodUnitSelector open/food useEffect triggered.", { open, food, initialQuantity, initialUnit, initialVariantId });
     if (open && food && food.id) { // Ensure food.id exists before loading variants
       loadVariantsData();
-      // Set quantity to the serving_size of the initially selected variant (primary unit)
-      // The food object passed here already contains the default variant's data
-      setQuantity(food.default_variant?.serving_size || 1);
+      setQuantity(initialQuantity !== undefined ? initialQuantity : (food.default_variant?.serving_size || 1));
     }
-  }, [open, food]);
+  }, [open, food, initialQuantity, initialUnit, initialVariantId]);
 
   const loadVariantsData = async () => {
     debug(loggingLevel, "Loading food variants for food ID:", food?.id);
@@ -103,7 +112,12 @@ const FoodUnitSelector = ({ food, open, onOpenChange, onSelect, showUnitSelector
       }
       
       setVariants(combinedVariants);
-      setSelectedVariant(combinedVariants[0]); // Select the primary unit by default
+      if (initialVariantId) {
+        const variantToSelect = combinedVariants.find(v => v.id === initialVariantId);
+        setSelectedVariant(variantToSelect || combinedVariants[0]);
+      } else {
+        setSelectedVariant(combinedVariants[0]); // Select the primary unit by default
+      }
     } catch (err) {
       error(loggingLevel, 'Error loading variants:', err);
       // Fallback to primary food unit on error
@@ -215,9 +229,9 @@ const FoodUnitSelector = ({ food, open, onOpenChange, onSelect, showUnitSelector
     <Dialog open={open && (showUnitSelector ?? true)} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add {food?.name} to Meal</DialogTitle>
+          <DialogTitle>{initialQuantity ? `Edit ${food?.name}` : `Add ${food?.name} to Meal`}</DialogTitle>
           <DialogDescription>
-            Select the quantity and unit for your food entry.
+            {initialQuantity ? `Edit the quantity and unit for ${food?.name}.` : `Select the quantity and unit for your food entry.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -287,7 +301,7 @@ const FoodUnitSelector = ({ food, open, onOpenChange, onSelect, showUnitSelector
                 Cancel
               </Button>
               <Button type="submit" disabled={!selectedVariant}>
-                Add to Meal
+                {initialQuantity ? 'Update Food' : 'Add to Meal'}
               </Button>
             </div>
           </div>

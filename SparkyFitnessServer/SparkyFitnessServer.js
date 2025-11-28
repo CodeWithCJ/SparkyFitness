@@ -17,6 +17,8 @@ const { authenticate } = require('./middleware/authMiddleware');
 const onBehalfOfMiddleware = require('./middleware/onBehalfOfMiddleware'); // Import the new middleware
 const foodRoutes = require('./routes/foodRoutes');
 const mealRoutes = require('./routes/mealRoutes');
+const foodEntryRoutes = require('./routes/foodEntryRoutes'); // Add this line
+const foodEntryMealRoutes = require('./routes/foodEntryMealRoutes'); // New: FoodEntryMeal routes
 const reportRoutes = require('./routes/reportRoutes');
 const preferenceRoutes = require('./routes/preferenceRoutes');
 const nutrientDisplayPreferenceRoutes = require('./routes/nutrientDisplayPreferenceRoutes');
@@ -289,6 +291,8 @@ app.use('/auth/', authLimiter);
 // Link all routes
 app.use('/chat', chatRoutes);
 app.use('/foods', foodRoutes);
+app.use('/food-entries', foodEntryRoutes); // Add this line
+app.use('/food-entry-meals', foodEntryMealRoutes); // New: Mount FoodEntryMeal routes
 app.use('/meals', mealRoutes);
 app.use('/reports', reportRoutes);
 app.use('/user-preferences', preferenceRoutes);
