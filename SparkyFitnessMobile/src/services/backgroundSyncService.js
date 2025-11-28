@@ -1,8 +1,7 @@
 import BackgroundFetch from 'react-native-background-fetch';
 import { syncHealthData } from './api';
 import { addLog } from './LogService';
-import { loadHealthPreference, getSyncDuration } from './healthConnectService';
-import { readStepRecords, aggregateStepsByDate, readActiveCaloriesRecords, aggregateActiveCaloriesByDate } from './healthConnectService';
+import { loadHealthPreference, loadSyncDuration, readStepRecords, aggregateStepsByDate, readActiveCaloriesRecords, aggregateActiveCaloriesByDate } from './healthConnectService';
 
 const BACKGROUND_FETCH_TASK_ID = 'healthDataSync';
 
@@ -24,7 +23,7 @@ export const configureBackgroundSync = async () => {
     try {
       const isStepsEnabled = await loadHealthPreference('syncStepsEnabled');
       const isActiveCaloriesEnabled = await loadHealthPreference('syncCaloriesEnabled');
-      const syncDuration = await getSyncDuration(); // This will be '1h', '4h', '24h'
+      const syncDuration = await loadSyncDuration(); // This will be '1h', '4h', '24h'
       const fourHourSyncTime = await loadHealthPreference('fourHourSyncTime');
       const dailySyncTime = await loadHealthPreference('dailySyncTime');
 

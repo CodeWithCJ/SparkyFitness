@@ -20,6 +20,7 @@ const AppearanceSettings = ({ appTheme, handleThemeChange }) => {
         >
           <Picker.Item label="Light" value="Light" />
           <Picker.Item label="Dark" value="Dark" />
+          <Picker.Item label="AMOLED" value="Amoled" />
           <Picker.Item label="System" value="System" />
         </Picker>
       </View>
