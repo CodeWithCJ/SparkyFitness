@@ -34,7 +34,7 @@ export interface Food {
   user_id?: string;
   shared_with_public?: boolean;
   provider_external_id?: string;
-  provider_type?: string;
+  provider_type?: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'mealie' | 'tandoor';
   default_variant?: FoodVariant;
   variants?: FoodVariant[];
   is_quick_food?: boolean;

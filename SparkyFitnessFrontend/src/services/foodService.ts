@@ -7,7 +7,7 @@ export type FoodFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
 export interface ExternalDataProvider {
   id: string;
   provider_name: string;
-  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie';
+  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'tandoor';
   app_id: string | null;
   app_key: string | null;
   is_active: boolean;
@@ -198,6 +198,48 @@ export const getMealieFoodDetails = async (
     headers: {
       'x-mealie-base-url': baseUrl,
       'x-mealie-api-key': apiKey,
+      'x-provider-id': providerId,
+    },
+  });
+  return response;
+};
+
+export const searchTandoorFoods = async (
+  query: string,
+  baseUrl: string,
+  apiKey: string,
+  userId: string,
+  providerId: string
+): Promise<Food[]> => {
+  const params = new URLSearchParams();
+  params.append('query', query);
+
+  const response = await apiCall(`/foods/tandoor/search?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      'x-tandoor-base-url': baseUrl,
+      'x-tandoor-api-key': apiKey,
+      'x-provider-id': providerId,
+    },
+  });
+  return response || [];
+};
+
+export const getTandoorFoodDetails = async (
+  id: string, // Tandoor uses 'id' for details
+  baseUrl: string,
+  apiKey: string,
+  userId: string,
+  providerId: string
+): Promise<Food | null> => {
+  const params = new URLSearchParams();
+  params.append('id', id);
+
+  const response = await apiCall(`/foods/tandoor/details?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      'x-tandoor-base-url': baseUrl,
+      'x-tandoor-api-key': apiKey,
       'x-provider-id': providerId,
     },
   });

@@ -9,6 +9,9 @@ export interface FoodSuggestion {
   carbs: number;
   fat: number;
   meal_type: string;
+  description?: string;
+  preparation_time?: string;
+  servings?: number;
 }
 
 export const createFoodInDatabase = async (foodSuggestion: FoodSuggestion, activeUserId: string): Promise<string> => {

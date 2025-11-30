@@ -440,9 +440,9 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
               <div>
                 <p className="text-sm text-muted-foreground">
                   {getProviderTypes().find(t => t.value === provider.provider_type)?.label || provider.provider_type}
-                  {provider.provider_type === 'mealie' && provider.base_url && ` - URL: ${provider.base_url}`}
-                  {(provider.provider_type !== 'mealie' && provider.provider_type !== 'free-exercise-db' && provider.provider_type !== 'wger') && provider.app_id && ` - App ID: ${provider.app_id.substring(0, 4)}...`}
-                  {(provider.provider_type === 'mealie' || provider.provider_type === 'nutritionix' || provider.provider_type === 'fatsecret' || provider.provider_type === 'withings') && provider.app_key && ` - App Key: ${provider.app_key.substring(0, 4)}...`}
+                  {(provider.provider_type === 'mealie' || provider.provider_type === 'tandoor') && provider.base_url && ` - URL: ${provider.base_url}`}
+                  {(provider.provider_type !== 'mealie' && provider.provider_type !== 'tandoor' && provider.provider_type !== 'free-exercise-db' && provider.provider_type !== 'wger') && provider.app_id && ` - App ID: ${provider.app_id.substring(0, 4)}...`}
+                  {(provider.provider_type === 'mealie' || provider.provider_type === 'tandoor' || provider.provider_type === 'nutritionix' || provider.provider_type === 'fatsecret' || provider.provider_type === 'withings') && provider.app_key && ` - App Key: ${provider.app_key.substring(0, 4)}...`}
                   {provider.provider_type === 'withings' && (
                     <>
                       {provider.sync_frequency && ` - Sync: ${provider.sync_frequency}`}

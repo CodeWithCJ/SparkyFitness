@@ -62,11 +62,11 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
       return;
     }
 
-    if (newProvider.provider_type === 'mealie') {
+    if (newProvider.provider_type === 'mealie' || newProvider.provider_type === 'tandoor') {
       if (!newProvider.base_url || !newProvider.app_key) {
         toast({
           title: "Error",
-          description: `Please provide App URL and API Key for Mealie`,
+          description: `Please provide App URL and API Key for ${newProvider.provider_type === 'mealie' ? 'Mealie' : 'Tandoor'}`,
           variant: "destructive"
         });
         return;
@@ -138,10 +138,10 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
             user_id: user.id,
             provider_name: newProvider.provider_name,
             provider_type: newProvider.provider_type,
-            app_id: (newProvider.provider_type === 'mealie' || newProvider.provider_type === 'free-exercise-db' || newProvider.provider_type === 'wger') ? null : newProvider.app_id || null,
+            app_id: (newProvider.provider_type === 'mealie' || newProvider.provider_type === 'tandoor' || newProvider.provider_type === 'free-exercise-db' || newProvider.provider_type === 'wger') ? null : newProvider.app_id || null,
             app_key: newProvider.app_key || null,
             is_active: newProvider.is_active,
-            base_url: (newProvider.provider_type === 'mealie' || newProvider.provider_type === 'free-exercise-db') ? newProvider.base_url || null : null,
+            base_url: (newProvider.provider_type === 'mealie' || newProvider.provider_type === 'tandoor' || newProvider.provider_type === 'free-exercise-db') ? newProvider.base_url || null : null,
             sync_frequency: ['withings', 'garmin'].includes(newProvider.provider_type) ? newProvider.sync_frequency : null,
           }),
         });
@@ -217,10 +217,38 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
                       {type.label}
                     </SelectItem>
                   ))}
+                  <SelectItem value="tandoor">Tandoor</SelectItem> {/* Add Tandoor here */}
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          {newProvider.provider_type === 'tandoor' && (
+            <>
+              <div>
+                <Label htmlFor="new_base_url">App URL</Label>
+                <Input
+                  id="new_base_url"
+                  type="text"
+                  value={newProvider.base_url}
+                  onChange={(e) => setNewProvider(prev => ({ ...prev, base_url: e.target.value }))}
+                  placeholder="e.g., http://your-tandoor-instance.com"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label htmlFor="new_app_key">API Key</Label>
+                <Input
+                  id="new_app_key"
+                  type="password"
+                  value={newProvider.app_key}
+                  onChange={(e) => setNewProvider(prev => ({ ...prev, app_key: e.target.value }))}
+                  placeholder="Enter Tandoor API Key"
+                  autoComplete="off"
+                />
+              </div>
+            </>
+          )}
 
           {newProvider.provider_type === 'mealie' && (
             <>

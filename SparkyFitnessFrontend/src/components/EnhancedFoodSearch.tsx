@@ -33,7 +33,9 @@ import {
 import {
   searchMealieFoods, // Import searchMealieFoods
   getMealieFoodDetails, // Import getMealieFoodDetails
-} from "@/services/foodService"; // Assuming these are in foodService.ts
+  searchTandoorFoods, // Import searchTandoorFoods
+  getTandoorFoodDetails, // Import getTandoorFoodDetails
+} from "@/services/foodService";
 import {
   Select,
   SelectContent,
@@ -506,25 +508,45 @@ const EnhancedFoodSearch = ({
       const provider = foodDataProviders.find(
         (p) => p.id === selectedFoodDataProvider
       );
-      if (provider?.provider_type === "openfoodfacts") {
+
+      if (!provider || !selectedFoodDataProvider) {
+        toast({
+          title: "Error",
+          description: "Please select a valid food data provider.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (provider.provider_type === "openfoodfacts") {
         await searchOpenFoodFacts();
-      } else if (provider?.provider_type === "nutritionix") {
+      } else if (provider.provider_type === "nutritionix") {
         const results = await searchNutritionixFoods(
           searchTerm,
           selectedFoodDataProvider
         );
         setNutritionixResults(results);
-      } else if (provider?.provider_type === "fatsecret") {
+      } else if (provider.provider_type === "fatsecret") {
         const results = await searchFatSecretFoods(
           searchTerm,
           selectedFoodDataProvider
         );
         setFatSecretResults(results);
-      } else if (provider?.provider_type === "mealie") {
+      } else if (provider.provider_type === "mealie") {
         const results = await searchMealieFoods(
           searchTerm,
           provider.base_url,
           provider.app_key,
+          activeUserId!,
+          provider.id
+        );
+        setFoods(results);
+      } else if (provider.provider_type === "tandoor") {
+        const results = await searchTandoorFoods(
+          searchTerm,
+          provider.base_url,
+          provider.app_key, // Tandoor uses app_key as API key
           activeUserId!,
           provider.id
         );
@@ -672,7 +694,7 @@ const EnhancedFoodSearch = ({
     }
   };
 
-  const handleMealieEdit = async (food: Food) => {
+  const handleMealieOrTandoorEdit = async (food: Food) => {
     setLoading(true);
     const provider = foodDataProviders.find(
       (p) => p.id === selectedFoodDataProvider
@@ -686,9 +708,31 @@ const EnhancedFoodSearch = ({
       setLoading(false);
       return;
     }
-    // Since Mealie search results are already in the `Food` format,
+
+    // Since Mealie and Tandoor search results are already in the `Food` format,
     // we can directly use the food object for the edit dialog.
-    // No need to call getMealieFoodDetails here as the search result should be sufficient.
+    setEditingProduct(food);
+    setShowEditDialog(true);
+    setLoading(false);
+  };
+
+  const handleTandoorEdit = async (food: Food) => {
+    setLoading(true);
+    const provider = foodDataProviders.find(
+      (p) => p.id === selectedFoodDataProvider
+    );
+    if (!provider) {
+      toast({
+        title: "Error",
+        description: "Could not find the selected food provider.",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Tandoor search results are already in the `Food` format,
+    // so we can directly use the food object for the edit dialog.
     setEditingProduct(food);
     setShowEditDialog(true);
     setLoading(false);
@@ -982,7 +1026,11 @@ const EnhancedFoodSearch = ({
                         </Badge>
                       )}
                       <Badge variant="outline" className="text-xs">
-                        {t("enhancedFoodSearch.mealie", "Mealie")}
+                        {food.provider_type === "mealie"
+                          ? t("enhancedFoodSearch.mealie", "Mealie")
+                          : food.provider_type === "tandoor"
+                          ? t("enhancedFoodSearch.tandoor", "Tandoor")
+                          : "Online"}
                       </Badge>
                       {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
                         <Badge variant="outline" className="text-xs">
@@ -998,7 +1046,7 @@ const EnhancedFoodSearch = ({
                   </div>
                   <Button
                     size="sm"
-                    onClick={() => handleMealieEdit(food)}
+                    onClick={() => handleMealieOrTandoorEdit(food)}
                     className="ml-2"
                   >
                     <Edit className="w-4 h-4 mr-1" />
