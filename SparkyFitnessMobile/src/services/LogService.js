@@ -74,17 +74,30 @@ export const pruneLogs = async (daysToKeep = 3) => {
 };
 
 /**
- * Retrieves log entries with pagination.
+ * Retrieves log entries with pagination, filtered by current log level.
  * @param {number} offset - The starting index for logs.
  * @param {number} limit - The maximum number of logs to retrieve.
+ * @param {string|null} filterLevel - Optional log level to filter by. If null, uses stored log level.
  * @returns {Promise<Array>} An array of log objects.
  */
-export const getLogs = async (offset = 0, limit = 30) => {
+export const getLogs = async (offset = 0, limit = 30, filterLevel = null) => {
   try {
     // Prune logs before retrieving them
     await pruneLogs();
     const existingLogs = await AsyncStorage.getItem(LOG_KEY);
-    const logs = existingLogs ? JSON.parse(existingLogs) : [];
+    let logs = existingLogs ? JSON.parse(existingLogs) : [];
+    
+    // Filter logs by current log level
+    const currentLogLevel = filterLevel || await getLogLevel();
+    const currentLevelValue = LOG_LEVELS[currentLogLevel];
+    
+    // Only show logs that are at or below the current log level threshold
+    // e.g., if level is 'warn' (2), show 'error' (1) and 'warn' (2) but not 'info' (3) or 'debug' (4)
+    logs = logs.filter(log => {
+      const logLevelValue = LOG_LEVELS[log.level] || LOG_LEVELS['info'];
+      return logLevelValue <= currentLevelValue;
+    });
+    
     return logs.slice(offset, offset + limit);
   } catch (error) {
     console.error('Failed to get logs', error);
