@@ -217,7 +217,6 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
                       {type.label}
                     </SelectItem>
                   ))}
-                  <SelectItem value="tandoor">Tandoor</SelectItem> {/* Add Tandoor here */}
                 </SelectContent>
               </Select>
             </div>

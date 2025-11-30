@@ -87,7 +87,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                   </Select>
                 </div>
               </div>
-              {editData.provider_type === 'mealie' && (
+              {(editData.provider_type === 'mealie' || editData.provider_type === 'tandoor' || editData.provider_type === 'free-exercise-db') && (
                 <>
                   <div>
                     <Label>App URL</Label>
@@ -95,7 +95,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                       type="text"
                       value={editData.base_url || ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, base_url: e.target.value }))}
-                      placeholder="e.g., http://your-mealie-instance.com"
+                      placeholder={editData.provider_type === 'tandoor' ? 'e.g., http://your-tandoor-instance.com' : 'e.g., http://your-mealie-instance.com'}
                       autoComplete="off"
                     />
                   </div>
@@ -105,7 +105,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                       type="password"
                       value={editData.app_key || ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, app_key: e.target.value }))}
-                      placeholder="Enter Mealie API Key"
+                      placeholder={editData.provider_type === 'tandoor' ? 'Enter Tandoor API Key' : 'Enter Mealie API Key'}
                       autoComplete="off"
                     />
                   </div>

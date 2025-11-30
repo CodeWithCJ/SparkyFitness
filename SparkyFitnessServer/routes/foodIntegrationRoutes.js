@@ -110,17 +110,22 @@ router.use("/tandoor", authenticate, async (req, res, next) => {
       req.userId,
       req.providerId
     );
-    if (
-      !providerDetails ||
-      !providerDetails.base_url ||
-      !providerDetails.app_key
-    ) {
+    if (!providerDetails || !providerDetails.base_url || !providerDetails.app_key) {
       return next(
         new Error(
           "Failed to retrieve Tandoor API keys or base URL. Please check provider configuration."
         )
       );
     }
+
+    // Guard against a common misconfiguration where the stored "app_key" is actually
+    // a settings URL (e.g. "/settings/api") instead of the API token. Provide a
+    // helpful error to the caller so the user can correct the stored provider details.
+    const maybeKey = providerDetails.app_key;
+    if (typeof maybeKey === 'string' && (maybeKey.startsWith('http://') || maybeKey.startsWith('https://') || maybeKey.includes('/settings') || maybeKey.includes('/api/'))) {
+      return next(new Error('Tandoor provider configuration appears to have a URL in the app_key field. Please set the actual Tandoor API token (e.g. tda_...) as the provider app_key.'));
+    }
+
     req.tandoorBaseUrl = providerDetails.base_url;
     req.tandoorApiKey = providerDetails.app_key;
     next();

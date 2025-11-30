@@ -413,7 +413,8 @@ const ExternalProviderSettings = () => {
       provider_name: provider.provider_name,
       provider_type: provider.provider_type,
       app_id: provider.app_id || '',
-      app_key: provider.app_key || '',
+      // Never pre-fill API keys when editing for security/privacy
+      app_key: '',
       is_active: provider.is_active,
       base_url: provider.base_url || '',
       last_sync_at: provider.last_sync_at || null,
@@ -438,6 +439,7 @@ const ExternalProviderSettings = () => {
     { value: "wger", label: "Wger (Exercise)" },
     { value: "free-exercise-db", label: "Free Exercise DB" },
     { value: "mealie", label: "Mealie" },
+    { value: "tandoor", label: "Tandoor" },
     { value: "withings", label: "Withings" },
     { value: "garmin", label: "Garmin" },
   ];
