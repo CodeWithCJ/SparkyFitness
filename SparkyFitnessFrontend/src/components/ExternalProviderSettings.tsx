@@ -14,7 +14,7 @@ import GarminConnectSettings from "./GarminConnectSettings";
 export interface ExternalDataProvider {
   id: string;
   provider_name: string;
-  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings' | 'garmin';
+  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings' | 'garmin' | 'tandoor';
   app_id: string | null;
   app_key: string | null;
   is_active: boolean;
@@ -141,10 +141,10 @@ const ExternalProviderSettings = () => {
     const providerUpdateData: Partial<ExternalDataProvider> = {
       provider_name: editData.provider_name,
       provider_type: editData.provider_type,
-      app_id: (editData.provider_type === 'mealie' || editData.provider_type === 'free-exercise-db' || editData.provider_type === 'wger') ? null : editData.app_id || null,
+      app_id: (editData.provider_type === 'mealie' || editData.provider_type === 'tandoor' || editData.provider_type === 'free-exercise-db' || editData.provider_type === 'wger') ? null : editData.app_id || null,
       app_key: editData.app_key || null,
       is_active: editData.is_active,
-      base_url: (editData.provider_type === 'mealie' || editData.provider_type === 'free-exercise-db') ? editData.base_url || null : null,
+      base_url: (editData.provider_type === 'mealie' || editData.provider_type === 'tandoor' || editData.provider_type === 'free-exercise-db') ? editData.base_url || null : null,
       sync_frequency: (editData.provider_type === 'withings' || editData.provider_type === 'garmin') ? editData.sync_frequency : null,
       garmin_connect_status: editData.provider_type === 'garmin' ? editData.garmin_connect_status : null,
       garmin_last_status_check: editData.provider_type === 'garmin' ? editData.garmin_last_status_check : null,
@@ -166,7 +166,7 @@ const ExternalProviderSettings = () => {
       setEditingProvider(null);
       setEditData({});
       loadProviders();
-      if (data && data.is_active && (data.provider_type === 'openfoodfacts' || data.provider_type === 'nutritionix' || data.provider_type === 'fatsecret' || data.provider_type === 'mealie')) {
+      if (data && data.is_active && (data.provider_type === 'openfoodfacts' || data.provider_type === 'nutritionix' || data.provider_type === 'fatsecret' || data.provider_type === 'mealie' || data.provider_type === 'tandoor')) {
         setDefaultFoodDataProviderId(data.id);
       } else if (data && defaultFoodDataProviderId === data.id) {
         setDefaultFoodDataProviderId(null);
@@ -225,7 +225,7 @@ const ExternalProviderSettings = () => {
         description: `External data provider ${isActive ? 'activated' : 'deactivated'}`
       });
       loadProviders();
-      if (data && data.is_active && (data.provider_type === 'openfoodfacts' || data.provider_type === 'nutritionix' || data.provider_type === 'fatsecret' || data.provider_type === 'mealie')) {
+      if (data && data.is_active && (data.provider_type === 'openfoodfacts' || data.provider_type === 'nutritionix' || data.provider_type === 'fatsecret' || data.provider_type === 'mealie' || data.provider_type === 'tandoor')) {
         setDefaultFoodDataProviderId(data.id);
       } else if (data && defaultFoodDataProviderId === data.id) {
         setDefaultFoodDataProviderId(null);
@@ -413,7 +413,8 @@ const ExternalProviderSettings = () => {
       provider_name: provider.provider_name,
       provider_type: provider.provider_type,
       app_id: provider.app_id || '',
-      app_key: provider.app_key || '',
+      // Never pre-fill API keys when editing for security/privacy
+      app_key: '',
       is_active: provider.is_active,
       base_url: provider.base_url || '',
       last_sync_at: provider.last_sync_at || null,
@@ -438,6 +439,7 @@ const ExternalProviderSettings = () => {
     { value: "wger", label: "Wger (Exercise)" },
     { value: "free-exercise-db", label: "Free Exercise DB" },
     { value: "mealie", label: "Mealie" },
+    { value: "tandoor", label: "Tandoor" },
     { value: "withings", label: "Withings" },
     { value: "garmin", label: "Garmin" },
   ];

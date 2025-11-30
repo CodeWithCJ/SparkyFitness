@@ -96,6 +96,47 @@ router.use("/mealie", authenticate, async (req, res, next) => {
   }
 });
 
+// Middleware to get Tandoor API keys and base URL
+router.use("/tandoor", authenticate, async (req, res, next) => {
+  req.providerId = req.headers["x-provider-id"]; // Attach to req object
+  log("debug", `foodRoutes: /tandoor middleware: x-provider-id: ${req.providerId}`);
+
+  if (!req.providerId) {
+    return res.status(400).json({ error: "Missing x-provider-id header" });
+  }
+
+  try {
+    const providerDetails = await foodService.getFoodDataProviderDetails(
+      req.userId,
+      req.providerId
+    );
+    if (!providerDetails || !providerDetails.base_url || !providerDetails.app_key) {
+      return next(
+        new Error(
+          "Failed to retrieve Tandoor API keys or base URL. Please check provider configuration."
+        )
+      );
+    }
+
+    // Guard against a common misconfiguration where the stored "app_key" is actually
+    // a settings URL (e.g. "/settings/api") instead of the API token. Provide a
+    // helpful error to the caller so the user can correct the stored provider details.
+    const maybeKey = providerDetails.app_key;
+    if (typeof maybeKey === 'string' && (maybeKey.startsWith('http://') || maybeKey.startsWith('https://') || maybeKey.includes('/settings') || maybeKey.includes('/api/'))) {
+      return next(new Error('Tandoor provider configuration appears to have a URL in the app_key field. Please set the actual Tandoor API token (e.g. tda_...) as the provider app_key.'));
+    }
+
+    req.tandoorBaseUrl = providerDetails.base_url;
+    req.tandoorApiKey = providerDetails.app_key;
+    next();
+  } catch (error) {
+    if (error.message.startsWith("Forbidden")) {
+      return res.status(403).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
 router.get("/fatsecret/search", authenticate, async (req, res, next) => {
   const { query } = req.query;
   const { clientId, clientSecret } = req;
@@ -264,6 +305,58 @@ router.get(
         mealieBaseUrl,
         mealieApiKey,
         userId
+      );
+      res.json(data);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  "/tandoor/search",
+  authenticate,
+  async (req, res, next) => {
+    const { query } = req.query;
+    const { tandoorBaseUrl, tandoorApiKey, userId, providerId } = req;
+
+    if (!query) {
+      return res.status(400).json({ error: "Missing search query" });
+    }
+
+    try {
+      const data = await foodService.searchTandoorFoods(
+        query,
+        tandoorBaseUrl,
+        tandoorApiKey,
+        userId,
+        providerId
+      );
+      res.json(data);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  "/tandoor/details",
+  authenticate,
+  async (req, res, next) => {
+    const { id } = req.query; // Tandoor uses 'id' for details
+    const { tandoorBaseUrl, tandoorApiKey, userId, providerId } = req;
+
+    if (!id) {
+      return res.status(400).json({ error: "Missing food id" });
+    }
+
+    try {
+      const data = await foodService.getTandoorFoodDetails(
+        id,
+        tandoorBaseUrl,
+        tandoorApiKey,
+        userId,
+        providerId
       );
       res.json(data);
     } catch (error) {

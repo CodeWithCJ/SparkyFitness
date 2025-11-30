@@ -87,7 +87,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                   </Select>
                 </div>
               </div>
-              {editData.provider_type === 'mealie' && (
+              {(editData.provider_type === 'mealie' || editData.provider_type === 'tandoor' || editData.provider_type === 'free-exercise-db') && (
                 <>
                   <div>
                     <Label>App URL</Label>
@@ -95,7 +95,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                       type="text"
                       value={editData.base_url || ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, base_url: e.target.value }))}
-                      placeholder="e.g., http://your-mealie-instance.com"
+                      placeholder={editData.provider_type === 'tandoor' ? 'e.g., http://your-tandoor-instance.com' : 'e.g., http://your-mealie-instance.com'}
                       autoComplete="off"
                     />
                   </div>
@@ -105,7 +105,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                       type="password"
                       value={editData.app_key || ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, app_key: e.target.value }))}
-                      placeholder="Enter Mealie API Key"
+                      placeholder={editData.provider_type === 'tandoor' ? 'Enter Tandoor API Key' : 'Enter Mealie API Key'}
                       autoComplete="off"
                     />
                   </div>
@@ -440,9 +440,9 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
               <div>
                 <p className="text-sm text-muted-foreground">
                   {getProviderTypes().find(t => t.value === provider.provider_type)?.label || provider.provider_type}
-                  {provider.provider_type === 'mealie' && provider.base_url && ` - URL: ${provider.base_url}`}
-                  {(provider.provider_type !== 'mealie' && provider.provider_type !== 'free-exercise-db' && provider.provider_type !== 'wger') && provider.app_id && ` - App ID: ${provider.app_id.substring(0, 4)}...`}
-                  {(provider.provider_type === 'mealie' || provider.provider_type === 'nutritionix' || provider.provider_type === 'fatsecret' || provider.provider_type === 'withings') && provider.app_key && ` - App Key: ${provider.app_key.substring(0, 4)}...`}
+                  {(provider.provider_type === 'mealie' || provider.provider_type === 'tandoor') && provider.base_url && ` - URL: ${provider.base_url}`}
+                  {(provider.provider_type !== 'mealie' && provider.provider_type !== 'tandoor' && provider.provider_type !== 'free-exercise-db' && provider.provider_type !== 'wger') && provider.app_id && ` - App ID: ${provider.app_id.substring(0, 4)}...`}
+                  {(provider.provider_type === 'mealie' || provider.provider_type === 'tandoor' || provider.provider_type === 'nutritionix' || provider.provider_type === 'fatsecret' || provider.provider_type === 'withings') && provider.app_key && ` - App Key: ${provider.app_key.substring(0, 4)}...`}
                   {provider.provider_type === 'withings' && (
                     <>
                       {provider.sync_frequency && ` - Sync: ${provider.sync_frequency}`}

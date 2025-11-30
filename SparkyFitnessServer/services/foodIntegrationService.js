@@ -6,6 +6,7 @@ const {
   FATSECRET_API_BASE_URL,
 } = require("../integrations/fatsecret/fatsecretService");
 const MealieService = require("../integrations/mealie/mealieService"); // Import MealieService
+const TandoorService = require("../integrations/tandoor/tandoorService"); // Import TandoorService
 
 async function searchFatSecretFoods(query, clientId, clientSecret) {
   try {
@@ -152,4 +153,60 @@ module.exports = {
   getFatSecretNutrients,
   searchMealieFoods,
   getMealieFoodDetails,
+  searchTandoorFoods,
+  getTandoorFoodDetails,
 };
+
+async function searchTandoorFoods(query, baseUrl, apiKey, userId, providerId) {
+  log(
+    "debug",
+    `searchTandoorFoods: query: ${query}, baseUrl: ${baseUrl}, apiKey: ${apiKey}, userId: ${userId}, providerId: ${providerId}`
+  );
+  try {
+    const tandoorService = new TandoorService(baseUrl, apiKey);
+    const searchResults = await tandoorService.searchRecipes(query);
+
+    const detailedRecipes = await Promise.all(
+      searchResults.map((recipe) => tandoorService.getRecipeDetails(recipe.id)) // Tandoor uses 'id' for details
+    );
+
+    const validRecipes = detailedRecipes.filter((recipe) => recipe !== null);
+
+    return validRecipes.map((recipe) => {
+      const { food, variant } = tandoorService.mapTandoorRecipeToSparkyFood(
+        recipe,
+        userId
+      );
+      return {
+        ...food,
+        default_variant: variant,
+        variants: [variant],
+      };
+    });
+  } catch (error) {
+    log("error", `Error searching Tandoor foods for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+async function getTandoorFoodDetails(id, baseUrl, apiKey, userId, providerId) {
+  log(
+    "debug",
+    `getTandoorFoodDetails: id: ${id}, baseUrl: ${baseUrl}, apiKey: ${apiKey}, userId: ${userId}, providerId: ${providerId}`
+  );
+  try {
+    const tandoorService = new TandoorService(baseUrl, apiKey);
+    const tandoorRecipe = await tandoorService.getRecipeDetails(id);
+    if (!tandoorRecipe) {
+      return null;
+    }
+    return tandoorService.mapTandoorRecipeToSparkyFood(tandoorRecipe, userId);
+  } catch (error) {
+    log(
+      "error",
+      `Error getting Tandoor food details for id ${id} for user ${userId}:`,
+      error
+    );
+    throw error;
+  }
+}

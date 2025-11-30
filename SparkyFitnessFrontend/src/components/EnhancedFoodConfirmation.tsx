@@ -147,57 +147,6 @@ const EnhancedFoodConfirmation = ({
     }
   };
 
-  const handleConfirm = async () => {
-    if (!user || !activeUserId) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to add foods",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate that selected foods have meal types
-    const selectedSuggestionsWithTypes = editedSuggestions
-      .filter((_, index) => selectedFoods[index])
-      .filter(suggestion => suggestion.meal_type);
-
-    if (selectedSuggestionsWithTypes.length === 0) {
-      toast({
-        title: "Please select foods and meal types",
-        description: "Select at least one food and specify its meal type",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Process each selected food
-      for (const suggestion of selectedSuggestionsWithTypes) {
-        const foodId = await createFoodInDatabase(suggestion);
-        await addFoodEntry(suggestion, foodId);
-      }
-
-      toast({
-        title: "Foods added successfully!",
-        description: `Added ${selectedSuggestionsWithTypes.length} food(s) to your diary for ${targetDate}`,
-      });
-
-      onConfirm(selectedSuggestionsWithTypes);
-      onClose();
-    } catch (error) {
-      console.error('Error processing foods:', error);
-      toast({
-        title: "Error adding foods",
-        description: "Failed to add some foods to your diary. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const totalSelected = selectedFoods.filter(Boolean).length;
   const selectedSuggestions = editedSuggestions.filter((_, index) => selectedFoods[index]);
@@ -292,6 +241,13 @@ const EnhancedFoodConfirmation = ({
                           <Badge variant="outline">{suggestion.carbs}g carbs</Badge>
                           <Badge variant="outline">{suggestion.fat}g fat</Badge>
                         </div>
+                        {(suggestion.description || suggestion.preparation_time || suggestion.servings) && (
+                          <div className="text-xs text-gray-500 mt-2">
+                            {suggestion.description && <p>{suggestion.description}</p>}
+                            {suggestion.preparation_time && <p>Preparation Time: {suggestion.preparation_time}</p>}
+                            {suggestion.servings && <p>Servings: {suggestion.servings}</p>}
+                          </div>
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -330,8 +286,8 @@ const EnhancedFoodConfirmation = ({
                         
                         <div>
                           <Label className="text-xs">Meal Type</Label>
-                          <Select 
-                            value={suggestion.meal_type} 
+                          <Select
+                            value={suggestion.meal_type}
                             onValueChange={(value) => handleMealTypeChange(index, value)}
                             disabled={!selectedFoods[index]}
                           >

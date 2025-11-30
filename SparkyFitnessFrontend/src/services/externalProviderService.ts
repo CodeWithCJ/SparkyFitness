@@ -23,6 +23,7 @@ export const getProviderCategory = (provider: DataProvider): ('food' | 'exercise
     case 'fatsecret':
     case 'openfoodfacts':
     case 'mealie':
+    case 'tandoor':
       return ['food'];
     case 'nutritionix':
       return ['food', 'exercise'];
