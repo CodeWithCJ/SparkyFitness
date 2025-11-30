@@ -11,7 +11,7 @@ prepare_react_native_project!
 # Add NitroModules support for @kingstinct/react-native-healthkit
 pod 'NitroModules', :path => '../node_modules/react-native-nitro-modules'
 
-linkage = ENV['USE_FRAMEWORKS']
+  linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
   use_frameworks! :linkage => linkage.to_sym

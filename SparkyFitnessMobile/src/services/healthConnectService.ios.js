@@ -58,7 +58,8 @@ export const initHealthConnect = async () => {
     // Allow overriding for development testing by setting `global.FORCE_HEALTHKIT_ON_SIM = true`.
     const isSimulatorDetected = __DEV__ && (
       Platform.OS === 'ios' &&
-      (Platform.constants?.simulator === true || Platform.isPad === false)
+      //(Platform.constants?.simulator === true || Platform.isPad === false)
+      Platform.constants?.simulator === true
     );
 
     // Respect developer override if explicitly set in `index.js` or other startup code.
