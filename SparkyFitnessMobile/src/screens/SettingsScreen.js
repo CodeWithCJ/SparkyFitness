@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Alert, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { View, Alert, Text, TouchableOpacity, Image, ScrollView, Platform } from 'react-native';
 import styles from './SettingsScreenStyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig } from '../services/storage';
@@ -34,6 +34,10 @@ const SettingsScreen = ({ navigation }) => {
   const [activeConfigId, setActiveConfigId] = useState(null);
   const [currentConfigId, setCurrentConfigId] = useState(null); // For editing existing config
   const [isConnected, setIsConnected] = useState(false); // State for server connection status
+
+  // Friendly platform-specific label for Health settings used in alerts
+  // e.g. 'Health Connect settings' on Android, 'Health app settings' on iOS
+  const healthSettingsName = Platform.OS === 'android' ? 'Health Connect settings' : 'Health app settings';
 
   const loadConfig = async () => {
     const allConfigs = await getAllServerConfigs();
@@ -84,6 +88,7 @@ const SettingsScreen = ({ navigation }) => {
 
     // Initialize Health Connect
     await initHealthConnect();
+
 
     // Theme is now managed by ThemeContext
 
@@ -182,7 +187,7 @@ const SettingsScreen = ({ navigation }) => {
       try {
         const granted = await requestHealthPermissions(metric.permissions);
         if (!granted) {
-          Alert.alert('Permission Denied', `Please grant ${metric.label.toLowerCase()} permission in Health Connect settings.`);
+          Alert.alert('Permission Denied', `Please grant ${metric.label.toLowerCase()} permission in ${healthSettingsName}.`);
           setHealthMetricStates(prevStates => ({
             ...prevStates,
             [metric.stateKey]: false, // Revert toggle if permission not granted
@@ -214,7 +219,7 @@ const SettingsScreen = ({ navigation }) => {
         try {
           const granted = await requestHealthPermissions(metric.permissions);
           if (!granted) {
-            Alert.alert('Permission Denied', `Please grant ${metric.label.toLowerCase()} permission in Health Connect settings.`);
+            Alert.alert('Permission Denied', `Please grant ${metric.label.toLowerCase()} permission in ${healthSettingsName}.`);
             newHealthMetricStates[metric.stateKey] = false; // Revert toggle if permission not granted
             await saveHealthPreference(metric.preferenceKey, false);
             addLog(`Permission Denied: ${metric.label} permission not granted.`, 'warn', 'WARNING');

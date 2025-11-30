@@ -1,7 +1,4 @@
 # Logs
-# Logs
-# Logs
-# Logs
 logs
 *.log
 npm-debug.log*
@@ -10,126 +7,48 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Generic
 postgresql
 node_modules
 dist
 dist-ssr
 *.local
 .env
-supabase/.temp/
 
 # Private folder contents
 private/
-
-# Supabase CLI config
-supabase/config.toml
-
-# Supabase Functions generated files
-supabase/functions/**/*.d.ts
-supabase/functions/**/*.full.ts
-
-# Test coverage
 coverage/
 
 # OS generated files
 Thumbs.db
+.DS_Store
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
+# Supabase
+supabase/.temp/
+supabase/config.toml
+supabase/functions/**/*.d.ts
+supabase/functions/**/*.full.ts
 
-# Build artifacts
-/build
+# Private folder contents
+private/
 
-WIP
-
-# SparkyFitnessMobile specific ignores
-SparkyFitnessMobile/node_modules/
-SparkyFitnessMobile/.expo/
-SparkyFitnessMobile/web-build/
-SparkyFitnessMobile/android/build/
-SparkyFitnessMobile/android/app/build/
-SparkyFitnessMobile/android/.gradle
-SparkyFitnessMobile/android/app/.cxx/
-SparkyFitnessMobile/ios/build/
-SparkyFitnessMobile/.env
-SparkyFitnessMobile/.env.*
-SparkyFitnessMobile/android/local.properties
-
-# From React Native CLI
-SparkyFitnessMobile/.DS_Store
-SparkyFitnessMobile/build/
-SparkyFitnessMobile/*.pbxuser
-SparkyFitnessMobile/!default.pbxuser
-SparkyFitnessMobile/*.mode1v3
-SparkyFitnessMobile/!default.mode1v3
-SparkyFitnessMobile/*.mode2v3
-SparkyFitnessMobile/!default.mode2v3
-SparkyFitnessMobile/*.perspectivev3
-SparkyFitnessMobile/!default.perspectivev3
-SparkyFitnessMobile/xcuserdata
-SparkyFitnessMobile/*.xccheckout
-SparkyFitnessMobile/*.moved-aside
-SparkyFitnessMobile/DerivedData
-SparkyFitnessMobile/*.hmap
-SparkyFitnessMobile/*.ipa
-SparkyFitnessMobile/*.xcuserstate
-SparkyFitnessMobile/**/.xcode.env.local
-SparkyFitnessMobile/.idea
-SparkyFitnessMobile/.gradle
-SparkyFitnessMobile/local.properties
-SparkyFitnessMobile/*.iml
-SparkyFitnessMobile/*.hprof
-SparkyFitnessMobile/.cxx/
-SparkyFitnessMobile/android/app/.cxx/
-SparkyFitnessMobile/*.keystore
-SparkyFitnessMobile/!debug.keystore
-SparkyFitnessMobile/.kotlin/
-SparkyFitnessMobile/npm-debug.log
-SparkyFitnessMobile/yarn-error.log
-SparkyFitnessMobile/**/fastlane/report.xml
-SparkyFitnessMobile/**/fastlane/Preview.html
-SparkyFitnessMobile/**/fastlane/screenshots
-SparkyFitnessMobile/**/fastlane/test_output
-SparkyFitnessMobile/*.jsbundle
-SparkyFitnessMobile/**/Pods/
-SparkyFitnessMobile/vendor/bundle/
-SparkyFitnessMobile/.metro-health-check*
-SparkyFitnessMobile/coverage
-SparkyFitnessMobile/.yarn/*
-SparkyFitnessMobile/!.yarn/patches
-SparkyFitnessMobile/!.yarn/plugins
-SparkyFitnessMobile/!.yarn/releases
-SparkyFitnessMobile/!.yarn/sdks
-SparkyFitnessMobile/!.yarn/versions
-
-# Mobile App Documentation
-SparkyFitnessMobile/docs/react-native-docs
-SparkyFitnessMobile/node_modules
-SparkyFitnessMobile/android/.gradle/
-SparkyFitnessMobile/android/app/build/*
-SparkyFitnessMobile/android/app/src/main/res/mipmap-anydpi-v26/
-SparkyFitnessMobile/docs/SampleApp/*
-
-# Keystore
-*.keystore
-SparkyFitnessMobile/android/keystores/
-
-# Python bytecode
+# Python
 __pycache__/
 
-# Ignore uploaded exercise files
+# Server specific
 SparkyFitnessServer/uploads/
 SparkyFitnessServer/backup/
 SparkyFitnessServer/temp_uploads/
 
-# SparkyFitnessGarmin specific ignores
+# Garmin microservice specific
 SparkyFitnessGarmin/mock_data/
