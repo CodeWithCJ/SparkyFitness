@@ -44,83 +44,88 @@ const HEALTHKIT_TYPE_MAP = {
 // Alias for cross-platform compatibility - Android uses initHealthConnect
 export const initHealthConnect = async () => {
   try {
-    // Check if HealthKit is available on this device
-    const available = await isHealthDataAvailable();
-
-    if (!available) {
+    isHealthKitAvailable = await isHealthDataAvailable();
+    if (!isHealthKitAvailable) {
       addLog('[HealthKitService] HealthKit is not available on this device', 'warn', 'WARNING');
-      console.warn('[HealthKitService] HealthKit not available');
-      isHealthKitAvailable = false;
-      return false;
     }
-
-    // Skip HealthKit authorization in simulator by default - it can hang on some setups.
-    // Allow overriding for development testing by setting `global.FORCE_HEALTHKIT_ON_SIM = true`.
-    const isSimulatorDetected = __DEV__ && (
-      Platform.OS === 'ios' &&
-      //(Platform.constants?.simulator === true || Platform.isPad === false)
-      Platform.constants?.simulator === true
-    );
-
-    // Respect developer override if explicitly set in `index.js` or other startup code.
-    const forceHealthOnSim = !!global?.FORCE_HEALTHKIT_ON_SIM;
-
-    if (isSimulatorDetected && !forceHealthOnSim) {
-      addLog('[HealthKitService] Running in simulator - skipping HealthKit authorization', 'warn', 'WARNING');
-      console.warn('[HealthKitService] Simulator detected - HealthKit authorization skipped. Use a physical device for full functionality.');
-      isHealthKitAvailable = false;
-      return false;
-    }
-
-    // Build list of permissions to request
-    const readPermissions = [
-      'HKQuantityTypeIdentifierStepCount',
-      'HKQuantityTypeIdentifierHeartRate',
-      'HKQuantityTypeIdentifierActiveEnergyBurned',
-      'HKQuantityTypeIdentifierBasalEnergyBurned',
-      'HKQuantityTypeIdentifierBodyMass',
-      'HKQuantityTypeIdentifierHeight',
-      'HKQuantityTypeIdentifierBodyFatPercentage',
-      'HKQuantityTypeIdentifierBloodPressureSystolic',
-      'HKQuantityTypeIdentifierBloodPressureDiastolic',
-      'HKQuantityTypeIdentifierBodyTemperature',
-      'HKQuantityTypeIdentifierBloodGlucose',
-      'HKQuantityTypeIdentifierOxygenSaturation',
-      'HKQuantityTypeIdentifierVO2Max',
-      'HKQuantityTypeIdentifierRestingHeartRate',
-      'HKQuantityTypeIdentifierRespiratoryRate',
-      'HKQuantityTypeIdentifierDistanceWalkingRunning',
-      'HKQuantityTypeIdentifierFlightsClimbed',
-      'HKQuantityTypeIdentifierDietaryWater',
-      'HKQuantityTypeIdentifierLeanBodyMass',
-      'HKCategoryTypeIdentifierSleepAnalysis',
-    ];
-
-    // Request authorization with timeout
-    console.log('[HealthKitService] Requesting authorization...');
-    const authPromise = requestAuthorization(readPermissions);
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Authorization request timed out')), 10000)
-    );
-
-    await Promise.race([authPromise, timeoutPromise]);
-
-    addLog('[HealthKitService] HealthKit initialized successfully', 'info', 'SUCCESS');
-    isHealthKitAvailable = true;
-    return true;
+    return isHealthKitAvailable;
   } catch (error) {
-    addLog(`[HealthKitService] Failed to initialize HealthKit: ${error.message}`, 'error', 'ERROR');
-    console.error('[HealthKitService] HealthKit initialization error', error);
+    addLog(`[HealthKitService] Failed to check HealthKit availability: ${error.message}`, 'error', 'ERROR');
     isHealthKitAvailable = false;
     return false;
   }
 };
 
 export const requestHealthPermissions = async (permissionsToRequest) => {
-  // HealthKit permissions are requested during initialization
-  // This function exists for API compatibility with Health Connect
-  addLog(`[HealthKitService] Permissions already requested during initialization`);
-  return true;
+  if (!isHealthKitAvailable) {
+    addLog('[HealthKitService] Cannot request permissions; HealthKit not available.', 'warn', 'WARNING');
+    // On iOS, if Health app is not installed, we can't get permissions.
+    // Let the user know they need to install it.
+    Alert.alert(
+      'Health App Not Available',
+      'Please install the Apple Health app to sync your health data.'
+    );
+    return false;
+  }
+
+  const isSimulator = Platform.OS === 'ios' && Platform.constants?.simulator === true;
+  if (isSimulator && !global?.FORCE_HEALTHKIT_ON_SIM) {
+    console.warn('[HealthKitService] Simulator detected - HealthKit authorization skipped.');
+    return true;
+  }
+
+  if (!permissionsToRequest || permissionsToRequest.length === 0) {
+    addLog('[HealthKitService] No permissions requested.', 'info', 'INFO');
+    return true;
+  }
+
+  // Separate read and write permissions and ensure uniqueness
+  const readPermissionsSet = new Set();
+  const writePermissionsSet = new Set();
+
+  permissionsToRequest.forEach(p => {
+    const healthkitIdentifier = HEALTHKIT_TYPE_MAP[p.recordType];
+    if (healthkitIdentifier) {
+      if (p.accessType === 'read') {
+        readPermissionsSet.add(healthkitIdentifier);
+      } else if (p.accessType === 'write') {
+        writePermissionsSet.add(healthkitIdentifier);
+      }
+    }
+  });
+
+  const toRead = Array.from(readPermissionsSet);
+  const toShare = Array.from(writePermissionsSet);
+
+  if (toRead.length === 0 && toShare.length === 0) {
+    addLog(`[HealthKitService] No valid HealthKit identifiers found for the requested permissions.`, 'warn', 'WARNING');
+    return true;
+  }
+
+  try {
+    addLog(`[HealthKitService] Requesting authorization - Read: [${toRead.join(', ')}], Write: [${toShare.join(', ')}]`, 'info', 'INFO');
+
+    // The library expects separate read and write permissions in a single object.
+    const result = await requestAuthorization({ toRead, toWrite: toShare });
+    
+    if (result) {
+      addLog(`[HealthKitService] Authorization request completed successfully.`, 'info', 'SUCCESS');
+    } else {
+      addLog(`[HealthKitService] Authorization was not granted for all requested permissions.`, 'warn', 'WARNING');
+    }
+    
+    return true;
+
+  } catch (error) {
+    addLog(`[HealthKitService] Failed to request permissions: ${error.message}`, 'error', 'ERROR');
+    console.error('[HealthKitService] Permission request error', error);
+    // Add a user-facing alert for unexpected errors
+    Alert.alert(
+      'Permission Error',
+      `An unexpected error occurred while trying to request Health permissions: ${error.message}`
+    );
+    return false;
+  }
 };
 
 export const getSyncStartDate = (duration) => {
