@@ -36,9 +36,17 @@ const MainScreen = ({ navigation }) => {
   const [syncDuration, setSyncDuration] = useState(1); // This will be replaced by selectedTimeRange
   const [isSyncing, setIsSyncing] = useState(false);
   const [isHealthConnectInitialized, setIsHealthConnectInitialized] = useState(false);
-  const [selectedTimeRange, setSelectedTimeRange] = useState('24h'); // New state for time range, initialized to '24h'
+  const [selectedTimeRange, setSelectedTimeRange] = useState('3d'); // New state for time range, initialized to '3d'
   const [isConnected, setIsConnected] = useState(false); // State for server connection status
   const isAndroid = Platform.OS === 'android';
+
+  const timeRangeOptions = [
+    { label: "Last 24 Hours", value: "24h" },
+    { label: "Last 3 Days", value: "3d" },
+    { label: "Last 7 Days", value: "7d" },
+    { label: "Last 30 Days", value: "30d" },
+    { label: "Last 90 Days", value: "90d" },
+  ];
 
   const initialize = useCallback(async () => { // Wrap initialize in useCallback
     addLog('--- MainScreen: initialize function started ---'); // Prominent log
@@ -61,7 +69,7 @@ const MainScreen = ({ navigation }) => {
 
     // Load selected time range preference
     const loadedTimeRange = await loadTimeRange();
-    const initialTimeRange = loadedTimeRange !== null ? loadedTimeRange : '24h';
+    const initialTimeRange = loadedTimeRange !== null ? loadedTimeRange : '3d';
     setSelectedTimeRange(initialTimeRange); // Initialize with loaded preference or default
     addLog(`[MainScreen] Loaded selectedTimeRange from storage: ${initialTimeRange}`); // Add this log
 
@@ -134,6 +142,10 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
   switch (timeRange) {
     case '24h':
       startDate.setHours(endDate.getHours() - 24, endDate.getMinutes(), endDate.getSeconds(), endDate.getMilliseconds());
+      break;
+    case '3d': // Added '3d' case
+      startDate.setDate(endDate.getDate() - 3);
+      startDate.setHours(0, 0, 0, 0);
       break;
     case '7d':
       startDate.setDate(endDate.getDate() - 7);
@@ -778,20 +790,21 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Time Range</Text>
           <View style={styles.timeRangeContainer}>
-            <Picker
-              selectedValue={selectedTimeRange}
-              style={styles.picker}
-              onValueChange={async (itemValue) => {
-                setSelectedTimeRange(itemValue);
-                await saveTimeRange(itemValue); // Save selectedTimeRange using the new function
-                addLog(`[MainScreen] Time range changed and saved: ${itemValue}`);
-              }}
-            >
-              <Picker.Item label="Last 24 Hours" value="24h" />
-              <Picker.Item label="Last 7 Days" value="7d" />
-              <Picker.Item label="Last 30 Days" value="30d" />
-              <Picker.Item label="Last 90 Days" value="90d" />
-            </Picker>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={selectedTimeRange}
+                style={styles.picker}
+                onValueChange={async (itemValue) => {
+                  setSelectedTimeRange(itemValue);
+                  await saveTimeRange(itemValue); // Save selectedTimeRange using the new function
+                  addLog(`[MainScreen] Time range changed and saved: ${itemValue}`);
+                }}
+              >
+                {timeRangeOptions.map((item) => (
+                  <Picker.Item key={item.value} label={item.label} value={item.value} />
+                ))}
+              </Picker>
+            </View>
           </View>
         </View>
 
@@ -880,6 +893,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    overflow: 'visible', // Ensure content is not clipped
   },
   sectionTitle: {
     fontSize: 18,
@@ -895,11 +909,28 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#ddd',
+    height: 60, // Give more height to the container
+    overflow: 'visible', // Ensure content is not clipped
   },
   picker: {
     flex: 1,
-    height: 50,
+    height: 60, // Match container height
+    width: '100%', // Ensure it takes full width
     color: '#333', // Ensure text is visible
+    backgroundColor: 'transparent', // Make the picker background transparent
+  },
+  pickerItem: {
+    color: '#333', // Ensure text is visible for each item
+    fontSize: 16,
+  },
+  pickerWrapper: {
+    flex: 1,
+    height: 60, // Explicit height
+    width: '100%', // Explicit width
+    zIndex: 10, // Added zIndex to bring picker to front
+    // Optional: add a background color to debug its size and position
+    // backgroundColor: 'lightblue', 
+    justifyContent: 'center', // Center the picker content vertically
   },
   timeRangeText: {
     fontSize: 16,

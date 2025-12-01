@@ -20,6 +20,9 @@ const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, server
               autoCapitalize="none"
               keyboardType="url"
             />
+            <TouchableOpacity style={styles.iconButton} onPress={() => Clipboard.setString(url)}>
+              <Image source={require('../../assets/icons/copy.png')} style={styles.icon} />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton} onPress={async () => setUrl(await Clipboard.getStringAsync())}>
               <Image source={require('../../assets/icons/paste.png')} style={styles.icon} />
             </TouchableOpacity>
@@ -35,6 +38,9 @@ const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, server
               onChangeText={setApiKey}
               secureTextEntry
             />
+            <TouchableOpacity style={styles.iconButton} onPress={() => Clipboard.setString(apiKey)}>
+              <Image source={require('../../assets/icons/copy.png')} style={styles.icon} />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton} onPress={async () => setApiKey(await Clipboard.getStringAsync())}>
               <Image source={require('../../assets/icons/paste.png')} style={styles.icon} />
             </TouchableOpacity>

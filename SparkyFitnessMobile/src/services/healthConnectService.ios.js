@@ -6,7 +6,7 @@ import {
   HKCategoryTypeIdentifier,
   queryCategorySamples,
 } from '@kingstinct/react-native-healthkit';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addLog } from './LogService';
