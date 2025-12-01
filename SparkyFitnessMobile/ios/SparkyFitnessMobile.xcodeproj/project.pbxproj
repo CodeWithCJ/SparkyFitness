@@ -10,8 +10,8 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		B548D9B81336F5E6565BCC28 /* libPods-SparkyFitnessMobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1485F41CFA6C09A50958DF05 /* libPods-SparkyFitnessMobile.a */; };
 		D5766D8D8D1E70B623804AD4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
-		F0A19D364D40E8271F95BB2C /* Pods_SparkyFitnessMobile.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C0499D5865E7A8E07AC75BB9 /* Pods_SparkyFitnessMobile.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,12 +19,12 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = SparkyFitnessMobile/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = SparkyFitnessMobile/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = SparkyFitnessMobile/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		1485F41CFA6C09A50958DF05 /* libPods-SparkyFitnessMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SparkyFitnessMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		17D102262ED90CE4009AB798 /* SparkyFitnessMobile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = SparkyFitnessMobile.entitlements; path = SparkyFitnessMobile/SparkyFitnessMobile.entitlements; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-SparkyFitnessMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SparkyFitnessMobile.debug.xcconfig"; path = "Target Support Files/Pods-SparkyFitnessMobile/Pods-SparkyFitnessMobile.debug.xcconfig"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-SparkyFitnessMobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SparkyFitnessMobile.release.xcconfig"; path = "Target Support Files/Pods-SparkyFitnessMobile/Pods-SparkyFitnessMobile.release.xcconfig"; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = SparkyFitnessMobile/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = SparkyFitnessMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		C0499D5865E7A8E07AC75BB9 /* Pods_SparkyFitnessMobile.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_SparkyFitnessMobile.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -33,7 +33,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F0A19D364D40E8271F95BB2C /* Pods_SparkyFitnessMobile.framework in Frameworks */,
+				B548D9B81336F5E6565BCC28 /* libPods-SparkyFitnessMobile.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -57,7 +57,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				C0499D5865E7A8E07AC75BB9 /* Pods_SparkyFitnessMobile.framework */,
+				1485F41CFA6C09A50958DF05 /* libPods-SparkyFitnessMobile.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -273,6 +273,7 @@
 				CODE_SIGN_ENTITLEMENTS = SparkyFitnessMobile/SparkyFitnessMobile.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"COCOAPODS=1",
@@ -307,6 +308,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = SparkyFitnessMobile/SparkyFitnessMobile.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"COCOAPODS=1",
