@@ -54,14 +54,18 @@ export const initHealthConnect = async () => {
       return false;
     }
 
-    // Skip HealthKit authorization in simulator - it doesn't work and causes hangs
-    // HealthKit authorization requires a physical iOS device
-    const isSimulator = __DEV__ && (
+    // Skip HealthKit authorization in simulator by default - it can hang on some setups.
+    // Allow overriding for development testing by setting `global.FORCE_HEALTHKIT_ON_SIM = true`.
+    const isSimulatorDetected = __DEV__ && (
       Platform.OS === 'ios' &&
-      (Platform.constants?.simulator === true || Platform.isPad === false)
+      //(Platform.constants?.simulator === true || Platform.isPad === false)
+      Platform.constants?.simulator === true
     );
 
-    if (isSimulator) {
+    // Respect developer override if explicitly set in `index.js` or other startup code.
+    const forceHealthOnSim = !!global?.FORCE_HEALTHKIT_ON_SIM;
+
+    if (isSimulatorDetected && !forceHealthOnSim) {
       addLog('[HealthKitService] Running in simulator - skipping HealthKit authorization', 'warn', 'WARNING');
       console.warn('[HealthKitService] Simulator detected - HealthKit authorization skipped. Use a physical device for full functionality.');
       isHealthKitAvailable = false;

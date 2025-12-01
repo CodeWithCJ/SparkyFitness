@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'; // Import useCallback
-import { View, Text, Button, StyleSheet, Switch, Alert, TouchableOpacity, Image, ScrollView, Linking } from 'react-native';
+import { View, Text, Button, StyleSheet, Switch, Alert, TouchableOpacity, Image, ScrollView, Linking, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native'; // Import useFocusEffect
@@ -38,6 +38,7 @@ const MainScreen = ({ navigation }) => {
   const [isHealthConnectInitialized, setIsHealthConnectInitialized] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState('24h'); // New state for time range, initialized to '24h'
   const [isConnected, setIsConnected] = useState(false); // State for server connection status
+  const isAndroid = Platform.OS === 'android';
 
   const initialize = useCallback(async () => { // Wrap initialize in useCallback
     addLog('--- MainScreen: initialize function started ---'); // Prominent log
@@ -834,7 +835,9 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
 
         {!isHealthConnectInitialized && (
           <Text style={styles.errorText}>
-            Health Connect is not available. Please make sure it is installed and enabled.
+            {isAndroid
+              ? 'Health Connect is not available. Please make sure it is installed and enabled.'
+              : 'Health data (HealthKit) is not available. Please enable Health access in the iOS Health app.'}
           </Text>
         )}
       </ScrollView>
