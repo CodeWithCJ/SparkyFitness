@@ -72,6 +72,10 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalC
   };
 
   const autoBalance = (currentPercentages: MealPercentages, changedMeal: keyof MealPercentages) => {
+    if (selectedTemplateName === 'Custom') {
+      setPercentages(currentPercentages);
+      return;
+    }
     const lockedTotal = Object.keys(locks).reduce((acc, key) => {
       return locks[key as keyof MealPercentages] && key !== changedMeal ? acc + currentPercentages[key as keyof MealPercentages] : acc;
     }, 0);
