@@ -21,6 +21,8 @@
     "react": "19.1.0",
     "react-native": "0.80.2",
     "react-native-background-fetch": "^4.2.8",
+    "react-native-dropdown-picker": "^5.4.6",
+    "react-native-element-dropdown": "^2.12.4",
     "react-native-gesture-handler": "^2.28.0",
     "react-native-health-connect": "^3.3.3",
     "react-native-inappbrowser-reborn": "^3.7.0",
