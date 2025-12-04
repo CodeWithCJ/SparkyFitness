@@ -18,7 +18,31 @@ const SYNC_DURATION_KEY = '@HealthKit:syncDuration';
 // Track if HealthKit is available on this device
 let isHealthKitAvailable = false;
 
-// Map health metric types to HealthKit identifiers
+// Define all supported HealthKit type identifiers for this app
+const SUPPORTED_HK_TYPES = new Set([
+  'HKQuantityTypeIdentifierStepCount',
+  'HKQuantityTypeIdentifierHeartRate',
+  'HKQuantityTypeIdentifierActiveEnergyBurned',
+  'HKQuantityTypeIdentifierBasalEnergyBurned',
+  'HKQuantityTypeIdentifierBodyMass',
+  'HKQuantityTypeIdentifierHeight',
+  'HKQuantityTypeIdentifierBodyFatPercentage',
+  'HKQuantityTypeIdentifierBloodPressureSystolic',
+  'HKQuantityTypeIdentifierBloodPressureDiastolic',
+  'HKQuantityTypeIdentifierBodyTemperature',
+  'HKQuantityTypeIdentifierBloodGlucose',
+  'HKQuantityTypeIdentifierOxygenSaturation',
+  'HKQuantityTypeIdentifierVO2Max',
+  'HKQuantityTypeIdentifierRestingHeartRate',
+  'HKQuantityTypeIdentifierRespiratoryRate',
+  'HKQuantityTypeIdentifierDistanceWalkingRunning',
+  'HKQuantityTypeIdentifierFlightsClimbed',
+  'HKQuantityTypeIdentifierDietaryWater',
+  'HKQuantityTypeIdentifierLeanBodyMass',
+  'HKCategoryTypeIdentifierSleepAnalysis',
+]);
+
+// Map our internal health metric types to the official HealthKit identifiers
 const HEALTHKIT_TYPE_MAP = {
   'Steps': 'HKQuantityTypeIdentifierStepCount',
   'HeartRate': 'HKQuantityTypeIdentifierHeartRate',
@@ -27,6 +51,7 @@ const HEALTHKIT_TYPE_MAP = {
   'Weight': 'HKQuantityTypeIdentifierBodyMass',
   'Height': 'HKQuantityTypeIdentifierHeight',
   'BodyFat': 'HKQuantityTypeIdentifierBodyFatPercentage',
+  'BloodPressure': 'BloodPressure', // Special case, handled separately
   'BloodPressureSystolic': 'HKQuantityTypeIdentifierBloodPressureSystolic',
   'BloodPressureDiastolic': 'HKQuantityTypeIdentifierBloodPressureDiastolic',
   'BodyTemperature': 'HKQuantityTypeIdentifierBodyTemperature',
@@ -39,14 +64,16 @@ const HEALTHKIT_TYPE_MAP = {
   'FloorsClimbed': 'HKQuantityTypeIdentifierFlightsClimbed',
   'Hydration': 'HKQuantityTypeIdentifierDietaryWater',
   'LeanBodyMass': 'HKQuantityTypeIdentifierLeanBodyMass',
+  'SleepSession': 'HKCategoryTypeIdentifierSleepAnalysis',
 };
+
 
 // Alias for cross-platform compatibility - Android uses initHealthConnect
 export const initHealthConnect = async () => {
   try {
     isHealthKitAvailable = await isHealthDataAvailable();
     if (!isHealthKitAvailable) {
-      addLog('[HealthKitService] HealthKit is not available on this device', 'warn', 'WARNING');
+      addLog('[HealthKitService] HealthKit is not available on this device.', 'warn', 'WARNING');
     }
     return isHealthKitAvailable;
   } catch (error) {
@@ -59,8 +86,6 @@ export const initHealthConnect = async () => {
 export const requestHealthPermissions = async (permissionsToRequest) => {
   if (!isHealthKitAvailable) {
     addLog('[HealthKitService] Cannot request permissions; HealthKit not available.', 'warn', 'WARNING');
-    // On iOS, if Health app is not installed, we can't get permissions.
-    // Let the user know they need to install it.
     Alert.alert(
       'Health App Not Available',
       'Please install the Apple Health app to sync your health data.'
@@ -79,18 +104,32 @@ export const requestHealthPermissions = async (permissionsToRequest) => {
     return true;
   }
 
-  // Separate read and write permissions and ensure uniqueness
   const readPermissionsSet = new Set();
   const writePermissionsSet = new Set();
 
   permissionsToRequest.forEach(p => {
     const healthkitIdentifier = HEALTHKIT_TYPE_MAP[p.recordType];
     if (healthkitIdentifier) {
-      if (p.accessType === 'read') {
-        readPermissionsSet.add(healthkitIdentifier);
-      } else if (p.accessType === 'write') {
-        writePermissionsSet.add(healthkitIdentifier);
+      // Special handling for BloodPressure, which involves two identifiers
+      if (p.recordType === 'BloodPressure') {
+        if (p.accessType === 'read') {
+          readPermissionsSet.add('HKQuantityTypeIdentifierBloodPressureSystolic');
+          readPermissionsSet.add('HKQuantityTypeIdentifierBloodPressureDiastolic');
+        } else if (p.accessType === 'write') {
+          writePermissionsSet.add('HKQuantityTypeIdentifierBloodPressureSystolic');
+          writePermissionsSet.add('HKQuantityTypeIdentifierBloodPressureDiastolic');
+        }
+      } else if (SUPPORTED_HK_TYPES.has(healthkitIdentifier)) {
+        if (p.accessType === 'read') {
+          readPermissionsSet.add(healthkitIdentifier);
+        } else if (p.accessType === 'write') {
+          writePermissionsSet.add(healthkitIdentifier);
+        }
+      } else {
+        addLog(`[HealthKitService] Permission requested for unsupported type: ${p.recordType} (${healthkitIdentifier}). Skipping.`, 'warn', 'WARNING');
       }
+    } else {
+      addLog(`[HealthKitService] No HealthKit identifier found for record type: ${p.recordType}. Skipping.`, 'warn', 'WARNING');
     }
   });
 
@@ -98,20 +137,19 @@ export const requestHealthPermissions = async (permissionsToRequest) => {
   const toShare = Array.from(writePermissionsSet);
 
   if (toRead.length === 0 && toShare.length === 0) {
-    addLog(`[HealthKitService] No valid HealthKit identifiers found for the requested permissions.`, 'warn', 'WARNING');
+    addLog(`[HealthKitService] No valid and supported HealthKit permissions to request.`, 'warn', 'WARNING');
     return true;
   }
 
   try {
     addLog(`[HealthKitService] Requesting authorization - Read: [${toRead.join(', ')}], Write: [${toShare.join(', ')}]`, 'info', 'INFO');
 
-    // The library expects separate read and write permissions in a single object.
     const result = await requestAuthorization({ toRead, toWrite: toShare });
     
     if (result) {
       addLog(`[HealthKitService] Authorization request completed successfully.`, 'info', 'SUCCESS');
     } else {
-      addLog(`[HealthKitService] Authorization was not granted for all requested permissions.`, 'warn', 'WARNING');
+      addLog(`[HealthKitService] Authorization may not have been granted for all requested permissions.`, 'warn', 'WARNING');
     }
     
     return true;
@@ -119,7 +157,6 @@ export const requestHealthPermissions = async (permissionsToRequest) => {
   } catch (error) {
     addLog(`[HealthKitService] Failed to request permissions: ${error.message}`, 'error', 'ERROR');
     console.error('[HealthKitService] Permission request error', error);
-    // Add a user-facing alert for unexpected errors
     Alert.alert(
       'Permission Error',
       `An unexpected error occurred while trying to request Health permissions: ${error.message}`
@@ -161,7 +198,6 @@ export const getSyncStartDate = (duration) => {
 
 // Read health records from HealthKit
 export const readHealthRecords = async (recordType, startDate, endDate) => {
-  // If HealthKit is not available, return empty array
   if (!isHealthKitAvailable) {
     addLog(`[HealthKitService] HealthKit not available, returning empty records for ${recordType}`, 'warn', 'WARNING');
     return [];
@@ -170,14 +206,15 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
   try {
     addLog(`[HealthKitService] Reading ${recordType} records from ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-    // Handle special cases
-    if (recordType === 'SleepSession') {
-      // Sleep uses category samples instead of quantity samples
-      const samples = await queryCategorySamples('HKCategoryTypeIdentifierSleepAnalysis', {
-        from: startDate,
-        to: endDate,
-      });
+    const identifier = HEALTHKIT_TYPE_MAP[recordType];
+    if (!identifier) {
+      addLog(`[HealthKitService] Unsupported record type: ${recordType}`, 'warn', 'WARNING');
+      return [];
+    }
 
+    // Handle special cases first
+    if (recordType === 'SleepSession') {
+      const samples = await queryCategorySamples(identifier, { from: startDate, to: endDate });
       addLog(`[HealthKitService] Read ${samples.length} Sleep records`);
       return samples.map(s => ({
         startTime: s.startDate,
@@ -186,66 +223,35 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
     }
 
     if (recordType === 'BloodPressure') {
-      // Blood pressure requires reading both systolic and diastolic
-      const systolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureSystolic', {
-        from: startDate,
-        to: endDate,
-      });
+      const systolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureSystolic', { from: startDate, to: endDate });
+      const diastolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureDiastolic', { from: startDate, to: endDate });
 
-      const diastolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureDiastolic', {
-        from: startDate,
-        to: endDate,
-      });
-
-      // Combine systolic and diastolic readings by matching timestamps
       const bpMap = new Map();
-
-      systolicSamples.forEach(s => {
-        const key = s.startDate;
-        bpMap.set(key, {
-          systolic: s.quantity,
-          time: s.startDate
-        });
-      });
-
+      systolicSamples.forEach(s => bpMap.set(s.startDate, { systolic: s.quantity, time: s.startDate }));
       diastolicSamples.forEach(s => {
-        const key = s.startDate;
-        const existing = bpMap.get(key);
-        if (existing) {
-          existing.diastolic = s.quantity;
-        } else {
-          bpMap.set(key, {
-            diastolic: s.quantity,
-            time: s.startDate
-          });
-        }
+        const existing = bpMap.get(s.startDate);
+        if (existing) existing.diastolic = s.quantity;
       });
 
       const results = Array.from(bpMap.values())
-        .filter(r => r.systolic && r.diastolic)
+        .filter(r => r.systolic && r.diastolic) // Ensure both values exist
         .map(r => ({
           systolic: { inMillimetersOfMercury: r.systolic },
           diastolic: { inMillimetersOfMercury: r.diastolic },
           time: r.time,
         }));
-
-      addLog(`[HealthKitService] Read ${results.length} BloodPressure records`);
+      
+      addLog(`[HealthKitService] Read and combined ${results.length} BloodPressure records`);
       return results;
     }
 
-    // Handle all other quantity types
-    addLog(`[HealthKitService] Reading ${recordType} records from ${startDate.toISOString()} to ${endDate.toISOString()}`);
-    const quantityType = HEALTHKIT_TYPE_MAP[recordType];
-    if (!quantityType) {
-      addLog(`[HealthKitService] Unsupported record type: ${recordType}`, 'warn', 'WARNING');
+    // Handle all other standard quantity types
+    if (!SUPPORTED_HK_TYPES.has(identifier)) {
+      addLog(`[HealthKitService] Unsupported quantity record type: ${recordType}`, 'warn', 'WARNING');
       return [];
     }
-
-    const samples = await queryQuantitySamples(quantityType, {
-      from: startDate,
-      to: endDate,
-    });
-
+    
+    const samples = await queryQuantitySamples(identifier, { from: startDate, to: endDate });
     addLog(`[HealthKitService] Read ${samples.length} ${recordType} records, applying manual filter for iOS.`);
 
     // Manual filtering for iOS as a workaround for potential library issues
@@ -253,116 +259,35 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
       const recordDate = new Date(record.startDate || record.time);
       return recordDate >= startDate && recordDate <= endDate;
     });
-
     addLog(`[HealthKitService] Found ${filteredSamples.length} ${recordType} records after manual filtering for iOS.`);
 
     // Transform samples to match expected format
     return filteredSamples.map(s => {
+      const baseRecord = {
+        startTime: s.startDate,
+        endTime: s.endDate,
+        time: s.startDate,
+        value: s.quantity,
+      };
       switch (recordType) {
-        case 'Steps':
-          return {
-            value: s.quantity,
-            startTime: s.startDate,
-            endTime: s.endDate,
-          };
-
+        case 'Steps': return { ...baseRecord };
         case 'ActiveCaloriesBurned':
-        case 'TotalCaloriesBurned':
-          return {
-            energy: { inCalories: s.quantity },
-            startTime: s.startDate,
-            endTime: s.endDate,
-          };
-
-        case 'HeartRate':
-          return {
-            samples: [{ beatsPerMinute: s.quantity }],
-            startTime: s.startDate,
-          };
-
-        case 'Weight':
-          return {
-            weight: { inKilograms: s.quantity },
-            time: s.startDate,
-          };
-
-        case 'Height':
-          return {
-            height: { inMeters: s.quantity },
-            time: s.startDate,
-          };
-
-        case 'BodyFat':
-          return {
-            percentage: { inPercent: s.quantity * 100 }, // HealthKit returns as decimal
-            time: s.startDate,
-          };
-
-        case 'BodyTemperature':
-          return {
-            temperature: { inCelsius: s.quantity },
-            time: s.startDate,
-          };
-
-        case 'BloodGlucose':
-          return {
-            level: { inMillimolesPerLiter: s.quantity },
-            time: s.startDate,
-          };
-
-        case 'OxygenSaturation':
-          return {
-            percentage: { inPercent: s.quantity * 100 }, // HealthKit returns as decimal
-            time: s.startDate,
-          };
-
-        case 'Vo2Max':
-          return {
-            vo2Max: s.quantity,
-            time: s.startDate,
-          };
-
-        case 'RestingHeartRate':
-          return {
-            beatsPerMinute: s.quantity,
-            time: s.startDate,
-          };
-
-        case 'RespiratoryRate':
-          return {
-            rate: s.quantity,
-            time: s.startDate,
-          };
-
-        case 'Distance':
-          return {
-            distance: { inMeters: s.quantity },
-            startTime: s.startDate,
-          };
-
-        case 'FloorsClimbed':
-          return {
-            floors: s.quantity,
-            startTime: s.startDate,
-          };
-
-        case 'Hydration':
-          return {
-            volume: { inLiters: s.quantity },
-            startTime: s.startDate,
-          };
-
-        case 'LeanBodyMass':
-          return {
-            mass: { inKilograms: s.quantity },
-            time: s.startDate,
-          };
-
-        default:
-          return {
-            value: s.quantity,
-            time: s.startDate,
-          };
+        case 'TotalCaloriesBurned': return { ...baseRecord, energy: { inCalories: s.quantity } };
+        case 'HeartRate': return { ...baseRecord, samples: [{ beatsPerMinute: s.quantity }] };
+        case 'Weight': return { ...baseRecord, weight: { inKilograms: s.quantity } };
+        case 'Height': return { ...baseRecord, height: { inMeters: s.quantity } };
+        case 'BodyFat': return { ...baseRecord, percentage: { inPercent: s.quantity * 100 } };
+        case 'BodyTemperature': return { ...baseRecord, temperature: { inCelsius: s.quantity } };
+        case 'BloodGlucose': return { ...baseRecord, level: { inMillimolesPerLiter: s.quantity } };
+        case 'OxygenSaturation': return { ...baseRecord, percentage: { inPercent: s.quantity * 100 } };
+        case 'Vo2Max': return { ...baseRecord, vo2Max: s.quantity };
+        case 'RestingHeartRate': return { ...baseRecord, beatsPerMinute: s.quantity };
+        case 'RespiratoryRate': return { ...baseRecord, rate: s.quantity };
+        case 'Distance': return { ...baseRecord, distance: { inMeters: s.quantity } };
+        case 'FloorsClimbed': return { ...baseRecord, floors: s.quantity };
+        case 'Hydration': return { ...baseRecord, volume: { inLiters: s.quantity } };
+        case 'LeanBodyMass': return { ...baseRecord, mass: { inKilograms: s.quantity } };
+        default: return baseRecord;
       }
     });
   } catch (error) {
@@ -371,173 +296,72 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
   }
 };
 
-// Aggregation functions (reuse from healthConnectService)
+// Aggregation functions
 export const aggregateStepsByDate = (records) => {
-  if (!Array.isArray(records)) {
-    addLog(`[HealthKitService] aggregateStepsByDate received non-array records`, 'warn', 'WARNING');
-    return [];
-  }
-
+  if (!Array.isArray(records)) return [];
   const aggregatedData = records.reduce((acc, record) => {
     try {
-      const timeToUse = record.endTime || record.startTime;
-      if (timeToUse) {
-        const date = new Date(timeToUse).toISOString().split('T')[0];
-        const steps = record.value;
-
-        if (!acc[date]) {
-          acc[date] = 0;
-        }
-        acc[date] += steps;
-      }
-    } catch (error) {
-      addLog(`[HealthKitService] Error processing step record: ${error.message}`, 'warn', 'WARNING');
-    }
-
+      const date = new Date(record.endTime || record.startTime).toISOString().split('T')[0];
+      if (!acc[date]) acc[date] = 0;
+      acc[date] += record.value;
+    } catch (e) { addLog(`[HealthKitService] Error processing step record: ${e.message}`, 'warn', 'WARNING'); }
     return acc;
   }, {});
 
-  const result = Object.keys(aggregatedData).map(date => ({
-    date,
-    value: aggregatedData[date],
-    type: 'step',
-  }));
-
+  const result = Object.keys(aggregatedData).map(date => ({ date, value: aggregatedData[date], type: 'step' }));
   addLog(`[HealthKitService] Aggregated step data into ${result.length} daily entries`);
   return result;
 };
 
 export const aggregateHeartRateByDate = (records) => {
-  if (!Array.isArray(records)) {
-    addLog(`[HealthKitService] aggregateHeartRateByDate received non-array records`, 'warn', 'WARNING');
-    return [];
-  }
-
+  if (!Array.isArray(records)) return [];
   const aggregatedData = records.reduce((acc, record) => {
     try {
-      if (record.startTime) {
-        const date = new Date(record.startTime).toISOString().split('T')[0];
-        const heartRate = record.samples[0].beatsPerMinute;
-
-        if (!acc[date]) {
-          acc[date] = { total: 0, count: 0 };
-        }
-        acc[date].total += heartRate;
-        acc[date].count++;
-      }
-    } catch (error) {
-      addLog(`[HealthKitService] Error processing heart rate record: ${error.message}`, 'warn', 'WARNING');
-    }
-
+      const date = new Date(record.startTime).toISOString().split('T')[0];
+      const heartRate = record.samples[0].beatsPerMinute;
+      if (!acc[date]) acc[date] = { total: 0, count: 0 };
+      acc[date].total += heartRate;
+      acc[date].count++;
+    } catch (e) { addLog(`[HealthKitService] Error processing heart rate record: ${e.message}`, 'warn', 'WARNING'); }
     return acc;
   }, {});
 
-  const result = Object.keys(aggregatedData).map(date => ({
-    date,
-    value: aggregatedData[date].count > 0 ? Math.round(aggregatedData[date].total / aggregatedData[date].count) : 0,
-    type: 'heart_rate',
-  }));
-
+  const result = Object.keys(aggregatedData).map(date => ({ date, value: Math.round(aggregatedData[date].total / aggregatedData[date].count), type: 'heart_rate' }));
   addLog(`[HealthKitService] Aggregated heart rate data into ${result.length} daily entries`);
   return result;
 };
 
+const aggregateCaloriesByDate = (records, type) => {
+  if (!Array.isArray(records)) return [];
+  const aggregatedData = records.reduce((acc, record) => {
+    try {
+      const timeToUse = record.startTime || record.endTime;
+      if (timeToUse && record.energy?.inCalories) {
+        const date = new Date(timeToUse).toISOString().split('T')[0];
+        if (!acc[date]) acc[date] = 0;
+        acc[date] += record.energy.inCalories;
+      }
+    } catch (e) { addLog(`[HealthKitService] Error processing ${type} record: ${e.message}`, 'warn', 'WARNING'); }
+    return acc;
+  }, {});
+
+  const result = Object.keys(aggregatedData).map(date => ({ date, value: aggregatedData[date], type }));
+  addLog(`[HealthKitService] Aggregated ${type} data into ${result.length} daily entries`);
+  return result;
+};
+
 export const aggregateActiveCaloriesByDate = (records) => {
-  if (!Array.isArray(records)) {
-    addLog(`[HealthKitService] aggregateActiveCaloriesByDate received non-array records`, 'warn', 'WARNING');
-    return [];
-  }
-
-  const aggregatedData = records.reduce((acc, record) => {
-    try {
-      const timeToUse = record.startTime || record.endTime;
-      if (timeToUse && record.energy && typeof record.energy.inCalories === 'number') {
-        const date = new Date(timeToUse).toISOString().split('T')[0];
-        const calories = record.energy.inCalories;
-
-        if (!acc[date]) {
-          acc[date] = 0;
-        }
-        acc[date] += calories;
-      }
-    } catch (error) {
-      addLog(`[HealthKitService] Error processing active calories record: ${error.message}`, 'warn', 'WARNING');
-    }
-
-    return acc;
-  }, {});
-
-  const result = Object.keys(aggregatedData).map(date => ({
-    date,
-    value: aggregatedData[date],
-    type: 'Active Calories',
-  }));
-
-  addLog(`[HealthKitService] Aggregated active calories data into ${result.length} daily entries`);
-  return result;
+  return aggregateCaloriesByDate(records, 'Active Calories');
 };
 
-export const aggregateTotalCaloriesByDate = async (records) => {
-  if (!Array.isArray(records)) {
-    addLog(`[HealthKitService] aggregateTotalCaloriesByDate received non-array records`, 'warn', 'WARNING');
-    return [];
-  }
-
-  const bmrValue = 1691; // Default fallback
-
-  const aggregatedData = records.reduce((acc, record) => {
-    try {
-      const timeToUse = record.startTime || record.endTime;
-      if (timeToUse && record.energy && typeof record.energy.inCalories === 'number') {
-        const date = new Date(timeToUse).toISOString().split('T')[0];
-        const calories = record.energy.inCalories;
-
-        if (!acc[date]) {
-          acc[date] = 0;
-        }
-        acc[date] += calories;
-      }
-    } catch (error) {
-      addLog(`[HealthKitService] Error processing total calories record: ${error.message}`, 'warn', 'WARNING');
-    }
-
-    return acc;
-  }, {});
-
-  const sedentaryTDEE = bmrValue * 1.2;
-  const result = [];
-
-  Object.keys(aggregatedData).forEach(date => {
-    const exerciseCalories = aggregatedData[date];
-
-    result.push({
-      date,
-      value: exerciseCalories,
-      type: 'Active Calories',
-    });
-
-    result.push({
-      date,
-      value: exerciseCalories + sedentaryTDEE,
-      type: 'total_calories',
-    });
-  });
-
-  addLog(`[HealthKitService] Aggregated total calories data into ${result.length} entries`);
-  return result;
+export const aggregateTotalCaloriesByDate = (records) => {
+  // This now correctly aggregates BasalEnergyBurned records
+  return aggregateCaloriesByDate(records, 'total_calories');
 };
 
-// Transform function (reuse from healthConnectService)
+// Transform function
 export const transformHealthRecords = (records, metricConfig) => {
-  if (!Array.isArray(records)) {
-    addLog(`[HealthKitService] transformHealthRecords received non-array records`, 'warn', 'WARNING');
-    return [];
-  }
-
-  if (records.length === 0) {
-    addLog(`[HealthKitService] No records to transform for ${metricConfig.recordType}`);
-    return [];
-  }
+  if (!Array.isArray(records) || records.length === 0) return [];
 
   const transformedData = [];
   const { recordType, unit, type } = metricConfig;
@@ -552,167 +376,93 @@ export const transformHealthRecords = (records, metricConfig) => {
     }
   };
 
-  records.forEach((record, index) => {
+  records.forEach((record) => {
     try {
       let value = null;
       let recordDate = null;
       let outputType = type;
 
-      if (['Steps', 'HeartRate', 'ActiveCaloriesBurned', 'TotalCaloriesBurned'].includes(recordType)) {
-        if (record.value !== undefined && record.date) {
-          value = record.value;
-          recordDate = record.date;
-          if (record.type) {
-            outputType = record.type;
-          }
-        }
-      } else {
+      // Handle aggregated records first
+      if (record.date && record.value !== undefined) {
+        value = record.value;
+        recordDate = record.date;
+        outputType = record.type || outputType;
+      }
+      // Handle non-aggregated (raw) records
+      else {
         switch (recordType) {
           case 'Weight':
-            if (record.time && record.weight?.inKilograms) {
-              value = record.weight.inKilograms;
-              recordDate = getDateString(record.time);
-            }
+            value = record.weight?.inKilograms;
+            recordDate = getDateString(record.time);
             break;
-
           case 'BloodPressure':
             if (record.time) {
               const date = getDateString(record.time);
-              if (record.systolic?.inMillimetersOfMercury) {
-                transformedData.push({
-                  value: parseFloat(record.systolic.inMillimetersOfMercury.toFixed(2)),
-                  unit: unit,
-                  date: date,
-                  type: `${type}_systolic`,
-                });
-              }
-              if (record.diastolic?.inMillimetersOfMercury) {
-                transformedData.push({
-                  value: parseFloat(record.diastolic.inMillimetersOfMercury.toFixed(2)),
-                  unit: unit,
-                  date: date,
-                  type: `${type}_diastolic`,
-                });
-              }
+              if (record.systolic?.inMillimetersOfMercury) transformedData.push({ value: parseFloat(record.systolic.inMillimetersOfMercury.toFixed(2)), unit, date, type: `${type}_systolic` });
+              if (record.diastolic?.inMillimetersOfMercury) transformedData.push({ value: parseFloat(record.diastolic.inMillimetersOfMercury.toFixed(2)), unit, date, type: `${type}_diastolic` });
             }
-            return;
-
+            return; // Skip main push
           case 'SleepSession':
-            if (record.startTime && record.endTime) {
-              const start = new Date(record.startTime).getTime();
-              const end = new Date(record.endTime).getTime();
-              if (!isNaN(start) && !isNaN(end)) {
-                value = (end - start) / (1000 * 60);
-                recordDate = getDateString(record.startTime);
-              }
+            const start = new Date(record.startTime).getTime();
+            const end = new Date(record.endTime).getTime();
+            if (!isNaN(start) && !isNaN(end)) {
+              value = (end - start) / (1000 * 60); // in minutes
+              recordDate = getDateString(record.startTime);
             }
             break;
-
           case 'BodyFat':
-            if (record.percentage?.inPercent !== undefined) {
-              value = record.percentage.inPercent;
-              recordDate = getDateString(record.time);
-            }
-            break;
-
-          case 'BodyTemperature':
-            if (record.time && record.temperature?.inCelsius) {
-              value = record.temperature.inCelsius;
-              recordDate = getDateString(record.time);
-            }
-            break;
-
-          case 'BloodGlucose':
-            if (record.level?.inMillimolesPerLiter) {
-              value = record.level.inMillimolesPerLiter;
-              recordDate = getDateString(record.time);
-            }
-            break;
-
-          case 'Height':
-            if (record.time && record.height?.inMeters) {
-              value = record.height.inMeters;
-              recordDate = getDateString(record.time);
-            }
-            break;
-
           case 'OxygenSaturation':
-            if (record.percentage?.inPercent !== undefined) {
-              value = record.percentage.inPercent;
-              recordDate = getDateString(record.time);
-            }
+            value = record.percentage?.inPercent;
+            recordDate = getDateString(record.time);
             break;
-
+          case 'BodyTemperature':
+            value = record.temperature?.inCelsius;
+            recordDate = getDateString(record.time);
+            break;
+          case 'BloodGlucose':
+            value = record.level?.inMillimolesPerLiter;
+            recordDate = getDateString(record.time);
+            break;
+          case 'Height':
+            value = record.height?.inMeters;
+            recordDate = getDateString(record.time);
+            break;
           case 'Vo2Max':
-            if (record.vo2Max !== undefined) {
-              value = record.vo2Max;
-              recordDate = getDateString(record.time);
-            }
+            value = record.vo2Max;
+            recordDate = getDateString(record.time);
             break;
-
           case 'RestingHeartRate':
-            if (record.beatsPerMinute !== undefined) {
-              value = record.beatsPerMinute;
-              recordDate = getDateString(record.time);
-            }
+            value = record.beatsPerMinute;
+            recordDate = getDateString(record.time);
             break;
-
           case 'RespiratoryRate':
-            if (record.rate !== undefined) {
-              value = record.rate;
-              recordDate = getDateString(record.time);
-            }
+            value = record.rate;
+            recordDate = getDateString(record.time);
             break;
-
           case 'Distance':
-            if (record.startTime && record.distance?.inMeters) {
-              value = record.distance.inMeters;
-              recordDate = getDateString(record.startTime);
-            }
+            value = record.distance?.inMeters;
+            recordDate = getDateString(record.startTime);
             break;
-
           case 'FloorsClimbed':
-            if (record.startTime && typeof record.floors === 'number') {
-              value = record.floors;
-              recordDate = getDateString(record.startTime);
-            }
+            value = record.floors;
+            recordDate = getDateString(record.startTime);
             break;
-
           case 'Hydration':
-            if (record.startTime && record.volume?.inLiters) {
-              value = record.volume.inLiters;
-              recordDate = getDateString(record.startTime);
-            }
+            value = record.volume?.inLiters;
+            recordDate = getDateString(record.startTime);
             break;
-
           case 'LeanBodyMass':
-            if (record.mass?.inKilograms) {
-              value = record.mass.inKilograms;
-              recordDate = getDateString(record.time);
-            }
+            value = record.mass?.inKilograms;
+            recordDate = getDateString(record.time);
             break;
-
-          case 'ExerciseSession':
-            if (record.startTime && record.endTime) {
-              const start = new Date(record.startTime).getTime();
-              const end = new Date(record.endTime).getTime();
-              if (!isNaN(start) && !isNaN(end)) {
-                value = (end - start) / (1000 * 60);
-                recordDate = getDateString(record.startTime);
-              }
-            }
-            break;
-
-          case 'BasalMetabolicRate':
-            if (record.basalMetabolicRate?.inKilocaloriesPerDay !== undefined) {
-              value = record.basalMetabolicRate.inKilocaloriesPerDay;
-              recordDate = getDateString(record.time);
-            }
-            break;
-
           default:
-            addLog(`[HealthKitService] Unhandled record type: ${recordType}`, 'warn', 'WARNING');
-            return;
+            // For simple value records from aggregation
+            if (record.value !== undefined && record.date) {
+              value = record.value;
+              recordDate = record.date;
+              outputType = record.type || outputType;
+            }
+            break;
         }
       }
 
@@ -729,9 +479,10 @@ export const transformHealthRecords = (records, metricConfig) => {
     }
   });
 
-  addLog(`[HealthKitService] Successfully transformed ${transformedData.length} records`);
+  addLog(`[HealthKitService] Successfully transformed ${transformedData.length} records for ${recordType}`);
   return transformedData;
 };
+
 
 // Storage functions
 export const saveHealthPreference = async (key, value) => {
@@ -790,10 +541,7 @@ export const saveSyncDuration = async (value) => {
 export const loadSyncDuration = async () => {
   try {
     const value = await AsyncStorage.getItem(SYNC_DURATION_KEY);
-    if (value !== null) {
-      return value;
-    }
-    return '24h';
+    return value ?? '24h';
   } catch (error) {
     addLog(`[HealthKitService] Failed to load sync duration: ${error.message}`, 'error', 'ERROR');
     return '24h';
@@ -821,7 +569,7 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
       addLog(`[HealthKitService] Reading ${type} records...`);
       const rawRecords = await readHealthRecords(type, startDate, endDate);
 
-      if (rawRecords.length === 0) {
+      if (!rawRecords || rawRecords.length === 0) {
         addLog(`[HealthKitService] No ${type} records found`);
         continue;
       }
@@ -834,6 +582,7 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
 
       let dataToTransform = rawRecords;
 
+      // Aggregate data where necessary
       if (type === 'Steps') {
         dataToTransform = aggregateStepsByDate(rawRecords);
       } else if (type === 'HeartRate') {
@@ -841,7 +590,7 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
       } else if (type === 'ActiveCaloriesBurned') {
         dataToTransform = aggregateActiveCaloriesByDate(rawRecords);
       } else if (type === 'TotalCaloriesBurned') {
-        dataToTransform = await aggregateTotalCaloriesByDate(rawRecords);
+        dataToTransform = aggregateTotalCaloriesByDate(rawRecords);
       }
 
       const transformed = transformHealthRecords(dataToTransform, metricConfig);
@@ -857,24 +606,24 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
     }
   }
 
-  addLog(`[HealthKitService] Total transformed data entries: ${allTransformedData.length}`);
+  addLog(`[HealthKitService] Total transformed data entries to sync: ${allTransformedData.length}`);
 
   if (allTransformedData.length > 0) {
     try {
       const apiResponse = await api.syncHealthData(allTransformedData);
-      addLog(`[HealthKitService] Server sync response: ${JSON.stringify(apiResponse)}`);
+      addLog(`[HealthKitService] Server sync finished successfully.`);
       return { success: true, apiResponse, syncErrors };
     } catch (error) {
-      addLog(`[HealthKitService] Error sending data to server: ${error.message}`);
+      addLog(`[HealthKitService] Error sending data to server: ${error.message}`, 'error', 'ERROR');
       return { success: false, error: error.message, syncErrors };
     }
   } else {
-    addLog(`[HealthKitService] No health data to sync.`);
-    return { success: true, message: "No health data to sync.", syncErrors };
+    addLog(`[HealthKitService] No new health data to sync.`);
+    return { success: true, message: "No new health data to sync.", syncErrors };
   }
 };
 
-// Convenience functions for background sync compatibility with Android
+// Convenience functions for background sync
 export const readStepRecords = async (startDate, endDate) => readHealthRecords('Steps', startDate, endDate);
 export const readActiveCaloriesRecords = async (startDate, endDate) => readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
 export const readHeartRateRecords = async (startDate, endDate) => readHealthRecords('HeartRate', startDate, endDate);
