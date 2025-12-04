@@ -120,11 +120,11 @@ const MainScreen = ({ navigation }) => {
   useEffect(() => {
     // Only re-fetch when healthMetricStates change, as selectedTimeRange is handled in initialize and onValueChange
     fetchHealthData(healthMetricStates, selectedTimeRange);
-  }, [healthMetricStates, selectedTimeRange]); // Keep selectedTimeRange here to trigger re-fetch when user changes it
+  }, [healthMetricStates]); // Keep selectedTimeRange here to trigger re-fetch when user changes it
 
   useEffect(() => {
     const interval = setInterval(async () => {
-      const connectionStatus = await checkServerConnection();
+      const connectionStatus = await api.checkServerConnection();
       setIsConnected(connectionStatus);
     }, 5000); // Check every 5 seconds
 
@@ -137,32 +137,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
   const endDate = new Date();
   endDate.setHours(23, 59, 59, 999);
 
-  let startDate = new Date(endDate);
-
-  switch (timeRange) {
-    case '24h':
-      startDate.setHours(endDate.getHours() - 24, endDate.getMinutes(), endDate.getSeconds(), endDate.getMilliseconds());
-      break;
-    case '3d': // Added '3d' case
-      startDate.setDate(endDate.getDate() - 3);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    case '7d':
-      startDate.setDate(endDate.getDate() - 7);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    case '30d':
-      startDate.setDate(endDate.getDate() - 30);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    case '90d':
-      startDate.setDate(endDate.getDate() - 90);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    default:
-      startDate.setHours(0, 0, 0, 0);
-      break;
-  }
+  const startDate = getSyncStartDate(timeRange);
 
   const newHealthData = {};
 
@@ -678,7 +653,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
   setHealthData(newHealthData);
 
   // Re-check server connection status after fetching health data
-  const connectionStatus = await checkServerConnection();
+  const connectionStatus = await api.checkServerConnection();
   setIsConnected(connectionStatus);
   console.log(`[MainScreen] Displaying Health Connect data:`, newHealthData);
 };
@@ -794,6 +769,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
               <Picker
                 selectedValue={selectedTimeRange}
                 style={styles.picker}
+                itemStyle={styles.pickerItem}
                 onValueChange={async (itemValue) => {
                   setSelectedTimeRange(itemValue);
                   await saveTimeRange(itemValue); // Save selectedTimeRange using the new function
@@ -824,7 +800,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
 
         {/* Health Overview */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Health Overview</Text>
+          <Text style={styles.sectionTitle}>Health Overview ({timeRangeOptions.find(o => o.value === selectedTimeRange)?.label || '...'})</Text>
           <View style={styles.healthMetricsContainer}>
             {HEALTH_METRICS.map(metric => healthMetricStates[metric.stateKey] && (
               <View style={styles.metricItem} key={metric.id}>
@@ -927,7 +903,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 60, // Explicit height
     width: '100%', // Explicit width
-    zIndex: 10, // Added zIndex to bring picker to front
+    // zIndex: 10, // Added zIndex to bring picker to front - REMOVED FOR IOS COMPATIBILITY
     // Optional: add a background color to debug its size and position
     // backgroundColor: 'lightblue', 
     justifyContent: 'center', // Center the picker content vertically

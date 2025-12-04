@@ -138,21 +138,24 @@ export const getSyncStartDate = (duration) => {
       break;
     case '3d':
       startDate.setDate(now.getDate() - 3);
+      startDate.setHours(0, 0, 0, 0);
       break;
     case '7d':
       startDate.setDate(now.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
       break;
     case '30d':
       startDate.setDate(now.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
       break;
     case '90d':
       startDate.setDate(now.getDate() - 90);
+      startDate.setHours(0, 0, 0, 0);
       break;
     default:
       startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;
   }
-  startDate.setHours(0, 0, 0, 0);
   return startDate;
 };
 
@@ -231,6 +234,7 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
     }
 
     // Handle all other quantity types
+    addLog(`[HealthKitService] Reading ${recordType} records from ${startDate.toISOString()} to ${endDate.toISOString()}`);
     const quantityType = HEALTHKIT_TYPE_MAP[recordType];
     if (!quantityType) {
       addLog(`[HealthKitService] Unsupported record type: ${recordType}`, 'warn', 'WARNING');
@@ -242,10 +246,18 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
       to: endDate,
     });
 
-    addLog(`[HealthKitService] Read ${samples.length} ${recordType} records`);
+    addLog(`[HealthKitService] Read ${samples.length} ${recordType} records, applying manual filter for iOS.`);
+
+    // Manual filtering for iOS as a workaround for potential library issues
+    const filteredSamples = samples.filter(record => {
+      const recordDate = new Date(record.startDate || record.time);
+      return recordDate >= startDate && recordDate <= endDate;
+    });
+
+    addLog(`[HealthKitService] Found ${filteredSamples.length} ${recordType} records after manual filtering for iOS.`);
 
     // Transform samples to match expected format
-    return samples.map(s => {
+    return filteredSamples.map(s => {
       switch (recordType) {
         case 'Steps':
           return {
@@ -369,13 +381,15 @@ export const aggregateStepsByDate = (records) => {
   const aggregatedData = records.reduce((acc, record) => {
     try {
       const timeToUse = record.endTime || record.startTime;
-      const date = timeToUse.split('T')[0];
-      const steps = record.value;
+      if (timeToUse) {
+        const date = new Date(timeToUse).toISOString().split('T')[0];
+        const steps = record.value;
 
-      if (!acc[date]) {
-        acc[date] = 0;
+        if (!acc[date]) {
+          acc[date] = 0;
+        }
+        acc[date] += steps;
       }
-      acc[date] += steps;
     } catch (error) {
       addLog(`[HealthKitService] Error processing step record: ${error.message}`, 'warn', 'WARNING');
     }
@@ -401,14 +415,16 @@ export const aggregateHeartRateByDate = (records) => {
 
   const aggregatedData = records.reduce((acc, record) => {
     try {
-      const date = record.startTime.split('T')[0];
-      const heartRate = record.samples[0].beatsPerMinute;
+      if (record.startTime) {
+        const date = new Date(record.startTime).toISOString().split('T')[0];
+        const heartRate = record.samples[0].beatsPerMinute;
 
-      if (!acc[date]) {
-        acc[date] = { total: 0, count: 0 };
+        if (!acc[date]) {
+          acc[date] = { total: 0, count: 0 };
+        }
+        acc[date].total += heartRate;
+        acc[date].count++;
       }
-      acc[date].total += heartRate;
-      acc[date].count++;
     } catch (error) {
       addLog(`[HealthKitService] Error processing heart rate record: ${error.message}`, 'warn', 'WARNING');
     }
@@ -434,13 +450,16 @@ export const aggregateActiveCaloriesByDate = (records) => {
 
   const aggregatedData = records.reduce((acc, record) => {
     try {
-      const date = record.startTime.split('T')[0];
-      const calories = record.energy.inCalories;
+      const timeToUse = record.startTime || record.endTime;
+      if (timeToUse && record.energy && typeof record.energy.inCalories === 'number') {
+        const date = new Date(timeToUse).toISOString().split('T')[0];
+        const calories = record.energy.inCalories;
 
-      if (!acc[date]) {
-        acc[date] = 0;
+        if (!acc[date]) {
+          acc[date] = 0;
+        }
+        acc[date] += calories;
       }
-      acc[date] += calories;
     } catch (error) {
       addLog(`[HealthKitService] Error processing active calories record: ${error.message}`, 'warn', 'WARNING');
     }
