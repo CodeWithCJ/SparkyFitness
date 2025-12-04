@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
     height: 50,
     width: '100%',
     color: '#333', // Ensure text is visible
+    zIndex: 10, // Ensure picker renders above other elements
   },
   pickerItem: {
     color: '#333', // Ensure text is visible for individual items
