@@ -126,7 +126,7 @@ const MainScreen = ({ navigation }) => {
     const interval = setInterval(async () => {
       const connectionStatus = await api.checkServerConnection();
       setIsConnected(connectionStatus);
-    }, 5000); // Check every 5 seconds
+    }, 60000); // Check every 60 seconds
 
     return () => clearInterval(interval); // Clear interval on component unmount
   }, []);

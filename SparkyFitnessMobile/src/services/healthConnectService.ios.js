@@ -487,13 +487,16 @@ export const aggregateTotalCaloriesByDate = async (records) => {
 
   const aggregatedData = records.reduce((acc, record) => {
     try {
-      const date = record.startTime.split('T')[0];
-      const caloriesValue = record.energy.inCalories;
+      const timeToUse = record.startTime || record.endTime;
+      if (timeToUse && record.energy && typeof record.energy.inCalories === 'number') {
+        const date = new Date(timeToUse).toISOString().split('T')[0];
+        const calories = record.energy.inCalories;
 
-      if (!acc[date]) {
-        acc[date] = 0;
+        if (!acc[date]) {
+          acc[date] = 0;
+        }
+        acc[date] += calories;
       }
-      acc[date] += caloriesValue;
     } catch (error) {
       addLog(`[HealthKitService] Error processing total calories record: ${error.message}`, 'warn', 'WARNING');
     }
@@ -539,6 +542,16 @@ export const transformHealthRecords = (records, metricConfig) => {
   const transformedData = [];
   const { recordType, unit, type } = metricConfig;
 
+  const getDateString = (date) => {
+    if (!date) return null;
+    try {
+      return new Date(date).toISOString().split('T')[0];
+    } catch (e) {
+      addLog(`[HealthKitService] Could not convert date: ${date}`, 'warn', 'WARNING');
+      return null;
+    }
+  };
+
   records.forEach((record, index) => {
     try {
       let value = null;
@@ -558,13 +571,13 @@ export const transformHealthRecords = (records, metricConfig) => {
           case 'Weight':
             if (record.time && record.weight?.inKilograms) {
               value = record.weight.inKilograms;
-              recordDate = record.time.split('T')[0];
+              recordDate = getDateString(record.time);
             }
             break;
 
           case 'BloodPressure':
             if (record.time) {
-              const date = record.time.split('T')[0];
+              const date = getDateString(record.time);
               if (record.systolic?.inMillimetersOfMercury) {
                 transformedData.push({
                   value: parseFloat(record.systolic.inMillimetersOfMercury.toFixed(2)),
@@ -590,7 +603,7 @@ export const transformHealthRecords = (records, metricConfig) => {
               const end = new Date(record.endTime).getTime();
               if (!isNaN(start) && !isNaN(end)) {
                 value = (end - start) / (1000 * 60);
-                recordDate = record.startTime.split('T')[0];
+                recordDate = getDateString(record.startTime);
               }
             }
             break;
@@ -598,84 +611,84 @@ export const transformHealthRecords = (records, metricConfig) => {
           case 'BodyFat':
             if (record.percentage?.inPercent !== undefined) {
               value = record.percentage.inPercent;
-              recordDate = record.time?.split('T')[0];
+              recordDate = getDateString(record.time);
             }
             break;
 
           case 'BodyTemperature':
             if (record.time && record.temperature?.inCelsius) {
               value = record.temperature.inCelsius;
-              recordDate = record.time.split('T')[0];
+              recordDate = getDateString(record.time);
             }
             break;
 
           case 'BloodGlucose':
             if (record.level?.inMillimolesPerLiter) {
               value = record.level.inMillimolesPerLiter;
-              recordDate = record.time?.split('T')[0];
+              recordDate = getDateString(record.time);
             }
             break;
 
           case 'Height':
             if (record.time && record.height?.inMeters) {
               value = record.height.inMeters;
-              recordDate = record.time.split('T')[0];
+              recordDate = getDateString(record.time);
             }
             break;
 
           case 'OxygenSaturation':
             if (record.percentage?.inPercent !== undefined) {
               value = record.percentage.inPercent;
-              recordDate = record.time?.split('T')[0];
+              recordDate = getDateString(record.time);
             }
             break;
 
           case 'Vo2Max':
             if (record.vo2Max !== undefined) {
               value = record.vo2Max;
-              recordDate = record.time?.split('T')[0];
+              recordDate = getDateString(record.time);
             }
             break;
 
           case 'RestingHeartRate':
             if (record.beatsPerMinute !== undefined) {
               value = record.beatsPerMinute;
-              recordDate = record.time?.split('T')[0];
+              recordDate = getDateString(record.time);
             }
             break;
 
           case 'RespiratoryRate':
             if (record.rate !== undefined) {
               value = record.rate;
-              recordDate = record.time?.split('T')[0];
+              recordDate = getDateString(record.time);
             }
             break;
 
           case 'Distance':
             if (record.startTime && record.distance?.inMeters) {
               value = record.distance.inMeters;
-              recordDate = record.startTime.split('T')[0];
+              recordDate = getDateString(record.startTime);
             }
             break;
 
           case 'FloorsClimbed':
             if (record.startTime && typeof record.floors === 'number') {
               value = record.floors;
-              recordDate = record.startTime.split('T')[0];
+              recordDate = getDateString(record.startTime);
             }
             break;
 
           case 'Hydration':
             if (record.startTime && record.volume?.inLiters) {
               value = record.volume.inLiters;
-              recordDate = record.startTime.split('T')[0];
+              recordDate = getDateString(record.startTime);
             }
             break;
 
           case 'LeanBodyMass':
             if (record.mass?.inKilograms) {
               value = record.mass.inKilograms;
-              recordDate = record.time?.split('T')[0];
+              recordDate = getDateString(record.time);
             }
             break;
 
@@ -685,7 +698,7 @@ export const transformHealthRecords = (records, metricConfig) => {
               const end = new Date(record.endTime).getTime();
               if (!isNaN(start) && !isNaN(end)) {
                 value = (end - start) / (1000 * 60);
-                recordDate = record.startTime.split('T')[0];
+                recordDate = getDateString(record.startTime);
               }
             }
             break;
@@ -693,7 +706,7 @@ export const transformHealthRecords = (records, metricConfig) => {
           case 'BasalMetabolicRate':
             if (record.basalMetabolicRate?.inKilocaloriesPerDay !== undefined) {
               value = record.basalMetabolicRate.inKilocaloriesPerDay;
-              recordDate = record.time?.split('T')[0];
+              recordDate = getDateString(record.time);
             }
             break;
 
