@@ -720,6 +720,11 @@ async function getFoodEntryMealsByDate(authenticatedUserId, targetUserId, select
       const componentFoodEntries = await foodRepository.getFoodEntryComponentsByFoodEntryMealId(meal.id, authenticatedUserId);
       
       let totalCalories = 0;
+      let totalSodium = 0;
+      let totalFiber = 0;
+      let totalSugars = 0;
+      let totalSaturatedFat = 0;
+      let totalCholesterol = 0;
       let totalProtein = 0;
       let totalCarbs = 0;
       let totalFat = 0;
@@ -731,6 +736,11 @@ async function getFoodEntryMealsByDate(authenticatedUserId, targetUserId, select
         totalProtein += (entry.protein * entry.quantity) / entry.serving_size;
         totalCarbs += (entry.carbs * entry.quantity) / entry.serving_size;
         totalFat += (entry.fat * entry.quantity) / entry.serving_size;
+        totalSodium += (entry.sodium * entry.quantity) / entry.serving_size;
+        totalFiber += (entry.dietary_fiber * entry.quantity) / entry.serving_size;
+        totalSugars += (entry.sugars * entry.quantity) / entry.serving_size;
+        totalSaturatedFat += (entry.saturated_fat * entry.quantity) / entry.serving_size;
+        totalCholesterol += (entry.cholesterol * entry.quantity) / entry.serving_size;
 
         if (entry.glycemic_index && entry.carbs) {
           const giValue = getGlycemicIndexValue(entry.glycemic_index);
@@ -754,6 +764,11 @@ async function getFoodEntryMealsByDate(authenticatedUserId, targetUserId, select
           protein: (entry.protein * entry.quantity) / entry.serving_size,
           carbs: (entry.carbs * entry.quantity) / entry.serving_size,
           fat: (entry.fat * entry.quantity) / entry.serving_size,
+          sodium: (entry.sodium * entry.quantity) / entry.serving_size,
+          fiber: (entry.fiber * entry.quantity) / entry.serving_size,
+          sugars: (entry.sugars * entry.quantity) / entry.serving_size,
+          saturated_fat: (entry.saturated_fat * entry.quantity) / entry.serving_size,
+          cholesterol: (entry.cholesterol * entry.quantity) / entry.serving_size,
           serving_size: entry.serving_size,
           serving_unit: entry.serving_unit,
         })),
@@ -761,6 +776,11 @@ async function getFoodEntryMealsByDate(authenticatedUserId, targetUserId, select
         protein: totalProtein,
         carbs: totalCarbs,
         fat: totalFat,
+        sodium: totalSodium,
+        fiber: totalFiber,
+        sugars: totalSugars,
+        saturated_fat: totalSaturatedFat,
+        cholesterol: totalCholesterol,
         glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
       });
     }
