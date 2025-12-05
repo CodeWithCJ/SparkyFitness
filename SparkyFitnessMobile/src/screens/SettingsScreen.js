@@ -211,45 +211,54 @@ const SettingsScreen = ({ navigation }) => {
 
   const handleToggleAllMetrics = async (newValue) => {
     setIsAllMetricsEnabled(newValue);
-    const newHealthMetricStates = { ...healthMetricStates };
-    for (const metric of HEALTH_METRICS) {
+
+    const newHealthMetricStates = {};
+    HEALTH_METRICS.forEach(metric => {
       newHealthMetricStates[metric.stateKey] = newValue;
-      await saveHealthPreference(metric.preferenceKey, newValue);
-      if (newValue) {
-        try {
-          const granted = await requestHealthPermissions(metric.permissions);
-          if (!granted) {
-            Alert.alert('Permission Denied', `Please grant ${metric.label.toLowerCase()} permission in ${healthSettingsName}.`);
-            newHealthMetricStates[metric.stateKey] = false; // Revert toggle if permission not granted
-            await saveHealthPreference(metric.preferenceKey, false);
-            addLog(`Permission Denied: ${metric.label} permission not granted.`, 'warn', 'WARNING');
-          } else {
-            addLog(`${metric.label} sync enabled and permissions granted.`, 'info', 'SUCCESS');
-          }
-        } catch (permissionError) {
-          Alert.alert('Permission Error', `Failed to request ${metric.label.toLowerCase()} permissions: ${permissionError.message}`);
-          newHealthMetricStates[metric.stateKey] = false; // Revert toggle on any permission error
-          await saveHealthPreference(metric.preferenceKey, false);
-          addLog(`Permission Request Error for ${metric.label}: ${permissionError.message}`, 'error', 'ERROR');
+    });
+
+    // If enabling, request all permissions at once
+    if (newValue) {
+      // 1. Collect all unique permissions
+      const allPermissions = HEALTH_METRICS.flatMap(metric => metric.permissions);
+      
+      try {
+        // 2. Request all permissions in a single call
+        addLog('[SettingsScreen] Requesting all permissions...');
+        const granted = await requestHealthPermissions(allPermissions);
+        
+        if (!granted) {
+          // If any permission is denied, show a generic alert.
+          Alert.alert(
+            'Permissions Required',
+            `Some permissions were not granted. Please enable all required health permissions in the ${healthSettingsName} to sync all data.`
+          );
+          // Revert all toggles to off if permissions were not fully granted
+          setIsAllMetricsEnabled(false);
+          HEALTH_METRICS.forEach(metric => {
+            newHealthMetricStates[metric.stateKey] = false;
+          });
+          addLog('[SettingsScreen] Not all permissions were granted. Reverting "Enable All".', 'warn', 'WARNING');
+        } else {
+          addLog('[SettingsScreen] All permissions granted successfully.', 'info', 'SUCCESS');
         }
+      } catch (permissionError) {
+        Alert.alert('Permission Error', `An error occurred while requesting health permissions: ${permissionError.message}`);
+        // Revert all toggles if there was an error
+        setIsAllMetricsEnabled(false);
+        HEALTH_METRICS.forEach(metric => {
+          newHealthMetricStates[metric.stateKey] = false;
+        });
+        addLog(`[SettingsScreen] Error requesting all permissions: ${permissionError.message}`, 'error', 'ERROR');
       }
     }
+
+    // 3. Update state and storage for all metrics after permissions are handled
     setHealthMetricStates(newHealthMetricStates);
-  };
-
-  const handleSyncDurationChange = async (itemValue) => {
-    setSyncDuration(itemValue);
-    await saveSyncDuration(itemValue);
-  };
-
-  const handleFourHourSyncTimeChange = async (itemValue) => {
-    setFourHourSyncTime(itemValue);
-    await saveStringPreference('fourHourSyncTime', itemValue);
-  };
-
-  const handleDailySyncTimeChange = async (itemValue) => {
-    setDailySyncTime(itemValue);
-    await saveStringPreference('dailySyncTime', itemValue);
+    for (const metric of HEALTH_METRICS) {
+      await saveHealthPreference(metric.preferenceKey, newHealthMetricStates[metric.stateKey]);
+    }
+    addLog(`[SettingsScreen] Toggled all metrics to ${newValue}. State updated for all.`, 'info');
   };
 
   return (
@@ -281,16 +290,16 @@ const SettingsScreen = ({ navigation }) => {
 
           <SyncFrequency
             syncDuration={syncDuration}
-            handleSyncDurationChange={handleSyncDurationChange}
+            setSyncDuration={setSyncDuration}
             fourHourSyncTime={fourHourSyncTime}
-            handleFourHourSyncTimeChange={handleFourHourSyncTimeChange}
+            setFourHourSyncTime={setFourHourSyncTime}
             dailySyncTime={dailySyncTime}
-            handleDailySyncTimeChange={handleDailySyncTimeChange}
+            setDailySyncTime={setDailySyncTime}
           />
 
           <AppearanceSettings
             appTheme={appTheme}
-            handleThemeChange={handleThemeChange}
+            setAppTheme={setAppTheme}
           />
         </View>
       </ScrollView>

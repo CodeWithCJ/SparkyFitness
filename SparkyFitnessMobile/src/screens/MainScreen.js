@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'; // Import useCallback
 import { View, Text, Button, StyleSheet, Switch, Alert, TouchableOpacity, Image, ScrollView, Linking, Platform } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import DropDownPicker from 'react-native-dropdown-picker'; // Import DropDownPicker
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native'; // Import useFocusEffect
 //import axios from 'axios'; // Import axios for API calls
@@ -33,10 +33,10 @@ const MainScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const [healthMetricStates, setHealthMetricStates] = useState({}); // State to hold enabled status for all metrics
   const [healthData, setHealthData] = useState({}); // State to hold fetched data for all metrics
-  const [syncDuration, setSyncDuration] = useState(1); // This will be replaced by selectedTimeRange
   const [isSyncing, setIsSyncing] = useState(false);
   const [isHealthConnectInitialized, setIsHealthConnectInitialized] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState('3d'); // New state for time range, initialized to '3d'
+  const [openTimeRangePicker, setOpenTimeRangePicker] = useState(false); // New state for DropDownPicker visibility
   const [isConnected, setIsConnected] = useState(false); // State for server connection status
   const isAndroid = Platform.OS === 'android';
 
@@ -120,13 +120,13 @@ const MainScreen = ({ navigation }) => {
   useEffect(() => {
     // Only re-fetch when healthMetricStates change, as selectedTimeRange is handled in initialize and onValueChange
     fetchHealthData(healthMetricStates, selectedTimeRange);
-  }, [healthMetricStates, selectedTimeRange]); // Keep selectedTimeRange here to trigger re-fetch when user changes it
+  }, [healthMetricStates]); // Keep selectedTimeRange here to trigger re-fetch when user changes it
 
   useEffect(() => {
     const interval = setInterval(async () => {
-      const connectionStatus = await checkServerConnection();
+      const connectionStatus = await api.checkServerConnection();
       setIsConnected(connectionStatus);
-    }, 5000); // Check every 5 seconds
+    }, 60000); // Check every 60 seconds
 
     return () => clearInterval(interval); // Clear interval on component unmount
   }, []);
@@ -137,32 +137,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
   const endDate = new Date();
   endDate.setHours(23, 59, 59, 999);
 
-  let startDate = new Date(endDate);
-
-  switch (timeRange) {
-    case '24h':
-      startDate.setHours(endDate.getHours() - 24, endDate.getMinutes(), endDate.getSeconds(), endDate.getMilliseconds());
-      break;
-    case '3d': // Added '3d' case
-      startDate.setDate(endDate.getDate() - 3);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    case '7d':
-      startDate.setDate(endDate.getDate() - 7);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    case '30d':
-      startDate.setDate(endDate.getDate() - 30);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    case '90d':
-      startDate.setDate(endDate.getDate() - 90);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    default:
-      startDate.setHours(0, 0, 0, 0);
-      break;
-  }
+  const startDate = getSyncStartDate(timeRange);
 
   const newHealthData = {};
 
@@ -209,8 +184,11 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
 
           case 'HeartRate':
             const aggregatedHeartRate = aggregateHeartRateByDate(records);
-            const avgHeartRate = aggregatedHeartRate.reduce((sum, record) => sum + record.value, 0);
-            displayValue = avgHeartRate > 0 ? `${Math.round(avgHeartRate)} bpm` : '0 bpm';
+            const totalHeartRateSum = aggregatedHeartRate.reduce((sum, record) => sum + record.value, 0);
+            const avgHeartRate = totalHeartRateSum > 0 && aggregatedHeartRate.length > 0
+              ? Math.round(totalHeartRateSum / aggregatedHeartRate.length)
+              : 0;
+            displayValue = avgHeartRate > 0 ? `${avgHeartRate} bpm` : '0 bpm';
             break;
 
           case 'Weight':
@@ -525,7 +503,6 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
             addLog(`[MainScreen] Processing ${records.length} BasalMetabolicRate records`);
             
             if (records.length > 0) {
-              // Log the first record structure
               addLog(`[MainScreen] First BMR record structure: ${JSON.stringify(Object.keys(records[0]))}`);
               addLog(`[MainScreen] First BMR record full: ${JSON.stringify(records[0])}`);
             }
@@ -534,34 +511,25 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
               let value = null;
               
               if (record.basalMetabolicRate != null) {
-                // Check if it's a direct number
                 if (typeof record.basalMetabolicRate === 'number') {
                   value = record.basalMetabolicRate;
                   addLog(`[MainScreen] BMR extracted from basalMetabolicRate (direct): ${value}`, 'debug');
-                }
-                // THE FIX: Check for inKilocaloriesPerDay (this is what Health Connect uses!)
-                else if (record.basalMetabolicRate.inKilocaloriesPerDay != null) {
+                } else if (record.basalMetabolicRate.inKilocaloriesPerDay != null) {
                   value = record.basalMetabolicRate.inKilocaloriesPerDay;
                   addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inKilocaloriesPerDay: ${value}`, 'debug');
-                }
-                // Also check inCalories as fallback
-                else if (record.basalMetabolicRate.inCalories != null) {
+                } else if (record.basalMetabolicRate.inCalories != null) {
                   value = record.basalMetabolicRate.inCalories;
                   addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inCalories: ${value}`, 'debug');
-                }
-                else if (record.basalMetabolicRate.inKilocalories != null) {
+                } else if (record.basalMetabolicRate.inKilocalories != null) {
                   value = record.basalMetabolicRate.inKilocalories;
                   addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inKilocalories: ${value}`, 'debug');
-                }
-                else if (typeof record.basalMetabolicRate === 'object' && record.basalMetabolicRate.value != null) {
+                } else if (typeof record.basalMetabolicRate === 'object' && record.basalMetabolicRate.value != null) {
                   value = record.basalMetabolicRate.value;
                   addLog(`[MainScreen] BMR extracted from basalMetabolicRate.value: ${value}`, 'debug');
-                }
-                else {
+                } else {
                   addLog(`[MainScreen] BMR unknown structure: ${JSON.stringify(record.basalMetabolicRate)}`, 'warn', 'WARNING');
                 }
-              } 
-              else if (record.energy?.inCalories != null) {
+              } else if (record.energy?.inCalories != null) {
                 value = record.energy.inCalories;
                 addLog(`[MainScreen] BMR from energy.inCalories: ${value}`, 'debug');
               }
@@ -577,38 +545,29 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
               return date;
             };
           
-            const validBMR = records
-              .map((r, idx) => {
-                const date = getBMRDate(r);
-                const value = extractBMRValue(r);
-                
-                if (idx === 0) {
-                  addLog(`[MainScreen] BMR Record 0: date=${date}, value=${value}`, 'debug');
+            const dailyBMRs = {};
+            records.forEach((r) => {
+              const date = getBMRDate(r);
+              const value = extractBMRValue(r);
+              if (date && value !== null && !isNaN(value)) {
+                if (!dailyBMRs[date]) {
+                  dailyBMRs[date] = { sum: 0, count: 0 };
                 }
-                
-                return {
-                  date: date,
-                  value: value,
-                  original: r
-                };
-              })
-              .filter(r => {
-                const isValid = r.date && r.value !== null && !isNaN(r.value);
-                if (!isValid) {
-                  addLog(`[MainScreen] BMR filtered out: date=${!!r.date}, value=${r.value}, isNaN=${isNaN(r.value)}`, 'debug');
-                }
-                return isValid;
-              })
-              .sort((a, b) => new Date(b.date) - new Date(a.date));
+                dailyBMRs[date].sum += value;
+                dailyBMRs[date].count++;
+              }
+            });
           
-            addLog(`[MainScreen] Valid BMR records after filtering: ${validBMR.length}`);
-          
-            if (validBMR.length > 0) {
-              displayValue = `${Math.round(validBMR[0].value)} kcal`;
+            const aggregatedBMR = Object.values(dailyBMRs).map(day => day.sum / day.count);
+            const totalAggregatedBMR = aggregatedBMR.reduce((sum, val) => sum + val, 0);
+            
+            if (aggregatedBMR.length > 0) {
+              const avgBMR = totalAggregatedBMR / aggregatedBMR.length;
+              displayValue = `${Math.round(avgBMR)} kcal`;
               addLog(`[MainScreen] BasalMetabolicRate: ${displayValue}`, 'info', 'SUCCESS');
             } else {
               displayValue = '0 kcal';
-              addLog(`[MainScreen] No valid BasalMetabolicRate records found after filtering`, 'warn', 'WARNING');
+              addLog(`[MainScreen] No valid BasalMetabolicRate records found for aggregation`, 'warn', 'WARNING');
             }
             break;
 
@@ -678,7 +637,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
   setHealthData(newHealthData);
 
   // Re-check server connection status after fetching health data
-  const connectionStatus = await checkServerConnection();
+  const connectionStatus = await api.checkServerConnection();
   setIsConnected(connectionStatus);
   console.log(`[MainScreen] Displaying Health Connect data:`, newHealthData);
 };
@@ -744,7 +703,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
             preferredControlTintColor: 'white',
             readerMode: false,
             animated: true,
-            modalPresentationStyle: 'fullScreen',
+            modalPresentationStyle: 'pageSheet',
             modalTransitionStyle: 'coverVertical',
             modalEnabled: true,
             enableBarCollapsing: false,
@@ -786,34 +745,39 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
-        {/* Time Range */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Time Range</Text>
-          <View style={styles.timeRangeContainer}>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={selectedTimeRange}
-                style={styles.picker}
-                onValueChange={async (itemValue) => {
-                  setSelectedTimeRange(itemValue);
-                  await saveTimeRange(itemValue); // Save selectedTimeRange using the new function
-                  addLog(`[MainScreen] Time range changed and saved: ${itemValue}`);
-                }}
-              >
-                {timeRangeOptions.map((item) => (
-                  <Picker.Item key={item.value} label={item.label} value={item.value} />
-                ))}
-              </Picker>
-            </View>
-          </View>
-        </View>
-
         {/* Open Web Dashboard Button */}
         <TouchableOpacity style={styles.webButtonContainer} onPress={openWebDashboard}>
           <Text style={styles.webButtonIcon}>🌐</Text>
           <Text style={styles.webButtonText}>Open Web Dashboard</Text>
           <Text style={styles.webButtonSubText}>View your full fitness dashboard</Text>
         </TouchableOpacity>
+
+        {/* Time Range */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Time Range</Text>
+          <DropDownPicker
+            open={openTimeRangePicker}
+            value={selectedTimeRange}
+            items={timeRangeOptions.map(option => ({ label: option.label, value: option.value }))}
+            setOpen={setOpenTimeRangePicker}
+            setValue={setSelectedTimeRange}
+            onSelectItem={async (item) => {
+              await saveTimeRange(item.value);
+              fetchHealthData(healthMetricStates, item.value);
+            }}
+            containerStyle={styles.dropdownContainer}
+            style={styles.dropdownStyle}
+            itemStyle={styles.dropdownItemStyle}
+            labelStyle={styles.dropdownLabelStyle}
+            dropDownContainerStyle={styles.dropdownListContainerStyle}
+            placeholderStyle={styles.dropdownPlaceholderStyle}
+            selectedItemLabelStyle={styles.selectedItemLabelStyle}
+            maxHeight={200}
+            zIndex={3000} // Ensure dropdown is above other elements
+            zIndexInverse={1000}
+            listMode="SCROLLVIEW"
+          />
+        </View>
 
         {/* Sync Now Button */}
         <TouchableOpacity style={styles.syncButtonContainer} onPress={handleSync} disabled={isSyncing || !isHealthConnectInitialized}>
@@ -824,7 +788,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
 
         {/* Health Overview */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Health Overview</Text>
+          <Text style={styles.sectionTitle}>Health Overview ({timeRangeOptions.find(o => o.value === selectedTimeRange)?.label || '...'})</Text>
           <View style={styles.healthMetricsContainer}>
             {HEALTH_METRICS.map(metric => healthMetricStates[metric.stateKey] && (
               <View style={styles.metricItem} key={metric.id}>
@@ -893,7 +857,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    overflow: 'visible', // Ensure content is not clipped
+    overflow: 'visible',
+    zIndex: 3500, // Ensure the card containing the dropdown has a high zIndex
   },
   sectionTitle: {
     fontSize: 18,
@@ -901,41 +866,33 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#333',
   },
-  timeRangeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
+  // Styles for react-native-dropdown-picker
+  dropdownContainer: {
+    height: 50,
+    marginBottom: 15,
+    zIndex: 4000,
+  },
+  dropdownStyle: {
+    backgroundColor: '#fafafa',
     borderColor: '#ddd',
-    height: 60, // Give more height to the container
-    overflow: 'visible', // Ensure content is not clipped
   },
-  picker: {
-    flex: 1,
-    height: 60, // Match container height
-    width: '100%', // Ensure it takes full width
-    color: '#333', // Ensure text is visible
-    backgroundColor: 'transparent', // Make the picker background transparent
+  dropdownItemStyle: {
+    justifyContent: 'flex-start',
   },
-  pickerItem: {
-    color: '#333', // Ensure text is visible for each item
+  dropdownLabelStyle: {
     fontSize: 16,
+    color: '#333',
   },
-  pickerWrapper: {
-    flex: 1,
-    height: 60, // Explicit height
-    width: '100%', // Explicit width
-    zIndex: 10, // Added zIndex to bring picker to front
-    // Optional: add a background color to debug its size and position
-    // backgroundColor: 'lightblue', 
-    justifyContent: 'center', // Center the picker content vertically
+  dropdownListContainerStyle: {
+    borderColor: '#ddd',
   },
-  timeRangeText: {
-    fontSize: 16,
-    color: '#555',
+  dropdownPlaceholderStyle: {
+    color: '#999',
   },
+  selectedItemLabelStyle: {
+    fontWeight: 'bold',
+  },
+  
   healthMetricsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1062,3 +1019,4 @@ const styles = StyleSheet.create({
 });
 
 export default MainScreen;
+

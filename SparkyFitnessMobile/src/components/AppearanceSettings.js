@@ -1,28 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Image } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import DropDownPicker from 'react-native-dropdown-picker';
 import styles from '../screens/SettingsScreenStyles';
 
-const AppearanceSettings = ({ appTheme, handleThemeChange }) => {
+const AppearanceSettings = ({ appTheme, setAppTheme }) => {
+  const [themeOpen, setThemeOpen] = useState(false);
+
+  const themeItems = [
+    { label: 'Light', value: 'Light' },
+    { label: 'Dark', value: 'Dark' },
+    { label: 'AMOLED', value: 'Amoled' },
+    { label: 'System', value: 'System' },
+  ];
+
   return (
     <View style={styles.card}>
       <Text style={styles.sectionTitle}>Appearance</Text>
-      <View style={styles.settingItem}>
+      <View style={[styles.settingItem, { zIndex: 1000 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Image source={require('../../assets/icons/settings.png')} style={styles.icon} />
           <Text style={[styles.settingLabel, { marginLeft: 8 }]}>Theme</Text>
         </View>
-        <Picker
-          selectedValue={appTheme}
-          style={styles.picker}
-          onValueChange={handleThemeChange}
-          itemStyle={styles.pickerItem}
-        >
-          <Picker.Item label="Light" value="Light" />
-          <Picker.Item label="Dark" value="Dark" />
-          <Picker.Item label="AMOLED" value="Amoled" />
-          <Picker.Item label="System" value="System" />
-        </Picker>
+        <DropDownPicker
+          open={themeOpen}
+          value={appTheme}
+          items={themeItems}
+          setOpen={setThemeOpen}
+          setValue={setAppTheme}
+          listMode="SCROLLVIEW"
+          containerStyle={{ flex: 1 }}
+          placeholder="Select a theme"
+        />
       </View>
     </View>
   );
