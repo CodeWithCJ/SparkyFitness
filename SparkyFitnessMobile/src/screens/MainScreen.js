@@ -775,7 +775,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
             maxHeight={200}
             zIndex={3000} // Ensure dropdown is above other elements
             zIndexInverse={1000}
-            listMode="MODAL"
+            listMode="SCROLLVIEW"
           />
         </View>
 

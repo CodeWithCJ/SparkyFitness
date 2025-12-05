@@ -261,21 +261,6 @@ const SettingsScreen = ({ navigation }) => {
     addLog(`[SettingsScreen] Toggled all metrics to ${newValue}. State updated for all.`, 'info');
   };
 
-  const handleSyncDurationChange = async (itemValue) => {
-    setSyncDuration(itemValue);
-    await saveSyncDuration(itemValue);
-  };
-
-  const handleFourHourSyncTimeChange = async (itemValue) => {
-    setFourHourSyncTime(itemValue);
-    await saveStringPreference('fourHourSyncTime', itemValue);
-  };
-
-  const handleDailySyncTimeChange = async (itemValue) => {
-    setDailySyncTime(itemValue);
-    await saveStringPreference('dailySyncTime', itemValue);
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
@@ -305,16 +290,16 @@ const SettingsScreen = ({ navigation }) => {
 
           <SyncFrequency
             syncDuration={syncDuration}
-            handleSyncDurationChange={handleSyncDurationChange}
+            setSyncDuration={setSyncDuration}
             fourHourSyncTime={fourHourSyncTime}
-            handleFourHourSyncTimeChange={handleFourHourSyncTimeChange}
+            setFourHourSyncTime={setFourHourSyncTime}
             dailySyncTime={dailySyncTime}
-            handleDailySyncTimeChange={handleDailySyncTimeChange}
+            setDailySyncTime={setDailySyncTime}
           />
 
           <AppearanceSettings
             appTheme={appTheme}
-            handleThemeChange={handleThemeChange}
+            setAppTheme={setAppTheme}
           />
         </View>
       </ScrollView>
