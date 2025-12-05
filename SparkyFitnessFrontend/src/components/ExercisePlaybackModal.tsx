@@ -56,7 +56,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     const synth = window.speechSynthesis;
 
     // Cancel any ongoing speech before starting a new one
-    if (synth && synth.cancel) {
+    if (synth && typeof synth.cancel === "function") {
       synth.cancel();
     }
 
@@ -91,7 +91,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     speechRef.current = utterance;
     if (!isMuted) {
       debug(loggingLevel, `[speakInstruction] Attempting to speak instruction ${index}. Muted: ${isMuted}`);
-      if (synth && synth.speak) {
+      if (synth && typeof synth.speak === "function") {
         synth.speak(utterance);
       }
     } else {
@@ -134,12 +134,12 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     } else {
      info(loggingLevel, "[startPlayback] No instructions to play.");
     }
-  }, [instructions, startImageSlideshow, loggingLevel]); // Removed currentInstructionIndex and speakInstruction
+  }, [instructions, startImageSlideshow, loggingLevel]); 
 
   const pausePlayback = useCallback(() => {
    info(loggingLevel, "[pausePlayback] Pausing playback.");
     setIsPlaying(false);
-    if (window.speechSynthesis && window.speechSynthesis.pause) {
+    if ("speechSynthesis" in window && typeof window.speechSynthesis.pause === "function") {
       window.speechSynthesis.pause();
     }
     stopImageSlideshow();
@@ -147,7 +147,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
 
   const resumePlayback = useCallback(() => {
    info(loggingLevel, "[resumePlayback] Resuming playback.");
-    if (window.speechSynthesis && window.speechSynthesis.paused && window.speechSynthesis.resume) {
+    if ("speechSynthesis" in window && window.speechSynthesis.paused && typeof window.speechSynthesis.resume === "function") {
       setIsPlaying(true);
       window.speechSynthesis.resume();
       startImageSlideshow();
@@ -158,7 +158,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     } else {
      debug(loggingLevel, "[resumePlayback] No action taken. Speech synthesis not paused or already playing.");
     }
-  }, [instructions, startImageSlideshow, loggingLevel]); // Removed currentInstructionIndex and speakInstruction
+  }, [instructions, startImageSlideshow, loggingLevel]); 
 
   const togglePlayPause = useCallback(() => {
    debug(loggingLevel, `[togglePlayPause] Current isPlaying state: ${isPlaying}`);
@@ -173,7 +173,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
    debug(loggingLevel, `[toggleMute] Toggling mute. Current isMuted: ${isMuted}`);
      setIsMuted((prev) => {
        const newMutedState = !prev;
-       if (window.speechSynthesis && window.speechSynthesis.cancel) {
+       if ("speechSynthesis" in window && typeof window.speechSynthesis.cancel === "function") {
          window.speechSynthesis.cancel(); // Always cancel current speech
        }
        debug(loggingLevel, `[toggleMute] Speech cancelled. New muted state: ${newMutedState}. isPlayingRef.current: ${isPlayingRef.current}`);
@@ -201,7 +201,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
        prevExerciseIdRef.current = exercise.id;
      } else {
        info(loggingLevel, "[useEffect - isOpen/exercise] Modal closed or exercise changed. Stopping all playback.");
-       if (window.speechSynthesis && window.speechSynthesis.cancel) {
+       if ("speechSynthesis" in window && typeof window.speechSynthesis.cancel === "function") {
          window.speechSynthesis.cancel();
        }
        stopImageSlideshow();
@@ -212,13 +212,13 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
      }
      return () => {
        debug(loggingLevel, "[useEffect - isOpen/exercise cleanup] Cleaning up on unmount/dependency change.");
-       if (window.speechSynthesis && window.speechSynthesis.cancel) {
+       if ("speechSynthesis" in window && typeof window.speechSynthesis.cancel === "function") {
          window.speechSynthesis.cancel();
        }
        stopImageSlideshow();
        setIsPlaying(false);
      };
-   }, [isOpen, exercise, stopImageSlideshow, startImageSlideshow, loggingLevel]); // Added startImageSlideshow to dependencies
+   }, [isOpen, exercise, stopImageSlideshow, startImageSlideshow, loggingLevel]); 
 
   useEffect(() => {
    debug(loggingLevel, `[useEffect - currentInstructionIndex/isPlaying] currentInstructionIndex: ${currentInstructionIndex}, isPlaying: ${isPlaying}, instructions.length: ${instructions.length}`);
@@ -226,7 +226,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
        speakInstruction(instructions[currentInstructionIndex], currentInstructionIndex);
      } else if (!isPlaying) {
        info(loggingLevel, "[useEffect - currentInstructionIndex/isPlaying] Not playing, cancelling speech.");
-       if (window.speechSynthesis && window.speechSynthesis.cancel) {
+       if ("speechSynthesis" in window && typeof window.speechSynthesis.cancel === "function") {
          window.speechSynthesis.cancel();
        }
      }
@@ -235,6 +235,10 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
   useEffect(() => {
    debug(loggingLevel, "[useEffect - voice loading] Initializing voice loading.");
      const synth = 'speechSynthesis' in window ? window.speechSynthesis : undefined;
+     if (!synth) {
+       warn(loggingLevel, "Speech Synthesis not supported in this browser.");
+       return;
+     }
      const loadVoices = () => {
        const availableVoices = synth.getVoices();
        setVoices(availableVoices);
@@ -256,38 +260,36 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     return () => {
       synth.onvoiceschanged = null;
     };
-  }, [selectedVoiceURI]);
+  }, [selectedVoiceURI, loggingLevel]);
 
   const handleNext = useCallback(() => {
    debug(loggingLevel, `[handleNext] Current instruction index: ${currentInstructionIndex}`);
-     if (window.speechSynthesis && window.speechSynthesis.cancel) {
+     if ("speechSynthesis" in window && typeof window.speechSynthesis.cancel === "function") {
        window.speechSynthesis.cancel(); // Stop current speech
      }
      const nextIndex = currentInstructionIndex + 1;
      if (nextIndex < instructions.length) {
        setCurrentInstructionIndex(nextIndex);
        setCurrentImageIndex((prev) => (prev + 1) % images.length);
-       // speakInstruction will be called by the useEffect watching isPlaying and currentInstructionIndex
      } else {
        info(loggingLevel, "[handleNext] Reached end of instructions. Stopping playback.");
        setIsPlaying(false); // Stop playback if at the end
      }
-   }, [currentInstructionIndex, instructions.length, images.length, loggingLevel]); // Removed speakInstruction, isPlaying, instructions
+   }, [currentInstructionIndex, instructions.length, images.length, loggingLevel]); 
 
   const handlePrevious = useCallback(() => {
    debug(loggingLevel, `[handlePrevious] Current instruction index: ${currentInstructionIndex}`);
-     if (window.speechSynthesis && window.speechSynthesis.cancel) {
+     if ("speechSynthesis" in window && typeof window.speechSynthesis.cancel === "function") {
        window.speechSynthesis.cancel(); // Stop current speech
      }
      const prevIndex = currentInstructionIndex - 1;
      if (prevIndex >= 0) {
        setCurrentInstructionIndex(prevIndex);
        setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-       // speakInstruction will be called by the useEffect watching isPlaying and currentInstructionIndex
      } else {
       info(loggingLevel, "[handlePrevious] Already at the first instruction.");
      }
-   }, [currentInstructionIndex, instructions.length, images.length, loggingLevel]); // Removed speakInstruction, isPlaying, instructions
+   }, [currentInstructionIndex, instructions.length, images.length, loggingLevel]); 
 
   if (!exercise) return null;
 
@@ -298,7 +300,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
      debug(loggingLevel, `[Dialog.onOpenChange] Dialog open state changed to: ${open}`);
-     if (!open) { // Only call onClose when the dialog is actually closing
+     if (!open) { 
        onClose();
      }
     }}>
@@ -341,7 +343,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
               onValueChange={(value) => {
                info(loggingLevel, `[Select.onValueChange] Voice changed to: ${value}`);
                  setSelectedVoiceURI(value);
-                 if (window.speechSynthesis && window.speechSynthesis.cancel) {
+                 if ("speechSynthesis" in window && typeof window.speechSynthesis.cancel === "function") {
                    window.speechSynthesis.cancel(); // Cancel current speech to apply new voice
                  }
                  // If playing, restart speech with new voice
