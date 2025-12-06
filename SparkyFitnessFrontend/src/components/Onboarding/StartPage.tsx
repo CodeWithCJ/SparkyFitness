@@ -20,6 +20,8 @@ import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 import { ExpandedGoals } from "@/types/goals";
+import { DIET_TEMPLATES, getDietTemplate } from "@/constants/dietTemplates";
+import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
   DialogContent,
@@ -173,6 +175,14 @@ const StartPage: React.FC<StartPageProps> = ({ onOnboardingComplete }) => {
   const [localVitaminAlgorithm, setLocalVitaminAlgorithm] = useState<VitaminCalculationAlgorithm>(vitaminCalculationAlgorithm);
   const [localSugarAlgorithm, setLocalSugarAlgorithm] = useState<SugarCalculationAlgorithm>(sugarCalculationAlgorithm);
 
+  // Diet selection state
+  const [localSelectedDiet, setLocalSelectedDiet] = useState<string>('balanced');
+  const [customPercentages, setCustomPercentages] = useState({
+    carbs: 40,
+    protein: 30,
+    fat: 30,
+  });
+
   // State for collapsible settings panel
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
@@ -302,15 +312,20 @@ const StartPage: React.FC<StartPageProps> = ({ onOnboardingComplete }) => {
 
     const finalDailyCalories = Math.round(targetCalories / 10) * 10;
 
+    // Get the selected diet template or use custom percentages
+    const dietTemplate = localSelectedDiet === 'custom'
+      ? { carbsPercentage: customPercentages.carbs, proteinPercentage: customPercentages.protein, fatPercentage: customPercentages.fat }
+      : getDietTemplate(localSelectedDiet);
+
     const macros = {
-      carbs: Math.round((finalDailyCalories * 0.4) / 4),
-      protein: Math.round((finalDailyCalories * 0.3) / 4),
-      fat: Math.round((finalDailyCalories * 0.3) / 9),
+      carbs: Math.round((finalDailyCalories * (dietTemplate.carbsPercentage / 100)) / 4),
+      protein: Math.round((finalDailyCalories * (dietTemplate.proteinPercentage / 100)) / 4),
+      fat: Math.round((finalDailyCalories * (dietTemplate.fatPercentage / 100)) / 9),
       fiber: Math.round((finalDailyCalories / 1000) * 14),
     };
 
     return { bmr, tdee, finalDailyCalories, macros };
-  }, [formData, step, weightUnit, heightUnit]);
+  }, [formData, step, weightUnit, heightUnit, localSelectedDiet, customPercentages]);
 
   // Sync initial calculation to editedPlan when plan is ready
   useEffect(() => {
@@ -479,6 +494,7 @@ const StartPage: React.FC<StartPageProps> = ({ onOnboardingComplete }) => {
       mineralCalculationAlgorithm: localMineralAlgorithm,
       vitaminCalculationAlgorithm: localVitaminAlgorithm,
       sugarCalculationAlgorithm: localSugarAlgorithm,
+      selectedDiet: localSelectedDiet,
     });
 
 
@@ -966,6 +982,148 @@ const StartPage: React.FC<StartPageProps> = ({ onOnboardingComplete }) => {
                 <strong>Medical Disclaimer:</strong> This plan is for informational purposes only and should not replace professional medical advice. Please consult with your doctor or a certified nutritionist before making significant changes to your diet or exercise routine.
               </AlertDescription>
             </Alert>
+
+            {/* Diet Selection */}
+            <div className="bg-[#1c1c1e] rounded-2xl p-6 mb-6 border border-gray-800">
+              <div className="flex items-center gap-2 mb-4">
+                <Utensils className="h-5 w-5 text-green-500" />
+                <h3 className="text-lg font-bold text-white">Diet Approach</h3>
+              </div>
+
+              <p className="text-gray-400 text-sm mb-4">
+                Choose a preset diet or customize your macro split
+              </p>
+
+              <Select
+                value={localSelectedDiet}
+                onValueChange={(value) => {
+                  setLocalSelectedDiet(value);
+                  // If switching to a preset diet, update custom percentages to match
+                  if (value !== 'custom') {
+                    const template = getDietTemplate(value);
+                    setCustomPercentages({
+                      carbs: template.carbsPercentage,
+                      protein: template.proteinPercentage,
+                      fat: template.fatPercentage,
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full bg-[#2c2c2e] border-gray-700 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DIET_TEMPLATES.map((diet) => (
+                    <SelectItem key={diet.id} value={diet.id}>
+                      <div>
+                        <div className="font-semibold">{diet.name}</div>
+                        <div className="text-xs text-gray-400">
+                          {diet.carbsPercentage}% Carbs / {diet.proteinPercentage}% Protein / {diet.fatPercentage}% Fat
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Show description of selected diet */}
+              <div className="mt-3 p-3 bg-[#2c2c2e] rounded-lg">
+                <p className="text-sm text-gray-300">
+                  {getDietTemplate(localSelectedDiet).description}
+                </p>
+              </div>
+
+              {/* Custom percentage sliders */}
+              {localSelectedDiet === 'custom' && (
+                <div className="mt-6 space-y-6 p-4 bg-[#2c2c2e] rounded-lg border border-gray-700">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-semibold text-white">Custom Macro Split</h4>
+                    <span className={`text-sm font-mono ${customPercentages.carbs + customPercentages.protein + customPercentages.fat === 100
+                      ? 'text-green-500'
+                      : 'text-yellow-500'
+                      }`}>
+                      Total: {customPercentages.carbs + customPercentages.protein + customPercentages.fat}%
+                    </span>
+                  </div>
+
+                  {/* Carbs Slider */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-medium text-gray-300">Carbohydrates</label>
+                      <span className="text-sm font-mono text-white">{customPercentages.carbs}%</span>
+                    </div>
+                    <Slider
+                      value={[customPercentages.carbs]}
+                      onValueChange={([value]) => {
+                        const remaining = 100 - value;
+                        const proteinRatio = customPercentages.protein / (customPercentages.protein + customPercentages.fat) || 0.5;
+                        setCustomPercentages({
+                          carbs: value,
+                          protein: Math.round(remaining * proteinRatio),
+                          fat: Math.round(remaining * (1 - proteinRatio)),
+                        });
+                      }}
+                      min={5}
+                      max={80}
+                      step={1}
+                      className="cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Protein Slider */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-medium text-gray-300">Protein</label>
+                      <span className="text-sm font-mono text-white">{customPercentages.protein}%</span>
+                    </div>
+                    <Slider
+                      value={[customPercentages.protein]}
+                      onValueChange={([value]) => {
+                        const remaining = 100 - value;
+                        const carbsRatio = customPercentages.carbs / (customPercentages.carbs + customPercentages.fat) || 0.5;
+                        setCustomPercentages({
+                          carbs: Math.round(remaining * carbsRatio),
+                          protein: value,
+                          fat: Math.round(remaining * (1 - carbsRatio)),
+                        });
+                      }}
+                      min={10}
+                      max={50}
+                      step={1}
+                      className="cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Fat Slider */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-medium text-gray-300">Fat</label>
+                      <span className="text-sm font-mono text-white">{customPercentages.fat}%</span>
+                    </div>
+                    <Slider
+                      value={[customPercentages.fat]}
+                      onValueChange={([value]) => {
+                        const remaining = 100 - value;
+                        const carbsRatio = customPercentages.carbs / (customPercentages.carbs + customPercentages.protein) || 0.5;
+                        setCustomPercentages({
+                          carbs: Math.round(remaining * carbsRatio),
+                          protein: Math.round(remaining * (1 - carbsRatio)),
+                          fat: value,
+                        });
+                      }}
+                      min={10}
+                      max={75}
+                      step={1}
+                      className="cursor-pointer"
+                    />
+                  </div>
+
+                  <p className="text-xs text-gray-500 mt-2">
+                    Adjust any slider - the other two will automatically adjust to maintain 100% total.
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* Advanced Calculation Settings */}
             <div className="bg-[#1c1c1e] rounded-2xl border border-gray-800 mb-6">
