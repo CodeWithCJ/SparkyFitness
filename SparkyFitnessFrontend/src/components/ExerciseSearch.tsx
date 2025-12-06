@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,13 +28,17 @@ interface ExerciseSearchProps {
   disableTabs?: boolean; // New prop to disable internal tabs
   initialSearchSource?: 'internal' | 'external'; // New prop for initial search source when tabs are disabled
 }
- 
-const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate, onLogSuccess = () => {}, disableTabs = false, initialSearchSource }: ExerciseSearchProps) => {
+
+const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate, onLogSuccess = () => { }, disableTabs = false, initialSearchSource }: ExerciseSearchProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, itemDisplayLimit } = usePreferences(); // Get itemDisplayLimit from preferences
+  const { loggingLevel, itemDisplayLimit, energyUnit, convertEnergy } = usePreferences(); // Get itemDisplayLimit from preferences, energyUnit, convertEnergy
   const { user } = useAuth(); // New
   const { toast } = useToast();
   debug(loggingLevel, "ExerciseSearch: Component rendered.");
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  };
   const [searchTerm, setSearchTerm] = useState("");
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [recentExercises, setRecentExercises] = useState<Exercise[]>([]);
@@ -129,7 +133,7 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
         warn(loggingLevel, "ExerciseSearch: Unknown provider for adding external exercise:", selectedProviderType);
         return undefined;
       }
-      
+
       if (newExercise) {
         toast({
           title: t("common.success", "Success"),
@@ -323,14 +327,14 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
               </Button>
             ))}
           </div>
-  
+
           {/* Muscle Group Filters (Body Map) */}
           <BodyMapFilter
             selectedMuscles={muscleGroupFilter}
             onMuscleToggle={handleMuscleToggle}
             availableMuscleGroups={availableMuscleGroups}
           />
-  
+
           {loading && <div>{t("exercise.exerciseSearch.loading", "Searching...")}</div>}
           {searchTerm.trim().length === 0 && !loading && (
             <>
@@ -342,7 +346,7 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
                       <div key={`recent-${exercise.id}`} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
                           <div className="font-medium">{exercise.name}</div>
-                          <div className="text-sm text-gray-500">{exercise.category} • {exercise.calories_per_hour} {t("exercise.exerciseSearch.calPerHour", "cal/hour")}</div>
+                          <div className="text-sm text-gray-500">{exercise.category} • {Math.round(convertEnergy(exercise.calories_per_hour, 'kcal', energyUnit))} {getEnergyUnitString(energyUnit)}</div>
                           {exercise.description && <div className="text-xs text-gray-400">{exercise.description}</div>}
                         </div>
                         <Button onClick={() => onExerciseSelect(exercise, 'internal')}>{t("exercise.exerciseSearch.selectButton", "Select")}</Button>
@@ -359,7 +363,7 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
                       <div key={`top-${exercise.id}`} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
                           <div className="font-medium">{exercise.name}</div>
-                          <div className="text-sm text-gray-500">{exercise.category} • {exercise.calories_per_hour} {t("exercise.exerciseSearch.calPerHour", "cal/hour")}</div>
+                          <div className="text-sm text-gray-500">{exercise.category} • {Math.round(convertEnergy(exercise.calories_per_hour, 'kcal', energyUnit))} {getEnergyUnitString(energyUnit)}</div>
                           {exercise.description && <div className="text-xs text-gray-400">{exercise.description}</div>}
                         </div>
                         <Button onClick={() => onExerciseSelect(exercise, 'internal')}>{t("exercise.exerciseSearch.selectButton", "Select")}</Button>
@@ -379,17 +383,17 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
                 <div key={exercise.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <div className="font-medium flex items-center gap-2">
-                        {exercise.name}
-                        {exercise.tags && exercise.tags.map(tag => (
-                            <Badge key={tag} variant="outline" className="text-xs">
-                                {tag === 'public' && <Share2 className="h-3 w-3 mr-1" />}
-                                {tag === 'family' && <Users className="h-3 w-3 mr-1" />}
-                                {tag.charAt(0).toUpperCase() + tag.slice(1)}
-                            </Badge>
-                        ))}
+                      {exercise.name}
+                      {exercise.tags && exercise.tags.map(tag => (
+                        <Badge key={tag} variant="outline" className="text-xs">
+                          {tag === 'public' && <Share2 className="h-3 w-3 mr-1" />}
+                          {tag === 'family' && <Users className="h-3 w-3 mr-1" />}
+                          {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                        </Badge>
+                      ))}
                     </div>
                     <div className="text-sm text-gray-500">
-                      {exercise.category} • {exercise.calories_per_hour} {t("exercise.exerciseSearch.calPerHour", "cal/hour")}
+                      {exercise.category} • {Math.round(convertEnergy(exercise.calories_per_hour, 'kcal', energyUnit))} {getEnergyUnitString(energyUnit)}
                     </div>
                     {exercise.description && (
                       <div className="text-xs text-gray-400">{exercise.description}</div>
@@ -465,14 +469,14 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
               </Button>
             ))}
           </div>
-  
+
           {/* Muscle Group Filters (Body Map) */}
           <BodyMapFilter
             selectedMuscles={muscleGroupFilter}
             onMuscleToggle={handleMuscleToggle}
             availableMuscleGroups={availableMuscleGroups}
           />
-  
+
           {loading && <div>{t("exercise.exerciseSearch.loading", "Searching...")}</div>}
           {!hasSearchedExternal && !loading && (
             <div className="text-center text-gray-500">{t("exercise.exerciseSearch.enterSearchTerm", "Enter a search term and click the search button to find exercises.")}</div>
@@ -504,7 +508,7 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
                   </div>
                   <div className="text-sm text-gray-500">
                     {exercise.category}
-                    {exercise.calories_per_hour && ` • ${exercise.calories_per_hour} ${t("exercise.exerciseSearch.calPerHour", "cal/hour")}`}
+                    {exercise.calories_per_hour && ` • ${Math.round(convertEnergy(exercise.calories_per_hour, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`}
                     {exercise.level && ` • ${t("exercise.exerciseCard.level", "Level")}: ${exercise.level}`}
                     {exercise.force && ` • ${t("exercise.exerciseCard.force", "Force")}: ${exercise.force}`}
                     {exercise.mechanic && ` • ${t("exercise.exerciseCard.mechanic", "Mechanic")}: ${exercise.mechanic}`}
@@ -575,7 +579,7 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
         </div>
       )}
     </div>
-);
+  );
 };
 
 export default ExerciseSearch;

@@ -24,8 +24,13 @@ interface EditFoodEntryDialogProps {
 }
 
 const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntryDialogProps) => {
-  const { loggingLevel } = usePreferences(); // Get logging level
+  const { loggingLevel, energyUnit, convertEnergy } = usePreferences(); // Get logging level, energyUnit, convertEnergy
   debug(loggingLevel, "EditFoodEntryDialog component rendered.", { entry, open });
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    // This component does not import useTranslation, so we'll hardcode or pass t() from parent if it were needed for translation
+    return unit === 'kcal' ? 'kcal' : 'kJ';
+  };
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<FoodVariant | null>(null);
   const [variants, setVariants] = useState<FoodVariant[]>([]);
@@ -70,7 +75,7 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
         id: defaultVariant.id,
         serving_size: defaultVariant.serving_size,
         serving_unit: defaultVariant.serving_unit,
-        calories: defaultVariant.calories || 0,
+        calories: defaultVariant.calories || 0, // kcal
         protein: defaultVariant.protein || 0,
         carbs: defaultVariant.carbs || 0,
         fat: defaultVariant.fat || 0,
@@ -91,7 +96,8 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
         id: entry.food_id,
         serving_size: 100,
         serving_unit: 'g',
-        calories: 0, protein: 0, carbs: 0, fat: 0, saturated_fat: 0, polyunsaturated_fat: 0,
+        calories: 0, // kcal
+        protein: 0, carbs: 0, fat: 0, saturated_fat: 0, polyunsaturated_fat: 0,
         monounsaturated_fat: 0, trans_fat: 0, cholesterol: 0, sodium: 0, potassium: 0,
         dietary_fiber: 0, sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0
       };
@@ -104,7 +110,7 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
           id: variant.id,
           serving_size: variant.serving_size,
           serving_unit: variant.serving_unit,
-          calories: variant.calories || 0,
+          calories: variant.calories || 0, // kcal
           protein: variant.protein || 0,
           carbs: variant.carbs || 0,
           fat: variant.fat || 0,
@@ -164,7 +170,7 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
         id: entry.food_variants?.id || entry.food_id, // Use variant ID if available, otherwise food ID
         serving_size: entry.food_variants?.serving_size || 100,
         serving_unit: entry.food_variants?.serving_unit || 'g',
-        calories: entry.food_variants?.calories || 0,
+        calories: entry.food_variants?.calories || 0, // kcal
         protein: entry.food_variants?.protein || 0,
         carbs: entry.food_variants?.carbs || 0,
         fat: entry.food_variants?.fat || 0,
@@ -191,7 +197,7 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
           id: variant.id,
           serving_size: variant.serving_size,
           serving_unit: variant.serving_unit,
-          calories: variant.calories || 0,
+          calories: variant.calories || 0, // kcal
           protein: variant.protein || 0,
           carbs: variant.carbs || 0,
           fat: variant.fat || 0,
@@ -285,7 +291,7 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
 
     // Apply the ratio to the selected variant's nutrition values
     const nutrition = {
-      calories: (latestVariant.calories * ratio) || 0, // Use latestVariant
+      calories: (latestVariant.calories * ratio) || 0, // Use latestVariant, this is in kcal
       protein: (latestVariant.protein * ratio) || 0, // Use latestVariant
       carbs: (latestVariant.carbs * ratio) || 0, // Use latestVariant
       fat: (latestVariant.fat * ratio) || 0, // Use latestVariant
@@ -388,8 +394,8 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
                     <h4 className="font-medium mb-3">Macronutrients</h4>
                     <div className="grid grid-cols-4 gap-4">
                       <div>
-                        <Label className="text-sm">Calories</Label>
-                        <div className="text-lg font-medium">{nutrition.calories.toFixed(1)}</div>
+                        <Label className="text-sm">Calories ({getEnergyUnitString(energyUnit)})</Label>
+                        <div className="text-lg font-medium">{Math.round(convertEnergy(nutrition.calories, 'kcal', energyUnit))}</div>
                       </div>
                       <div>
                         <Label className="text-sm">Protein (g)</Label>
@@ -484,7 +490,7 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
                   <div className="bg-muted p-4 rounded-lg">
                     <h4 className="font-medium mb-2">Base Values (per {selectedVariant?.serving_size} {selectedVariant?.serving_unit}):</h4>
                     <div className="grid grid-cols-4 gap-4 text-sm">
-                      <div>{selectedVariant?.calories || 0} cal</div>
+                      <div>{Math.round(convertEnergy(selectedVariant?.calories || 0, 'kcal', energyUnit))} {getEnergyUnitString(energyUnit)}</div>
                       <div>{selectedVariant?.protein || 0}g protein</div>
                       <div>{selectedVariant?.carbs || 0}g carbs</div>
                       <div>{selectedVariant?.fat || 0}g fat</div>

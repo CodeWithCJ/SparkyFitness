@@ -12,10 +12,10 @@ export function formatDateToYYYYMMDD(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function getNutrientUnit(nutrientName: string): string {
+export function getNutrientUnit(nutrientName: string, currentEnergyUnit: 'kcal' | 'kJ' = 'kcal'): string {
   switch (nutrientName) {
     case 'calories':
-      return 'cal';
+      return currentEnergyUnit;
     case 'protein':
     case 'carbs':
     case 'fat':
@@ -40,11 +40,17 @@ export function getNutrientUnit(nutrientName: string): string {
   }
 }
 
-export function formatNutrientValue(value: number, nutrientName: string): string {
+export function formatNutrientValue(value: number, nutrientName: string, currentEnergyUnit: 'kcal' | 'kJ' = 'kcal', converter?: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number): string {
   let formattedValue: string;
+  let finalValue = value;
 
   switch (nutrientName) {
     case 'calories':
+      if (converter) {
+        finalValue = converter(value, 'kcal', currentEnergyUnit);
+      }
+      formattedValue = Math.round(finalValue).toString();
+      break;
     case 'vitamin_a':
       formattedValue = Math.round(value).toString();
       break;
@@ -72,5 +78,5 @@ export function formatNutrientValue(value: number, nutrientName: string): string
       break;
   }
 
-  return `${formattedValue}${getNutrientUnit(nutrientName)}`;
+  return `${formattedValue}${getNutrientUnit(nutrientName, currentEnergyUnit)}`;
 }

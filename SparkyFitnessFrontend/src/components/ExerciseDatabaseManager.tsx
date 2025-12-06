@@ -46,7 +46,11 @@ interface ExerciseDatabaseManagerProps {
 const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPresetExercisesSelected }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { loggingLevel } = usePreferences();
+  const { loggingLevel, energyUnit, convertEnergy } = usePreferences();
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  };
   // Existing states for Exercise management
   const [exercises, setExercises] = useState<ExerciseInterface[]>([]);
   const [totalExercisesCount, setTotalExercisesCount] = useState(0);
@@ -127,7 +131,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
       const updatedExerciseData: Partial<ExerciseInterface> = {
         name: editExerciseName,
         category: editExerciseCategory,
-        calories_per_hour: editExerciseCalories,
+        calories_per_hour: convertEnergy(editExerciseCalories, energyUnit, 'kcal'),
         description: editExerciseDescription,
         level: editExerciseLevel,
         force: editExerciseForce,
@@ -394,7 +398,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                     <div className="text-xs text-gray-400">{t('exercise.databaseManager.instructionsDisplay', { instruction: exercise.instructions[0], defaultValue: `Instructions: ${exercise.instructions[0]}` })}...</div>
                   )}
                   <div className="text-sm text-gray-500">
-                    {t('exercise.databaseManager.caloriesPerHourDisplay', { caloriesPerHour: exercise.calories_per_hour, defaultValue: `Calories/Hour: ${exercise.calories_per_hour}` })}
+                    {t('exercise.databaseManager.caloriesPerHourDisplay', { caloriesPerHour: Math.round(convertEnergy(exercise.calories_per_hour ?? 0, 'kcal', energyUnit)), energyUnit: getEnergyUnitString(energyUnit), defaultValue: `Calories/Hour: ${Math.round(convertEnergy(exercise.calories_per_hour ?? 0, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}` })}
                   </div>
                   {exercise.description && (
                     <div className="text-sm text-gray-400 mt-1">{exercise.description}</div>
@@ -449,7 +453,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                             setSelectedExercise(exercise);
                             setEditExerciseName(exercise.name);
                             setEditExerciseCategory(exercise.category);
-                            setEditExerciseCalories(exercise.calories_per_hour ?? 0); // Handle null or undefined
+                            setEditExerciseCalories(Math.round(convertEnergy(exercise.calories_per_hour ?? 0, 'kcal', energyUnit))); // Handle null or undefined, convert for display
                             setEditExerciseDescription(exercise.description || "");
                             setEditExerciseLevel(exercise.level?.toLowerCase() || "");
                             setEditExerciseForce(exercise.force?.toLowerCase() || "");
@@ -624,8 +628,8 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                 <Input
                   id="edit-calories"
                   type="number"
-                  value={editExerciseCalories.toString()}
-                  onChange={(e) => setEditExerciseCalories(Number(e.target.value))}
+                  value={editExerciseCalories.toString()} // editExerciseCalories is already in display unit
+                  onChange={(e) => setEditExerciseCalories(Number(e.target.value))} // The state already stores the value in display unit
                   className="col-span-3"
                 />
               </div>

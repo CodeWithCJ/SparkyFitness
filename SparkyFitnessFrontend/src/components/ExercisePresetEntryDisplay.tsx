@@ -19,6 +19,9 @@ interface ExercisePresetEntryDisplayProps {
   handleEditExerciseDatabase: (exerciseId: string) => void;
   setExerciseToPlay: (exercise: Exercise | null) => void;
   setIsPlaybackModalOpen: (isOpen: boolean) => void;
+  energyUnit: 'kcal' | 'kJ';
+  convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number;
+  getEnergyUnitString: (unit: 'kcal' | 'kJ') => string;
 }
 
 const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
@@ -30,6 +33,9 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   handleEditExerciseDatabase,
   setExerciseToPlay,
   setIsPlaybackModalOpen,
+  energyUnit,
+  convertEnergy,
+  getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
@@ -79,9 +85,9 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">
-                    {Math.round(presetEntry.exercises.reduce((sum, ex) => sum + (ex.calories_burned || 0), 0))}
+                    {Math.round(convertEnergy(presetEntry.exercises.reduce((sum, ex) => sum + (ex.calories_burned || 0), 0), 'kcal', energyUnit))}
                   </div>
-                  <div className="text-xs text-gray-500">{t("common.caloriesUnit", "Calories")}</div>
+                  <div className="text-xs text-gray-500">{t("common.caloriesUnit", getEnergyUnitString(energyUnit))}</div>
                 </div>
               </>
             )}
@@ -139,6 +145,9 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                 handleEditExerciseDatabase={handleEditExerciseDatabase}
                 setExerciseToPlay={setExerciseToPlay}
                 setIsPlaybackModalOpen={setIsPlaybackModalOpen}
+                energyUnit={energyUnit}
+                convertEnergy={convertEnergy}
+                getEnergyUnitString={getEnergyUnitString}
               />
             ))
           ) : (

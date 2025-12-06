@@ -29,6 +29,9 @@ interface LogExerciseEntryDialogProps {
   initialSets?: WorkoutPresetSet[];
   initialNotes?: string;
   initialImageUrl?: string;
+  energyUnit: 'kcal' | 'kJ';
+  convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number;
+  getEnergyUnitString: (unit: 'kcal' | 'kJ') => string;
 }
 
 const SortableSetItem = React.memo(({ set, index, handleSetChange, handleDuplicateSet, handleRemoveSet, weightUnit, t }: { set: WorkoutPresetSet, index: number, handleSetChange: Function, handleDuplicateSet: Function, handleRemoveSet: Function, weightUnit: string, t: Function }) => {
@@ -87,6 +90,9 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   initialSets,
   initialNotes,
   initialImageUrl,
+  energyUnit,
+  convertEnergy,
+  getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
   const { loggingLevel, weightUnit, distanceUnit, convertWeight, convertDistance } = usePreferences();
@@ -110,7 +116,8 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
       setImageFile(null);
       // If the exercise has a calories_per_hour, pre-fill the caloriesBurnedInput
       if (exercise?.calories_per_hour && exercise.duration) {
-        setCaloriesBurnedInput(Math.round((exercise.calories_per_hour / 60) * exercise.duration));
+        // Assume exercise.calories_per_hour and exercise.duration are in units that result in kcal
+        setCaloriesBurnedInput(Math.round((exercise.calories_per_hour / 60) * exercise.duration)); // This value is in kcal
       } else {
         setCaloriesBurnedInput('');
       }
@@ -197,6 +204,12 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
 
     setLoading(true);
     try {
+      let finalCaloriesBurned = null;
+      if (caloriesBurnedInput !== '') {
+        // Convert user-provided calories back to kcal if the display unit is kJ
+        finalCaloriesBurned = convertEnergy(Number(caloriesBurnedInput), energyUnit, 'kcal');
+      }
+
       const entryData = {
         exercise_id: exercise.id,
         sets: sets.map(set => ({
@@ -205,7 +218,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         })),
         notes: notes,
         entry_date: selectedDate,
-        calories_burned: caloriesBurnedInput === '' ? null : caloriesBurnedInput, // Use user input or null for backend calculation
+        calories_burned: finalCaloriesBurned, // Use the potentially converted value
         duration_minutes: sets.reduce((acc, set) => acc + (set.duration || 0), 0),
         imageFile: imageFile,
         distance: distanceInput === '' ? null : convertDistance(Number(distanceInput), distanceUnit, 'km'),
@@ -261,12 +274,12 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
             <Plus className="h-4 w-4 mr-2" /> {t("exercise.logExerciseEntryDialog.addSet", "Add Set")}
           </Button>
           <div className="space-y-2">
-            <Label htmlFor="calories-burned">{t("exercise.logExerciseEntryDialog.caloriesBurnedOptional", "Calories Burned (Optional)")}</Label>
+            <Label htmlFor="calories-burned">{t("exercise.logExerciseEntryDialog.caloriesBurnedOptional", `Calories Burned (Optional, ${getEnergyUnitString(energyUnit)})`)}</Label>
             <Input
               id="calories-burned"
               type="number"
-              value={caloriesBurnedInput}
-              onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Number(e.target.value))}
+              value={caloriesBurnedInput === '' ? '' : Math.round(convertEnergy(Number(caloriesBurnedInput), 'kcal', energyUnit))}
+              onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Math.round(convertEnergy(Number(e.target.value), energyUnit, 'kcal')))}
               placeholder={t("exercise.logExerciseEntryDialog.enterCaloriesBurned", "Enter calories burned")}
             />
           </div>

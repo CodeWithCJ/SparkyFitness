@@ -65,38 +65,43 @@ import { Food, FoodVariant, FoodDeletionImpact } from "@/types/food";
 import MealManagement from "./MealManagement"; // Import MealManagement
 import MealPlanCalendar from "./MealPlanCalendar"; // Import MealPlanCalendar
 
-const nutrientDetails: {
-  [key: string]: { color: string; label: string; unit: string };
-} = {
-  calories: {
-    color: "text-gray-900 dark:text-gray-100",
-    label: "cal",
-    unit: "",
-  },
-  protein: { color: "text-blue-600", label: "protein", unit: "g" },
-  carbs: { color: "text-orange-600", label: "carbs", unit: "g" },
-  fat: { color: "text-yellow-600", label: "fat", unit: "g" },
-  dietary_fiber: { color: "text-green-600", label: "fiber", unit: "g" },
-  sugar: { color: "text-pink-500", label: "sugar", unit: "g" },
-  sodium: { color: "text-purple-500", label: "sodium", unit: "mg" },
-  cholesterol: { color: "text-indigo-500", label: "cholesterol", unit: "mg" },
-  saturated_fat: { color: "text-red-500", label: "sat fat", unit: "g" },
-  trans_fat: { color: "text-red-700", label: "trans fat", unit: "g" },
-  potassium: { color: "text-teal-500", label: "potassium", unit: "mg" },
-  vitamin_a: { color: "text-yellow-400", label: "vit a", unit: "mcg" },
-  vitamin_c: { color: "text-orange-400", label: "vit c", unit: "mg" },
-  iron: { color: "text-gray-500", label: "iron", unit: "mg" },
-  calcium: { color: "text-blue-400", label: "calcium", unit: "mg" },
-  glycemic_index: { color: "text-purple-600", label: "GI", unit: "" },
-};
-
 const FoodDatabaseManager: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
-  const { nutrientDisplayPreferences, loggingLevel } = usePreferences();
+  const { nutrientDisplayPreferences, loggingLevel, energyUnit, convertEnergy } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ' = energyUnit): string => {
+    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  };
+
+  const nutrientDetails: {
+    [key: string]: { color: string; label: string; unit: string };
+  } = {
+    calories: {
+      color: "text-gray-900 dark:text-gray-100",
+      label: getEnergyUnitString(),
+      unit: "",
+    },
+    protein: { color: "text-blue-600", label: "protein", unit: "g" },
+    carbs: { color: "text-orange-600", label: "carbs", unit: "g" },
+    fat: { color: "text-yellow-600", label: "fat", unit: "g" },
+    dietary_fiber: { color: "text-green-600", label: "fiber", unit: "g" },
+    sugar: { color: "text-pink-500", label: "sugar", unit: "g" },
+    sodium: { color: "text-purple-500", label: "sodium", unit: "mg" },
+    cholesterol: { color: "text-indigo-500", label: "cholesterol", unit: "mg" },
+    saturated_fat: { color: "text-red-500", label: "sat fat", unit: "g" },
+    trans_fat: { color: "text-red-700", label: "trans fat", unit: "g" },
+    potassium: { color: "text-teal-500", label: "potassium", unit: "mg" },
+    vitamin_a: { color: "text-yellow-400", label: "vit a", unit: "mcg" },
+    vitamin_c: { color: "text-orange-400", label: "vit c", unit: "mg" },
+    iron: { color: "text-gray-500", label: "iron", unit: "mg" },
+    calcium: { color: "text-blue-400", label: "calcium", unit: "mg" },
+    glycemic_index: { color: "text-purple-600", label: "GI", unit: "" },
+  };
+
   const quickInfoPreferences = nutrientDisplayPreferences.find(
     (p) => p.view_group === "quick_info" && p.platform === platform,
   ) || nutrientDisplayPreferences.find(
@@ -105,6 +110,7 @@ const FoodDatabaseManager: React.FC = () => {
   const visibleNutrients = quickInfoPreferences
     ? quickInfoPreferences.visible_nutrients
     : ["calories", "protein", "carbs", "fat"];
+
   const [foods, setFoods] = useState<Food[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingFood, setEditingFood] = useState<Food | null>(null);
@@ -507,12 +513,16 @@ const FoodDatabaseManager: React.FC = () => {
                           {visibleNutrients.map((nutrient) => {
                             const details = nutrientDetails[nutrient];
                             if (!details) return null;
-                            const value = (food.default_variant?.[nutrient as keyof FoodVariant] as number) || 0;
+                            const value = (food.default_variant?.[nutrient as keyof FoodVariant] as number) || 0; // This value is in kcal
                             return (
                               <div key={nutrient} className="whitespace-nowrap">
                                 <span className={`font-medium ${details.color}`}>
-                                  {typeof value === 'number' ? value.toFixed(nutrient === "calories" ? 0 : 1) : value}
-                                  {details.unit}
+                                  {typeof value === 'number'
+                                    ? nutrient === "calories"
+                                      ? Math.round(convertEnergy(value, 'kcal', energyUnit))
+                                      : value.toFixed(nutrient === "calories" ? 0 : 1)
+                                    : value}
+                                  {nutrient === "calories" ? getEnergyUnitString(energyUnit) : details.unit}
                                 </span>{" "}
                                 {details.label}
                               </div>
@@ -548,12 +558,12 @@ const FoodDatabaseManager: React.FC = () => {
                                   {canEdit(food)
                                     ? food.shared_with_public
                                       ? t("foodDatabaseManager.makePrivate", "Make private")
-                                        : t("foodDatabaseManager.shareWithPublic", "Share with public")
-                                      : t("foodDatabaseManager.notEditable", "Not editable")}
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                                      : t("foodDatabaseManager.shareWithPublic", "Share with public")
+                                    : t("foodDatabaseManager.notEditable", "Not editable")}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
 
                           {/* Edit Button */}
                           <TooltipProvider>
@@ -707,6 +717,9 @@ const FoodDatabaseManager: React.FC = () => {
           onOpenChange={setShowFoodUnitSelectorDialog}
           onSelect={handleAddFoodToMeal}
           showUnitSelector={false}
+          energyUnit={energyUnit}
+          convertEnergy={convertEnergy}
+          getEnergyUnitString={getEnergyUnitString}
         />
       )}
 

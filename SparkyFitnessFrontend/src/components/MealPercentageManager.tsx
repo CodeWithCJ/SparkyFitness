@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Lock, Unlock } from 'lucide-react';
+import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 
 interface MealPercentages {
   breakfast: number;
@@ -29,13 +30,20 @@ const distributionTemplates = [
 
 const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalCalories }: MealPercentageManagerProps) => {
   const { t } = useTranslation();
+  const { energyUnit, convertEnergy } = usePreferences();
   const [percentages, setPercentages] = useState<MealPercentages>(initialPercentages);
   const [locks, setLocks] = useState({ breakfast: false, lunch: false, dinner: false, snacks: false });
   const [selectedTemplateName, setSelectedTemplateName] = useState<string>('');
 
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  };
+
   // Calculate calories for a given percentage
   const calculateCalories = (percentage: number): number => {
-    return Math.round((percentage / 100) * totalCalories);
+    // totalCalories is assumed to be in kcal
+    const caloriesInKcal = (percentage / 100) * totalCalories;
+    return Math.round(convertEnergy(caloriesInKcal, 'kcal', energyUnit)); // Return converted value for display
   };
 
   useEffect(() => {
@@ -170,7 +178,7 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalC
       {(Object.keys(percentages) as Array<keyof MealPercentages>).map(meal => (
         <div key={meal} className="space-y-2">
           <Label htmlFor={meal} className="capitalize font-semibold">
-            {t(`common.${meal}`)} ({calculateCalories(percentages[meal])} {t('common.kcal')})
+            {t(`common.${meal}`)} ({calculateCalories(percentages[meal])} {getEnergyUnitString(energyUnit)})
           </Label>
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => handleLockToggle(meal)}>

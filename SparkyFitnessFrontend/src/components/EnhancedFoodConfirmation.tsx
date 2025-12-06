@@ -37,8 +37,12 @@ const EnhancedFoodConfirmation = ({
 }: EnhancedFoodConfirmationProps) => {
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
-  const { formatDateInUserTimezone } = usePreferences(); // Use formatDateInUserTimezone
+  const { formatDateInUserTimezone, energyUnit, convertEnergy } = usePreferences(); // Use formatDateInUserTimezone, energyUnit, convertEnergy
   
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    // This component does not import useTranslation, so we'll hardcode or pass t() from parent if it were needed for translation
+    return unit === 'kcal' ? 'kcal' : 'kJ';
+  };
   const [selectedFoods, setSelectedFoods] = useState<boolean[]>(
     new Array(suggestions.length).fill(true)
   );
@@ -65,7 +69,7 @@ const EnhancedFoodConfirmation = ({
     newSuggestions[index] = {
       ...newSuggestions[index],
       quantity: newQuantity,
-      calories: Math.round(newSuggestions[index].calories * multiplier),
+      calories: Math.round(newSuggestions[index].calories * multiplier), // This calculation is in kcal
       protein: Math.round(newSuggestions[index].protein * multiplier * 10) / 10,
       carbs: Math.round(newSuggestions[index].carbs * multiplier * 10) / 10,
       fat: Math.round(newSuggestions[index].fat * multiplier * 10) / 10,
@@ -119,6 +123,7 @@ const EnhancedFoodConfirmation = ({
     try {
       // Process each selected food
       for (const suggestion of selectedSuggestionsWithTypes) {
+        // suggestion.calories is already in kcal
         const foodId = await createFoodInDatabase(suggestion, activeUserId);
         await addFoodEntry(
           suggestion,
@@ -149,15 +154,14 @@ const EnhancedFoodConfirmation = ({
 
 
   const totalSelected = selectedFoods.filter(Boolean).length;
-  const selectedSuggestions = editedSuggestions.filter((_, index) => selectedFoods[index]);
-  const totalNutrition = selectedSuggestions.reduce(
-    (total, suggestion) => ({
-      calories: total.calories + suggestion.calories,
-      protein: total.protein + suggestion.protein,
-      carbs: total.carbs + suggestion.carbs,
-      fat: total.fat + suggestion.fat,
-    }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      const selectedSuggestions = editedSuggestions.filter((_, index) => selectedFoods[index]);
+      const totalNutrition = selectedSuggestions.reduce(
+        (total, suggestion) => ({
+          calories: total.calories + suggestion.calories, // These are in kcal
+          protein: total.protein + suggestion.protein,
+          carbs: total.carbs + suggestion.carbs,
+          fat: total.fat + suggestion.fat,
+        }),    { calories: 0, protein: 0, carbs: 0, fat: 0 }
   );
 
   return (
@@ -236,7 +240,7 @@ const EnhancedFoodConfirmation = ({
                       <div>
                         <h3 className="font-medium">{suggestion.name}</h3>
                         <div className="flex flex-wrap gap-2 mt-1">
-                          <Badge variant="outline">{suggestion.calories} cal</Badge>
+                          <Badge variant="outline">{Math.round(convertEnergy(suggestion.calories, 'kcal', energyUnit))} {getEnergyUnitString(energyUnit)}</Badge>
                           <Badge variant="outline">{suggestion.protein}g protein</Badge>
                           <Badge variant="outline">{suggestion.carbs}g carbs</Badge>
                           <Badge variant="outline">{suggestion.fat}g fat</Badge>
@@ -316,8 +320,8 @@ const EnhancedFoodConfirmation = ({
               <h4 className="font-medium mb-2">Total Nutrition (Selected Items)</h4>
               <div className="grid grid-cols-4 gap-4 text-sm">
                 <div className="text-center">
-                  <div className="font-bold">{Math.round(totalNutrition.calories)}</div>
-                  <div className="text-muted-foreground">calories</div>
+                  <div className="font-bold">{Math.round(convertEnergy(totalNutrition.calories, 'kcal', energyUnit))}</div>
+                  <div className="text-muted-foreground">{getEnergyUnitString(energyUnit)}</div>
                 </div>
                 <div className="text-center">
                   <div className="font-bold">{totalNutrition.protein.toFixed(1)}g</div>

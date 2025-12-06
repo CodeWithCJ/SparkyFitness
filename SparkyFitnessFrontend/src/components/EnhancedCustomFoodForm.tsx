@@ -99,9 +99,13 @@ const EnhancedCustomFoodForm = ({
   visibleNutrients: passedVisibleNutrients,
 }: EnhancedCustomFoodFormProps) => {
   const { user } = useAuth();
-  const { nutrientDisplayPreferences } = usePreferences();
+  const { nutrientDisplayPreferences, energyUnit, convertEnergy } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
+  
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? "kcal" : "kJ"; // Using simple strings here, can be replaced with t() if i18n is available
+  };
   const [loading, setLoading] = useState(false);
   const [variants, setVariants] = useState<FoodVariant[]>([]);
   const [originalVariants, setOriginalVariants] = useState<FoodVariant[]>([]); // State to hold original, immutable variants
@@ -185,137 +189,136 @@ const EnhancedCustomFoodForm = ({
         is_locked: false,
         glycemic_index: "None" as GlycemicIndex,
       };
-      setVariants([defaultVariant]);
-      setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
-      setVariantErrors([null]); // Initialize error for the single default variant
-    }
-  }, [food, initialVariants]);
-
-  const loadExistingVariants = async () => {
-    if (!food?.id || !isUUID(food.id)) return; // Ensure food.id is a valid UUID
-
-    try {
-      const data = await loadFoodVariants(food.id);
-
-      let loadedVariants: FoodVariant[] = [];
-      let defaultVariant: FoodVariant | undefined;
-
-      if (data && data.length > 0) {
-        // Find the default variant
-        defaultVariant = data.find((v) => v.is_default);
-
-        // If no explicit default, try to use the one that matches the food's primary details
-        // This might be redundant if the backend always ensures one is_default=true
-        if (!defaultVariant && food.default_variant) {
-          defaultVariant = data.find((v) => v.id === food.default_variant?.id);
-        }
-
-        // If still no default, pick the first one or create a new one
-        if (!defaultVariant) {
-          defaultVariant = data[0];
-          if (defaultVariant) {
-            defaultVariant.is_default = true; // Mark it as default for the UI
-          }
-        }
-
-        if (defaultVariant) {
-          loadedVariants.push({ ...defaultVariant, is_locked: false }); // Initialize is_locked to false
-          loadedVariants = loadedVariants.concat(
-            data
-              .filter((v) => v.id !== defaultVariant?.id)
-              .map((v) => ({ ...v, is_locked: false }))
-          ); // Initialize is_locked to false
-        } else {
-          loadedVariants = data.map((v) => ({ ...v, is_locked: false })); // Fallback if no default is found, initialize is_locked to false
-        }
-      } else {
-        // If no variants are returned, initialize with a single default variant
-        loadedVariants = [
-          {
-            serving_size: 100,
-            serving_unit: "g",
-            calories: 0,
-            protein: 0,
-            carbs: 0,
-            fat: 0,
-            saturated_fat: 0,
-            polyunsaturated_fat: 0,
-            monounsaturated_fat: 0,
-            trans_fat: 0,
-            cholesterol: 0,
-            sodium: 0,
-            potassium: 0,
-            dietary_fiber: 0,
-            sugars: 0,
-            vitamin_a: 0,
-            vitamin_c: 0,
-            calcium: 0,
-            iron: 0,
-            is_default: true,
-            is_locked: false, // Initialize as unlocked
-          },
-        ];
-      }
-      setVariants(loadedVariants);
-      setOriginalVariants(JSON.parse(JSON.stringify(loadedVariants))); // Deep copy for original values
-    } catch (error) {
-      console.error("Error loading variants:", error);
-      // Fallback to a single default variant on error
-      const defaultVariant: FoodVariant = {
-        serving_size: 100,
-        serving_unit: "g",
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        saturated_fat: 0,
-        polyunsaturated_fat: 0,
-        monounsaturated_fat: 0,
-        trans_fat: 0,
-        cholesterol: 0,
-        sodium: 0,
-        potassium: 0,
-        dietary_fiber: 0,
-        sugars: 0,
-        vitamin_a: 0,
-        vitamin_c: 0,
-        calcium: 0,
-        iron: 0,
-        is_default: true,
-        is_locked: false, // Initialize as unlocked
-        glycemic_index: sanitizeGlycemicIndexFrontend("None"),
-      };
-      setVariants([defaultVariant]);
-      setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy for original values
-    }
-  };
-
-  const addVariant = () => {
-    const newVariant: FoodVariant = {
-      serving_size: 1,
-      serving_unit: "g",
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      saturated_fat: 0,
-      polyunsaturated_fat: 0,
-      monounsaturated_fat: 0,
-      trans_fat: 0,
-      cholesterol: 0,
-      sodium: 0,
-      potassium: 0,
-      dietary_fiber: 0,
-      sugars: 0,
-      vitamin_a: 0,
-      vitamin_c: 0,
-      calcium: 0,
-      iron: 0,
-      is_default: false, // New variants are not default
-      is_locked: false, // New variants are not locked
-      glycemic_index: "None",
-    };
-    setVariants((prevVariants) => [...prevVariants, newVariant]);
+                setVariants([defaultVariant]);
+                setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
+                setVariantErrors([null]); // Initialize error for the single default variant
+              }
+            }, [food, initialVariants]);
+          
+            const loadExistingVariants = async () => {
+              if (!food?.id || !isUUID(food.id)) return; // Ensure food.id is a valid UUID
+          
+              try {
+                const data = await loadFoodVariants(food.id);
+          
+                let loadedVariants: FoodVariant[] = [];
+                let defaultVariant: FoodVariant | undefined;
+          
+                if (data && data.length > 0) {
+                  // Find the default variant
+                  defaultVariant = data.find((v) => v.is_default);
+          
+                  // If no explicit default, try to use the one that matches the food's primary details
+                  // This might be redundant if the backend always ensures one is_default=true
+                  if (!defaultVariant && food.default_variant) {
+                    defaultVariant = data.find((v) => v.id === food.default_variant?.id);
+                  }
+          
+                  // If still no default, pick the first one or create a new one
+                  if (!defaultVariant) {
+                    defaultVariant = data[0];
+                    if (defaultVariant) {
+                      defaultVariant.is_default = true; // Mark it as default for the UI
+                    }
+                  }
+          
+                  if (defaultVariant) {
+                    loadedVariants.push({ ...defaultVariant, is_locked: false }); // Initialize is_locked to false
+                    loadedVariants = loadedVariants.concat(
+                      data
+                        .filter((v) => v.id !== defaultVariant?.id)
+                        .map((v) => ({ ...v, is_locked: false }))
+                    ); // Initialize is_locked to false
+                  } else {
+                    loadedVariants = data.map((v) => ({ ...v, is_locked: false })); // Fallback if no default is found, initialize is_locked to false
+                  }
+                } else {
+                  // If no variants are returned, initialize with a single default variant
+                  loadedVariants = [
+                    {
+                      serving_size: 100,
+                      serving_unit: "g",
+                      calories: 0, // kcal
+                      protein: 0,
+                      carbs: 0,
+                      fat: 0,
+                      saturated_fat: 0,
+                      polyunsaturated_fat: 0,
+                      monounsaturated_fat: 0,
+                      trans_fat: 0,
+                      cholesterol: 0,
+                      sodium: 0,
+                      potassium: 0,
+                      dietary_fiber: 0,
+                      sugars: 0,
+                      vitamin_a: 0,
+                      vitamin_c: 0,
+                      calcium: 0,
+                      iron: 0,
+                      is_default: true,
+                      is_locked: false, // Initialize as unlocked
+                    },
+                  ];
+                }
+                setVariants(loadedVariants);
+                setOriginalVariants(JSON.parse(JSON.stringify(loadedVariants))); // Deep copy for original values
+              } catch (error) {
+                console.error("Error loading variants:", error);
+                // Fallback to a single default variant on error
+                const defaultVariant: FoodVariant = {
+                  serving_size: 100,
+                  serving_unit: "g",
+                  calories: 0, // kcal
+                  protein: 0,
+                  carbs: 0,
+                  fat: 0,
+                  saturated_fat: 0,
+                  polyunsaturated_fat: 0,
+                  monounsaturated_fat: 0,
+                  trans_fat: 0,
+                  cholesterol: 0,
+                  sodium: 0,
+                  potassium: 0,
+                  dietary_fiber: 0,
+                  sugars: 0,
+                  vitamin_a: 0,
+                  vitamin_c: 0,
+                  calcium: 0,
+                  iron: 0,
+                  is_default: true,
+                  is_locked: false, // Initialize as unlocked
+                  glycemic_index: sanitizeGlycemicIndexFrontend("None"),
+                };
+                setVariants([defaultVariant]);
+                setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy for original values
+              }
+            };
+          
+            const addVariant = () => {
+              const newVariant: FoodVariant = {
+                serving_size: 1,
+                serving_unit: "g",
+                calories: 0, // kcal
+                protein: 0,
+                carbs: 0,
+                fat: 0,
+                saturated_fat: 0,
+                polyunsaturated_fat: 0,
+                monounsaturated_fat: 0,
+                trans_fat: 0,
+                cholesterol: 0,
+                sodium: 0,
+                potassium: 0,
+                dietary_fiber: 0,
+                sugars: 0,
+                vitamin_a: 0,
+                vitamin_c: 0,
+                calcium: 0,
+                iron: 0,
+                is_default: false, // New variants are not default
+                is_locked: false, // New variants are not locked
+                glycemic_index: "None",
+              };    setVariants((prevVariants) => [...prevVariants, newVariant]);
     setOriginalVariants((prevOriginal) => [...prevOriginal, JSON.parse(JSON.stringify(newVariant))]); // Add deep copy to original variants
     setVariantErrors((prevErrors) => [...prevErrors, null]); // Add a null error for the new variant
   };
@@ -371,6 +374,11 @@ const EnhancedCustomFoodForm = ({
       }
       setVariantErrors(updatedErrors);
     }
+    
+    // Convert calories input from display unit (energyUnit) to internal kcal
+    if (field === "calories" && typeof value === 'number') {
+      newVariant.calories = convertEnergy(value, energyUnit, 'kcal');
+    }
 
     // If this variant is set to be the default, ensure all others are not
     if (field === "is_default" && value === true) {
@@ -392,7 +400,7 @@ const EnhancedCustomFoodForm = ({
         newVariant.is_locked = true; // Ensure is_locked is true if scaling is applied
 
         const nutrientFields: NumericFoodVariantKeys[] = [
-          "calories",
+          "calories", // This will be in kcal
           "protein",
           "carbs",
           "fat",
@@ -422,7 +430,7 @@ const EnhancedCustomFoodForm = ({
      // If a nutrient field is manually edited, update its value in originalVariants as well
      // This ensures manual overrides are preserved as the new "original"
      const originalToUpdate = { ...updatedOriginalVariants[index] };
-     (originalToUpdate[field as NumericFoodVariantKeys] as number) = value as number;
+     (originalToUpdate[field as NumericFoodVariantKeys] as number) = newVariant[field as NumericFoodVariantKeys] as number; // Use the potentially converted newVariant value
      updatedOriginalVariants[index] = originalToUpdate;
      setOriginalVariants(updatedOriginalVariants);
    }
@@ -831,10 +839,10 @@ const EnhancedCustomFoodForm = ({
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {visibleNutrients.includes("calories") && (
                           <div>
-                            <Label>Calories</Label>
+                            <Label>Calories ({getEnergyUnitString(energyUnit)})</Label>
                             <Input
                               type="number"
-                              value={variant.calories}
+                              value={Math.round(convertEnergy(variant.calories, 'kcal', energyUnit))} // Display converted value
                               onChange={(e) =>
                                 updateVariant(
                                   index,

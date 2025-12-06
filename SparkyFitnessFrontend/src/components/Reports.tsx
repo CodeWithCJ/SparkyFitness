@@ -51,7 +51,11 @@ const Reports = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
-  const { weightUnit: defaultWeightUnit, measurementUnit: defaultMeasurementUnit, convertWeight, convertMeasurement, formatDateInUserTimezone, parseDateInUserTimezone, loggingLevel, timezone } = usePreferences();
+  const { weightUnit: defaultWeightUnit, measurementUnit: defaultMeasurementUnit, convertWeight, convertMeasurement, formatDateInUserTimezone, parseDateInUserTimezone, loggingLevel, timezone, energyUnit, convertEnergy } = usePreferences();
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  };
   const [nutritionData, setNutritionData] = useState<NutritionData[]>([]);
   const [measurementData, setMeasurementData] = useState<MeasurementData[]>([]);
   const [tabularData, setTabularData] = useState<DailyFoodEntry[]>([]);
@@ -92,16 +96,16 @@ const Reports = () => {
 
   // Effect to load reports when user, activeUser, date range changes, or refresh events are triggered
   useEffect(() => {
-info(loggingLevel, 'Reports: Component mounted/updated with:', {
-  user: !!user,
-  activeUserId,
-  startDate,
-  endDate,
-  loggingLevel
-});
-// Add logging for activeUserId, startDate, endDate before calling getMoodEntries
-debug(loggingLevel, 'Reports: Parameters for getMoodEntries - activeUserId:', activeUserId, 'startDate:', startDate, 'endDate:', endDate);
-    
+    info(loggingLevel, 'Reports: Component mounted/updated with:', {
+      user: !!user,
+      activeUserId,
+      startDate,
+      endDate,
+      loggingLevel
+    });
+    // Add logging for activeUserId, startDate, endDate before calling getMoodEntries
+    debug(loggingLevel, 'Reports: Parameters for getMoodEntries - activeUserId:', activeUserId, 'startDate:', startDate, 'endDate:', endDate);
+
     if (user && activeUserId && startDate && endDate) { // Only load reports if dates are set
       loadReports();
     } else {
@@ -121,15 +125,15 @@ debug(loggingLevel, 'Reports: Parameters for getMoodEntries - activeUserId:', ac
       window.removeEventListener('foodDiaryRefresh', handleRefresh);
       window.removeEventListener('measurementsRefresh', handleRefresh);
       window.removeEventListener('exerciseRefresh', handleRefresh); // Clean up exercise refresh listener
-      };
-    }, [user, activeUserId, startDate, endDate, loggingLevel, formatDateInUserTimezone, parseDateInUserTimezone, defaultWeightUnit, defaultMeasurementUnit, t]); // Added showWeightInKg, showMeasurementsInCm, defaultWeightUnit, defaultMeasurementUnit to dependencies
+    };
+  }, [user, activeUserId, startDate, endDate, loggingLevel, formatDateInUserTimezone, parseDateInUserTimezone, defaultWeightUnit, defaultMeasurementUnit, t]); // Added showWeightInKg, showMeasurementsInCm, defaultWeightUnit, defaultMeasurementUnit to dependencies
 
 
   const loadReports = async () => {
     info(loggingLevel, 'Reports: Loading reports...');
     try {
       setLoading(true);
-      
+
       const results = await Promise.allSettled([
         loadReportsData(activeUserId, startDate, endDate),
         getExerciseDashboardData(activeUserId, startDate, endDate, null, null, null),
@@ -195,7 +199,7 @@ debug(loggingLevel, 'Reports: Parameters for getMoodEntries - activeUserId:', ac
       }
 
       if (moodEntriesResult.status === 'fulfilled') {
-        setMoodData(moodEntriesResult.value);       
+        setMoodData(moodEntriesResult.value);
       } else {
         error(loggingLevel, 'Reports: Failed to load mood entries:', moodEntriesResult.reason);
         setMoodData([]); // Ensure moodData is always an array
@@ -229,13 +233,13 @@ debug(loggingLevel, 'Reports: Parameters for getMoodEntries - activeUserId:', ac
           title: t('reports.noData', "No Data"),
           description: t('reports.noFoodDiaryDataToExport', "No food diary data to export"),
           variant: "destructive",
-          });
+        });
         return;
       }
 
       const csvHeaders = [
         t('reports.foodDiaryExportHeaders.date', 'Date'), t('reports.foodDiaryExportHeaders.meal', 'Meal'), t('reports.foodDiaryExportHeaders.food', 'Food'), t('reports.foodDiaryExportHeaders.brand', 'Brand'), t('reports.foodDiaryExportHeaders.quantity', 'Quantity'), t('reports.foodDiaryExportHeaders.unit', 'Unit'),
-        t('reports.foodDiaryExportHeaders.calories', 'Calories'), t('reports.foodDiaryExportHeaders.protein', 'Protein (g)'), t('reports.foodDiaryExportHeaders.carbs', 'Carbs (g)'), t('reports.foodDiaryExportHeaders.fat', 'Fat (g)'),
+        t('reports.foodDiaryExportHeaders.calories', 'Calories ({{unit}})', { unit: getEnergyUnitString(energyUnit) }), t('reports.foodDiaryExportHeaders.protein', 'Protein (g)'), t('reports.foodDiaryExportHeaders.carbs', 'Carbs (g)'), t('reports.foodDiaryExportHeaders.fat', 'Fat (g)'),
         t('reports.foodDiaryExportHeaders.saturatedFat', 'Saturated Fat (g)'), t('reports.foodDiaryExportHeaders.polyunsaturatedFat', 'Polyunsaturated Fat (g)'), t('reports.foodDiaryExportHeaders.monounsaturatedFat', 'Monounsaturated Fat (g)'), t('reports.foodDiaryExportHeaders.transFat', 'Trans Fat (g)'),
         t('reports.foodDiaryExportHeaders.cholesterol', 'Cholesterol (mg)'), t('reports.foodDiaryExportHeaders.sodium', 'Sodium (mg)'), t('reports.foodDiaryExportHeaders.potassium', 'Potassium (mg)'), t('reports.foodDiaryExportHeaders.dietaryFiber', 'Dietary Fiber (g)'), t('reports.foodDiaryExportHeaders.sugars', 'Sugars (g)'),
         t('reports.foodDiaryExportHeaders.vitaminA', 'Vitamin A (μg)'), t('reports.foodDiaryExportHeaders.vitaminC', 'Vitamin C (mg)'), t('reports.foodDiaryExportHeaders.calcium', 'Calcium (mg)'), t('reports.foodDiaryExportHeaders.iron', 'Iron (mg)')
@@ -283,13 +287,13 @@ debug(loggingLevel, 'Reports: Parameters for getMoodEntries - activeUserId:', ac
       };
 
       const csvRows: string[][] = [];
-      
+
       // Sort dates descending
       Object.keys(groupedData)
         .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
         .forEach(date => {
           const entries = groupedData[date];
-          
+
           // Add individual entries
           entries.forEach(entry => {
             const calculatedNutrition = calculateFoodEntryNutrition(entry as any); // Cast to any for now
@@ -301,7 +305,7 @@ debug(loggingLevel, 'Reports: Parameters for getMoodEntries - activeUserId:', ac
               entry.foods.brand || '',
               entry.quantity.toString(),
               entry.unit,
-              Math.round(calculatedNutrition.calories).toString(),
+              Math.round(convertEnergy(calculatedNutrition.calories, 'kcal', energyUnit)).toString(),
               calculatedNutrition.protein.toFixed(1), // g
               calculatedNutrition.carbs.toFixed(1), // g
               calculatedNutrition.fat.toFixed(1), // g
@@ -320,7 +324,7 @@ debug(loggingLevel, 'Reports: Parameters for getMoodEntries - activeUserId:', ac
               (calculatedNutrition.iron || 0).toFixed(2) // mg
             ]);
           });
-          
+
           // Add total row
           const totals = calculateFoodDayTotal(entries);
           csvRows.push([
@@ -330,7 +334,7 @@ debug(loggingLevel, 'Reports: Parameters for getMoodEntries - activeUserId:', ac
             '',
             '',
             '',
-            Math.round(totals.calories).toString(),
+            Math.round(convertEnergy(totals.calories, 'kcal', energyUnit)).toString(),
             totals.protein.toFixed(1), // g
             totals.carbs.toFixed(1), // g
             totals.fat.toFixed(1), // g
@@ -360,7 +364,7 @@ debug(loggingLevel, 'Reports: Parameters for getMoodEntries - activeUserId:', ac
       a.href = url;
       a.download = `food-diary-${startDate}-to-${endDate}.csv`;
       document.body.appendChild(a);
-a.click();
+      a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
@@ -393,7 +397,7 @@ a.click();
       }
 
       const csvHeaders = [
-        t('reports.exerciseEntriesExportHeaders.date', 'Date'), t('reports.exerciseEntriesExportHeaders.exerciseName', 'Exercise Name'), t('reports.exerciseEntriesExportHeaders.durationMinutes', 'Duration (minutes)'), t('reports.exerciseEntriesExportHeaders.caloriesBurned', 'Calories Burned'),
+        t('reports.exerciseEntriesExportHeaders.date', 'Date'), t('reports.exerciseEntriesExportHeaders.exerciseName', 'Exercise Name'), t('reports.exerciseEntriesExportHeaders.durationMinutes', 'Duration (minutes)'), t('reports.exerciseEntriesExportHeaders.caloriesBurned', 'Calories Burned ({{unit}})', { unit: getEnergyUnitString(energyUnit) }),
         t('reports.exerciseEntriesExportHeaders.sets', 'Sets'), t('reports.exerciseEntriesExportHeaders.reps', 'Reps'), t('reports.exerciseEntriesExportHeaders.weight', 'Weight'), t('reports.exerciseEntriesExportHeaders.notes', 'Notes'), t('reports.exerciseEntriesExportHeaders.category', 'Category'), t('reports.exerciseEntriesExportHeaders.equipment', 'Equipment'),
         t('reports.exerciseEntriesExportHeaders.primaryMuscles', 'Primary Muscles'), t('reports.exerciseEntriesExportHeaders.secondaryMuscles', 'Secondary Muscles')
       ];
@@ -402,7 +406,7 @@ a.click();
         formatDateInUserTimezone(entry.entry_date, 'MMM dd, yyyy'),
         entry.exercises.name,
         entry.duration_minutes.toString(),
-        Math.round(entry.calories_burned).toString(),
+        Math.round(convertEnergy(entry.calories_burned, 'kcal', energyUnit)).toString(),
         entry.sets.map(set => set.set_number).join('; ') || '', // Display set numbers
         entry.sets.map(set => set.reps).join('; ') || '', // Display reps for each set
         entry.sets.map(set => set.weight).join('; ') || '', // Display weight for each set
@@ -553,7 +557,7 @@ a.click();
         const hour = timestamp.getHours();
         const minutes = timestamp.getMinutes();
         const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-        
+
         return [
           measurement.entry_date && !isNaN(parseISO(measurement.entry_date).getTime()) ? formatDateInUserTimezone(parseISO(measurement.entry_date), 'MMM dd, yyyy') : '', // Format date for display
           formattedHour,
@@ -628,7 +632,7 @@ a.click();
         }
         return acc;
       }, {} as Record<string, CustomMeasurementData>);
-      
+
       return Object.values(grouped).map(d => {
         const convertedValue = convertValue(d.value);
         debug(loggingLevel, `Reports: Mapping grouped data point - original value: ${d.value}, converted value: ${convertedValue}`);
@@ -730,7 +734,7 @@ a.click();
                   {customCategories.filter(c => c.data_type === 'numeric').map((category) => {
                     const data = customMeasurementsData[category.id] || [];
                     const chartData = formatCustomChartData(category, data);
-                    
+
                     return (
                       <ZoomableChart key={category.id} title={t('reports.customMeasurementChartTitle', '{{categoryName}} ({{measurementType}})', { categoryName: category.display_name || category.name, measurementType: category.measurement_type })}>
                         <Card>
@@ -740,53 +744,53 @@ a.click();
                               {category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
                                 ? `${category.display_name || category.name} (${defaultMeasurementUnit})`
                                 : `${category.display_name || category.name} (${category.measurement_type})`}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="h-80">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
-                                <YAxis
-                                  type="number"
-                                  domain={getCustomYAxisDomain(chartData) || undefined}
-                                  tickFormatter={(value) => {
-                                    if (category.measurement_type.toLowerCase() === 'waist') {
-                                      return value.toFixed(1);
-                                    }
-                                    return value.toFixed(2);
-                                  }}
-                                />
-                                <Tooltip
-                                  content={({ active, payload, label }) => {
-                                    if (active && payload && payload.length) {
-                                      const data = payload[0].payload;
-                                      const unit = category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
-                                        ? (defaultMeasurementUnit)
-                                        : category.measurement_type;
-                                      const numericValue = Number(data.value);
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="h-80">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={chartData}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="date" />
+                                  <YAxis
+                                    type="number"
+                                    domain={getCustomYAxisDomain(chartData) || undefined}
+                                    tickFormatter={(value) => {
+                                      if (category.measurement_type.toLowerCase() === 'waist') {
+                                        return value.toFixed(1);
+                                      }
+                                      return value.toFixed(2);
+                                    }}
+                                  />
+                                  <Tooltip
+                                    content={({ active, payload, label }) => {
+                                      if (active && payload && payload.length) {
+                                        const data = payload[0].payload;
+                                        const unit = category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
+                                          ? (defaultMeasurementUnit)
+                                          : category.measurement_type;
+                                        const numericValue = Number(data.value);
 
-                                      return (
-                                        <div className="p-2 bg-background border rounded-md shadow-md">
-                                          <p className="label">{`${label}`}</p>
-                                          {!isNaN(numericValue) ? (
-                                            <p className="intro">{`${numericValue.toFixed(1)} ${unit}`}</p>
-                                          ) : (
-                                            <p className="intro">{t('reports.notApplicable', 'N/A')}</p>
-                                          )}
-                                          {data.notes && <p className="desc" style={{ marginTop: '5px' }}>{t('reports.notes', 'Notes: ') + data.notes}</p>}
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  }}
-                                />
-                                <Line type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} />
-                              </LineChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </CardContent>
+                                        return (
+                                          <div className="p-2 bg-background border rounded-md shadow-md">
+                                            <p className="label">{`${label}`}</p>
+                                            {!isNaN(numericValue) ? (
+                                              <p className="intro">{`${numericValue.toFixed(1)} ${unit}`}</p>
+                                            ) : (
+                                              <p className="intro">{t('reports.notApplicable', 'N/A')}</p>
+                                            )}
+                                            {data.notes && <p className="desc" style={{ marginTop: '5px' }}>{t('reports.notes', 'Notes: ') + data.notes}</p>}
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    }}
+                                  />
+                                  <Line type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </CardContent>
                         </Card>
                       </ZoomableChart>
                     );

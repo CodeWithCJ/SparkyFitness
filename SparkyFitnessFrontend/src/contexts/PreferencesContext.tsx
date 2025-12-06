@@ -8,6 +8,12 @@ import { API_BASE_URL } from "@/services/api";
 // Function to fetch user preferences from the backend
 import { apiCall } from '@/services/api'; // Import apiCall
 import { createWaterContainer, setPrimaryWaterContainer } from '@/services/waterContainerService'; // Import water container service
+import {
+  FatBreakdownAlgorithm,
+  MineralCalculationAlgorithm,
+  VitaminCalculationAlgorithm,
+  SugarCalculationAlgorithm,
+} from '@/types/nutrientAlgorithms';
 
 // Function to fetch user preferences from the backend
 const fetchUserPreferences = async (userId: string) => {
@@ -43,6 +49,11 @@ const upsertUserPreferences = async (payload: any) => {
   }
 };
 
+type EnergyUnit = 'kcal' | 'kJ';
+
+// Conversion constant
+const KCAL_TO_KJ = 4.184;
+
 interface NutrientPreference {
   view_group: string;
   platform: 'desktop' | 'mobile';
@@ -61,9 +72,14 @@ interface PreferencesContextType {
   foodDisplayLimit: number; // Explicitly add foodDisplayLimit
   itemDisplayLimit: number;
   calorieGoalAdjustmentMode: 'dynamic' | 'fixed'; // Add new preference
+  energyUnit: EnergyUnit; // Add energy unit
   nutrientDisplayPreferences: NutrientPreference[];
   water_display_unit: 'ml' | 'oz' | 'liter';
   language: string;
+  fatBreakdownAlgorithm: FatBreakdownAlgorithm;
+  mineralCalculationAlgorithm: MineralCalculationAlgorithm;
+  vitaminCalculationAlgorithm: VitaminCalculationAlgorithm;
+  sugarCalculationAlgorithm: SugarCalculationAlgorithm;
   setWeightUnit: (unit: 'kg' | 'lbs') => void;
   setMeasurementUnit: (unit: 'cm' | 'inches') => void;
   setDistanceUnit: (unit: 'km' | 'miles') => void; // Add setter for distance unit
@@ -74,12 +90,19 @@ interface PreferencesContextType {
   setTimezone: (timezone: string) => void; // Add setter for timezone
   setItemDisplayLimit: (limit: number) => void;
   setCalorieGoalAdjustmentMode: (mode: 'dynamic' | 'fixed') => void; // Add setter for calorie goal adjustment mode
+  setEnergyUnit: (unit: EnergyUnit) => void; // Add setter for energy unit
   loadNutrientDisplayPreferences: () => Promise<void>;
   setWaterDisplayUnit: (unit: 'ml' | 'oz' | 'liter') => void;
   setLanguage: (language: string) => void;
+  setFatBreakdownAlgorithm: (algorithm: FatBreakdownAlgorithm) => void;
+  setMineralCalculationAlgorithm: (algorithm: MineralCalculationAlgorithm) => void;
+  setVitaminCalculationAlgorithm: (algorithm: VitaminCalculationAlgorithm) => void;
+  setSugarCalculationAlgorithm: (algorithm: SugarCalculationAlgorithm) => void;
   convertWeight: (value: number, from: 'kg' | 'lbs', to: 'kg' | 'lbs') => number;
   convertMeasurement: (value: number, from: 'cm' | 'inches', to: 'cm' | 'inches') => number;
   convertDistance: (value: number, from: 'km' | 'miles', to: 'km' | 'miles') => number; // Add distance converter
+  convertEnergy: (value: number, fromUnit: EnergyUnit, toUnit: EnergyUnit) => number; // Add energy converter
+  getEnergyUnitString: (unit: EnergyUnit) => string; // Add getEnergyUnitString
   formatDate: (date: string | Date) => string;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string; // New function for timezone-aware formatting
   parseDateInUserTimezone: (dateString: string) => Date; // New function to parse date string in user's timezone
@@ -110,9 +133,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [itemDisplayLimit, setItemDisplayLimitState] = useState<number>(10);
   const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10); // Add state for foodDisplayLimit
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentModeState] = useState<'dynamic' | 'fixed'>('dynamic'); // New state for calorie goal adjustment
+  const [energyUnit, setEnergyUnitState] = useState<EnergyUnit>('kcal'); // Add state for energy unit
   const [nutrientDisplayPreferences, setNutrientDisplayPreferences] = useState<NutrientPreference[]>([]);
   const [waterDisplayUnit, setWaterDisplayUnitState] = useState<'ml' | 'oz' | 'liter'>('ml');
   const [language, setLanguageState] = useState<string>('en');
+  const [fatBreakdownAlgorithm, setFatBreakdownAlgorithmState] = useState<FatBreakdownAlgorithm>(FatBreakdownAlgorithm.AHA_GUIDELINES);
+  const [mineralCalculationAlgorithm, setMineralCalculationAlgorithmState] = useState<MineralCalculationAlgorithm>(MineralCalculationAlgorithm.RDA_STANDARD);
+  const [vitaminCalculationAlgorithm, setVitaminCalculationAlgorithmState] = useState<VitaminCalculationAlgorithm>(VitaminCalculationAlgorithm.RDA_STANDARD);
+  const [sugarCalculationAlgorithm, setSugarCalculationAlgorithmState] = useState<SugarCalculationAlgorithm>(SugarCalculationAlgorithm.WHO_GUIDELINES);
 
   // Log initial state
   useEffect(() => {
@@ -135,7 +163,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         const savedDateFormat = localStorage.getItem('dateFormat');
         const savedLanguage = localStorage.getItem('language');
         const savedCalorieGoalAdjustmentMode = localStorage.getItem('calorieGoalAdjustmentMode') as 'dynamic' | 'fixed';
-        // auto_clear_history and loggingLevel are not stored in localStorage, defaults to 'never' and 'INFO' respectively
+        const savedEnergyUnit = localStorage.getItem('energyUnit') as EnergyUnit; // Load energy unit
 
         if (savedWeightUnit) {
           setWeightUnitState(savedWeightUnit);
@@ -160,6 +188,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (savedCalorieGoalAdjustmentMode) {
           setCalorieGoalAdjustmentModeState(savedCalorieGoalAdjustmentMode);
           debug(loggingLevel, "PreferencesProvider: Loaded calorieGoalAdjustmentMode from localStorage:", savedCalorieGoalAdjustmentMode);
+        }
+        if (savedEnergyUnit) { // Set energy unit state from localStorage
+          setEnergyUnitState(savedEnergyUnit);
+          debug(loggingLevel, "PreferencesProvider: Loaded energyUnit from localStorage:", savedEnergyUnit);
         }
       }
     }
@@ -189,6 +221,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setWaterDisplayUnitState(data.water_display_unit || 'ml');
         setLanguageState(data.language || 'en');
         setCalorieGoalAdjustmentModeState(data.calorie_goal_adjustment_mode || 'dynamic'); // Set calorie goal adjustment mode state
+        setEnergyUnitState(data.energy_unit as EnergyUnit || 'kcal'); // Set energy unit state, default to kcal
+        setFatBreakdownAlgorithmState((data.fat_breakdown_algorithm as FatBreakdownAlgorithm) || FatBreakdownAlgorithm.AHA_GUIDELINES);
+        setMineralCalculationAlgorithmState((data.mineral_calculation_algorithm as MineralCalculationAlgorithm) || MineralCalculationAlgorithm.RDA_STANDARD);
+        setVitaminCalculationAlgorithmState((data.vitamin_calculation_algorithm as VitaminCalculationAlgorithm) || VitaminCalculationAlgorithm.RDA_STANDARD);
+        setSugarCalculationAlgorithmState((data.sugar_calculation_algorithm as SugarCalculationAlgorithm) || SugarCalculationAlgorithm.WHO_GUIDELINES);
         info(loggingLevel, 'PreferencesContext: Preferences states updated from database.');
       } else {
         info(loggingLevel, 'PreferencesContext: No preferences found, creating default preferences.');
@@ -237,6 +274,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         water_display_unit: waterDisplayUnit, // Set default water display unit
         language: 'en',
         calorie_goal_adjustment_mode: 'dynamic', // Add default for new preference
+        energy_unit: 'kcal', // Add default energy unit
       };
 
 
@@ -274,6 +312,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     water_display_unit: 'ml' | 'oz' | 'liter';
     language: string;
     calorie_goal_adjustment_mode: 'dynamic' | 'fixed'; // Add new preference to updates type
+    energy_unit: EnergyUnit; // Add energy unit to updates type
   }>) => {
     debug(loggingLevel, "PreferencesProvider: Attempting to update preferences with:", updates);
     if (!user) {
@@ -302,6 +341,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (updates.calorie_goal_adjustment_mode) {
         localStorage.setItem('calorieGoalAdjustmentMode', updates.calorie_goal_adjustment_mode);
         debug(loggingLevel, "PreferencesProvider: Saved calorieGoalAdjustmentMode to localStorage:", updates.calorie_goal_adjustment_mode);
+      }
+      if (updates.energy_unit) { // Save energy unit to localStorage
+        localStorage.setItem('energyUnit', updates.energy_unit);
+        debug(loggingLevel, "PreferencesProvider: Saved energyUnit to localStorage:", updates.energy_unit);
       }
       // default_food_data_provider_id, logging_level and item_display_limit are not stored in localStorage
       // food_display_limit is also not stored in localStorage
@@ -354,7 +397,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     info(loggingLevel, "PreferencesProvider: Setting distance unit to:", unit);
     setDistanceUnitState(unit);
   };
- 
+
   const setDateFormat = (format: string) => {
     info(loggingLevel, "PreferencesProvider: Setting date format to:", format);
     setDateFormatState(format.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy'));
@@ -426,11 +469,34 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (from === 'miles' && to === 'km') return numValue / 0.621371;
     return numValue;
   };
- 
+
+  const convertEnergy = (value: number | string | null | undefined, fromUnit: EnergyUnit, toUnit: EnergyUnit) => {
+    let numValue: number;
+    if (typeof value === 'string') {
+      numValue = parseFloat(value);
+    } else if (value === null || value === undefined) {
+      return NaN;
+    } else {
+      numValue = value;
+    }
+
+    if (isNaN(numValue)) return NaN;
+    if (fromUnit === toUnit) return numValue;
+
+    if (fromUnit === 'kcal' && toUnit === 'kJ') {
+      return numValue * KCAL_TO_KJ;
+    }
+    if (fromUnit === 'kJ' && toUnit === 'kcal') {
+      return numValue / KCAL_TO_KJ;
+    }
+    return numValue;
+  };
+
+  const getEnergyUnitString = (unit: EnergyUnit) => {
+    return unit;
+  };
+
   const formatDate = (date: string | Date) => {
-    debug(loggingLevel, "PreferencesProvider: Formatting date using user's timezone preference:", date);
-    // Use formatDateInUserTimezone for all formatting to ensure consistency with user's preference
-    // Pass the dateFormat from state as the formatStr
     return formatDateInUserTimezone(date, dateFormat);
   };
 
@@ -484,6 +550,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setItemDisplayLimitState(limit);
   };
 
+  const setEnergyUnit = (unit: EnergyUnit) => {
+    info(loggingLevel, "PreferencesProvider: Setting energy unit to:", unit);
+    setEnergyUnitState(unit);
+    saveAllPreferences({ energyUnit: unit }); // Persist the change
+  };
+
   const saveAllPreferences = async (newPrefs?: Partial<PreferencesContextType>) => {
     info(loggingLevel, "PreferencesProvider: Saving all preferences to backend.");
 
@@ -501,6 +573,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       water_display_unit: newPrefs?.water_display_unit ?? waterDisplayUnit,
       language: newPrefs?.language ?? language,
       calorie_goal_adjustment_mode: newPrefs?.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode, // Include new preference
+      energy_unit: newPrefs?.energyUnit ?? energyUnit, // Include energy unit preference
     };
 
     try {
@@ -549,6 +622,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       itemDisplayLimit, // Expose itemDisplayLimit
       foodDisplayLimit, // Expose foodDisplayLimit
       calorieGoalAdjustmentMode, // Expose new preference
+      energyUnit, // Expose energyUnit
       nutrientDisplayPreferences,
       water_display_unit: waterDisplayUnit,
       language,
@@ -562,12 +636,23 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setTimezone, // Expose setTimezone
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode, // Expose new setter
+      setEnergyUnit, // Expose setEnergyUnit
       loadNutrientDisplayPreferences,
       setWaterDisplayUnit: setWaterDisplayUnitState,
       setLanguage: setLanguageState,
+      fatBreakdownAlgorithm,
+      mineralCalculationAlgorithm,
+      vitaminCalculationAlgorithm,
+      sugarCalculationAlgorithm,
+      setFatBreakdownAlgorithm: setFatBreakdownAlgorithmState,
+      setMineralCalculationAlgorithm: setMineralCalculationAlgorithmState,
+      setVitaminCalculationAlgorithm: setVitaminCalculationAlgorithmState,
+      setSugarCalculationAlgorithm: setSugarCalculationAlgorithmState,
       convertWeight,
       convertMeasurement,
       convertDistance, // Expose convertDistance
+      convertEnergy, // Expose convertEnergy
+      getEnergyUnitString, // Expose getEnergyUnitString
       formatDate,
       formatDateInUserTimezone, // Expose new function
       parseDateInUserTimezone, // Expose new function
@@ -578,3 +663,4 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     </PreferencesContext.Provider>
   );
 };
+

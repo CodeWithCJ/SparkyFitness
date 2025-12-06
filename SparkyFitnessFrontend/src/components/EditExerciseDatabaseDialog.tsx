@@ -23,6 +23,9 @@ interface EditExerciseDatabaseDialogProps {
   onOpenChange: (open: boolean) => void;
   exerciseToEdit: Exercise | null;
   onSaveSuccess: () => void;
+  energyUnit: 'kcal' | 'kJ';
+  convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number;
+  getEnergyUnitString: (unit: 'kcal' | 'kJ') => string;
 }
 
 const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
@@ -30,6 +33,9 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
   onOpenChange,
   exerciseToEdit,
   onSaveSuccess,
+  energyUnit,
+  convertEnergy,
+  getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
@@ -54,7 +60,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
     if (exerciseToEdit) {
       setEditExerciseName(exerciseToEdit.name);
       setEditExerciseCategory(exerciseToEdit.category);
-      setEditExerciseCalories(exerciseToEdit.calories_per_hour);
+      setEditExerciseCalories(exerciseToEdit.calories_per_hour); // Assumed to be in kcal
       setEditExerciseDescription(exerciseToEdit.description || "");
       setEditExerciseLevel(exerciseToEdit.level?.toLowerCase() || "");
       setEditExerciseForce(exerciseToEdit.force?.toLowerCase() || "");
@@ -77,7 +83,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
       const updatedExerciseData: Partial<Exercise> = {
         name: editExerciseName,
         category: editExerciseCategory,
-        calories_per_hour: editExerciseCalories,
+        calories_per_hour: convertEnergy(editExerciseCalories, energyUnit, 'kcal'), // Convert back to kcal for saving
         description: editExerciseDescription,
         level: editExerciseLevel,
         force: editExerciseForce,
@@ -240,13 +246,13 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-db-calories" className="text-right">
-                {t("exerciseCard.caloriesPerHour", "Calories/Hour")}
+                {t("exerciseCard.caloriesPerHour", `Calories/Hour (${getEnergyUnitString(energyUnit)})`)}
               </Label>
               <Input
                 id="edit-db-calories"
                 type="number"
-                value={editExerciseCalories.toString()}
-                onChange={(e) => setEditExerciseCalories(Number(e.target.value))}
+                value={Math.round(convertEnergy(editExerciseCalories, 'kcal', energyUnit)).toString()}
+                onChange={(e) => setEditExerciseCalories(Number(convertEnergy(Number(e.target.value), energyUnit, 'kcal')))}
                 className="col-span-3"
               />
             </div>

@@ -31,8 +31,13 @@ const FoodUnitSelector = ({
   initialUnit,
   initialVariantId,
 }: FoodUnitSelectorProps) => {
-  const { loggingLevel } = usePreferences(); // Get logging level
+  const { loggingLevel, energyUnit, convertEnergy } = usePreferences(); // Get logging level, energyUnit, convertEnergy
   debug(loggingLevel, "FoodUnitSelector component rendered.", { food, open });
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    // This component does not import useTranslation, so we'll hardcode or pass t() from parent if it were needed for translation
+    return unit === 'kcal' ? 'kcal' : 'kJ';
+  };
   const [variants, setVariants] = useState<FoodVariant[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<FoodVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -57,7 +62,7 @@ const FoodUnitSelector = ({
         id: food.default_variant?.id || food.id, // Use default_variant.id if available, otherwise food.id
         serving_size: food.default_variant?.serving_size || 100,
         serving_unit: food.default_variant?.serving_unit || 'g',
-        calories: food.default_variant?.calories || 0,
+        calories: food.default_variant?.calories || 0, // kcal
         protein: food.default_variant?.protein || 0,
         carbs: food.default_variant?.carbs || 0,
         fat: food.default_variant?.fat || 0,
@@ -84,7 +89,7 @@ const FoodUnitSelector = ({
           id: variant.id,
           serving_size: variant.serving_size,
           serving_unit: variant.serving_unit,
-          calories: variant.calories || 0,
+          calories: variant.calories || 0, // kcal
           protein: variant.protein || 0,
           carbs: variant.carbs || 0,
           fat: variant.fat || 0,
@@ -125,7 +130,7 @@ const FoodUnitSelector = ({
         id: food.default_variant?.id || food.id, // Use default_variant.id if available, otherwise food.id
         serving_size: food.default_variant?.serving_size || 100,
         serving_unit: food.default_variant?.serving_unit || 'g',
-        calories: food.default_variant?.calories || 0,
+        calories: food.default_variant?.calories || 0, // kcal
         protein: food.default_variant?.protein || 0,
         carbs: food.default_variant?.carbs || 0,
         fat: food.default_variant?.fat || 0,
@@ -185,7 +190,7 @@ const FoodUnitSelector = ({
     });
 
     let nutrientValuesPerReferenceSize = {
-      calories: selectedVariant.calories || 0,
+      calories: selectedVariant.calories || 0, // kcal
       protein: selectedVariant.protein || 0,
       carbs: selectedVariant.carbs || 0,
       fat: selectedVariant.fat || 0,
@@ -207,7 +212,7 @@ const FoodUnitSelector = ({
 
     // Calculate total nutrition: (nutrient_value_per_reference_size / effective_reference_size) * quantity_consumed
     const result = {
-      calories: (nutrientValuesPerReferenceSize.calories / effectiveReferenceSize) * quantity,
+      calories: (nutrientValuesPerReferenceSize.calories / effectiveReferenceSize) * quantity, // This result is in kcal
       protein: (nutrientValuesPerReferenceSize.protein / effectiveReferenceSize) * quantity,
       carbs: (nutrientValuesPerReferenceSize.carbs / effectiveReferenceSize) * quantity,
       fat: (nutrientValuesPerReferenceSize.fat / effectiveReferenceSize) * quantity,
@@ -288,7 +293,7 @@ const FoodUnitSelector = ({
               <div className="bg-muted p-3 rounded-lg">
                 <h4 className="font-medium mb-2">Nutrition for {quantity} {selectedVariant.serving_unit}:</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>{nutrition.calories.toFixed(1)} calories</div>
+                  <div>{Math.round(convertEnergy(nutrition.calories, 'kcal', energyUnit))} {getEnergyUnitString(energyUnit)}</div>
                   <div>{nutrition.protein.toFixed(1)}g protein</div>
                   <div>{nutrition.carbs.toFixed(1)}g carbs</div>
                   <div>{nutrition.fat.toFixed(1)}g fat</div>

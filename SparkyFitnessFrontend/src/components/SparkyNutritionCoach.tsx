@@ -1,17 +1,20 @@
-import { forwardRef, useImperativeHandle } from 'react';
-import { apiCall } from '@/services/api'; // Import the centralized apiCall
-import SparkyAIService from '@/components/SparkyAIService'; // Import SparkyAIService
 
-import { NutritionData, CoachResponse, FoodOption } from '@/services/Chatbot/Chatbot_types';
-import { fileToBase64, saveMessageToHistory, clearHistory } from '@/services/Chatbot/Chatbot_utils';
-import { processFoodInput, addFoodOption } from '@/services/Chatbot/Chatbot_FoodHandler';
-import { processChatInput } from '@/services/Chatbot/Chatbot_ChatHandler';
-import { processExerciseInput } from '@/services/Chatbot/Chatbot_ExerciseHandler';
-import { processMeasurementInput } from '@/services/Chatbot/Chatbot_MeasurementHandler';
-import { processWaterInput } from '@/services/Chatbot/Chatbot_WaterHandler';
-import { info, error, warn, debug, UserLoggingLevel } from '@/utils/logging';
+import React, { forwardRef, useImperativeHandle } from 'react';
+import { useTranslation } from "react-i18next";
+import { UserLoggingLevel, error, info, warn, debug } from "@/utils/logging";
+import { apiCall } from "@/services/api";
+import { CoachResponse, FoodOption, NutritionData } from "@/services/Chatbot/Chatbot_types";
+import SparkyAIService from "@/components/SparkyAIService";
+import { fileToBase64, saveMessageToHistory, clearHistory } from "@/services/Chatbot/Chatbot_utils";
+import { processFoodInput, addFoodOption } from "@/services/Chatbot/Chatbot_FoodHandler";
+import { processExerciseInput } from "@/services/Chatbot/Chatbot_ExerciseHandler";
+import { processMeasurementInput } from "@/services/Chatbot/Chatbot_MeasurementHandler";
+import { processWaterInput } from "@/services/Chatbot/Chatbot_WaterHandler";
+import { processChatInput } from "@/services/Chatbot/Chatbot_ChatHandler";
 
-const SparkyNutritionCoach = forwardRef<any, { userLoggingLevel: UserLoggingLevel; formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string }>(({ userLoggingLevel, formatDateInUserTimezone }, ref) => {
+const SparkyNutritionCoach = forwardRef<any, { userLoggingLevel: UserLoggingLevel; formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string; energyUnit: 'kcal' | 'kJ'; convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number; getEnergyUnitString: (unit: 'kcal' | 'kJ') => string }>(({ userLoggingLevel, formatDateInUserTimezone, energyUnit, convertEnergy, getEnergyUnitString }, ref) => {
+  const { t } = useTranslation();
+
 
   useImperativeHandle(ref, () => ({
     getTodaysNutrition,
@@ -87,14 +90,15 @@ const SparkyNutritionCoach = forwardRef<any, { userLoggingLevel: UserLoggingLeve
       const calorieProgress = Math.round((totals.calories / goals.calories) * 100);
       const proteinProgress = Math.round((totals.protein / goals.protein) * 100);
 
-      let analysis = `📊 **Today's Progress (${date}):**\n`;
-      analysis += `• Calories: ${Math.round(totals.calories)}/${goals.calories} (${calorieProgress}%)\n`;
-      analysis += `• Protein: ${Math.round(totals.protein)}g/${goals.protein}g (${proteinProgress}%)\n`;
-      analysis += `• Carbs: ${Math.round(totals.carbs)}g/${goals.carbs}g\n`;
-      analysis += `• Fat: ${Math.round(totals.fat)}g/${goals.fat}g\n`;
+      let analysis = `📊 **${t('nutritionCoach.todaysProgress', "Today's Progress")} (${date}):**\n`;
+      analysis += `• ${t('common.calories', 'Calories')}: ${Math.round(convertEnergy(totals.calories, 'kcal', energyUnit))}/${Math.round(convertEnergy(goals.calories, 'kcal', energyUnit))} (${calorieProgress}%) ${getEnergyUnitString(energyUnit)}\n`;
+      analysis += `• ${t('common.protein', 'Protein')}: ${Math.round(totals.protein)}g/${goals.protein}g (${proteinProgress}%)\n`;
+      analysis += `• ${t('common.carbs', 'Carbs')}: ${Math.round(totals.carbs)}g/${goals.carbs}g\n`;
+      analysis += `• ${t('common.fat', 'Fat')}: ${Math.round(totals.fat)}g/${goals.fat}g\n`;
       if (exerciseCalories > 0) {
-        analysis += `• Exercise: -${exerciseCalories} calories burned\n`;
-        analysis += `• Net Calories: ${Math.round(netCalories)}\n`;
+        analysis += `• ${t('common.exercise', 'Exercise')}: -${Math.round(convertEnergy(exerciseCalories, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)} ${t('common.burned', 'burned')}\n`;
+        analysis += `• ${t('common.netCalories', 'Net Calories')}: ${Math.round(convertEnergy(netCalories, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}
+`;
       }
 
       // Generate tips
@@ -129,7 +133,7 @@ const SparkyNutritionCoach = forwardRef<any, { userLoggingLevel: UserLoggingLeve
     }
   };
 
-  const sparkyAIService = new SparkyAIService(); // Instantiate SparkyAIService
+  const sparkyAIService = new SparkyAIService(energyUnit, convertEnergy, getEnergyUnitString); // Instantiate SparkyAIService with preferences
 
   const handleUserInput = async (input: string, imageFile: File | null = null, transactionId: string): Promise<CoachResponse> => {
     try {
@@ -180,7 +184,7 @@ const SparkyNutritionCoach = forwardRef<any, { userLoggingLevel: UserLoggingLeve
               info(userLoggingLevel, 'Received AI food options:', foodOptions);
               // Format the options for the user
               const optionsResponse = foodOptions.map((option: FoodOption, index: number) =>
-                `${index + 1}. ${option.name} (~${Math.round(option.calories || 0)} calories per ${option.serving_size}${option.serving_unit})`
+                `${index + 1}. ${option.name} (~${Math.round(convertEnergy(option.calories || 0, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)} per ${option.serving_size}${option.serving_unit})`
               ).join('\n');
 
               // Return a CoachResponse with action 'food_options'
@@ -213,7 +217,7 @@ const SparkyNutritionCoach = forwardRef<any, { userLoggingLevel: UserLoggingLeve
         case 'log_measurement':
           return await processMeasurementInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel);
         case 'log_water':
-          return await processWaterInput(parsedResponse.data, formatDateInUserTimezone, userLoggingLevel, transactionId);
+          return await processWaterInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel, transactionId);
         case 'ask_question':
         case 'chat':
           // For chat/ask_question, the response is already in parsedResponse.response
@@ -367,9 +371,9 @@ const SparkyNutritionCoach = forwardRef<any, { userLoggingLevel: UserLoggingLeve
         // Check if the year was inferred and the date is in the future,
         // if so, assume the user meant a past year.
         if (!dateMatch[3] && date > today) {
-             date.setFullYear(year - 1);
+          date.setFullYear(year - 1);
         }
-         return date.toISOString().split('T')[0];
+        return date.toISOString().split('T')[0];
       }
     }
 

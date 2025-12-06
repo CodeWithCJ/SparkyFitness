@@ -9,7 +9,7 @@ import { debug, info, warn, error } from "@/utils/logging"; // Import logging ut
 import { useTranslation } from "react-i18next";
 
 interface Goals {
-  calories: number;
+  calories: number; // Stored internally as kcal
   protein: number;
   carbs: number;
   fat: number;
@@ -17,7 +17,7 @@ interface Goals {
 }
 
 interface DayTotals {
-  calories: number;
+  calories: number; // Stored internally as kcal
   protein: number;
   carbs: number;
   fat: number;
@@ -31,25 +31,27 @@ interface DiaryTopControlsProps {
   goals?: Goals;
   onGoalsUpdated?: () => void;
   refreshTrigger?: number;
+  energyUnit: 'kcal' | 'kJ';
+  convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number;
 }
 
 const DiaryTopControls = ({
   selectedDate,
   onDateChange,
   dayTotals = { calories: 0, protein: 0, carbs: 0, fat: 0, dietary_fiber: 0 },
-  goals = {
-    calories: 2000,
-    protein: 150,
-    carbs: 250,
-    fat: 67,
-    dietary_fiber: 25,
-  },
-  onGoalsUpdated = () => {},
+  goals,
+  onGoalsUpdated,
   refreshTrigger = 0,
+  energyUnit,
+  convertEnergy,
 }: DiaryTopControlsProps) => {
   const { loggingLevel, nutrientDisplayPreferences } = usePreferences(); // Get logging level
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
+  
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  };
   const { t } = useTranslation();
   const summaryPreferences = nutrientDisplayPreferences.find(
     (p) => p.view_group === "summary" && p.platform === platform,
@@ -61,7 +63,7 @@ const DiaryTopControls = ({
   const nutrientDetails: {
     [key: string]: { color: string; label: string; unit: string };
   } = {
-    calories: { color: "bg-green-500", label: t("diary.nutrientLabels.cal", "cal"), unit: "" },
+    calories: { color: "bg-green-500", label: getEnergyUnitString(energyUnit), unit: "" },
     protein: { color: "bg-blue-500", label: t("diary.nutrientLabels.protein", "protein"), unit: "g" },
     carbs: { color: "bg-orange-500", label: t("diary.nutrientLabels.carbs", "carbs"), unit: "g" },
     fat: { color: "bg-yellow-500", label: t("diary.nutrientLabels.fat", "fat"), unit: "g" },
@@ -106,6 +108,8 @@ const DiaryTopControls = ({
               <EditGoals
                 selectedDate={selectedDate}
                 onGoalsUpdated={onGoalsUpdated}
+                energyUnit={energyUnit}
+                convertEnergy={convertEnergy}
               />
             </div>
           </CardHeader>
@@ -115,8 +119,13 @@ const DiaryTopControls = ({
                 const details = nutrientDetails[nutrient];
                 if (!details) return null;
 
-                const total = dayTotals[nutrient as keyof DayTotals];
-                const goal = goals[nutrient as keyof Goals];
+                const total = dayTotals[nutrient as keyof DayTotals]; // This is kcal
+                const goal = goals[nutrient as keyof Goals]; // This is kcal
+
+                // Convert to display unit for rendering
+                const displayedTotal = nutrient === 'calories' ? convertEnergy(total, 'kcal', energyUnit) : total;
+                const displayedGoal = nutrient === 'calories' ? convertEnergy(goal, 'kcal', energyUnit) : goal;
+
                 const percentage =
                   goal > 0 ? Math.min((total / goal) * 100, 100) : 0;
 
@@ -125,12 +134,12 @@ const DiaryTopControls = ({
                     <div
                       className={`text-lg sm:text-xl font-bold text-${details.color.split("-")[1]}-600`}
                     >
-                      {total.toFixed(nutrient === "calories" ? 0 : 1)}
-                      {details.unit}
+                      {displayedTotal.toFixed(nutrient === "calories" ? 0 : 1)}
+                      {nutrient === 'calories' ? getEnergyUnitString(energyUnit) : details.unit}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {t("diary.of", "of")} {goal}
-                      {details.unit} {details.label}
+                      {t("diary.of", "of")} {displayedGoal.toFixed(nutrient === "calories" ? 0 : 1)}
+                      {nutrient === 'calories' ? getEnergyUnitString(energyUnit) : details.unit} {details.label}
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                       <div

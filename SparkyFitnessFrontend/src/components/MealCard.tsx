@@ -70,6 +70,8 @@ interface MealCardProps {
   onCopyClick: (mealType: string) => void;
   onCopyFromYesterday: (mealType: string) => void;
   onConvertToMealClick: (mealType: string) => void;
+  energyUnit: 'kcal' | 'kJ';
+  convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number;
 }
 
 const MealCard = ({
@@ -84,12 +86,18 @@ const MealCard = ({
   onCopyClick,
   onCopyFromYesterday,
   onConvertToMealClick,
+  energyUnit,
+  convertEnergy,
 }: MealCardProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const { loggingLevel, nutrientDisplayPreferences } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
+  
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  };
   debug(loggingLevel, "MealCard: Component rendered for meal:", meal.name);
   debug(loggingLevel, "MealCard: meal.entries:", meal.entries);
   const [editingFood, setEditingFood] = useState<Food | null>( // Changed from editingFoodEntry to editingFood
@@ -152,7 +160,7 @@ const MealCard = ({
   } = {
     calories: {
       color: "text-gray-900 dark:text-gray-100",
-      label: "cal",
+      label: getEnergyUnitString(energyUnit),
       unit: "",
     },
     protein: { color: "text-blue-600", label: "protein", unit: "g" },
@@ -182,7 +190,7 @@ const MealCard = ({
                 {meal.name}
               </CardTitle>
               <span className="text-xs sm:text-sm text-gray-500">
-                {Math.round(totals.calories)}{!!meal.targetCalories && ` / ${Math.round(meal.targetCalories)}`} cal
+                {Math.round(convertEnergy(totals.calories, 'kcal', energyUnit))}{!!meal.targetCalories && ` / ${Math.round(convertEnergy(meal.targetCalories, 'kcal', energyUnit))}`} {getEnergyUnitString(energyUnit)}
               </span>
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-4 justify-end">
@@ -320,8 +328,12 @@ const MealCard = ({
                           return (
                             <div key={nutrient} className="whitespace-nowrap">
                               <span className={`font-medium ${details.color}`}>
-                                {typeof value === 'number' ? value.toFixed(nutrient === "calories" ? 0 : 1) : value}
-                                {details.unit}
+                                {typeof value === 'number'
+                                  ? nutrient === "calories"
+                                    ? Math.round(convertEnergy(value, 'kcal', energyUnit))
+                                    : value.toFixed(nutrient === "calories" ? 0 : 1)
+                                  : value}
+                                {nutrient === "calories" ? getEnergyUnitString(energyUnit) : details.unit}
                               </span>{" "}
                               {details.label}
                             </div>
@@ -380,8 +392,12 @@ const MealCard = ({
                     return (
                       <div key={nutrient} className="text-center">
                         <div className={`font-bold ${details.color}`}>
-                          {typeof value === 'number' ? value.toFixed(nutrient === "calories" ? 0 : 1) : value}
-                          {details.unit}
+                          {typeof value === 'number'
+                            ? nutrient === "calories"
+                              ? Math.round(convertEnergy(value, 'kcal', energyUnit))
+                              : value.toFixed(nutrient === "calories" ? 0 : 1)
+                            : value}
+                          {nutrient === "calories" ? getEnergyUnitString(energyUnit) : details.unit}
                         </div>
                         <div className="text-xs text-gray-500">
                           {details.label}

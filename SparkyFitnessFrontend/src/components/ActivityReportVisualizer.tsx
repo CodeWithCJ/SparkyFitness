@@ -74,7 +74,11 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
   const [error, setError] = useState<string | null>(null);
   const [activityData, setActivityData] = useState<ActivityData | null>(null);
   const [xAxisMode, setXAxisMode] = useState<XAxisMode>('timeOfDay'); // Default to time of day
-  const { distanceUnit, convertDistance, loggingLevel } = usePreferences();
+  const { distanceUnit, convertDistance, loggingLevel, energyUnit, convertEnergy } = usePreferences();
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  };
 
   useEffect(() => {
     const fetchActivityData = async () => {
@@ -358,7 +362,7 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
    : 'N/A';
  const averagePaceFormatted = (averagePaceForDisplay > 0) ? `${averagePaceForDisplay.toFixed(2)} /${distanceUnit === 'km' ? 'km' : 'mi'}` : 'N/A';
  const totalActivityAscentFormatted = totalActivityAscent > 0 ? `${totalActivityAscent.toFixed(0)}` : '--';
- const totalActivityCaloriesFormatted = totalActivityCalories > 0 ? `${totalActivityCalories.toFixed(0)}` : 'N/A';
+ const totalActivityCaloriesFormatted = totalActivityCalories > 0 ? `${Math.round(convertEnergy(totalActivityCalories, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}` : 'N/A';
  const averageHRFormatted = averageHR > 0 ? `${averageHR.toFixed(0)} bpm` : 'N/A';
  const averageRunCadenceFormatted = averageRunCadence > 0 ? `${averageRunCadence.toFixed(0)} spm` : 'N/A';
 

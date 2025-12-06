@@ -12,6 +12,7 @@ import {
 import { Plus, Download, Upload, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 
 interface ImportFromCSVProps {
   onSave: (foodData: Omit<CSVData, "id">[]) => Promise<void>;
@@ -53,6 +54,13 @@ const servingUnitOptions = [
 
 const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   const { user } = useAuth();
+  const { energyUnit, convertEnergy } = usePreferences();
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    // This component does not import useTranslation, so we'll hardcode or pass t() from parent if it were needed for translation
+    return unit === 'kcal' ? 'kcal' : 'kJ';
+  };
+
 
   const [loading, setLoading] = useState(false);
   const [csvData, setCsvData] = useState<CSVData[]>([]);
@@ -75,7 +83,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     "is_quick_food",
     "serving_size",
     "serving_unit",
-    "calories",
+    "calories", // Assumed to be in kcal
     "protein",
     "carbs",
     "fat",
@@ -115,7 +123,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
           header !== "serving_unit" &&
           !isNaN(parseFloat(value))
         ) {
-          row[header] = parseFloat(value);
+          row[header] = parseFloat(value); // All numeric values (including calories) are treated as kcal
         } else {
           row[header] = value;
         }
@@ -184,7 +192,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
         is_quick_food: "FALSE",
         serving_size: 231,
         serving_unit: "slice",
-        calories: 431,
+        calories: 431, // kcal
         protein: 379,
         carbs: 204,
         fat: 610,
@@ -250,7 +258,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       is_quick_food: false,
       serving_size: 100,
       serving_unit: "g",
-      calories: 0,
+      calories: 0, // kcal
       protein: 0,
       carbs: 0,
       fat: 0,
@@ -448,15 +456,21 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                                 required={header === "name"}
                                 className="w-full md:w-40"
                               />
-                            ) : (
+                            ) : ( // Generic number input
                               <Input
                                 type="number"
-                                value={(row[header] as number) || 0}
+                                value={
+                                  (header === "calories" && row[header] !== undefined)
+                                    ? Math.round(convertEnergy(row[header] as number, 'kcal', energyUnit))
+                                    : (row[header] as number) || 0
+                                }
                                 onChange={(e) =>
                                   handleEditCell(
                                     row.id,
                                     header,
-                                    e.target.valueAsNumber || 0
+                                    (header === "calories" && e.target.valueAsNumber)
+                                      ? convertEnergy(e.target.valueAsNumber, energyUnit, 'kcal')
+                                      : e.target.valueAsNumber || 0
                                   )
                                 }
                                 min="0"

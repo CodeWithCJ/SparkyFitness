@@ -62,6 +62,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     weightUnit, setWeightUnit,
     measurementUnit, setMeasurementUnit,
     distanceUnit, setDistanceUnit,
+    energyUnit, setEnergyUnit, // Add energyUnit and setEnergyUnit
     dateFormat, setDateFormat,
     loggingLevel, setLoggingLevel,
     itemDisplayLimit, setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
@@ -150,7 +151,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     if (!user) return;
 
     try {
-      
+
       const data = await apiCall(`/measurements/custom-categories`, {
         method: 'GET',
       });
@@ -220,7 +221,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
         method: 'DELETE',
         body: JSON.stringify({}), // Send userId in body for DELETE
       });
- 
+
       toast({
         title: "Success",
         description: "API key deleted successfully!",
@@ -672,6 +673,21 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 </Select>
               </div>
               <div>
+                <Label htmlFor="energy_unit">{t('settings.preferences.energyUnit', 'Energy Unit')}</Label>
+                <Select
+                  value={energyUnit}
+                  onValueChange={(value) => setEnergyUnit(value as 'kcal' | 'kJ')}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kcal">{t('settings.preferences.calories', 'Calories (kcal)')}</SelectItem>
+                    <SelectItem value="kJ">{t('settings.preferences.joules', 'Joules (kJ)')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label htmlFor="logging_level">{t('settings.preferences.loggingLevel', 'Minimum Logging Level')}</Label>
                 <Select
                   value={localLoggingLevel}
@@ -778,49 +794,49 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
           <AccordionContent className="p-4 pt-0">
             <NutrientDisplaySettings />
           </AccordionContent>
-       </AccordionItem>
+        </AccordionItem>
 
-       <AccordionItem value="calculation-settings" className="border rounded-lg mb-4">
-         <AccordionTrigger
-           className="flex items-center gap-2 p-4 hover:no-underline"
-           description={t('settings.calculationSettings.description', 'Manage BMR and Body Fat calculation preferences')}
-         >
-           <SettingsIcon className="h-5 w-5" />
-           {t('settings.calculationSettings.title', 'Calculation Settings')}
-         </AccordionTrigger>
-         <AccordionContent className="p-4 pt-0 space-y-4">
-           <CalculationSettings />
+        <AccordionItem value="calculation-settings" className="border rounded-lg mb-4">
+          <AccordionTrigger
+            className="flex items-center gap-2 p-4 hover:no-underline"
+            description={t('settings.calculationSettings.description', 'Manage BMR and Body Fat calculation preferences')}
+          >
+            <SettingsIcon className="h-5 w-5" />
+            {t('settings.calculationSettings.title', 'Calculation Settings')}
+          </AccordionTrigger>
+          <AccordionContent className="p-4 pt-0 space-y-4">
+            <CalculationSettings />
 
-           {/* Calorie Goal Adjustment Mode */}
-           <Separator className="my-6" />
-           <h3 className="text-lg font-semibold mb-2">{t('settings.calorieGoalAdjustment.title', 'Calorie Goal Adjustment')}</h3>
-           <div className="flex flex-col space-y-2">
-             <RadioGroup
-               value={calorieGoalAdjustmentMode}
-               onValueChange={(value: 'dynamic' | 'fixed') => setCalorieGoalAdjustmentMode(value)}
-               className="flex flex-col space-y-1"
-             >
-               <div className="flex items-center space-x-2">
-                 <RadioGroupItem value="dynamic" id="dynamic-goal" />
-                 <Label htmlFor="dynamic-goal">
-                   <span className="font-medium">{t('settings.calorieGoalAdjustment.dynamicGoal', 'Dynamic Goal')}:</span>{' '}
-                   {t('settings.calorieGoalAdjustment.dynamicGoalDescription', 'Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily.')}
-                 </Label>
-               </div>
-               <div className="flex items-center space-x-2">
-                 <RadioGroupItem value="fixed" id="fixed-goal" />
-                 <Label htmlFor="fixed-goal">
-                   <span className="font-medium">{t('settings.calorieGoalAdjustment.fixedGoal', 'Fixed Goal')}:</span>{' '}
-                   {t('settings.calorieGoalAdjustment.fixedGoalDescription', 'Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target.')}
-                 </Label>
-               </div>
-             </RadioGroup>
-           </div>
-         </AccordionContent>
-       </AccordionItem>
+            {/* Calorie Goal Adjustment Mode */}
+            <Separator className="my-6" />
+            <h3 className="text-lg font-semibold mb-2">{t('settings.calorieGoalAdjustment.title', 'Calorie Goal Adjustment')}</h3>
+            <div className="flex flex-col space-y-2">
+              <RadioGroup
+                value={calorieGoalAdjustmentMode}
+                onValueChange={(value: 'dynamic' | 'fixed') => setCalorieGoalAdjustmentMode(value)}
+                className="flex flex-col space-y-1"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="dynamic" id="dynamic-goal" />
+                  <Label htmlFor="dynamic-goal">
+                    <span className="font-medium">{t('settings.calorieGoalAdjustment.dynamicGoal', 'Dynamic Goal')}:</span>{' '}
+                    {t('settings.calorieGoalAdjustment.dynamicGoalDescription', 'Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily.')}
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="fixed" id="fixed-goal" />
+                  <Label htmlFor="fixed-goal">
+                    <span className="font-medium">{t('settings.calorieGoalAdjustment.fixedGoal', 'Fixed Goal')}:</span>{' '}
+                    {t('settings.calorieGoalAdjustment.fixedGoalDescription', 'Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target.')}
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
 
-       <AccordionItem value="family-access" className="border rounded-lg mb-4">
-         <AccordionTrigger
+        <AccordionItem value="family-access" className="border rounded-lg mb-4">
+          <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t('settings.familyAccess.description', 'Manage access to your data for family members')}
           >
@@ -886,12 +902,12 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             {t('settings.apiKeyManagement.title', 'API Key Management')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
-            
+
             <p className="text-sm text-muted-foreground">
               {t('settings.apiKeyManagement.infoText', 'Generate API keys to securely submit data from external applications like iPhone Shortcuts. These keys are tied to your account and can be revoked at any time.')}
             </p>
 
-            <TooltipWarning warningMsg = {t('settings.apiKeyManagement.wikiWarning', 'Refer to the Wiki page in Github for sample setup instructions for iPhone and Android.')} color="blue" />
+            <TooltipWarning warningMsg={t('settings.apiKeyManagement.wikiWarning', 'Refer to the Wiki page in Github for sample setup instructions for iPhone and Android.')} color="blue" />
             <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 placeholder={t('settings.apiKeyManagement.descriptionPlaceholder', "Description (e.g., 'iPhone Health Shortcut')")}
