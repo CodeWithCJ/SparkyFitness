@@ -4,6 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar,
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
+import { usePreferences } from "@/contexts/PreferencesContext";
 
 interface GarminActivityReportProps {
   exerciseEntryId: string;
@@ -18,9 +19,14 @@ interface GarminActivityData {
 
 const GarminActivityReport: React.FC<GarminActivityReportProps> = ({ exerciseEntryId }) => {
   const { t } = useTranslation();
+  const { energyUnit, convertEnergy } = usePreferences();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [garminData, setGarminData] = useState<GarminActivityData | null>(null);
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  };
 
   useEffect(() => {
     const fetchGarminData = async () => {
@@ -173,7 +179,7 @@ const GarminActivityReport: React.FC<GarminActivityReportProps> = ({ exerciseEnt
                     </td>
                     <td className="py-2 px-4 border-b">{lap.averageHR || t('common.notApplicable', 'N/A')}</td>
                     <td className="py-2 px-4 border-b">{lap.maxHR || t('common.notApplicable', 'N/A')}</td>
-                    <td className="py-2 px-4 border-b">{lap.calories || t('common.notApplicable', 'N/A')}</td>
+                    <td className="py-2 px-4 border-b">{lap.calories ? `${Math.round(convertEnergy(lap.calories, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}` : t('common.notApplicable', 'N/A')}</td>
                   </tr>
                 ))}
               </tbody>

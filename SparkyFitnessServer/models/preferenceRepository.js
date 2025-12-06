@@ -21,15 +21,16 @@ async function updateUserPreferences(userId, preferenceData) {
         include_bmr_in_net_calories = COALESCE($14, include_bmr_in_net_calories),
         language = COALESCE($15, language),
         calorie_goal_adjustment_mode = COALESCE($16, calorie_goal_adjustment_mode),
+        energy_unit = COALESCE($17, energy_unit),
         updated_at = now()
-      WHERE user_id = $17
+      WHERE user_id = $18
       RETURNING *`,
       [
         preferenceData.date_format, preferenceData.default_weight_unit, preferenceData.default_measurement_unit, preferenceData.default_distance_unit,
         preferenceData.system_prompt, preferenceData.auto_clear_history, preferenceData.logging_level, preferenceData.timezone,
         preferenceData.default_food_data_provider_id, preferenceData.item_display_limit, preferenceData.water_display_unit,
         preferenceData.bmr_algorithm, preferenceData.body_fat_algorithm, preferenceData.include_bmr_in_net_calories, preferenceData.language,
-        preferenceData.calorie_goal_adjustment_mode, userId
+        preferenceData.calorie_goal_adjustment_mode, preferenceData.energy_unit, userId
       ]
     );
     return result.rows[0];
@@ -73,13 +74,13 @@ async function upsertUserPreferences(preferenceData) {
        system_prompt, auto_clear_history, logging_level, timezone,
        default_food_data_provider_id, item_display_limit, water_display_unit,
        bmr_algorithm, body_fat_algorithm, include_bmr_in_net_calories,
-       language, calorie_goal_adjustment_mode, created_at, updated_at
+       language, calorie_goal_adjustment_mode, energy_unit, created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
        COALESCE($6, ''), COALESCE($7, 'never'), COALESCE($8, 'INFO'), COALESCE($9, 'UTC'),
        $10, COALESCE($11, 10), COALESCE($12, 'ml'),
        COALESCE($13, 'Mifflin-St Jeor'), COALESCE($14, 'U.S. Navy'), COALESCE($15, false),
-       COALESCE($16, 'en'), COALESCE($17, 'dynamic'), now(), now()
+       COALESCE($16, 'en'), COALESCE($17, 'dynamic'), COALESCE($18, 'kcal'), now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
        date_format = COALESCE(EXCLUDED.date_format, user_preferences.date_format),
@@ -98,6 +99,7 @@ async function upsertUserPreferences(preferenceData) {
        include_bmr_in_net_calories = COALESCE(EXCLUDED.include_bmr_in_net_calories, user_preferences.include_bmr_in_net_calories),
        language = COALESCE(EXCLUDED.language, user_preferences.language),
        calorie_goal_adjustment_mode = COALESCE(EXCLUDED.calorie_goal_adjustment_mode, user_preferences.calorie_goal_adjustment_mode),
+       energy_unit = COALESCE(EXCLUDED.energy_unit, user_preferences.energy_unit),
        updated_at = now()
      RETURNING *`,
      [
@@ -105,7 +107,7 @@ async function upsertUserPreferences(preferenceData) {
        preferenceData.system_prompt, preferenceData.auto_clear_history, preferenceData.logging_level, preferenceData.timezone,
        preferenceData.default_food_data_provider_id, preferenceData.item_display_limit, preferenceData.water_display_unit,
        preferenceData.bmr_algorithm, preferenceData.body_fat_algorithm, preferenceData.include_bmr_in_net_calories, preferenceData.language,
-       preferenceData.calorie_goal_adjustment_mode
+       preferenceData.calorie_goal_adjustment_mode, preferenceData.energy_unit
      ]
     );
     return result.rows[0];

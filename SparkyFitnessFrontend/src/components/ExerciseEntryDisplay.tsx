@@ -22,6 +22,9 @@ interface ExerciseEntryDisplayProps {
   handleEditExerciseDatabase: (exerciseId: string) => void;
   setExerciseToPlay: (exercise: Exercise | null) => void;
   setIsPlaybackModalOpen: (isOpen: boolean) => void;
+  energyUnit: 'kcal' | 'kJ';
+  convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number;
+  getEnergyUnitString: (unit: 'kcal' | 'kJ') => string;
 }
 
 const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
@@ -32,6 +35,9 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
   handleEditExerciseDatabase,
   setExerciseToPlay,
   setIsPlaybackModalOpen,
+  energyUnit,
+  convertEnergy,
+  getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
   const { weightUnit, convertWeight, loggingLevel } = usePreferences(); // Destructure loggingLevel from usePreferences
@@ -69,8 +75,8 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           </span>
           <div className="text-xs text-gray-500 dark:text-gray-400">
             {exerciseEntry.exercise_snapshot?.name === "Active Calories"
-              ? `${String(Math.round(exerciseEntry.calories_burned || 0))} active calories`
-              : `${String(exerciseEntry.duration_minutes || 0)} minutes • ${String(Math.round(exerciseEntry.calories_burned || 0))} calories`}
+              ? `${Math.round(convertEnergy(exerciseEntry.calories_burned || 0, 'kcal', energyUnit))} active ${getEnergyUnitString(energyUnit)}`
+              : `${String(exerciseEntry.duration_minutes || 0)} minutes • ${Math.round(convertEnergy(exerciseEntry.calories_burned || 0, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`}
             {exerciseEntry.sets && Array.isArray(exerciseEntry.sets) && exerciseEntry.sets.length > 0 && (
               <>
                 {` • Sets: ${String(exerciseEntry.sets.length)}`}

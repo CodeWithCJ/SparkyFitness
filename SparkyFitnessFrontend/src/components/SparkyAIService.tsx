@@ -98,6 +98,15 @@ interface NutritionData {
 }
 
 class SparkyAIService {
+  private energyUnit: 'kcal' | 'kJ' = 'kcal'; // Default
+  private convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number = (val) => val; // Default passthrough
+  private getEnergyUnitString: (unit: 'kcal' | 'kJ') => string = (unit) => unit === 'kcal' ? 'kcal' : 'kJ'; // Default fallback
+
+  constructor(energyUnit?: 'kcal' | 'kJ', convertEnergy?: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number, getEnergyUnitString?: (unit: 'kcal' | 'kJ') => string) {
+    if (energyUnit) this.energyUnit = energyUnit;
+    if (convertEnergy) this.convertEnergy = convertEnergy;
+    if (getEnergyUnitString) this.getEnergyUnitString = getEnergyUnitString;
+  }
   private async getActiveService(): Promise<AIServiceConfig | null> {
     try {
       // Assuming user ID is available globally or passed in
@@ -151,7 +160,7 @@ class SparkyAIService {
     const measurements: MeasurementSuggestion[] = [];
     const lowerMessage = message.toLowerCase();
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Weight patterns
     const weightPatterns = [
       /(?:my\s+)?weight\s+is\s+(\d+(?:\.\d+)?)\s*(kg|lbs?|pounds?)/gi,
@@ -165,14 +174,14 @@ class SparkyAIService {
       while ((match = pattern.exec(message)) !== null) {
         const value = parseFloat(match[1]);
         let unit = match[2].toLowerCase();
-        
+
         // Normalize units
         if (unit.includes('lb') || unit.includes('pound')) {
           unit = 'lbs';
         } else if (unit === 'kg') {
           unit = 'kg';
         }
-        
+
         measurements.push({
           type: 'weight',
           value,
@@ -193,13 +202,13 @@ class SparkyAIService {
       while ((match = pattern.exec(message)) !== null) {
         const value = parseFloat(match[1]);
         let unit = match[2].toLowerCase();
-        
+
         if (unit.includes('inch') || unit === 'in') {
           unit = 'inches';
         } else if (unit === 'cm') {
           unit = 'cm';
         }
-        
+
         measurements.push({
           type: 'waist',
           value,
@@ -280,26 +289,26 @@ class SparkyAIService {
     }
 
     let response = "Great! I've recorded your measurement(s) for today:\n\n";
-    
+
     for (const measurement of measurements) {
       response += `**${measurement.type.charAt(0).toUpperCase() + measurement.type.slice(1)}:** ${measurement.value} ${measurement.unit}\n`;
     }
-    
+
     response += "\nYour data has been saved and will be available in your Check-In and Reports sections for tracking progress over time.";
-    
+
     return response;
   }
 
-  private extractFoodsFromMessage(message: string): Array<{name: string, quantity: number, unit: string}> {
-    const foods: Array<{name: string, quantity: number, unit: string}> = [];
+  private extractFoodsFromMessage(message: string): Array<{ name: string, quantity: number, unit: string }> {
+    const foods: Array<{ name: string, quantity: number, unit: string }> = [];
     const lowerMessage = message.toLowerCase();
-    
+
     // Enhanced patterns for better food recognition including branded foods
     const foodPatterns = [
       // Pizza patterns (brand specific)
       /(\d+)\s+(slice|slices|piece|pieces)\s+of\s+([a-zA-Z\s]+?)\s+(pizza)/gi,
       /(\d+)\s+([a-zA-Z\s]+?)\s+(pizza)\s+(slice|slices|piece|pieces)/gi,
-      
+
       // Number + food name patterns
       /(\d+)\s+(idl[yi]s?|idly|idli)/gi,
       /(\d+)\s+(vadai?s?|vada|medu vada)/gi,
@@ -309,7 +318,7 @@ class SparkyAIService {
       /(\d+)\s+(samosa|samosas)/gi,
       /(\d+)\s+(cup|cups|glass|glasses)\s+of\s+([a-zA-Z\s]+)/gi,
       /(\d+)\s+([a-zA-Z\s]{3,}?)(?:\s+and|\s*$|,)/gi,
-      
+
       // Word number + food patterns  
       /(one|two|three|four|five|six|seven|eight|nine|ten)\s+(idl[yi]s?|idly|idli)/gi,
       /(one|two|three|four|five|six|seven|eight|nine|ten)\s+(vadai?s?|vada|medu vada)/gi,
@@ -317,7 +326,7 @@ class SparkyAIService {
       /(one|two|three|four|five|six|seven|eight|nine|ten)\s+([a-zA-Z\s]{3,}?)(?:\s+and|\s*$|,)/gi,
     ];
 
-    const numberWords: {[key: string]: number} = {
+    const numberWords: { [key: string]: number } = {
       'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
       'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
     };
@@ -333,14 +342,14 @@ class SparkyAIService {
         if (match[0].toLowerCase().includes('pizza')) {
           if (match[1] && (match[3] || match[2])) {
             quantity = isNaN(Number(match[1])) ? numberWords[match[1].toLowerCase()] || 1 : parseInt(match[1]);
-            
+
             // Extract brand and pizza type
             if (match[3] && match[4] === 'pizza') {
               foodName = `${match[3].trim()} Pizza`;
             } else if (match[2] && match[3] === 'pizza') {
               foodName = `${match[2].trim()} Pizza`;
             }
-            
+
             unit = match[4] === 'pizza' ? 'slice' : (match[4] || 'slice');
           }
         } else if (match[1] && match[2]) {
@@ -351,7 +360,7 @@ class SparkyAIService {
             quantity = parseInt(match[1]);
           }
           foodName = match[2].trim();
-          
+
           // Handle cup/glass measurements
           if (match[3]) {
             foodName = match[3].trim();
@@ -361,7 +370,7 @@ class SparkyAIService {
 
         // Clean and standardize food names
         foodName = this.standardizeFoodName(foodName);
-        
+
         if (foodName && foodName.length > 2) {
           foods.push({ name: foodName, quantity, unit });
         }
@@ -377,16 +386,16 @@ class SparkyAIService {
           const foodIndex = lowerMessage.indexOf(food);
           const beforeFood = lowerMessage.substring(Math.max(0, foodIndex - 20), foodIndex);
           const numberMatch = beforeFood.match(/(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s*$/);
-          
+
           let quantity = 1;
           if (numberMatch) {
             quantity = isNaN(Number(numberMatch[1])) ? numberWords[numberMatch[1]] || 1 : parseInt(numberMatch[1]);
           }
-          
-          foods.push({ 
-            name: this.standardizeFoodName(food), 
-            quantity, 
-            unit: food === 'pizza' ? 'slice' : 'piece' 
+
+          foods.push({
+            name: this.standardizeFoodName(food),
+            quantity,
+            unit: food === 'pizza' ? 'slice' : 'piece'
           });
           break;
         }
@@ -397,9 +406,9 @@ class SparkyAIService {
   }
 
   private standardizeFoodName(name: string): string {
-    const standardNames: {[key: string]: string} = {
+    const standardNames: { [key: string]: string } = {
       'idly': 'Idli',
-      'idli': 'Idli', 
+      'idli': 'Idli',
       'idlys': 'Idli',
       'idlis': 'Idli',
       'vadai': 'Medu Vada',
@@ -422,12 +431,12 @@ class SparkyAIService {
       'chicken pizza': 'Chicken Pizza',
       'pizza': 'Pizza'
     };
-    
+
     const lowerName = name.toLowerCase().trim();
     return standardNames[lowerName] || name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
   }
 
-  private async getDetailedNutritionData(foods: Array<{name: string, quantity: number, unit: string}>) {
+  private async getDetailedNutritionData(foods: Array<{ name: string, quantity: number, unit: string }>) {
     const nutritionData = [];
 
     for (const food of foods) {
@@ -457,7 +466,7 @@ class SparkyAIService {
   }
 
   private getKnownFoodNutrition(foodName: string) {
-    const knownFoods: {[key: string]: any} = {
+    const knownFoods: { [key: string]: any } = {
       'Idli': {
         name: 'Idli',
         serving_size: 1,
@@ -591,7 +600,7 @@ class SparkyAIService {
         iron: 2.5
       }
     };
-    
+
     return knownFoods[foodName] || null;
   }
 
@@ -601,7 +610,7 @@ class SparkyAIService {
       name: foodName,
       serving_size: 1,
       serving_unit: 'piece',
-      calories: 80,
+      calories: Math.round(this.convertEnergy(80, 'kcal', this.energyUnit)),
       protein: 3.0,
       carbs: 15.0,
       fat: 2.0,
@@ -626,10 +635,10 @@ class SparkyAIService {
   private createFoodSuggestionsFromNutrition(nutritionData: any[], originalMessage: string): FoodSuggestion[] {
     const mealType = this.determineMealType(originalMessage);
     const suggestions: FoodSuggestion[] = [];
-    
+
     for (const nutrition of nutritionData) {
       const multiplier = nutrition.requested_quantity || 1;
-      
+
       suggestions.push({
         name: nutrition.name,
         quantity: nutrition.requested_quantity || 1,
@@ -655,31 +664,31 @@ class SparkyAIService {
         is_existing: false
       });
     }
-    
+
     return suggestions;
   }
 
   private createNutritionResponse(nutritionData: any[], originalMessage: string): string {
     const mealType = this.determineMealType(originalMessage);
-    
+
     let response = `Great! I've analyzed your ${mealType} and found nutritional information for:\n\n`;
-    
+
     for (const nutrition of nutritionData) {
       const quantity = nutrition.requested_quantity || 1;
       const totalCals = Math.round(nutrition.calories * quantity);
       const totalProtein = Math.round(nutrition.protein * quantity * 10) / 10;
       const totalCarbs = Math.round(nutrition.carbs * quantity * 10) / 10;
       const totalFat = Math.round(nutrition.fat * quantity * 10) / 10;
-      
+
       response += `**${quantity} ${nutrition.name}${quantity > 1 ? 's' : ''}:**\n`;
-      response += `• ${totalCals} calories\n`;
+      response += `• ${Math.round(nutrition.calories * quantity)} ${this.getEnergyUnitString(this.energyUnit)}\n`;
       response += `• ${totalProtein}g protein, ${totalCarbs}g carbs, ${totalFat}g fat\n`;
       response += `• ${Math.round(nutrition.dietary_fiber * quantity * 10) / 10}g fiber, ${Math.round(nutrition.sodium * quantity)}mg sodium\n`;
       response += `• ${Math.round(nutrition.calcium * quantity)}mg calcium, ${Math.round(nutrition.iron * quantity * 10) / 10}mg iron\n\n`;
     }
-    
+
     response += `Would you like me to add these items to your ${mealType} for today?`;
-    
+
     return response;
   }
 
@@ -692,7 +701,7 @@ class SparkyAIService {
 
   private determineMealType(message: string): string {
     const lowerMessage = message.toLowerCase();
-    
+
     if (lowerMessage.includes('breakfast') || lowerMessage.includes('morning')) {
       return 'breakfast';
     } else if (lowerMessage.includes('lunch') || lowerMessage.includes('noon')) {
@@ -702,13 +711,13 @@ class SparkyAIService {
     } else if (lowerMessage.includes('snack')) {
       return 'snacks';
     }
-    
+
     // Check for time references like "last sunday"
     if (lowerMessage.includes('sunday') || lowerMessage.includes('last sunday')) {
       // Default Sunday evening meal to dinner
       return 'dinner';
     }
-    
+
     // Default based on time of day
     const hour = new Date().getHours();
     if (hour < 11) return 'breakfast';
@@ -722,7 +731,7 @@ class SparkyAIService {
     const measurements: MeasurementSuggestion[] = [];
     const lowerMessage = message.toLowerCase();
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Blood sugar patterns
     const bloodSugarPatterns = [
       /(?:my\s+)?blood\s+sugar\s+is\s+(\d+(?:\.\d+)?)/gi,
@@ -862,7 +871,7 @@ class SparkyAIService {
   private async saveCustomMeasurements(measurements: MeasurementSuggestion[]): Promise<boolean> {
     try {
       // Mapping of measurement types to category names and units
-      const categoryMapping: {[key: string]: {name: string, unit: string}} = {
+      const categoryMapping: { [key: string]: { name: string, unit: string } } = {
         'blood_sugar': { name: 'Blood Sugar', unit: 'mg/dL' },
         'cholesterol': { name: 'Cholesterol', unit: 'mg/dL' },
         'blood_pressure_systolic': { name: 'Blood Pressure (Systolic)', unit: 'mmHg' },

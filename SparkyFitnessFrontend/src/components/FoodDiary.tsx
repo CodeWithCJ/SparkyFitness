@@ -50,7 +50,7 @@ import AddWorkoutPresetDialog from "./AddWorkoutPresetDialog";
 
 
 interface MealTotals {
-  calories: number;
+  calories: number; // Stored internally as kcal
   protein: number;
   carbs: number;
   fat: number;
@@ -89,8 +89,13 @@ const FoodDiary = ({
     formatDateInUserTimezone,
     parseDateInUserTimezone,
     loggingLevel,
+    energyUnit,
+    convertEnergy,
   } = usePreferences();
   debug(loggingLevel, "FoodDiary component rendered for date:", selectedDate);
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  };
   const [date, setDate] = useState<Date>(new Date(selectedDate));
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
   const [foodEntryMeals, setFoodEntryMeals] = useState<FoodEntryMeal[]>([]); // New state for logged meals
@@ -149,15 +154,15 @@ const FoodDiary = ({
       const combinedItems: { nutrition: MealTotals, meal_type: string }[] = [];
 
       entries.forEach(entry => {
-        const entryNutrition = calculateFoodEntryNutrition(entry);
+        const entryNutrition = calculateFoodEntryNutrition(entry); // Assumes this returns kcal
         combinedItems.push({ nutrition: entryNutrition, meal_type: entry.meal_type });
       });
 
       meals.forEach(meal => {
-        // For FoodEntryMeal, its aggregated nutritional data is directly available
+        // For FoodEntryMeal, its aggregated nutritional data is directly available (assumed to be in kcal)
         combinedItems.push({ 
           nutrition: {
-            calories: meal.calories || 0,
+            calories: meal.calories || 0, // kcal
             protein: meal.protein || 0,
             carbs: meal.carbs || 0,
             fat: meal.fat || 0,
@@ -186,7 +191,7 @@ const FoodDiary = ({
           return acc;
         },
         {
-          calories: 0,
+          calories: 0, // kcal
           protein: 0,
           carbs: 0,
           fat: 0,
@@ -273,9 +278,9 @@ const FoodDiary = ({
     (item: FoodEntry | FoodEntryMeal): MealTotals => {
       debug(loggingLevel, "Calculating entry nutrition for item:", item);
       let nutrition: MealTotals;
-      if ('foods' in item) { // It's a FoodEntryMeal, use its aggregated properties
+      if ('foods' in item) { // It's a FoodEntryMeal, use its aggregated properties (assumed to be in kcal)
         nutrition = {
-          calories: item.calories || 0,
+          calories: item.calories || 0, // kcal
           protein: item.protein || 0,
           carbs: item.carbs || 0,
           fat: item.fat || 0,
@@ -292,7 +297,7 @@ const FoodDiary = ({
           calcium: item.calcium || 0,
         };
       } else { // It's a FoodEntry
-        nutrition = calculateFoodEntryNutrition(item);
+        nutrition = calculateFoodEntryNutrition(item); // Assumes this returns kcal
       }
       debug(loggingLevel, "Calculated nutrition for item:", nutrition);
       return nutrition;
@@ -330,11 +335,11 @@ const FoodDiary = ({
         type: mealType,
         entries: combinedEntries,
         targetCalories: goals
-          ? (goals.calories * (goals[`${mealType}_percentage`] || 0)) / 100
+          ? (goals.calories * (goals[`${mealType}_percentage`] || 0)) / 100 // goals.calories is in kcal
           : 0,
       };
     },
-    [foodEntries, foodEntryMeals, goals, loggingLevel],
+    [foodEntries, foodEntryMeals, goals, loggingLevel, t],
   );
 
   const handleDataChange = useCallback(() => {
@@ -447,7 +452,7 @@ const FoodDiary = ({
           return acc;
         },
         {
-          calories: 0,
+          calories: 0, // kcal
           protein: 0,
           carbs: 0,
           fat: 0,
@@ -762,6 +767,8 @@ const FoodDiary = ({
             goals={goals}
             onGoalsUpdated={handleDataChange}
             refreshTrigger={externalRefreshTrigger}
+            energyUnit={energyUnit}
+            convertEnergy={convertEnergy}
           />
 
           {/* Main Content - Meals and Exercise */}
@@ -778,6 +785,8 @@ const FoodDiary = ({
               onCopyClick={handleCopyClick}
               onCopyFromYesterday={handleCopyFromYesterday}
               onConvertToMealClick={handleConvertToMealClick}
+              energyUnit={energyUnit}
+              convertEnergy={convertEnergy}
               key={`breakfast-${externalRefreshTrigger}`}
             />
             <MealCard
@@ -792,6 +801,8 @@ const FoodDiary = ({
               onCopyClick={handleCopyClick}
               onCopyFromYesterday={handleCopyFromYesterday}
               onConvertToMealClick={handleConvertToMealClick}
+              energyUnit={energyUnit}
+              convertEnergy={convertEnergy}
               key={`lunch-${externalRefreshTrigger}`}
             />
             <MealCard
@@ -806,6 +817,8 @@ const FoodDiary = ({
               onCopyClick={handleCopyClick}
               onCopyFromYesterday={handleCopyFromYesterday}
               onConvertToMealClick={handleConvertToMealClick}
+              energyUnit={energyUnit}
+              convertEnergy={convertEnergy}
               key={`dinner-${externalRefreshTrigger}`}
             />
             <MealCard
@@ -820,6 +833,8 @@ const FoodDiary = ({
               onCopyClick={handleCopyClick}
               onCopyFromYesterday={handleCopyFromYesterday}
               onConvertToMealClick={handleConvertToMealClick}
+              energyUnit={energyUnit}
+              convertEnergy={convertEnergy}
               key={`snacks-${externalRefreshTrigger}`}
             />
 

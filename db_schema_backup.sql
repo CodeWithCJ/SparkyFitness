@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict CX3mU04ZAtrgzYsIlqQRwHBZwQ3rtvM8xTsJQiI0f9bcdN9BGfQrGNsW91v1goj
+\restrict lYSHUbt4lidG0EwiOddiAV9VwVHBoUhcaC2dMNh5hWavI42lvvMCourwXXR4gFb
 
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 18.0
@@ -1084,7 +1084,7 @@ CREATE TABLE public.external_data_providers (
     scope text,
     last_sync_at timestamp with time zone,
     sync_frequency text DEFAULT 'manual'::text,
-    CONSTRAINT external_data_providers_provider_type_check CHECK ((provider_type = ANY (ARRAY['fatsecret'::text, 'openfoodfacts'::text, 'mealie'::text, 'garmin'::text, 'health'::text, 'nutritionix'::text, 'wger'::text, 'free-exercise-db'::text, 'withings'::text])))
+    CONSTRAINT external_data_providers_provider_type_check CHECK ((provider_type = ANY (ARRAY['fatsecret'::text, 'openfoodfacts'::text, 'mealie'::text, 'garmin'::text, 'health'::text, 'nutritionix'::text, 'wger'::text, 'free-exercise-db'::text, 'withings'::text, 'tandoor'::text])))
 );
 
 
@@ -1717,6 +1717,8 @@ CREATE TABLE public.user_preferences (
     default_distance_unit character varying(20) DEFAULT 'km'::character varying NOT NULL,
     language character varying(10) DEFAULT 'en'::character varying,
     calorie_goal_adjustment_mode text DEFAULT 'dynamic'::text,
+    energy_unit character varying(4) DEFAULT 'kcal'::character varying NOT NULL,
+    CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text])))
 );
 
@@ -4854,5 +4856,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict CX3mU04ZAtrgzYsIlqQRwHBZwQ3rtvM8xTsJQiI0f9bcdN9BGfQrGNsW91v1goj
+\unrestrict lYSHUbt4lidG0EwiOddiAV9VwVHBoUhcaC2dMNh5hWavI42lvvMCourwXXR4gFb
 

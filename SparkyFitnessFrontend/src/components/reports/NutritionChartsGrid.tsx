@@ -34,7 +34,7 @@ interface NutritionChartsGridProps {
 
 const NutritionChartsGrid = ({ nutritionData }: NutritionChartsGridProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, formatDateInUserTimezone, nutrientDisplayPreferences } = usePreferences(); // Destructure formatDateInUserTimezone
+  const { loggingLevel, formatDateInUserTimezone, nutrientDisplayPreferences, energyUnit, convertEnergy } = usePreferences(); // Destructure formatDateInUserTimezone, energyUnit, convertEnergy
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const reportChartPreferences = nutrientDisplayPreferences.find(p => p.view_group === 'report_chart' && p.platform === platform);
@@ -66,7 +66,7 @@ const NutritionChartsGrid = ({ nutritionData }: NutritionChartsGridProps) => {
   };
 
   const allNutritionCharts = [
-    { key: 'calories', label: t('nutritionCharts.calories', 'Calories'), color: '#8884d8', unit: 'cal' },
+    { key: 'calories', label: t('nutritionCharts.calories', 'Calories'), color: '#8884d8', unit: energyUnit },
     { key: 'protein', label: t('nutritionCharts.protein', 'Protein'), color: '#82ca9d', unit: 'g' },
     { key: 'carbs', label: t('nutritionCharts.carbs', 'Carbs'), color: '#ffc658', unit: 'g' },
     { key: 'fat', label: t('nutritionCharts.fat', 'Fat'), color: '#ff7300', unit: 'g' },
@@ -121,7 +121,9 @@ const NutritionChartsGrid = ({ nutritionData }: NutritionChartsGridProps) => {
                               return value.toFixed(1);
                             } else if (chart.unit === 'mg') {
                               return value.toFixed(2);
-                            } else if (chart.unit === 'cal' || chart.unit === 'μg') {
+                            } else if (chart.key === 'calories') { // Use chart.key === 'calories' to specifically target calories
+                              return Math.round(convertEnergy(value, 'kcal', energyUnit)).toString();
+                            } else if (chart.unit === 'μg') {
                               return Math.round(value).toString();
                             } else {
                               return Math.round(value).toString(); // Default to rounding for other units
@@ -144,11 +146,13 @@ const NutritionChartsGrid = ({ nutritionData }: NutritionChartsGridProps) => {
                           }
 
                           let formattedValue: string;
-                          if (chart.unit === 'g') {
+                          if (chart.key === 'calories') { // Use chart.key === 'calories' to specifically target calories
+                            formattedValue = Math.round(convertEnergy(numValue, 'kcal', energyUnit)).toString();
+                          } else if (chart.unit === 'g') {
                             formattedValue = numValue.toFixed(1);
                           } else if (chart.unit === 'mg') {
                             formattedValue = numValue.toFixed(2);
-                          } else if (chart.unit === 'cal' || chart.unit === 'μg') {
+                          } else if (chart.unit === 'μg') {
                             formattedValue = Math.round(numValue).toString();
                           }
                           else {

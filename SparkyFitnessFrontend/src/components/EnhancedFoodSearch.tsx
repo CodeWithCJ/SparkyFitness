@@ -74,9 +74,11 @@ interface EnhancedFoodSearchProps {
 
 type FoodDataForBackend = Omit<CSVData, "id">;
 
-const NutrientGrid = ({ food, visibleNutrients }) => {
+const NutrientGrid = ({ food, visibleNutrients, energyUnit, convertEnergy, getEnergyUnitString }) => {
+  const { t } = useTranslation(); // Import useTranslation here
+
   const nutrientDetails: { [key: string]: { color: string; label: string; unit: string } } = {
-    calories: { color: "text-gray-900 dark:text-gray-100", label: "cal", unit: "" },
+    calories: { color: "text-gray-900 dark:text-gray-100", label: getEnergyUnitString(energyUnit), unit: "" },
     protein: { color: "text-blue-600", label: "protein", unit: "g" },
     carbs: { color: "text-orange-600", label: "carbs", unit: "g" },
     fat: { color: "text-yellow-600", label: "fat", unit: "g" },
@@ -95,52 +97,60 @@ const NutrientGrid = ({ food, visibleNutrients }) => {
   };
 
   const getGridClass = (cols: number) => {
-      switch (cols) {
-          case 1:
-              return 'sm:grid-cols-1';
-          case 2:
-              return 'sm:grid-cols-2';
-          case 3:
-              return 'sm:grid-cols-3';
-          case 4:
-              return 'sm:grid-cols-4';
-          case 5:
-              return 'sm:grid-cols-5';
-          case 6:
-              return 'sm:grid-cols-6';
-          case 7:
-              return 'sm:grid-cols-7';
-          case 8:
-              return 'sm:grid-cols-8';
-          default:
-              return 'sm:grid-cols-7';
-      }
+    switch (cols) {
+      case 1:
+        return 'sm:grid-cols-1';
+      case 2:
+        return 'sm:grid-cols-2';
+      case 3:
+        return 'sm:grid-cols-3';
+      case 4:
+        return 'sm:grid-cols-4';
+      case 5:
+        return 'sm:grid-cols-5';
+      case 6:
+        return 'sm:grid-cols-6';
+      case 7:
+        return 'sm:grid-cols-7';
+      case 8:
+        return 'sm:grid-cols-8';
+      default:
+        return 'sm:grid-cols-7';
+    }
   };
 
 
   return (
     <div className={`grid grid-cols-2 ${getGridClass(visibleNutrients.length)} gap-2 text-sm text-gray-600`}>
       {visibleNutrients.map((nutrient) => {
-         const details = nutrientDetails[nutrient];
-         if (!details) return null;
+        const details = nutrientDetails[nutrient];
+        if (!details) return null;
 
-         const digits = nutrient === "calories" ? 0 : 1;
-         const value = nutrient === "glycemic_index"
-             ? food?.glycemic_index || "None"
-             : Number((food?.[nutrient as keyof FoodVariant] as number) || 0).toFixed(digits);
+        const digits = nutrient === "calories" ? 0 : 1;
 
-         return (
-           <div key={nutrient} className="whitespace-nowrap">
-             <span className={`font-medium ${details.color}`}>
-               {value}
-               {details.unit}
-             </span>{" "}
-             {details.label}
-           </div>
-         );
+        let displayValue;
+        if (nutrient === "calories") {
+          const kcalValue = Number((food?.[nutrient as keyof FoodVariant] as number) || 0);
+          displayValue = Math.round(convertEnergy(kcalValue, 'kcal', energyUnit));
+        } else if (nutrient === "glycemic_index") {
+          displayValue = food?.glycemic_index || "None";
+        } else {
+          displayValue = Number((food?.[nutrient as keyof FoodVariant] as number) || 0).toFixed(digits);
+        }
+
+        return (
+          <div key={nutrient} className="whitespace-nowrap">
+            <span className={`font-medium ${details.color}`}>
+              {displayValue}
+              {details.unit}
+            </span>{" "}
+            {details.label}
+          </div>
+        );
       })}
     </div>
-)};
+  )
+};
 
 const EnhancedFoodSearch = ({
   onFoodSelect,
@@ -158,6 +168,9 @@ const EnhancedFoodSearch = ({
     itemDisplayLimit,
     foodDisplayLimit, // Add foodDisplayLimit here
     nutrientDisplayPreferences,
+    energyUnit,
+    convertEnergy,
+    getEnergyUnitString,
   } = usePreferences(); // Get loggingLevel, itemDisplayLimit, and foodDisplayLimit
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
@@ -345,7 +358,7 @@ const EnhancedFoodSearch = ({
       id: "default", // Assign a default ID for now
       serving_size: 100,
       serving_unit: "g",
-      calories: Math.round(product.nutriments["energy-kcal_100g"] || 0),
+      calories: Math.round(product.nutriments["energy-kcal_100g"] || 0), // Assumed to be in kcal
       protein: Math.round((product.nutriments["proteins_100g"] || 0) * 10) / 10,
       carbs:
         Math.round((product.nutriments["carbohydrates_100g"] || 0) * 10) / 10,
@@ -442,7 +455,7 @@ const EnhancedFoodSearch = ({
           title: "Import Failed: Duplicate Items Found",
           description: `The following items already exist: ${duplicateList}. Please remove them from your file and try again.`,
           variant: "destructive",
-          duration: 10000, 
+          duration: 10000,
         });
       } else {
         toast({
@@ -567,7 +580,7 @@ const EnhancedFoodSearch = ({
       id: "default", // Assign a default ID for now
       serving_size: item.serving_size,
       serving_unit: item.serving_unit,
-      calories: nutrientData.calories,
+      calories: nutrientData.calories, // Assumed to be in kcal
       protein: nutrientData.protein,
       carbs: nutrientData.carbs,
       fat: nutrientData.fat,
@@ -639,7 +652,7 @@ const EnhancedFoodSearch = ({
       id: "default", // Assign a default ID for now
       serving_size: nutrientData.serving_qty,
       serving_unit: nutrientData.serving_unit,
-      calories: nutrientData.calories,
+      calories: nutrientData.calories, // Assumed to be in kcal
       protein: nutrientData.protein,
       carbs: nutrientData.carbohydrates,
       fat: nutrientData.fat,
@@ -883,39 +896,39 @@ const EnhancedFoodSearch = ({
                                 {food.brand}
                               </Badge>
                             )}
-                           {food.user_id === activeUserId && (
-                             <Badge variant="outline" className="text-xs">
-                               {t("enhancedFoodSearch.private", "Private")}
-                             </Badge>
-                           )}
-                           {food.shared_with_public && (
-                             <Badge variant="outline" className="text-xs">
-                               <Share2 className="h-3 w-3 mr-1" /> {t("enhancedFoodSearch.public", "Public")}
-                             </Badge>
-                           )}
-                           {food.user_id !== activeUserId && !food.shared_with_public && (
-                             <Badge variant="outline" className="text-xs">
-                               {t("enhancedFoodSearch.family", "Family")}
-                             </Badge>
-                           )}
-                             {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
-                                <Badge variant="outline" className="text-xs">
-                                  GI: {food.default_variant.glycemic_index}
-                                </Badge>
-                             )}
-                           </div>
-                           {food.default_variant && <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />}
-                           <p className="text-xs text-gray-500 mt-1">
-                             Per {food.default_variant?.serving_size}
-                             {food.default_variant?.serving_unit}
-                           </p>
-                         </div>
-                       </div>
-                     </CardContent>
-                   </Card>
-                 ))}
-               </div>
-             )}
+                            {food.user_id === activeUserId && (
+                              <Badge variant="outline" className="text-xs">
+                                {t("enhancedFoodSearch.private", "Private")}
+                              </Badge>
+                            )}
+                            {food.shared_with_public && (
+                              <Badge variant="outline" className="text-xs">
+                                <Share2 className="h-3 w-3 mr-1" /> {t("enhancedFoodSearch.public", "Public")}
+                              </Badge>
+                            )}
+                            {food.user_id !== activeUserId && !food.shared_with_public && (
+                              <Badge variant="outline" className="text-xs">
+                                {t("enhancedFoodSearch.family", "Family")}
+                              </Badge>
+                            )}
+                            {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
+                              <Badge variant="outline" className="text-xs">
+                                GI: {food.default_variant.glycemic_index}
+                              </Badge>
+                            )}
+                          </div>
+                          {food.default_variant && <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />}
+                          <p className="text-xs text-gray-500 mt-1">
+                            Per {food.default_variant?.serving_size}
+                            {food.default_variant?.serving_unit}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
 
             {topFoods.length > 0 && (
               <div className="space-y-2 mt-4">
@@ -936,39 +949,39 @@ const EnhancedFoodSearch = ({
                                 {food.brand}
                               </Badge>
                             )}
-                           {food.user_id === activeUserId && (
-                             <Badge variant="outline" className="text-xs">
-                               {t("enhancedFoodSearch.private", "Private")}
-                             </Badge>
-                           )}
-                           {food.shared_with_public && (
-                             <Badge variant="outline" className="text-xs">
-                               <Share2 className="h-3 w-3 mr-1" /> {t("enhancedFoodSearch.public", "Public")}
-                             </Badge>
-                           )}
-                           {food.user_id !== activeUserId && !food.shared_with_public && (
-                             <Badge variant="outline" className="text-xs">
-                               {t("enhancedFoodSearch.family", "Family")}
-                             </Badge>
-                           )}
-                             {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
-                                <Badge variant="outline" className="text-xs">
-                                  GI: {food.default_variant.glycemic_index}
-                                </Badge>
-                             )}
-                           </div>
-                           {food.default_variant && <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />}
-                           <p className="text-xs text-gray-500 mt-1">
-                             Per {food.default_variant?.serving_size}
-                             {food.default_variant?.serving_unit}
-                           </p>
-                         </div>
-                       </div>
-                     </CardContent>
-                   </Card>
-                 ))}
-               </div>
-             )}
+                            {food.user_id === activeUserId && (
+                              <Badge variant="outline" className="text-xs">
+                                {t("enhancedFoodSearch.private", "Private")}
+                              </Badge>
+                            )}
+                            {food.shared_with_public && (
+                              <Badge variant="outline" className="text-xs">
+                                <Share2 className="h-3 w-3 mr-1" /> {t("enhancedFoodSearch.public", "Public")}
+                              </Badge>
+                            )}
+                            {food.user_id !== activeUserId && !food.shared_with_public && (
+                              <Badge variant="outline" className="text-xs">
+                                {t("enhancedFoodSearch.family", "Family")}
+                              </Badge>
+                            )}
+                            {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
+                              <Badge variant="outline" className="text-xs">
+                                GI: {food.default_variant.glycemic_index}
+                              </Badge>
+                            )}
+                          </div>
+                          {food.default_variant && <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />}
+                          <p className="text-xs text-gray-500 mt-1">
+                            Per {food.default_variant?.serving_size}
+                            {food.default_variant?.serving_unit}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
 
             {recentFoods.length === 0 && topFoods.length === 0 && (
               <div className="text-center py-8 text-gray-500">
@@ -1029,8 +1042,8 @@ const EnhancedFoodSearch = ({
                         {food.provider_type === "mealie"
                           ? t("enhancedFoodSearch.mealie", "Mealie")
                           : food.provider_type === "tandoor"
-                          ? t("enhancedFoodSearch.tandoor", "Tandoor")
-                          : "Online"}
+                            ? t("enhancedFoodSearch.tandoor", "Tandoor")
+                            : "Online"}
                       </Badge>
                       {food.default_variant?.glycemic_index && food.default_variant.glycemic_index !== "None" && (
                         <Badge variant="outline" className="text-xs">
@@ -1038,7 +1051,7 @@ const EnhancedFoodSearch = ({
                         </Badge>
                       )}
                     </div>
-                    <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />
+                    <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />
                     <p className="text-xs text-gray-500 mt-1">
                       Per {food.default_variant?.serving_size}
                       {food.default_variant?.serving_unit}
@@ -1121,7 +1134,7 @@ const EnhancedFoodSearch = ({
                         </Badge>
                       )}
                     </div>
-                    <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} />
+                    <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />
                     <p className="text-xs text-gray-500 mt-1">
                       Per {food.default_variant?.serving_size}
                       {food.default_variant?.serving_unit}
@@ -1154,15 +1167,15 @@ const EnhancedFoodSearch = ({
                       </Badge>
                     </div>
                     <NutrientGrid food={{
-                        calories: product.nutriments["energy-kcal_100g"] || 0,
-                        protein: product.nutriments["proteins_100g"] || 0,
-                        carbs: product.nutriments["carbohydrates_100g"] || 0,
-                        fat: product.nutriments["fat_100g"] || 0,
-                        dietary_fiber: product.nutriments["fiber_100g"] || 0,
-                        // For OpenFoodFacts, GI is not directly available in product.nutriments,
-                        // so we'll display "None" or handle it as a special case.
-                        glycemic_index: "None"
-                    }} visibleNutrients={visibleNutrients} />
+                      calories: product.nutriments["energy-kcal_100g"] || 0,
+                      protein: product.nutriments["proteins_100g"] || 0,
+                      carbs: product.nutriments["carbohydrates_100g"] || 0,
+                      fat: product.nutriments["fat_100g"] || 0,
+                      dietary_fiber: product.nutriments["fiber_100g"] || 0,
+                      // For OpenFoodFacts, GI is not directly available in product.nutriments,
+                      // so we'll display "None" or handle it as a special case.
+                      glycemic_index: "None"
+                    }} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />
                     <p className="text-xs text-gray-500 mt-1">Per 100g</p>
                   </div>
                   <Button
@@ -1207,7 +1220,7 @@ const EnhancedFoodSearch = ({
                       />
                     )}
                     {item.calories && (
-                      <NutrientGrid food={item} visibleNutrients={visibleNutrients} />
+                      <NutrientGrid food={item} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />
                     )}
                     {item.serving_size && item.serving_unit && (
                       <p className="text-xs text-gray-500 mt-1">
@@ -1254,7 +1267,7 @@ const EnhancedFoodSearch = ({
                       item.protein !== undefined &&
                       item.carbs !== undefined &&
                       item.fat !== undefined && (
-                        <NutrientGrid food={item} visibleNutrients={visibleNutrients} />
+                        <NutrientGrid food={item} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />
                       )}
                     {item.serving_size && item.serving_unit && (
                       <p className="text-xs text-gray-500 mt-1">
@@ -1292,10 +1305,10 @@ const EnhancedFoodSearch = ({
                 // If it's an OpenFoodFacts product, convert it
                 editingProduct && "product_name" in editingProduct
                   ? convertOpenFoodFactsToFood(
-                      editingProduct as OpenFoodFactsProduct
-                    )
+                    editingProduct as OpenFoodFactsProduct
+                  )
                   : // Otherwise, assume it's already a Food type (from Nutritionix, FatSecret, or Mealie)
-                    (editingProduct as Food)
+                  (editingProduct as Food)
               }
               initialVariants={
                 editingProduct && "variants" in editingProduct

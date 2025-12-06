@@ -32,8 +32,8 @@ import { DEFAULT_GOALS } from '@/constants/goals';
 const GoalsSettings = () => {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
-  const { dateFormat, formatDateInUserTimezone, parseDateInUserTimezone, nutrientDisplayPreferences, water_display_unit, setWaterDisplayUnit } = usePreferences(); // Corrected destructuring
-  
+  const { dateFormat, formatDateInUserTimezone, parseDateInUserTimezone, nutrientDisplayPreferences, water_display_unit, setWaterDisplayUnit, energyUnit, convertEnergy, getEnergyUnitString } = usePreferences(); // Corrected destructuring
+
   // Helper functions for unit conversion
   const convertMlToSelectedUnit = (ml: number, unit: 'ml' | 'oz' | 'liter'): number => {
     switch (unit) {
@@ -58,6 +58,8 @@ const GoalsSettings = () => {
         return value;
     }
   };
+
+
 
   const [goals, setGoals] = useState<ExpandedGoals>(DEFAULT_GOALS); // Initialize with DEFAULT_GOALS
   const [loading, setLoading] = useState(true);
@@ -87,9 +89,9 @@ const GoalsSettings = () => {
   const loadGoals = async () => {
     try {
       setLoading(true);
-      
+
       const today = new Date().toISOString().split('T')[0];
-      
+
       const data = await apiCall(`/goals/for-date?date=${today}`, {
         method: 'GET',
       });
@@ -97,7 +99,7 @@ const GoalsSettings = () => {
       if (data) {
         // The API now returns the correct goal, including defaults if none are found.
         // So we can directly set the goals from the API response.
-        setGoals(data);
+        setGoals(data); // data.calories is in kcal
       } else {
         // Fallback to default goals if API returns nothing (shouldn't happen with current backend logic)
         setGoals(DEFAULT_GOALS);
@@ -154,6 +156,7 @@ const GoalsSettings = () => {
 
       // If percentages are being used, ensure gram values are calculated before saving
       if (presetMacroInputType === 'percentages' && presetToSave.protein_percentage !== null && presetToSave.carbs_percentage !== null && presetToSave.fat_percentage !== null) {
+        // presetToSave.calories is already in kcal
         const protein_grams = presetToSave.calories * (presetToSave.protein_percentage / 100) / 4;
         const carbs_grams = presetToSave.calories * (presetToSave.carbs_percentage / 100) / 4;
         const fat_grams = presetToSave.calories * (presetToSave.fat_percentage / 100) / 9;
@@ -200,25 +203,24 @@ const GoalsSettings = () => {
     }
   };
 
-  const calculateMacroGrams = (calories: number, percentage: number) => {
+  const calculateMacroGrams = (calories: number, percentage: number) => { // calories here are in kcal
     // Protein and Carbs: 4 kcal/g, Fat: 9 kcal/g
     if (percentage === null) return 0;
     // This logic needs to be improved to correctly identify which macro is being calculated
-    // For now, assuming it's called for each macro type individually
-    // This function should ideally be in a utility or service file
+    // For now, assuming it's for each macro type individually
     // For a generic calculation, we need to know the macro type
     // As a placeholder, let's assume it's for protein/carbs (4 kcal/g)
     return (calories * (percentage / 100)) / 4;
   };
 
-  const calculateMacroPercentage = (calories: number, grams: number, macroType: 'protein' | 'carbs' | 'fat') => {
+  const calculateMacroPercentage = (calories: number, grams: number, macroType: 'protein' | 'carbs' | 'fat') => { // calories here are in kcal
     if (calories === 0) return 0;
     if (macroType === 'protein' || macroType === 'carbs') {
       return (grams * 4 / calories) * 100;
     } else if (macroType === 'fat') {
       return (grams * 9 / calories) * 100;
     }
-    return 0;
+    return 0; // Default return for unmatched macroType
   };
 
   // Weekly Plan Functions
@@ -305,9 +307,9 @@ const GoalsSettings = () => {
 
     try {
       setSaving(true);
-      
+
       const today = new Date().toISOString().split('T')[0];
-      
+
       console.log("GoalsSettings: Saving goals with payload:", goals); // Re-enable logging
       await saveGoalsService(today, goals, true);
 
@@ -315,7 +317,7 @@ const GoalsSettings = () => {
         title: t('goals.goalsSettings.success', 'Success'),
         description: t('goals.goalsSettings.goalsUpdatedSuccess', 'Goals updated and will apply for the next 6 months (or until your next future goal)'),
       });
-      
+
       await loadGoals();
     } catch (error) {
       console.error('Error saving goals:', error);
@@ -389,15 +391,15 @@ const GoalsSettings = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Primary Macros */}
             {visibleNutrients.includes('calories') && <div>
-              <Label htmlFor="calories">{t('goals.goalsSettings.calories', 'Calories')}</Label>
+              <Label htmlFor="calories">{t('goals.goalsSettings.calories', `Calories (${getEnergyUnitString(energyUnit)})`)}</Label>
               <Input
                 id="calories"
                 type="number"
-                value={goals.calories}
-                onChange={(e) => setGoals({ ...goals, calories: Number(e.target.value) })}
+                value={Math.round(convertEnergy(goals.calories, 'kcal', energyUnit))}
+                onChange={(e) => setGoals({ ...goals, calories: convertEnergy(Number(e.target.value), energyUnit, 'kcal') })}
               />
             </div>}
-            
+
             {visibleNutrients.includes('protein') && <div>
               <Label htmlFor="protein">{t('goals.goalsSettings.protein', 'Protein (g)')}</Label>
               <Input
@@ -407,7 +409,7 @@ const GoalsSettings = () => {
                 onChange={(e) => setGoals({ ...goals, protein: Number(e.target.value) })}
               />
             </div>}
-            
+
             {visibleNutrients.includes('carbs') && <div>
               <Label htmlFor="carbs">{t('goals.goalsSettings.carbohydrates', 'Carbohydrates (g)')}</Label>
               <Input
@@ -417,7 +419,7 @@ const GoalsSettings = () => {
                 onChange={(e) => setGoals({ ...goals, carbs: Number(e.target.value) })}
               />
             </div>}
-            
+
             {visibleNutrients.includes('fat') && <div>
               <Label htmlFor="fat">{t('goals.goalsSettings.fat', 'Fat (g)')}</Label>
               <Input
@@ -552,7 +554,7 @@ const GoalsSettings = () => {
                 onChange={(e) => setGoals({ ...goals, iron: Number(e.target.value) })}
               />
             </div>}
-            
+
             <div>
               <Label htmlFor="water">{t('goals.goalsSettings.waterGoal', { unit: water_display_unit, defaultValue: 'Water Goal ({{unit}})' })}</Label>
               <Input
@@ -648,7 +650,7 @@ const GoalsSettings = () => {
                   <div>
                     <h4 className="font-semibold">{preset.preset_name}</h4>
                     <p className="text-sm text-gray-600">
-                      {t('goals.goalsSettings.presetKcalMacros', { calories: preset.calories, protein: Number(preset.protein || 0).toFixed(0), carbs: Number(preset.carbs || 0).toFixed(0), fat: Number(preset.fat || 0).toFixed(0), defaultValue: '{{calories}} kcal, {{protein}}g P, {{carbs}}g C, {{fat}}g F' })}
+                      {t('goals.goalsSettings.presetKcalMacros', { calories: Math.round(convertEnergy(preset.calories, 'kcal', energyUnit)), protein: Number(preset.protein || 0).toFixed(0), carbs: Number(preset.carbs || 0).toFixed(0), fat: Number(preset.fat || 0).toFixed(0), energyUnit: getEnergyUnitString(energyUnit), defaultValue: '{{calories}} {{energyUnit}}, {{protein}}g P, {{carbs}}g C, {{fat}}g F' })}
                     </p>
                   </div>
                   <div className="flex space-x-2">
@@ -693,12 +695,12 @@ const GoalsSettings = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Calories */}
                 <div>
-                  <Label htmlFor="calories">{t('goals.goalsSettings.calories', 'Calories')}</Label>
+                  <Label htmlFor="calories">{t('goals.goalsSettings.calories', `Calories (${getEnergyUnitString(energyUnit)})`)}</Label>
                   <Input
                     id="calories"
                     type="number"
-                    value={currentPreset.calories}
-                    onChange={(e) => setCurrentPreset({ ...currentPreset, calories: Number(e.target.value) })}
+                    value={Math.round(convertEnergy(currentPreset.calories, 'kcal', energyUnit))}
+                    onChange={(e) => setCurrentPreset({ ...currentPreset, calories: convertEnergy(Number(e.target.value), energyUnit, 'kcal') })}
                   />
                 </div>
 
@@ -784,7 +786,12 @@ const GoalsSettings = () => {
                 {/* Calculated Grams */}
                 <div className="col-span-full text-center text-sm text-gray-500">
                   {presetMacroInputType === 'percentages' && (
-                    t('goals.goalsSettings.calculatedGrams', { protein: Number(currentPreset.protein || 0).toFixed(0), carbs: Number(currentPreset.carbs || 0).toFixed(0), fat: Number(currentPreset.fat || 0).toFixed(0), defaultValue: 'Calculated Grams: Protein {{protein}}g, Carbs {{carbs}}g, Fat {{fat}}g' })
+                    t('goals.goalsSettings.calculatedGrams', {
+                      protein: Number(calculateMacroGrams(currentPreset.calories, currentPreset.protein_percentage || 0)).toFixed(0),
+                      carbs: Number(calculateMacroGrams(currentPreset.calories, currentPreset.carbs_percentage || 0)).toFixed(0),
+                      fat: Number(calculateMacroGrams(currentPreset.calories, currentPreset.fat_percentage || 0)).toFixed(0),
+                      defaultValue: 'Calculated Grams: Protein {{protein}}g, Carbs {{carbs}}g, Fat {{fat}}g'
+                    })
                   )}
                 </div>
               </div>
@@ -877,8 +884,8 @@ const GoalsSettings = () => {
               <h3 className="text-lg font-semibold col-span-full mt-4">{t('goals.goalsSettings.exercise', 'Exercise')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <Label htmlFor="target_exercise_calories_burned">{t('goals.goalsSettings.exerciseCalories', 'Exercise Calories')}</Label>
-                  <Input id="target_exercise_calories_burned" type="number" value={currentPreset.target_exercise_calories_burned} onChange={(e) => setCurrentPreset({ ...currentPreset, target_exercise_calories_burned: Number(e.target.value) })} />
+                  <Label htmlFor="target_exercise_calories_burned">{t('goals.goalsSettings.exerciseCalories', `Exercise Calories (${getEnergyUnitString(energyUnit)})`)}</Label>
+                  <Input id="target_exercise_calories_burned" type="number" value={Math.round(convertEnergy(currentPreset.target_exercise_calories_burned, 'kcal', energyUnit))} onChange={(e) => setCurrentPreset({ ...currentPreset, target_exercise_calories_burned: convertEnergy(Number(e.target.value), energyUnit, 'kcal') })} />
                 </div>
                 <div>
                   <Label htmlFor="target_exercise_duration_minutes">{t('goals.goalsSettings.exerciseDuration', 'Ex. Duration (min)')}</Label>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"; // Import React
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,15 +35,19 @@ import { useIsMobile } from "@/hooks/use-mobile";
 interface EditGoalsProps {
   selectedDate: string;
   onGoalsUpdated: () => void;
+  energyUnit: 'kcal' | 'kJ';
+  convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number;
 }
 
-const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
+const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: EditGoalsProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const {
     formatDate,
     nutrientDisplayPreferences,
     water_display_unit,
     setWaterDisplayUnit,
+    getEnergyUnitString, // Added getEnergyUnitString
   } = usePreferences();
   const isMobile = useIsMobile();
 
@@ -78,8 +83,10 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
   };
   const platform = isMobile ? "mobile" : "desktop";
 
+
+
   const [goals, setGoals] = useState<ExpandedGoals>({
-    calories: 2000,
+    calories: 2000, // kcal
     protein: 150,
     carbs: 250,
     fat: 67,
@@ -149,7 +156,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
       };
 
       setGoals({
-        calories: cleanGoalValue(goalData.calories, 2000),
+        calories: cleanGoalValue(goalData.calories, 2000), // kcal
         protein: cleanGoalValue(goalData.protein, 150),
         carbs: cleanGoalValue(goalData.carbs, 250),
         fat: cleanGoalValue(goalData.fat, 67),
@@ -230,11 +237,11 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
         const fat_percentage_val = goalsToSave.fat_percentage ?? 0;
 
         const protein_grams =
-          (goalsToSave.calories * (protein_percentage_val / 100)) / 4;
+          (goalsToSave.calories * (protein_percentage_val / 100)) / 4; // goalsToSave.calories is in kcal
         const carbs_grams =
-          (goalsToSave.calories * (carbs_percentage_val / 100)) / 4;
+          (goalsToSave.calories * (carbs_percentage_val / 100)) / 4; // goalsToSave.calories is in kcal
         const fat_grams =
-          (goalsToSave.calories * (fat_percentage_val / 100)) / 9;
+          (goalsToSave.calories * (fat_percentage_val / 100)) / 9; // goalsToSave.calories is in kcal
 
         // Update gram values in goalsToSave. Percentages are already in goalsToSave.
         goalsToSave = {
@@ -284,7 +291,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
     if (preset) {
       setGoals({
         ...goals,
-        calories: preset.calories,
+        calories: preset.calories, // kcal
         protein: preset.protein,
         carbs: preset.carbs,
         fat: preset.fat,
@@ -338,7 +345,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
       await saveGoals(
         selectedDate,
         {
-          calories: 2000,
+          calories: 2000, // kcal
           protein: 150,
           carbs: 250,
           fat: 67,
@@ -447,18 +454,20 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
               {/* Primary Macros */}
               {visibleNutrients.includes("calories") && (
                 <div>
-                  <Label htmlFor="calories">Calories</Label>
+                  <Label htmlFor="calories">Calories ({getEnergyUnitString(energyUnit)})</Label>
                   <Input
                     id="calories"
                     type="number"
-                    value={goals.calories}
+                    value={Math.round(convertEnergy(goals.calories, 'kcal', energyUnit))} // Display converted value
                     onChange={(e) =>
-                      setGoals({
-                        ...goals,
-                        calories: isNaN(Number(e.target.value))
-                          ? 0
-                          : Number(e.target.value),
-                      })
+                      setGoals((prevGoals) => ({
+                        ...prevGoals,
+                        calories: convertEnergy( // Convert input back to kcal for internal storage
+                          isNaN(Number(e.target.value)) ? 0 : Number(e.target.value),
+                          energyUnit,
+                          'kcal'
+                        ),
+                      }))
                     }
                   />
                 </div>
@@ -613,19 +622,19 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
                 <p className="col-span-2 text-center text-sm text-gray-500">
                   Calculated Grams: Protein{" "}
                   {(
-                    (goals.calories * (goals.protein_percentage || 0)) /
+                    (convertEnergy(goals.calories, 'kcal', 'kcal') * (goals.protein_percentage || 0)) / // Still uses kcal for calculation
                     100 /
                     4
                   ).toFixed(1)}
                   g, Carbs{" "}
                   {(
-                    (goals.calories * (goals.carbs_percentage || 0)) /
+                    (convertEnergy(goals.calories, 'kcal', 'kcal') * (goals.carbs_percentage || 0)) / // Still uses kcal for calculation
                     100 /
                     4
                   ).toFixed(1)}
                   g, Fat{" "}
                   {(
-                    (goals.calories * (goals.fat_percentage || 0)) /
+                    (convertEnergy(goals.calories, 'kcal', 'kcal') * (goals.fat_percentage || 0)) / // Still uses kcal for calculation
                     100 /
                     9
                   ).toFixed(1)}
@@ -992,10 +1001,10 @@ const EditGoals = ({ selectedDate, onGoalsUpdated }: EditGoalsProps) => {
               disabled={
                 saving ||
                 goals.breakfast_percentage +
-                  goals.lunch_percentage +
-                  goals.dinner_percentage +
-                  goals.snacks_percentage !==
-                  100
+                goals.lunch_percentage +
+                goals.dinner_percentage +
+                goals.snacks_percentage !==
+                100
               }
             >
               {saving ? "Saving..." : "Save Goals"}

@@ -42,16 +42,22 @@ const DailyProgress = ({
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
-  const { loggingLevel, calorieGoalAdjustmentMode } = usePreferences(); // Import calorieGoalAdjustmentMode
+  const { loggingLevel, calorieGoalAdjustmentMode, energyUnit, convertEnergy } = usePreferences(); // Import calorieGoalAdjustmentMode, energyUnit, convertEnergy
   debug(
     loggingLevel,
     "DailyProgress: Component rendered for date:",
     selectedDate,
     "Calorie Goal Adjustment Mode:",
     calorieGoalAdjustmentMode,
+    "Energy Unit:",
+    energyUnit,
   );
 
   const { water_display_unit } = usePreferences(); // Add water_display_unit from preferences
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  };
 
   // Helper functions for unit conversion
   const convertMlToSelectedUnit = (
@@ -71,24 +77,24 @@ const DailyProgress = ({
   };
 
   const [dailyGoals, setDailyGoals] = useState({
-    calories: 2000,
+    calories: 2000, // Stored internally as kcal
     protein: 150,
     carbs: 250,
     fat: 67,
     water_goal_ml: 1920, // Default to 8 glasses * 240ml
   });
   const [dailyIntake, setDailyIntake] = useState({
-    calories: 0,
+    calories: 0, // Stored internally as kcal
     protein: 0,
     carbs: 0,
     fat: 0,
     water_ml: 0,
   });
-  const [exerciseCalories, setExerciseCalories] = useState(0); // This will now store non-"Active Calories" exercise
-  const [activeCaloriesFromExercise, setActiveCaloriesFromExercise] = useState(0); // New state for "Active Calories"
-  const [stepsCalories, setStepsCalories] = useState(0);
+  const [exerciseCalories, setExerciseCalories] = useState(0); // This will now store non-"Active Calories" exercise (kcal)
+  const [activeCaloriesFromExercise, setActiveCaloriesFromExercise] = useState(0); // New state for "Active Calories" (kcal)
+  const [stepsCalories, setStepsCalories] = useState(0); // (kcal)
   const [dailySteps, setDailySteps] = useState(0);
-  const [bmr, setBmr] = useState<number | null>(null);
+  const [bmr, setBmr] = useState<number | null>(null); // (kcal)
   const [includeBmrInNetCalories, setIncludeBmrInNetCalories] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -120,12 +126,12 @@ const DailyProgress = ({
       window.removeEventListener("foodDiaryRefresh", handleRefresh);
       window.removeEventListener("measurementsRefresh", handleRefresh);
     };
-  }, [currentUserId, selectedDate, refreshTrigger, loggingLevel, calorieGoalAdjustmentMode]);
+  }, [currentUserId, selectedDate, refreshTrigger, loggingLevel, calorieGoalAdjustmentMode, energyUnit]);
 
   // Convert steps to calories (roughly 0.04 calories per step for average person)
   const convertStepsToCalories = (steps: number): number => {
     debug(loggingLevel, "DailyProgress: Converting steps to calories:", steps);
-    return Math.round(steps * 0.04);
+    return Math.round(steps * 0.04); // Returns kcal
   };
 
   const loadGoalsAndIntake = async () => {
@@ -146,7 +152,7 @@ const DailyProgress = ({
         goalsData,
       );
       setDailyGoals({
-        calories: goalsData.calories || 2000,
+        calories: goalsData.calories || 2000, // Assume backend always provides kcal
         protein: goalsData.protein || 150,
         carbs: goalsData.carbs || 250,
         fat: goalsData.fat || 67,
@@ -166,7 +172,7 @@ const DailyProgress = ({
         );
         const totals = entriesData.reduce(
           (acc, entry) => {
-            const nutrition = calculateFoodEntryNutrition(entry);
+            const nutrition = calculateFoodEntryNutrition(entry); // Assumes nutrition is in kcal
             acc.calories += nutrition.calories;
             acc.protein += nutrition.protein;
             acc.carbs += nutrition.carbs;
@@ -179,7 +185,7 @@ const DailyProgress = ({
 
         info(loggingLevel, "DailyProgress: Daily intake calculated:", totals);
         setDailyIntake({
-          calories: Math.round(totals.calories),
+          calories: Math.round(totals.calories), // Still kcal internally
           protein: Math.round(totals.protein),
           carbs: Math.round(totals.carbs),
           fat: Math.round(totals.fat),
@@ -208,6 +214,7 @@ const DailyProgress = ({
         exerciseData.forEach(groupedEntry => {
           if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
             groupedEntry.exercises.forEach(entry => {
+              // Assume calories_burned from backend is always kcal
               if (entry.exercise_snapshot?.name === 'Active Calories') {
                 activeCaloriesFromExercise += Number(entry.calories_burned || 0);
               } else {
@@ -215,6 +222,7 @@ const DailyProgress = ({
               }
             });
           } else if (groupedEntry.type === 'individual') {
+            // Assume calories_burned from backend is always kcal
             if (groupedEntry.exercise_snapshot?.name === 'Active Calories') {
               activeCaloriesFromExercise += Number(groupedEntry.calories_burned || 0);
             } else {
@@ -233,8 +241,8 @@ const DailyProgress = ({
           "DailyProgress: Other Exercise Calories:",
           otherExerciseCalories,
         );
-        setExerciseCalories(otherExerciseCalories); // Store other exercise calories here
-        setActiveCaloriesFromExercise(activeCaloriesFromExercise); // Set the new state variable
+        setExerciseCalories(otherExerciseCalories); // Store other exercise calories here (kcal)
+        setActiveCaloriesFromExercise(activeCaloriesFromExercise); // Set the new state variable (kcal)
       } catch (err: any) {
         error(
           loggingLevel,
@@ -257,7 +265,7 @@ const DailyProgress = ({
           setDailySteps(stepsData.steps);
           const stepsCaloriesBurned = convertStepsToCalories(
             Number(stepsData.steps),
-          );
+          ); // Returns kcal
           info(
             loggingLevel,
             "DailyProgress: Calories burned from steps:",
@@ -301,7 +309,7 @@ const DailyProgress = ({
                 gender,
                 mostRecentBodyFat?.body_fat_percentage
               );
-              setBmr(bmrValue);
+              setBmr(bmrValue); // bmrValue is in kcal
             } catch (bmrError) {
               error(loggingLevel, "DailyProgress: Error calculating BMR:", bmrError);
               setBmr(null);
@@ -456,18 +464,31 @@ const DailyProgress = ({
     calorieGoalAdjustmentMode,
   });
 
+  // Convert all displayed energy values to the user's preferred unit
+  const displayedCaloriesRemaining = Math.round(convertEnergy(caloriesRemaining, 'kcal', energyUnit));
+  const displayedDailyIntakeCalories = Math.round(convertEnergy(dailyIntake.calories, 'kcal', energyUnit));
+  const displayedTotalCaloriesBurned = Math.round(convertEnergy(totalCaloriesBurned, 'kcal', energyUnit));
+  const displayedDailyGoalCalories = Math.round(convertEnergy(dailyGoals.calories, 'kcal', energyUnit));
+  const displayedExerciseCalories = Math.round(convertEnergy(exerciseCalories, 'kcal', energyUnit));
+  const displayedActiveCaloriesFromExercise = Math.round(convertEnergy(activeCaloriesFromExercise, 'kcal', energyUnit));
+  const displayedStepsCalories = Math.round(convertEnergy(stepsCalories, 'kcal', energyUnit));
+  const displayedBmr = bmr ? Math.round(convertEnergy(bmr, 'kcal', energyUnit)) : 0;
+  const displayedFinalTotalCaloriesBurned = Math.round(convertEnergy(finalTotalCaloriesBurned, 'kcal', energyUnit));
+  const displayedNetCalories = Math.round(convertEnergy(netCalories, 'kcal', energyUnit));
+
+
   info(loggingLevel, "DailyProgress: Rendering daily progress card.");
   return (
     <Card className="h-full ">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center space-x-2 text-base">
           <Target className="w-4 h-4 text-green-500" />
-          <span className="dark:text-slate-300">{t('exercise.dailyProgress.dailyCalorieGoal', 'Daily Calorie Goal')}</span>
+          <span className="dark:text-slate-300">{t('exercise.dailyProgress.dailyEnergyGoal', 'Daily Energy Goal')}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
         <div className="space-y-4">
-          {/* Calorie Circle - Reduced size */}
+          {/* Energy Circle - Reduced size */}
           <div className="flex items-center justify-center">
             <div className="relative w-32 h-32">
               <svg
@@ -492,23 +513,23 @@ const DailyProgress = ({
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <div className="text-xl font-bold text-gray-900 dark:text-gray-50">
-                  {Math.round(caloriesRemaining)}
+                  {displayedCaloriesRemaining}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {t('exercise.dailyProgress.remaining', 'remaining')}
+                  {t('exercise.dailyProgress.remaining', 'remaining')} {getEnergyUnitString(energyUnit)}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Calorie Breakdown - Compact */}
+          {/* Energy Breakdown - Compact */}
           <div className="grid grid-cols-3 gap-2 text-center text-sm">
             <div className="space-y-1">
               <div className="flex items-center justify-center text-lg font-bold text-green-600">
                 <Utensils className="w-4 h-4 mr-1" />
-                {Math.round(dailyIntake.calories)}
+                {displayedDailyIntakeCalories}
               </div>
-              <div className="text-xs text-gray-500">{t('exercise.dailyProgress.eaten', 'eaten')}</div>
+              <div className="text-xs text-gray-500">{t('exercise.dailyProgress.eaten', 'eaten')} {getEnergyUnitString(energyUnit)}</div>
             </div>
             <TooltipProvider>
               <Tooltip>
@@ -516,78 +537,78 @@ const DailyProgress = ({
                   <div className="space-y-1">
                     <div className="flex items-center justify-center text-lg font-bold text-orange-600">
                       <Flame className="w-4 h-4 mr-1" />
-                      {totalCaloriesBurned}
+                      {displayedTotalCaloriesBurned}
                     </div>
-                    <div className="text-xs text-gray-500">{t('exercise.dailyProgress.burned', 'burned')}</div>
+                    <div className="text-xs text-gray-500">{t('exercise.dailyProgress.burned', 'burned')} {getEnergyUnitString(energyUnit)}</div>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent className="bg-black text-white text-xs p-2 rounded-md">
-                  <p>{t('exercise.dailyProgress.burnedCaloriesBreakdown', 'Burned Calories Breakdown:')}</p>
+                  <p>{t('exercise.dailyProgress.burnedEnergyBreakdown', 'Burned Energy Breakdown:')}</p>
                   {exerciseCalories > 0 && (
-                    <p>{t('exercise.dailyProgress.otherExerciseCalories', 'Other Exercise: {{exerciseCalories}} cal', { exerciseCalories: Math.round(exerciseCalories) })}</p>
+                    <p>{t('exercise.dailyProgress.otherExerciseCalories', 'Other Exercise: {{exerciseCalories}} {{energyUnit}}', { exerciseCalories: displayedExerciseCalories, energyUnit: getEnergyUnitString(energyUnit) })}</p>
                   )}
                   {activeCaloriesFromExercise > 0 && (
-                    <p>{t('exercise.dailyProgress.activeCalories', 'Active Calories: {{activeCaloriesFromExercise}} cal', { activeCaloriesFromExercise: Math.round(activeCaloriesFromExercise) })}</p>
+                    <p>{t('exercise.dailyProgress.activeCalories', 'Active Calories: {{activeCaloriesFromExercise}} {{energyUnit}}', { activeCaloriesFromExercise: displayedActiveCaloriesFromExercise, energyUnit: getEnergyUnitString(energyUnit) })}</p>
                   )}
                   {stepsCalories > 0 && activeCaloriesFromExercise === 0 && (
-                    <p>{t('exercise.dailyProgress.stepsCalories', 'Steps: {{dailySteps}} = {{stepsCalories}} cal', { dailySteps: dailySteps.toLocaleString(), stepsCalories })}</p>
+                    <p>{t('exercise.dailyProgress.stepsCalories', 'Steps: {{dailySteps}} = {{stepsCalories}} {{energyUnit}}', { dailySteps: dailySteps.toLocaleString(), stepsCalories: displayedStepsCalories, energyUnit: getEnergyUnitString(energyUnit) })}</p>
                   )}
-                  {includeBmrInNetCalories && bmr && !isNaN(bmr) && (
-                    <p>{t('exercise.dailyProgress.bmrCalories', 'BMR: {{bmr}} cal', { bmr: Math.round(bmr) })}</p>
+                  {bmr && !isNaN(bmr) && (
+                    <p>{t('exercise.dailyProgress.bmrCalories', 'BMR: {{bmr}} {{energyUnit}}', { bmr: displayedBmr, energyUnit: getEnergyUnitString(energyUnit) })}</p>
                   )}
-                  <p>{t('exercise.dailyProgress.totalCaloriesBurned', 'Total: {{totalCaloriesBurned}} cal', { totalCaloriesBurned })}</p>
+                  <p>{t('exercise.dailyProgress.totalCaloriesBurned', 'Total: {{totalCaloriesBurned}} {{energyUnit}}', { totalCaloriesBurned: displayedTotalCaloriesBurned, energyUnit: getEnergyUnitString(energyUnit) })}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
             <div className="space-y-1 ">
               <div className="flex items-center justify-center text-lg font-bold dark:text-slate-400 text-gray-900">
                 <Flag className="w-4 h-4 mr-1" />
-                {dailyGoals.calories}
+                {displayedDailyGoalCalories}
               </div>
               <div className="text-xs dark:text-slate-400 text-gray-500 ">
-                {t('exercise.dailyProgress.goal', 'goal')}
+                {t('exercise.dailyProgress.goal', 'goal')} {getEnergyUnitString(energyUnit)}
               </div>
             </div>
           </div>
 
-          {/* Calories Burned Breakdown - More compact */}
+          {/* Energy Burned Breakdown - More compact */}
           {(exerciseCalories > 0 || stepsCalories > 0 || bmr) && (
             <div className="text-center p-2 bg-blue-50 rounded-lg space-y-1">
               <div className="text-sm font-medium text-blue-700">
-                {t('exercise.dailyProgress.caloriesBurnedBreakdownTitle', 'Calories Burned Breakdown')}
+                {t('exercise.dailyProgress.energyBurnedBreakdownTitle', 'Energy Burned Breakdown')}
               </div>
               {exerciseCalories > 0 && (
                 <div className="text-xs text-blue-600">
-                  {t('exercise.dailyProgress.otherExerciseCalories', 'Other Exercise: {{exerciseCalories}} cal', { exerciseCalories: Math.round(exerciseCalories) })}
+                  {t('exercise.dailyProgress.otherExerciseCalories', 'Other Exercise: {{exerciseCalories}} {{energyUnit}}', { exerciseCalories: displayedExerciseCalories, energyUnit: getEnergyUnitString(energyUnit) })}
                 </div>
               )}
               {activeCaloriesFromExercise > 0 && (
                 <div className="text-xs text-blue-600">
-                  {t('exercise.dailyProgress.activeCalories', 'Active Calories: {{activeCaloriesFromExercise}} cal', { activeCaloriesFromExercise: Math.round(activeCaloriesFromExercise) })}
+                  {t('exercise.dailyProgress.activeCalories', 'Active Calories: {{activeCaloriesFromExercise}} {{energyUnit}}', { activeCaloriesFromExercise: displayedActiveCaloriesFromExercise, energyUnit: getEnergyUnitString(energyUnit) })}
                 </div>
               )}
               {stepsCalories > 0 && activeCaloriesFromExercise === 0 && (
                 <div className="text-xs text-blue-600 flex items-center justify-center gap-1">
                   <Zap className="w-3 h-3" />
-                  {t('exercise.dailyProgress.stepsCalories', 'Steps: {{dailySteps}} = {{stepsCalories}} cal', { dailySteps: dailySteps.toLocaleString(), stepsCalories })}
+                  {t('exercise.dailyProgress.stepsCalories', 'Steps: {{dailySteps}} = {{stepsCalories}} {{energyUnit}}', { dailySteps: dailySteps.toLocaleString(), stepsCalories: displayedStepsCalories, energyUnit: getEnergyUnitString(energyUnit) })}
                 </div>
               )}
               {bmr && !isNaN(bmr) && (
                 <div className="text-xs text-blue-600">
-                  {t('exercise.dailyProgress.bmrCalories', 'BMR: {{bmr}} cal', { bmr: Math.round(bmr) })}
+                  {t('exercise.dailyProgress.bmrCalories', 'BMR: {{bmr}} {{energyUnit}}', { bmr: displayedBmr, energyUnit: getEnergyUnitString(energyUnit) })}
                 </div>
               )}
             </div>
           )}
 
-          {/* Net Calories Display - Compact */}
+          {/* Net Energy Display - Compact */}
           <div className="text-center p-2 dark:bg-slate-300 bg-gray-50 rounded-lg">
             <div className="text-sm font-medium dark:text-black text-gray-700 ">
-              {t('exercise.dailyProgress.netCalories', 'Net Calories: {{netCalories}}', { netCalories: Math.round(netCalories) })}
+              {t('exercise.dailyProgress.netEnergy', 'Net Energy: {{netCalories}}', { netCalories: displayedNetCalories, energyUnit: getEnergyUnitString(energyUnit) })}
             </div>
             <div className="text-xs dark:text-black text-gray-600">
-              {Math.round(dailyIntake.calories)} eaten - {Math.round(finalTotalCaloriesBurned)}{" "}
-              {t('exercise.dailyProgress.netCaloriesBreakdown', '{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned', { dailyIntakeCalories: Math.round(dailyIntake.calories), finalTotalCaloriesBurned })}
+              {displayedDailyIntakeCalories} eaten - {displayedFinalTotalCaloriesBurned}{" "}
+              {t('exercise.dailyProgress.netEnergyBreakdown', '{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned', { dailyIntakeCalories: displayedDailyIntakeCalories, finalTotalCaloriesBurned: displayedFinalTotalCaloriesBurned, energyUnit: getEnergyUnitString(energyUnit) })}
             </div>
           </div>
 

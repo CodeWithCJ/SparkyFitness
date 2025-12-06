@@ -149,7 +149,9 @@ const ReportsTables = ({
   onExportExerciseEntries, // Destructure new prop
 }: ReportsTablesProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, dateFormat, formatDateInUserTimezone, nutrientDisplayPreferences, weightUnit, convertWeight } = usePreferences();
+  const { loggingLevel, dateFormat, formatDateInUserTimezone, nutrientDisplayPreferences, weightUnit, convertWeight, energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
+
+
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const reportTabularPreferences = nutrientDisplayPreferences.find(p => p.view_group === 'report_tabular' && p.platform === platform);
@@ -166,7 +168,7 @@ const ReportsTables = ({
   const sortedFoodTabularData = [...tabularData].sort((a, b) => {
     const dateCompare = new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime();
     if (dateCompare !== 0) return dateCompare;
-    
+
     const mealOrder = { breakfast: 0, lunch: 1, dinner: 2, snacks: 3 }; // Added snacks
     return (mealOrder[a.meal_type as keyof typeof mealOrder] || 4) - (mealOrder[b.meal_type as keyof typeof mealOrder] || 4);
   });
@@ -190,7 +192,7 @@ const ReportsTables = ({
     .forEach(date => {
       const entries = groupedFoodData[date];
       foodDataWithTotals.push(...entries);
-      
+
       // Calculate totals for the day directly from the already calculated values
       const dailyTotals = entries.reduce((acc, entry) => {
         return {
@@ -332,7 +334,7 @@ const ReportsTables = ({
                     const rawLabel = nutrient.replace(/_/g, ' ');
                     const toTitleCase = (s: string) => s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                     const label = nutrient === 'glycemic_index' ? t('reports.foodDiaryExportHeaders.glycemicIndex', 'Glycemic Index') : toTitleCase(rawLabel);
-                    const unit = getNutrientUnit(nutrient);
+                    const unit = nutrient === 'calories' ? getEnergyUnitString(energyUnit) : getNutrientUnit(nutrient);
                     return <TableHead key={nutrient}>{label}{unit ? ` (${unit})` : ''}</TableHead>;
                   })}
                 </TableRow>
@@ -361,7 +363,7 @@ const ReportsTables = ({
 
                         // Directly use the pre-calculated nutrient value from the entry
                         const value = (entry[nutrient as keyof DailyFoodEntry] as number) || 0;
-                        return <TableCell key={nutrient}>{formatNutrientValue(value, nutrient)}</TableCell>
+                        return <TableCell key={nutrient}>{nutrient === 'calories' ? Math.round(convertEnergy(value, 'kcal', energyUnit)) : formatNutrientValue(value, nutrient)}</TableCell>
                       })}
                     </TableRow>
                   );
@@ -415,7 +417,7 @@ const ReportsTables = ({
                   <TableHead onClick={() => requestSort('duration')}>{t('reportsTables.durationMin', 'Duration (min)')}</TableHead>
                   <TableHead onClick={() => requestSort('rest_time')}>{t('reportsTables.restS', 'Rest (s)')}</TableHead>
                   <TableHead>{t('reportsTables.notes', 'Notes')}</TableHead>
-                  <TableHead onClick={() => requestSort('calories_burned')}>{t('reportsTables.caloriesBurned', 'Calories Burned')}</TableHead>
+                  <TableHead onClick={() => requestSort('calories_burned')}>{t('reportsTables.caloriesBurned', `Calories Burned (${getEnergyUnitString(energyUnit)})`)}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -451,7 +453,7 @@ const ReportsTables = ({
                           {entry.sets.reduce((acc, s) => acc + (s.rest_time || 0), 0)}
                         </TableCell>
                         <TableCell>{entry.notes || ''}</TableCell>
-                        <TableCell>{Math.round(entry.calories_burned)}</TableCell>
+                        <TableCell>{Math.round(convertEnergy(entry.calories_burned, 'kcal', energyUnit))}</TableCell>
                       </TableRow>
                       {isExpanded && entry.sets.map((set, setIndex) => (
                         <TableRow key={`${entry.id}-set-${set.id || setIndex}`} className="bg-gray-50 dark:bg-gray-800">
@@ -532,7 +534,7 @@ const ReportsTables = ({
         const sortedData = [...data].sort((a, b) =>
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
-        
+
         return (
           <Card key={category.id}>
             <CardHeader>
@@ -565,7 +567,7 @@ const ReportsTables = ({
                       const hour = timestamp.getHours();
                       const minutes = timestamp.getMinutes();
                       const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                      
+
                       return (
                         <TableRow key={index}>
                           <TableCell>{measurement.entry_date && !isNaN(parseISO(measurement.entry_date).getTime()) ? formatDateInUserTimezone(parseISO(measurement.entry_date), dateFormat) : ''}</TableCell>

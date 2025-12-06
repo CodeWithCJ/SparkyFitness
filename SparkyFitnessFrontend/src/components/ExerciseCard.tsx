@@ -101,7 +101,7 @@ const ExerciseCard = ({
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
-  const { loggingLevel, itemDisplayLimit, weightUnit, convertWeight } = usePreferences(); // Get logging level
+  const { loggingLevel, itemDisplayLimit, weightUnit, convertWeight, energyUnit, convertEnergy, getEnergyUnitString } = usePreferences(); // Get logging level, energyUnit, convertEnergy
   debug(
     loggingLevel,
     "ExerciseCard component rendered for date:",
@@ -147,6 +147,8 @@ const ExerciseCard = ({
 
   const currentUserId = activeUserId || user?.id;
   debug(loggingLevel, "Current user ID:", currentUserId);
+
+
 
   const _fetchExerciseEntries = useCallback(async () => {
     debug(loggingLevel, "Fetching exercise entries for date:", selectedDate);
@@ -394,7 +396,7 @@ const ExerciseCard = ({
     }
 
     const caloriesPerHour = selectedExercise.calories_per_hour || 300;
-    const caloriesBurned = Math.round((caloriesPerHour / 60) * duration);
+    const caloriesBurned = Math.round((caloriesPerHour / 60) * duration); // Calculated in kcal
     debug(loggingLevel, "Calculated calories burned:", caloriesBurned);
 
     try {
@@ -531,7 +533,7 @@ const ExerciseCard = ({
   }
   debug(loggingLevel, "ExerciseCard finished loading.");
 
-  const totalExerciseCaloriesBurned = exerciseEntries.reduce((sum, groupedEntry) => {
+  const totalExerciseCaloriesBurned = exerciseEntries.reduce((sum, groupedEntry) => { // This value is in kcal
     if (groupedEntry.type === 'individual') {
       const calories = parseFloat(groupedEntry.calories_burned as any);
       return sum + (isNaN(calories) ? 0 : calories);
@@ -631,6 +633,9 @@ const ExerciseCard = ({
                     handleEditExerciseDatabase={handleEditExerciseDatabase}
                     setExerciseToPlay={setExerciseToPlay}
                     setIsPlaybackModalOpen={setIsPlaybackModalOpen}
+                    energyUnit={energyUnit}
+                    convertEnergy={convertEnergy}
+                    getEnergyUnitString={getEnergyUnitString}
                   />
                 );
               } else {
@@ -645,6 +650,9 @@ const ExerciseCard = ({
                     handleEditExerciseDatabase={handleEditExerciseDatabase}
                     setExerciseToPlay={setExerciseToPlay}
                     setIsPlaybackModalOpen={setIsPlaybackModalOpen}
+                    energyUnit={energyUnit}
+                    convertEnergy={convertEnergy}
+                    getEnergyUnitString={getEnergyUnitString}
                   />
                 );
               }
@@ -672,9 +680,9 @@ const ExerciseCard = ({
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100">
-                    {String(Math.round(totalExerciseCaloriesBurned))}
+                    {Math.round(convertEnergy(totalExerciseCaloriesBurned, 'kcal', energyUnit))}
                   </div>
-                  <div className="text-xs text-gray-500">{t("common.caloriesUnit", "Calories")}</div>
+                  <div className="text-xs text-gray-500">{t("common.caloriesUnit", getEnergyUnitString(energyUnit))}</div>
                 </div>
               </div>
             </div>
@@ -719,8 +727,11 @@ const ExerciseCard = ({
           selectedDate={selectedDate}
           onSaveSuccess={handleLogSuccess} // Use the new handler
           initialSets={currentExerciseToLog?.sets || []}
-          // initialReps, initialWeight, etc. are not valid props for LogExerciseEntryDialog
-          // The dialog should handle these internally based on the 'exercise' prop.
+          energyUnit={energyUnit}
+          convertEnergy={convertEnergy}
+          getEnergyUnitString={getEnergyUnitString}
+        // initialReps, initialWeight, etc. are not valid props for LogExerciseEntryDialog
+        // The dialog should handle these internally based on the 'exercise' prop.
         />
 
       </CardContent>
@@ -731,6 +742,9 @@ const ExerciseCard = ({
         onOpenChange={setIsEditExerciseDatabaseDialogOpen}
         exerciseToEdit={exerciseToEditInDatabase}
         onSaveSuccess={handleSaveExerciseDatabaseEdit}
+        energyUnit={energyUnit}
+        convertEnergy={convertEnergy}
+        getEnergyUnitString={getEnergyUnitString}
       />
     </Card>
   );
