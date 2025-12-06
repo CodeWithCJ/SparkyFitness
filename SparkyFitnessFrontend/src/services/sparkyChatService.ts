@@ -191,7 +191,7 @@ export const processUserInput = async (
 
 export const getTodaysNutrition = async (date: string): Promise<any> => {
   const params = new URLSearchParams({ date });
-  return apiCall(`/foods/food-entries/nutrition/today?${params.toString()}`, {
+  return apiCall(`/food-entries/nutrition/today?${params.toString()}`, {
     method: 'GET',
   });
 };
@@ -373,9 +373,9 @@ const extractDateFromInput = (input: string, userDate: string): string | undefin
     if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
       const date = new Date(year, month - 1, day);
       if (!dateMatch[3] && date > today) {
-           date.setFullYear(year - 1);
+        date.setFullYear(year - 1);
       }
-       return date.toISOString().split('T')[0];
+      return date.toISOString().split('T')[0];
     }
   }
   return undefined;

@@ -9,7 +9,7 @@ export const loadFoodEntries = async (userId: string, selectedDate: string): Pro
     userId,
     selectedDate,
   });
-  const data = await apiCall(`/foods/food-entries?${params.toString()}`, {
+  const data = await apiCall(`/food-entries?${params.toString()}`, {
     method: 'GET',
     suppress404Toast: true, // Suppress toast for 404
   });
@@ -74,7 +74,7 @@ export const addFoodEntry = async (payload: {
   variant_id?: string;
   entry_date: string;
 }): Promise<FoodEntry> => {
-  return apiCall('/foods/food-entries', {
+  return apiCall('/food-entries', {
     method: 'POST',
     body: payload,
   });
@@ -88,20 +88,20 @@ export const addMealToDiary = async (mealId: string, mealType: string, entryDate
 };
 
 export const removeFoodEntry = async (entryId: string): Promise<void> => {
-  return apiCall(`/foods/food-entries/${entryId}`, {
+  return apiCall(`/food-entries/${entryId}`, {
     method: 'DELETE',
   });
 };
 
 export const copyFoodEntries = async (sourceDate: string, sourceMealType: string, targetDate: string, targetMealType: string): Promise<FoodEntry[]> => {
-  return apiCall('/foods/food-entries/copy', {
+  return apiCall('/food-entries/copy', {
     method: 'POST',
     body: { sourceDate, sourceMealType, targetDate, targetMealType },
   });
 };
 
 export const copyFoodEntriesFromYesterday = async (mealType: string, targetDate: string): Promise<FoodEntry[]> => {
-  return apiCall('/foods/food-entries/copy-yesterday', {
+  return apiCall('/food-entries/copy-yesterday', {
     method: 'POST',
     body: { mealType, targetDate },
   });
