@@ -159,7 +159,7 @@ export function getChartConfig(dataKey: string) {
   if (vitaminMetrics.includes(dataKey.toLowerCase())) {
     return {
       useSmartScaling: true,
-      excludeIncompleteDay: true,
+      excludeIncompleteDay: false,
       marginPercent: 0.15, // Larger margin for micronutrients
       minRangeThreshold: 0.4
     };
