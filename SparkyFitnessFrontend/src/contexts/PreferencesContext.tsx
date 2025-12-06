@@ -80,6 +80,7 @@ interface PreferencesContextType {
   mineralCalculationAlgorithm: MineralCalculationAlgorithm;
   vitaminCalculationAlgorithm: VitaminCalculationAlgorithm;
   sugarCalculationAlgorithm: SugarCalculationAlgorithm;
+  selectedDiet: string;
   setWeightUnit: (unit: 'kg' | 'lbs') => void;
   setMeasurementUnit: (unit: 'cm' | 'inches') => void;
   setDistanceUnit: (unit: 'km' | 'miles') => void; // Add setter for distance unit
@@ -98,6 +99,7 @@ interface PreferencesContextType {
   setMineralCalculationAlgorithm: (algorithm: MineralCalculationAlgorithm) => void;
   setVitaminCalculationAlgorithm: (algorithm: VitaminCalculationAlgorithm) => void;
   setSugarCalculationAlgorithm: (algorithm: SugarCalculationAlgorithm) => void;
+  setSelectedDiet: (diet: string) => void;
   convertWeight: (value: number, from: 'kg' | 'lbs', to: 'kg' | 'lbs') => number;
   convertMeasurement: (value: number, from: 'cm' | 'inches', to: 'cm' | 'inches') => number;
   convertDistance: (value: number, from: 'km' | 'miles', to: 'km' | 'miles') => number; // Add distance converter
@@ -141,6 +143,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [mineralCalculationAlgorithm, setMineralCalculationAlgorithmState] = useState<MineralCalculationAlgorithm>(MineralCalculationAlgorithm.RDA_STANDARD);
   const [vitaminCalculationAlgorithm, setVitaminCalculationAlgorithmState] = useState<VitaminCalculationAlgorithm>(VitaminCalculationAlgorithm.RDA_STANDARD);
   const [sugarCalculationAlgorithm, setSugarCalculationAlgorithmState] = useState<SugarCalculationAlgorithm>(SugarCalculationAlgorithm.WHO_GUIDELINES);
+  const [selectedDiet, setSelectedDietState] = useState<string>('balanced');
 
   // Log initial state
   useEffect(() => {
@@ -226,6 +229,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setMineralCalculationAlgorithmState((data.mineral_calculation_algorithm as MineralCalculationAlgorithm) || MineralCalculationAlgorithm.RDA_STANDARD);
         setVitaminCalculationAlgorithmState((data.vitamin_calculation_algorithm as VitaminCalculationAlgorithm) || VitaminCalculationAlgorithm.RDA_STANDARD);
         setSugarCalculationAlgorithmState((data.sugar_calculation_algorithm as SugarCalculationAlgorithm) || SugarCalculationAlgorithm.WHO_GUIDELINES);
+        setSelectedDietState(data.selected_diet || 'balanced');
         info(loggingLevel, 'PreferencesContext: Preferences states updated from database.');
       } else {
         info(loggingLevel, 'PreferencesContext: No preferences found, creating default preferences.');
@@ -275,6 +279,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         language: 'en',
         calorie_goal_adjustment_mode: 'dynamic', // Add default for new preference
         energy_unit: 'kcal', // Add default energy unit
+        selected_diet: 'balanced', // Add default diet
       };
 
 
@@ -313,6 +318,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     language: string;
     calorie_goal_adjustment_mode: 'dynamic' | 'fixed'; // Add new preference to updates type
     energy_unit: EnergyUnit; // Add energy unit to updates type
+    selected_diet: string; // Add selected diet to updates type
   }>) => {
     debug(loggingLevel, "PreferencesProvider: Attempting to update preferences with:", updates);
     if (!user) {
@@ -574,6 +580,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       language: newPrefs?.language ?? language,
       calorie_goal_adjustment_mode: newPrefs?.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode, // Include new preference
       energy_unit: newPrefs?.energyUnit ?? energyUnit, // Include energy unit preference
+      selected_diet: newPrefs?.selectedDiet ?? selectedDiet, // Include selected diet preference
     };
 
     try {
@@ -644,10 +651,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       mineralCalculationAlgorithm,
       vitaminCalculationAlgorithm,
       sugarCalculationAlgorithm,
+      selectedDiet,
       setFatBreakdownAlgorithm: setFatBreakdownAlgorithmState,
       setMineralCalculationAlgorithm: setMineralCalculationAlgorithmState,
       setVitaminCalculationAlgorithm: setVitaminCalculationAlgorithmState,
       setSugarCalculationAlgorithm: setSugarCalculationAlgorithmState,
+      setSelectedDiet: setSelectedDietState,
       convertWeight,
       convertMeasurement,
       convertDistance, // Expose convertDistance
