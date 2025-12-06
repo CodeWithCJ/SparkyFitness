@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, Check, Utensils } from "lucide-react";
+import { ChevronLeft, Check, Utensils, Lock, Unlock } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -183,8 +183,15 @@ const StartPage: React.FC<StartPageProps> = ({ onOnboardingComplete }) => {
     fat: 30,
   });
 
+  const [lockedMacros, setLockedMacros] = useState({
+    carbs: false,
+    protein: false,
+    fat: false,
+  });
+
   // State for collapsible settings panel
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [showDietApproach, setShowDietApproach] = useState(true);
 
   // Helper functions for water unit conversion
   const convertMlToSelectedUnit = (ml: number, unit: 'ml' | 'oz' | 'liter'): number => {
@@ -327,9 +334,9 @@ const StartPage: React.FC<StartPageProps> = ({ onOnboardingComplete }) => {
     return { bmr, tdee, finalDailyCalories, macros };
   }, [formData, step, weightUnit, heightUnit, localSelectedDiet, customPercentages]);
 
-  // Sync initial calculation to editedPlan when plan is ready
+  // Sync calculation to editedPlan whenever the plan or its dependencies change
   useEffect(() => {
-    if (plan && !editedPlan) {
+    if (plan) {
       // Calculate dynamic water goal: 35ml per kg of body weight
       const weightKg = weightUnit === 'lbs' ? Number(formData.currentWeight) * 0.453592 : Number(formData.currentWeight);
       const waterGoalMl = Math.round(weightKg * 35);
@@ -379,7 +386,6 @@ const StartPage: React.FC<StartPageProps> = ({ onOnboardingComplete }) => {
     }
   }, [
     plan,
-    editedPlan,
     localEnergyUnit,
     convertEnergy,
     formData.currentWeight,
@@ -387,50 +393,10 @@ const StartPage: React.FC<StartPageProps> = ({ onOnboardingComplete }) => {
     formData.sex,
     formData.activityLevel,
     weightUnit,
-  ]);
-
-  // Recalculate advanced nutrients when algorithm settings change
-  useEffect(() => {
-    if (plan && editedPlan && formData.sex && formData.activityLevel) {
-      // Calculate dynamic values needed for nutrient calculations
-      const weightKg = weightUnit === 'lbs' ? Number(formData.currentWeight) * 0.453592 : Number(formData.currentWeight);
-      const age = new Date().getFullYear() - new Date(formData.birthDate).getFullYear();
-
-      // Prepare user data for advanced nutrient calculations
-      const userData = {
-        age,
-        sex: formData.sex as "male" | "female",
-        weightKg,
-        calories: plan.finalDailyCalories, // Use kcal (before conversion to user's energy unit)
-        totalFatGrams: plan.macros.fat,
-        activityLevel: formData.activityLevel as "not_much" | "light" | "moderate" | "heavy",
-      };
-
-      // Recalculate advanced nutrients using the updated algorithms
-      const advancedNutrients = calculateAllAdvancedNutrients(userData, {
-        fatBreakdown: localFatBreakdownAlgorithm,
-        minerals: localMineralAlgorithm,
-        vitamins: localVitaminAlgorithm,
-        sugar: localSugarAlgorithm,
-      });
-
-      // Update editedPlan with new advanced nutrients while preserving user edits to macros
-      setEditedPlan(prev => prev ? {
-        ...prev,
-        ...advancedNutrients, // Update only the advanced nutrients
-      } : null);
-    }
-  }, [
     localFatBreakdownAlgorithm,
     localMineralAlgorithm,
     localVitaminAlgorithm,
-    localSugarAlgorithm,
-    plan,
-    formData.sex,
-    formData.activityLevel,
-    formData.currentWeight,
-    formData.birthDate,
-    weightUnit,
+    localSugarAlgorithm
   ]);
 
 
@@ -576,6 +542,72 @@ const StartPage: React.FC<StartPageProps> = ({ onOnboardingComplete }) => {
   };
 
 
+  const handleMacroValueChange = (changedMacro: keyof typeof customPercentages, newValue: number) => {
+    // Clamp the new value to be between 0 and 100.
+    newValue = Math.max(0, Math.min(100, newValue));
+
+    if (lockedMacros[changedMacro]) return;
+
+    const newPercentages = { ...customPercentages };
+    
+    // Apply the new value
+    newPercentages[changedMacro] = newValue;
+
+    // Identify other macros that are not locked
+    const otherUnlockedMacros = (Object.keys(customPercentages) as Array<keyof typeof customPercentages>).filter(
+      (m) => m !== changedMacro && !lockedMacros[m]
+    );
+
+    // Calculate the total percentage that is either locked or has just been changed
+    const fixedTotal = Object.keys(newPercentages).reduce((total, key) => {
+      const macro = key as keyof typeof customPercentages;
+      if (macro === changedMacro || lockedMacros[macro]) {
+        return total + newPercentages[macro];
+      }
+      return total;
+    }, 0);
+
+    // The remaining percentage that needs to be distributed among the other unlocked macros
+    const remainingToDistribute = 100 - fixedTotal;
+
+    if (otherUnlockedMacros.length > 0) {
+      const totalOfOtherUnlocked = otherUnlockedMacros.reduce(
+        (sum, m) => sum + customPercentages[m], 0
+      );
+
+      if (totalOfOtherUnlocked > 0) {
+        // Distribute the remainder proportionally based on their previous values
+        otherUnlockedMacros.forEach((macro) => {
+          const ratio = customPercentages[macro] / totalOfOtherUnlocked;
+          newPercentages[macro] = remainingToDistribute * ratio;
+        });
+      } else {
+        // If the other unlocked macros were all 0, distribute the remainder equally
+        otherUnlockedMacros.forEach((macro) => {
+          newPercentages[macro] = remainingToDistribute / otherUnlockedMacros.length;
+        });
+      }
+    }
+
+    // Round all values and adjust the last unlocked one to ensure the sum is exactly 100
+    let total = 0;
+    (Object.keys(newPercentages) as Array<keyof typeof customPercentages>).forEach((key) => {
+      newPercentages[key] = Math.round(newPercentages[key]);
+      total += newPercentages[key];
+    });
+
+    const lastUnlocked = otherUnlockedMacros[otherUnlockedMacros.length - 1];
+    if (total !== 100 && lastUnlocked) {
+      newPercentages[lastUnlocked] += 100 - total;
+    }
+
+    // Ensure no value is negative after adjustments
+    (Object.keys(newPercentages) as Array<keyof typeof customPercentages>).forEach((key) => {
+        if (newPercentages[key] < 0) newPercentages[key] = 0;
+    });
+
+    setCustomPercentages(newPercentages);
+  };
 
   const renderStepContent = () => {
     switch (step) {
@@ -983,144 +1015,232 @@ const StartPage: React.FC<StartPageProps> = ({ onOnboardingComplete }) => {
               </AlertDescription>
             </Alert>
 
-            {/* Diet Selection */}
-            <div className="bg-[#1c1c1e] rounded-2xl p-6 mb-6 border border-gray-800">
-              <div className="flex items-center gap-2 mb-4">
-                <Utensils className="h-5 w-5 text-green-500" />
-                <h3 className="text-lg font-bold text-white">Diet Approach</h3>
+            <div className="bg-[#1c1c1e] rounded-2xl p-6 mb-6 text-center border border-gray-800">
+              <div className="flex justify-center mb-6 bg-[#2c2c2e] p-1 rounded-lg w-fit mx-auto">
+                <button
+                  onClick={() => {
+                    if (localEnergyUnit !== 'kcal' && editedPlan?.calories) {
+                      setEditedPlan(prev => prev ? ({ ...prev, calories: Math.round(convertEnergy(prev.calories, 'kJ', 'kcal')) }) : null);
+                    }
+                    setLocalEnergyUnit('kcal');
+                  }}
+                  className={`px-4 py-2 rounded-md transition-all ${localEnergyUnit === 'kcal' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {t('settings.preferences.calories', 'Calories (kcal)')}
+                </button>
+                <button
+                  onClick={() => {
+                    if (localEnergyUnit !== 'kJ' && editedPlan?.calories) {
+                      setEditedPlan(prev => prev ? ({ ...prev, calories: Math.round(convertEnergy(prev.calories, 'kcal', 'kJ')) }) : null);
+                    }
+                    setLocalEnergyUnit('kJ');
+                  }}
+                  className={`px-4 py-2 rounded-md transition-all ${localEnergyUnit === 'kJ' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {t('settings.preferences.joules', 'Joules (kJ)')}
+                </button>
               </div>
 
-              <p className="text-gray-400 text-sm mb-4">
-                Choose a preset diet or customize your macro split
+              <p className="text-gray-400 uppercase text-sm font-bold tracking-wider mb-2">
+                Daily Calorie Budget
               </p>
-
-              <Select
-                value={localSelectedDiet}
-                onValueChange={(value) => {
-                  setLocalSelectedDiet(value);
-                  // If switching to a preset diet, update custom percentages to match
-                  if (value !== 'custom') {
-                    const template = getDietTemplate(value);
-                    setCustomPercentages({
-                      carbs: template.carbsPercentage,
-                      protein: template.proteinPercentage,
-                      fat: template.fatPercentage,
-                    });
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full bg-[#2c2c2e] border-gray-700 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DIET_TEMPLATES.map((diet) => (
-                    <SelectItem key={diet.id} value={diet.id}>
-                      <div>
-                        <div className="font-semibold">{diet.name}</div>
-                        <div className="text-xs text-gray-400">
-                          {diet.carbsPercentage}% Carbs / {diet.proteinPercentage}% Protein / {diet.fatPercentage}% Fat
-                        </div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Show description of selected diet */}
-              <div className="mt-3 p-3 bg-[#2c2c2e] rounded-lg">
-                <p className="text-sm text-gray-300">
-                  {getDietTemplate(localSelectedDiet).description}
-                </p>
+              <div className="text-6xl font-extrabold text-green-500 flex justify-center">
+                <Input
+                  type="number"
+                  value={editedPlan?.calories ?? ''} // Display in user's preferred unit
+                  onChange={(e) => setEditedPlan(prev => prev ? ({ ...prev, calories: Number(e.target.value) }) : null)}
+                  className="w-48 text-center bg-transparent border-none text-6xl text-green-500 font-extrabold focus-visible:ring-0 p-0 h-auto"
+                />
               </div>
+              <p className="text-xl text-white font-medium mt-1">{getEnergyUnitString(localEnergyUnit)} / day</p>
 
-              {/* Custom percentage sliders */}
-              {localSelectedDiet === 'custom' && (
-                <div className="mt-6 space-y-6 p-4 bg-[#2c2c2e] rounded-lg border border-gray-700">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-sm font-semibold text-white">Custom Macro Split</h4>
-                    <span className={`text-sm font-mono ${customPercentages.carbs + customPercentages.protein + customPercentages.fat === 100
-                      ? 'text-green-500'
-                      : 'text-yellow-500'
-                      }`}>
-                      Total: {customPercentages.carbs + customPercentages.protein + customPercentages.fat}%
-                    </span>
-                  </div>
+              <div className="mt-6 pt-6 border-t border-gray-800 flex justify-between text-sm text-gray-400">
+                <span>Base BMR: {Math.round(convertEnergy(plan.bmr, 'kcal', localEnergyUnit))} {getEnergyUnitString(localEnergyUnit)}</span>
 
-                  {/* Carbs Slider */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="text-sm font-medium text-gray-300">Carbohydrates</label>
-                      <span className="text-sm font-mono text-white">{customPercentages.carbs}%</span>
-                    </div>
-                    <Slider
-                      value={[customPercentages.carbs]}
-                      onValueChange={([value]) => {
-                        const remaining = 100 - value;
-                        const proteinRatio = customPercentages.protein / (customPercentages.protein + customPercentages.fat) || 0.5;
-                        setCustomPercentages({
-                          carbs: value,
-                          protein: Math.round(remaining * proteinRatio),
-                          fat: Math.round(remaining * (1 - proteinRatio)),
-                        });
-                      }}
-                      min={5}
-                      max={80}
-                      step={1}
-                      className="cursor-pointer"
-                    />
-                  </div>
+                <span>
+                  Calorie Buyback:{" "}
+                  <span
+                    className={
+                      formData.addBurnedCalories
+                        ? "text-green-400"
+                        : "text-gray-500"
+                    }
+                  >
+                    {formData.addBurnedCalories ? "ON" : "OFF"}
+                  </span>
+                </span>
+              </div>
+            </div >
 
-                  {/* Protein Slider */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="text-sm font-medium text-gray-300">Protein</label>
-                      <span className="text-sm font-mono text-white">{customPercentages.protein}%</span>
-                    </div>
-                    <Slider
-                      value={[customPercentages.protein]}
-                      onValueChange={([value]) => {
-                        const remaining = 100 - value;
-                        const carbsRatio = customPercentages.carbs / (customPercentages.carbs + customPercentages.fat) || 0.5;
-                        setCustomPercentages({
-                          carbs: Math.round(remaining * carbsRatio),
-                          protein: value,
-                          fat: Math.round(remaining * (1 - carbsRatio)),
-                        });
-                      }}
-                      min={10}
-                      max={50}
-                      step={1}
-                      className="cursor-pointer"
-                    />
-                  </div>
+            {/* Diet Selection */}
+            <div className="bg-[#1c1c1e] rounded-2xl border border-gray-800 mb-6">
+              <button
+                onClick={() => setShowDietApproach(!showDietApproach)}
+                className="w-full p-4 flex items-center justify-between hover:bg-[#2c2c2e] transition-colors rounded-2xl"
+              >
+                <div className="flex items-center gap-2">
+                  <Utensils className="h-5 w-5 text-green-500" />
+                  <span className="text-white font-semibold">Diet Approach</span>
+                </div>
+                <ChevronLeft className={`h-5 w-5 text-gray-400 transition-transform ${showDietApproach ? '-rotate-90' : 'rotate-180'}`} />
+              </button>
 
-                  {/* Fat Slider */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="text-sm font-medium text-gray-300">Fat</label>
-                      <span className="text-sm font-mono text-white">{customPercentages.fat}%</span>
-                    </div>
-                    <Slider
-                      value={[customPercentages.fat]}
-                      onValueChange={([value]) => {
-                        const remaining = 100 - value;
-                        const carbsRatio = customPercentages.carbs / (customPercentages.carbs + customPercentages.protein) || 0.5;
-                        setCustomPercentages({
-                          carbs: Math.round(remaining * carbsRatio),
-                          protein: Math.round(remaining * (1 - carbsRatio)),
-                          fat: value,
-                        });
-                      }}
-                      min={10}
-                      max={75}
-                      step={1}
-                      className="cursor-pointer"
-                    />
-                  </div>
-
-                  <p className="text-xs text-gray-500 mt-2">
-                    Adjust any slider - the other two will automatically adjust to maintain 100% total.
+              {showDietApproach && (
+                <div className="px-4 pb-4 space-y-4 border-t border-gray-800 pt-4">
+                  <p className="text-gray-400 text-sm mb-4">
+                    Choose a preset diet or customize your macro split
                   </p>
+
+                  <Select
+                    value={localSelectedDiet}
+                    onValueChange={(value) => {
+                      setLocalSelectedDiet(value);
+                      // If switching to a preset diet, update custom percentages to match
+                      if (value !== 'custom') {
+                        const template = getDietTemplate(value);
+                        setCustomPercentages({
+                          carbs: template.carbsPercentage,
+                          protein: template.proteinPercentage,
+                          fat: template.fatPercentage,
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full bg-[#2c2c2e] border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DIET_TEMPLATES.map((diet) => (
+                        <SelectItem key={diet.id} value={diet.id}>
+                          <div>
+                            <div className="font-semibold">{diet.name}</div>
+                            <div className="text-xs text-gray-400">
+                              {diet.carbsPercentage}% Carbs / {diet.proteinPercentage}% Protein / {diet.fatPercentage}% Fat
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Show description of selected diet */}
+                  <div className="mt-3 p-3 bg-[#2c2c2e] rounded-lg">
+                    <p className="text-sm text-gray-300">
+                      {getDietTemplate(localSelectedDiet).description}
+                    </p>
+                  </div>
+
+                  {/* Custom percentage sliders */}
+                  {localSelectedDiet === 'custom' && (
+                    <div className="mt-6 space-y-6 p-4 bg-[#2c2c2e] rounded-lg border border-gray-700">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-sm font-semibold text-white">Custom Macro Split</h4>
+                        <span className={`text-sm font-mono ${Math.round(customPercentages.carbs) + Math.round(customPercentages.protein) + Math.round(customPercentages.fat) === 100
+                          ? 'text-green-500'
+                          : 'text-yellow-500'
+                          }`}>
+                          Total: {Math.round(customPercentages.carbs) + Math.round(customPercentages.protein) + Math.round(customPercentages.fat)}%
+                        </span>
+                      </div>
+
+                      {/* Carbs Slider */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setLockedMacros(p => ({ ...p, carbs: !p.carbs }))} className="text-gray-400 hover:text-white">
+                              {lockedMacros.carbs ? <Lock size={16} /> : <Unlock size={16} />}
+                            </button>
+                            <label className="text-sm font-medium text-gray-300">Carbohydrates</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={Math.round(customPercentages.carbs)}
+                              onChange={(e) => handleMacroValueChange('carbs', parseInt(e.target.value, 10) || 0)}
+                              className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                              disabled={lockedMacros.carbs}
+                            />
+                            <span className="text-sm font-mono text-white">%</span>
+                          </div>
+                        </div>
+                        <Slider
+                          value={[customPercentages.carbs]}
+                          onValueChange={([value]) => handleMacroValueChange('carbs', value)}
+                          min={5}
+                          max={80}
+                          step={1}
+                          className="cursor-pointer"
+                          disabled={lockedMacros.carbs}
+                        />
+                      </div>
+
+                      {/* Protein Slider */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setLockedMacros(p => ({ ...p, protein: !p.protein }))} className="text-gray-400 hover:text-white">
+                              {lockedMacros.protein ? <Lock size={16} /> : <Unlock size={16} />}
+                            </button>
+                            <label className="text-sm font-medium text-gray-300">Protein</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={Math.round(customPercentages.protein)}
+                              onChange={(e) => handleMacroValueChange('protein', parseInt(e.target.value, 10) || 0)}
+                              className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                              disabled={lockedMacros.protein}
+                            />
+                            <span className="text-sm font-mono text-white">%</span>
+                          </div>
+                        </div>
+                        <Slider
+                          value={[customPercentages.protein]}
+                          onValueChange={([value]) => handleMacroValueChange('protein', value)}
+                          min={10}
+                          max={50}
+                          step={1}
+                          className="cursor-pointer"
+                          disabled={lockedMacros.protein}
+                        />
+                      </div>
+
+                      {/* Fat Slider */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setLockedMacros(p => ({ ...p, fat: !p.fat }))} className="text-gray-400 hover:text-white">
+                              {lockedMacros.fat ? <Lock size={16} /> : <Unlock size={16} />}
+                            </button>
+                            <label className="text-sm font-medium text-gray-300">Fat</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={Math.round(customPercentages.fat)}
+                              onChange={(e) => handleMacroValueChange('fat', parseInt(e.target.value, 10) || 0)}
+                              className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                              disabled={lockedMacros.fat}
+                            />
+                            <span className="text-sm font-mono text-white">%</span>
+                          </div>
+                        </div>
+                        <Slider
+                          value={[customPercentages.fat]}
+                          onValueChange={([value]) => handleMacroValueChange('fat', value)}
+                          min={10}
+                          max={75}
+                          step={1}
+                          className="cursor-pointer"
+                          disabled={lockedMacros.fat}
+                        />
+                      </div>
+
+                      <p className="text-xs text-gray-500 mt-2">
+                        Adjust or type in a value. Unlocked macros will auto-adjust to maintain 100% total.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1226,72 +1346,6 @@ const StartPage: React.FC<StartPageProps> = ({ onOnboardingComplete }) => {
                 </div>
               )}
             </div>
-
-            <div className="bg-[#1c1c1e] rounded-2xl p-6 mb-6 text-center border border-gray-800">
-              <div className="flex justify-center mb-6 bg-[#2c2c2e] p-1 rounded-lg w-fit mx-auto">
-                <button
-                  onClick={() => {
-                    if (localEnergyUnit !== 'kcal' && editedPlan?.calories) {
-                      setEditedPlan(prev => prev ? ({ ...prev, calories: Math.round(convertEnergy(prev.calories, 'kJ', 'kcal')) }) : null);
-                    }
-                    setLocalEnergyUnit('kcal');
-                  }}
-                  className={`px-4 py-2 rounded-md transition-all ${localEnergyUnit === 'kcal' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-                >
-                  {t('settings.preferences.calories', 'Calories (kcal)')}
-                </button>
-                <button
-                  onClick={() => {
-                    if (localEnergyUnit !== 'kJ' && editedPlan?.calories) {
-                      setEditedPlan(prev => prev ? ({ ...prev, calories: Math.round(convertEnergy(prev.calories, 'kcal', 'kJ')) }) : null);
-                    }
-                    setLocalEnergyUnit('kJ');
-                  }}
-                  className={`px-4 py-2 rounded-md transition-all ${localEnergyUnit === 'kJ' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-                >
-                  {t('settings.preferences.joules', 'Joules (kJ)')}
-                </button>
-              </div>
-
-
-
-
-
-
-
-              <p className="text-gray-400 uppercase text-sm font-bold tracking-wider mb-2">
-
-                Daily Calorie Budget
-              </p>
-              <div className="text-6xl font-extrabold text-green-500 flex justify-center">
-                <Input
-                  type="number"
-                  value={editedPlan?.calories ?? ''} // Display in user's preferred unit
-                  onChange={(e) => setEditedPlan(prev => prev ? ({ ...prev, calories: Number(e.target.value) }) : null)}
-                  className="w-48 text-center bg-transparent border-none text-6xl text-green-500 font-extrabold focus-visible:ring-0 p-0 h-auto"
-                />
-              </div>
-              <p className="text-xl text-white font-medium mt-1">{getEnergyUnitString(localEnergyUnit)} / day</p>
-
-              <div className="mt-6 pt-6 border-t border-gray-800 flex justify-between text-sm text-gray-400">
-                <span>Base BMR: {Math.round(convertEnergy(plan.bmr, 'kcal', localEnergyUnit))} {getEnergyUnitString(localEnergyUnit)}</span>
-
-                <span>
-                  Calorie Buyback:{" "}
-                  <span
-                    className={
-                      formData.addBurnedCalories
-                        ? "text-green-400"
-                        : "text-gray-500"
-                    }
-                  >
-                    {formData.addBurnedCalories ? "ON" : "OFF"}
-                  </span>
-                </span>
-              </div>
-            </div >
-
-
 
             {/* Nutrient Sections Grid */}
             <h2 className="text-xl font-bold text-white mb-4 ml-1 mt-8">
