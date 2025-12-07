@@ -41,7 +41,7 @@ import AuthenticationSettings from "@/pages/Admin/AuthenticationSettings";
 import BackupSettings from "@/pages/Admin/BackupSettings";
 import UserManagement from "@/pages/Admin/UserManagement"; // Import UserManagement
 import axios from "axios";
-import StartPage from "@/components/Onboarding/StartPage";
+import OnBoarding from "@/components/Onboarding/OnBoarding";
 import { getOnboardingStatus } from "@/services/onboardingService";
 
 interface AddCompItem {
@@ -333,7 +333,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
   }
 
   if (needsOnboarding) {
-    return <StartPage onOnboardingComplete={() => setNeedsOnboarding(false)} />;
+    return <OnBoarding onOnboardingComplete={() => setNeedsOnboarding(false)} />;
   }
 
   return (
@@ -373,7 +373,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
             </Button>
           </div>
         </div>
-            
+
         <Tabs
           value={activeTab}
           onValueChange={(value) => {
