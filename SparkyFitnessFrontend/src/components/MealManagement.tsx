@@ -31,7 +31,7 @@ import MealBuilder from './MealBuilder';
 // This component is now a standalone library for managing meal templates.
 // Interactions with the meal plan calendar are handled by the calendar itself.
 const MealManagement: React.FC = () => {
- const { t } = useTranslation();
+  const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
   const { loggingLevel } = usePreferences();
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -232,7 +232,7 @@ const MealManagement: React.FC = () => {
     <TooltipProvider>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-2xl font-bold">{t('mealManagement.manageMeals', 'Manage Meals')}</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t('mealManagement.manageMeals', 'Meal Management')}</CardTitle>
           <Button onClick={handleCreateNewMeal}>
             <Plus className="mr-2 h-4 w-4" /> {t('mealManagement.createNewMeal', 'Create New Meal')}
           </Button>
@@ -246,20 +246,20 @@ const MealManagement: React.FC = () => {
               className="flex-1 min-w-[200px]"
             />
             <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-gray-500" />
-                <Select value={filter} onValueChange={(value: MealFilter) => setFilter(value)}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder={t('mealManagement.all', 'All')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('mealManagement.all', 'All')}</SelectItem>
-                    <SelectItem value="mine">{t('mealManagement.myMeals', 'My Meals')}</SelectItem>
-                    <SelectItem value="family">{t('mealManagement.family', 'Family')}</SelectItem>
-                    <SelectItem value="public">{t('mealManagement.public', 'Public')}</SelectItem>
-                    <SelectItem value="needs-review">{t('mealManagement.needsReview', 'Needs Review')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Filter className="h-4 w-4 text-gray-500" />
+              <Select value={filter} onValueChange={(value: MealFilter) => setFilter(value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder={t('mealManagement.all', 'All')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('mealManagement.all', 'All')}</SelectItem>
+                  <SelectItem value="mine">{t('mealManagement.myMeals', 'My Meals')}</SelectItem>
+                  <SelectItem value="family">{t('mealManagement.family', 'Family')}</SelectItem>
+                  <SelectItem value="public">{t('mealManagement.public', 'Public')}</SelectItem>
+                  <SelectItem value="needs-review">{t('mealManagement.needsReview', 'Needs Review')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {filteredMeals.length === 0 ? (
@@ -274,7 +274,39 @@ const MealManagement: React.FC = () => {
                         {meal.name}
                         {meal.is_public && <Badge variant="secondary" className="ml-2"><Share2 className="h-3 w-3 mr-1" />{t('mealManagement.public', 'Public')}</Badge>}
                       </h3>
-                      <p className="text-sm text-muted-foreground">{meal.description || t('mealManagement.noDescription', {defaultValue: 'No description'})}</p>
+                      <p className="text-sm text-muted-foreground">{meal.description || t('mealManagement.noDescription', { defaultValue: 'No description' })}</p>
+
+                      {/* Nutrition Display */}
+                      <div className="flex gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        {(() => {
+                          let totalCalories = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
+                          if (meal.foods) {
+                            meal.foods.forEach(f => {
+                              const scale = f.quantity / (f.serving_size || 1);
+                              totalCalories += (f.calories || 0) * scale;
+                              totalProtein += (f.protein || 0) * scale;
+                              totalCarbs += (f.carbs || 0) * scale;
+                              totalFat += (f.fat || 0) * scale;
+                            });
+                          }
+                          return (
+                            <>
+                              <div className="whitespace-nowrap">
+                                <span className="font-medium text-gray-900 dark:text-gray-100">{Math.round(totalCalories)}</span> kcal
+                              </div>
+                              <div className="whitespace-nowrap">
+                                <span className="font-medium text-blue-600">{totalProtein.toFixed(1)}g</span> protein
+                              </div>
+                              <div className="whitespace-nowrap">
+                                <span className="font-medium text-orange-600">{totalCarbs.toFixed(1)}g</span> carbs
+                              </div>
+                              <div className="whitespace-nowrap">
+                                <span className="font-medium text-yellow-600">{totalFat.toFixed(1)}g</span> fat
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
                     </div>
                     <div className="flex space-x-2">
                       {meal.is_public ? (

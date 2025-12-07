@@ -1005,7 +1005,7 @@
     "editFood": "Edit food",
     "deleteFood": "Delete food",
     "mealManagement": "Meal Management",
-    "mealPlanCalendar": "Meal Plan Calendar",
+    "mealPlanCalendar": "Meal Plan",
     "editFoodDialogTitle": "Edit Food",
     "editFoodDialogDescription": "Edit the details of the selected food item.",
     "deleteFoodConfirmTitle": "Delete {{foodName}}?",
@@ -1033,7 +1033,7 @@
     "failedToShareMeal": "Failed to share meal: {{errorMessage}}",
     "mealUnshared": "Meal unshared.",
     "failedToUnshareMeal": "Failed to unshare meal: {{errorMessage}}",
-    "manageMeals": "Manage Meals",
+    "manageMeals": "Meal Management",
     "createNewMeal": "Create New Meal",
     "searchMealsPlaceholder": "Search meals...",
     "all": "All",
@@ -1090,7 +1090,7 @@
     "saveMealButton": "Save Meal"
   },
   "mealPlanCalendar": {
-    "title": "Meal Plans",
+    "title": "Meal Plan",
     "createNewPlan": "Create New Plan",
     "loadingTemplates": "Loading templates...",
     "weeklyMeals": "Weekly Meals: {{count}}",
@@ -1574,7 +1574,7 @@
     "csvHeadersInsight": "Insight",
     "goodSleep": "Good Sleep",
     "needsImprovement": "Needs Improvement",
-    "sleepDataExportedSuccessfully": "Sleep data exported successfully.",    
+    "sleepDataExportedSuccessfully": "Sleep data exported successfully.",
     "failedToLoadSleepEntries": "Failed to load sleep entries",
     "sleepHypnogram": "Sleep Hypnogram",
     "noSleepStageDataAvailable": "No sleep stage data available for this entry."

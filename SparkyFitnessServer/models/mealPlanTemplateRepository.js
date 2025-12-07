@@ -19,7 +19,7 @@ async function createMealPlanTemplate(planData) {
             planData.end_date,
             planData.is_active ?? false
         ];
-        
+
         log('info', 'createMealPlanTemplate - insertTemplateQuery:', insertTemplateQuery);
         log('info', 'createMealPlanTemplate - templateValues:', templateValues);
 
@@ -29,7 +29,7 @@ async function createMealPlanTemplate(planData) {
         if (planData.assignments && planData.assignments.length > 0) {
             const assignmentValues = planData.assignments.map(a => {
                 if (a.item_type === 'meal') {
-                    return [newTemplate.id, a.day_of_week, a.meal_type, a.item_type, a.meal_id, null, null, null, null];
+                    return [newTemplate.id, a.day_of_week, a.meal_type, a.item_type, a.meal_id, null, null, a.quantity || 1.0, a.unit || 'serving'];
                 } else if (a.item_type === 'food') {
                     return [newTemplate.id, a.day_of_week, a.meal_type, a.item_type, null, a.food_id, a.variant_id, a.quantity, a.unit];
                 }
@@ -157,7 +157,7 @@ async function updateMealPlanTemplate(planId, planData) {
         if (planData.assignments && planData.assignments.length > 0) {
             const assignmentValues = planData.assignments.map(a => {
                 if (a.item_type === 'meal') {
-                    return [planId, a.day_of_week, a.meal_type, a.item_type, a.meal_id, null, null, null, null];
+                    return [planId, a.day_of_week, a.meal_type, a.item_type, a.meal_id, null, null, a.quantity || 1.0, a.unit || 'serving'];
                 } else if (a.item_type === 'food') {
                     return [planId, a.day_of_week, a.meal_type, a.item_type, null, a.food_id, a.variant_id, a.quantity, a.unit];
                 }

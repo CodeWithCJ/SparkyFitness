@@ -671,26 +671,10 @@ const FoodDatabaseManager: React.FC = () => {
       </Card>
 
       {/* Meal Management Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">{t("foodDatabaseManager.mealManagement", "Meal Management")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <MealManagement />
-        </CardContent>
-      </Card>
+      <MealManagement />
 
       {/* Meal Plan Calendar Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">
-            {t("foodDatabaseManager.mealPlanCalendar", "Meal Plan Calendar")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <MealPlanCalendar />
-        </CardContent>
-      </Card>
+      <MealPlanCalendar />
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -717,9 +701,6 @@ const FoodDatabaseManager: React.FC = () => {
           onOpenChange={setShowFoodUnitSelectorDialog}
           onSelect={handleAddFoodToMeal}
           showUnitSelector={false}
-          energyUnit={energyUnit}
-          convertEnergy={convertEnergy}
-          getEnergyUnitString={getEnergyUnitString}
         />
       )}
 

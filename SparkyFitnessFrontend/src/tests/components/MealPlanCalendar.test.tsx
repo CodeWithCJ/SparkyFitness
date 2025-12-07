@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { BrowserRouter as Router } from 'react-router-dom';
 import MealPlanCalendar from '../../components/MealPlanCalendar';
 
@@ -9,6 +10,6 @@ describe('MealPlanCalendar', () => {
         <MealPlanCalendar />
       </Router>
     );
-    expect(screen.getByText('Meal Plan Calendar')).toBeInTheDocument();
+    expect(screen.getByText('Meal Plan')).toBeInTheDocument();
   });
 });
