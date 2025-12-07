@@ -378,6 +378,26 @@ const GoalsSettings = () => {
         </Badge>
       </div>
 
+      {/* Reset Onboarding */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('goals.goalsSettings.resetOnboarding', 'Reset Onboarding')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            {t('goals.goalsSettings.resetOnboardingDescription', 'Reset your onboarding status to revisit the initial questionnaire. You will be signed out after resetting.')}
+          </p>
+          <Button
+            onClick={handleResetOnboarding}
+            disabled={saving}
+            variant="destructive"
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            {t('goals.goalsSettings.resetOnboarding', 'Reset Onboarding')}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -1089,25 +1109,7 @@ const GoalsSettings = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Reset Onboarding */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('goals.goalsSettings.resetOnboarding', 'Reset Onboarding')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            {t('goals.goalsSettings.resetOnboardingDescription', 'Reset your onboarding status to revisit the initial questionnaire. You will be signed out after resetting.')}
-          </p>
-          <Button
-            onClick={handleResetOnboarding}
-            disabled={saving}
-            variant="destructive"
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            {t('goals.goalsSettings.resetOnboarding', 'Reset Onboarding')}
-          </Button>
-        </CardContent>
-      </Card>
+
     </div>
   );
 };
