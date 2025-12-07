@@ -10,13 +10,13 @@ router.use(authenticate); // Use the authenticate middleware function
 // POST /food-entry-meals - Create a new FoodEntryMeal
 router.post('/', async (req, res, next) => {
     try {
-        const { meal_template_id, meal_type, entry_date, name, description, foods } = req.body;
+        const { meal_template_id, meal_type, entry_date, name, description, foods, quantity, unit } = req.body;
         const userId = req.userId; // From authMiddleware
 
         const newFoodEntryMeal = await foodEntryService.createFoodEntryMeal(
             userId, // authenticatedUserId
             userId, // actingUserId (assuming the authenticated user is the acting user for updates)
-            { meal_template_id, meal_type, entry_date, name, description, foods } // mealData
+            { meal_template_id, meal_type, entry_date, name, description, foods, quantity, unit } // mealData
         );
         log('info', `User ${userId} created FoodEntryMeal ${newFoodEntryMeal.id}`);
         res.status(201).json(newFoodEntryMeal);
@@ -61,14 +61,15 @@ router.get('/:id', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { name, description, meal_type, entry_date, foods } = req.body;
+        const { name, description, meal_type, entry_date, foods, quantity, unit } = req.body;
+        log('info', `[DEBUG] PUT /food-entry-meals/${id} Body:`, { quantity, unit, name }); // DEBUG LOG
         const userId = req.userId; // From authMiddleware
 
         const updatedFoodEntryMeal = await foodEntryService.updateFoodEntryMeal(
             userId, // authenticatedUserId
             userId, // actingUserId (assuming authenticated user is the acting user for updates)
             id,     // foodEntryMealId
-            { name, description, meal_type, entry_date, foods } // updatedMealData
+            { name, description, meal_type, entry_date, foods, quantity, unit } // updatedMealData
         );
         log('info', `User ${userId} updated FoodEntryMeal ${id}`);
         res.status(200).json(updatedFoodEntryMeal);

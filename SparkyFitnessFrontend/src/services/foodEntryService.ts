@@ -83,6 +83,8 @@ export interface FoodEntryMealCreateData {
   entry_date: string;
   name: string;
   description?: string;
+  quantity: number;
+  unit: string;
   foods: MealFood[];
 }
 
@@ -91,6 +93,8 @@ export interface FoodEntryMealUpdateData {
   description?: string;
   meal_type?: string;
   entry_date?: string;
+  quantity?: number;
+  unit?: string;
   foods: MealFood[]; // Foods must be provided for update
 }
 

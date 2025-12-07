@@ -49,23 +49,23 @@ async function getNutritionData(userId, startDate, endDate) {
          UNION ALL
          SELECT
            fem.entry_date,
-           SUM(fe_meal.calories * fe_meal.quantity / fe_meal.serving_size) AS calories,
-           SUM(fe_meal.protein * fe_meal.quantity / fe_meal.serving_size) AS protein,
-           SUM(fe_meal.carbs * fe_meal.quantity / fe_meal.serving_size) AS carbs,
-           SUM(fe_meal.fat * fe_meal.quantity / fe_meal.serving_size) AS fat,
-           SUM(COALESCE(fe_meal.saturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS saturated_fat,
-           SUM(COALESCE(fe_meal.polyunsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS polyunsaturated_fat,
-           SUM(COALESCE(fe_meal.monounsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS monounsaturated_fat,
-           SUM(COALESCE(fe_meal.trans_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS trans_fat,
-           SUM(COALESCE(fe_meal.cholesterol, 0) * fe_meal.quantity / fe_meal.serving_size) AS cholesterol,
-           SUM(COALESCE(fe_meal.sodium, 0) * fe_meal.quantity / fe_meal.serving_size) AS sodium,
-           SUM(COALESCE(fe_meal.potassium, 0) * fe_meal.quantity / fe_meal.serving_size) AS potassium,
-           SUM(COALESCE(fe_meal.dietary_fiber, 0) * fe_meal.quantity / fe_meal.serving_size) AS dietary_fiber,
-           SUM(COALESCE(fe_meal.sugars, 0) * fe_meal.quantity / fe_meal.serving_size) AS sugars,
-           SUM(COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_a,
-           SUM(COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_c,
-           SUM(COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) AS calcium,
-           SUM(COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) AS iron
+           SUM((fe_meal.calories * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS calories,
+           SUM((fe_meal.protein * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS protein,
+           SUM((fe_meal.carbs * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS carbs,
+           SUM((fe_meal.fat * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS fat,
+           SUM((COALESCE(fe_meal.saturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS saturated_fat,
+           SUM((COALESCE(fe_meal.polyunsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS polyunsaturated_fat,
+           SUM((COALESCE(fe_meal.monounsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS monounsaturated_fat,
+           SUM((COALESCE(fe_meal.trans_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS trans_fat,
+           SUM((COALESCE(fe_meal.cholesterol, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS cholesterol,
+           SUM((COALESCE(fe_meal.sodium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS sodium,
+           SUM((COALESCE(fe_meal.potassium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS potassium,
+           SUM((COALESCE(fe_meal.dietary_fiber, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS dietary_fiber,
+           SUM((COALESCE(fe_meal.sugars, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS sugars,
+           SUM((COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_a,
+           SUM((COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_c,
+           SUM((COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS calcium,
+           SUM((COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS iron
          FROM food_entry_meals fem
          JOIN food_entries fe_meal ON fem.id = fe_meal.food_entry_meal_id
          WHERE fem.user_id = $1 AND fem.entry_date BETWEEN $2 AND $3
@@ -73,9 +73,9 @@ async function getNutritionData(userId, startDate, endDate) {
        ) AS combined_nutrition
        GROUP BY entry_date
        ORDER BY entry_date`,
-     [userId, startDate, endDate]
-   );
-   return result.rows;
+      [userId, startDate, endDate]
+    );
+    return result.rows;
   } finally {
     client.release();
   }
@@ -158,26 +158,26 @@ async function getTabularFoodData(userId, startDate, endDate) {
       SELECT
         TO_CHAR(fem.entry_date, 'YYYY-MM-DD') AS entry_date,
         fem.meal_type,
-        SUM(cfe_meal.quantity) AS quantity, -- Sum quantities of foods in the meal
+        fem.quantity AS quantity, -- Use meal quantity
         'meal' AS unit, -- Indicate it's a meal
         NULL AS food_id,
         NULL AS variant_id,
         fem.user_id,
         fem.name AS food_name, -- Meal name as food_name
         fem.description AS brand_name, -- Meal description as brand_name
-        SUM(cfe_meal.calories) AS calories,
-        SUM(cfe_meal.protein) AS protein,
-        SUM(cfe_meal.carbs) AS carbs,
-        SUM(cfe_meal.fat) AS fat,
-        SUM(cfe_meal.saturated_fat) AS saturated_fat,
-        SUM(cfe_meal.polyunsaturated_fat) AS polyunsaturated_fat,
-        SUM(cfe_meal.monounsaturated_fat) AS monounsaturated_fat,
-        SUM(cfe_meal.trans_fat) AS trans_fat,
-        SUM(cfe_meal.cholesterol) AS cholesterol,
-        SUM(cfe_meal.sodium) AS sodium,
-        SUM(cfe_meal.potassium) AS potassium,
-        SUM(cfe_meal.dietary_fiber) AS dietary_fiber,
-        SUM(cfe_meal.sugars) AS sugars,
+        SUM(cfe_meal.calories * fem.quantity) AS calories,
+        SUM(cfe_meal.protein * fem.quantity) AS protein,
+        SUM(cfe_meal.carbs * fem.quantity) AS carbs,
+        SUM(cfe_meal.fat * fem.quantity) AS fat,
+        SUM(cfe_meal.saturated_fat * fem.quantity) AS saturated_fat,
+        SUM(cfe_meal.polyunsaturated_fat * fem.quantity) AS polyunsaturated_fat,
+        SUM(cfe_meal.monounsaturated_fat * fem.quantity) AS monounsaturated_fat,
+        SUM(cfe_meal.trans_fat * fem.quantity) AS trans_fat,
+        SUM(cfe_meal.cholesterol * fem.quantity) AS cholesterol,
+        SUM(cfe_meal.sodium * fem.quantity) AS sodium,
+        SUM(cfe_meal.potassium * fem.quantity) AS potassium,
+        SUM(cfe_meal.dietary_fiber * fem.quantity) AS dietary_fiber,
+        SUM(cfe_meal.sugars * fem.quantity) AS sugars,
         (CASE
             WHEN SUM(cfe_meal.carbs) = 0 THEN 'None'
             ELSE
@@ -225,21 +225,21 @@ async function getTabularFoodData(userId, startDate, endDate) {
                     ELSE 'Very High'
                 END)
         END) AS glycemic_index,
-        SUM(cfe_meal.vitamin_a) AS vitamin_a,
-        SUM(cfe_meal.vitamin_c) AS vitamin_c,
-        SUM(cfe_meal.calcium) AS calcium,
-        SUM(cfe_meal.iron) AS iron,
-        NULL AS serving_size,
-        NULL AS serving_unit,
+        SUM(cfe_meal.vitamin_a * fem.quantity) AS vitamin_a,
+        SUM(cfe_meal.vitamin_c * fem.quantity) AS vitamin_c,
+        SUM(cfe_meal.calcium * fem.quantity) AS calcium,
+        SUM(cfe_meal.iron * fem.quantity) AS iron,
+        1 AS serving_size, -- Treat meal as single serving unit for calculations
+        'serving' AS serving_unit,
         fem.id AS food_entry_meal_id
       FROM food_entry_meals fem
       JOIN CalculatedFoodEntries cfe_meal ON fem.id = cfe_meal.food_entry_meal_id
       WHERE fem.user_id = $1 AND fem.entry_date BETWEEN $2 AND $3
-      GROUP BY fem.id, fem.entry_date, fem.meal_type, fem.name, fem.description, fem.user_id
+      GROUP BY fem.id, fem.entry_date, fem.meal_type, fem.name, fem.description, fem.user_id, fem.quantity
       ORDER BY entry_date, meal_type`,
-    [userId, startDate, endDate]
-  );
-   return result.rows;
+      [userId, startDate, endDate]
+    );
+    return result.rows;
   } finally {
     client.release();
   }
@@ -249,7 +249,7 @@ async function getMeasurementData(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-       `SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, weight, neck, waist, hips, steps FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date`,
+      `SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, weight, neck, waist, hips, steps FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date`,
       [userId, startDate, endDate]
     );
     return result.rows;
@@ -262,7 +262,7 @@ async function getCustomMeasurementsData(userId, categoryId, startDate, endDate)
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-       `SELECT category_id, TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, entry_hour AS hour, value, notes, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4 ORDER BY entry_date, entry_timestamp`,
+      `SELECT category_id, TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, entry_hour AS hour, value, notes, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4 ORDER BY entry_date, entry_timestamp`,
       [userId, categoryId, startDate, endDate]
     );
     return result.rows;
@@ -319,23 +319,23 @@ async function getMiniNutritionTrends(userId, startDate, endDate) {
          UNION ALL
          SELECT
            fem.entry_date,
-           SUM(fe_meal.calories * fe_meal.quantity / fe_meal.serving_size) AS calories,
-           SUM(fe_meal.protein * fe_meal.quantity / fe_meal.serving_size) AS protein,
-           SUM(fe_meal.carbs * fe_meal.quantity / fe_meal.serving_size) AS carbs,
-           SUM(fe_meal.fat * fe_meal.quantity / fe_meal.serving_size) AS fat,
-           SUM(COALESCE(fe_meal.saturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS saturated_fat,
-           SUM(COALESCE(fe_meal.polyunsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS polyunsaturated_fat,
-           SUM(COALESCE(fe_meal.monounsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS monounsaturated_fat,
-           SUM(COALESCE(fe_meal.trans_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS trans_fat,
-           SUM(COALESCE(fe_meal.cholesterol, 0) * fe_meal.quantity / fe_meal.serving_size) AS cholesterol,
-           SUM(COALESCE(fe_meal.sodium, 0) * fe_meal.quantity / fe_meal.serving_size) AS sodium,
-           SUM(COALESCE(fe_meal.potassium, 0) * fe_meal.quantity / fe_meal.serving_size) AS potassium,
-           SUM(COALESCE(fe_meal.dietary_fiber, 0) * fe_meal.quantity / fe_meal.serving_size) AS dietary_fiber,
-           SUM(COALESCE(fe_meal.sugars, 0) * fe_meal.quantity / fe_meal.serving_size) AS sugars,
-           SUM(COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_a,
-           SUM(COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_c,
-           SUM(COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) AS calcium,
-           SUM(COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) AS iron
+           SUM((fe_meal.calories * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS calories,
+           SUM((fe_meal.protein * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS protein,
+           SUM((fe_meal.carbs * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS carbs,
+           SUM((fe_meal.fat * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS fat,
+           SUM((COALESCE(fe_meal.saturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS saturated_fat,
+           SUM((COALESCE(fe_meal.polyunsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS polyunsaturated_fat,
+           SUM((COALESCE(fe_meal.monounsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS monounsaturated_fat,
+           SUM((COALESCE(fe_meal.trans_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS trans_fat,
+           SUM((COALESCE(fe_meal.cholesterol, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS cholesterol,
+           SUM((COALESCE(fe_meal.sodium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS sodium,
+           SUM((COALESCE(fe_meal.potassium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS potassium,
+           SUM((COALESCE(fe_meal.dietary_fiber, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS dietary_fiber,
+           SUM((COALESCE(fe_meal.sugars, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS sugars,
+           SUM((COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_a,
+           SUM((COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_c,
+           SUM((COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS calcium,
+           SUM((COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS iron
          FROM food_entry_meals fem
          JOIN food_entries fe_meal ON fem.id = fe_meal.food_entry_meal_id
          WHERE fem.user_id = $1 AND fem.entry_date BETWEEN $2 AND $3

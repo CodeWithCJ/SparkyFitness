@@ -55,7 +55,7 @@ export const getGoalsForDate = async (date: string): Promise<Goals> => {
 };
 
 export const getFoodEntriesForDate = async (date: string): Promise<FoodEntry[]> => {
-  const data = await apiCall(`/foods/food-entries/${date}`, {
+  const data = await apiCall(`/food-entries/by-date/${date}`, {
     method: 'GET',
     suppress404Toast: true, // Suppress toast for 404
   });

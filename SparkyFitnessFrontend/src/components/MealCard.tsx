@@ -94,7 +94,7 @@ const MealCard = ({
   const { loggingLevel, nutrientDisplayPreferences } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
-  
+
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
   };
@@ -284,7 +284,7 @@ const MealCard = ({
                   loggingLevel,
                   `MealCard: Rendering item: ${isFoodEntryMeal ? (item as FoodEntryMeal).name : (item as FoodEntry).food_name}, GI Value: ${giValue}, quickInfoNutrients includes GI: ${quickInfoNutrients.includes('glycemic_index')}, giValue is valid: ${giValue != null && validGiValues.includes(giValue as GlycemicIndex)}`,
                 );
-                
+
                 return (
                   <div
                     key={item.id} // Use item.id directly
@@ -298,11 +298,9 @@ const MealCard = ({
                             {isFoodEntryMeal ? (item as FoodEntryMeal).description : (item as FoodEntry).brand_name}
                           </Badge>
                         ) : null}
-                        {isFoodEntry && ( // Only show quantity/unit for FoodEntry
-                          <span className="text-sm text-gray-500">
-                            {(item as FoodEntry).quantity} {(item as FoodEntry).unit}
-                          </span>
-                        )}
+                        <span className="text-sm text-gray-500">
+                          {(item as FoodEntry | FoodEntryMeal).quantity} {(item as FoodEntry | FoodEntryMeal).unit}
+                        </span>
                         {isFromMealPlan && (
                           <Badge variant="outline" className="text-xs w-fit">
                             From Plan

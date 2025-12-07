@@ -8,8 +8,9 @@ async function createFoodEntryMeal(foodEntryMealData, createdByUserId) {
         const result = await client.query(
             `INSERT INTO food_entry_meals (
                 user_id, meal_template_id, meal_type, entry_date, name, description,
+                quantity, unit,
                 created_by_user_id, updated_by_user_id
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *`,
             [
                 foodEntryMealData.user_id,
@@ -18,6 +19,8 @@ async function createFoodEntryMeal(foodEntryMealData, createdByUserId) {
                 foodEntryMealData.entry_date,
                 foodEntryMealData.name,
                 foodEntryMealData.description,
+                foodEntryMealData.quantity,
+                foodEntryMealData.unit,
                 createdByUserId,
                 createdByUserId
             ]
@@ -34,6 +37,7 @@ async function createFoodEntryMeal(foodEntryMealData, createdByUserId) {
 async function updateFoodEntryMeal(foodEntryMealId, foodEntryMealData, updatedByUserId) {
     log("info", `updateFoodEntryMeal in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, foodEntryMealData: ${JSON.stringify(foodEntryMealData)}, updatedByUserId: ${updatedByUserId}`);
     const client = await getClient(updatedByUserId);
+    log("info", `[DEBUG] Repo update params: quantity=${foodEntryMealData.quantity}, unit=${foodEntryMealData.unit}`); // DEBUG LOG
     try {
         const result = await client.query(
             `UPDATE food_entry_meals SET
@@ -42,9 +46,11 @@ async function updateFoodEntryMeal(foodEntryMealId, foodEntryMealData, updatedBy
                 entry_date = COALESCE($3, entry_date),
                 name = COALESCE($4, name),
                 description = COALESCE($5, description),
+                quantity = COALESCE($6, quantity),
+                unit = COALESCE($7, unit),
                 updated_at = CURRENT_TIMESTAMP,
-                updated_by_user_id = $6
-            WHERE id = $7
+                updated_by_user_id = $8
+            WHERE id = $9
             RETURNING *`,
             [
                 foodEntryMealData.meal_template_id,
@@ -52,6 +58,8 @@ async function updateFoodEntryMeal(foodEntryMealId, foodEntryMealData, updatedBy
                 foodEntryMealData.entry_date,
                 foodEntryMealData.name,
                 foodEntryMealData.description,
+                foodEntryMealData.quantity,
+                foodEntryMealData.unit,
                 updatedByUserId,
                 foodEntryMealId
             ]
@@ -74,7 +82,7 @@ async function getFoodEntryMealById(foodEntryMealId, userId) {
     try {
         const result = await client.query(
             `SELECT
-                id, user_id, meal_template_id, meal_type, entry_date, name, description,
+                id, user_id, meal_template_id, meal_type, entry_date, name, description, quantity, unit,
                 created_at, updated_at, created_by_user_id, updated_by_user_id
             FROM food_entry_meals
             WHERE id = $1`,
@@ -95,7 +103,7 @@ async function getFoodEntryMealsByDate(userId, selectedDate) {
     try {
         const result = await client.query(
             `SELECT
-                id, user_id, meal_template_id, meal_type, entry_date, name, description,
+                id, user_id, meal_template_id, meal_type, entry_date, name, description, quantity, unit,
                 created_at, updated_at, created_by_user_id, updated_by_user_id
             FROM food_entry_meals
             WHERE user_id = $1 AND entry_date = $2
