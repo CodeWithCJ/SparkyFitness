@@ -10,9 +10,9 @@ async function createMeal(mealData) {
     await client.query('BEGIN');
 
     const mealResult = await client.query(
-      `INSERT INTO meals (user_id, name, description, is_public, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, now(), now()) RETURNING id, user_id, name, description, is_public`,
-      [mealData.user_id, mealData.name, mealData.description, mealData.is_public]
+      `INSERT INTO meals (user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, now(), now()) RETURNING id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at`,
+      [mealData.user_id, mealData.name, mealData.description, mealData.is_public, mealData.serving_size, mealData.serving_unit]
     );
     const newMeal = mealResult.rows[0];
 
@@ -42,7 +42,7 @@ async function getMeals(userId, filter = 'all') {
   const client = await getClient(userId); // User-specific operation
   try {
     let query = `
-      SELECT id, user_id, name, description, is_public, created_at, updated_at
+      SELECT id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at
       FROM meals
       WHERE 1=1`; // Start with a true condition to easily append AND clauses
     const queryParams = [];
@@ -70,11 +70,11 @@ async function searchMeals(searchTerm, userId, limit = null) {
   const client = await getClient(userId); // User-specific operation
   try {
     let query = `
-      SELECT id, user_id, name, description, is_public
+      SELECT id, user_id, name, description, is_public, serving_size, serving_unit
       FROM meals
       WHERE name ILIKE '%' || $1 || '%'
       ORDER BY name ASC`;
-   const queryParams = [searchTerm];
+    const queryParams = [searchTerm];
 
     if (limit !== null) {
       query += ` LIMIT $3`;
@@ -108,7 +108,7 @@ async function getMealById(mealId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const mealResult = await client.query(
-      `SELECT id, user_id, name, description, is_public, created_at, updated_at
+      `SELECT id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at
        FROM meals WHERE id = $1`,
       [mealId]
     );
@@ -143,10 +143,12 @@ async function updateMeal(mealId, userId, updateData) {
         name = COALESCE($1, name),
         description = COALESCE($2, description),
         is_public = COALESCE($3, is_public),
+        serving_size = COALESCE($4, serving_size),
+        serving_unit = COALESCE($5, serving_unit),
         updated_at = now()
-       WHERE id = $4
-       RETURNING id, user_id, name, description, is_public`,
-      [updateData.name, updateData.description, updateData.is_public, mealId]
+       WHERE id = $6
+       RETURNING id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at`,
+      [updateData.name, updateData.description, updateData.is_public, updateData.serving_size, updateData.serving_unit, mealId]
     );
     const updatedMeal = result.rows[0];
 
@@ -360,7 +362,7 @@ async function getRecentMeals(userId, limit = null) {
   const client = await getClient(userId); // User-specific operation
   try {
     let query = `
-      SELECT id, user_id, name, description, is_public, created_at, updated_at
+      SELECT id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at
       FROM meals
       ORDER BY updated_at DESC`;
     const queryParams = [];
@@ -398,7 +400,7 @@ async function getTopMeals(userId, limit = null) {
     // For "top meals", we'll use a simple heuristic: meals with more foods,
     // or more recently created public meals. This can be refined later.
     let query = `
-      SELECT m.id, m.user_id, m.name, m.description, m.is_public, m.created_at, m.updated_at,
+      SELECT m.id, m.user_id, m.name, m.description, m.is_public, m.serving_size, m.serving_unit, m.created_at, m.updated_at,
              COUNT(mf.id) AS food_count
       FROM meals m
       LEFT JOIN meal_foods mf ON m.id = mf.meal_id
@@ -532,7 +534,7 @@ async function getMealDeletionImpact(mealId, userId) {
         usage.usedByCurrentUser = true;
       }
     }
-    
+
     return usage;
   } finally {
     client.release();
@@ -573,7 +575,7 @@ async function getPublicMeals(userId) {
   const client = await getClient(userId); // User-specific operation for RLS
   try {
     const result = await client.query(
-      `SELECT id, user_id, name, description, is_public, created_at, updated_at
+      `SELECT id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at
        FROM meals
        WHERE is_public = TRUE
        ORDER BY name ASC`
@@ -592,7 +594,7 @@ async function getFamilyMeals(userId) {
     // For now, let's assume it fetches meals shared with the user via family access.
     // This might need to be refined based on actual family sharing implementation.
     const result = await client.query(
-      `SELECT m.id, m.user_id, m.name, m.description, m.is_public, m.created_at, m.updated_at
+      `SELECT m.id, m.user_id, m.name, m.description, m.is_public, m.serving_size, m.serving_unit, m.created_at, m.updated_at
        FROM meals m
        JOIN family_access fa ON m.user_id = fa.owner_user_id
        WHERE fa.family_user_id = $1 AND fa.is_active = TRUE AND (fa.access_permissions->>'food_list')::boolean = TRUE

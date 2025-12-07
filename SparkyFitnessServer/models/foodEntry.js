@@ -26,31 +26,31 @@ async function createFoodEntry(entryData, createdByUserId) {
       }
       snapshot = foodSnapshotQuery.rows[0];
     } else { // This means it's an entry where snapshot data is already prepared (e.g., from migration or meal components)
-        // We expect snapshot data to be present in entryData
-        snapshot = {
-            name: entryData.food_name,
-            brand: entryData.brand_name,
-            serving_size: entryData.serving_size,
-            serving_unit: entryData.serving_unit,
-            calories: entryData.calories,
-            protein: entryData.protein,
-            carbs: entryData.carbs,
-            fat: entryData.fat,
-            saturated_fat: entryData.saturated_fat,
-            polyunsaturated_fat: entryData.polyunsaturated_fat,
-            monounsaturated_fat: entryData.monounsaturated_fat,
-            trans_fat: entryData.trans_fat,
-            cholesterol: entryData.cholesterol,
-            sodium: entryData.sodium,
-            potassium: entryData.potassium,
-            dietary_fiber: entryData.dietary_fiber,
-            sugars: entryData.sugars,
-            vitamin_a: entryData.vitamin_a,
-            vitamin_c: entryData.vitamin_c,
-            calcium: entryData.calcium,
-            iron: entryData.iron,
-            glycemic_index: entryData.glycemic_index,
-        };
+      // We expect snapshot data to be present in entryData
+      snapshot = {
+        name: entryData.food_name,
+        brand: entryData.brand_name,
+        serving_size: entryData.serving_size,
+        serving_unit: entryData.serving_unit,
+        calories: entryData.calories,
+        protein: entryData.protein,
+        carbs: entryData.carbs,
+        fat: entryData.fat,
+        saturated_fat: entryData.saturated_fat,
+        polyunsaturated_fat: entryData.polyunsaturated_fat,
+        monounsaturated_fat: entryData.monounsaturated_fat,
+        trans_fat: entryData.trans_fat,
+        cholesterol: entryData.cholesterol,
+        sodium: entryData.sodium,
+        potassium: entryData.potassium,
+        dietary_fiber: entryData.dietary_fiber,
+        sugars: entryData.sugars,
+        vitamin_a: entryData.vitamin_a,
+        vitamin_c: entryData.vitamin_c,
+        calcium: entryData.calcium,
+        iron: entryData.iron,
+        glycemic_index: entryData.glycemic_index,
+      };
     }
 
     // Insert the food entry with the snapshot data
@@ -237,12 +237,15 @@ async function getFoodEntriesByDate(userId, selectedDate) {
   try {
     const result = await client.query(
       `SELECT
-        fe.id, fe.food_id, fe.meal_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
+        fe.id, fe.food_id, fe.meal_id, fe.meal_type, 
+        (CASE WHEN fe.food_entry_meal_id IS NOT NULL THEN fe.quantity * COALESCE(fem.quantity, 1) ELSE fe.quantity END) as quantity,
+        fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
         fe.food_entry_meal_id, -- New column
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat, fe.cholesterol, fe.sodium,
         fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index
        FROM food_entries fe
+       LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
        WHERE fe.user_id = $1 AND fe.entry_date = $2
        ORDER BY fe.created_at`,
       [userId, selectedDate]
@@ -258,12 +261,15 @@ async function getFoodEntriesByDateAndMealType(userId, date, mealType) {
   try {
     const result = await client.query(
       `SELECT
-        fe.id, fe.food_id, fe.meal_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
+        fe.id, fe.food_id, fe.meal_id, fe.meal_type,
+        (CASE WHEN fe.food_entry_meal_id IS NOT NULL THEN fe.quantity * COALESCE(fem.quantity, 1) ELSE fe.quantity END) as quantity,
+        fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
         fe.food_entry_meal_id, -- New column
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat, fe.cholesterol, fe.sodium,
         fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index
        FROM food_entries fe
+       LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
        WHERE fe.user_id = $1 AND fe.entry_date = $2 AND fe.meal_type = $3`,
       [userId, date, mealType]
     );
@@ -279,13 +285,16 @@ async function getFoodEntriesByDateRange(userId, startDate, endDate) {
   try {
     const result = await client.query(
       `SELECT
-        fe.id, fe.food_id, fe.meal_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
+        fe.id, fe.food_id, fe.meal_id, fe.meal_type,
+        (CASE WHEN fe.food_entry_meal_id IS NOT NULL THEN fe.quantity * COALESCE(fem.quantity, 1) ELSE fe.quantity END) as quantity,
+        fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
         fe.food_entry_meal_id, -- New column
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat,
         fe.cholesterol, fe.sodium, fe.potassium, fe.dietary_fiber, fe.sugars,
         fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index
        FROM food_entries fe
+       LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
        WHERE fe.user_id = $1 AND fe.entry_date BETWEEN $2 AND $3
        ORDER BY fe.entry_date`,
       [userId, startDate, endDate]

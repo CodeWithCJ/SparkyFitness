@@ -10,7 +10,11 @@ const { log } = require('../config/logging');
 async function createMeal(userId, mealData) {
   try {
     mealData.user_id = userId;
+    // Add serving defaults if not provided
+    mealData.serving_size = mealData.serving_size || 1.0;
+    mealData.serving_unit = mealData.serving_unit || 'serving';
     const newMeal = await mealRepository.createMeal(mealData);
+    log('info', `Meal ${newMeal.id} created with serving: ${newMeal.serving_size} ${newMeal.serving_unit}`);
     return newMeal;
   } catch (error) {
     log('error', `Error in mealService.createMeal for user ${userId}:`, error);
@@ -81,28 +85,28 @@ async function updateMeal(userId, mealId, updateData) {
 
     let confirmationMessage = null;
     if (updateData.is_public) {
-        const mealWithFoods = await mealRepository.getMealById(mealId, userId);
-        const foodIds = mealWithFoods.foods.map(f => f.food_id);
+      const mealWithFoods = await mealRepository.getMealById(mealId, userId);
+      const foodIds = mealWithFoods.foods.map(f => f.food_id);
 
-        if (foodIds.length > 0) {
-            log('info', `Updating ${foodIds.length} foods to be public as part of sharing meal ${mealId}`);
-            const updatePromises = foodIds.map(foodId =>
-                foodRepository.updateFood(foodId, userId, { shared_with_public: true })
-            );
-            await Promise.all(updatePromises);
-            confirmationMessage = `Meal shared successfully. ${foodIds.length} associated foods have also been made public.`;
-        }
+      if (foodIds.length > 0) {
+        log('info', `Updating ${foodIds.length} foods to be public as part of sharing meal ${mealId}`);
+        const updatePromises = foodIds.map(foodId =>
+          foodRepository.updateFood(foodId, userId, { shared_with_public: true })
+        );
+        await Promise.all(updatePromises);
+        confirmationMessage = `Meal shared successfully. ${foodIds.length} associated foods have also been made public.`;
+      }
     }
 
     // After updating the meal, re-sync any meal plan templates that use this meal
     const affectedTemplates = await mealPlanTemplateRepository.getMealPlanTemplatesByMealId(mealId);
     for (const template of affectedTemplates) {
-        // Only re-sync active templates
-        if (template.is_active) {
-            log('info', `Re-syncing meal plan template ${template.id} due to meal update.`);
-            // Pass null for currentClientDate as this is a backend-triggered sync
-            await mealPlanTemplateService.updateMealPlanTemplate(template.id, template.user_id, template, null);
-        }
+      // Only re-sync active templates
+      if (template.is_active) {
+        log('info', `Re-syncing meal plan template ${template.id} due to meal update.`);
+        // Pass null for currentClientDate as this is a backend-triggered sync
+        await mealPlanTemplateService.updateMealPlanTemplate(template.id, template.user_id, template, null);
+      }
     }
 
     return { ...updatedMeal, confirmationMessage };
@@ -342,7 +346,7 @@ async function updateMealEntriesSnapshot(authenticatedUserId, mealId) {
     throw error;
   }
 }
- 
+
 async function createMealFromDiaryEntries(userId, date, mealType, mealName, description = null, isPublic = false) {
   try {
     // 1. Retrieve food entries for the specified date and meal type

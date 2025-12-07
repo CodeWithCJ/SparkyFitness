@@ -468,7 +468,7 @@ async function getDailyNutritionSummary(userId, date) {
 async function createFoodEntryMeal(authenticatedUserId, actingUserId, mealData) {
   log("info", `createFoodEntryMeal in foodEntryService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, mealData: ${JSON.stringify(mealData)}`);
   try {
-    // 1. Create the parent food_entry_meals record
+    // 1. Create the parent food_entry_meals record with quantity and unit
     const newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal({
       user_id: authenticatedUserId,
       meal_template_id: mealData.meal_template_id || null,
@@ -476,9 +476,12 @@ async function createFoodEntryMeal(authenticatedUserId, actingUserId, mealData) 
       entry_date: mealData.entry_date,
       name: mealData.name,
       description: mealData.description,
+      quantity: mealData.quantity || 1.0,  // Default to 1.0 
+      unit: mealData.unit || 'serving',    // Default to 'serving'
     }, actingUserId);
 
     let foodsToProcess = mealData.foods || [];
+    let mealServingSize = 1.0; // Default serving size
 
     // If a meal_template_id is provided and no specific foods are given, fetch foods from the template
     if (mealData.meal_template_id && (!mealData.foods || mealData.foods.length === 0)) {
@@ -486,13 +489,25 @@ async function createFoodEntryMeal(authenticatedUserId, actingUserId, mealData) 
       const mealTemplate = await mealService.getMealById(authenticatedUserId, mealData.meal_template_id);
       if (mealTemplate && mealTemplate.foods) {
         foodsToProcess = mealTemplate.foods;
+        mealServingSize = mealTemplate.serving_size || 1.0; // Get the meal's serving size
+        log("info", `Meal template serving size: ${mealServingSize} ${mealTemplate.serving_unit || 'serving'}`);
       } else {
         log("warn", `Meal template ${mealData.meal_template_id} not found or has no foods when creating food entry meal.`);
         // Continue without foods, or throw an error if template foods are mandatory
       }
     }
 
-    // 2. Create component food_entries records
+    // Calculate portion multiplier: consumed_quantity / meal_serving_size
+    const consumedQuantity = mealData.quantity || 1.0;
+    let multiplier = 1.0;
+    if (mealData.unit === 'serving') {
+      multiplier = consumedQuantity;
+    } else {
+      multiplier = consumedQuantity / mealServingSize;
+    }
+    log("info", `Portion multiplier: ${multiplier} (consumed: ${consumedQuantity}, serving_size: ${mealServingSize})`);
+
+    // 2. Create component food_entries records with scaled quantities
     const entriesToCreate = [];
     for (const foodItem of foodsToProcess) {
       const food = await foodRepository.getFoodById(foodItem.food_id, authenticatedUserId);
@@ -531,12 +546,15 @@ async function createFoodEntryMeal(authenticatedUserId, actingUserId, mealData) 
         glycemic_index: variant.glycemic_index,
       };
 
+      // Scale the food quantity by the multiplier
+      const scaledQuantity = foodItem.quantity * multiplier;
+
       entriesToCreate.push({
         user_id: authenticatedUserId,
         created_by_user_id: actingUserId,
         food_id: foodItem.food_id,
         meal_type: mealData.meal_type,
-        quantity: foodItem.quantity,
+        quantity: scaledQuantity,  // SCALED quantity
         unit: foodItem.unit,
         variant_id: foodItem.variant_id,
         entry_date: mealData.entry_date,
@@ -569,6 +587,8 @@ async function updateFoodEntryMeal(authenticatedUserId, actingUserId, foodEntryM
         meal_type: updatedMealData.meal_type, // Also allow updating meal type
         entry_date: updatedMealData.entry_date, // And entry date
         meal_template_id: updatedMealData.meal_template_id, // Pass meal_template_id
+        quantity: updatedMealData.quantity, // Update quantity
+        unit: updatedMealData.unit,         // Update unit
       },
       authenticatedUserId
     );
@@ -580,6 +600,26 @@ async function updateFoodEntryMeal(authenticatedUserId, actingUserId, foodEntryM
     // 2. Delete existing component food_entries
     await foodRepository.deleteFoodEntryComponentsByFoodEntryMealId(foodEntryMealId, authenticatedUserId);
     log("debug", `Deleted existing component food entries for food_entry_meal ${foodEntryMealId}.`);
+    log("info", `[DEBUG] updateFoodEntryMeal Service Data:`, updatedMealData); // DEBUG LOG
+
+    // Calculate portion multiplier
+    let multiplier = 1.0;
+    if (updatedMealData.meal_template_id) {
+      // Fetch meal template to get reference serving size
+      const mealTemplate = await mealService.getMealById(authenticatedUserId, updatedMealData.meal_template_id);
+      if (mealTemplate && mealTemplate.serving_size) {
+        const consumedQuantity = updatedMealData.quantity || 1.0;
+        const referenceServingSize = mealTemplate.serving_size || 1.0;
+        if (updatedMealData.unit === 'serving') {
+          multiplier = consumedQuantity;
+        } else {
+          multiplier = consumedQuantity / referenceServingSize;
+        }
+        log("info", `Update portion scaling: multiplier ${multiplier} (consumed: ${consumedQuantity}, reference: ${referenceServingSize})`);
+      }
+    } else {
+      log("info", "No meal_template_id provided for update, using multiplier 1.0");
+    }
 
     // 3. Create new component food_entries records
     const entriesToCreate = [];
@@ -620,12 +660,15 @@ async function updateFoodEntryMeal(authenticatedUserId, actingUserId, foodEntryM
         glycemic_index: variant.glycemic_index,
       };
 
+      // Scale the food quantity
+      const scaledQuantity = foodItem.quantity * multiplier;
+
       entriesToCreate.push({
         user_id: authenticatedUserId,
         created_by_user_id: actingUserId,
         food_id: foodItem.food_id,
         meal_type: updatedMealData.meal_type,
-        quantity: foodItem.quantity,
+        quantity: scaledQuantity, // SCALED quantity
         unit: foodItem.unit,
         variant_id: foodItem.variant_id,
         entry_date: updatedMealData.entry_date,
@@ -718,7 +761,7 @@ async function getFoodEntryMealsByDate(authenticatedUserId, targetUserId, select
 
     for (const meal of foodEntryMeals) {
       const componentFoodEntries = await foodRepository.getFoodEntryComponentsByFoodEntryMealId(meal.id, authenticatedUserId);
-      
+
       let totalCalories = 0;
       let totalSodium = 0;
       let totalFiber = 0;
