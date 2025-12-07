@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken'); // Import jsonwebtoken
 const { authenticate, authorize } = require('../middleware/authMiddleware'); // Added authorize
+const { JWT_SECRET } = require('../security/encryption'); // Added JWT_SECRET import
 const { registerValidation, loginValidation, forgotPasswordValidation, resetPasswordValidation, mfaValidation, emailMfaValidation, verifyRecoveryCodeValidation, magicLinkRequestValidation } = require('../validation/authValidation'); // Added new validations
 const { validationResult } = require('express-validator');
 const authService = require('../services/authService');
@@ -63,8 +64,8 @@ router.post('/login', loginValidation, async (req, res, next) => {
     const isOidcFullyEnabled = settings.oidc.enabled && activeOidcProviders.length > 0;
 
     if (!settings.email.enabled && !isOidcFullyEnabled) {
-        log('warn', 'Login attempt with no methods enabled. Forcing email/password login as a fallback.');
-        settings.email.enabled = true;
+      log('warn', 'Login attempt with no methods enabled. Forcing email/password login as a fallback.');
+      settings.email.enabled = true;
     }
 
     const authResult = await authService.loginUser(email, password, settings);
@@ -89,39 +90,39 @@ router.post('/login', loginValidation, async (req, res, next) => {
 });
 
 router.get('/settings', async (req, res, next) => {
-    try {
-        const settings = await authService.getLoginSettings();
-        const providers = await oidcProviderRepository.getOidcProviders();
-        const activeOidcProviders = providers.filter(p => p.is_active);
+  try {
+    const settings = await authService.getLoginSettings();
+    const providers = await oidcProviderRepository.getOidcProviders();
+    const activeOidcProviders = providers.filter(p => p.is_active);
 
-        // OIDC is considered fully enabled only if the global flag is on AND at least one provider is active.
-        const isOidcFullyEnabled = settings.oidc.enabled && activeOidcProviders.length > 0;
+    // OIDC is considered fully enabled only if the global flag is on AND at least one provider is active.
+    const isOidcFullyEnabled = settings.oidc.enabled && activeOidcProviders.length > 0;
 
-        let warning = null;
-        // Fallback logic: if both email and OIDC are disabled, force email login.
-        if (!settings.email.enabled && !isOidcFullyEnabled) {
-            const warningMessage = 'No login methods were enabled. Email/password login has been temporarily enabled as a fallback. Please review the authentication settings.';
-            log('warn', warningMessage);
-            settings.email.enabled = true;
-            warning = warningMessage;
-        }
-
-        const loginProviders = {
-            email: {
-                enabled: settings.email.enabled,
-            },
-            oidc: {
-                enabled: isOidcFullyEnabled,
-                providers: activeOidcProviders.map(({ id, display_name, logo_url }) => ({ id, display_name, logo_url })),
-            },
-            warning, // Include the warning in the response
-        };
-        
-        res.status(200).json(loginProviders);
-    } catch (error) {
-        log('error', 'Error fetching login providers settings:', error);
-        next(error);
+    let warning = null;
+    // Fallback logic: if both email and OIDC are disabled, force email login.
+    if (!settings.email.enabled && !isOidcFullyEnabled) {
+      const warningMessage = 'No login methods were enabled. Email/password login has been temporarily enabled as a fallback. Please review the authentication settings.';
+      log('warn', warningMessage);
+      settings.email.enabled = true;
+      warning = warningMessage;
     }
+
+    const loginProviders = {
+      email: {
+        enabled: settings.email.enabled,
+      },
+      oidc: {
+        enabled: isOidcFullyEnabled,
+        providers: activeOidcProviders.map(({ id, display_name, logo_url }) => ({ id, display_name, logo_url })),
+      },
+      warning, // Include the warning in the response
+    };
+
+    res.status(200).json(loginProviders);
+  } catch (error) {
+    log('error', 'Error fetching login providers settings:', error);
+    next(error);
+  }
 });
 
 router.post('/logout', async (req, res, next) => {
@@ -231,7 +232,7 @@ router.get('/users/find-by-email', authenticate, async (req, res, next) => {
 
 router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
   const { description } = req.body;
- 
+
   try {
     const apiKey = await authService.generateUserApiKey(req.userId, req.userId, description); // targetUserId is authenticatedUserId
     res.status(201).json({ message: 'API key generated successfully', apiKey });
@@ -245,7 +246,7 @@ router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
 
 router.delete('/user/api-key/:apiKeyId', authenticate, async (req, res, next) => {
   const { apiKeyId } = req.params;
- 
+
   try {
     await authService.deleteUserApiKey(req.userId, req.userId, apiKeyId); // targetUserId is authenticatedUserId
     res.status(200).json({ message: 'API key deleted successfully.' });
@@ -286,7 +287,7 @@ router.get('/profiles', authenticate, async (req, res, next) => {
 
 router.put('/profiles', authenticate, async (req, res, next) => {
   const { full_name, phone_number, date_of_birth, bio, avatar_url, gender } = req.body;
- 
+
   try {
     const updatedProfile = await authService.updateUserProfile(
       req.userId,
@@ -319,11 +320,11 @@ router.get('/user-api-keys', authenticate, async (req, res, next) => {
 
 router.post('/update-password', authenticate, async (req, res, next) => {
   const { newPassword } = req.body;
- 
+
   if (!newPassword) {
     return res.status(400).json({ error: 'New password is required.' });
   }
- 
+
   try {
     await authService.updateUserPassword(req.userId, newPassword);
     res.status(200).json({ message: 'Password updated successfully.' });
@@ -337,11 +338,11 @@ router.post('/update-password', authenticate, async (req, res, next) => {
 
 router.post('/update-email', authenticate, async (req, res, next) => {
   const { newEmail } = req.body;
- 
+
   if (!newEmail) {
     return res.status(400).json({ error: 'New email is required.' });
   }
- 
+
   try {
     await authService.updateUserEmail(req.userId, newEmail);
     res.status(200).json({ message: 'Email update initiated. User will need to verify new email.' });
@@ -358,11 +359,11 @@ router.post('/update-email', authenticate, async (req, res, next) => {
 
 router.get('/access/can-access-user-data', authenticate, async (req, res, next) => {
   const { targetUserId, permissionType } = req.query;
- 
+
   if (!targetUserId || !permissionType) {
     return res.status(400).json({ error: 'targetUserId and permissionType are required.' });
   }
- 
+
   try {
     const canAccess = await authService.canAccessUserData(targetUserId, permissionType, req.userId);
     res.status(200).json({ canAccess });
@@ -373,11 +374,11 @@ router.get('/access/can-access-user-data', authenticate, async (req, res, next) 
 
 router.get('/access/check-family-access', authenticate, async (req, res, next) => {
   const { ownerUserId, permission } = req.query;
- 
+
   if (!ownerUserId || !permission) {
     return res.status(400).json({ error: 'ownerUserId and permission are required.' });
   }
- 
+
   try {
     const hasAccess = await authService.checkFamilyAccess(req.userId, ownerUserId, permission);
     res.status(200).json({ hasAccess });
@@ -405,11 +406,11 @@ router.get('/family-access', authenticate, async (req, res, next) => {
 
 router.post('/family-access', authenticate, async (req, res, next) => {
   const entryData = req.body;
- 
+
   if (!entryData.family_user_id || !entryData.family_email || !entryData.access_permissions) {
     return res.status(400).json({ error: 'Family User ID, Family Email, and Access Permissions are required.' });
   }
- 
+
   try {
     const newEntry = await authService.createFamilyAccessEntry(req.userId, entryData);
     res.status(201).json(newEntry);
@@ -424,11 +425,11 @@ router.post('/family-access', authenticate, async (req, res, next) => {
 router.put('/family-access/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
- 
+
   if (!id) {
     return res.status(400).json({ error: 'Family Access ID is required.' });
   }
- 
+
   try {
     const updatedEntry = await authService.updateFamilyAccessEntry(req.userId, id, updateData);
     res.status(200).json(updatedEntry);
@@ -445,11 +446,11 @@ router.put('/family-access/:id', authenticate, async (req, res, next) => {
 
 router.delete('/family-access/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
- 
+
   if (!id) {
     return res.status(400).json({ error: 'Family Access ID is required.' });
   }
- 
+
   try {
     await authService.deleteFamilyAccessEntry(req.userId, id);
     res.status(200).json({ message: 'Family access entry deleted successfully.' });
@@ -572,7 +573,7 @@ router.post('/mfa/verify/totp', authenticate, mfaValidation, async (req, res, ne
       // If authenticating as part of a login challenge, issue a new JWT token.
       // If this route is hit during MFA setup, the token will just allow proceeding, but the frontend context should handle this distinction.
       const user = await authService.getUser(req.userId); // Fetch user details to create a full login token
-      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "30d" });
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
 
       // Update MFA settings to mark TOTP as enabled if this is the setup flow,
       // or simply acknowledge verification for login flow.
@@ -668,7 +669,7 @@ router.post('/mfa/verify-email-code', authenticate, mfaValidation, async (req, r
     const user = await authService.verifyEmailMfaCode(req.userId, code);
     if (user) {
       // After successful email code verification, issue a JWT
-      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "30d" });
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -710,7 +711,7 @@ router.post('/mfa/verify-recovery-code', verifyRecoveryCodeValidation, async (re
         return res.status(404).json({ error: 'User not found after recovery code verification.' });
       }
       // After successful recovery code verification, issue a new JWT
-      const token = jwt.sign({ userId: targetUserId }, process.env.JWT_SECRET, { expiresIn: "30d" });
+      const token = jwt.sign({ userId: targetUserId }, JWT_SECRET, { expiresIn: "30d" });
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
