@@ -32,7 +32,7 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
     try {
-      const { workout_preset_id, entry_date, name, description, notes } = req.body;
+      const { workout_preset_id, entry_date, name, description, notes, source } = req.body;
       const userId = req.userId;
       const createdByUserId = req.userId;
 
@@ -51,6 +51,7 @@ router.post(
           description: description || workoutPreset.description, // Use provided description or preset description
           entry_date: entry_date,
           notes: notes,
+          source: source !== undefined ? source : 'manual',
         },
         createdByUserId
       );
