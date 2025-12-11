@@ -347,12 +347,32 @@ export const aggregateActiveCaloriesByDate = (records) => {
   const aggregatedData = validRecords.reduce((acc, record) => {
     try {
       const date = record.startTime.split('T')[0];
-      const calories = record.energy.inCalories;
+      
+      // Health Connect can return values in 'calories' (large number) or 'kilocalories' (small number).
+      // We need to normalize to kilocalories.
+      // 1. Try to get explicit kilocalories if available
+      // 2. Fall back to calories, but check magnitude
+      
+      let valInKcal = 0;
+      
+      if (record.energy && record.energy.inKilocalories !== undefined) {
+         valInKcal = record.energy.inKilocalories;
+      } else if (record.energy && record.energy.inCalories !== undefined) {
+         const rawVal = record.energy.inCalories;
+         // Heuristic: if value > 10,000, it's likely raw calories (unless they ran an ultramarathon).
+         // 10,000 kcal is an insane amount for one record/day usually.
+         // If it's raw calories, divide by 1000.
+         if (rawVal > 10000) {
+           valInKcal = rawVal / 1000;
+         } else {
+           valInKcal = rawVal;
+         }
+      }
 
       if (!acc[date]) {
         acc[date] = 0;
       }
-      acc[date] += calories;
+      acc[date] += valInKcal;
     } catch (error) {
       addLog(`[HealthConnectService] Error processing active calories record: ${error.message}`, 'warn', 'WARNING');
     }
