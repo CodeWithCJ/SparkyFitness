@@ -13,7 +13,7 @@ COPY SparkyFitnessFrontend .
 RUN npm run build
 
 # Stage 2: Serve the application with Nginx
-FROM nginx:alpine
+FROM nginx:alpine3.22
 
 # Install bash for console access and gettext for envsubst
 RUN apk add --no-cache bash gettext
