@@ -84,17 +84,17 @@ const MainScreen = ({ navigation }) => {
   useFocusEffect( // Use useFocusEffect to call initialize on focus
     useCallback(() => {
       initialize();
-      
+
       // Auto-open web dashboard on first app load only
       const autoOpenDashboard = async () => {
         // Check if we've already auto-opened the dashboard in this app session
         const hasAutoOpened = await loadStringPreference('hasAutoOpenedDashboard');
-        
+
         if (hasAutoOpened !== 'true') {
           addLog('[MainScreen] First app launch - auto-opening web dashboard');
           // Small delay to ensure screen is fully focused and server config is loaded
           await new Promise(resolve => setTimeout(resolve, 1500));
-          
+
           try {
             await openWebDashboard();
             // Only mark as opened if successful (no error thrown)
@@ -108,9 +108,9 @@ const MainScreen = ({ navigation }) => {
           addLog('[MainScreen] Already auto-opened dashboard in this session - skipping');
         }
       };
-      
+
       autoOpenDashboard();
-      
+
       return () => {
         // Optional: cleanup function when the screen loses focus
       };
@@ -118,9 +118,9 @@ const MainScreen = ({ navigation }) => {
   );
 
   useEffect(() => {
-    // Only re-fetch when healthMetricStates change, as selectedTimeRange is handled in initialize and onValueChange
+    // Re-fetch whenever healthMetricStates OR selectedTimeRange changes
     fetchHealthData(healthMetricStates, selectedTimeRange);
-  }, [healthMetricStates]); // Keep selectedTimeRange here to trigger re-fetch when user changes it
+  }, [healthMetricStates, selectedTimeRange]);
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -131,516 +131,516 @@ const MainScreen = ({ navigation }) => {
     return () => clearInterval(interval); // Clear interval on component unmount
   }, []);
 
-// Replace the fetchHealthData function in MainScreen.js with this updated version:
+  // Replace the fetchHealthData function in MainScreen.js with this updated version:
 
-const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
-  const endDate = new Date();
-  endDate.setHours(23, 59, 59, 999);
+  const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
 
-  const startDate = getSyncStartDate(timeRange);
+    const startDate = getSyncStartDate(timeRange);
 
-  const newHealthData = {};
+    const newHealthData = {};
 
-  addLog(`[MainScreen] Fetching health data for display from ${startDate.toISOString()} to ${endDate.toISOString()} for range: ${timeRange}`);
+    addLog(`[MainScreen] Fetching health data for display from ${startDate.toISOString()} to ${endDate.toISOString()} for range: ${timeRange}`);
 
-  for (const metric of HEALTH_METRICS) {
-    if (currentHealthMetricStates[metric.stateKey]) {
-      let records = [];
-      let displayValue = 'N/A';
+    for (const metric of HEALTH_METRICS) {
+      if (currentHealthMetricStates[metric.stateKey]) {
+        let records = [];
+        let displayValue = 'N/A';
 
-      try {
-        // Read records using the generic readHealthRecords function
-        records = await readHealthRecords(metric.recordType, startDate, endDate);
-        
-        if (records.length === 0) {
-          addLog(`[MainScreen] No ${metric.label} records found.`);
-          newHealthData[metric.id] = '0';
-          continue;
-        }
+        try {
+          // Read records using the generic readHealthRecords function
+          records = await readHealthRecords(metric.recordType, startDate, endDate);
 
-        // Handle different metric types
-        switch (metric.recordType) {
-          case 'Steps':
-            const aggregatedSteps = aggregateStepsByDate(records);
-            const totalSteps = aggregatedSteps.reduce((sum, record) => sum + record.value, 0);
-            displayValue = totalSteps.toLocaleString();
-            break;
+          if (records.length === 0) {
+            addLog(`[MainScreen] No ${metric.label} records found.`);
+            newHealthData[metric.id] = '0';
+            continue;
+          }
 
-          case 'ActiveCaloriesBurned':
-            const aggregatedCalories = aggregateActiveCaloriesByDate(records);
-            const totalCalories = aggregatedCalories.reduce((sum, record) => sum + record.value, 0);
-            displayValue = totalCalories.toLocaleString();
-            break;
+          // Handle different metric types
+          switch (metric.recordType) {
+            case 'Steps':
+              const aggregatedSteps = aggregateStepsByDate(records);
+              const totalSteps = aggregatedSteps.reduce((sum, record) => sum + record.value, 0);
+              displayValue = totalSteps.toLocaleString();
+              break;
 
-          case 'TotalCaloriesBurned':
-            const aggregatedTotalCalories = await aggregateTotalCaloriesByDate(records);
-            // Filter to only include 'total_calories' entries, excluding 'Active Calories' entries
-            const totalCaloriesSum = aggregatedTotalCalories
-              .filter(record => record.type === 'total_calories')
-              .reduce((sum, record) => sum + record.value, 0);
-            // Convert from calories to kilocalories (divide by 1000)
-            displayValue = Math.round(totalCaloriesSum).toLocaleString();
-            break;
+            case 'ActiveCaloriesBurned':
+              const aggregatedCalories = aggregateActiveCaloriesByDate(records);
+              const totalCalories = aggregatedCalories.reduce((sum, record) => sum + record.value, 0);
+              displayValue = totalCalories.toLocaleString();
+              break;
 
-          case 'HeartRate':
-            const aggregatedHeartRate = aggregateHeartRateByDate(records);
-            const totalHeartRateSum = aggregatedHeartRate.reduce((sum, record) => sum + record.value, 0);
-            const avgHeartRate = totalHeartRateSum > 0 && aggregatedHeartRate.length > 0
-              ? Math.round(totalHeartRateSum / aggregatedHeartRate.length)
-              : 0;
-            displayValue = avgHeartRate > 0 ? `${avgHeartRate} bpm` : '0 bpm';
-            break;
+            case 'TotalCaloriesBurned':
+              const aggregatedTotalCalories = await aggregateTotalCaloriesByDate(records);
+              // Filter to only include 'total_calories' entries, excluding 'Active Calories' entries
+              const totalCaloriesSum = aggregatedTotalCalories
+                .filter(record => record.type === 'total_calories')
+                .reduce((sum, record) => sum + record.value, 0);
+              // Convert from calories to kilocalories (divide by 1000)
+              displayValue = Math.round(totalCaloriesSum).toLocaleString();
+              break;
 
-          case 'Weight':
-            // Get the most recent weight record
-            const latestWeight = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
-            displayValue = latestWeight.weight?.inKilograms 
-              ? `${latestWeight.weight.inKilograms.toFixed(1)} kg` 
-              : '0 kg';
-            break;
+            case 'HeartRate':
+              const aggregatedHeartRate = aggregateHeartRateByDate(records);
+              const totalHeartRateSum = aggregatedHeartRate.reduce((sum, record) => sum + record.value, 0);
+              const avgHeartRate = totalHeartRateSum > 0 && aggregatedHeartRate.length > 0
+                ? Math.round(totalHeartRateSum / aggregatedHeartRate.length)
+                : 0;
+              displayValue = avgHeartRate > 0 ? `${avgHeartRate} bpm` : '0 bpm';
+              break;
 
-          // Replace the entire 'BodyFat' case in the fetchHealthData function in MainScreen.js
-          // This should be around line 150-180 in the switch statement
+            case 'Weight':
+              // Get the most recent weight record
+              const latestWeight = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+              displayValue = latestWeight.weight?.inKilograms
+                ? `${latestWeight.weight.inKilograms.toFixed(1)} kg`
+                : '0 kg';
+              break;
 
-          case 'BodyFat':
-            addLog(`[MainScreen] Processing ${records.length} BodyFat records`);
-            console.log('[BodyFat DEBUG] Raw records:', JSON.stringify(records, null, 2));
-  
-            if (records.length > 0) {
-              // Log the structure of the first record
-              console.log('[BodyFat DEBUG] First record keys:', Object.keys(records[0]));
-              console.log('[BodyFat DEBUG] First record:', records[0]);
-              addLog(`[MainScreen] First BodyFat record structure: ${JSON.stringify(Object.keys(records[0]))}`);
-            }
-  
-            // Helper function to extract body fat value from different possible structures
-            const extractBodyFatValue = (record) => {
-              // Try different possible field names and structures
-              if (record.percentage?.inPercent !== undefined) {
-                return record.percentage.inPercent;
+            // Replace the entire 'BodyFat' case in the fetchHealthData function in MainScreen.js
+            // This should be around line 150-180 in the switch statement
+
+            case 'BodyFat':
+              addLog(`[MainScreen] Processing ${records.length} BodyFat records`);
+              console.log('[BodyFat DEBUG] Raw records:', JSON.stringify(records, null, 2));
+
+              if (records.length > 0) {
+                // Log the structure of the first record
+                console.log('[BodyFat DEBUG] First record keys:', Object.keys(records[0]));
+                console.log('[BodyFat DEBUG] First record:', records[0]);
+                addLog(`[MainScreen] First BodyFat record structure: ${JSON.stringify(Object.keys(records[0]))}`);
               }
-              if (record.bodyFatPercentage?.inPercent !== undefined) {
-                return record.bodyFatPercentage.inPercent;
-              }
-              if (record.percentage?.value !== undefined) {
-                return record.percentage.value;
-              }
-              if (typeof record.percentage === 'number') {
-                return record.percentage;
-              }
-              if (typeof record.value === 'number') {
-                return record.value;
-              }
-              if (record.bodyFat !== undefined) {
-                return record.bodyFat;
-              }
-              return null;
-            };
-  
-            // Helper function to get date from record
-            const getRecordDate = (record) => {
-              if (record.time) return record.time;
-              if (record.startTime) return record.startTime;
-              if (record.timestamp) return record.timestamp;
-              if (record.date) return record.date;
-              return null;
-            };
-  
-            // Process and filter records
-            const processedBodyFat = records.map((r, idx) => {
-              const date = getRecordDate(r);
-              const value = extractBodyFatValue(r);
-    
-              console.log(`[BodyFat DEBUG] Record ${idx}:`, {
-                hasDate: !!date,
-                dateValue: date,
-                hasValue: value !== null,
-                extractedValue: value,
-                originalRecord: r
-              });
-    
-              return {
-                date: date,
-                value: value,
-                original: r
+
+              // Helper function to extract body fat value from different possible structures
+              const extractBodyFatValue = (record) => {
+                // Try different possible field names and structures
+                if (record.percentage?.inPercent !== undefined) {
+                  return record.percentage.inPercent;
+                }
+                if (record.bodyFatPercentage?.inPercent !== undefined) {
+                  return record.bodyFatPercentage.inPercent;
+                }
+                if (record.percentage?.value !== undefined) {
+                  return record.percentage.value;
+                }
+                if (typeof record.percentage === 'number') {
+                  return record.percentage;
+                }
+                if (typeof record.value === 'number') {
+                  return record.value;
+                }
+                if (record.bodyFat !== undefined) {
+                  return record.bodyFat;
+                }
+                return null;
               };
-            });
-  
-            const validBodyFat = processedBodyFat
-              .filter(r => {
-                const isValid = r.date && r.value !== null && !isNaN(r.value);
-                if (!isValid) {
-                  console.log('[BodyFat DEBUG] Filtered out invalid record:', r);
-                  addLog(`[MainScreen] Invalid BodyFat record filtered: date=${!!r.date}, value=${r.value}`);
-                }
-                return isValid;
-              })
-              .sort((a, b) => new Date(b.date) - new Date(a.date));
-  
-            console.log('[BodyFat DEBUG] Valid records after filtering:', validBodyFat.length);
-            addLog(`[MainScreen] Valid BodyFat records after filtering: ${validBodyFat.length}`);
-  
-            if (validBodyFat.length > 0) {
-              const latestValue = validBodyFat[0].value;
-              displayValue = `${latestValue.toFixed(1)}%`;
-              console.log('[BodyFat DEBUG] Final display value:', displayValue);
-              addLog(`[MainScreen] BodyFat display value set to: ${displayValue}`, 'info', 'SUCCESS');
-            } else {
-              displayValue = '0%';
-              console.log('[BodyFat DEBUG] No valid records found, showing 0%');
-              addLog('[MainScreen] No valid BodyFat records found, showing 0%', 'warn', 'WARNING');
-    
-              // If we had records but none were valid, log why
-              if (records.length > 0) {
-                addLog(`[MainScreen] Had ${records.length} BodyFat records but none were valid. Check record structure.`, 'warn', 'WARNING');
-              }
-            }
-            break;
 
-          case 'BloodPressure':
-            const latestBP = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
-            const systolic = latestBP.systolic?.inMillimetersOfMercury;
-            const diastolic = latestBP.diastolic?.inMillimetersOfMercury;
-            displayValue = (systolic && diastolic) 
-              ? `${Math.round(systolic)}/${Math.round(diastolic)} mmHg` 
-              : '0/0 mmHg';
-            break;
+              // Helper function to get date from record
+              const getRecordDate = (record) => {
+                if (record.time) return record.time;
+                if (record.startTime) return record.startTime;
+                if (record.timestamp) return record.timestamp;
+                if (record.date) return record.date;
+                return null;
+              };
 
-          case 'SleepSession':
-            const totalSleepMinutes = records.reduce((sum, record) => {
-              const duration = (new Date(record.endTime).getTime() - new Date(record.startTime).getTime()) / (1000 * 60);
-              return sum + duration;
-            }, 0);
-            const hours = Math.floor(totalSleepMinutes / 60);
-            const minutes = Math.round(totalSleepMinutes % 60);
-            displayValue = `${hours}h ${minutes}m`;
-            break;
+              // Process and filter records
+              const processedBodyFat = records.map((r, idx) => {
+                const date = getRecordDate(r);
+                const value = extractBodyFatValue(r);
 
-          case 'Distance':
-            const totalDistance = records.reduce((sum, record) => 
-              sum + (record.distance?.inMeters || 0), 0);
-            displayValue = `${(totalDistance / 1000).toFixed(2)} km`;
-            break;
+                console.log(`[BodyFat DEBUG] Record ${idx}:`, {
+                  hasDate: !!date,
+                  dateValue: date,
+                  hasValue: value !== null,
+                  extractedValue: value,
+                  originalRecord: r
+                });
 
-          case 'Hydration':
-            const totalHydration = records.reduce((sum, record) => 
-              sum + (record.volume?.inLiters || 0), 0);
-            displayValue = `${totalHydration.toFixed(2)} L`;
-            break;
-
-          case 'Height':
-            const latestHeight = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
-            displayValue = latestHeight.height?.inMeters 
-              ? `${(latestHeight.height.inMeters * 100).toFixed(1)} cm` 
-              : '0 cm';
-            break;
-
-          case 'BasalBodyTemperature':
-          case 'BodyTemperature':
-            const latestTemp = records.sort((a, b) => new Date(b.time || b.startTime) - new Date(a.time || a.startTime))[0];
-            displayValue = latestTemp.temperature?.inCelsius 
-              ? `${latestTemp.temperature.inCelsius.toFixed(1)}°C` 
-              : '0°C';
-            break;
-
-          case 'BloodGlucose':
-            const latestGlucose = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
-            // Try multiple field access patterns
-            let glucoseValue = latestGlucose.level?.inMillimolesPerLiter 
-              || latestGlucose.bloodGlucose?.inMillimolesPerLiter 
-              || (latestGlucose.level?.inMilligramsPerDeciliter ? latestGlucose.level.inMilligramsPerDeciliter / 18.018 : null)
-              || (latestGlucose.bloodGlucose?.inMilligramsPerDeciliter ? latestGlucose.bloodGlucose.inMilligramsPerDeciliter / 18.018 : null);
-            
-            displayValue = glucoseValue 
-              ? `${glucoseValue.toFixed(1)} mmol/L` 
-              : '0 mmol/L';
-            break;
-
-          case 'OxygenSaturation':  // This is the metric.id
-            addLog(`[MainScreen] Processing ${records.length} OxygenSaturation records`);
-  
-            const extractO2Value = (record) => {
-              if (record.percentage?.inPercent != null) {
-                return record.percentage.inPercent;
-              }
-              if (typeof record.percentage === 'number') {
-                return record.percentage;
-              }
-              if (record.value != null && typeof record.value === 'number') {
-                return record.value;
-              }
-              if (record.oxygenSaturation != null && typeof record.oxygenSaturation === 'number') {
-                return record.oxygenSaturation;
-              }
-              if (record.spo2 != null && typeof record.spo2 === 'number') {
-                return record.spo2;
-              }
-              return null;
-            };
-  
-            const getO2Date = (record) => {
-              return record.time || record.startTime || record.timestamp || record.date;
-            };
-  
-            const validO2 = records
-              .map(r => ({
-                date: getO2Date(r),
-                value: extractO2Value(r),
-                original: r
-              }))
-              .filter(r => {
-                const isValid = r.date && r.value !== null && !isNaN(r.value) && r.value > 0 && r.value <= 100;
-                if (!isValid && r.value !== null) {
-                  console.log('[OxygenSaturation DEBUG] Invalid record filtered:', r);
-                }
-                return isValid;
-              })
-              .sort((a, b) => new Date(b.date) - new Date(a.date));
-  
-            if (validO2.length > 0) {
-              displayValue = `${validO2[0].value.toFixed(1)}%`;
-              addLog(`[MainScreen] OxygenSaturation: ${displayValue}`, 'info', 'SUCCESS');
-            } else {
-              displayValue = '0%';
-              if (records.length > 0) {
-                addLog(`[MainScreen] OxygenSaturation: Had ${records.length} records but none were valid`, 'warn', 'WARNING');
-              } else {
-                addLog(`[MainScreen] No OxygenSaturation records found`, 'warn', 'WARNING');
-              }
-            }
-            break;
-
-          case 'RestingHeartRate':
-            const avgRestingHR = records.reduce((sum, record) => 
-              sum + (record.beatsPerMinute || 0), 0) / records.length;
-            displayValue = avgRestingHR > 0 ? `${Math.round(avgRestingHR)} bpm` : '0 bpm';
-            break;
-
-          case 'Vo2Max':
-            addLog(`[MainScreen] Processing ${records.length} Vo2Max records`);
-            
-            if (records.length > 0) {
-              // Log the first record structure
-              addLog(`[MainScreen] First VO2Max record structure: ${JSON.stringify(Object.keys(records[0]))}`);
-              addLog(`[MainScreen] First VO2Max record full: ${JSON.stringify(records[0])}`);
-            }
-          
-            const extractVo2Value = (record) => {
-              let value = null;
-              
-              if (record.vo2Max != null && typeof record.vo2Max === 'number') {
-                value = record.vo2Max;
-                addLog(`[MainScreen] VO2 extracted from vo2Max: ${value}`, 'debug');
-              } else if (record.vo2 != null && typeof record.vo2 === 'number') {
-                value = record.vo2;
-                addLog(`[MainScreen] VO2 extracted from vo2: ${value}`, 'debug');
-              } else if (record.value != null && typeof record.value === 'number') {
-                value = record.value;
-                addLog(`[MainScreen] VO2 extracted from value: ${value}`, 'debug');
-              } else if (record.vo2MillilitersPerMinuteKilogram != null) {
-                value = record.vo2MillilitersPerMinuteKilogram;
-                addLog(`[MainScreen] VO2 extracted from vo2MillilitersPerMinuteKilogram: ${value}`, 'debug');
-              } else {
-                addLog(`[MainScreen] VO2: Could not extract value. Record keys: ${Object.keys(record).join(', ')}`, 'warn', 'WARNING');
-              }
-              
-              return value;
-            };
-          
-            const getVo2Date = (record) => {
-              const date = record.time || record.startTime || record.timestamp || record.date;
-              if (!date) {
-                addLog(`[MainScreen] VO2: No date found. Record keys: ${Object.keys(record).join(', ')}`, 'warn', 'WARNING');
-              }
-              return date;
-            };
-          
-            const validVo2 = records
-              .map((r, idx) => {
-                const date = getVo2Date(r);
-                const value = extractVo2Value(r);
-                
-                if (idx === 0) {
-                  addLog(`[MainScreen] VO2 Record 0: date=${date}, value=${value}`, 'debug');
-                }
-                
                 return {
                   date: date,
                   value: value,
                   original: r
                 };
-              })
-              .filter(r => {
-                const isValid = r.date && r.value !== null && !isNaN(r.value) && r.value > 0 && r.value < 100;
-                if (!isValid) {
-                  addLog(`[MainScreen] VO2 filtered out: date=${!!r.date}, value=${r.value}, range check=${r.value > 0 && r.value < 100}`, 'debug');
+              });
+
+              const validBodyFat = processedBodyFat
+                .filter(r => {
+                  const isValid = r.date && r.value !== null && !isNaN(r.value);
+                  if (!isValid) {
+                    console.log('[BodyFat DEBUG] Filtered out invalid record:', r);
+                    addLog(`[MainScreen] Invalid BodyFat record filtered: date=${!!r.date}, value=${r.value}`);
+                  }
+                  return isValid;
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+              console.log('[BodyFat DEBUG] Valid records after filtering:', validBodyFat.length);
+              addLog(`[MainScreen] Valid BodyFat records after filtering: ${validBodyFat.length}`);
+
+              if (validBodyFat.length > 0) {
+                const latestValue = validBodyFat[0].value;
+                displayValue = `${latestValue.toFixed(1)}%`;
+                console.log('[BodyFat DEBUG] Final display value:', displayValue);
+                addLog(`[MainScreen] BodyFat display value set to: ${displayValue}`, 'info', 'SUCCESS');
+              } else {
+                displayValue = '0%';
+                console.log('[BodyFat DEBUG] No valid records found, showing 0%');
+                addLog('[MainScreen] No valid BodyFat records found, showing 0%', 'warn', 'WARNING');
+
+                // If we had records but none were valid, log why
+                if (records.length > 0) {
+                  addLog(`[MainScreen] Had ${records.length} BodyFat records but none were valid. Check record structure.`, 'warn', 'WARNING');
                 }
-                return isValid;
-              })
-              .sort((a, b) => new Date(b.date) - new Date(a.date));
-          
-            addLog(`[MainScreen] Valid VO2Max records after filtering: ${validVo2.length}`);
-          
-            if (validVo2.length > 0) {
-              displayValue = `${validVo2[0].value.toFixed(1)} ml/min/kg`;
-              addLog(`[MainScreen] Vo2Max: ${displayValue}`, 'info', 'SUCCESS');
-            } else {
-              displayValue = '0 ml/min/kg';
-              addLog(`[MainScreen] No valid Vo2Max records found after filtering`, 'warn', 'WARNING');
-            }
-            break;
+              }
+              break;
 
+            case 'BloodPressure':
+              const latestBP = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+              const systolic = latestBP.systolic?.inMillimetersOfMercury;
+              const diastolic = latestBP.diastolic?.inMillimetersOfMercury;
+              displayValue = (systolic && diastolic)
+                ? `${Math.round(systolic)}/${Math.round(diastolic)} mmHg`
+                : '0/0 mmHg';
+              break;
 
-          case 'LeanBodyMass':
-          case 'BoneMass':
-            const latestMass = records.sort((a, b) => new Date(b.startTime || b.time) - new Date(a.startTime || a.time))[0];
-            displayValue = latestMass.mass?.inKilograms 
-              ? `${latestMass.mass.inKilograms.toFixed(1)} kg` 
-              : '0 kg';
-            break;
+            case 'SleepSession':
+              const totalSleepMinutes = records.reduce((sum, record) => {
+                const duration = (new Date(record.endTime).getTime() - new Date(record.startTime).getTime()) / (1000 * 60);
+                return sum + duration;
+              }, 0);
+              const hours = Math.floor(totalSleepMinutes / 60);
+              const minutes = Math.round(totalSleepMinutes % 60);
+              displayValue = `${hours}h ${minutes}m`;
+              break;
 
-          case 'BasalMetabolicRate':
-            addLog(`[MainScreen] Processing ${records.length} BasalMetabolicRate records`);
-            
-            if (records.length > 0) {
-              addLog(`[MainScreen] First BMR record structure: ${JSON.stringify(Object.keys(records[0]))}`);
-              addLog(`[MainScreen] First BMR record full: ${JSON.stringify(records[0])}`);
-            }
-          
-            const extractBMRValue = (record) => {
-              let value = null;
-              
-              if (record.basalMetabolicRate != null) {
-                if (typeof record.basalMetabolicRate === 'number') {
-                  value = record.basalMetabolicRate;
-                  addLog(`[MainScreen] BMR extracted from basalMetabolicRate (direct): ${value}`, 'debug');
-                } else if (record.basalMetabolicRate.inKilocaloriesPerDay != null) {
-                  value = record.basalMetabolicRate.inKilocaloriesPerDay;
-                  addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inKilocaloriesPerDay: ${value}`, 'debug');
-                } else if (record.basalMetabolicRate.inCalories != null) {
-                  value = record.basalMetabolicRate.inCalories;
-                  addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inCalories: ${value}`, 'debug');
-                } else if (record.basalMetabolicRate.inKilocalories != null) {
-                  value = record.basalMetabolicRate.inKilocalories;
-                  addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inKilocalories: ${value}`, 'debug');
-                } else if (typeof record.basalMetabolicRate === 'object' && record.basalMetabolicRate.value != null) {
-                  value = record.basalMetabolicRate.value;
-                  addLog(`[MainScreen] BMR extracted from basalMetabolicRate.value: ${value}`, 'debug');
+            case 'Distance':
+              const totalDistance = records.reduce((sum, record) =>
+                sum + (record.distance?.inMeters || 0), 0);
+              displayValue = `${(totalDistance / 1000).toFixed(2)} km`;
+              break;
+
+            case 'Hydration':
+              const totalHydration = records.reduce((sum, record) =>
+                sum + (record.volume?.inLiters || 0), 0);
+              displayValue = `${totalHydration.toFixed(2)} L`;
+              break;
+
+            case 'Height':
+              const latestHeight = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+              displayValue = latestHeight.height?.inMeters
+                ? `${(latestHeight.height.inMeters * 100).toFixed(1)} cm`
+                : '0 cm';
+              break;
+
+            case 'BasalBodyTemperature':
+            case 'BodyTemperature':
+              const latestTemp = records.sort((a, b) => new Date(b.time || b.startTime) - new Date(a.time || a.startTime))[0];
+              displayValue = latestTemp.temperature?.inCelsius
+                ? `${latestTemp.temperature.inCelsius.toFixed(1)}°C`
+                : '0°C';
+              break;
+
+            case 'BloodGlucose':
+              const latestGlucose = records.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+              // Try multiple field access patterns
+              let glucoseValue = latestGlucose.level?.inMillimolesPerLiter
+                || latestGlucose.bloodGlucose?.inMillimolesPerLiter
+                || (latestGlucose.level?.inMilligramsPerDeciliter ? latestGlucose.level.inMilligramsPerDeciliter / 18.018 : null)
+                || (latestGlucose.bloodGlucose?.inMilligramsPerDeciliter ? latestGlucose.bloodGlucose.inMilligramsPerDeciliter / 18.018 : null);
+
+              displayValue = glucoseValue
+                ? `${glucoseValue.toFixed(1)} mmol/L`
+                : '0 mmol/L';
+              break;
+
+            case 'OxygenSaturation':  // This is the metric.id
+              addLog(`[MainScreen] Processing ${records.length} OxygenSaturation records`);
+
+              const extractO2Value = (record) => {
+                if (record.percentage?.inPercent != null) {
+                  return record.percentage.inPercent;
+                }
+                if (typeof record.percentage === 'number') {
+                  return record.percentage;
+                }
+                if (record.value != null && typeof record.value === 'number') {
+                  return record.value;
+                }
+                if (record.oxygenSaturation != null && typeof record.oxygenSaturation === 'number') {
+                  return record.oxygenSaturation;
+                }
+                if (record.spo2 != null && typeof record.spo2 === 'number') {
+                  return record.spo2;
+                }
+                return null;
+              };
+
+              const getO2Date = (record) => {
+                return record.time || record.startTime || record.timestamp || record.date;
+              };
+
+              const validO2 = records
+                .map(r => ({
+                  date: getO2Date(r),
+                  value: extractO2Value(r),
+                  original: r
+                }))
+                .filter(r => {
+                  const isValid = r.date && r.value !== null && !isNaN(r.value) && r.value > 0 && r.value <= 100;
+                  if (!isValid && r.value !== null) {
+                    console.log('[OxygenSaturation DEBUG] Invalid record filtered:', r);
+                  }
+                  return isValid;
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+              if (validO2.length > 0) {
+                displayValue = `${validO2[0].value.toFixed(1)}%`;
+                addLog(`[MainScreen] OxygenSaturation: ${displayValue}`, 'info', 'SUCCESS');
+              } else {
+                displayValue = '0%';
+                if (records.length > 0) {
+                  addLog(`[MainScreen] OxygenSaturation: Had ${records.length} records but none were valid`, 'warn', 'WARNING');
                 } else {
-                  addLog(`[MainScreen] BMR unknown structure: ${JSON.stringify(record.basalMetabolicRate)}`, 'warn', 'WARNING');
+                  addLog(`[MainScreen] No OxygenSaturation records found`, 'warn', 'WARNING');
                 }
-              } else if (record.energy?.inCalories != null) {
-                value = record.energy.inCalories;
-                addLog(`[MainScreen] BMR from energy.inCalories: ${value}`, 'debug');
               }
-              
-              return value;
-            };
-          
-            const getBMRDate = (record) => {
-              const date = record.time || record.startTime || record.timestamp || record.date;
-              if (!date) {
-                addLog(`[MainScreen] BMR: No date found. Record keys: ${Object.keys(record).join(', ')}`, 'warn', 'WARNING');
+              break;
+
+            case 'RestingHeartRate':
+              const avgRestingHR = records.reduce((sum, record) =>
+                sum + (record.beatsPerMinute || 0), 0) / records.length;
+              displayValue = avgRestingHR > 0 ? `${Math.round(avgRestingHR)} bpm` : '0 bpm';
+              break;
+
+            case 'Vo2Max':
+              addLog(`[MainScreen] Processing ${records.length} Vo2Max records`);
+
+              if (records.length > 0) {
+                // Log the first record structure
+                addLog(`[MainScreen] First VO2Max record structure: ${JSON.stringify(Object.keys(records[0]))}`);
+                addLog(`[MainScreen] First VO2Max record full: ${JSON.stringify(records[0])}`);
               }
-              return date;
-            };
-          
-            const dailyBMRs = {};
-            records.forEach((r) => {
-              const date = getBMRDate(r);
-              const value = extractBMRValue(r);
-              if (date && value !== null && !isNaN(value)) {
-                if (!dailyBMRs[date]) {
-                  dailyBMRs[date] = { sum: 0, count: 0 };
+
+              const extractVo2Value = (record) => {
+                let value = null;
+
+                if (record.vo2Max != null && typeof record.vo2Max === 'number') {
+                  value = record.vo2Max;
+                  addLog(`[MainScreen] VO2 extracted from vo2Max: ${value}`, 'debug');
+                } else if (record.vo2 != null && typeof record.vo2 === 'number') {
+                  value = record.vo2;
+                  addLog(`[MainScreen] VO2 extracted from vo2: ${value}`, 'debug');
+                } else if (record.value != null && typeof record.value === 'number') {
+                  value = record.value;
+                  addLog(`[MainScreen] VO2 extracted from value: ${value}`, 'debug');
+                } else if (record.vo2MillilitersPerMinuteKilogram != null) {
+                  value = record.vo2MillilitersPerMinuteKilogram;
+                  addLog(`[MainScreen] VO2 extracted from vo2MillilitersPerMinuteKilogram: ${value}`, 'debug');
+                } else {
+                  addLog(`[MainScreen] VO2: Could not extract value. Record keys: ${Object.keys(record).join(', ')}`, 'warn', 'WARNING');
                 }
-                dailyBMRs[date].sum += value;
-                dailyBMRs[date].count++;
+
+                return value;
+              };
+
+              const getVo2Date = (record) => {
+                const date = record.time || record.startTime || record.timestamp || record.date;
+                if (!date) {
+                  addLog(`[MainScreen] VO2: No date found. Record keys: ${Object.keys(record).join(', ')}`, 'warn', 'WARNING');
+                }
+                return date;
+              };
+
+              const validVo2 = records
+                .map((r, idx) => {
+                  const date = getVo2Date(r);
+                  const value = extractVo2Value(r);
+
+                  if (idx === 0) {
+                    addLog(`[MainScreen] VO2 Record 0: date=${date}, value=${value}`, 'debug');
+                  }
+
+                  return {
+                    date: date,
+                    value: value,
+                    original: r
+                  };
+                })
+                .filter(r => {
+                  const isValid = r.date && r.value !== null && !isNaN(r.value) && r.value > 0 && r.value < 100;
+                  if (!isValid) {
+                    addLog(`[MainScreen] VO2 filtered out: date=${!!r.date}, value=${r.value}, range check=${r.value > 0 && r.value < 100}`, 'debug');
+                  }
+                  return isValid;
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+              addLog(`[MainScreen] Valid VO2Max records after filtering: ${validVo2.length}`);
+
+              if (validVo2.length > 0) {
+                displayValue = `${validVo2[0].value.toFixed(1)} ml/min/kg`;
+                addLog(`[MainScreen] Vo2Max: ${displayValue}`, 'info', 'SUCCESS');
+              } else {
+                displayValue = '0 ml/min/kg';
+                addLog(`[MainScreen] No valid Vo2Max records found after filtering`, 'warn', 'WARNING');
               }
-            });
-          
-            const aggregatedBMR = Object.values(dailyBMRs).map(day => day.sum / day.count);
-            const totalAggregatedBMR = aggregatedBMR.reduce((sum, val) => sum + val, 0);
-            
-            if (aggregatedBMR.length > 0) {
-              const avgBMR = totalAggregatedBMR / aggregatedBMR.length;
-              displayValue = `${Math.round(avgBMR)} kcal`;
-              addLog(`[MainScreen] BasalMetabolicRate: ${displayValue}`, 'info', 'SUCCESS');
-            } else {
-              displayValue = '0 kcal';
-              addLog(`[MainScreen] No valid BasalMetabolicRate records found for aggregation`, 'warn', 'WARNING');
-            }
-            break;
+              break;
 
-          case 'FloorsClimbed':
-            const totalFloors = records.reduce((sum, record) => sum + (record.floors || 0), 0);
-            displayValue = totalFloors.toLocaleString();
-            break;
 
-          case 'WheelchairPushes':
-            const totalPushes = records.reduce((sum, record) => sum + (record.count || 0), 0);
-            displayValue = totalPushes.toLocaleString();
-            break;
+            case 'LeanBodyMass':
+            case 'BoneMass':
+              const latestMass = records.sort((a, b) => new Date(b.startTime || b.time) - new Date(a.startTime || a.time))[0];
+              displayValue = latestMass.mass?.inKilograms
+                ? `${latestMass.mass.inKilograms.toFixed(1)} kg`
+                : '0 kg';
+              break;
 
-          case 'ExerciseSession':
-            const totalExerciseMinutes = records.reduce((sum, record) => {
-              const duration = (new Date(record.endTime).getTime() - new Date(record.startTime).getTime()) / (1000 * 60);
-              return sum + duration;
-            }, 0);
-            displayValue = `${Math.round(totalExerciseMinutes)} min`;
-            break;
+            case 'BasalMetabolicRate':
+              addLog(`[MainScreen] Processing ${records.length} BasalMetabolicRate records`);
 
-          case 'ElevationGained':
-            const totalElevation = records.reduce((sum, record) => 
-              sum + (record.elevation?.inMeters || 0), 0);
-            displayValue = `${Math.round(totalElevation)} m`;
-            break;
+              if (records.length > 0) {
+                addLog(`[MainScreen] First BMR record structure: ${JSON.stringify(Object.keys(records[0]))}`);
+                addLog(`[MainScreen] First BMR record full: ${JSON.stringify(records[0])}`);
+              }
 
-          case 'Power':
-            const avgPower = records.reduce((sum, record) => 
-              sum + (record.power?.inWatts || 0), 0) / records.length;
-            displayValue = `${Math.round(avgPower)} W`;
-            break;
+              const extractBMRValue = (record) => {
+                let value = null;
 
-          case 'Speed':
-            const avgSpeed = records.reduce((sum, record) => 
-              sum + (record.speed?.inMetersPerSecond || 0), 0) / records.length;
-            displayValue = `${avgSpeed.toFixed(2)} m/s`;
-            break;
+                if (record.basalMetabolicRate != null) {
+                  if (typeof record.basalMetabolicRate === 'number') {
+                    value = record.basalMetabolicRate;
+                    addLog(`[MainScreen] BMR extracted from basalMetabolicRate (direct): ${value}`, 'debug');
+                  } else if (record.basalMetabolicRate.inKilocaloriesPerDay != null) {
+                    value = record.basalMetabolicRate.inKilocaloriesPerDay;
+                    addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inKilocaloriesPerDay: ${value}`, 'debug');
+                  } else if (record.basalMetabolicRate.inCalories != null) {
+                    value = record.basalMetabolicRate.inCalories;
+                    addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inCalories: ${value}`, 'debug');
+                  } else if (record.basalMetabolicRate.inKilocalories != null) {
+                    value = record.basalMetabolicRate.inKilocalories;
+                    addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inKilocalories: ${value}`, 'debug');
+                  } else if (typeof record.basalMetabolicRate === 'object' && record.basalMetabolicRate.value != null) {
+                    value = record.basalMetabolicRate.value;
+                    addLog(`[MainScreen] BMR extracted from basalMetabolicRate.value: ${value}`, 'debug');
+                  } else {
+                    addLog(`[MainScreen] BMR unknown structure: ${JSON.stringify(record.basalMetabolicRate)}`, 'warn', 'WARNING');
+                  }
+                } else if (record.energy?.inCalories != null) {
+                  value = record.energy.inCalories;
+                  addLog(`[MainScreen] BMR from energy.inCalories: ${value}`, 'debug');
+                }
 
-          case 'RespiratoryRate':
-            const avgRespRate = records.reduce((sum, record) => 
-              sum + (record.rate || 0), 0) / records.length;
-            displayValue = `${Math.round(avgRespRate)} br/min`;
-            break;
+                return value;
+              };
 
-          case 'Nutrition':
-            const totalNutrition = records.reduce((sum, record) => 
-              sum + (record.energy?.inCalories || 0), 0);
-            displayValue = `${Math.round(totalNutrition / 1000)} kcal`;
-            break;
+              const getBMRDate = (record) => {
+                const date = record.time || record.startTime || record.timestamp || record.date;
+                if (!date) {
+                  addLog(`[MainScreen] BMR: No date found. Record keys: ${Object.keys(record).join(', ')}`, 'warn', 'WARNING');
+                }
+                return date;
+              };
 
-          default:
-            addLog(`[MainScreen] Unhandled metric type for display: ${metric.recordType}`);
-            displayValue = 'N/A';
-            break;
+              const dailyBMRs = {};
+              records.forEach((r) => {
+                const date = getBMRDate(r);
+                const value = extractBMRValue(r);
+                if (date && value !== null && !isNaN(value)) {
+                  if (!dailyBMRs[date]) {
+                    dailyBMRs[date] = { sum: 0, count: 0 };
+                  }
+                  dailyBMRs[date].sum += value;
+                  dailyBMRs[date].count++;
+                }
+              });
+
+              const aggregatedBMR = Object.values(dailyBMRs).map(day => day.sum / day.count);
+              const totalAggregatedBMR = aggregatedBMR.reduce((sum, val) => sum + val, 0);
+
+              if (aggregatedBMR.length > 0) {
+                const avgBMR = totalAggregatedBMR / aggregatedBMR.length;
+                displayValue = `${Math.round(avgBMR)} kcal`;
+                addLog(`[MainScreen] BasalMetabolicRate: ${displayValue}`, 'info', 'SUCCESS');
+              } else {
+                displayValue = '0 kcal';
+                addLog(`[MainScreen] No valid BasalMetabolicRate records found for aggregation`, 'warn', 'WARNING');
+              }
+              break;
+
+            case 'FloorsClimbed':
+              const totalFloors = records.reduce((sum, record) => sum + (record.floors || 0), 0);
+              displayValue = totalFloors.toLocaleString();
+              break;
+
+            case 'WheelchairPushes':
+              const totalPushes = records.reduce((sum, record) => sum + (record.count || 0), 0);
+              displayValue = totalPushes.toLocaleString();
+              break;
+
+            case 'ExerciseSession':
+              const totalExerciseMinutes = records.reduce((sum, record) => {
+                const duration = (new Date(record.endTime).getTime() - new Date(record.startTime).getTime()) / (1000 * 60);
+                return sum + duration;
+              }, 0);
+              displayValue = `${Math.round(totalExerciseMinutes)} min`;
+              break;
+
+            case 'ElevationGained':
+              const totalElevation = records.reduce((sum, record) =>
+                sum + (record.elevation?.inMeters || 0), 0);
+              displayValue = `${Math.round(totalElevation)} m`;
+              break;
+
+            case 'Power':
+              const avgPower = records.reduce((sum, record) =>
+                sum + (record.power?.inWatts || 0), 0) / records.length;
+              displayValue = `${Math.round(avgPower)} W`;
+              break;
+
+            case 'Speed':
+              const avgSpeed = records.reduce((sum, record) =>
+                sum + (record.speed?.inMetersPerSecond || 0), 0) / records.length;
+              displayValue = `${avgSpeed.toFixed(2)} m/s`;
+              break;
+
+            case 'RespiratoryRate':
+              const avgRespRate = records.reduce((sum, record) =>
+                sum + (record.rate || 0), 0) / records.length;
+              displayValue = `${Math.round(avgRespRate)} br/min`;
+              break;
+
+            case 'Nutrition':
+              const totalNutrition = records.reduce((sum, record) =>
+                sum + (record.energy?.inCalories || 0), 0);
+              displayValue = `${Math.round(totalNutrition / 1000)} kcal`;
+              break;
+
+            default:
+              addLog(`[MainScreen] Unhandled metric type for display: ${metric.recordType}`);
+              displayValue = 'N/A';
+              break;
+          }
+
+          newHealthData[metric.id] = displayValue;
+          console.log(`[MainScreen] Fetched ${metric.label}: ${displayValue}`);
+        } catch (error) {
+          addLog(`[MainScreen] Error fetching ${metric.label}: ${error.message}`, 'error', 'ERROR');
+          newHealthData[metric.id] = 'Error';
         }
-
-        newHealthData[metric.id] = displayValue;
-        console.log(`[MainScreen] Fetched ${metric.label}: ${displayValue}`);
-      } catch (error) {
-        addLog(`[MainScreen] Error fetching ${metric.label}: ${error.message}`, 'error', 'ERROR');
-        newHealthData[metric.id] = 'Error';
       }
     }
-  }
 
-  setHealthData(newHealthData);
+    setHealthData(newHealthData);
 
-  // Re-check server connection status after fetching health data
-  const connectionStatus = await api.checkServerConnection();
-  setIsConnected(connectionStatus);
-  console.log(`[MainScreen] Displaying Health Connect data:`, newHealthData);
-};
+    // Re-check server connection status after fetching health data
+    const connectionStatus = await api.checkServerConnection();
+    setIsConnected(connectionStatus);
+    console.log(`[MainScreen] Displaying Health Connect data:`, newHealthData);
+  };
 
   // Remove toggle functions as they are now handled in SettingsScreen
 
@@ -692,7 +692,7 @@ const fetchHealthData = async (currentHealthMetricStates, timeRange) => {
 
       const serverUrl = activeConfig.url.endsWith('/') ? activeConfig.url.slice(0, -1) : activeConfig.url;
       addLog(`Opening web dashboard at: ${serverUrl}`);
-      
+
       // Try to open with InAppBrowser (Custom Tabs on Android)
       try {
         if (await InAppBrowser.isAvailable()) {
@@ -892,7 +892,7 @@ const styles = StyleSheet.create({
   selectedItemLabelStyle: {
     fontWeight: 'bold',
   },
-  
+
   healthMetricsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
