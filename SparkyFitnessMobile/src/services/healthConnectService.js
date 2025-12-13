@@ -113,16 +113,16 @@ export const getSyncStartDate = (duration) => {
       startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;
     case '3d':
-      startDate.setDate(now.getDate() - 3);
+      startDate.setDate(now.getDate() - 2);
       break;
     case '7d':
-      startDate.setDate(now.getDate() - 7);
+      startDate.setDate(now.getDate() - 6);
       break;
     case '30d':
-      startDate.setDate(now.getDate() - 30);
+      startDate.setDate(now.getDate() - 29);
       break;
     case '90d':
-      startDate.setDate(now.getDate() - 90);
+      startDate.setDate(now.getDate() - 89);
       break;
     default:
       startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -143,7 +143,7 @@ export const aggregateHeartRateByDate = (records) => {
     return [];
   }
 
-  const validRecords = records.filter(record => 
+  const validRecords = records.filter(record =>
     record.startTime && record.samples && Array.isArray(record.samples)
   );
 
@@ -157,7 +157,7 @@ export const aggregateHeartRateByDate = (records) => {
   const aggregatedData = validRecords.reduce((acc, record) => {
     try {
       const date = record.startTime.split('T')[0];
-      const heartRate = record.samples.reduce((sum, sample) => 
+      const heartRate = record.samples.reduce((sum, sample) =>
         sum + (sample.beatsPerMinute || 0), 0) / record.samples.length;
 
       if (!acc[date]) {
@@ -191,7 +191,7 @@ export const aggregateStepsByDate = (records) => {
     return [];
   }
 
-  const validRecords = records.filter(record => 
+  const validRecords = records.filter(record =>
     record.startTime && typeof record.count === 'number'
   );
 
@@ -238,8 +238,8 @@ export const aggregateTotalCaloriesByDate = async (records) => {
     return [];
   }
 
-  const validRecords = records.filter(record => 
-    record.startTime && record.energy && typeof record.energy.inCalories === 'number'
+  const validRecords = records.filter(record =>
+    record.startTime && record.energy && (typeof record.energy.inCalories === 'number' || typeof record.energy.inKilocalories === 'number')
   );
 
   if (validRecords.length === 0) {
@@ -249,47 +249,33 @@ export const aggregateTotalCaloriesByDate = async (records) => {
 
   addLog(`[HealthConnectService] Aggregating ${validRecords.length} total calories records`);
 
-  // Read BMR records to get the baseline
-  let bmrValue = 1691; // Default fallback
-  try {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 90); // Look back 90 days for BMR
-    
-    const bmrRecords = await readHealthRecords('BasalMetabolicRate', startDate, endDate);
-    
-    if (bmrRecords.length > 0) {
-      // Get the most recent BMR
-      const sortedBMR = bmrRecords.sort((a, b) => {
-        const dateA = new Date(a.time || a.startTime);
-        const dateB = new Date(b.time || b.startTime);
-        return dateB - dateA;
-      });
-      
-      const latestBMR = sortedBMR[0];
-      if (latestBMR.basalMetabolicRate?.inKilocaloriesPerDay) {
-        bmrValue = latestBMR.basalMetabolicRate.inKilocaloriesPerDay;
-        addLog(`[HealthConnectService] Using BMR value: ${bmrValue} kcal/day`, 'info');
-      }
-    } else {
-      addLog(`[HealthConnectService] No BMR records found, using default: ${bmrValue} kcal/day`, 'warn', 'WARNING');
-    }
-  } catch (error) {
-    addLog(`[HealthConnectService] Error reading BMR: ${error.message}, using default: ${bmrValue}`, 'warn', 'WARNING');
-  }
-
   const aggregatedData = validRecords.reduce((acc, record) => {
     try {
-      const date = record.startTime.split('T')[0];
-      const caloriesValue = record.energy.inCalories;
-      
-      // Detect if value is in calories (>10000) or kilocalories (<10000)
-      const activeKilocalories = caloriesValue > 10000 ? caloriesValue / 1000 : caloriesValue;
-      
+      // Use endTime for total calories to avoid previous day assignment (consistent with Steps)
+      // If endTime doesn't exist, fall back to startTime
+      const timeToUse = record.endTime || record.startTime;
+      const date = timeToUse.split('T')[0];
+
+      let valInKcal = 0;
+
+      if (record.energy.inKilocalories !== undefined) {
+        valInKcal = record.energy.inKilocalories;
+      } else if (record.energy.inCalories !== undefined) {
+        const rawVal = record.energy.inCalories;
+        // Heuristic: if value > 10,000, it's likely raw calories.
+        // 10,000 kcal is an insane amount for one record/day usually.
+        // If it's raw calories, divide by 1000.
+        if (rawVal > 10000) {
+          valInKcal = rawVal / 1000;
+        } else {
+          valInKcal = rawVal;
+        }
+      }
+
       if (!acc[date]) {
         acc[date] = 0;
       }
-      acc[date] += activeKilocalories;
+      acc[date] += valInKcal;
     } catch (error) {
       addLog(`[HealthConnectService] Error processing total calories record: ${error.message}`, 'warn', 'WARNING');
     }
@@ -297,32 +283,13 @@ export const aggregateTotalCaloriesByDate = async (records) => {
     return acc;
   }, {});
 
-  // Add BMR to each day's total
-  // Push two separate values per date:
-  // 1. Active Calories (exercise only) - for calorie goal subtraction
-  // 2. total_calories (exercise + BMR × 1.2) - for reports
-  const sedentaryTDEE = bmrValue * 1.2;
-  const result = [];
+  const result = Object.keys(aggregatedData).map(date => ({
+    date,
+    value: aggregatedData[date],
+    type: 'total_calories',
+  }));
 
-  Object.keys(aggregatedData).forEach(date => {
-    const exerciseCalories = aggregatedData[date];
-
-    // Push Active Calories (exercise only) - for calorie goal subtraction
-    result.push({
-      date,
-      value: exerciseCalories,
-      type: 'Active Calories',
-    });
-
-    // Push total_calories (exercise + BMR × 1.2) - for reports
-    result.push({
-      date,
-      value: exerciseCalories + sedentaryTDEE,
-      type: 'total_calories',
-    });
-  });
-
-  addLog(`[HealthConnectService] Aggregated total calories data into ${result.length} entries: ${result.length/2} days with both Active Calories (exercise only) and total_calories (exercise + BMR × 1.2 = ${sedentaryTDEE.toFixed(0)})`);
+  addLog(`[HealthConnectService] Aggregated total calories data into ${result.length} daily entries`);
   return result;
 };
 
@@ -333,7 +300,7 @@ export const aggregateActiveCaloriesByDate = (records) => {
     return [];
   }
 
-  const validRecords = records.filter(record => 
+  const validRecords = records.filter(record =>
     record.startTime && record.energy && typeof record.energy.inCalories === 'number'
   );
 
@@ -347,26 +314,26 @@ export const aggregateActiveCaloriesByDate = (records) => {
   const aggregatedData = validRecords.reduce((acc, record) => {
     try {
       const date = record.startTime.split('T')[0];
-      
+
       // Health Connect can return values in 'calories' (large number) or 'kilocalories' (small number).
       // We need to normalize to kilocalories.
       // 1. Try to get explicit kilocalories if available
       // 2. Fall back to calories, but check magnitude
-      
+
       let valInKcal = 0;
-      
+
       if (record.energy && record.energy.inKilocalories !== undefined) {
-         valInKcal = record.energy.inKilocalories;
+        valInKcal = record.energy.inKilocalories;
       } else if (record.energy && record.energy.inCalories !== undefined) {
-         const rawVal = record.energy.inCalories;
-         // Heuristic: if value > 10,000, it's likely raw calories (unless they ran an ultramarathon).
-         // 10,000 kcal is an insane amount for one record/day usually.
-         // If it's raw calories, divide by 1000.
-         if (rawVal > 10000) {
-           valInKcal = rawVal / 1000;
-         } else {
-           valInKcal = rawVal;
-         }
+        const rawVal = record.energy.inCalories;
+        // Heuristic: if value > 10,000, it's likely raw calories (unless they ran an ultramarathon).
+        // 10,000 kcal is an insane amount for one record/day usually.
+        // If it's raw calories, divide by 1000.
+        if (rawVal > 10000) {
+          valInKcal = rawVal / 1000;
+        } else {
+          valInKcal = rawVal;
+        }
       }
 
       if (!acc[date]) {
@@ -458,7 +425,7 @@ export const transformHealthRecords = (records, metricConfig) => {
                 addLog(`[Transform] ActiveCalories (alt format): ${value} kcal on ${recordDate}`, 'debug');
               }
             }
-  
+
             if (value == null || isNaN(value) || !recordDate) {
               if (index === 0) {
                 addLog(`[Transform] ActiveCalories FAILED: value=${value}, date=${recordDate}`, 'warn', 'WARNING');
@@ -491,7 +458,7 @@ export const transformHealthRecords = (records, metricConfig) => {
                 addLog(`[Transform] TotalCalories (already in kcal): ${value} kcal on ${recordDate}`, 'debug');
               }
             }
-          
+
             if (value == null || isNaN(value) || !recordDate) {
               if (index === 0) {
                 addLog(`[Transform] TotalCalories FAILED: value=${value}, date=${recordDate}`, 'warn', 'WARNING');
@@ -551,9 +518,9 @@ export const transformHealthRecords = (records, metricConfig) => {
               console.log('[Transform BMR] Sample record:', JSON.stringify(record));
               addLog(`[Transform] BMR sample keys: ${Object.keys(record).join(', ')}`, 'debug');
             }
-            
+
             let bmrValue = null;
-            
+
             // THE FIX: Check for inKilocaloriesPerDay first
             if (record.basalMetabolicRate?.inKilocaloriesPerDay != null) {
               bmrValue = record.basalMetabolicRate.inKilocaloriesPerDay;
@@ -568,10 +535,10 @@ export const transformHealthRecords = (records, metricConfig) => {
             } else if (record.value != null && typeof record.value === 'number') {
               bmrValue = record.value;
             }
-            
+
             const bmrDate = record.time || record.startTime || record.timestamp || record.date;
             let bmrDateStr = null;
-            
+
             if (bmrDate) {
               try {
                 bmrDateStr = typeof bmrDate === 'string' ? bmrDate.split('T')[0] : bmrDate;
@@ -579,10 +546,10 @@ export const transformHealthRecords = (records, metricConfig) => {
                 addLog(`[Transform] Error parsing BMR date: ${e.message}`, 'warn', 'WARNING');
               }
             }
-            
+
             const isValidBMR = bmrValue != null && !isNaN(bmrValue) && bmrValue > 0 && bmrValue < 10000;
             const isValidBMRDate = bmrDateStr != null && bmrDateStr.length > 0;
-            
+
             if (isValidBMR && isValidBMRDate) {
               value = bmrValue;
               recordDate = bmrDateStr;
@@ -599,14 +566,14 @@ export const transformHealthRecords = (records, metricConfig) => {
             }
             break;
 
-           case 'BloodGlucose':
+          case 'BloodGlucose':
             if (index === 0) {
               console.log('[Transform BloodGlucose] Sample record:', JSON.stringify(record));
               addLog(`[Transform] BloodGlucose sample keys: ${Object.keys(record).join(', ')}`, 'debug');
             }
-            
+
             let glucoseValue = null;
-            
+
             // Try multiple field access patterns
             if (record.level?.inMillimolesPerLiter != null) {
               glucoseValue = record.level.inMillimolesPerLiter;
@@ -622,10 +589,10 @@ export const transformHealthRecords = (records, metricConfig) => {
             } else if (typeof record.value === 'number') {
               glucoseValue = record.value;
             }
-            
+
             const glucoseDate = record.time || record.startTime || record.timestamp || record.date;
             let glucoseDateStr = null;
-            
+
             if (glucoseDate) {
               try {
                 glucoseDateStr = typeof glucoseDate === 'string' ? glucoseDate.split('T')[0] : glucoseDate;
@@ -633,10 +600,10 @@ export const transformHealthRecords = (records, metricConfig) => {
                 addLog(`[Transform] Error parsing BloodGlucose date: ${e.message}`, 'warn', 'WARNING');
               }
             }
-            
+
             const isValidGlucose = glucoseValue != null && !isNaN(glucoseValue) && glucoseValue > 0;
             const isValidGlucoseDate = glucoseDateStr != null && glucoseDateStr.length > 0;
-            
+
             if (isValidGlucose && isValidGlucoseDate) {
               value = glucoseValue;
               recordDate = glucoseDateStr;
@@ -662,10 +629,10 @@ export const transformHealthRecords = (records, metricConfig) => {
               console.log('[Transform BodyFat] Sample record:', JSON.stringify(record));
               addLog(`[Transform] BodyFat sample keys: ${Object.keys(record).join(', ')}`, 'debug');
             }
-  
+
             // Extract value using multiple strategies
             let bodyFatValue = null;
-  
+
             // Strategy 1: Check percentage.inPercent (most common)
             if (record.percentage?.inPercent != null) {
               bodyFatValue = record.percentage.inPercent;
@@ -686,11 +653,11 @@ export const transformHealthRecords = (records, metricConfig) => {
             else if (record.bodyFatPercentage?.inPercent != null) {
               bodyFatValue = record.bodyFatPercentage.inPercent;
             }
-  
+
             // Extract date using multiple strategies
             let bodyFatDate = null;
             const dateSource = record.time || record.startTime || record.timestamp || record.date;
-  
+
             if (dateSource) {
               try {
                 bodyFatDate = typeof dateSource === 'string' ? dateSource.split('T')[0] : dateSource;
@@ -698,11 +665,11 @@ export const transformHealthRecords = (records, metricConfig) => {
                 addLog(`[Transform] Error parsing BodyFat date: ${e.message}`, 'warn', 'WARNING');
               }
             }
-  
+
             // Final validation and assignment
             const isValidValue = bodyFatValue != null && !isNaN(bodyFatValue) && bodyFatValue >= 0 && bodyFatValue <= 100;
             const isValidDate = bodyFatDate != null && bodyFatDate.length > 0;
-  
+
             if (isValidValue && isValidDate) {
               value = bodyFatValue;
               recordDate = bodyFatDate;
@@ -795,9 +762,9 @@ export const transformHealthRecords = (records, metricConfig) => {
               console.log('[Transform O2Sat] Sample record:', JSON.stringify(record));
               addLog(`[Transform] O2Sat sample keys: ${Object.keys(record).join(', ')}`, 'debug');
             }
-            
+
             let o2Value = null;
-            
+
             if (record.percentage?.inPercent != null) {
               o2Value = record.percentage.inPercent;
             } else if (typeof record.percentage === 'number') {
@@ -809,10 +776,10 @@ export const transformHealthRecords = (records, metricConfig) => {
             } else if (record.spo2 != null && typeof record.spo2 === 'number') {
               o2Value = record.spo2;
             }
-            
+
             const o2Date = record.time || record.startTime || record.timestamp || record.date;
             let o2DateStr = null;
-            
+
             if (o2Date) {
               try {
                 o2DateStr = typeof o2Date === 'string' ? o2Date.split('T')[0] : o2Date;
@@ -820,10 +787,10 @@ export const transformHealthRecords = (records, metricConfig) => {
                 addLog(`[Transform] Error parsing OxygenSaturation date: ${e.message}`, 'warn', 'WARNING');
               }
             }
-            
+
             const isValidO2 = o2Value != null && !isNaN(o2Value) && o2Value > 0 && o2Value <= 100;
             const isValidO2Date = o2DateStr != null && o2DateStr.length > 0;
-            
+
             if (isValidO2 && isValidO2Date) {
               value = o2Value;
               recordDate = o2DateStr;
@@ -873,9 +840,9 @@ export const transformHealthRecords = (records, metricConfig) => {
               console.log('[Transform Vo2Max] Sample record:', JSON.stringify(record));
               addLog(`[Transform] Vo2Max sample keys: ${Object.keys(record).join(', ')}`, 'debug');
             }
-            
+
             let vo2Value = null;
-            
+
             if (record.vo2Max != null && typeof record.vo2Max === 'number') {
               vo2Value = record.vo2Max;
             } else if (record.vo2 != null && typeof record.vo2 === 'number') {
@@ -885,10 +852,10 @@ export const transformHealthRecords = (records, metricConfig) => {
             } else if (record.vo2MaxMillilitersPerMinuteKilogram != null) {
               vo2Value = record.vo2MaxMillilitersPerMinuteKilogram;
             }
-            
+
             const vo2Date = record.time || record.startTime || record.timestamp || record.date;
             let vo2DateStr = null;
-            
+
             if (vo2Date) {
               try {
                 vo2DateStr = typeof vo2Date === 'string' ? vo2Date.split('T')[0] : vo2Date;
@@ -896,10 +863,10 @@ export const transformHealthRecords = (records, metricConfig) => {
                 addLog(`[Transform] Error parsing Vo2Max date: ${e.message}`, 'warn', 'WARNING');
               }
             }
-            
+
             const isValidVo2 = vo2Value != null && !isNaN(vo2Value) && vo2Value > 0 && vo2Value < 100;
             const isValidVo2Date = vo2DateStr != null && vo2DateStr.length > 0;
-            
+
             if (isValidVo2 && isValidVo2Date) {
               value = vo2Value;
               recordDate = vo2DateStr;
@@ -1046,14 +1013,14 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
     try {
       addLog(`[HealthConnectService] Reading ${type} records...`);
       const rawRecords = await readHealthRecords(type, startDate, endDate);
-      
+
       if (rawRecords.length === 0) {
         addLog(`[HealthConnectService] No ${type} records found`);
         continue;
       }
 
       addLog(`[HealthConnectService] Found ${rawRecords.length} raw ${type} records`);
-      
+
       const metricConfig = HEALTH_METRICS.find(m => m.recordType === type);
       if (!metricConfig) {
         addLog(`[HealthConnectService] No metric configuration found for record type: ${type}. Skipping.`, 'warn', 'WARNING');
@@ -1061,7 +1028,7 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
       }
 
       let dataToTransform = rawRecords;
-      
+
       if (type === 'Steps') {
         dataToTransform = aggregateStepsByDate(rawRecords);
         addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw Steps records into ${dataToTransform.length} daily totals`);
@@ -1074,10 +1041,10 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
       } else if (type === 'TotalCaloriesBurned') {
         dataToTransform = await aggregateTotalCaloriesByDate(rawRecords);
         addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw TotalCaloriesBurned records into ${dataToTransform.length} daily totals`);
-}
+      }
 
       const transformed = transformHealthRecords(dataToTransform, metricConfig);
-      
+
       if (transformed.length > 0) {
         addLog(`[HealthConnectService] Successfully transformed ${transformed.length} ${type} records`);
         allTransformedData = allTransformedData.concat(transformed);

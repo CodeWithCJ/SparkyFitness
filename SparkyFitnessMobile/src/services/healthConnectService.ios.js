@@ -145,13 +145,13 @@ export const requestHealthPermissions = async (permissionsToRequest) => {
     addLog(`[HealthKitService] Requesting authorization - Read: [${toRead.join(', ')}], Write: [${toShare.join(', ')}]`, 'info', 'INFO');
 
     const result = await requestAuthorization({ toRead, toWrite: toShare });
-    
+
     if (result) {
       addLog(`[HealthKitService] Authorization request completed successfully.`, 'info', 'SUCCESS');
     } else {
       addLog(`[HealthKitService] Authorization may not have been granted for all requested permissions.`, 'warn', 'WARNING');
     }
-    
+
     return true;
 
   } catch (error) {
@@ -171,22 +171,23 @@ export const getSyncStartDate = (duration) => {
 
   switch (duration) {
     case '24h':
-      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      startDate.setDate(now.getDate() - 1);
+      startDate.setHours(0, 0, 0, 0);
       break;
     case '3d':
-      startDate.setDate(now.getDate() - 3);
+      startDate.setDate(now.getDate() - 2);
       startDate.setHours(0, 0, 0, 0);
       break;
     case '7d':
-      startDate.setDate(now.getDate() - 7);
+      startDate.setDate(now.getDate() - 6);
       startDate.setHours(0, 0, 0, 0);
       break;
     case '30d':
-      startDate.setDate(now.getDate() - 30);
+      startDate.setDate(now.getDate() - 29);
       startDate.setHours(0, 0, 0, 0);
       break;
     case '90d':
-      startDate.setDate(now.getDate() - 90);
+      startDate.setDate(now.getDate() - 89);
       startDate.setHours(0, 0, 0, 0);
       break;
     default:
@@ -240,7 +241,7 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
           diastolic: { inMillimetersOfMercury: r.diastolic },
           time: r.time,
         }));
-      
+
       addLog(`[HealthKitService] Read and combined ${results.length} BloodPressure records`);
       return results;
     }
@@ -250,7 +251,7 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
       addLog(`[HealthKitService] Unsupported quantity record type: ${recordType}`, 'warn', 'WARNING');
       return [];
     }
-    
+
     const samples = await queryQuantitySamples(identifier, { from: startDate, to: endDate });
     addLog(`[HealthKitService] Read ${samples.length} ${recordType} records, applying manual filter for iOS.`);
 
@@ -590,7 +591,29 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
       } else if (type === 'ActiveCaloriesBurned') {
         dataToTransform = aggregateActiveCaloriesByDate(rawRecords);
       } else if (type === 'TotalCaloriesBurned') {
-        dataToTransform = aggregateTotalCaloriesByDate(rawRecords);
+        // Special Handling for iOS: Total Calories = Active + Basal (BMR)
+        // HealthKit doesn't have a "Total" type, so we must manually fetch Active calories 
+        // and combine them with the Basal calories we already fetched (rawRecords for TotalCaloriesBurned maps to Basal).
+
+        try {
+          addLog(`[HealthKitService] Fetching Active Calories to add to Total Calories calculation...`);
+          const activeRecords = await readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
+
+          if (activeRecords && activeRecords.length > 0) {
+            addLog(`[HealthKitService] Found ${activeRecords.length} Active Calories records to merge with ${rawRecords.length} BMR records`);
+            // Combine Basal (rawRecords) + Active (activeRecords)
+            // The aggregation function simply sums all energy records by date, so this effectively calculates (Basal + Active)
+            const combinedRecords = [...rawRecords, ...activeRecords];
+            dataToTransform = aggregateTotalCaloriesByDate(combinedRecords);
+          } else {
+            addLog(`[HealthKitService] No Active Calories found to merge. Total Calories will only be BMR.`);
+            dataToTransform = aggregateTotalCaloriesByDate(rawRecords);
+          }
+        } catch (err) {
+          addLog(`[HealthKitService] Error fetching extra active calories for total calc: ${err.message}`, 'warn', 'WARNING');
+          // Fallback to just BMR if active fails
+          dataToTransform = aggregateTotalCaloriesByDate(rawRecords);
+        }
       }
 
       const transformed = transformHealthRecords(dataToTransform, metricConfig);
