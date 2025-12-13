@@ -255,12 +255,18 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
     const samples = await queryQuantitySamples(identifier, { from: startDate, to: endDate });
     addLog(`[HealthKitService] Read ${samples.length} ${recordType} records, applying manual filter for iOS.`);
 
-    // Manual filtering for iOS as a workaround for potential library issues
+    // Manual filtering for iOS as a workaround for potential library issues where the native
+    // query may not respect the date range, returning all historical data.
     const filteredSamples = samples.filter(record => {
       const recordDate = new Date(record.startDate || record.time);
       return recordDate >= startDate && recordDate <= endDate;
     });
-    addLog(`[HealthKitService] Found ${filteredSamples.length} ${recordType} records after manual filtering for iOS.`);
+
+    if (samples.length > filteredSamples.length) {
+      addLog(`[HealthKitService] Manual filter was necessary. Raw count: ${samples.length}, Filtered count: ${filteredSamples.length} for ${recordType}.`, 'warn', 'WARNING');
+    } else {
+      addLog(`[HealthKitService] Found ${filteredSamples.length} ${recordType} records after manual filtering for iOS.`);
+    }
 
     // Transform samples to match expected format
     return filteredSamples.map(s => {
