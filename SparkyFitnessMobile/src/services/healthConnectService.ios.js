@@ -253,6 +253,15 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
     }
 
     const samples = await queryQuantitySamples(identifier, { from: startDate, to: endDate });
+
+    // Defensive check: Ensure samples is an array before proceeding
+    if (!Array.isArray(samples)) {
+      addLog(`[HealthKitService] queryQuantitySamples for ${recordType} returned non-array data: ${JSON.stringify(samples)}. Expected an array.`, 'warn', 'WARNING');
+      return [];
+    }
+
+    // Log the raw samples to understand what's being returned
+    addLog(`[HealthKitService] Raw samples for ${recordType}: ${JSON.stringify(samples)}`);
     addLog(`[HealthKitService] Read ${samples.length} ${recordType} records, applying manual filter for iOS.`);
 
     // Manual filtering for iOS as a workaround for potential library issues where the native

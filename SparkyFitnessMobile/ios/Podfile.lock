@@ -2242,7 +2242,7 @@ PODS:
     - React-perflogger (= 0.80.2)
     - React-utils (= 0.80.2)
     - SocketRocket
-  - ReactNativeHealthkit (12.1.1):
+  - ReactNativeHealthkit (12.1.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2788,7 +2788,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 8df342c127fd0c1e30e8b9f71ff814c22414a7c0
   ReactCodegen: 439c427ccc115d71d16cc84256e5fbdc7fcef57a
   ReactCommon: 592ef441605638b95e533653259254b4bd35ff4f
-  ReactNativeHealthkit: 824055d6e9c4c0091894010747fc688f070451d1
+  ReactNativeHealthkit: a6e5ac3f842c871a041a970e9a79f5dc2980d837
   RNBackgroundFetch: e44c9e85d7fb3122c37d8a806278f62c7682d7ea
   RNCAsyncStorage: 1f04c8d56558e533277beda29187f571cf7eecb2
   RNCClipboard: b228d492733d66e0126e18ce66c6d2f90bacc7e5

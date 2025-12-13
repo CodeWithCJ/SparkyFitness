@@ -10,7 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@kingstinct/react-native-healthkit": "^13.0.0",
+    "@kingstinct/react-native-healthkit": "^12.1.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native-picker/picker": "^2.11.1",
