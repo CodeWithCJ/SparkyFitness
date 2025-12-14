@@ -14,6 +14,8 @@ import {
   VitaminCalculationAlgorithm,
   SugarCalculationAlgorithm,
 } from '@/types/nutrientAlgorithms';
+import { BmrAlgorithm } from '@/services/bmrService';
+import { BodyFatAlgorithm } from '@/services/bodyCompositionService';
 
 // Function to fetch user preferences from the backend
 const fetchUserPreferences = async (userId: string) => {
@@ -76,6 +78,9 @@ interface PreferencesContextType {
   nutrientDisplayPreferences: NutrientPreference[];
   water_display_unit: 'ml' | 'oz' | 'liter';
   language: string;
+  bmrAlgorithm: BmrAlgorithm;
+  bodyFatAlgorithm: BodyFatAlgorithm;
+  includeBmrInNetCalories: boolean;
   fatBreakdownAlgorithm: FatBreakdownAlgorithm;
   mineralCalculationAlgorithm: MineralCalculationAlgorithm;
   vitaminCalculationAlgorithm: VitaminCalculationAlgorithm;
@@ -95,6 +100,9 @@ interface PreferencesContextType {
   loadNutrientDisplayPreferences: () => Promise<void>;
   setWaterDisplayUnit: (unit: 'ml' | 'oz' | 'liter') => void;
   setLanguage: (language: string) => void;
+  setBmrAlgorithm: (algorithm: BmrAlgorithm) => void;
+  setBodyFatAlgorithm: (algorithm: BodyFatAlgorithm) => void;
+  setIncludeBmrInNetCalories: (include: boolean) => void;
   setFatBreakdownAlgorithm: (algorithm: FatBreakdownAlgorithm) => void;
   setMineralCalculationAlgorithm: (algorithm: MineralCalculationAlgorithm) => void;
   setVitaminCalculationAlgorithm: (algorithm: VitaminCalculationAlgorithm) => void;
@@ -139,6 +147,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [nutrientDisplayPreferences, setNutrientDisplayPreferences] = useState<NutrientPreference[]>([]);
   const [waterDisplayUnit, setWaterDisplayUnitState] = useState<'ml' | 'oz' | 'liter'>('ml');
   const [language, setLanguageState] = useState<string>('en');
+  const [bmrAlgorithm, setBmrAlgorithmState] = useState<BmrAlgorithm>(BmrAlgorithm.MIFFLIN_ST_JEOR);
+  const [bodyFatAlgorithm, setBodyFatAlgorithmState] = useState<BodyFatAlgorithm>(BodyFatAlgorithm.US_NAVY);
+  const [includeBmrInNetCalories, setIncludeBmrInNetCaloriesState] = useState<boolean>(false);
   const [fatBreakdownAlgorithm, setFatBreakdownAlgorithmState] = useState<FatBreakdownAlgorithm>(FatBreakdownAlgorithm.AHA_GUIDELINES);
   const [mineralCalculationAlgorithm, setMineralCalculationAlgorithmState] = useState<MineralCalculationAlgorithm>(MineralCalculationAlgorithm.RDA_STANDARD);
   const [vitaminCalculationAlgorithm, setVitaminCalculationAlgorithmState] = useState<VitaminCalculationAlgorithm>(VitaminCalculationAlgorithm.RDA_STANDARD);
@@ -225,6 +236,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setLanguageState(data.language || 'en');
         setCalorieGoalAdjustmentModeState(data.calorie_goal_adjustment_mode || 'dynamic'); // Set calorie goal adjustment mode state
         setEnergyUnitState(data.energy_unit as EnergyUnit || 'kcal'); // Set energy unit state, default to kcal
+        setBmrAlgorithmState((data.bmr_algorithm as BmrAlgorithm) || BmrAlgorithm.MIFFLIN_ST_JEOR);
+        setBodyFatAlgorithmState((data.body_fat_algorithm as BodyFatAlgorithm) || BodyFatAlgorithm.US_NAVY);
+        setIncludeBmrInNetCaloriesState(data.include_bmr_in_net_calories ?? false);
         setFatBreakdownAlgorithmState((data.fat_breakdown_algorithm as FatBreakdownAlgorithm) || FatBreakdownAlgorithm.AHA_GUIDELINES);
         setMineralCalculationAlgorithmState((data.mineral_calculation_algorithm as MineralCalculationAlgorithm) || MineralCalculationAlgorithm.RDA_STANDARD);
         setVitaminCalculationAlgorithmState((data.vitamin_calculation_algorithm as VitaminCalculationAlgorithm) || VitaminCalculationAlgorithm.RDA_STANDARD);
@@ -305,20 +319,27 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const updatePreferences = async (updates: Partial<{
     default_weight_unit: string;
     default_measurement_unit: string;
-    default_distance_unit: string; // Add distance unit to updates type
+    default_distance_unit: string;
     date_format: string;
     system_prompt: string;
     auto_clear_history: string;
-    logging_level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT'; // Add logging level to updates type
-    default_food_data_provider_id: string | null; // Add default food data provider ID to updates type
-    timezone: string; // Add timezone to updates type
+    logging_level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT';
+    default_food_data_provider_id: string | null;
+    timezone: string;
     item_display_limit: number;
-    food_display_limit: number; // Add foodDisplayLimit to updates type
+    food_display_limit: number;
     water_display_unit: 'ml' | 'oz' | 'liter';
     language: string;
-    calorie_goal_adjustment_mode: 'dynamic' | 'fixed'; // Add new preference to updates type
-    energy_unit: EnergyUnit; // Add energy unit to updates type
-    selected_diet: string; // Add selected diet to updates type
+    calorie_goal_adjustment_mode: 'dynamic' | 'fixed';
+    energy_unit: EnergyUnit;
+    bmr_algorithm: BmrAlgorithm;
+    body_fat_algorithm: BodyFatAlgorithm;
+    include_bmr_in_net_calories: boolean;
+    fat_breakdown_algorithm: FatBreakdownAlgorithm;
+    mineral_calculation_algorithm: MineralCalculationAlgorithm;
+    vitamin_calculation_algorithm: VitaminCalculationAlgorithm;
+    sugar_calculation_algorithm: SugarCalculationAlgorithm;
+    selected_diet: string;
   }>) => {
     debug(loggingLevel, "PreferencesProvider: Attempting to update preferences with:", updates);
     if (!user) {
@@ -363,6 +384,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const updateData = {
         user_id: user.id,
         ...updates,
+        bmr_algorithm: updates.bmr_algorithm,
+        body_fat_algorithm: updates.body_fat_algorithm,
+        include_bmr_in_net_calories: updates.include_bmr_in_net_calories,
+        fat_breakdown_algorithm: updates.fat_breakdown_algorithm,
+        mineral_calculation_algorithm: updates.mineral_calculation_algorithm,
+        vitamin_calculation_algorithm: updates.vitamin_calculation_algorithm,
+        sugar_calculation_algorithm: updates.sugar_calculation_algorithm,
         updated_at: new Date().toISOString()
       };
 
@@ -580,6 +608,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       language: newPrefs?.language ?? language,
       calorie_goal_adjustment_mode: newPrefs?.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode, // Include new preference
       energy_unit: newPrefs?.energyUnit ?? energyUnit, // Include energy unit preference
+      bmr_algorithm: newPrefs?.bmrAlgorithm ?? bmrAlgorithm,
+      body_fat_algorithm: newPrefs?.bodyFatAlgorithm ?? bodyFatAlgorithm,
+      include_bmr_in_net_calories: newPrefs?.includeBmrInNetCalories ?? includeBmrInNetCalories,
+      fat_breakdown_algorithm: newPrefs?.fatBreakdownAlgorithm ?? fatBreakdownAlgorithm,
+      mineral_calculation_algorithm: newPrefs?.mineralCalculationAlgorithm ?? mineralCalculationAlgorithm,
+      vitamin_calculation_algorithm: newPrefs?.vitaminCalculationAlgorithm ?? vitaminCalculationAlgorithm,
+      sugar_calculation_algorithm: newPrefs?.sugarCalculationAlgorithm ?? sugarCalculationAlgorithm,
       selected_diet: newPrefs?.selectedDiet ?? selectedDiet, // Include selected diet preference
     };
 
@@ -647,11 +682,17 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       loadNutrientDisplayPreferences,
       setWaterDisplayUnit: setWaterDisplayUnitState,
       setLanguage: setLanguageState,
+      bmrAlgorithm,
+      bodyFatAlgorithm,
+      includeBmrInNetCalories,
       fatBreakdownAlgorithm,
       mineralCalculationAlgorithm,
       vitaminCalculationAlgorithm,
       sugarCalculationAlgorithm,
       selectedDiet,
+      setBmrAlgorithm: setBmrAlgorithmState,
+      setBodyFatAlgorithm: setBodyFatAlgorithmState,
+      setIncludeBmrInNetCalories: setIncludeBmrInNetCaloriesState,
       setFatBreakdownAlgorithm: setFatBreakdownAlgorithmState,
       setMineralCalculationAlgorithm: setMineralCalculationAlgorithmState,
       setVitaminCalculationAlgorithm: setVitaminCalculationAlgorithmState,

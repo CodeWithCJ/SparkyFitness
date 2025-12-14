@@ -86,10 +86,10 @@ const CalculationSettings = () => {
         bodyFatAlgorithm,
         includeBmrInNetCalories,
         energyUnit, // Ensure energyUnit is included in saving
-        fatBreakdownAlgorithm,
-        mineralCalculationAlgorithm,
-        vitaminCalculationAlgorithm,
-        sugarCalculationAlgorithm,
+        fatBreakdownAlgorithm: fatBreakdownAlgorithm,
+        mineralCalculationAlgorithm: mineralCalculationAlgorithm,
+        vitaminCalculationAlgorithm: vitaminCalculationAlgorithm,
+        sugarCalculationAlgorithm: sugarCalculationAlgorithm,
       });
       toast({
         title: t("calculationSettings.saveSuccess", "Success"),
