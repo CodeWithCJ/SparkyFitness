@@ -7,8 +7,12 @@ export interface UserPreferences {
   include_bmr_in_net_calories?: boolean;
   weight_unit?: 'kg' | 'lbs';
   distance_unit?: 'km' | 'miles';
-  date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | string; // Add date format preference
-  // Add other preference fields here as needed
+  date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | string;
+  energy_unit?: 'kcal' | 'kJ';
+  fat_breakdown_algorithm?: string;
+  mineral_calculation_algorithm?: string;
+  vitamin_calculation_algorithm?: string;
+  sugar_calculation_algorithm?: string;
 }
 
 export const getUserPreferences = async (loggingLevel: UserLoggingLevel): Promise<UserPreferences> => {
