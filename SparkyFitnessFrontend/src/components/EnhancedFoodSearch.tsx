@@ -37,6 +37,10 @@ import {
   getTandoorFoodDetails, // Import getTandoorFoodDetails
 } from "@/services/foodService";
 import {
+  searchUsdaFoods,
+  getUsdaFoodDetails,
+} from "@/services/UsdaService"; // Import USDA service functions
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -186,6 +190,7 @@ const EnhancedFoodSearch = ({
   const [fatSecretResults, setFatSecretResults] = useState<FatSecretFoodItem[]>(
     []
   ); // To store FatSecret search results
+  const [usdaResults, setUsdaResults] = useState<any[]>([]); // To store USDA search results
   const [loading, setLoading] = useState(false);
   const getInitialActiveTab = () => {
     if (!hideDatabaseTab) return "database";
@@ -493,6 +498,7 @@ const EnhancedFoodSearch = ({
     setOpenFoodFactsResults([]);
     setNutritionixResults([]);
     setFatSecretResults([]);
+    setUsdaResults([]); // Clear previous USDA results
 
     if (!searchTerm.trim()) {
       if (activeTab === "database") {
@@ -564,7 +570,16 @@ const EnhancedFoodSearch = ({
           provider.id
         );
         setFoods(results);
-      } else {
+      } else if (provider.provider_type === "usda") {
+        const results = await searchUsdaFoods(
+          searchTerm,
+          selectedFoodDataProvider,
+          foodDisplayLimit
+        );
+        setUsdaResults(results);
+        debug(loggingLevel, "USDA Search Results:", results); // Add logging here
+      }
+      else {
         toast({
           title: "Error",
           description: "Selected provider type is not supported for search.",
@@ -573,6 +588,136 @@ const EnhancedFoodSearch = ({
       }
     }
     setLoading(false);
+  };
+
+  const formatUsdaNutrientsForDisplay = (usdaItem: any, loggingLevel: string): Partial<FoodVariant> => {
+    const nutrients: Partial<FoodVariant> = {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      saturated_fat: 0,
+      polyunsaturated_fat: 0,
+      monounsaturated_fat: 0,
+      trans_fat: 0,
+      cholesterol: 0,
+      sodium: 0,
+      potassium: 0,
+      dietary_fiber: 0,
+      sugars: 0,
+      vitamin_a: 0,
+      vitamin_c: 0,
+      calcium: 0,
+      iron: 0,
+      glycemic_index: "None",
+    };
+
+    if (usdaItem.foodNutrients) {
+      usdaItem.foodNutrients.forEach((nutrient: any) => {
+        const nutrientName = nutrient.nutrientName.toLowerCase();
+        const value = nutrient.value;
+        const unitName = nutrient.unitName?.toLowerCase() || '';
+
+        debug(loggingLevel as any, `Processing USDA nutrient: ${nutrient.nutrientName} (value: ${value}, unit: ${nutrient.unitName})`);
+
+        if (nutrientName.includes("energy") && (unitName === 'kcal' || unitName === 'calorie' || nutrientName.includes('kcal'))) {
+          nutrients.calories = value;
+        } else if (nutrientName === "protein") {
+          nutrients.protein = value;
+        } else if (nutrientName.includes("carbohydrate, total") || nutrientName.includes("carbohydrate")) {
+          nutrients.carbs = value;
+        } else if (nutrientName.includes("total lipid (fat)") || nutrientName.includes("fat, total") || nutrientName.includes("fat")) {
+          nutrients.fat = value;
+        } else if (nutrientName.includes("fatty acids, total saturated") || nutrientName.includes("saturated fat")) {
+          nutrients.saturated_fat = value;
+        } else if (nutrientName.includes("polyunsaturated fat")) {
+          nutrients.polyunsaturated_fat = value;
+        } else if (nutrientName.includes("monounsaturated fat")) {
+          nutrients.monounsaturated_fat = value;
+        } else if (nutrientName.includes("trans fat")) {
+          nutrients.trans_fat = value;
+        } else if (nutrientName.includes("cholesterol")) {
+          nutrients.cholesterol = value;
+        } else if (nutrientName.includes("sodium, na") || nutrientName.includes("sodium")) {
+          nutrients.sodium = value;
+        } else if (nutrientName.includes("potassium, k") || nutrientName.includes("potassium")) {
+          nutrients.potassium = value;
+        } else if (nutrientName.includes("fiber, total dietary") || nutrientName.includes("fiber")) {
+          nutrients.dietary_fiber = value;
+        } else if (nutrientName.includes("sugars, total") || nutrientName.includes("sugars")) {
+          nutrients.sugars = value;
+        } else if (nutrientName.includes("vitamin a")) {
+          nutrients.vitamin_a = value;
+        } else if (nutrientName.includes("vitamin c")) {
+          nutrients.vitamin_c = value;
+        } else if (nutrientName.includes("calcium, ca") || nutrientName.includes("calcium")) {
+          nutrients.calcium = value;
+        } else if (nutrientName.includes("iron, fe") || nutrientName.includes("iron")) {
+          nutrients.iron = value;
+        }
+      });
+    }
+    return nutrients;
+  };
+
+  const convertUsdaToFood = (item: any, nutrientData: any): Food => {
+    const defaultVariant: FoodVariant = {
+      id: "default", // Assign a default ID for now
+      serving_size: nutrientData.servingSize,
+      serving_unit: nutrientData.servingSizeUnit,
+      calories: nutrientData.calories, // Assumed to be in kcal
+      protein: nutrientData.protein,
+      carbs: nutrientData.carbohydrates,
+      fat: nutrientData.fat,
+      saturated_fat: nutrientData.saturatedFat || 0,
+      polyunsaturated_fat: nutrientData.polyunsaturatedFat || 0,
+      monounsaturated_fat: nutrientData.monounsaturatedFat || 0,
+      trans_fat: nutrientData.transFat || 0,
+      cholesterol: nutrientData.cholesterol || 0,
+      sodium: nutrientData.sodium || 0,
+      potassium: nutrientData.potassium || 0,
+      dietary_fiber: nutrientData.fiber || 0,
+      sugars: nutrientData.sugars || 0,
+      vitamin_a: nutrientData.vitaminA || 0,
+      vitamin_c: nutrientData.vitaminC || 0,
+      calcium: nutrientData.calcium || 0,
+      iron: nutrientData.iron || 0,
+      is_default: true,
+      glycemic_index: "None", // USDA API does not provide GI directly
+    };
+
+    return {
+      id: undefined, // ID will be generated by the backend
+      name: nutrientData.description,
+      brand: nutrientData.brandOwner || null,
+      is_custom: false,
+      provider_external_id: item.fdcId.toString(),
+      provider_type: "usda",
+      default_variant: defaultVariant,
+      variants: [defaultVariant],
+      glycemic_index: "None",
+    };
+  };
+
+
+  const handleUsdaEdit = async (item: any) => {
+    setLoading(true);
+    const nutrientData = await getUsdaFoodDetails(
+      item.fdcId,
+      selectedFoodDataProvider
+    );
+    setLoading(false);
+
+    if (nutrientData) {
+      setEditingProduct(convertUsdaToFood(item, nutrientData)); // Corrected: Convert to Food object here
+      setShowEditDialog(true);
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to retrieve detailed nutrition for this item.",
+        variant: "destructive",
+      });
+    }
   };
 
   const convertNutritionixToFood = (item: any, nutrientData: any): Food => {
@@ -1015,6 +1160,7 @@ const EnhancedFoodSearch = ({
           openFoodFactsResults.length === 0 &&
           nutritionixResults.length === 0 &&
           fatSecretResults.length === 0 &&
+          usdaResults.length === 0 &&
           foods.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               {t("enhancedFoodSearch.noFoodsFoundOnline", "No foods found from the selected online provider.")}
@@ -1288,9 +1434,53 @@ const EnhancedFoodSearch = ({
               </CardContent>
             </Card>
           ))}
+
+        {activeTab === "online" &&
+          usdaResults.length > 0 &&
+          usdaResults.map((item) => (
+            <Card
+              key={item.fdcId}
+              className="hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h3 className="font-medium">{item.description}</h3>
+                      {item.brandOwner && (
+                        <Badge variant="secondary" className="text-xs">
+                          {item.brandOwner}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs">
+                        {t("enhancedFoodSearch.usda", "USDA")}
+                      </Badge>
+                    </div>
+                    {item.foodNutrients && (
+                      <NutrientGrid food={formatUsdaNutrientsForDisplay(item, loggingLevel)} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />
+                    )}
+                    {item.servingSize && item.servingSizeUnit && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Per {item.servingSize}
+                        {item.servingSizeUnit}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleUsdaEdit(item)}
+                    className="ml-2"
+                  >
+                    <Edit className="w-4 h-4 mr-1" />
+                    {t("enhancedFoodSearch.editAndAdd", "Edit & Add")}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
       </div>
 
-      {/* Edit Dialog for OpenFoodFacts, Nutritionix, FatSecret, and Mealie products */}
+      {/* Edit Dialog for OpenFoodFacts, Nutritionix, FatSecret, Mealie, Tandoor, and USDA products */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1307,8 +1497,7 @@ const EnhancedFoodSearch = ({
                   ? convertOpenFoodFactsToFood(
                     editingProduct as OpenFoodFactsProduct
                   )
-                  : // Otherwise, assume it's already a Food type (from Nutritionix, FatSecret, or Mealie)
-                  (editingProduct as Food)
+                  : (editingProduct as Food) // Assume it's already a Food type (from Nutritionix, FatSecret, Mealie, Tandoor, or pre-converted USDA)
               }
               initialVariants={
                 editingProduct && "variants" in editingProduct

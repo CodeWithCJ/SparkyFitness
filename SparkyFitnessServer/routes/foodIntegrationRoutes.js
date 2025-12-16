@@ -19,6 +19,10 @@ const {
   getNutritionixNutrients,
   getNutritionixBrandedNutrients,
 } = require("../integrations/nutritionix/nutritionixService");
+const {
+  searchUsdaFoods,
+  getUsdaFoodDetails,
+} = require("../integrations/usda/usdaService");
 
 router.use(express.json());
 
@@ -137,6 +141,36 @@ router.use("/tandoor", authenticate, async (req, res, next) => {
   }
 });
 
+router.use("/usda", authenticate, async (req, res, next) => {
+  const providerId = req.headers["x-provider-id"];
+  log("debug", `foodRoutes: /usda middleware: x-provider-id: ${providerId}`);
+
+  if (!providerId) {
+    return res.status(400).json({ error: "Missing x-provider-id header" });
+  }
+
+  try {
+    const providerDetails = await foodService.getFoodDataProviderDetails(
+      req.userId,
+      providerId
+    );
+    if (!providerDetails || !providerDetails.app_key) {
+      return next(
+        new Error(
+          "Failed to retrieve USDA API key. Please check provider configuration."
+        )
+      );
+    }
+    req.usdaApiKey = providerDetails.app_key;
+    next();
+  } catch (error) {
+    if (error.message.startsWith("Forbidden")) {
+      return res.status(403).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+ 
 router.get("/fatsecret/search", authenticate, async (req, res, next) => {
   const { query } = req.query;
   const { clientId, clientSecret } = req;
@@ -365,4 +399,36 @@ router.get(
   }
 );
 
+router.get("/usda/search", authenticate, async (req, res, next) => {
+  const { query } = req.query;
+  const { usdaApiKey } = req;
+
+  if (!query) {
+    return res.status(400).json({ error: "Missing search query" });
+  }
+
+  try {
+    const data = await searchUsdaFoods(query, usdaApiKey);
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/usda/details", authenticate, async (req, res, next) => {
+  const { fdcId } = req.query;
+  const { usdaApiKey } = req;
+
+  if (!fdcId) {
+    return res.status(400).json({ error: "Missing FDC ID" });
+  }
+
+  try {
+    const data = await getUsdaFoodDetails(fdcId, usdaApiKey);
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+});
+ 
 module.exports = router;

@@ -150,6 +150,23 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                   Get your App ID and App Key from the <a href="https://platform.fatsecret.com/my-account/dashboard" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Fatsecret Platform Dashboard</a>.
                 </p>
               )}
+              {editData.provider_type === 'usda' && (
+                <>
+                  <div>
+                    <Label>API Key</Label>
+                    <Input
+                      type="password"
+                      value={editData.app_key || ''}
+                      onChange={(e) => setEditData(prev => ({ ...prev, app_key: e.target.value }))}
+                      placeholder="Enter USDA API Key"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground col-span-2">
+                    Get your API Key from the <a href="https://fdc.nal.usda.gov/api-guide.html" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">USDA FoodData Central API Guide</a>.
+                  </p>
+                </>
+              )}
               {editData.provider_type === 'withings' && (
                 <>
                   <div>
@@ -220,7 +237,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                     Note: Garmin Connect integration is tested with few metrics only. Ensure your Docker Compose is updated to include Garmin section.
                     <br />
                     Sparky Fitness does not store your Garmin email or password. They are used only during login to obtain secure tokens.
-                  </p>                  
+                  </p>
                 </>
               )}
               {(editData.provider_type === 'withings' || editData.provider_type === 'garmin') && (

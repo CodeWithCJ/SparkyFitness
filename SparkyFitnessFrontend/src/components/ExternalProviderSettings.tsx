@@ -14,7 +14,7 @@ import GarminConnectSettings from "./GarminConnectSettings";
 export interface ExternalDataProvider {
   id: string;
   provider_name: string;
-  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings' | 'garmin' | 'tandoor';
+  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings' | 'garmin' | 'tandoor' | 'usda';
   app_id: string | null;
   app_key: string | null;
   is_active: boolean;
@@ -442,6 +442,7 @@ const ExternalProviderSettings = () => {
     { value: "tandoor", label: "Tandoor" },
     { value: "withings", label: "Withings" },
     { value: "garmin", label: "Garmin" },
+    { value: "usda", label: "USDA" },
   ];
 
   return (

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict lYSHUbt4lidG0EwiOddiAV9VwVHBoUhcaC2dMNh5hWavI42lvvMCourwXXR4gFb
+\restrict T2tCq4qgfBFTRK74OoLQppFJwuUBG1v2hF04hHPGdObZjITWAtcZIvfObrh0xNT
 
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 18.0
@@ -1084,7 +1084,7 @@ CREATE TABLE public.external_data_providers (
     scope text,
     last_sync_at timestamp with time zone,
     sync_frequency text DEFAULT 'manual'::text,
-    CONSTRAINT external_data_providers_provider_type_check CHECK ((provider_type = ANY (ARRAY['fatsecret'::text, 'openfoodfacts'::text, 'mealie'::text, 'garmin'::text, 'health'::text, 'nutritionix'::text, 'wger'::text, 'free-exercise-db'::text, 'withings'::text, 'tandoor'::text])))
+    CONSTRAINT external_data_providers_provider_type_check CHECK ((provider_type = ANY (ARRAY['fatsecret'::text, 'openfoodfacts'::text, 'mealie'::text, 'garmin'::text, 'health'::text, 'nutritionix'::text, 'wger'::text, 'free-exercise-db'::text, 'withings'::text, 'tandoor'::text, 'usda'::text])))
 );
 
 
@@ -1169,8 +1169,24 @@ CREATE TABLE public.food_entry_meals (
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     created_by_user_id uuid NOT NULL,
-    updated_by_user_id uuid NOT NULL
+    updated_by_user_id uuid NOT NULL,
+    quantity numeric DEFAULT 1.0 NOT NULL,
+    unit text DEFAULT 'serving'::text
 );
+
+
+--
+-- Name: COLUMN food_entry_meals.quantity; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entry_meals.quantity IS 'Amount of the meal consumed (e.g., 0.5 for half serving, 500 for 500ml)';
+
+
+--
+-- Name: COLUMN food_entry_meals.unit; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entry_meals.unit IS 'Unit of measurement for the consumed quantity (should match meals.serving_unit)';
 
 
 --
@@ -1369,8 +1385,24 @@ CREATE TABLE public.meals (
     is_public boolean DEFAULT false,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    shared_with_public boolean DEFAULT false
+    shared_with_public boolean DEFAULT false,
+    serving_size numeric DEFAULT 1.0 NOT NULL,
+    serving_unit text DEFAULT 'serving'::text NOT NULL
 );
+
+
+--
+-- Name: COLUMN meals.serving_size; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meals.serving_size IS 'Defines the reference serving size for this meal (e.g., 200 for 200g or 1000 for 1000ml)';
+
+
+--
+-- Name: COLUMN meals.serving_unit; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meals.serving_unit IS 'Unit of measurement for the serving size (e.g., g, ml, serving, oz, cup)';
 
 
 --
@@ -1718,6 +1750,10 @@ CREATE TABLE public.user_preferences (
     language character varying(10) DEFAULT 'en'::character varying,
     calorie_goal_adjustment_mode text DEFAULT 'dynamic'::text,
     energy_unit character varying(4) DEFAULT 'kcal'::character varying NOT NULL,
+    fat_breakdown_algorithm text DEFAULT 'AHA_GUIDELINES'::text NOT NULL,
+    mineral_calculation_algorithm text DEFAULT 'RDA_STANDARD'::text NOT NULL,
+    vitamin_calculation_algorithm text DEFAULT 'RDA_STANDARD'::text NOT NULL,
+    sugar_calculation_algorithm text DEFAULT 'WHO_GUIDELINES'::text NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text])))
 );
@@ -4856,5 +4892,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict lYSHUbt4lidG0EwiOddiAV9VwVHBoUhcaC2dMNh5hWavI42lvvMCourwXXR4gFb
+\unrestrict T2tCq4qgfBFTRK74OoLQppFJwuUBG1v2hF04hHPGdObZjITWAtcZIvfObrh0xNT
 
