@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Switch } from "@/components/ui/switch";
 import MoodMeter from "./MoodMeter"; // Import MoodMeter component
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { Trash2 } from "lucide-react";
+import { Trash2, ClipboardList } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
 import { format } from 'date-fns'; // Import format from date-fns
@@ -38,6 +38,9 @@ import { getUserPreferences } from '@/services/preferenceService';
 import { userManagementService } from "@/services/userManagementService";
 import { api } from '@/services/api'; // Import the API service
 import SleepEntrySection from './SleepEntrySection'; // Import SleepEntrySection
+import HomeDashboardFasting from './HomeDashboardFasting'; // Import Fasting Widget
+import { getFastingHistory } from '@/services/fastingService'; // Import fasting history service
+import { Timer, Activity } from 'lucide-react'; // Icons
 
 const CheckIn = () => {
   const { t } = useTranslation();
@@ -65,12 +68,12 @@ const CheckIn = () => {
   const [mood, setMood] = useState<number | null>(50); // Initialize mood to 50
   const [moodNotes, setMoodNotes] = useState<string>(""); // New state for mood notes
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
-  const [customValues, setCustomValues] = useState<{[key: string]: string}>({});
-  const [customNotes, setCustomNotes] = useState<{[key: string]: string}>({});
+  const [customValues, setCustomValues] = useState<{ [key: string]: string }>({});
+  const [customNotes, setCustomNotes] = useState<{ [key: string]: string }>({});
   const [useMostRecentForCalculation, setUseMostRecentForCalculation] = useState(false); // New state for checkbox
   const [loading, setLoading] = useState(false);
   const [recentMeasurements, setRecentMeasurements] = useState<CombinedMeasurement[]>([]);
- 
+
   const currentUserId = activeUserId || user?.id;
   debug(loggingLevel, "Current user ID:", currentUserId);
 
@@ -98,9 +101,9 @@ const CheckIn = () => {
 
     return () => {
       window.removeEventListener('measurementsRefresh', handleRefresh);
-      };
-    }, [currentUserId, loadPreferences]);
-  
+    };
+  }, [currentUserId, loadPreferences]);
+
 
   useEffect(() => {
     info(loggingLevel, `CheckIn: useEffect for selectedDate triggered. currentUserId: ${currentUserId}, customCategories.length: ${customCategories.length}, selectedDate: ${selectedDate}`);
@@ -109,8 +112,8 @@ const CheckIn = () => {
       fetchAllRecentMeasurements();
     }
   }, [currentUserId, selectedDate, customCategories, convertWeight, convertMeasurement, defaultWeightUnit, defaultMeasurementUnit, formatDateInUserTimezone, parseDateInUserTimezone]);
-  
-    const loadCustomCategories = async () => {
+
+  const loadCustomCategories = async () => {
     if (!currentUserId) {
       warn(loggingLevel, "CheckIn: loadCustomCategories called with no current user ID.");
       return;
@@ -146,11 +149,11 @@ const CheckIn = () => {
       const standard = await fetchRecentStandardMeasurements(formattedStartDate, formattedEndDate);
       info(loggingLevel, "CheckIn: fetchRecentStandardMeasurements returned:", standard);
 
-      const combined: CombinedMeasurement[] = [];
+      const allMeasurements: CombinedMeasurement[] = [];
 
       // Add custom measurements
       custom.forEach(m => {
-        const customMeasurement: CombinedMeasurement = {
+        allMeasurements.push({
           id: m.id,
           entry_date: m.entry_date,
           entry_hour: m.entry_hour,
@@ -159,33 +162,48 @@ const CheckIn = () => {
           type: 'custom',
           display_name: m.custom_categories.display_name || m.custom_categories.name,
           display_unit: m.custom_categories.measurement_type,
-          custom_categories: m.custom_categories, // Keep original custom_categories for conversion logic
-        };
-        combined.push(customMeasurement);
+          custom_categories: m.custom_categories,
+        });
         debug(loggingLevel, `CheckIn: Custom Measurement - Raw entry_date: ${m.entry_date}, entry_timestamp: ${m.entry_timestamp}, Formatted for display: ${formatDateInUserTimezone(m.entry_date, 'PPP')}`);
       });
 
       // Add standard measurements
       standard.forEach(s => {
-        if (s.weight !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.weight, type: 'standard', display_name: 'Weight', display_unit: defaultWeightUnit, entry_hour: null, entry_timestamp: s.updated_at });
-        if (s.neck !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.neck, type: 'standard', display_name: 'Neck', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
-        if (s.waist !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.waist, type: 'standard', display_name: 'Waist', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
-        if (s.hips !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.hips, type: 'standard', display_name: 'Hips', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
-        if (s.steps !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.steps, type: 'standard', display_name: 'Steps', display_unit: 'steps', entry_hour: null, entry_timestamp: s.updated_at });
-        if (s.height !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.height, type: 'standard', display_name: 'Height', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
-        if (s.body_fat_percentage !== null) combined.push({ id: s.id, entry_date: s.entry_date, value: s.body_fat_percentage, type: 'standard', display_name: 'Body Fat %', display_unit: '%', entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.weight !== null) allMeasurements.push({ id: `${s.id}-weight`, originalId: s.id, entry_date: s.entry_date, value: s.weight, type: 'standard', display_name: 'Weight', display_unit: defaultWeightUnit, entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.neck !== null) allMeasurements.push({ id: `${s.id}-neck`, originalId: s.id, entry_date: s.entry_date, value: s.neck, type: 'standard', display_name: 'Neck', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.waist !== null) allMeasurements.push({ id: `${s.id}-waist`, originalId: s.id, entry_date: s.entry_date, value: s.waist, type: 'standard', display_name: 'Waist', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.hips !== null) allMeasurements.push({ id: `${s.id}-hips`, originalId: s.id, entry_date: s.entry_date, value: s.hips, type: 'standard', display_name: 'Hips', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.steps !== null) allMeasurements.push({ id: `${s.id}-steps`, originalId: s.id, entry_date: s.entry_date, value: s.steps, type: 'standard', display_name: 'Steps', display_unit: 'steps', entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.height !== null) allMeasurements.push({ id: `${s.id}-height`, originalId: s.id, entry_date: s.entry_date, value: s.height, type: 'standard', display_name: 'Height', display_unit: defaultMeasurementUnit, entry_hour: null, entry_timestamp: s.updated_at });
+        if (s.body_fat_percentage !== null) allMeasurements.push({ id: `${s.id}-bf`, originalId: s.id, entry_date: s.entry_date, value: s.body_fat_percentage, type: 'standard', display_name: 'Body Fat %', display_unit: '%', entry_hour: null, entry_timestamp: s.updated_at });
       });
 
-      // Sort by entry_timestamp (or entry_date if timestamp is null) in descending order
-      combined.sort((a, b) => {
-        const dateA = new Date(a.entry_timestamp || a.entry_date).getTime();
-        const dateB = new Date(b.entry_timestamp || b.entry_date).getTime();
-        return dateB - dateA;
+      // 3. Fetch Fasting History
+      const fastingHistory = await getFastingHistory(10);
+      fastingHistory.forEach(fast => {
+        allMeasurements.push({
+          id: `fast-${fast.id}`,
+          originalId: fast.id,
+          entry_date: new Date(fast.end_time || fast.start_time).toISOString().split('T')[0],
+          entry_hour: new Date(fast.end_time || fast.start_time).getHours(),
+          entry_timestamp: fast.end_time || fast.start_time,
+          value: fast.duration_minutes || 0,
+          type: 'fasting',
+          display_name: 'Fasting',
+          display_unit: 'min',
+          fasting_type: fast.fasting_type,
+          duration_minutes: fast.duration_minutes || 0
+        });
+      });
+
+      // Sort combined measurements
+      allMeasurements.sort((a, b) => {
+        return new Date(b.entry_timestamp).getTime() - new Date(a.entry_timestamp).getTime();
       });
 
       // Take top 20
-      setRecentMeasurements(combined.slice(0, 20));
-      info(loggingLevel, "All recent measurements fetched successfully:", combined.slice(0, 20));
+      setRecentMeasurements(allMeasurements.slice(0, 20));
+      info(loggingLevel, "All recent measurements fetched successfully:", allMeasurements.slice(0, 20));
     } catch (err) {
       error(loggingLevel, 'Error fetching all recent measurements:', err);
       sonnerToast.error(t('checkIn.failedToLoadRecentMeasurements', 'Failed to load recent measurements'));
@@ -202,6 +220,7 @@ const CheckIn = () => {
       if (measurement.type === 'custom') {
         await deleteCustomMeasurement(measurement.id);
       } else if (measurement.type === 'standard') {
+        const standardId = measurement.originalId || measurement.id;
         // For standard measurements, we set the specific field to null
         // The 'id' of a standard measurement in the frontend is the ID of the check_in_measurements row
         // The 'display_name' is used to determine which field to nullify
@@ -218,9 +237,9 @@ const CheckIn = () => {
             warn(loggingLevel, `CheckIn: Unknown standard measurement type for deletion: ${measurement.display_name}`);
             return;
         }
-        info(loggingLevel, `CheckIn: Updating check-in measurement field ${fieldToNull} to null for ID: ${measurement.id}`);
+        info(loggingLevel, `CheckIn: Updating check-in measurement field ${fieldToNull} to null for ID: ${standardId}`);
         await updateCheckInMeasurementField({
-          id: measurement.id,
+          id: standardId,
           field: fieldToNull,
           value: null,
           entry_date: measurement.entry_date,
@@ -257,7 +276,7 @@ const CheckIn = () => {
 
         const convertedHips = data.hips !== undefined && data.hips !== null ? convertMeasurement(data.hips, 'cm', defaultMeasurementUnit) : NaN;
         setHips(typeof convertedHips === 'number' && !isNaN(convertedHips) ? convertedHips.toFixed(1) : "");
-        
+
         const convertedHeight = data.height !== undefined && data.height !== null ? convertMeasurement(data.height, 'cm', defaultMeasurementUnit) : NaN;
         setHeight(typeof convertedHeight === 'number' && !isNaN(convertedHeight) ? convertedHeight.toFixed(1) : "");
 
@@ -304,9 +323,9 @@ const CheckIn = () => {
               if (category.data_type === 'numeric') {
                 newCustomValues[measurement.category_id] = isConvertible
                   ? (() => {
-                      const converted = convertMeasurement(measurement.value, 'cm', defaultMeasurementUnit);
-                      return typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "";
-                    })()
+                    const converted = convertMeasurement(measurement.value, 'cm', defaultMeasurementUnit);
+                    return typeof converted === 'number' && !isNaN(converted) ? converted.toFixed(1) : "";
+                  })()
                   : (measurement.value !== null && measurement.value !== undefined ? measurement.value.toString() : '');
               } else {
                 newCustomValues[measurement.category_id] = measurement.value || '';
@@ -507,36 +526,41 @@ const CheckIn = () => {
 
       let bfp = 0;
       let errorMessage = "";
- 
-       if (prefs.body_fat_algorithm === 'BMI Method') {
-         if (isNaN(weightKg) || isNaN(heightCm) || age === 0 || !gender) {
-           errorMessage = t('checkIn.bmiMethodRequiredFields', "Weight, height, age, and gender are required for BMI Method.");
-         } else {
-           bfp = calculateBodyFatBmi(weightKg, heightCm, age, gender);
-         }
-       } else { // Default to U.S. Navy
-         if (!gender || isNaN(heightCm) || isNaN(waistCm) || isNaN(neckCm) || (gender === 'female' && isNaN(hipsCm))) {
-           errorMessage = t('checkIn.usNavyMethodRequiredFields', "Gender, height, waist, neck, and (if female) hips measurements are required for U.S. Navy Method.");
-         } else {
-           bfp = calculateBodyFatNavy(gender, heightCm, waistCm, neckCm, hipsCm);
-         }
-       }
- 
-       if (errorMessage) {
-         error(loggingLevel, `CheckIn: Error calculating body fat: ${errorMessage}`);
-         toast({ title: t('common.error', 'Error'), description: `${t('checkIn.failedToCalculateBodyFat', 'Failed to calculate body fat:')} ${errorMessage}`, variant: "destructive" });
-       } else {
-         setBodyFatPercentage(bfp.toFixed(2));
-         toast({ title: t('common.success', 'Success'), description: t('checkIn.bodyFatCalculated', 'Body fat percentage calculated.') });
-       }
-     } catch (err: any) {
-       error(loggingLevel, 'CheckIn: Error calculating body fat:', err);
-       toast({ title: t('common.error', 'Error'), description: `${t('checkIn.failedToCalculateBodyFat', 'Failed to calculate body fat:')} ${err.message || t('checkIn.anUnknownErrorOccurred', "An unknown error occurred.")}`, variant: "destructive" });
-     }
-   };
+
+      if (prefs.body_fat_algorithm === 'BMI Method') {
+        if (isNaN(weightKg) || isNaN(heightCm) || age === 0 || !gender) {
+          errorMessage = t('checkIn.bmiMethodRequiredFields', "Weight, height, age, and gender are required for BMI Method.");
+        } else {
+          bfp = calculateBodyFatBmi(weightKg, heightCm, age, gender);
+        }
+      } else { // Default to U.S. Navy
+        if (!gender || isNaN(heightCm) || isNaN(waistCm) || isNaN(neckCm) || (gender === 'female' && isNaN(hipsCm))) {
+          errorMessage = t('checkIn.usNavyMethodRequiredFields', "Gender, height, waist, neck, and (if female) hips measurements are required for U.S. Navy Method.");
+        } else {
+          bfp = calculateBodyFatNavy(gender, heightCm, waistCm, neckCm, hipsCm);
+        }
+      }
+
+      if (errorMessage) {
+        error(loggingLevel, `CheckIn: Error calculating body fat: ${errorMessage}`);
+        toast({ title: t('common.error', 'Error'), description: `${t('checkIn.failedToCalculateBodyFat', 'Failed to calculate body fat:')} ${errorMessage}`, variant: "destructive" });
+      } else {
+        setBodyFatPercentage(bfp.toFixed(2));
+        toast({ title: t('common.success', 'Success'), description: t('checkIn.bodyFatCalculated', 'Body fat percentage calculated.') });
+      }
+    } catch (err: any) {
+      error(loggingLevel, 'CheckIn: Error calculating body fat:', err);
+      toast({ title: t('common.error', 'Error'), description: `${t('checkIn.failedToCalculateBodyFat', 'Failed to calculate body fat:')} ${err.message || t('checkIn.anUnknownErrorOccurred', "An unknown error occurred.")}`, variant: "destructive" });
+    }
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Fasting Widget */}
+      <div className="w-full max-w-xl mx-auto mb-6">
+        <HomeDashboardFasting onFastUpdate={fetchAllRecentMeasurements} />
+      </div>
+
       {/* Preferences Section */}
       <CheckInPreferences
         selectedDate={selectedDate}
@@ -749,17 +773,25 @@ const CheckIn = () => {
         </CardContent>
       </Card>
 
-      {/* Recent Measurements */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t('checkIn.recentMeasurements', 'Recent Measurements (Last 20)')}</CardTitle>
+      {/* Recent Activity Section */}
+      <Card className="border-t shadow-sm">
+        <CardHeader className="bg-muted/10">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Activity className="w-5 h-5 text-primary" />
+            {t('checkIn.recentMeasurements', 'Recent Activity')}
+          </CardTitle>
+          <CardDescription>
+            Your latest logs including measurements and completed fasts.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
+        <CardContent className="p-0">
+          <div className="divide-y divide-border">
             {recentMeasurements.length === 0 ? (
-              <p className="text-muted-foreground">{t('checkIn.noMeasurementsRecorded', 'No measurements recorded yet')}</p>
+              <div className="p-8 text-center text-muted-foreground">
+                No recent activity found.
+              </div>
             ) : (
-              recentMeasurements.map((measurement: CombinedMeasurement) => { // Explicitly cast here
+              recentMeasurements.map((measurement) => {
                 let displayValue = measurement.value;
                 let displayUnit = measurement.display_unit;
                 let measurementName = measurement.display_name;
@@ -787,30 +819,43 @@ const CheckIn = () => {
                 const formattedDisplayValue = typeof displayValue === 'number' ? displayValue.toFixed(1) : displayValue;
 
                 return (
-                  <div
-                    key={`${measurement.id}-${measurement.display_name}`}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div>
-                      <div className="font-medium">
-                        {measurementName}: {formattedDisplayValue} {displayUnit}
+                  <div key={measurement.id} className="flex items-center justify-between p-4 hover:bg-muted/5 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${measurement.type === 'fasting' ? 'bg-orange-100 text-orange-600' : 'bg-primary/10 text-primary'}`}>
+                        {measurement.type === 'fasting' ? <Timer className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />}
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {formatDateInUserTimezone(measurement.entry_date, 'PPP')}
-                        {measurement.entry_hour !== null && (
-                          <span> {t('checkIn.at', 'at')} {measurement.entry_hour.toString().padStart(2, '0')}:00</span>
-                        )}
+                      <div>
+                        <p className="font-medium">
+                          {measurement.type === 'fasting'
+                            ? measurement.fasting_type
+                            : (measurement.display_name || measurement.custom_categories?.display_name || measurement.custom_categories?.name || measurement.id)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(measurement.entry_timestamp), 'h:mm a')} &middot; {format(new Date(measurement.entry_timestamp), 'MMM d')}
+                        </p>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        handleDeleteMeasurementClick(measurement);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="font-semibold tabular-nums text-right">
+                      {measurement.type === 'fasting' ? (
+                        <span className="text-orange-600">
+                          {measurement.duration_minutes ? `${Math.floor(measurement.duration_minutes / 60)}h ${measurement.duration_minutes % 60}m` : '0h 0m'}
+                        </span>
+                      ) : (
+                        <span>
+                          {formattedDisplayValue} <span className="text-xs text-muted-foreground ml-0.5">{displayUnit}</span>
+                        </span>
+                      )}
+                      {(measurement.type === 'custom' || measurement.type === 'standard') && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 ml-2 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteMeasurementClick(measurement)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })

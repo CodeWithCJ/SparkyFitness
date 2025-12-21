@@ -41,6 +41,7 @@ const garminRoutes = require('./routes/garminRoutes'); // Import Garmin routes
 const withingsRoutes = require('./routes/withingsRoutes'); // Import Withings routes
 const withingsDataRoutes = require('./routes/withingsDataRoutes'); // Import Withings Data routes
 const moodRoutes = require('./routes/moodRoutes'); // Import Mood routes
+const fastingRoutes = require('./routes/fastingRoutes'); // Import Fasting routes
 const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
 const adminAuthRoutes = require('./routes/adminAuthRoutes'); // Import new admin auth routes
 const { router: openidRoutes, initializeOidcClient } = require('./openidRoutes');
@@ -49,8 +50,8 @@ const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
 const versionRoutes = require('./routes/versionRoutes');
 const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboarding routes
 const { applyMigrations } = require('./utils/dbMigrations');
-const { grantPermissions } = require('./db/grantPermissions');
 const { applyRlsPolicies } = require('./utils/applyRlsPolicies');
+const { grantPermissions } = require('./db/grantPermissions');
 const waterContainerRoutes = require('./routes/waterContainerRoutes');
 const backupRoutes = require('./routes/backupRoutes'); // Import backup routes
 const errorHandler = require('./middleware/errorHandler'); // Import the new error handler
@@ -259,7 +260,7 @@ app.use((req, res, next) => {
 
   // Check if the current request path starts with any of the public routes
   const isPublic = publicRoutes.some((route) => req.path.startsWith(route));
-  
+
   if (req.path.includes('withings')) {
     log('error', `[WITHINGS DEBUG] Path: ${req.path}, IsPublic: ${isPublic}`);
   }
@@ -319,6 +320,7 @@ app.use('/api/withings', withingsRoutes); // Add Withings integration routes
 log('info', 'Withings routes mounted at /api/withings');
 app.use('/integrations/withings/data', withingsDataRoutes); // Add Withings Data routes
 app.use('/mood', moodRoutes); // Add Mood routes
+app.use('/fasting', fastingRoutes); // Add Fasting routes
 app.use('/admin/oidc-settings', oidcSettingsRoutes); // Admin OIDC settings routes
 app.use('/admin/global-settings', globalSettingsRoutes);
 app.use('/version', versionRoutes); // Version routes
@@ -467,34 +469,34 @@ applyMigrations()
   .then(async () => {
     // OIDC clients are now initialized on-demand, so no startup initialization is needed.
 
-  // Schedule backups after migrations
-  scheduleBackups();
-  // Schedule Withings syncs after migrations
-  scheduleWithingsSyncs();
-  scheduleGarminSyncs();
+    // Schedule backups after migrations
+    scheduleBackups();
+    // Schedule Withings syncs after migrations
+    scheduleWithingsSyncs();
+    scheduleGarminSyncs();
 
-  // Set admin user from environment variable if provided
-  if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
-    const userRepository = require('./models/userRepository');
-    const adminUser = await userRepository.findUserByEmail(process.env.SPARKY_FITNESS_ADMIN_EMAIL);
-    if (adminUser && adminUser.id) {
-      const success = await userRepository.updateUserRole(adminUser.id, 'admin');
-      if (success) {
-        log('info', `User ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} set as admin.`);
-      } else {
-        log(
-          "warn",
-          `Admin user with email ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} not found.`
-        );
+    // Set admin user from environment variable if provided
+    if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
+      const userRepository = require('./models/userRepository');
+      const adminUser = await userRepository.findUserByEmail(process.env.SPARKY_FITNESS_ADMIN_EMAIL);
+      if (adminUser && adminUser.id) {
+        const success = await userRepository.updateUserRole(adminUser.id, 'admin');
+        if (success) {
+          log('info', `User ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} set as admin.`);
+        } else {
+          log(
+            "warn",
+            `Admin user with email ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} not found.`
+          );
+        }
       }
-    }
-  } // Closing the if block for SPARKY_FITNESS_ADMIN_EMAIL
+    } // Closing the if block for SPARKY_FITNESS_ADMIN_EMAIL
 
-  app.listen(PORT, () => {
-    console.log(`DEBUG: Server started and listening on port ${PORT}`); // Direct console log
-    log("info", `SparkyFitnessServer listening on port ${PORT}`);
-  });
-})
+    app.listen(PORT, () => {
+      console.log(`DEBUG: Server started and listening on port ${PORT}`); // Direct console log
+      log("info", `SparkyFitnessServer listening on port ${PORT}`);
+    });
+  })
   .catch((error) => {
     log("error", "Failed to apply migrations and start server:", error);
     process.exit(1);

@@ -44,6 +44,7 @@ import axios from "axios";
 import OnBoarding from "@/components/Onboarding/OnBoarding";
 import { getOnboardingStatus } from "@/services/onboardingService";
 
+
 interface AddCompItem {
   value: string;
   label: string;
@@ -415,6 +416,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
 
           <div className="pb-16 sm:pb-0">
             <TabsContent value="home" className="space-y-6">
+
               <FoodDiary
                 selectedDate={selectedDate}
                 onDateChange={setSelectedDate}
