@@ -15,7 +15,7 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { Trash2, ClipboardList } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
-import { format } from 'date-fns'; // Import format from date-fns
+import { format, parseISO } from 'date-fns'; // Import format and parseISO from date-fns
 import {
   loadCustomCategories as loadCustomCategoriesService,
   fetchRecentCustomMeasurements,
@@ -184,8 +184,8 @@ const CheckIn = () => {
         allMeasurements.push({
           id: `fast-${fast.id}`,
           originalId: fast.id,
-          entry_date: new Date(fast.end_time || fast.start_time).toISOString().split('T')[0],
-          entry_hour: new Date(fast.end_time || fast.start_time).getHours(),
+          entry_date: formatDateInUserTimezone(parseISO(fast.end_time || fast.start_time), 'yyyy-MM-dd'),
+          entry_hour: parseISO(fast.end_time || fast.start_time).getHours(),
           entry_timestamp: fast.end_time || fast.start_time,
           value: fast.duration_minutes || 0,
           type: 'fasting',
@@ -556,12 +556,7 @@ const CheckIn = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Fasting Widget */}
-      <div className="w-full max-w-xl mx-auto mb-6">
-        <HomeDashboardFasting onFastUpdate={fetchAllRecentMeasurements} />
-      </div>
-
-      {/* Preferences Section */}
+      {/* Preferences Section (moved to top) */}
       <CheckInPreferences
         selectedDate={selectedDate}
         onDateChange={(dateString) => {
@@ -571,32 +566,42 @@ const CheckIn = () => {
         }}
       />
 
-      {/* Mood Meter Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('checkIn.howAreYouFeelingToday', 'How are you feeling today?')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <MoodMeter
-            onMoodChange={(newMood, newNotes) => {
-              setMood(newMood);
-              setMoodNotes(newNotes);
-            }}
-            initialMood={mood}
-            initialNotes={moodNotes}
-          />
-          <div className="mt-4">
-            <Label htmlFor="mood-notes">{t('checkIn.notesOptional', 'Notes (optional)')}</Label>
-            <Input
-              id="mood-notes"
-              type="text"
-              value={moodNotes}
-              onChange={(e) => setMoodNotes(e.target.value)}
-              placeholder={t('checkIn.anyThoughtsOrFeelings', "Any thoughts or feelings you'd like to add?")}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Top row: Fasting Widget + Mood side-by-side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        <div className="w-full">
+          <HomeDashboardFasting onFastUpdate={fetchAllRecentMeasurements} />
+        </div>
+
+        <div className="w-full">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('checkIn.howAreYouFeelingToday', 'How are you feeling today?')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MoodMeter
+                onMoodChange={(newMood, newNotes) => {
+                  setMood(newMood);
+                  setMoodNotes(newNotes);
+                }}
+                initialMood={mood}
+                initialNotes={moodNotes}
+              />
+              <div className="mt-4">
+                <Label htmlFor="mood-notes">{t('checkIn.notesOptional', 'Notes (optional)')}</Label>
+                <Input
+                  id="mood-notes"
+                  type="text"
+                  value={moodNotes}
+                  onChange={(e) => setMoodNotes(e.target.value)}
+                  placeholder={t('checkIn.anyThoughtsOrFeelings', "Any thoughts or feelings you'd like to add?")}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Preferences Section (already at top) */}
 
       {/* Sleep Entry Section */}
       <SleepEntrySection selectedDate={selectedDate} />

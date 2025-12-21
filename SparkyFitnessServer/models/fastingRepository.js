@@ -15,20 +15,41 @@ async function createFastingLog(userId, startTime, targetEndTime, fastingType) {
     }
 }
 
-async function endFast(id, userId, endTime, durationMinutes, moodEntryId, weightAtEnd) {
+async function endFast(id, userId, endTime, durationMinutes, startTime) {
+    const client = await getClient(userId);
+    try {
+        // Build dynamic SET clause so we can optionally update start_time
+        const setParts = [];
+        const values = [];
+        let idx = 1;
+
+        setParts.push(`end_time = $${idx++}`); values.push(endTime);
+        setParts.push(`duration_minutes = $${idx++}`); values.push(durationMinutes);
+        // Note: mood_entry_id and weight_at_end removed from fasting_logs by design
+        if (startTime !== undefined && startTime !== null) {
+            setParts.push(`start_time = $${idx++}`); values.push(startTime);
+        }
+        setParts.push(`status = 'COMPLETED'`);
+        setParts.push(`updated_at = NOW()`);
+
+        const whereIdPos = idx++;
+        const whereUserPos = idx++;
+        const query = `UPDATE fasting_logs SET ${setParts.join(', ')} WHERE id = $${whereIdPos} AND user_id = $${whereUserPos} RETURNING *`;
+        values.push(id, userId);
+
+        const result = await client.query(query, values);
+        return result.rows[0];
+    } finally {
+        client.release();
+    }
+}
+
+async function getFastingById(id, userId) {
     const client = await getClient(userId);
     try {
         const result = await client.query(
-            `UPDATE fasting_logs
-         SET end_time = $3,
-             duration_minutes = $4,
-             mood_entry_id = $5,
-             weight_at_end = $6,
-             status = 'COMPLETED',
-             updated_at = NOW()
-         WHERE id = $1 AND user_id = $2
-         RETURNING *`,
-            [id, userId, endTime, durationMinutes, moodEntryId, weightAtEnd]
+            `SELECT * FROM fasting_logs WHERE id = $1 AND user_id = $2 LIMIT 1`,
+            [id, userId]
         );
         return result.rows[0];
     } finally {
@@ -63,9 +84,8 @@ async function getFastingHistory(userId, limit = 50, offset = 0) {
     try {
         console.log(`[Repo] getFastingHistory checking for userId: ${userId}`);
         const result = await client.query(
-            `SELECT fl.*, me.mood_value, me.notes as mood_notes
+            `SELECT fl.*
        FROM fasting_logs fl
-       LEFT JOIN mood_entries me ON fl.mood_entry_id = me.id
        WHERE fl.user_id = $1
        ORDER BY fl.start_time DESC
        LIMIT $2 OFFSET $3`,
@@ -126,12 +146,17 @@ async function getFastingStats(userId) {
 async function getFastingLogsByDateRange(userId, startDate, endDate) {
     const client = await getClient(userId);
     try {
+        // Interpret startDate/endDate as dates (YYYY-MM-DD) and include any fast
+        // that started or ended on those dates, or that overlaps the range.
         const result = await client.query(
             `SELECT * FROM fasting_logs
              WHERE user_id = $1
                AND status = 'COMPLETED'
-               AND start_time >= $2
-               AND end_time <= $3
+               AND (
+                    (start_time::date BETWEEN $2::date AND $3::date)
+                    OR (end_time::date BETWEEN $2::date AND $3::date)
+                    OR (start_time < ($3::date + INTERVAL '1 day') AND end_time >= $2::date)
+               )
              ORDER BY start_time DESC`,
             [userId, startDate, endDate]
         );
@@ -144,6 +169,7 @@ async function getFastingLogsByDateRange(userId, startDate, endDate) {
 module.exports = {
     createFastingLog,
     endFast,
+    getFastingById,
     getCurrentFast,
     getFastingHistory,
     updateFast,
