@@ -6,8 +6,6 @@ import { FastingLog } from '@/services/fastingService';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 import ZoomableChart from '../ZoomableChart';
-import { Button } from '@/components/ui/button';
-import { Maximize2, Minimize2 } from 'lucide-react';
 import { List, Clock, Hourglass, Award } from 'lucide-react';
 import { calculateSmartYAxisDomain, getChartConfig } from '@/utils/chartUtils';
 
@@ -25,7 +23,8 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
     const summary = useMemo(() => {
         const totalFasts = fastingData.length;
         const totalMinutes = fastingData.reduce((sum, f) => sum + (f.duration_minutes ?? 0), 0);
-        const avgDuration = totalFasts ? totalMinutes / totalFasts : 0;
+        // average duration in hours (totalMinutes is in minutes)
+        const avgDuration = totalFasts ? (totalMinutes / totalFasts) / 60 : 0;
         const longestFast = Math.max(...fastingData.map(f => f.duration_minutes ?? 0), 0);
         return {
             totalFasts,
@@ -122,12 +121,6 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
                 <CardHeader>
                     <div className="flex items-center justify-between w-full">
                         <CardTitle>{t('reports.fasting.dailyDuration', 'Daily Fasting Duration')}</CardTitle>
-                        <div className="flex items-center gap-2">
-                            <Button size="sm" variant={dailyDomainMode === 'auto' ? 'default' : 'outline'} onClick={() => setDailyDomainMode('auto')}>Auto</Button>
-                            <Button size="sm" variant={dailyDomainMode === 'minmax' ? 'default' : 'outline'} onClick={() => setDailyDomainMode('minmax')}>
-                                <Minimize2 className="w-4 h-4 mr-1" />Min/Max
-                            </Button>
-                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -190,12 +183,6 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
                 <CardHeader>
                     <div className="flex items-center justify-between w-full">
                         <CardTitle>{t('reports.fasting.trends', 'Fasting Trends')}</CardTitle>
-                        <div className="flex items-center gap-2">
-                            <Button size="sm" variant={trendDomainMode === 'auto' ? 'default' : 'outline'} onClick={() => setTrendDomainMode('auto')}>Auto</Button>
-                            <Button size="sm" variant={trendDomainMode === 'minmax' ? 'default' : 'outline'} onClick={() => setTrendDomainMode('minmax')}>
-                                <Minimize2 className="w-4 h-4 mr-1" />Min/Max
-                            </Button>
-                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
