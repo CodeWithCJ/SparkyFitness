@@ -6,15 +6,54 @@ import { useTranslation } from "react-i18next";
 interface EndFastDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    onEnd: (weight?: number, mood?: { value: number; notes: string }) => void;
+    // onEnd may receive optional weight, mood, and custom start/end Date values
+    onEnd: (weight?: number, mood?: { value: number; notes: string }, startTime?: Date, endTime?: Date) => void;
     durationFormatted: string;
+    initialStartISO?: string | null;
+    initialEndISO?: string | null;
 }
 
-const EndFastDialog: React.FC<EndFastDialogProps> = ({ isOpen, onClose, onEnd, durationFormatted }) => {
+const EndFastDialog: React.FC<EndFastDialogProps> = ({ isOpen, onClose, onEnd, durationFormatted, initialStartISO = null, initialEndISO = null }) => {
     const { t } = useTranslation();
+    const formatForLocalInput = (d: Date) => {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    const [startLocal, setStartLocal] = React.useState<string>(() => {
+        try {
+            if (initialStartISO) {
+                const d = new Date(initialStartISO);
+                return formatForLocalInput(d);
+            }
+        } catch (e) {}
+        return '';
+    });
+    const [endLocal, setEndLocal] = React.useState<string>(() => {
+        try {
+            if (initialEndISO) {
+                const d = new Date(initialEndISO);
+                return formatForLocalInput(d);
+            }
+        } catch (e) {}
+        return '';
+    });
+
+    // Sync local inputs when props change (dialog may mount before activeFast is available)
+    React.useEffect(() => {
+        try {
+            if (initialStartISO) setStartLocal(formatForLocalInput(new Date(initialStartISO)));
+            if (initialEndISO) setEndLocal(formatForLocalInput(new Date(initialEndISO)));
+        } catch (e) {
+            // ignore
+        }
+    }, [initialStartISO, initialEndISO, isOpen]);
 
     const handleConfirm = () => {
-        onEnd();
+        // Convert local datetime-local value back to a Date object in user's local timezone
+        const start = startLocal ? new Date(startLocal) : undefined;
+        const end = endLocal ? new Date(endLocal) : undefined;
+        onEnd(undefined, undefined, start, end);
         onClose();
     };
 
@@ -28,10 +67,26 @@ const EndFastDialog: React.FC<EndFastDialogProps> = ({ isOpen, onClose, onEnd, d
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="py-4 text-center space-y-2">
-                    <p className="text-muted-foreground">
-                        Great job! Don't forget to log your <strong>Weight</strong> and <strong>Mood</strong> in the daily check-in below.
+                <div className="py-4 space-y-4">
+                    <p className="text-muted-foreground text-center">
+                        Great job! You can edit the start/end times below if you missed pressing the buttons.
                     </p>
+                    <div className="grid grid-cols-1 gap-2">
+                        <label className="text-sm">Start Time</label>
+                        <input
+                            type="datetime-local"
+                            value={startLocal}
+                            onChange={(e) => setStartLocal(e.target.value)}
+                            className="w-full p-2 border rounded"
+                        />
+                        <label className="text-sm">End Time</label>
+                        <input
+                            type="datetime-local"
+                            value={endLocal}
+                            onChange={(e) => setEndLocal(e.target.value)}
+                            className="w-full p-2 border rounded"
+                        />
+                    </div>
                 </div>
 
                 <DialogFooter>

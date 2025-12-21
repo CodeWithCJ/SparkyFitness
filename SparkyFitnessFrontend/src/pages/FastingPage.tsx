@@ -8,15 +8,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FastingTimerRing from '@/components/fasting/FastingTimerRing';
 import FastingZoneBar from '@/components/fasting/FastingZoneBar';
 import EndFastDialog from '@/components/fasting/EndFastDialog';
-import { format, addHours, differenceInMinutes } from 'date-fns';
+import { parseISO, addHours, differenceInMinutes } from 'date-fns';
 import { Play, Square, History, BarChart } from 'lucide-react';
 import { getFastingHistory, FastingLog, getFastingStats, FastingStats } from '@/services/fastingService';
 import { useTranslation } from 'react-i18next';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 import { FASTING_PRESETS } from '@/constants/fastingPresets';
 
 const FastingPage: React.FC = () => {
     const { t } = useTranslation();
+    const { formatDateInUserTimezone } = usePreferences();
     const { activeFast, startFast, endFast, isLoading } = useFasting();
     const [selectedPresetId, setSelectedPresetId] = useState<string>('16-8');
     const [showEndDialog, setShowEndDialog] = useState(false);
@@ -61,7 +63,7 @@ const FastingPage: React.FC = () => {
     // Helper to format duration for dialog
     const formatDuration = () => {
         if (!activeFast) return "";
-        const mins = differenceInMinutes(new Date(), new Date(activeFast.start_time));
+        const mins = differenceInMinutes(new Date(), parseISO(activeFast.start_time));
         const h = Math.floor(mins / 60);
         const m = mins % 60;
         return `${h}h ${m}m`;
@@ -78,15 +80,15 @@ const FastingPage: React.FC = () => {
                         <CardHeader>
                             <CardTitle>{activeFast ? "Current Fast" : "Start New Fast"}</CardTitle>
                             <CardDescription>
-                                {activeFast ? `Started ${format(new Date(activeFast.start_time), 'h:mm a')}` : "Select a protocol to begin"}
+                                {activeFast ? `Started ${formatDateInUserTimezone(parseISO(activeFast.start_time), 'h:mm a')}` : "Select a protocol to begin"}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col items-center space-y-8">
                             {activeFast ? (
                                 <>
                                     <FastingTimerRing
-                                        startTime={new Date(activeFast.start_time)}
-                                        targetEndTime={new Date(activeFast.target_end_time!)}
+                                        startTime={parseISO(activeFast.start_time)}
+                                        targetEndTime={parseISO(activeFast.target_end_time!)}
                                         size={280}
                                     />
 
@@ -177,7 +179,7 @@ const FastingPage: React.FC = () => {
                                 {Array.isArray(history) && history.map(log => (
                                     <div key={log.id} className="p-4 flex justify-between items-center hover:bg-muted/50 transition-colors">
                                         <div>
-                                            <div className="font-medium text-sm">{format(new Date(log.start_time), 'MMM d, h:mm a')}</div>
+                                            <div className="font-medium text-sm">{formatDateInUserTimezone(parseISO(log.start_time), 'MMM d, h:mm a')}</div>
                                             <div className="text-xs text-muted-foreground">{log.fasting_type}</div>
                                         </div>
                                         <div className="text-right">
@@ -199,8 +201,10 @@ const FastingPage: React.FC = () => {
                 isOpen={showEndDialog}
                 onClose={() => setShowEndDialog(false)}
                 durationFormatted={formatDuration()}
-                onEnd={async (weight, mood) => {
-                    await endFast(weight, mood);
+                initialStartISO={activeFast?.start_time ?? null}
+                initialEndISO={new Date().toISOString()}
+                onEnd={async (weight, mood, start, end) => {
+                    await endFast(weight, mood, start, end);
                     // Refresh history
                     loadData();
                 }}

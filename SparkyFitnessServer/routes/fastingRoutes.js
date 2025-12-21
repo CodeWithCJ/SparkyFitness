@@ -4,7 +4,6 @@ const fastingRepository = require('../models/fastingRepository');
 const moodRepository = require('../models/moodRepository');
 const { log } = require('../config/logging');
 const { authenticate } = require('../middleware/authMiddleware');
-
 // Apply authentication middleware to all routes
 router.use(authenticate);
 
@@ -44,63 +43,48 @@ router.post('/start', async (req, res) => {
         res.status(500).json({ error: 'Failed to start fast' });
     }
 });
-
 // End an active fast
 router.post('/end', async (req, res) => {
     const userId = req.userId;
-    const { id, end_time, weight, mood } = req.body; // mood: { value, notes }
+    const { id, start_time, end_time, weight, mood } = req.body; // mood: { value, notes }
 
     if (!id || !end_time) {
         return res.status(400).json({ error: 'Fast ID and end time are required' });
     }
 
     try {
-        // Calculate duration
-        const fast = await fastingRepository.getCurrentFast(userId); // Or get by ID to be safer
-        // We really should fetch the fast by ID to be sure we are ending the right one,
-        // but typically /end implies the current one. Let's trust the ID passed.
+        // 1. Fetch the fast by id to validate ownership and get existing start_time if not provided
+        const fast = await fastingRepository.getFastingById(id, userId);
+        if (!fast) return res.status(404).json({ error: 'Fast not found' });
 
-        // However, we need the start time to calculate duration accurately if the frontend didn't pass it?
-        // Let's assume frontend sends calculated duration or we calculate it here?
-        // For robustness, let's fetch the fast start time if needed, but let's stick to simple logic first.
-        // ACTUALLY, calculating duration on server is safer.
+        // Determine which start time to use: provided one (frontend) or stored one
+        const startUsed = start_time || fast.start_time;
 
-        // 1. Fetch Fast to verify ownership and get start time
-        // Since we don't have getById exposed yet in repo (my bad in previous step, but updateFast works by ID),
-        // let's rely on the fact we are updating it. 
-        // Wait, I strictly need start_time to calculate duration_minutes if I want to be precise.
-        // Let's assume the frontend sends 'duration_minutes' for now or we trust the DB to calculate it? 
-        // Postgres doesn't auto-calculate columns.
+        // Validate chronological order
+        if (new Date(startUsed) > new Date(end_time)) {
+            return res.status(400).json({ error: 'start_time must be before end_time' });
+        }
 
-        // Let's trust the frontend for 'duration_minutes' OR simple calculation:
-        const startTimeDate = new Date(req.body.start_time); // Frontend should pass start_time or we fetch it.
-        // Better: let's fetch it. I will add getById to repo later if needed, but for now let's assume valid ID.
-
-        let moodEntryId = null;
-
-        // 2. Insert Mood if provided
         if (mood && mood.value != null) {
-            const moodEntry = await moodRepository.createOrUpdateMoodEntry(
+            // Create mood entry, but we will not store mood_entry_id on fasting_logs (separate table only)
+            await moodRepository.createOrUpdateMoodEntry(
                 userId,
                 mood.value,
                 mood.notes || '',
-                end_time // Use end of fast as mood date
+                end_time
             );
-            moodEntryId = moodEntry.id;
         }
 
-        // 3. Update Fast
-        // We need to calculate duration. The repository updateFast is generic.
-        // But we have endFast specific function.
-        const durationMinutes = Math.round((new Date(end_time) - new Date(req.body.start_time)) / 60000);
+        // Calculate duration based on chosen start
+        const durationMinutes = Math.round((new Date(end_time) - new Date(startUsed)) / 60000);
 
+        // Persist end (and optional start) and other fields; do not store mood/weight on fasting_logs
         const updatedFast = await fastingRepository.endFast(
             id,
             userId,
             end_time,
             durationMinutes,
-            moodEntryId,
-            weight
+            startUsed
         );
 
         res.json(updatedFast);

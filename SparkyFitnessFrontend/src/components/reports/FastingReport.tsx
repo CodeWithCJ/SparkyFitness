@@ -1,17 +1,25 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid } from 'recharts';
 import { FastingLog } from '@/services/fastingService';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { parseISO } from 'date-fns';
+import ZoomableChart from '../ZoomableChart';
+import { Button } from '@/components/ui/button';
+import { Maximize2, Minimize2 } from 'lucide-react';
+import { List, Clock, Hourglass, Award } from 'lucide-react';
+import { calculateSmartYAxisDomain, getChartConfig } from '@/utils/chartUtils';
 
 interface FastingReportProps {
     fastingData: FastingLog[];
 }
 
-const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042'];
+const COLORS = ['#6366f1', '#06b6d4', '#f59e0b', '#ef4444'];
 
 export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => {
     const { t } = useTranslation();
+    const { formatDateInUserTimezone } = usePreferences();
 
     // Compute summary statistics
     const summary = useMemo(() => {
@@ -31,12 +39,15 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
     const dailyData = useMemo(() => {
         const map: Record<string, number> = {};
         fastingData.forEach(f => {
-            const date = new Date(f.start_time).toLocaleDateString();
+            const date = formatDateInUserTimezone(parseISO(f.start_time), 'yyyy-MM-dd');
             const mins = f.duration_minutes ?? 0;
             map[date] = (map[date] || 0) + mins / 60; // hours
         });
         return Object.entries(map).map(([date, hours]) => ({ date, hours: Number(hours.toFixed(2)) }));
-    }, [fastingData]);
+    }, [fastingData, formatDateInUserTimezone]);
+
+    // Chart domain calculation consistent with Charts tab
+    const config = getChartConfig('hours');
 
     // Zone distribution (simple example based on duration)
     const zoneData = useMemo(() => {
@@ -55,15 +66,15 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
     const calendarData = useMemo(() => {
         const map: Record<string, number> = {};
         fastingData.forEach(f => {
-            const date = new Date(f.start_time).toISOString().split('T')[0];
+            const date = formatDateInUserTimezone(parseISO(f.start_time), 'yyyy-MM-dd');
             map[date] = (map[date] || 0) + 1;
         });
         return Object.entries(map).map(([date, count]) => ({ date, count }));
-    }, [fastingData]);
+    }, [fastingData, formatDateInUserTimezone]);
 
     // Trend line (moving average of daily hours)
     const trendData = useMemo(() => {
-        const sorted = dailyData.slice().sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const sorted = dailyData.slice().sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
         const window = 3;
         return sorted.map((d, i) => {
             const slice = sorted.slice(Math.max(0, i - window + 1), i + 1);
@@ -72,50 +83,70 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
         });
     }, [dailyData]);
 
+    // compute max values for domain calculations
+    const dailyDomain = calculateSmartYAxisDomain(dailyData, 'hours', { marginPercent: config.marginPercent, minRangeThreshold: config.minRangeThreshold, useZeroBaseline: true }) as any;
+    const trendDomain = calculateSmartYAxisDomain(trendData, 'avg', { marginPercent: config.marginPercent, minRangeThreshold: config.minRangeThreshold, useZeroBaseline: false }) as any;
+
     return (
         <div className="space-y-6">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
+                <Card className="bg-gradient-to-r from-indigo-600 to-violet-500 text-white">
                     <CardHeader>
-                        <CardTitle>{t('reports.fasting.totalFasts', 'Total Fasts')}</CardTitle>
+                        <CardTitle className="text-white flex items-center gap-2"><List className="w-4 h-4" />{t('reports.fasting.totalFasts', 'Total Fasts')}</CardTitle>
                     </CardHeader>
-                    <CardContent>{summary.totalFasts}</CardContent>
+                    <CardContent className="text-3xl font-bold text-white">{summary.totalFasts}</CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-gradient-to-r from-cyan-500 to-sky-600 text-white">
                     <CardHeader>
-                        <CardTitle>{t('reports.fasting.totalHours', 'Total Hours')}</CardTitle>
+                        <CardTitle className="text-white flex items-center gap-2"><Clock className="w-4 h-4" />{t('reports.fasting.totalHours', 'Total Hours')}</CardTitle>
                     </CardHeader>
-                    <CardContent>{summary.totalHours}</CardContent>
+                    <CardContent className="text-3xl font-bold text-white">{summary.totalHours}</CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white">
                     <CardHeader>
-                        <CardTitle>{t('reports.fasting.avgDuration', 'Avg Duration (hrs)')}</CardTitle>
+                        <CardTitle className="text-white flex items-center gap-2"><Hourglass className="w-4 h-4" />{t('reports.fasting.avgDuration', 'Avg Duration (hrs)')}</CardTitle>
                     </CardHeader>
-                    <CardContent>{summary.avgDuration}</CardContent>
+                    <CardContent className="text-3xl font-bold text-white">{summary.avgDuration}</CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-gradient-to-r from-rose-500 to-red-600 text-white">
                     <CardHeader>
-                        <CardTitle>{t('reports.fasting.longestFast', 'Longest Fast (hrs)')}</CardTitle>
+                        <CardTitle className="text-white flex items-center gap-2"><Award className="w-4 h-4" />{t('reports.fasting.longestFast', 'Longest Fast (hrs)')}</CardTitle>
                     </CardHeader>
-                    <CardContent>{summary.longestFast}</CardContent>
+                    <CardContent className="text-3xl font-bold text-white">{summary.longestFast}</CardContent>
                 </Card>
             </div>
 
             {/* Daily Fasting Duration Bar Chart */}
             <Card>
                 <CardHeader>
-                    <CardTitle>{t('reports.fasting.dailyDuration', 'Daily Fasting Duration')}</CardTitle>
+                    <div className="flex items-center justify-between w-full">
+                        <CardTitle>{t('reports.fasting.dailyDuration', 'Daily Fasting Duration')}</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Button size="sm" variant={dailyDomainMode === 'auto' ? 'default' : 'outline'} onClick={() => setDailyDomainMode('auto')}>Auto</Button>
+                            <Button size="sm" variant={dailyDomainMode === 'minmax' ? 'default' : 'outline'} onClick={() => setDailyDomainMode('minmax')}>
+                                <Minimize2 className="w-4 h-4 mr-1" />Min/Max
+                            </Button>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={dailyData}>
-                            <XAxis dataKey="date" />
-                            <YAxis label={{ value: t('reports.fasting.hours', 'Hours'), angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Bar dataKey="hours" fill="#8884d8" />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    <ZoomableChart title={t('reports.fasting.dailyDuration', 'Daily Fasting Duration')}>
+                        <Card>
+                            <CardContent>
+                                <div className="h-72">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={dailyData}>
+                                            <XAxis dataKey="date" />
+                                            <YAxis domain={dailyDomain} label={{ value: t('reports.fasting.hours', 'Hours'), angle: -90, position: 'insideLeft' }} />
+                                            <Tooltip />
+                                            <Bar dataKey="hours" fill="#6366f1" />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </ZoomableChart>
                 </CardContent>
             </Card>
 
@@ -157,18 +188,34 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
             {/* Fasting Trends Line Chart */}
             <Card>
                 <CardHeader>
-                    <CardTitle>{t('reports.fasting.trends', 'Fasting Trends')}</CardTitle>
+                    <div className="flex items-center justify-between w-full">
+                        <CardTitle>{t('reports.fasting.trends', 'Fasting Trends')}</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Button size="sm" variant={trendDomainMode === 'auto' ? 'default' : 'outline'} onClick={() => setTrendDomainMode('auto')}>Auto</Button>
+                            <Button size="sm" variant={trendDomainMode === 'minmax' ? 'default' : 'outline'} onClick={() => setTrendDomainMode('minmax')}>
+                                <Minimize2 className="w-4 h-4 mr-1" />Min/Max
+                            </Button>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={trendData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" />
-                            <YAxis label={{ value: t('reports.fasting.avgHours', 'Avg Hours'), angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Line type="monotone" dataKey="avg" stroke="#82ca9d" />
-                        </LineChart>
-                    </ResponsiveContainer>
+                    <ZoomableChart title={t('reports.fasting.trends', 'Fasting Trends')}>
+                        <Card>
+                            <CardContent>
+                                <div className="h-72">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={trendData}>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis dataKey="date" />
+                                            <YAxis domain={trendDomain} label={{ value: t('reports.fasting.avgHours', 'Avg Hours'), angle: -90, position: 'insideLeft' }} />
+                                            <Tooltip />
+                                            <Line type="monotone" dataKey="avg" stroke="#06b6d4" />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </ZoomableChart>
                 </CardContent>
             </Card>
         </div>

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { FASTING_PRESETS } from '@/constants/fastingPresets';
-import { addHours, differenceInMinutes } from 'date-fns';
+import { parseISO, addHours, differenceInMinutes } from 'date-fns';
 import EndFastDialog from './fasting/EndFastDialog';
 import FastingZoneBar from './fasting/FastingZoneBar';
 import { getFastingStats, FastingStats } from '@/services/fastingService';
@@ -64,14 +64,14 @@ const HomeDashboardFasting: React.FC<HomeDashboardFastingProps> = ({ onFastUpdat
 
     const formatDuration = () => {
         if (!activeFast) return "";
-        const mins = differenceInMinutes(new Date(), new Date(activeFast.start_time));
+        const mins = differenceInMinutes(new Date(), parseISO(activeFast.start_time));
         const h = Math.floor(mins / 60);
         const m = mins % 60;
         return `${h}h ${m}m`;
     };
 
     const fastDurationHours = activeFast
-        ? (new Date().getTime() - new Date(activeFast.start_time).getTime()) / (1000 * 60 * 60)
+        ? (new Date().getTime() - parseISO(activeFast.start_time).getTime()) / (1000 * 60 * 60)
         : 0;
 
     return (
@@ -90,8 +90,8 @@ const HomeDashboardFasting: React.FC<HomeDashboardFastingProps> = ({ onFastUpdat
                     {activeFast ? (
                         <div className="cursor-pointer hover:scale-105 transition-transform" onClick={() => navigate('/fasting')}>
                             <FastingTimerRing
-                                startTime={new Date(activeFast.start_time)}
-                                targetEndTime={new Date(activeFast.target_end_time!)}
+                                startTime={parseISO(activeFast.start_time)}
+                                targetEndTime={parseISO(activeFast.target_end_time!)}
                                 size={180}
                             />
                         </div>
@@ -177,7 +177,14 @@ const HomeDashboardFasting: React.FC<HomeDashboardFastingProps> = ({ onFastUpdat
                 isOpen={showEndDialog}
                 onClose={() => setShowEndDialog(false)}
                 durationFormatted={formatDuration()}
-                onEnd={handleEndFast}
+                initialStartISO={activeFast?.start_time ?? null}
+                initialEndISO={new Date().toISOString()}
+                onEnd={async (_weight, _mood, start, end) => {
+                    await endFast(_weight, _mood, start, end);
+                    setShowEndDialog(false);
+                    loadStats();
+                    if (onFastUpdate) onFastUpdate();
+                }}
             />
         </Card>
     );

@@ -9,7 +9,7 @@ interface FastingContextType {
     isLoading: boolean;
     refreshFast: () => Promise<void>;
     startFast: (startTime: Date, targetEndTime: Date, fastingType: string) => Promise<void>;
-    endFast: (weight?: number, mood?: { value: number; notes: string }) => Promise<void>;
+    endFast: (weight?: number, mood?: { value: number; notes: string }, startTime?: Date, endTime?: Date) => Promise<void>;
 }
 
 const FastingContext = createContext<FastingContextType | undefined>(undefined);
@@ -59,10 +59,11 @@ export const FastingProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
     };
 
-    const endFast = async (weight?: number, mood?: { value: number; notes: string }) => {
+    const endFast = async (weight?: number, mood?: { value: number; notes: string }, startTime?: Date, endTime?: Date) => {
         if (!activeFast) return;
-        const endTime = new Date();
-        await fastingService.endFast(activeFast.id, new Date(activeFast.start_time), endTime, weight, mood);
+        const start = startTime ?? new Date(activeFast.start_time);
+        const end = endTime ?? new Date();
+        await fastingService.endFast(activeFast.id, start, end, weight, mood);
         setActiveFast(null);
     };
 

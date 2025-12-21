@@ -9,8 +9,7 @@ export interface FastingLog {
     duration_minutes: number | null;
     fasting_type: string;
     status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
-    mood_entry_id: string | null;
-    weight_at_end: number | null;
+    // mood and weight are stored in dedicated tables; fasting_logs no longer contains these fields
     mood_value?: number;
     mood_notes?: string;
     created_at: string;
