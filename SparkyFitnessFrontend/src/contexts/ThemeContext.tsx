@@ -19,7 +19,10 @@ export const useTheme = () => {
   return context;
 };
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode, loggingLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT' }> = ({ children, loggingLevel }) => {
+import { usePreferences } from './PreferencesContext';
+
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { loggingLevel } = usePreferences();
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('theme');
     const initialTheme = (saved as Theme) || 'light';

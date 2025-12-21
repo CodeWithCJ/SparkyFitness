@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, ScatterChart, Scatter } from 'recharts'; // Added ScatterChart, Scatter
 import { BarChart3, TrendingUp, Activity, Dumbbell, BedDouble } from "lucide-react"; // Added Dumbbell and BedDouble
+import { getFastingDataRange, FastingLog } from '@/services/fastingService';
+import { FastingReport } from './reports/FastingReport';
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,6 +69,7 @@ const Reports = () => {
   const [moodData, setMoodData] = useState<MoodEntry[]>([]); // New state for mood data
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<string | null>(null);
+  const [fastingData, setFastingData] = useState<FastingLog[]>([]);
   const [endDate, setEndDate] = useState<string | null>(null);
   const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("charts");
@@ -139,6 +142,7 @@ const Reports = () => {
         getExerciseDashboardData(activeUserId, startDate, endDate, null, null, null),
         getRawStressData(activeUserId),
         getMoodEntries(activeUserId, startDate, endDate),
+        getFastingDataRange(startDate, endDate),
       ]);
 
       // Process results from Promise.allSettled
@@ -147,6 +151,7 @@ const Reports = () => {
         exerciseDashboardResult,
         rawStressDataResult,
         moodEntriesResult,
+        fastingDataResult,
       ] = results;
       debug(loggingLevel, 'Reports: moodEntriesResult after Promise.allSettled:', moodEntriesResult);
       // Add logging for the status and value/reason of moodEntriesResult
@@ -208,6 +213,13 @@ const Reports = () => {
           description: "Failed to load mood entries.",
           variant: "destructive",
         });
+      }
+
+      if (fastingDataResult.status === 'fulfilled') {
+        setFastingData(fastingDataResult.value);
+      } else {
+        error(loggingLevel, 'Reports: Failed to load fasting data:', fastingDataResult.reason);
+        setFastingData([]);
       }
 
       info(loggingLevel, 'Reports: Reports loaded successfully.');
@@ -362,7 +374,7 @@ const Reports = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `food-diary-${startDate}-to-${endDate}.csv`;
+      a.download = `food - diary - ${ startDate } -to - ${ endDate }.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -425,7 +437,7 @@ const Reports = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `exercise-entries-${startDate}-to-${endDate}.csv`;
+      a.download = `exercise - entries - ${ startDate } -to - ${ endDate }.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -463,16 +475,16 @@ const Reports = () => {
         return;
       }
 
-      info(loggingLevel, `Reports: Fetched ${measurements.length} body measurement entries for export.`);
+      info(loggingLevel, `Reports: Fetched ${ measurements.length } body measurement entries for export.`);
 
       const csvHeaders = [
         t('reports.bodyMeasurementsExportHeaders.date', 'Date'),
-        t('reports.bodyMeasurementsExportHeaders.weight', `Weight (${defaultWeightUnit})`),
-        t('reports.bodyMeasurementsExportHeaders.neck', `Neck (${defaultMeasurementUnit})`),
-        t('reports.bodyMeasurementsExportHeaders.waist', `Waist (${defaultMeasurementUnit})`),
-        t('reports.bodyMeasurementsExportHeaders.hips', `Hips (${defaultMeasurementUnit})`),
+        t('reports.bodyMeasurementsExportHeaders.weight', `Weight(${ defaultWeightUnit })`),
+        t('reports.bodyMeasurementsExportHeaders.neck', `Neck(${ defaultMeasurementUnit })`),
+        t('reports.bodyMeasurementsExportHeaders.waist', `Waist(${ defaultMeasurementUnit })`),
+        t('reports.bodyMeasurementsExportHeaders.hips', `Hips(${ defaultMeasurementUnit })`),
         t('reports.bodyMeasurementsExportHeaders.steps', 'Steps'),
-        t('reports.bodyMeasurementsExportHeaders.height', `Height (${defaultMeasurementUnit})`),
+        t('reports.bodyMeasurementsExportHeaders.height', `Height(${ defaultMeasurementUnit })`),
         t('reports.bodyMeasurementsExportHeaders.bodyFatPercentage', 'Body Fat %')
       ];
 
@@ -505,7 +517,7 @@ const Reports = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `body-measurements-${startDate}-to-${endDate}.csv`;
+      a.download = `body - measurements - ${ startDate } -to - ${ endDate }.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -527,20 +539,20 @@ const Reports = () => {
   };
 
   const exportCustomMeasurements = async (category: CustomCategory) => {
-    info(loggingLevel, `Reports: Attempting to export custom measurements for category: ${category.name} (${category.id})`);
+    info(loggingLevel, `Reports: Attempting to export custom measurements for category: ${ category.name } (${ category.id })`);
     try {
       const measurements = customMeasurementsData[category.id];
       if (!measurements || measurements.length === 0) {
-        warn(loggingLevel, `Reports: No custom measurement data to export for category: ${category.name}.`);
+        warn(loggingLevel, `Reports: No custom measurement data to export for category: ${ category.name }.`);
         toast({
           title: t('reports.noData', "No Data"),
-          description: t('reports.noCustomMeasurementDataToExport', `No ${category.display_name || category.name} data to export`, { categoryName: category.display_name || category.name }),
+          description: t('reports.noCustomMeasurementDataToExport', `No ${ category.display_name || category.name } data to export `, { categoryName: category.display_name || category.name }),
           variant: "destructive",
         });
         return;
       }
 
-      info(loggingLevel, `Reports: Found ${measurements.length} custom measurement entries for category: ${category.name}.`);
+      info(loggingLevel, `Reports: Found ${ measurements.length } custom measurement entries for category: ${ category.name }.`);
 
       // Sort by timestamp descending
       const sortedMeasurements = [...measurements].sort((a, b) =>
@@ -556,7 +568,7 @@ const Reports = () => {
         const timestamp = new Date(measurement.timestamp);
         const hour = timestamp.getHours();
         const minutes = timestamp.getMinutes();
-        const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        const formattedHour = `${ hour.toString().padStart(2, '0') }:${ minutes.toString().padStart(2, '0') } `;
 
         return [
           measurement.entry_date && !isNaN(parseISO(measurement.entry_date).getTime()) ? formatDateInUserTimezone(parseISO(measurement.entry_date), 'MMM dd, yyyy') : '', // Format date for display
@@ -573,19 +585,19 @@ const Reports = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${(category.display_name || category.name).toLowerCase().replace(/\s+/g, '-')}-${startDate}-to-${endDate}.csv`;
+      a.download = `${ (category.display_name || category.name).toLowerCase().replace(/\s+/g, '-') } -${ startDate } -to - ${ endDate }.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      info(loggingLevel, `Reports: Custom measurements exported successfully for category: ${category.name}.`);
+      info(loggingLevel, `Reports: Custom measurements exported successfully for category: ${ category.name }.`);
       toast({
         title: t('reports.customMeasurementsExportSuccess', "Success"),
-        description: t('reports.customMeasurementsExportSuccess', `${category.display_name || category.name} data exported successfully`, { categoryName: category.display_name || category.name }),
+        description: t('reports.customMeasurementsExportSuccess', `${ category.display_name || category.name } data exported successfully`, { categoryName: category.display_name || category.name }),
       });
     } catch (err) {
-      error(loggingLevel, `Reports: Error exporting custom measurements for category ${category.name}:`, err);
+      error(loggingLevel, `Reports: Error exporting custom measurements for category ${ category.name }: `, err);
       toast({
         title: t('reports.errorToastTitle', "Error"),
         description: t('reports.customMeasurementsExportError', "Failed to export data"),
@@ -595,31 +607,31 @@ const Reports = () => {
   };
 
   const formatCustomChartData = (category: CustomCategory, data: CustomMeasurementData[]) => {
-    debug(loggingLevel, `Reports: Formatting custom chart data for category: ${category.name} (${category.frequency})`);
+    debug(loggingLevel, `Reports: Formatting custom chart data for category: ${ category.name } (${ category.frequency })`);
     const isConvertibleMeasurement = ['kg', 'lbs', 'cm', 'inches'].includes(category.measurement_type.toLowerCase());
 
     const convertValue = (value: string | number) => {
       const numericValue = typeof value === 'string' ? parseFloat(value) : value;
       if (isNaN(numericValue)) {
-        debug(loggingLevel, `Reports: convertValue received non-numeric value: ${value}. Returning null.`);
+        debug(loggingLevel, `Reports: convertValue received non - numeric value: ${ value }. Returning null.`);
         return null;
       }
       if (isConvertibleMeasurement) {
         // Assuming custom measurements are stored in 'cm' if they are convertible
         const converted = convertMeasurement(numericValue, 'cm', defaultMeasurementUnit);
-        debug(loggingLevel, `Reports: Converted value from ${numericValue} to ${converted} for category.`);
+        debug(loggingLevel, `Reports: Converted value from ${ numericValue } to ${ converted } for category.`);
         return converted;
       }
-      debug(loggingLevel, `Reports: Returning original value ${numericValue} for non-convertible category.`);
+      debug(loggingLevel, `Reports: Returning original value ${ numericValue } for non - convertible category.`);
       return numericValue;
     };
 
     if (category.frequency === 'Hourly' || category.frequency === 'All') {
       return data.map(d => {
         const convertedValue = convertValue(d.value);
-        debug(loggingLevel, `Reports: Mapping data point - original value: ${d.value}, converted value: ${convertedValue}`);
+        debug(loggingLevel, `Reports: Mapping data point - original value: ${ d.value }, converted value: ${ convertedValue } `);
         return {
-          date: `${d.entry_date} ${d.hour !== null ? String(d.hour).padStart(2, '0') + ':00' : ''}`,
+          date: `${ d.entry_date } ${ d.hour !== null ? String(d.hour).padStart(2, '0') + ':00' : '' } `,
           value: convertedValue,
           notes: d.notes
         };
@@ -635,7 +647,7 @@ const Reports = () => {
 
       return Object.values(grouped).map(d => {
         const convertedValue = convertValue(d.value);
-        debug(loggingLevel, `Reports: Mapping grouped data point - original value: ${d.value}, converted value: ${convertedValue}`);
+        debug(loggingLevel, `Reports: Mapping grouped data point - original value: ${ d.value }, converted value: ${ convertedValue } `);
         return {
           date: d.entry_date,
           value: convertedValue,
@@ -695,22 +707,22 @@ const Reports = () => {
         <div>{t('reports.loadingReports', "Loading reports...")}</div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5"> {/* Changed to 5 columns */}
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="charts" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               {t('reports.chartsTab', "Charts")}
             </TabsTrigger>
-            <TabsTrigger value="exercise-charts" className="flex items-center gap-2"> {/* New tab for exercise charts */}
+            <TabsTrigger value="fasting" className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              {t('reports.fasting.insightsTab', "Fasting Insights")}
+            </TabsTrigger>
+            <TabsTrigger value="exercise-charts" className="flex items-center gap-2">
               <Dumbbell className="w-4 h-4" />
               {t('reports.exerciseProgressTab', "Exercise Progress")}
             </TabsTrigger>
             <TabsTrigger value="sleep-analytics" className="flex items-center gap-2">
               <BedDouble className="w-4 h-4" />
               {t('reports.sleepTab', "Sleep")}
-            </TabsTrigger>
-            <TabsTrigger value="stress-analytics" className="flex items-center gap-2"> {/* New tab for Stress */}
-              <Activity className="w-4 h-4" /> {/* Using Activity icon for stress */}
-              {t('reports.stressTab', "Stress")}
             </TabsTrigger>
             <TabsTrigger value="table" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
@@ -742,8 +754,8 @@ const Reports = () => {
                             <CardTitle className="flex items-center">
                               <Activity className="w-5 h-5 mr-2" />
                               {category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
-                                ? `${category.display_name || category.name} (${defaultMeasurementUnit})`
-                                : `${category.display_name || category.name} (${category.measurement_type})`}
+                                ? `${ category.display_name || category.name } (${ defaultMeasurementUnit })`
+                                : `${ category.display_name || category.name } (${ category.measurement_type })`}
                             </CardTitle>
                           </CardHeader>
                           <CardContent>
@@ -773,9 +785,9 @@ const Reports = () => {
 
                                         return (
                                           <div className="p-2 bg-background border rounded-md shadow-md">
-                                            <p className="label">{`${label}`}</p>
+                                            <p className="label">{`${ label } `}</p>
                                             {!isNaN(numericValue) ? (
-                                              <p className="intro">{`${numericValue.toFixed(1)} ${unit}`}</p>
+                                              <p className="intro">{`${ numericValue.toFixed(1) } ${ unit } `}</p>
                                             ) : (
                                               <p className="intro">{t('reports.notApplicable', 'N/A')}</p>
                                             )}
@@ -800,7 +812,11 @@ const Reports = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="exercise-charts" className="space-y-6"> {/* New tab content */}
+          <TabsContent value="fasting" className="space-y-6">
+            <FastingReport fastingData={fastingData} />
+          </TabsContent>
+          <TabsContent value="exercise-charts" className="space-y-6">
+            {/* Existing exercise charts content */}
             <ExerciseReportsDashboard
               exerciseDashboardData={exerciseDashboardData}
               startDate={startDate}

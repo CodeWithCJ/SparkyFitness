@@ -60,7 +60,8 @@ BEGIN
     'workout_preset_exercises',
     'workout_presets',
     'sleep_entries',
-    'sleep_entry_stages'
+    'sleep_entry_stages',
+    'fasting_logs'
   ]::text[]) AS table_name;
 END $$;
 
@@ -289,3 +290,4 @@ USING (EXISTS (SELECT 1 FROM public.workout_presets wp WHERE wp.id = workout_pre
 WITH CHECK (EXISTS (SELECT 1 FROM public.workout_presets wp WHERE wp.id = workout_preset_exercises.workout_preset_id));
 
 SELECT create_owner_policy('user_ignored_updates');
+SELECT create_owner_policy('fasting_logs');
