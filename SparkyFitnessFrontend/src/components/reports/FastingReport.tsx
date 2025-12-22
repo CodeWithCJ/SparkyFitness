@@ -131,8 +131,20 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={dailyData}>
                                             <XAxis dataKey="date" />
-                                            <YAxis domain={dailyDomain} label={{ value: t('reports.fasting.hours', 'Hours'), angle: -90, position: 'insideLeft' }} />
-                                            <Tooltip />
+                                            <YAxis
+                                                domain={dailyDomain}
+                                                label={{ value: t('reports.fasting.hours', 'Hours'), angle: -90, position: 'insideLeft' }}
+                                                tickFormatter={(val) => {
+                                                    if (val === null || val === undefined) return '';
+                                                    const num = Number(val as any);
+                                                    return Number.isNaN(num) ? String(val) : num.toFixed(2);
+                                                }}
+                                            />
+                                            <Tooltip formatter={(value: any) => {
+                                                if (value === null || value === undefined) return '';
+                                                const num = Number(value);
+                                                return Number.isNaN(num) ? String(value) : num.toFixed(2);
+                                            }} />
                                             <Bar dataKey="hours" fill="#6366f1" />
                                         </BarChart>
                                     </ResponsiveContainer>
@@ -194,8 +206,20 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
                                         <LineChart data={trendData}>
                                             <CartesianGrid strokeDasharray="3 3" />
                                             <XAxis dataKey="date" />
-                                            <YAxis domain={trendDomain} label={{ value: t('reports.fasting.avgHours', 'Avg Hours'), angle: -90, position: 'insideLeft' }} />
-                                            <Tooltip />
+                                            <YAxis
+                                                domain={trendDomain}
+                                                label={{ value: t('reports.fasting.avgHours', 'Avg Hours'), angle: -90, position: 'insideLeft' }}
+                                                tickFormatter={(val) => {
+                                                    if (val === null || val === undefined) return '';
+                                                    const num = Number(val as any);
+                                                    return Number.isNaN(num) ? String(val) : num.toFixed(2);
+                                                }}
+                                            />
+                                            <Tooltip formatter={(value: any) => {
+                                                if (value === null || value === undefined) return '';
+                                                const num = Number(value);
+                                                return Number.isNaN(num) ? String(value) : num.toFixed(2);
+                                            }} />
                                             <Line type="monotone" dataKey="avg" stroke="#06b6d4" />
                                         </LineChart>
                                     </ResponsiveContainer>

@@ -4,6 +4,7 @@ import { debug, info, warn, error } from "@/utils/logging";
 import { apiCall } from "@/services/api";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { FastingProvider } from '@/contexts/FastingContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import FoodDiary from "@/components/FoodDiary";
@@ -426,7 +427,11 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
               />
             </TabsContent>
             <TabsContent value="checkin" className="space-y-6">
-              <CheckIn />
+              {activeTab === 'checkin' && (
+                <FastingProvider>
+                  <CheckIn />
+                </FastingProvider>
+              )}
             </TabsContent>
             <TabsContent value="reports" className="space-y-6">
               <Reports />
