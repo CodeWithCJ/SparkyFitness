@@ -18,15 +18,20 @@ export const FastingProvider: React.FC<{ children: ReactNode }> = ({ children })
     const [activeFast, setActiveFast] = useState<FastingLog | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-    const { user } = useAuth(); // Authenticated if user is not null
+    const { user, loading: authLoading } = useAuth(); // Authenticated if user is not null
     const isAuthenticated = !!user;
 
     const refreshFast = useCallback(async () => {
         console.log(`[FastingContext] refreshFast called. IsAuthenticated: ${isAuthenticated}`);
+        // Ensure loading flag is accurate for callers
+        setIsLoading(true);
         if (!isAuthenticated) {
             console.log("[FastingContext] Not authenticated, skipping refresh.");
+            setActiveFast(null);
+            setIsLoading(false);
             return;
         }
+
         try {
             console.log("[FastingContext] Fetching active fast...");
             const fast = await fastingService.getCurrentFast();
@@ -34,6 +39,7 @@ export const FastingProvider: React.FC<{ children: ReactNode }> = ({ children })
             setActiveFast(fast);
         } catch (error) {
             console.error("[FastingContext] Failed to fetch active fast", error);
+            setActiveFast(null);
         } finally {
             setIsLoading(false);
         }
@@ -41,8 +47,20 @@ export const FastingProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     useEffect(() => {
         console.log("[FastingContext] useEffect triggered due to refreshFast change.");
+        // Wait until auth check completes to decide whether to refresh fasting state
+        if (authLoading) {
+            console.log("[FastingContext] Auth still loading, delaying refresh.");
+            return;
+        }
+        if (!isAuthenticated) {
+            console.log("[FastingContext] No authenticated user, skipping refresh.");
+            // Ensure loading flag is cleared for consumers
+            setActiveFast(null);
+            setIsLoading(false);
+            return;
+        }
         refreshFast();
-    }, [refreshFast]);
+    }, [refreshFast, authLoading, isAuthenticated]);
 
     const startFast = async (startTime: Date, targetEndTime: Date, fastingType: string) => {
         try {

@@ -7,7 +7,7 @@ import { ChatbotVisibilityProvider } from "@/contexts/ChatbotVisibilityContext";
 import LanguageHandler from "@/components/LanguageHandler";
 import { WaterContainerProvider } from "@/contexts/WaterContainerContext"; // Import WaterContainerProvider
 import { ActiveUserProvider } from "@/contexts/ActiveUserContext"; // Import ActiveUserProvider
-import { FastingProvider } from "@/contexts/FastingContext"; // Import FastingProvider
+// FastingProvider moved to mount only where needed (CheckIn / Fasting page)
 import { ThemeProvider } from "@/contexts/ThemeContext"; // Import ThemeProvider
 import AppContent from "@/components/AppContent";
 import DraggableChatbotButton from "@/components/DraggableChatbotButton";
@@ -22,7 +22,9 @@ import ResetPassword from '@/pages/ResetPassword';
 import WithingsCallback from '@/pages/WithingsCallback';
 import ExternalProviderSettings from '@/components/ExternalProviderSettings'; // Import ExternalProviderSettings
 import Auth from '@/components/Auth'; // Import the Auth component
+import { useAuth } from '@/hooks/useAuth';
 import FastingPage from "@/pages/FastingPage";
+import { FastingProvider } from '@/contexts/FastingContext';
 import Index from "@/pages/Index"; // Ensure Index is imported
 
 const queryClient = new QueryClient();
@@ -53,6 +55,9 @@ const App = () => {
     setShowNewReleaseDialog(false);
   };
 
+  // Read auth state so the root route can show login when not authenticated
+  const { user, loading: authLoading } = useAuth();
+
   return (
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider>
@@ -61,14 +66,24 @@ const App = () => {
           <ChatbotVisibilityProvider>
             <WaterContainerProvider> {/* Wrap with WaterContainerProvider */}
               <ActiveUserProvider> {/* Wrap with ActiveUserProvider */}
-                <FastingProvider>
                   <AppSetup
                     setLatestRelease={setLatestRelease}
                     setShowNewReleaseDialog={setShowNewReleaseDialog}
                   />
                   <Routes>
-                    <Route path="/" element={<Index onShowAboutDialog={() => setShowAboutDialog(true)} />} />
-                    <Route path="/fasting" element={<FastingPage />} />
+                    <Route
+                      path="/"
+                      element={
+                        authLoading ? (
+                          <div className="min-h-screen flex items-center justify-center">Loading...</div>
+                        ) : user ? (
+                          <Index onShowAboutDialog={() => setShowAboutDialog(true)} />
+                        ) : (
+                          <Auth />
+                        )
+                      }
+                    />
+                    <Route path="/fasting" element={<FastingProvider><FastingPage /></FastingProvider>} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/login/magic-link" element={<Auth />} /> {/* New route for Magic Link Login */}
@@ -85,7 +100,6 @@ const App = () => {
                     onDismissForVersion={handleDismissRelease}
                   />
                   <Toaster /> {/* Render the Toaster component */}
-                </FastingProvider>
               </ActiveUserProvider>
             </WaterContainerProvider>
           </ChatbotVisibilityProvider>
@@ -94,5 +108,5 @@ const App = () => {
     </QueryClientProvider>
   );
 };
-
+                 
 export default App;
