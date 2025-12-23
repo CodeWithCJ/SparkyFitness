@@ -89,6 +89,25 @@ jobs:
         APK_PATH=$(find SparkyFitnessMobile/android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
         echo "path=$APK_PATH" >> $GITHUB_OUTPUT
         echo "name=$(basename $APK_PATH)" >> $GITHUB_OUTPUT
+
+    - name: Build Release AAB
+      if: github.event_name != 'pull_request'
+      run: |
+        cd SparkyFitnessMobile/android
+        ./gradlew :app:bundleRelease \
+          -PMYAPP_RELEASE_STORE_FILE=${{ github.workspace }}/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore \
+          -PMYAPP_RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }} \
+          -PMYAPP_RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }} \
+          -PMYAPP_RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }} \
+          --stacktrace
+        
+    - name: Get AAB path
+      if: github.event_name != 'pull_request'
+      id: aab
+      run: |
+        AAB_PATH=$(find SparkyFitnessMobile/android/app/build/outputs/bundle/release -name "*.aab" | head -n 1)
+        echo "path=$AAB_PATH" >> $GITHUB_OUTPUT
+        echo "name=$(basename $AAB_PATH)" >> $GITHUB_OUTPUT
         
     - name: Get version from package.json
       if: github.event_name != 'pull_request'
@@ -101,7 +120,9 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
-        files: ${{ steps.apk.outputs.path }}
+        files: |
+          ${{ steps.apk.outputs.path }}
+          ${{ steps.aab.outputs.path }}
         draft: false
         prerelease: false
         generate_release_notes: true
