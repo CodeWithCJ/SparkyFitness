@@ -114,7 +114,7 @@ jobs:
             # Ad-Hoc sign the app with entitlements before packaging
             # This ensures HealthKit and other permissions are "requested" in the binary
             echo "Applying Ad-Hoc signature with entitlements..."
-            codesign -s - --entitlements SparkyFitnessMobile/ios/SparkyFitnessMobile/SparkyFitnessMobile.entitlements --force --deep "$APP_PATH"
+            codesign -s - --entitlements SparkyFitnessMobile/SparkyFitnessMobile.entitlements --force --deep "$APP_PATH"
 
             rm -rf Payload
             mkdir -p Payload
