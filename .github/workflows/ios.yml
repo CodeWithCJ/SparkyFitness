@@ -27,15 +27,14 @@ jobs:
 
       # 4️⃣ Install CocoaPods
       - name: Install CocoaPods
+        working-directory: SparkyFitnessMobile/ios
         run: |
-          cd ios
           pod install
-          cd ..
 
       # 5️⃣ Build iOS app (UNSIGNED – free account)
       - name: Build iOS App (Unsigned)
+        working-directory: SparkyFitnessMobile/ios
         run: |
-          cd ios
           xcodebuild clean archive \
             -workspace SparkyFitnessMobile.xcworkspace \
             -scheme SparkyFitnessMobile \
@@ -44,23 +43,21 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=""
-          cd ..
 
       # 6️⃣ Export unsigned IPA
       - name: Export Unsigned IPA
+        working-directory: SparkyFitnessMobile/ios
         run: |
-          cd ios
           mkdir -p build/ipa
           xcodebuild -exportArchive \
             -archivePath build/SparkyFitnessMobile.xcarchive \
             -exportPath build/ipa \
             -exportOptionsPlist /dev/null
-          cd ..
 
       # 7️⃣ Attach IPA to GitHub Release
       - name: Upload IPA to Release
         uses: softprops/action-gh-release@v1
         with:
-          files: ios/build/ipa/*.ipa
+          files: SparkyFitnessMobile/ios/build/ipa/*.ipa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
