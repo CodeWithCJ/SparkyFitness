@@ -103,18 +103,22 @@ jobs:
         working-directory: SparkyFitnessMobile/ios
         run: |
           mkdir -p build/ipa
-          # Try default export (some Xcode versions accept /dev/null for unsigned exports)
-          xcodebuild -exportArchive \
-            -archivePath build/SparkyFitnessMobile.xcarchive \
-            -exportPath build/ipa \
-            -exportOptionsPlist /dev/null || true
-          # If no IPA was created, generate a minimal ExportOptions.plist and retry
-          if [ -z "$(ls build/ipa/*.ipa 2>/dev/null)" ]; then
-            printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' '<plist version="1.0">' '<dict>' '  <key>method</key>' '  <string>development</string>' '  <key>compileBitcode</key>' '  <false/>' '  <key>signingStyle</key>' '  <string>manual</string>' '</dict>' '</plist>' > exportOptions.plist
-            xcodebuild -exportArchive \
-              -archivePath build/SparkyFitnessMobile.xcarchive \
-              -exportPath build/ipa \
-              -exportOptionsPlist exportOptions.plist
+          ARCHIVE_PATH=build/SparkyFitnessMobile.xcarchive
+          APP_PATH="$ARCHIVE_PATH/Products/Applications/SparkyFitnessMobile.app"
+          IPA_DIR=build/ipa
+
+          # Create an unsigned IPA by packaging the .app inside the xcarchive
+          if [ -d "$APP_PATH" ]; then
+            rm -rf Payload
+            mkdir -p Payload
+            cp -R "$APP_PATH" Payload/
+            # Use ditto to create an IPA that preserves resource forks
+            /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload "$IPA_DIR/SparkyFitnessMobile-unsigned.ipa"
+            rm -rf Payload
+          else
+            echo "App not found at $APP_PATH"
+            ls -la "$ARCHIVE_PATH"
+            exit 1
           fi
       - name: List IPA files
         working-directory: SparkyFitnessMobile/ios
