@@ -111,6 +111,11 @@ jobs:
 
           # Create an unsigned IPA by packaging the .app inside the xcarchive
           if [ -d "$APP_PATH" ]; then
+            # Ad-Hoc sign the app with entitlements before packaging
+            # This ensures HealthKit and other permissions are "requested" in the binary
+            echo "Applying Ad-Hoc signature with entitlements..."
+            codesign -s - --entitlements SparkyFitnessMobile/ios/SparkyFitnessMobile/SparkyFitnessMobile.entitlements --force --deep "$APP_PATH"
+
             rm -rf Payload
             mkdir -p Payload
             cp -R "$APP_PATH" Payload/
