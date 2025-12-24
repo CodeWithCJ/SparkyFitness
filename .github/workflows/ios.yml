@@ -112,9 +112,15 @@ jobs:
           # Create an unsigned IPA by packaging the .app inside the xcarchive
           if [ -d "$APP_PATH" ]; then
             # Ad-Hoc sign the app with entitlements before packaging
-            # This ensures HealthKit and other permissions are "requested" in the binary
-            echo "Applying Ad-Hoc signature with entitlements..."
-            codesign -s - --entitlements SparkyFitnessMobile/SparkyFitnessMobile.entitlements --force --deep "$APP_PATH"
+            # We sign frameworks first (no entitlements), then the main app (with entitlements)
+            # This is more robust than --deep
+            echo "Signing frameworks..."
+            find "$APP_PATH/Frameworks" -type d -name "*.framework" | while read -r framework; do
+              codesign -s - --force --preserve-metadata=identifier,entitlements "$framework"
+            done
+            
+            echo "Applying Ad-Hoc signature to App with entitlements..."
+            codesign -s - --entitlements SparkyFitnessMobile/SparkyFitnessMobile.entitlements --force "$APP_PATH"
 
             rm -rf Payload
             mkdir -p Payload
