@@ -119,8 +119,17 @@ jobs:
               codesign -s - --force --preserve-metadata=identifier,entitlements "$framework"
             done
             
-            echo "Applying Ad-Hoc signature to App with entitlements..."
+            echo "Applying Ad-Hoc signature to App binary with entitlements..."
+            # Sign the main binary EXPLICITLY
+            codesign -s - --entitlements SparkyFitnessMobile/SparkyFitnessMobile.entitlements --force "$APP_PATH/SparkyFitnessMobile"
+            
+            echo "Applying Ad-Hoc signature to App Bundle..."
+            # Sign the bundle wrapper
             codesign -s - --entitlements SparkyFitnessMobile/SparkyFitnessMobile.entitlements --force "$APP_PATH"
+
+            # VERIFY the entitlements were applied
+            echo "Verifying Entitlements on Binary:"
+            codesign -d --entitlements :- "$APP_PATH/SparkyFitnessMobile"
 
             rm -rf Payload
             mkdir -p Payload
