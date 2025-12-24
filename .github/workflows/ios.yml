@@ -21,15 +21,69 @@ jobs:
         with:
           node-version: '20'
 
+      # 📋 Print key environment versions for easier debugging
+      - name: Print environment versions
+        run: |
+          echo "Node: $(node -v)"
+          echo "NPM: $(npm -v)"
+          echo "Ruby: $(ruby -v || true)"
+          echo "Gem: $(gem --version || true)"
+          echo "CocoaPods: $(pod --version || true)"
+          echo "Xcode: $(xcodebuild -version || true)"
+
       # 3️⃣ Install JS dependencies
       - name: Install npm dependencies
         run: npm install
 
-      # 4️⃣ Install CocoaPods
+      # 3.1️⃣ Cache Mobile node modules
+      - name: Cache Mobile node modules
+        uses: actions/cache@v4
+        with:
+          path: SparkyFitnessMobile/node_modules
+          key: ${{ runner.os }}-sparky-mobile-${{ hashFiles('SparkyFitnessMobile/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-sparky-mobile-
+
+      # 3.2️⃣ Install Mobile JS dependencies (needed for Pod install)
+      - name: Install Mobile JS dependencies
+        working-directory: SparkyFitnessMobile
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --prefer-offline --no-audit --progress=false
+          else
+            npm install --no-audit --progress=false
+          fi
+
+      # 4️⃣ Cache CocoaPods spec repo
+      - name: Cache CocoaPods spec repo
+        uses: actions/cache@v4
+        with:
+          path: |
+            $HOME/.cocoapods/repos
+            $HOME/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('SparkyFitnessMobile/ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cocoapods-
+
+      # 4.1️⃣ Ensure CocoaPods is installed
+      - name: Ensure CocoaPods is installed
+        run: |
+          if ! command -v pod >/dev/null; then
+            gem install cocoapods --no-document
+          fi
+
+      # 4.2️⃣ Install CocoaPods
       - name: Install CocoaPods
         working-directory: SparkyFitnessMobile/ios
         run: |
-          pod install
+          pod install --repo-update
+
+      - name: List iOS Pods and Podfile.lock
+        working-directory: SparkyFitnessMobile/ios
+        run: |
+          ls -la
+          ls -la Pods || true
+          cat Podfile.lock || true
 
       # 5️⃣ Build iOS app (UNSIGNED – free account)
       - name: Build iOS App (Unsigned)
@@ -49,10 +103,24 @@ jobs:
         working-directory: SparkyFitnessMobile/ios
         run: |
           mkdir -p build/ipa
+          # Try default export (some Xcode versions accept /dev/null for unsigned exports)
           xcodebuild -exportArchive \
             -archivePath build/SparkyFitnessMobile.xcarchive \
             -exportPath build/ipa \
-            -exportOptionsPlist /dev/null
+            -exportOptionsPlist /dev/null || true
+          # If no IPA was created, generate a minimal ExportOptions.plist and retry
+          if [ -z "$(ls build/ipa/*.ipa 2>/dev/null)" ]; then
+            printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' '<plist version="1.0">' '<dict>' '  <key>method</key>' '  <string>development</string>' '  <key>compileBitcode</key>' '  <false/>' '  <key>signingStyle</key>' '  <string>manual</string>' '</dict>' '</plist>' > exportOptions.plist
+            xcodebuild -exportArchive \
+              -archivePath build/SparkyFitnessMobile.xcarchive \
+              -exportPath build/ipa \
+              -exportOptionsPlist exportOptions.plist
+          fi
+      - name: List IPA files
+        working-directory: SparkyFitnessMobile/ios
+        run: ls -la build/ipa || true
+      - name: Ensure IPA exists
+        run: test -n "$(ls SparkyFitnessMobile/ios/build/ipa/*.ipa 2>/dev/null)" || (echo "No IPA found" && exit 1)
 
       # 7️⃣ Attach IPA to GitHub Release
       - name: Upload IPA to Release
