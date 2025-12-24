@@ -7,6 +7,8 @@ on:
 jobs:
   build-ios:
     runs-on: macos-latest
+    permissions:
+      contents: write
 
     steps:
       # 1️⃣ Checkout code at the release tag
