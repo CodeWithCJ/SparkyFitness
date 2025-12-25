@@ -120,12 +120,12 @@ jobs:
             done
             
             echo "Applying Ad-Hoc signature to App binary with entitlements..."
-            # Sign the main binary EXPLICITLY
-            codesign -s - --entitlements SparkyFitnessMobile/SparkyFitnessMobile.entitlements --force "$APP_PATH/SparkyFitnessMobile"
+            # Sign the main binary EXPLICITLY with DER entitlements
+            codesign -s - --entitlements SparkyFitnessMobile/SparkyFitnessMobile.entitlements --force --generate-entitlement-der "$APP_PATH/SparkyFitnessMobile"
             
             echo "Applying Ad-Hoc signature to App Bundle..."
-            # Sign the bundle wrapper
-            codesign -s - --entitlements SparkyFitnessMobile/SparkyFitnessMobile.entitlements --force "$APP_PATH"
+            # Sign the bundle wrapper (without entitlements, they are in the binary)
+            codesign -s - --force "$APP_PATH"
 
             # VERIFY the entitlements were applied
             echo "Verifying Entitlements on Binary:"
