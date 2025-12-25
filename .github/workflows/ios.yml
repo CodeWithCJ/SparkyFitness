@@ -119,13 +119,19 @@ jobs:
               codesign -s - --force --preserve-metadata=identifier,entitlements "$framework"
             done
             
-            echo "Applying Ad-Hoc signature to App binary with entitlements..."
-            # Sign the main binary EXPLICITLY with DER entitlements
-            codesign -s - --entitlements SparkyFitnessMobile/SparkyFitnessMobile.entitlements --force --generate-entitlement-der "$APP_PATH/SparkyFitnessMobile"
+            echo "Preparing Entitlements for AltStore (Injecting get-task-allow)..."
+            # specific fix for AltStore/Free Dev Account: They need get-task-allow=true (Development signing)
+            # but Release builds default to false. We simply append it to a temp entitlements file.
+            cp SparkyFitnessMobile/SparkyFitnessMobile.entitlements temp.entitlements
+            /usr/libexec/PlistBuddy -c "Add :get-task-allow bool true" temp.entitlements || echo "get-task-allow already exists"
+
+            echo "Applying Ad-Hoc signature to App binary with MODIFIED entitlements..."
+            # Sign the main binary EXPLICITLY with DER entitlements using the TEMP file
+            codesign -s - --entitlements temp.entitlements --force --generate-entitlement-der "$APP_PATH/SparkyFitnessMobile"
             
             echo "Applying Ad-Hoc signature to App Bundle..."
-            # Sign the bundle wrapper (without entitlements, they are in the binary)
-            codesign -s - --force "$APP_PATH"
+            # Sign the bundle wrapper as well to ensure consistent signature depth
+            codesign -s - --entitlements temp.entitlements --force --generate-entitlement-der "$APP_PATH"
 
             # VERIFY the entitlements were applied
             echo "Verifying Entitlements on Binary:"
