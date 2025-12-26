@@ -743,7 +743,7 @@ const MainScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
         {/* Open Web Dashboard Button */}
         <TouchableOpacity style={styles.webButtonContainer} onPress={openWebDashboard}>

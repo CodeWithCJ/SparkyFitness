@@ -108,7 +108,7 @@ const LogScreen = ({ navigation }) => {
 
 
   return (
-  <View style={[styles.container, { backgroundColor: colors.background }]}>
+  <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
     <FlatList
       data={logs}
       renderItem={({ item }) => (

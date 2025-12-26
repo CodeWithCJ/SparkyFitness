@@ -9,6 +9,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import LogScreen from './src/screens/LogScreen';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 const Stack = createStackNavigator();
 
 function AppContent() {
@@ -31,12 +32,14 @@ function AppContent() {
 
   return (
     <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
+      <SafeAreaProvider>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <Stack.Navigator initialRouteName="Main">
         <Stack.Screen name="Main" component={MainScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Logs" component={LogScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
+      </SafeAreaProvider>
     </NavigationContainer>
   );
 }
