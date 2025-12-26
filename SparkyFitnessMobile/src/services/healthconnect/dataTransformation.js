@@ -141,8 +141,30 @@ export const transformHealthRecords = (records, metricConfig) => {
               const start = new Date(record.startTime).getTime();
               const end = new Date(record.endTime).getTime();
               if (!isNaN(start) && !isNaN(end)) {
-                value = (end - start) / (1000 * 60);
+                // Calculate duration in seconds
+                const durationInSeconds = (end - start) / 1000;
                 recordDate = record.startTime.split('T')[0];
+
+                // Push a rich object directly, bypassing the simple value/unit structure
+                // The server's processHealthData handles this specific structure for SleepSession
+                transformedData.push({
+                  type: 'SleepSession',
+                  source: 'Health Connect',
+                  date: recordDate, // Used for date fallback
+                  timestamp: record.startTime,
+                  entry_date: recordDate,
+                  bedtime: record.startTime,
+                  wake_time: record.endTime,
+                  duration_in_seconds: durationInSeconds,
+                  time_asleep_in_seconds: durationInSeconds, // Default to total duration if no stages available
+                  stage_events: [], // Android Health Connect might need separate query for stages, sending empty for now (server will default to 'light')
+                  sleep_score: 0,
+                  deep_sleep_seconds: 0,
+                  light_sleep_seconds: durationInSeconds, // Default to total
+                  rem_sleep_seconds: 0,
+                  awake_sleep_seconds: 0
+                });
+                return; // Return early as we manually pushed to transformedData
               }
             }
             break;

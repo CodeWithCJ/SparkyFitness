@@ -35,6 +35,8 @@ const SUPPORTED_HK_TYPES = new Set([
   'HKQuantityTypeIdentifierDietaryWater',
   'HKQuantityTypeIdentifierLeanBodyMass',
   'HKCategoryTypeIdentifierSleepAnalysis',
+  'HKCategoryTypeIdentifierMindfulSession', // For Stress
+  'HKWorkoutTypeIdentifier', // For Workouts
 ]);
 
 // Map our internal health metric types to the official HealthKit identifiers
@@ -60,6 +62,8 @@ const HEALTHKIT_TYPE_MAP = {
   'Hydration': 'HKQuantityTypeIdentifierDietaryWater',
   'LeanBodyMass': 'HKQuantityTypeIdentifierLeanBodyMass',
   'SleepSession': 'HKCategoryTypeIdentifierSleepAnalysis',
+  'Stress': 'HKCategoryTypeIdentifierMindfulSession', // Map Stress to MindfulSession for HealthKit
+  'Workout': 'HKWorkoutTypeIdentifier', // Map Workout to HKWorkoutTypeIdentifier for HealthKit
 };
 
 
@@ -114,7 +118,14 @@ export const requestHealthPermissions = async (permissionsToRequest) => {
           writePermissionsSet.add('HKQuantityTypeIdentifierBloodPressureSystolic');
           writePermissionsSet.add('HKQuantityTypeIdentifierBloodPressureDiastolic');
         }
-      } else if (SUPPORTED_HK_TYPES.has(healthkitIdentifier)) {
+      } else if (p.recordType === 'Workout') {
+        if (p.accessType === 'read') {
+          readPermissionsSet.add('HKWorkoutTypeIdentifier');
+        } else if (p.accessType === 'write') {
+          writePermissionsSet.add('HKWorkoutTypeIdentifier');
+        }
+      }
+      else if (SUPPORTED_HK_TYPES.has(healthkitIdentifier)) {
         if (p.accessType === 'read') {
           readPermissionsSet.add(healthkitIdentifier);
         } else if (p.accessType === 'write') {
@@ -193,6 +204,8 @@ export const getSyncStartDate = (duration) => {
 };
 
 // Read health records from HealthKit
+import { queryWorkouts } from '@kingstinct/react-native-healthkit';
+
 export const readHealthRecords = async (recordType, startDate, endDate) => {
   if (!isHealthKitAvailable) {
     addLog(`[HealthKitService] HealthKit not available, returning empty records for ${recordType}`, 'warn', 'WARNING');
@@ -214,11 +227,50 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
     if (recordType === 'SleepSession') {
       console.log(`[HealthKitService DEBUG] Calling queryCategorySamples for SleepSession with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
       const samples = await queryCategorySamples(identifier, { from: startDate, to: endDate, limit: queryLimit });
-      //addLog(`[HealthKitService] Raw samples (Sleep) returned by native query: Count = ${samples.length}, First 5: ${JSON.stringify(samples.slice(0, 5))}`);
-      //addLog(`[HealthKitService] Read ${samples.length} Sleep records`);
+      addLog(`[HealthKitService] Raw samples (Sleep) returned by native query: Count = ${samples.length}, First 5: ${JSON.stringify(samples.slice(0, 5))}`);
+      addLog(`[HealthKitService] Read ${samples.length} Sleep records`);
+      const filteredSamples = samples.filter(s => {
+        const recordStartDate = new Date(s.startDate);
+        const recordEndDate = new Date(s.endDate);
+        const isWithinRange = recordStartDate >= startDate && recordEndDate <= endDate;
+        return isWithinRange;
+      });
+
+      if (samples.length > filteredSamples.length) {
+        addLog(`[HealthKitService] Manual filter applied for SleepSession. Raw count: ${samples.length}, Filtered count: ${filteredSamples.length}.`, 'warn', 'WARNING');
+      }
+
+      // Map to standard format expected by consumers (MainScreen, etc.)
+      return filteredSamples.map(s => ({
+        startTime: s.startDate,
+        endTime: s.endDate,
+        value: s.value, // 'ASLEEP', 'INBED', etc. value is often an enum in HK
+        metadata: s.metadata,
+        sourceName: s.sourceName,
+        sourceId: s.sourceId,
+      }));
+    }
+
+    if (recordType === 'Stress') {
+      console.log(`[HealthKitService DEBUG] Calling queryCategorySamples for Stress (MindfulSession) with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
+      const samples = await queryCategorySamples(identifier, { from: startDate, to: endDate, limit: queryLimit });
       return samples.map(s => ({
         startTime: s.startDate,
         endTime: s.endDate,
+        value: 1, // MindfulSession doesn't have a direct stress level, so we'll just record its presence
+      }));
+    }
+
+    if (recordType === 'Workout') {
+      console.log(`[HealthKitService DEBUG] Calling queryWorkouts for Workout with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
+      const workouts = await queryWorkouts({ from: startDate, to: endDate, limit: queryLimit });
+      return workouts.map(w => ({
+        startTime: w.startDate,
+        endTime: w.endDate,
+        activityType: w.workoutActivityType,
+        duration: w.duration,
+        totalEnergyBurned: w.totalEnergyBurned?.value,
+        totalDistance: w.totalDistance?.value,
       }));
     }
 
@@ -362,7 +414,7 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}, api)
         dataToTransform = aggregateActiveCaloriesByDate(rawRecords);
       } else if (type === 'TotalCaloriesBurned') {
         // Special Handling for iOS: Total Calories = Active + Basal (BMR)
-        // HealthKit doesn't have a "Total" type, so we must manually fetch Active calories 
+        // HealthKit doesn't have a "Total" type, so we must manually fetch Active calories
         // and combine them with the Basal calories we already fetched (rawRecords for TotalCaloriesBurned maps to Basal).
 
         try {
@@ -384,6 +436,15 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}, api)
           // Fallback to just BMR if active fails
           dataToTransform = aggregateTotalCaloriesByDate(rawRecords);
         }
+      } else if (type === 'SleepSession') {
+        dataToTransform = aggregateSleepSessions(rawRecords);
+        addLog(`[HealthKitService] Aggregated SleepSession records.`);
+      } else if (type === 'Stress') {
+        // Stress records are typically individual measurements, no aggregation needed here
+        addLog(`[HealthKitService] Processing raw Stress records.`);
+      } else if (type === 'Workout') {
+        // Workout records are already structured as sessions, no further aggregation needed here
+        addLog(`[HealthKitService] Processing raw Workout records.`);
       }
 
       const transformed = transformHealthRecords(dataToTransform, metricConfig);

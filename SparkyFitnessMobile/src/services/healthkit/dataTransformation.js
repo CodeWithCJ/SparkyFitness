@@ -43,13 +43,22 @@ export const transformHealthRecords = (records, metricConfig) => {
             }
             return; // Skip main push
           case 'SleepSession':
-            const start = new Date(record.startTime).getTime();
-            const end = new Date(record.endTime).getTime();
-            if (!isNaN(start) && !isNaN(end)) {
-              value = (end - start) / (1000 * 60); // in minutes
-              recordDate = getDateString(record.startTime);
-            }
-            break;
+            transformedData.push({
+              type: 'SleepSession',
+              source: record.source,
+              timestamp: record.timestamp,
+              entry_date: record.entry_date,
+              bedtime: record.bedtime,
+              wake_time: record.wake_time,
+              duration_in_seconds: record.duration_in_seconds,
+              time_asleep_in_seconds: record.time_asleep_in_seconds,
+              deep_sleep_seconds: record.deep_sleep_seconds,
+              light_sleep_seconds: record.light_sleep_seconds,
+              rem_sleep_seconds: record.rem_sleep_seconds,
+              awake_sleep_seconds: record.awake_sleep_seconds,
+              stage_events: record.stage_events,
+            });
+            return; // Skip main push for SleepSession as it's already fully formed
           case 'BodyFat':
           case 'OxygenSaturation':
             value = record.percentage?.inPercent;

@@ -3,8 +3,12 @@ const router = express.Router();
 const { getClient, getSystemClient } = require('../../db/poolManager'); // Use getClient for database connections
 const { log } = require('../../config/logging');
 const measurementService = require('../../services/measurementService'); // Import the new service
+const mobileHealthDataRoutes = require('./mobileHealthDataRoutes'); // Import the new mobile health data routes
 
 const sleepRepository = require('../../models/sleepRepository'); // Import sleepRepository
+
+// Mount the new mobile health data routes
+router.use('/mobile_data', mobileHealthDataRoutes);
 
 // Middleware to authenticate API key for health data submission
 router.use('/', async (req, res, next) => {

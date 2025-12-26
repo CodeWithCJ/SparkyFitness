@@ -7,6 +7,7 @@ import {
   BloodPressureRecord,
   NutritionRecord,
   SleepSessionRecord,
+  StressRecord,
   StepsRecord,
   ActiveCaloriesBurnedRecord,
   TotalCaloriesBurnedRecord,
@@ -34,6 +35,7 @@ import {
   SpeedRecord,
   Vo2MaxRecord,
   WheelchairPushesRecord,
+  WorkoutRecord,
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
 import { HEALTH_METRICS } from '../../constants/HealthMetrics';

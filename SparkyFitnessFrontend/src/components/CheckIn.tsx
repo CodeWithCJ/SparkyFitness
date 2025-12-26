@@ -786,7 +786,7 @@ const CheckIn = () => {
             {t('checkIn.recentMeasurements', 'Recent Activity')}
           </CardTitle>
           <CardDescription>
-            Your latest logs including measurements and completed fasts.
+            Your latest logs including measurements, completed fasts, and synced health data.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -819,6 +819,13 @@ const CheckIn = () => {
                     displayValue = typeof measurement.value === 'number' ? convertMeasurement(measurement.value, 'cm', defaultMeasurementUnit) : measurement.value;
                     displayUnit = defaultMeasurementUnit;
                   }
+                } else if (measurement.type === 'stress') {
+                  measurementName = t('checkIn.stressLevel', 'Stress Level');
+                  displayUnit = t('checkIn.level', 'level');
+                } else if (measurement.type === 'exercise') {
+                  measurementName = measurement.exercise_name || t('checkIn.exercise', 'Exercise');
+                  displayValue = `${measurement.duration_minutes?.toFixed(0) || 0} min`;
+                  displayUnit = `${measurement.calories_burned?.toFixed(0) || 0} kcal`;
                 }
                 // Format displayValue to one decimal place if it's a number
                 const formattedDisplayValue = typeof displayValue === 'number' ? displayValue.toFixed(1) : displayValue;
@@ -833,7 +840,7 @@ const CheckIn = () => {
                         <p className="font-medium">
                           {measurement.type === 'fasting'
                             ? measurement.fasting_type
-                            : (measurement.display_name || measurement.custom_categories?.display_name || measurement.custom_categories?.name || measurement.id)}
+                            : measurementName}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(measurement.entry_timestamp), 'h:mm a')} &middot; {format(new Date(measurement.entry_timestamp), 'MMM d')}
@@ -850,7 +857,7 @@ const CheckIn = () => {
                           {formattedDisplayValue} <span className="text-xs text-muted-foreground ml-0.5">{displayUnit}</span>
                         </span>
                       )}
-                      {(measurement.type === 'custom' || measurement.type === 'standard') && (
+                      {(measurement.type === 'custom' || measurement.type === 'standard' || measurement.type === 'stress' || measurement.type === 'exercise') && (
                         <Button
                           variant="ghost"
                           size="icon"

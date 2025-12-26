@@ -21,6 +21,22 @@ interface SleepTimelineEditorProps {
     duration: string;
     sleepScore?: number;
     source?: string;
+    deepSleepSeconds?: number | null;
+    lightSleepSeconds?: number | null;
+    remSleepSeconds?: number | null;
+    awakeSleepSeconds?: number | null;
+    averageSpo2Value?: number | null;
+    lowestSpo2Value?: number | null;
+    highestSpo2Value?: number | null;
+    averageRespirationValue?: number | null;
+    lowestRespirationValue?: number | null;
+    highestRespirationValue?: number | null;
+    awakeCount?: number | null;
+    avgSleepStress?: number | null;
+    restlessMomentsCount?: number | null;
+    avgOvernightHrv?: number | null;
+    bodyBatteryChange?: number | null;
+    restingHeartRate?: number | null;
   };
 }
 

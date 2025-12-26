@@ -65,6 +65,23 @@ router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, 
   }
 });
 
+// Endpoint for fetching sleep entries details for the frontend
+router.get('/details', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
+    }
+
+    // Use the getSleepEntriesByUserIdAndDateRange function from the measurementService
+    const sleepEntries = await measurementService.getSleepEntriesByUserIdAndDateRange(req.userId, startDate, endDate);
+    res.status(200).json(sleepEntries);
+  } catch (error) {
+    log('error', "Error fetching sleep entries details:", error);
+    next(error);
+  }
+});
+
 // Endpoint for updating an existing sleep entry
 router.put('/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {

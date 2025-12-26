@@ -14,6 +14,10 @@ export const getSyncStartDate = HealthConnect.getSyncStartDate;
 export const readStepRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('Steps', startDate, endDate);
 export const readActiveCaloriesRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
 export const readHeartRateRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('HeartRate', startDate, endDate);
+export const readSleepSessionRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('SleepSession', startDate, endDate);
+export const readStressRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('Stress', startDate, endDate);
+export const readExerciseSessionRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('ExerciseSession', startDate, endDate);
+export const readWorkoutRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('Workout', startDate, endDate);
 
 export const aggregateHeartRateByDate = HealthConnectAggregation.aggregateHeartRateByDate;
 export const aggregateStepsByDate = HealthConnectAggregation.aggregateStepsByDate;
@@ -78,6 +82,15 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
       } else if (type === 'TotalCaloriesBurned') {
         dataToTransform = await HealthConnectAggregation.aggregateTotalCaloriesByDate(rawRecords);
         addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw TotalCaloriesBurned records into ${dataToTransform.length} daily totals`);
+      } else if (type === 'SleepSession') {
+        // SleepSession records are already structured as sessions, no further aggregation needed here
+        addLog(`[HealthConnectService] Processing raw SleepSession records.`);
+      } else if (type === 'Stress') {
+        // Stress records are typically individual measurements, no aggregation needed here
+        addLog(`[HealthConnectService] Processing raw Stress records.`);
+      } else if (type === 'ExerciseSession') {
+        // ExerciseSession records are already structured as sessions, no further aggregation needed here
+        addLog(`[HealthConnectService] Processing raw ExerciseSession records.`);
       }
 
       const transformed = HealthConnectTransformation.transformHealthRecords(dataToTransform, metricConfig);

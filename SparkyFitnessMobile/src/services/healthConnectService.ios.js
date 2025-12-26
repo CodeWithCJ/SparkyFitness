@@ -90,6 +90,9 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
           // Fallback to just BMR if active fails
           dataToTransform = HealthKitAggregation.aggregateTotalCaloriesByDate(rawRecords);
         }
+      } else if (type === 'SleepSession') {
+        dataToTransform = HealthKitAggregation.aggregateSleepSessions(rawRecords);
+        addLog(`[HealthKitService] Aggregated SleepSession records.`);
       }
 
       const transformed = HealthKitTransformation.transformHealthRecords(dataToTransform, metricConfig);

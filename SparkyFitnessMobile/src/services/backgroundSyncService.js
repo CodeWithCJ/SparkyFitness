@@ -1,7 +1,9 @@
 import BackgroundFetch from 'react-native-background-fetch';
 import { syncHealthData } from './api';
 import { addLog } from './LogService';
-import { loadHealthPreference, loadSyncDuration, readStepRecords, aggregateStepsByDate, readActiveCaloriesRecords, aggregateActiveCaloriesByDate } from './healthConnectService';
+import { loadHealthPreference, loadSyncDuration, readStepRecords, aggregateStepsByDate, readActiveCaloriesRecords, aggregateActiveCaloriesByDate, readSleepSessionRecords, readStressRecords, readExerciseSessionRecords, readWorkoutRecords } from './healthConnectService';
+import { readSleepSessionRecords as readSleepSessionRecordsHK, readStressRecords as readStressRecordsHK, readWorkoutRecords as readWorkoutRecordsHK } from './healthkit';
+import { Platform } from 'react-native';
 
 const BACKGROUND_FETCH_TASK_ID = 'healthDataSync';
 
@@ -12,6 +14,11 @@ const performBackgroundSync = async (taskId) => {
   try {
     const isStepsEnabled = await loadHealthPreference('syncStepsEnabled');
     const isActiveCaloriesEnabled = await loadHealthPreference('syncCaloriesEnabled');
+    const isSleepSessionEnabled = await loadHealthPreference('isSleepSessionSyncEnabled');
+    const isStressEnabled = await loadHealthPreference('isStressSyncEnabled');
+    const isExerciseSessionEnabled = await loadHealthPreference('isExerciseSessionSyncEnabled');
+    const isWorkoutEnabled = await loadHealthPreference('isWorkoutSyncEnabled');
+
     const syncDuration = await loadSyncDuration(); // This will be '1h', '4h', '24h'
     const fourHourSyncTime = await loadHealthPreference('fourHourSyncTime');
     const dailySyncTime = await loadHealthPreference('dailySyncTime');
@@ -64,6 +71,39 @@ const performBackgroundSync = async (taskId) => {
         const activeCaloriesRecords = await readActiveCaloriesRecords(startDate, endDate);
         const aggregatedActiveCaloriesData = aggregateActiveCaloriesByDate(activeCaloriesRecords);
         allAggregatedData = allAggregatedData.concat(aggregatedActiveCaloriesData);
+      }
+
+      if (isSleepSessionEnabled) {
+        let sleepRecords;
+        if (Platform.OS === 'ios') {
+          sleepRecords = await readSleepSessionRecordsHK(startDate, endDate);
+        } else {
+          sleepRecords = await readSleepSessionRecords(startDate, endDate);
+        }
+        // Sleep records are already aggregated by session, no further aggregation needed
+        allAggregatedData = allAggregatedData.concat(sleepRecords);
+      }
+
+      if (isStressEnabled) {
+        let stressRecords;
+        if (Platform.OS === 'ios') {
+          stressRecords = await readStressRecordsHK(startDate, endDate);
+        } else {
+          stressRecords = await readStressRecords(startDate, endDate);
+        }
+        // Stress records are individual measurements, no further aggregation needed
+        allAggregatedData = allAggregatedData.concat(stressRecords);
+      }
+
+      if (isExerciseSessionEnabled) {
+        let exerciseRecords;
+        if (Platform.OS === 'ios') {
+          exerciseRecords = await readWorkoutRecordsHK(startDate, endDate); // HealthKit uses 'Workout' for exercise sessions
+        } else {
+          exerciseRecords = await readExerciseSessionRecords(startDate, endDate);
+        }
+        // Exercise records are individual sessions, no further aggregation needed
+        allAggregatedData = allAggregatedData.concat(exerciseRecords);
       }
 
       if (allAggregatedData.length > 0) {
