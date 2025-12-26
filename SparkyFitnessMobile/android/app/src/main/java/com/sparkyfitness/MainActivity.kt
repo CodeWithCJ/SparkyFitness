@@ -1,4 +1,5 @@
 package com.sparkyfitness
+import expo.modules.ReactActivityDelegateWrapper
 
 import android.os.Bundle
 import com.facebook.react.ReactActivity
@@ -25,7 +26,7 @@ class MainActivity : ReactActivity() {
    * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
-      object : DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled) {
+      ReactActivityDelegateWrapper(this, BuildConfig.IS_NEW_ARCHITECTURE_ENABLED, object : DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled) {
         override fun createRootView() = RNGestureHandlerEnabledRootView(this@MainActivity)
-      }
+      })
 }

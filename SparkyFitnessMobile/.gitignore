@@ -86,3 +86,7 @@ fastlane/test_output
 /ios/*.xcuserstate
 
 # Keep Podfile and Podfile.lock tracked (do NOT ignore Podfile.lock)
+# Expo
+.expo
+dist/
+web-build/

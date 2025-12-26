@@ -9,7 +9,10 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import LogScreen from './src/screens/LogScreen';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
-
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 const Stack = createStackNavigator();
 
 function AppContent() {
