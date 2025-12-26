@@ -28,7 +28,7 @@
     "react-native-dropdown-picker": "^5.4.6",
     "react-native-element-dropdown": "^2.12.4",
     "react-native-gesture-handler": "~2.28.0",
-    "react-native-health-connect": "^3.3.3",
+    "react-native-health-connect": "^3.5.0",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "~4.16.0"
   },
