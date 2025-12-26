@@ -21,6 +21,7 @@
     "expo-constants": "~18.0.12",
     "expo-dev-client": "^6.0.20",
     "expo-health-connect": "^0.1.1",
+    "expo-system-ui": "~6.0.9",
     "react": "19.1.0",
     "react-native": "^0.81.0",
     "react-native-background-fetch": "^4.2.8",

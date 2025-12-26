@@ -1,92 +1,68 @@
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# Dependency directories
+# dependencies
 node_modules/
-vendor/bundle/
-ios/Pods/
 
-# Temporary files & Caches
-.npm-cache/*
-.metro-cache/
-.metro-health-check*
-.expo/
-
-# Build artifacts
-build/
-web-build/
-*.ipa
-*.apk
-*.aab
-installations/
-
-# Android
-/android/app/build/
-/android/.gradle/
-/android/app/.cxx/
-/android/build/
-/android/*.keystore
-!/android/debug.keystore
-/android/local.properties
-/android/.idea/
-/android/captures/
-.gradle/
-
-# iOS
-/ios/build/
-/ios/*.xcworkspace
-/ios/DerivedData/
-/ios/.xcode.env.local
-
-# XCode
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-xcuserdata
-*.xccheckout
-*.moved-aside
-*.hmap
-*.xcuserstate
-
-# Other
-.DS_Store
-.env
-.env.*
-coverage/
-
-# Bundler
-.bundle/
-
-# Fastlane
-fastlane/report.xml
-fastlane/Preview.html
-fastlane/screenshots
-fastlane/test_output
-
-# Additional iOS / Xcode ignores (SparkyFitnessMobile)
-# Ignore CocoaPods artifacts and build products but keep Podfile and Podfile.lock tracked
-/ios/Pods/
-/ios/Manifest.lock
-/ios/build/
-/ios/DerivedData/
-
-# Xcode user and state files
-/ios/*.xcworkspace/xcuserdata/
-/ios/*.xcodeproj/xcuserdata/
-/ios/*.xcuserstate
-
-# Keep Podfile and Podfile.lock tracked (do NOT ignore Podfile.lock)
 # Expo
-.expo
+.expo/
 dist/
 web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+
+.env*.local
+.env
+llms.txt
+
+.serena/
+.claude/
+
+
+coverage/
+eas.json
+/credentials.json
+/credentials/
+
+/*.apk
+/*.ipa
+/*.aab
+.dependency-cruiser.js
+/deps.svg
+
+/oldtests
+.env.local
+dep*.html
+
+plans/

@@ -10,17 +10,23 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "org.sparkyapps.sparkyfitnessmobile"
+      "bundleIdentifier": "org.SparkyApps.SparkyFitnessMobile"
     },
     "android": {
-      "package": "org.sparkyapps.sparkyfitnessmobile",
+      "package": "org.SparkyApps.SparkyFitnessMobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/appstore.png",
         "backgroundColor": "#FFFFFF"
       }
     },
     "plugins": [
-      "@kingstinct/react-native-healthkit",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "This app requires HealthKit access to read and write health data.",
+          "NSHealthUpdateUsageDescription": "This app requires HealthKit access to read and write health data."
+        }
+      ],
       "react-native-background-fetch",
       "expo-health-connect",
       [
