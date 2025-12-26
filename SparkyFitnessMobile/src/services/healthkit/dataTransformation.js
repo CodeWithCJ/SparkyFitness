@@ -104,6 +104,63 @@ export const transformHealthRecords = (records, metricConfig) => {
             value = record.mass?.inKilograms;
             recordDate = getDateString(record.time);
             break;
+          case 'Workout':
+            if (record.startTime && record.endTime) {
+              // HKWorkoutActivityType Mapping
+              // Source: https://developer.apple.com/documentation/healthkit/hkworkoutactivitytype
+              const ACTIVITY_MAP = {
+                1: 'American Football', 2: 'Archery', 3: 'Australian Football', 4: 'Badminton',
+                5: 'Baseball', 6: 'Basketball', 7: 'Bowling', 8: 'Boxing', 9: 'Climbing',
+                10: 'Cricket', 11: 'Cross Training', 12: 'Curling', 13: 'Cycling (Indoor)',
+                46: 'Cycling (Outdoor)', 13: 'Cycling', // Default cycling
+                14: 'Dance', 16: 'Elliptical', 17: 'Equestrian Sports', 18: 'Fencing',
+                19: 'Fishing', 20: 'Functional Strength Training', 21: 'Golf', 22: 'Gymnastics',
+                23: 'Handball', 24: 'Hiking', 25: 'Hockey', 26: 'Hunting', 27: 'Lacrosse',
+                28: 'Martial Arts', 29: 'Mind and Body', 30: 'Mixed Cardio', 31: 'Paddle Sports',
+                32: 'Play', 33: 'Preparation and Recovery', 34: 'Racquetball', 35: 'Rowing',
+                36: 'Rugby', 37: 'Running', 52: 'Running (Treadmill)', 38: 'Sailing',
+                39: 'Skating Sports', 40: 'Snow Sports', 41: 'Soccer', 42: 'Softball',
+                43: 'Squash', 44: 'Stair Climbing', 45: 'Surfing Sports', 46: 'Swimming',
+                47: 'Table Tennis', 48: 'Tennis', 49: 'Track and Field', 50: 'Traditional Strength Training',
+                51: 'Volleyball', 52: 'Walking', 53: 'Water Fitness', 54: 'Water Polo',
+                55: 'Water Sports', 56: 'Wrestling', 57: 'Yoga', 58: 'Barre', 59: 'Core Training',
+                60: 'Cross Country Skiing', 61: 'Downhill Skiing', 62: 'Flexibility',
+                63: 'High Intensity Interval Training', 64: 'Jump Rope', 65: 'Kickboxing',
+                66: 'Pilates', 67: 'Snowboarding', 68: 'Stairs', 69: 'Step Training',
+                70: 'Wheelchair Walk Pace', 71: 'Wheelchair Run Pace', 72: 'Tai Chi',
+                73: 'Mixed Metabolic Cardio Training', 74: 'Hand Cycling'
+              };
+
+              const activityTypeName = ACTIVITY_MAP[record.activityType] || (record.activityType ? `Workout type ${record.activityType}` : 'Workout Session');
+
+              // Handle duration which might be an object { unit: 's', quantity: 123 }
+              let durationInSeconds = 0;
+              if (record.duration && typeof record.duration === 'object' && record.duration.quantity !== undefined) {
+                durationInSeconds = record.duration.quantity;
+              } else if (typeof record.duration === 'number') {
+                durationInSeconds = record.duration;
+              }
+
+              // Construct rich object for server
+              transformedData.push({
+                type: 'ExerciseSession', // Use ExerciseSession to match server/Android
+                source: 'HealthKit',
+                date: getDateString(record.startTime),
+                entry_date: getDateString(record.startTime),
+                timestamp: record.startTime,
+                startTime: record.startTime,
+                endTime: record.endTime,
+                duration: durationInSeconds,
+                activityType: activityTypeName,
+                title: activityTypeName, // Use mapped name as title
+                caloriesBurned: record.totalEnergyBurned || 0,
+                distance: record.totalDistance || 0,
+                notes: `Source: HealthKit`,
+                raw_data: record
+              });
+              return; // Skip default push
+            }
+            break;
           default:
             // For simple value records from aggregation
             if (record.value !== undefined && record.date) {

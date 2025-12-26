@@ -619,6 +619,10 @@ const MainScreen = ({ navigation }) => {
               displayValue = `${Math.round(totalNutrition / 1000)} kcal`;
               break;
 
+            case 'Workout':
+              displayValue = `${records.length} workouts`;
+              break;
+
             default:
               addLog(`[MainScreen] Unhandled metric type for display: ${metric.recordType}`);
               displayValue = 'N/A';

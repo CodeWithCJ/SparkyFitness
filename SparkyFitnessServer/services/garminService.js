@@ -334,15 +334,15 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
       }
 
       const exerciseEntryData = {
-       exercise_id: exercise.id,
-       duration_minutes: totalDuration / 60, // Convert total seconds to minutes
-       calories_burned: Math.round(perExerciseCaloriesBurned), // Round calories to nearest whole number
-       entry_date: entryDate,
-       notes: `Garmin Exercise: ${exerciseName}`,
-       sets: sets,
-       exercise_preset_entry_id: newExercisePresetEntry.id, // Link to preset entry
-       avg_heart_rate: perExerciseAvgHeartRate ? Math.round(perExerciseAvgHeartRate) : null, // Round to nearest whole number or keep null
-     };
+        exercise_id: exercise.id,
+        duration_minutes: totalDuration / 60, // Convert total seconds to minutes
+        calories_burned: Math.round(perExerciseCaloriesBurned), // Round calories to nearest whole number
+        entry_date: entryDate,
+        notes: `Garmin Exercise: ${exerciseName}`,
+        sets: sets,
+        exercise_preset_entry_id: newExercisePresetEntry.id, // Link to preset entry
+        avg_heart_rate: perExerciseAvgHeartRate ? Math.round(perExerciseAvgHeartRate) : null, // Round to nearest whole number or keep null
+      };
       await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, userId, 'garmin', newExercisePresetEntry.id);
 
       const existingExerciseInPreset = workoutPreset.exercises?.find(e => e.exercise_id === exercise.id);
@@ -465,35 +465,35 @@ async function processGarminSimpleActivity(userId, activityData) {
 const sleepRepository = require('../models/sleepRepository'); // Import sleepRepository
 
 async function processGarminSleepData(userId, actingUserId, sleepDataArray, startDate, endDate) {
-    const processedResults = [];
-    const errors = [];
+  const processedResults = [];
+  const errors = [];
 
-    // Comprehensive cleanup for Garmin-sourced sleep data for the date range
-    log('info', `[garminService] Performing comprehensive cleanup for Garmin sleep data for user ${userId} from ${startDate} to ${endDate}.`);
-    await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(userId, 'garmin', startDate, endDate);
+  // Comprehensive cleanup for Garmin-sourced sleep data for the date range
+  log('info', `[garminService] Performing comprehensive cleanup for Garmin sleep data for user ${userId} from ${startDate} to ${endDate}.`);
+  await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(userId, 'garmin', startDate, endDate);
 
-    for (const sleepEntry of sleepDataArray) {
-        try {
-            const result = await measurementService.processSleepEntry(userId, actingUserId, sleepEntry);
-            processedResults.push({ status: 'success', data: result });
-        } catch (error) {
-            log('error', `Error processing Garmin sleep entry for user ${userId}:`, error);
-            errors.push({ status: 'error', message: error.message, entry: sleepEntry });
-        }
+  for (const sleepEntry of sleepDataArray) {
+    try {
+      const result = await measurementService.processSleepEntry(userId, actingUserId, sleepEntry);
+      processedResults.push({ status: 'success', data: result });
+    } catch (error) {
+      log('error', `Error processing Garmin sleep entry for user ${userId}:`, error);
+      errors.push({ status: 'error', message: error.message, entry: sleepEntry });
     }
+  }
 
-    if (errors.length > 0) {
-        throw new Error(JSON.stringify({
-            message: "Some Garmin sleep entries could not be processed.",
-            processed: processedResults,
-            errors: errors
-        }));
-    } else {
-        return {
-            message: "All Garmin sleep data successfully processed.",
-            processed: processedResults
-        };
-    }
+  if (errors.length > 0) {
+    throw new Error(JSON.stringify({
+      message: "Some Garmin sleep entries could not be processed.",
+      processed: processedResults,
+      errors: errors
+    }));
+  } else {
+    return {
+      message: "All Garmin sleep data successfully processed.",
+      processed: processedResults
+    };
+  }
 }
 
 module.exports = {

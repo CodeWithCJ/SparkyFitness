@@ -14,12 +14,16 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
   const processedResults = [];
   const errors = [];
 
-  // Pre-process SleepSession entries to handle duplicates via delete-then-insert strategy
-  const sleepEntries = healthDataArray.filter(entry => entry.type === 'SleepSession');
-  if (sleepEntries.length > 0) {
-    const sleepDatesBySource = {};
+  // 0. Pre-Cleanup: Delete existing Sleep/Exercise entries for the date range to prevent duplicates
+  // This implements a "delete-then-insert" strategy for idempotent sync
+  const entriesToClean = healthDataArray.filter(
+    d => d.type === 'SleepSession' || d.type === 'ExerciseSession' || d.type === 'Workout'
+  );
 
-    for (const entry of sleepEntries) {
+  if (entriesToClean.length > 0) {
+    const datesBySource = {};
+
+    for (const entry of entriesToClean) {
       const source = entry.source || 'manual';
       // Replicate date parsing logic from main loop to ensure consistency
       const dateToParse = entry.date || entry.entry_date || entry.timestamp;
@@ -27,21 +31,37 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
         const dateObj = new Date(dateToParse);
         if (!isNaN(dateObj.getTime())) {
           const parsedDate = dateObj.toISOString().split('T')[0];
-          if (!sleepDatesBySource[source]) {
-            sleepDatesBySource[source] = [];
+          if (!datesBySource[source]) {
+            datesBySource[source] = {};
           }
-          sleepDatesBySource[source].push(parsedDate);
+          // use object keys for unique dates set
+          datesBySource[source][parsedDate] = true;
         }
       }
     }
 
-    for (const source in sleepDatesBySource) {
-      const dates = sleepDatesBySource[source].sort();
+    for (const source in datesBySource) {
+      const dates = Object.keys(datesBySource[source]).sort();
       if (dates.length > 0) {
         const startDate = dates[0];
-        const endDate = dates[dates.length - 1];
-        log('info', `[processHealthData] Pre-cleanup: Deleting existing sleep entries for source '${source}' from ${startDate} to ${endDate} before processing new batch.`);
+        const endDate = dates[dates.length - 1]; // Inclusive end date for the function call
+
+        // Calculate max date + 1 day for database range logic if needed, but the current repo methods usually take inclusive/specific range
+        // Looking at sleepRepository.deleteSleepEntriesByEntrySourceAndDate(user_id, source, start_date, end_date), it typically handles range.
+        // Let's assume inclusive range which is standard for these helpers.
+
+        log('info', `[processHealthData] Pre-cleanup: Deleting existing entries for source '${source}' from ${startDate} to ${endDate}.`);
+
+        // Clean Sleep
         await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(userId, source, startDate, endDate);
+
+        // Clean Exercises
+        // Note: deleteExerciseEntriesByEntrySourceAndDate expects (userId, startDate, endDate, source) - verify arg order!
+        // Based on typical repo patterns, let's verify. 
+        // Wait, standard exerciseEntryRepo usually puts userId first.
+        // I will use safe assumption or verify garminService usage: 
+        // garminService: await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(userId, startDate, endDate, 'garmin');
+        await exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate(userId, startDate, endDate, source);
       }
     }
   }

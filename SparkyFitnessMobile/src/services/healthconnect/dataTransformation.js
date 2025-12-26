@@ -386,8 +386,35 @@ export const transformHealthRecords = (records, metricConfig) => {
               const start = new Date(record.startTime).getTime();
               const end = new Date(record.endTime).getTime();
               if (!isNaN(start) && !isNaN(end)) {
-                value = (end - start) / (1000 * 60);
+                // Exercise Type Mapping (Common Android Health Connect IDs)
+                const EXERCISE_MAP = {
+                  1: 'Biking', 2: 'Biking (Stationary)', 8: 'Running', 56: 'Running (Treadmill)',
+                  79: 'Walking', 37: 'Hiking', 72: 'Swimming (Pool)', 71: 'Swimming (Open Water)',
+                  84: 'Strength Training', 85: 'Weightlifting', 31: 'High Intensity Interval Training',
+                  80: 'Walking (Fitness)', 87: 'Yoga', 55: 'Rowing Machine', 27: 'Elliptical',
+                  69: 'Stair Climbing', 23: 'Dancing'
+                };
+
+                const durationInSeconds = (end - start) / 1000;
                 recordDate = record.startTime.split('T')[0];
+                const activityTypeName = EXERCISE_MAP[record.exerciseType] || (record.exerciseType ? `Exercise Type ${record.exerciseType}` : 'Exercise Session');
+                const title = record.title || activityTypeName;
+
+                transformedData.push({
+                  type: 'ExerciseSession',
+                  source: 'Health Connect',
+                  date: recordDate,
+                  entry_date: recordDate,
+                  timestamp: record.startTime,
+                  startTime: record.startTime,
+                  endTime: record.endTime,
+                  duration: durationInSeconds,
+                  activityType: activityTypeName,
+                  title: title,
+                  notes: record.notes,
+                  raw_data: record
+                });
+                return;
               }
             }
             break;

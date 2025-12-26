@@ -5,6 +5,7 @@ import {
   HKQuantityTypeIdentifier,
   HKCategoryTypeIdentifier,
   queryCategorySamples,
+  queryWorkoutSamples,
 } from '@kingstinct/react-native-healthkit';
 import { Platform, Alert } from 'react-native';
 import { addLog } from '../LogService';
@@ -204,8 +205,6 @@ export const getSyncStartDate = (duration) => {
 };
 
 // Read health records from HealthKit
-import { queryWorkouts } from '@kingstinct/react-native-healthkit';
-
 export const readHealthRecords = async (recordType, startDate, endDate) => {
   if (!isHealthKitAvailable) {
     addLog(`[HealthKitService] HealthKit not available, returning empty records for ${recordType}`, 'warn', 'WARNING');
@@ -262,15 +261,29 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
     }
 
     if (recordType === 'Workout') {
-      console.log(`[HealthKitService DEBUG] Calling queryWorkouts for Workout with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
-      const workouts = await queryWorkouts({ from: startDate, to: endDate, limit: queryLimit });
+      console.log(`[HealthKitService DEBUG] Calling queryWorkoutSamples for Workout with startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()} and limit: ${queryLimit}`);
+
+      // Correct API usage for @kingstinct/react-native-healthkit v12+
+      const workouts = await queryWorkoutSamples({
+        filter: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        },
+        limit: queryLimit
+      });
+
+      if (workouts.length > 0) {
+        console.log(`[HealthKitService DEBUG] First Workout Keys: ${JSON.stringify(Object.keys(workouts[0]))}`);
+        console.log(`[HealthKitService DEBUG] First Workout: ${JSON.stringify(workouts[0])}`);
+      }
+
       return workouts.map(w => ({
         startTime: w.startDate,
         endTime: w.endDate,
         activityType: w.workoutActivityType,
         duration: w.duration,
-        totalEnergyBurned: w.totalEnergyBurned?.value,
-        totalDistance: w.totalDistance?.value,
+        totalEnergyBurned: w.totalEnergyBurned?.inKilocalories || w.totalEnergyBurned,
+        totalDistance: w.totalDistance?.inMeters || w.totalDistance,
       }));
     }
 
