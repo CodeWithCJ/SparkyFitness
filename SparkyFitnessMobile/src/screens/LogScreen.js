@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Button, StyleSheet, TouchableOpacity, Image, Alert, ScrollView, Clipboard } from 'react-native';
+import { View, Text, FlatList, Button, StyleSheet, TouchableOpacity, Image, Alert, ScrollView } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getLogs, clearLogs, getLogSummary, getLogLevel, setLogLevel } from '../services/LogService';
@@ -107,7 +108,7 @@ const LogScreen = ({ navigation }) => {
 
 
   return (
-  <View style={[styles.container, { backgroundColor: colors.background }]}>
+  <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
     <FlatList
       data={logs}
       renderItem={({ item }) => (

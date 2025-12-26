@@ -1,4 +1,114 @@
 {
-  "name": "SparkyFitnessMobile",
-  "displayName": "SparkyFitness"
+  "expo": {
+    "name": "SparkyFitnessMobile",
+    "slug": "sparkyfitnessmobile",
+    "version": "0.0.2",
+    "scheme": "sparkyfitnessmobile",
+    "orientation": "portrait",
+    "icon": "./assets/icons/appstore.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "org.SparkyApps.SparkyFitnessMobile"
+    },
+    "android": {
+      "package": "org.SparkyApps.SparkyFitnessMobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icons/appstore.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.WRITE_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_BASAL_BODY_TEMPERATURE",
+        "android.permission.health.WRITE_BASAL_BODY_TEMPERATURE",
+        "android.permission.health.READ_BASAL_METABOLIC_RATE",
+        "android.permission.health.WRITE_BASAL_METABOLIC_RATE",
+        "android.permission.health.READ_BLOOD_GLUCOSE",
+        "android.permission.health.WRITE_BLOOD_GLUCOSE",
+        "android.permission.health.READ_BLOOD_PRESSURE",
+        "android.permission.health.WRITE_BLOOD_PRESSURE",
+        "android.permission.health.READ_BODY_FAT",
+        "android.permission.health.WRITE_BODY_FAT",
+        "android.permission.health.READ_BODY_TEMPERATURE",
+        "android.permission.health.WRITE_BODY_TEMPERATURE",
+        "android.permission.health.READ_BONE_MASS",
+        "android.permission.health.WRITE_BONE_MASS",
+        "android.permission.health.READ_CERVICAL_MUCUS",
+        "android.permission.health.WRITE_CERVICAL_MUCUS",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.WRITE_EXERCISE",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.WRITE_DISTANCE",
+        "android.permission.health.READ_ELEVATION_GAINED",
+        "android.permission.health.WRITE_ELEVATION_GAINED",
+        "android.permission.health.READ_FLOORS_CLIMBED",
+        "android.permission.health.WRITE_FLOORS_CLIMBED",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.WRITE_HEART_RATE",
+        "android.permission.health.READ_HEIGHT",
+        "android.permission.health.WRITE_HEIGHT",
+        "android.permission.health.READ_HYDRATION",
+        "android.permission.health.WRITE_HYDRATION",
+        "android.permission.health.READ_LEAN_BODY_MASS",
+        "android.permission.health.WRITE_LEAN_BODY_MASS",
+        "android.permission.health.READ_MENSTRUATION",
+        "android.permission.health.WRITE_MENSTRUATION",
+        "android.permission.health.READ_NUTRITION",
+        "android.permission.health.WRITE_NUTRITION",
+        "android.permission.health.READ_OVULATION_TEST",
+        "android.permission.health.WRITE_OVULATION_TEST",
+        "android.permission.health.READ_OXYGEN_SATURATION",
+        "android.permission.health.WRITE_OXYGEN_SATURATION",
+        "android.permission.health.READ_POWER",
+        "android.permission.health.WRITE_POWER",
+        "android.permission.health.READ_RESPIRATORY_RATE",
+        "android.permission.health.WRITE_RESPIRATORY_RATE",
+        "android.permission.health.READ_RESTING_HEART_RATE",
+        "android.permission.health.WRITE_RESTING_HEART_RATE",
+        "android.permission.health.READ_SEXUAL_ACTIVITY",
+        "android.permission.health.WRITE_SEXUAL_ACTIVITY",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.WRITE_SLEEP",
+        "android.permission.health.READ_SPEED",
+        "android.permission.health.WRITE_SPEED",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.WRITE_STEPS",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+        "android.permission.health.WRITE_TOTAL_CALORIES_BURNED",
+        "android.permission.health.READ_VO2_MAX",
+        "android.permission.health.WRITE_VO2_MAX",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.WRITE_WEIGHT",
+        "android.permission.health.READ_WHEELCHAIR_PUSHES",
+        "android.permission.health.WRITE_WHEELCHAIR_PUSHES",
+        "android.permission.health.WRITE_EXERCISE_ROUTE",
+        "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"
+      ]
+    },
+    "plugins": [
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "This app requires HealthKit access to read and write health data.",
+          "NSHealthUpdateUsageDescription": "This app requires HealthKit access to read and write health data."
+        }
+      ],
+      "react-native-background-fetch",
+      "expo-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      "react-native-health-connect"
+    ]
+  }
 }

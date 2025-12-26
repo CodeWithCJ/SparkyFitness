@@ -4,7 +4,7 @@ import DropDownPicker from 'react-native-dropdown-picker'; // Import DropDownPic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native'; // Import useFocusEffect
 //import axios from 'axios'; // Import axios for API calls
-import InAppBrowser from 'react-native-inappbrowser-reborn';
+// import InAppBrowser from 'react-native-inappbrowser-reborn';
 import {
   initHealthConnect,
   readStepRecords,
@@ -695,42 +695,42 @@ const MainScreen = ({ navigation }) => {
 
       // Try to open with InAppBrowser (Custom Tabs on Android)
       try {
-        if (await InAppBrowser.isAvailable()) {
-          await InAppBrowser.open(serverUrl, {
-            // iOS Properties
-            dismissButtonStyle: 'close',
-            preferredBarTintColor: '#007bff',
-            preferredControlTintColor: 'white',
-            readerMode: false,
-            animated: true,
-            modalPresentationStyle: 'pageSheet',
-            modalTransitionStyle: 'coverVertical',
-            modalEnabled: true,
-            enableBarCollapsing: false,
-            // Android Properties
-            showTitle: true,
-            toolbarColor: '#007bff',
-            secondaryToolbarColor: 'black',
-            navigationBarColor: 'black',
-            navigationBarDividerColor: 'white',
-            enableUrlBarHiding: true,
-            enableDefaultShare: true,
-            forceCloseOnRedirection: false,
-            // Specify full animation resource identifier(package:anim/name)
-            // or only resource name(in case of animation bundled with app).
-            animations: {
-              startEnter: 'slide_in_right',
-              startExit: 'slide_out_left',
-              endEnter: 'slide_in_left',
-              endExit: 'slide_out_right'
-            }
-          });
-          addLog('Web dashboard opened successfully', 'info', 'SUCCESS');
-        } else {
+        // if (await InAppBrowser.isAvailable()) {
+        //   await InAppBrowser.open(serverUrl, {
+        //     // iOS Properties
+        //     dismissButtonStyle: 'close',
+        //     preferredBarTintColor: '#007bff',
+        //     preferredControlTintColor: 'white',
+        //     readerMode: false,
+        //     animated: true,
+        //     modalPresentationStyle: 'pageSheet',
+        //     modalTransitionStyle: 'coverVertical',
+        //     modalEnabled: true,
+        //     enableBarCollapsing: false,
+        //     // Android Properties
+        //     showTitle: true,
+        //     toolbarColor: '#007bff',
+        //     secondaryToolbarColor: 'black',
+        //     navigationBarColor: 'black',
+        //     navigationBarDividerColor: 'white',
+        //     enableUrlBarHiding: true,
+        //     enableDefaultShare: true,
+        //     forceCloseOnRedirection: false,
+        //     // Specify full animation resource identifier(package:anim/name)
+        //     // or only resource name(in case of animation bundled with app).
+        //     animations: {
+        //       startEnter: 'slide_in_right',
+        //       startExit: 'slide_out_left',
+        //       endEnter: 'slide_in_left',
+        //       endExit: 'slide_out_right'
+        //     }
+        //   });
+        //   addLog('Web dashboard opened successfully', 'info', 'SUCCESS');
+        // } else {
           // Fallback to default browser if InAppBrowser not available
           addLog('InAppBrowser not available, using default browser', 'warn', 'WARNING');
           await Linking.openURL(serverUrl);
-        }
+        // }
       } catch (inAppError) {
         // Fallback to default browser on error
         addLog(`InAppBrowser error: ${inAppError.message}, using default browser`, 'warn', 'WARNING');
@@ -743,7 +743,7 @@ const MainScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
         {/* Open Web Dashboard Button */}
         <TouchableOpacity style={styles.webButtonContainer} onPress={openWebDashboard}>

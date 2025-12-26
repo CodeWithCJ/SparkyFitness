@@ -1,88 +1,72 @@
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# Dependency directories
+# dependencies
 node_modules/
-vendor/bundle/
-ios/Pods/
 
-# Temporary files & Caches
-.npm-cache/*
-.metro-cache/
-.metro-health-check*
+# Expo
 .expo/
-
-# Build artifacts
-build/
+dist/
 web-build/
-*.ipa
-*.apk
-*.aab
-installations/
+expo-env.d.ts
 
-# Android
-/android/app/build/
-/android/.gradle/
-/android/app/.cxx/
-/android/build/
-/android/*.keystore
-!/android/debug.keystore
-/android/local.properties
-/android/.idea/
-/android/captures/
-.gradle/
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
 
-# iOS
-/ios/build/
-/ios/*.xcworkspace
-/ios/DerivedData/
-/ios/.xcode.env.local
+# Metro
+.metro-health-check*
 
-# XCode
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-xcuserdata
-*.xccheckout
-*.moved-aside
-*.hmap
-*.xcuserstate
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
 
-# Other
+# macOS
 .DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+
+.env*.local
 .env
-.env.*
+llms.txt
+
+.serena/
+.claude/
+
+
 coverage/
+eas.json
+/credentials.json
+/credentials/
 
-# Bundler
-.bundle/
+/*.apk
+/*.ipa
+/*.aab
+.dependency-cruiser.js
+/deps.svg
 
-# Fastlane
-fastlane/report.xml
-fastlane/Preview.html
-fastlane/screenshots
-fastlane/test_output
+/oldtests
+.env.local
+dep*.html
 
-# Additional iOS / Xcode ignores (SparkyFitnessMobile)
-# Ignore CocoaPods artifacts and build products but keep Podfile and Podfile.lock tracked
-/ios/Pods/
-/ios/Manifest.lock
-/ios/build/
-/ios/DerivedData/
+plans/
 
-# Xcode user and state files
-/ios/*.xcworkspace/xcuserdata/
-/ios/*.xcodeproj/xcuserdata/
-/ios/*.xcuserstate
-
-# Keep Podfile and Podfile.lock tracked (do NOT ignore Podfile.lock)
+/vendor
+/installations
+/.bundle
