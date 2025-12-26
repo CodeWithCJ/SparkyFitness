@@ -1,4 +1,0 @@
-@set UPDATED 27 March 2025
-@set UPDATED-MONTH March 2025
-@set EDITION 3.4.8
-@set VERSION 3.4.8

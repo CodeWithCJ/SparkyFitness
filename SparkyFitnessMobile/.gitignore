@@ -66,3 +66,7 @@ eas.json
 dep*.html
 
 plans/
+
+/vendor
+/installations
+/.bundle
