@@ -36,8 +36,8 @@ function AppContent() {
   return (
     <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <Stack.Navigator initialRouteName="Home">
-        <Stack.Screen name="Home" component={MainScreen} options={{ headerShown: false }} />
+      <Stack.Navigator initialRouteName="Main">
+        <Stack.Screen name="Main" component={MainScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Logs" component={LogScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
