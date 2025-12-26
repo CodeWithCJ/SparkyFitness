@@ -1,5 +1,38 @@
 {
-  "name": "SparkyFitnessMobile",
-  "slug": "sparkyfitnessmobile",
-  "version": "0.0.2"
+  "expo": {
+    "name": "SparkyFitnessMobile",
+    "slug": "sparkyfitnessmobile",
+    "version": "0.0.2",
+    "scheme": "sparkyfitnessmobile",
+    "orientation": "portrait",
+    "icon": "./assets/icons/appstore.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "org.sparkyapps.sparkyfitnessmobile"
+    },
+    "android": {
+      "package": "org.sparkyapps.sparkyfitnessmobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icons/appstore.png",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "plugins": [
+      "@kingstinct/react-native-healthkit",
+      "react-native-background-fetch",
+      "expo-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "26.0.3"
+          }
+        }
+      ]
+    ]
+  }
 }

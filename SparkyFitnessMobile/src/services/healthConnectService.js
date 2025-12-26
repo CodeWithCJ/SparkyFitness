@@ -34,7 +34,7 @@ import {
   SpeedRecord,
   Vo2MaxRecord,
   WheelchairPushesRecord,
-} from 'react-native-health-connect';
+} from 'expo-health-connect';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addLog } from './LogService';
 import * as api from './api';
