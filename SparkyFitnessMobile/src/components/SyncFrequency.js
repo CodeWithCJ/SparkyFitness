@@ -4,10 +4,13 @@ import DropDownPicker from 'react-native-dropdown-picker';
 import styles from '../screens/SettingsScreenStyles';
 import { saveSyncDuration, saveStringPreference } from '../services/healthConnectService';
 
+import { useTheme } from '../contexts/ThemeContext';
+
 const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFourHourSyncTime, dailySyncTime, setDailySyncTime }) => {
   const [syncDurationOpen, setSyncDurationOpen] = useState(false);
   const [fourHourTimeOpen, setFourHourTimeOpen] = useState(false);
   const [dailyTimeOpen, setDailyTimeOpen] = useState(false);
+  const { colors, isDarkMode } = useTheme();
 
   const syncDurationItems = [
     { label: 'Hourly', value: '1h' },
@@ -43,12 +46,20 @@ const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFou
     }
   };
 
+  const dropdownProps = {
+    listMode: "SCROLLVIEW",
+    style: { backgroundColor: colors.inputBackground, borderColor: colors.border },
+    textStyle: { color: colors.text },
+    dropDownContainerStyle: { backgroundColor: colors.card, borderColor: colors.border },
+    theme: isDarkMode ? "DARK" : "LIGHT"
+  };
+
   return (
-    <View style={styles.card}>
-      <Text style={styles.sectionTitle}>Sync Frequency</Text>
+    <View style={[styles.card, { backgroundColor: colors.card }]}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Sync Frequency</Text>
 
       <View style={[styles.inputGroup, { zIndex: 3000 }]}>
-        <Text style={styles.label}>Sync Interval</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>Sync Interval</Text>
         <DropDownPicker
           open={syncDurationOpen}
           value={syncDuration}
@@ -57,15 +68,15 @@ const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFou
           onOpen={() => onSyncDurationOpen(true)}
           setValue={setSyncDuration}
           onSelectItem={(item) => saveSyncDuration(item.value)}
-          listMode="SCROLLVIEW"
           placeholder="Select sync frequency"
+          {...dropdownProps}
         />
-        <Text style={styles.subLabel}>How often should your health data be synced automatically?</Text>
+        <Text style={[styles.subLabel, { color: colors.textMuted }]}>How often should your health data be synced automatically?</Text>
       </View>
 
       {syncDuration === '4h' && (
         <View style={[styles.inputGroup, { zIndex: 2000 }]}>
-          <Text style={styles.label}>Prompt Time (Every 4 Hours)</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Prompt Time (Every 4 Hours)</Text>
           <DropDownPicker
             open={fourHourTimeOpen}
             value={fourHourSyncTime}
@@ -74,15 +85,15 @@ const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFou
             onOpen={() => onFourHourTimeOpen(true)}
             setValue={setFourHourSyncTime}
             onSelectItem={(item) => saveStringPreference('fourHourSyncTime', item.value)}
-            listMode="SCROLLVIEW"
             placeholder="Select a time"
+            {...dropdownProps}
           />
         </View>
       )}
 
       {syncDuration === '24h' && (
         <View style={[styles.inputGroup, { zIndex: 1000 }]}>
-          <Text style={styles.label}>Prompt Time (Daily)</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Prompt Time (Daily)</Text>
           <DropDownPicker
             open={dailyTimeOpen}
             value={dailySyncTime}
@@ -91,8 +102,8 @@ const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFou
             onOpen={() => onDailyTimeOpen(true)}
             setValue={setDailySyncTime}
             onSelectItem={(item) => saveStringPreference('dailySyncTime', item.value)}
-            listMode="SCROLLVIEW"
             placeholder="Select a time"
+            {...dropdownProps}
           />
         </View>
       )}

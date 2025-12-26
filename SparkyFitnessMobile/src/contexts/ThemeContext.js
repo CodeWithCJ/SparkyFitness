@@ -17,6 +17,7 @@ export const lightColors = {
   navBarBorder: '#eee',
   inputBackground: '#fff',
   tagBackground: '#e0e0e0',
+  metricBackground: '#f9f9f9', // Distinct light grey for metric items
 };
 
 export const darkColors = {
@@ -31,6 +32,7 @@ export const darkColors = {
   navBarBorder: '#333',
   inputBackground: '#2c2c2c',
   tagBackground: '#3a3a3a',
+  metricBackground: '#2c2c2c', // Dark grey for metric items
 };
 
 export const amoledColors = {
@@ -45,6 +47,7 @@ export const amoledColors = {
   navBarBorder: '#1a1a1a',
   inputBackground: '#0f0f0f',
   tagBackground: '#1a1a1a',
+  metricBackground: '#1a1a1a', // Darker grey for metric items
 };
 
 const ThemeContext = createContext({
@@ -53,7 +56,7 @@ const ThemeContext = createContext({
   isDarkMode: false,
   isAmoled: false,
   colors: lightColors,
-  setTheme: async () => {},
+  setTheme: async () => { },
 });
 
 export const ThemeProvider = ({ children }) => {
@@ -98,7 +101,7 @@ export const ThemeProvider = ({ children }) => {
 
   const isDarkMode = effectiveTheme === 'dark' || effectiveTheme === 'amoled';
   const isAmoled = effectiveTheme === 'amoled';
-  
+
   const colors = (() => {
     if (effectiveTheme === 'amoled') return amoledColors;
     if (effectiveTheme === 'dark') return darkColors;
