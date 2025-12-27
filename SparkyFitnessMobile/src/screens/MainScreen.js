@@ -21,13 +21,14 @@ import {
   readHealthRecords,
 } from '../services/healthConnectService';
 import { syncHealthData as healthConnectSyncData } from '../services/healthConnectService';
-import { saveTimeRange, loadTimeRange } from '../services/storage'; // Import saveTimeRange and loadTimeRange
+import { saveTimeRange, loadTimeRange, loadLastSyncedTime, saveLastSyncedTime } from '../services/storage'; // Import saveTimeRange and loadTimeRange
 import * as api from '../services/api'; // Keep api import for checkServerConnection
 import { getActiveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { HEALTH_METRICS } from '../constants/HealthMetrics'; // Import HEALTH_METRICS
 import { useTheme } from '../contexts/ThemeContext';
 import * as WebBrowser from 'expo-web-browser';
+import { Ionicons } from '@expo/vector-icons';
 
 
 const MainScreen = ({ navigation }) => {
@@ -36,6 +37,7 @@ const MainScreen = ({ navigation }) => {
   const [healthMetricStates, setHealthMetricStates] = useState({}); // State to hold enabled status for all metrics
   const [healthData, setHealthData] = useState({}); // State to hold fetched data for all metrics
   const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedTime, setLastSyncedTime] = useState(null); // New state for last synced time
   const [isHealthConnectInitialized, setIsHealthConnectInitialized] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState('3d'); // New state for time range, initialized to '3d'
   const [openTimeRangePicker, setOpenTimeRangePicker] = useState(false); // New state for DropDownPicker visibility
@@ -81,6 +83,8 @@ const MainScreen = ({ navigation }) => {
     // Check server connection status on initialization
     const connectionStatus = await api.checkServerConnection(); // Use api.checkServerConnection
     setIsConnected(connectionStatus);
+
+    setLastSyncedTime(await loadLastSyncedTime()); // Load last synced time
   }, []); // Empty dependency array for useCallback
 
   useFocusEffect( // Use useFocusEffect to call initialize on focus
@@ -666,6 +670,9 @@ const MainScreen = ({ navigation }) => {
 
       if (result.success) {
         addLog('Health data synced successfully.', 'info', 'SUCCESS');
+        
+        const newSyncedTime = await saveLastSyncedTime();
+        setLastSyncedTime(newSyncedTime);
         Alert.alert('Success', 'Health data synced successfully.');
       } else {
         addLog(`Sync Error: ${result.error}`, 'error', 'ERROR');
@@ -717,17 +724,57 @@ const MainScreen = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      {/* Header Bar */}
+      <View style={[styles.headerBar, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>SparkyFitness</Text>
+        {isConnected && (
+          <View style={styles.headerStatusContainer}>
+            <View style={styles.headerDot} />
+            <Text style={styles.headerStatusText}>Connected</Text>
+          </View>
+        )}
+      </View>
+
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
         {/* Open Web Dashboard Button */}
         <TouchableOpacity style={styles.webButtonContainer} onPress={openWebDashboard}>
-          <Text style={styles.webButtonIcon}>🌐</Text>
-          <Text style={styles.webButtonText}>Open Web Dashboard</Text>
-          <Text style={styles.webButtonSubText}>View your full fitness dashboard</Text>
+          <Ionicons name="globe-outline" size={24} color="#fff" style={styles.buttonIcon} />
+          <View style={styles.buttonTextContainer}>
+            <Text style={styles.webButtonText}>Open Web Dashboard</Text>
+            <Text style={styles.webButtonSubText}>View your full fitness dashboard</Text>
+          </View>
         </TouchableOpacity>
 
+        {/* Sync Now Button */}
+        <TouchableOpacity style={styles.syncButtonContainer} onPress={handleSync} disabled={isSyncing || !isHealthConnectInitialized}>
+          <Image source={require('../../assets/icons/sync_now_alt.png')} style={styles.syncButtonIconImage} tintColor="#fff" />
+          <View style={styles.buttonTextContainer}>
+            <Text style={styles.syncButtonText}>{isSyncing ? "Syncing..." : "Sync Now"}</Text>
+            <Text style={styles.syncButtonSubText}>Sync your health data to the server</Text>
+          </View>
+        </TouchableOpacity>
+
+
+        {!isHealthConnectInitialized && (
+          <Text style={styles.errorText}>
+            {isAndroid
+              ? 'Health Connect is not available. Please make sure it is installed and enabled.'
+              : 'Health data (HealthKit) is not available. Please enable Health access in the iOS Health app.'}
+          </Text>
+        )}
+
+        {/* Last Synced Time */}
+        { lastSyncedTime ? (
+          <View>
+            <Text style={{ color: colors.textMuted, textAlign: 'center', marginBottom: 16 }}>
+              <Text>{formatRelativeTime(new Date(lastSyncedTime))}</Text>
+            </Text>
+          </View>
+        ) : null}
+
         {/* Time Range */}
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Time Range</Text>
+        <View style={[styles.card, styles.timeRangeCard, { backgroundColor: colors.card }]}>
+          <Text style={[styles.timeRangeLabel, { color: colors.text }]}>Time Range</Text>
           <DropDownPicker
             open={openTimeRangePicker}
             value={selectedTimeRange}
@@ -738,7 +785,7 @@ const MainScreen = ({ navigation }) => {
               await saveTimeRange(item.value);
               fetchHealthData(healthMetricStates, item.value);
             }}
-            containerStyle={styles.dropdownContainer}
+            containerStyle={styles.timeRangeDropdownContainer}
             style={[styles.dropdownStyle, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}
             textStyle={{ color: colors.text }}
             dropDownContainerStyle={[styles.dropdownListContainerStyle, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -747,26 +794,19 @@ const MainScreen = ({ navigation }) => {
             placeholderStyle={[styles.dropdownPlaceholderStyle, { color: colors.textMuted }]}
             selectedItemLabelStyle={styles.selectedItemLabelStyle}
             maxHeight={200}
-            zIndex={3000} // Ensure dropdown is above other elements
+            zIndex={3000}
             zIndexInverse={1000}
             listMode="SCROLLVIEW"
             theme={isDarkMode ? "DARK" : "LIGHT"}
           />
         </View>
 
-        {/* Sync Now Button */}
-        <TouchableOpacity style={styles.syncButtonContainer} onPress={handleSync} disabled={isSyncing || !isHealthConnectInitialized}>
-          <Image source={require('../../assets/icons/sync_now_alt.png')} style={styles.metricIcon} />
-          <Text style={styles.syncButtonText}>{isSyncing ? "Syncing..." : "Sync Now"}</Text>
-          <Text style={styles.syncButtonSubText}>Sync your health data to the server</Text>
-        </TouchableOpacity>
-
         {/* Health Overview */}
         <View style={[styles.card, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Health Overview ({timeRangeOptions.find(o => o.value === selectedTimeRange)?.label || '...'})</Text>
           <View style={styles.healthMetricsContainer}>
             {HEALTH_METRICS.map(metric => healthMetricStates[metric.stateKey] && (
-              <View style={[styles.metricItem, { backgroundColor: colors.metricBackground }]} key={metric.id}>
+              <View style={[styles.metricItem, { backgroundColor: colors.metricBackground, borderBottomColor: colors.border }]} key={metric.id}>
                 <Image source={metric.icon} style={styles.metricIcon} />
                 <View>
                   <Text style={[styles.metricValue, { color: colors.text }]}>{healthData[metric.id] || '0'}</Text>
@@ -777,21 +817,7 @@ const MainScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Connected to server status */}
-        {isConnected && (
-          <View style={styles.connectedStatusContainer}>
-            <View style={styles.dot}></View>
-            <Text style={styles.connectedStatusText}>Connected to server</Text>
-          </View>
-        )}
 
-        {!isHealthConnectInitialized && (
-          <Text style={styles.errorText}>
-            {isAndroid
-              ? 'Health Connect is not available. Please make sure it is installed and enabled.'
-              : 'Health data (HealthKit) is not available. Please enable Health access in the iOS Health app.'}
-          </Text>
-        )}
       </ScrollView>
 
      
@@ -803,6 +829,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f0f2f5',
+  },
+  headerBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  headerStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e6ffe6',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  headerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#28a745',
+    marginRight: 6,
+  },
+  headerStatusText: {
+    color: '#28a745',
+    fontSize: 14,
+    fontWeight: '600',
   },
   scrollViewContent: {
     padding: 16,
@@ -819,7 +877,22 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     overflow: 'visible',
-    zIndex: 3500, // Ensure the card containing the dropdown has a high zIndex
+    zIndex: 3500,
+  },
+  timeRangeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  timeRangeLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  timeRangeDropdownContainer: {
+    flex: 1,
+    maxWidth: 180,
+    marginLeft: 16,
   },
   sectionTitle: {
     fontSize: 18,
@@ -867,6 +940,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     alignItems: 'flex-start',
     flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   metricIcon: {
     width: 24,
@@ -881,47 +956,56 @@ const styles = StyleSheet.create({
   metricLabel: {
     fontSize: 14,
     color: '#777',
+
   },
   syncButtonContainer: {
     backgroundColor: '#007bff',
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  syncButtonIconImage: {
+    width: 24,
+    height: 24,
+    marginRight: 12,
   },
   syncButtonText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 8,
+    fontWeight: '600',
   },
   syncButtonSubText: {
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
-    opacity: 0.8,
+    marginTop: 2,
   },
   webButtonContainer: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#3D4654',
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  webButtonIcon: {
-    fontSize: 32,
-    marginBottom: 4,
-    color: '#fff',
+  buttonIcon: {
+    marginRight: 12,
+  },
+  buttonTextContainer: {
+    flex: 1,
   },
   webButtonText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 4,
+    fontWeight: '600',
   },
   webButtonSubText: {
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
-    opacity: 0.8,
+    marginTop: 2,
   },
   connectedStatusContainer: {
     flexDirection: 'row',
@@ -931,6 +1015,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#e6ffe6', // Light green background
     alignSelf: 'center',
+    marginBottom: 8
   },
   connectedStatusText: {
     color: '#28a745', // Green text
@@ -980,5 +1065,36 @@ const styles = StyleSheet.create({
   },
 });
 
+const formatRelativeTime = (timestamp) => {
+  if (!timestamp) return 'Never synced';
+
+  const now = new Date();
+  const diffMs = now - timestamp;
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSeconds < 60) {
+    return 'Last synced: Just now';
+  } else if (diffMinutes < 60) {
+    return `Last synced: ${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+  } else if (diffHours < 24) {
+    return `Last synced: ${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  } else if (diffDays === 1) {
+    return `Last synced: Yesterday at ${timestamp.toLocaleTimeString([], { 
+      hour: 'numeric', 
+      minute: '2-digit' 
+    })}`;
+  } else {
+    return `Last synced: ${timestamp.toLocaleDateString([], { 
+      month: 'short', 
+      day: 'numeric' 
+    })} at ${timestamp.toLocaleTimeString([], { 
+      hour: 'numeric', 
+      minute: '2-digit' 
+    })}`;
+  }
+};
 export default MainScreen;
 

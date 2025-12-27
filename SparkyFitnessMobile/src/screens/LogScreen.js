@@ -490,11 +490,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     marginRight: 8,
     marginBottom: 4,
-    fontSize: 12,
+    fontSize: 14,
     color: '#333',
   },
   logTimestamp: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#777',
   },
   loadMoreButton: {

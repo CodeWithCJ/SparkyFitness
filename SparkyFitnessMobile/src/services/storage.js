@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const SERVER_CONFIGS_KEY = 'serverConfigs';
 const ACTIVE_SERVER_CONFIG_ID_KEY = 'activeServerConfigId';
 const TIME_RANGE_KEY = 'timeRange';
+const LAST_SYNCED_TIME_KEY = 'lastSyncedTime';
 
 /**
  * Saves a new server configuration or updates an existing one.
@@ -128,3 +129,24 @@ export const loadTimeRange = async () => {
     return null;
   }
 };
+
+export const loadLastSyncedTime = async () => {
+  try {
+    const synced = await AsyncStorage.getItem(LAST_SYNCED_TIME_KEY);
+    return synced;
+  } catch (error) {
+    console.error('Failed to retrieve sync time.', error);
+    return null;
+  }
+}
+
+export const saveLastSyncedTime = async () => {
+  try {
+    const timestamp = new Date().toISOString();
+    await AsyncStorage.setItem(LAST_SYNCED_TIME_KEY, timestamp);
+    return timestamp;
+  } catch (error) {
+    console.error('Failed to save sync time.', error);
+    return null;
+  }
+}
