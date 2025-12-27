@@ -493,12 +493,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   clearButton: {
-    backgroundColor: '#dc3545', // Red color for clear button
+    backgroundColor: '#dc3545',
     borderRadius: 8,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     alignItems: 'center',
+    alignSelf: 'center',
     marginTop: 10,
-    marginBottom: 16, // Add some margin bottom
+    marginBottom: 16,
   },
   clearButtonText: {
     color: '#fff',

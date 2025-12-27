@@ -756,7 +756,7 @@ const MainScreen = ({ navigation }) => {
 
         {/* Sync Now Button */}
         <TouchableOpacity style={styles.syncButtonContainer} onPress={handleSync} disabled={isSyncing || !isHealthConnectInitialized}>
-          <Image source={require('../../assets/icons/sync_now.png')} style={styles.metricIcon} />
+          <Image source={require('../../assets/icons/sync_now_alt.png')} style={styles.metricIcon} />
           <Text style={styles.syncButtonText}>{isSyncing ? "Syncing..." : "Sync Now"}</Text>
           <Text style={styles.syncButtonSubText}>Sync your health data to the server</Text>
         </TouchableOpacity>
@@ -901,7 +901,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   webButtonContainer: {
-    backgroundColor: '#28a745',
+    backgroundColor: '#007bff',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -910,6 +910,7 @@ const styles = StyleSheet.create({
   webButtonIcon: {
     fontSize: 32,
     marginBottom: 4,
+    color: '#fff',
   },
   webButtonText: {
     color: '#fff',

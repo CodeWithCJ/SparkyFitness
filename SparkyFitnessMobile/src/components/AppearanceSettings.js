@@ -36,7 +36,7 @@ const AppearanceSettings = ({ appTheme, setAppTheme }) => {
             }
           }}
           listMode="SCROLLVIEW"
-          containerStyle={{ flex: 1 }}
+          containerStyle={{ flex: 1, maxWidth: 200 }}
           style={{ backgroundColor: colors.inputBackground, borderColor: colors.border }}
           textStyle={{ color: colors.text }}
           dropDownContainerStyle={{ backgroundColor: colors.card, borderColor: colors.border }}
