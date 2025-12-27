@@ -1,7 +1,12 @@
-import React, { useEffect } from 'react';
-import { StatusBar, StyleSheet } from 'react-native';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import React, { useEffect, useState } from 'react';
+import { StatusBar, Platform, type ImageSourcePropType } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import {
+  NavigationContainer,
+  DefaultTheme,
+  DarkTheme,
+} from '@react-navigation/native';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import MainScreen from './src/screens/MainScreen';
@@ -10,10 +15,34 @@ import LogScreen from './src/screens/LogScreen';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-const Stack = createStackNavigator();
+import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
+
+
+const Tab = createNativeBottomTabNavigator();
+
+type TabIcons = {
+  home: ImageSourcePropType;
+  settings: ImageSourcePropType;
+  document: ImageSourcePropType;
+};
 
 function AppContent() {
   const { isDarkMode } = useTheme();
+  const [icons, setIcons] = useState<TabIcons | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') {
+      Promise.all([
+        Ionicons.getImageSource('home', 24, '#999999'),
+        Ionicons.getImageSource('settings', 24, '#999999'),
+        Ionicons.getImageSource('document-text', 24, '#999999'),
+      ]).then(([home, settings, document]) => {
+        if (home && settings && document) {
+          setIcons({ home, settings, document });
+        }
+      });
+    }
+  }, []);
 
   useEffect(() => {
     // Reset the auto-open flag on every app start
@@ -30,15 +59,41 @@ function AppContent() {
     });
   }, []);
 
+  if (Platform.OS !== 'ios' && !icons) {
+    return null;
+  }
+
   return (
     <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
       <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <Stack.Navigator initialRouteName="Main">
-        <Stack.Screen name="Main" component={MainScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Logs" component={LogScreen} options={{ headerShown: false }} />
-      </Stack.Navigator>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <Tab.Navigator initialRouteName="Main">
+          <Tab.Screen
+            name="Main"
+            component={MainScreen}
+            options={{
+              tabBarIcon: () =>
+                Platform.OS === 'ios' ? { sfSymbol: 'house' } : icons!.home,
+            }}
+          />
+          <Tab.Screen
+            name="Settings"
+            component={SettingsScreen}
+            options={{
+              tabBarIcon: () =>
+                Platform.OS === 'ios' ? { sfSymbol: 'gear' } : icons!.settings,
+            }}
+          />
+          <Tab.Screen
+            name="Logs"
+            component={LogScreen}
+            options={{
+              tabBarIcon: () =>
+                Platform.OS === 'ios' ? { sfSymbol: 'document' } : icons!.document,
+            }}
+          />
+        </Tab.Navigator>
+
       </SafeAreaProvider>
     </NavigationContainer>
   );
@@ -51,9 +106,5 @@ function App() {
     </ThemeProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  // No specific styles needed here as screens will define their own
-});
 
 export default App;
