@@ -2,18 +2,25 @@
   "expo": {
     "name": "SparkyFitnessMobile",
     "slug": "sparkyfitnessmobile",
-    "version": "0.0.2",
+    "version": "1.0.0",
     "scheme": "sparkyfitnessmobile",
     "orientation": "portrait",
     "icon": "./assets/icons/appstore.png",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "org.SparkyApps.SparkyFitnessMobile"
+      "bundleIdentifier": "org.SparkyApps.SparkyFitnessMobile",
+      "buildNumber": "1"
     },
     "android": {
       "package": "org.SparkyApps.SparkyFitnessMobile",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/appstore.png",
         "backgroundColor": "#FFFFFF"

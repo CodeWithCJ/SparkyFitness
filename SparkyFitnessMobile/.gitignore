@@ -51,7 +51,7 @@ llms.txt
 
 
 coverage/
-eas.json
+# eas.json
 /credentials.json
 /credentials/
 

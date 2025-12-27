@@ -1,71 +1,98 @@
-# Android Build Commands
+# Mobile App Release Guide
 
-## Generate Release Keystore
+This guide explains how to prepare your app for production using **GitHub Actions (Android)** and **EAS (iOS)**.
 
-This command generates a private signing key required to build the release version of the app.
+---
+
+## Part 1: Android (GitHub Actions)
+
+You do **NOT** need to build manually. GitHub will do it for you.
+However, you **MUST** do this one-time setup so GitHub has permission to sign your app.
+
+### Step 1: Generate Release Key (One Time)
+Run this command on your computer to create your private signature file.
+*   **Password**: Remember the password you choose!
+*   **Storage**: Keep the `.keystore` file safe.
 
 ```bash
-keytool -genkey -v -keystore sparky-fitness-release-key.keystore -alias sparky-fitness-alias -keyalg RSA -keysize 2048 -validity 10000
+keytool -genkey -v -keystore android/app/my-release-key.keystore -alias my-key-alias -keyalg RSA -keysize 2048 -validity 10000
 ```
-./gradlew --stop
 
+### Step 2: Configure Secrets in GitHub
+GitHub needs your key and passwords to sign the app.
+1.  Go to your GitHub Repo -> **Settings** -> **Secrets and variables** -> **Actions**.
+2.  Add these 4 secrets:
 
-## Build Release APK
+| Secret Name | Value |
+| :--- | :--- |
+| `RELEASE_KEY_ALIAS` | `my-key-alias` (or whatever you chose) |
+| `RELEASE_KEY_PASSWORD` | The password you typed in Step 1 |
+| `RELEASE_STORE_PASSWORD` | The password you typed in Step 1 |
+| `KEYSTORE_BASE64` | Run the command below to get this value: |
 
-This command cleans the previous build and creates a new release-signed APK.
+**Command to get KEYSTORE_BASE64 string:**
+*   **Mac/Linux**:
+    ```bash
+    base64 -i android/app/my-release-key.keystore | pbcopy
+    ```
+    (The long string is now in your clipboard. Paste it into GitHub).
 
+### Step 3: Trigger the Build
+1.  Check in your code (`git push`).
+2.  Create a **Release** in GitHub (tag starting with `v`, e.g., `v1.0.0`) OR just push if your workflow is set to run on push.
+3.  GitHub Actions will build the APK/AAB and attach it to the Release.
+
+---
+
+## Part 2: iOS (EAS Build)
+
+We use Expo's cloud service (EAS) to build for iOS because it handles Apple Certificates automatically.
+
+### Step 1: Install EAS CLI
 ```bash
-cd android && ./gradlew clean && ./gradlew assembleRelease && cd ..
+npm install -g eas-cli
+eas login
 ```
 
+### Step 2: Build for App Store
+Run this command. It will ask for your Apple ID credentials the first time.
+```bash
+eas build --platform ios --profile production
+```
+*   **Result**: It will give you a link to download the `.ipa` file or automatically upload it to "App Store Connect" (if configured).
 
+### Step 3: Upload to App Store
+If the build didn't auto-submit:
+```bash
+eas submit -p ios
+```
 
-## SDK Location (local.properties)
+---
 
-If you encounter an "SDK location not found" error when building the Android app, you need to create a `local.properties` file in the `SparkyFitnessMobile/android/` directory. This file specifies the path to your Android SDK.
+## Part 3: Install on iPhone (Offline / 7-Days)
 
-1.  Create the file: `SparkyFitnessMobile/android/local.properties`
-2.  Add the following line to the file, replacing `YOUR_ANDROID_SDK_PATH` with the actual path to your Android SDK:
+By default, `npx expo run:ios` builds a **Debug** version that needs your Mac to be running (Metro Server). If you walk away from your Mac, the app will crash.
 
-    ```
-    sdk.dir=YOUR_ANDROID_SDK_PATH
-    ```
+**To install a Standalone version (Works Offline/Away from Mac):**
+Run this command:
+```bash
+npx expo run:ios --configuration Release --device
+```
+*   **Benefits**: Runs offline. Faster performance.
+*   **Limitation**: Valid for 7 days (Free Developer Account) or 1 year (Paid Account).
 
-    Example for Windows:
-    `sdk.dir=C\:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk`
+---
 
-    Example for macOS/Linux:
-    `sdk.dir=/Users/YourUsername/Library/Android/sdk`
+## Appendix: Manual Gradle Config (Reference)
+*This is already set up in your code, but here for reference in case files get reset.*
 
-    Note: The backslashes in the Windows path need to be escaped with an additional backslash.
+**android/gradle.properties**:
+```properties
+MYAPP_RELEASE_STORE_FILE=my-release-key.keystore
+MYAPP_RELEASE_KEY_ALIAS=my-key-alias
+MYAPP_RELEASE_STORE_PASSWORD=my-secret-password
+MYAPP_RELEASE_KEY_PASSWORD=my-secret-password
+```
 
-adb logcat --clear
-adb logcat -s "ReactNative" "HealthConnect" "SparkyFitnessMobile" *:E
-
-
-
-Clean b# Navigate to the React Native project directory
-cd SparkyFitnessMobile
-
-# Remove node_modules and package lock files
-rm -rf node_modules
-rm -f yarn.lock package-lock.json
-
-# Clean Android build caches
-cd android
-./gradlew clean
-rm -rf .gradle app/build build
-cd .. # Go back to SparkyFitnessMobile directory
-uild:
-
-
-
-npm start -- --reset-cache
-
-npm install
-
-npm run android
-
-
-
-
+**android/app/build.gradle**:
+Uses the variables above to sign the release.

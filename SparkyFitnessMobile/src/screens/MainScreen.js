@@ -620,6 +620,10 @@ const MainScreen = ({ navigation }) => {
               displayValue = `${Math.round(totalNutrition / 1000)} kcal`;
               break;
 
+            case 'Workout':
+              displayValue = `${records.length} workouts`;
+              break;
+
             default:
               addLog(`[MainScreen] Unhandled metric type for display: ${metric.recordType}`);
               displayValue = 'N/A';
@@ -720,8 +724,8 @@ const MainScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         {/* Time Range */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Time Range</Text>
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Time Range</Text>
           <DropDownPicker
             open={openTimeRangePicker}
             value={selectedTimeRange}
@@ -733,16 +737,18 @@ const MainScreen = ({ navigation }) => {
               fetchHealthData(healthMetricStates, item.value);
             }}
             containerStyle={styles.dropdownContainer}
-            style={styles.dropdownStyle}
+            style={[styles.dropdownStyle, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}
+            textStyle={{ color: colors.text }}
+            dropDownContainerStyle={[styles.dropdownListContainerStyle, { backgroundColor: colors.card, borderColor: colors.border }]}
             itemStyle={styles.dropdownItemStyle}
-            labelStyle={styles.dropdownLabelStyle}
-            dropDownContainerStyle={styles.dropdownListContainerStyle}
-            placeholderStyle={styles.dropdownPlaceholderStyle}
+            labelStyle={[styles.dropdownLabelStyle, { color: colors.text }]}
+            placeholderStyle={[styles.dropdownPlaceholderStyle, { color: colors.textMuted }]}
             selectedItemLabelStyle={styles.selectedItemLabelStyle}
             maxHeight={200}
             zIndex={3000} // Ensure dropdown is above other elements
             zIndexInverse={1000}
             listMode="SCROLLVIEW"
+            theme={isDarkMode ? "DARK" : "LIGHT"}
           />
         </View>
 
@@ -754,15 +760,15 @@ const MainScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         {/* Health Overview */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Health Overview ({timeRangeOptions.find(o => o.value === selectedTimeRange)?.label || '...'})</Text>
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Health Overview ({timeRangeOptions.find(o => o.value === selectedTimeRange)?.label || '...'})</Text>
           <View style={styles.healthMetricsContainer}>
             {HEALTH_METRICS.map(metric => healthMetricStates[metric.stateKey] && (
-              <View style={styles.metricItem} key={metric.id}>
+              <View style={[styles.metricItem, { backgroundColor: colors.metricBackground }]} key={metric.id}>
                 <Image source={metric.icon} style={styles.metricIcon} />
                 <View>
-                  <Text style={styles.metricValue}>{healthData[metric.id] || '0'}</Text>
-                  <Text style={styles.metricLabel}>{metric.label}</Text>
+                  <Text style={[styles.metricValue, { color: colors.text }]}>{healthData[metric.id] || '0'}</Text>
+                  <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>{metric.label}</Text>
                 </View>
               </View>
             ))}

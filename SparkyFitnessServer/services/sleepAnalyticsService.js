@@ -6,7 +6,7 @@ const { calculateSleepScore } = require('./measurementService'); // Re-use exist
 async function getSleepAnalytics(userId, startDate, endDate) {
     log('info', `Fetching sleep analytics for user ${userId} from ${startDate} to ${endDate}`);
     try {
-        const sleepEntries = await sleepRepository.getSleepEntriesWithStagesByUserIdAndDateRange(userId, startDate, endDate);
+        const sleepEntries = await sleepRepository.getSleepEntriesWithAllDetailsByUserIdAndDateRange(userId, startDate, endDate);
         const userProfile = await userRepository.getUserProfile(userId);
 
         let age = null;

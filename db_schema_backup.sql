@@ -2,15 +2,14 @@
 -- PostgreSQL database dump
 --
 
-\restrict ck7h3Gg2DVFCrmeOxPYR0TB1Okq7KATU9FRJCEUEaxHh1vCCXt3JgJVztGQSR1N
+\restrict VXxb4CoQiZgTV0shJpzoV2XHzuJCarGTFHsEScIK09KnRI2tmISOU56TlTdrFMH
 
 -- Dumped from database version 15.14
--- Dumped by pg_dump version 18.0
+-- Dumped by pg_dump version 15.15 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -1109,6 +1108,25 @@ CREATE TABLE public.family_access (
 
 
 --
+-- Name: fasting_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fasting_logs (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    user_id uuid NOT NULL,
+    start_time timestamp with time zone NOT NULL,
+    end_time timestamp with time zone,
+    target_end_time timestamp with time zone,
+    duration_minutes integer,
+    fasting_type character varying(50),
+    status character varying(20),
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT fasting_logs_status_check CHECK (((status)::text = ANY ((ARRAY['ACTIVE'::character varying, 'COMPLETED'::character varying, 'CANCELLED'::character varying])::text[])))
+);
+
+
+--
 -- Name: food_entries; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1546,7 +1564,23 @@ CREATE TABLE public.sleep_entries (
     sleep_score numeric,
     source character varying(50) NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    deep_sleep_seconds integer,
+    light_sleep_seconds integer,
+    rem_sleep_seconds integer,
+    awake_sleep_seconds integer,
+    average_spo2_value numeric,
+    lowest_spo2_value numeric,
+    highest_spo2_value numeric,
+    average_respiration_value numeric,
+    lowest_respiration_value numeric,
+    highest_respiration_value numeric,
+    awake_count integer,
+    avg_sleep_stress numeric,
+    restless_moments_count integer,
+    avg_overnight_hrv numeric,
+    body_battery_change numeric,
+    resting_heart_rate numeric
 );
 
 
@@ -2250,6 +2284,14 @@ ALTER TABLE ONLY public.exercises
 
 
 --
+-- Name: fasting_logs fasting_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fasting_logs
+    ADD CONSTRAINT fasting_logs_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: food_entry_meals food_entry_meals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2855,6 +2897,13 @@ CREATE TRIGGER update_external_data_providers_updated_at_trigger BEFORE UPDATE O
 
 
 --
+-- Name: fasting_logs update_fasting_logs_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_fasting_logs_updated_at BEFORE UPDATE ON public.fasting_logs FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: food_variants update_food_variants_timestamp; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3089,6 +3138,14 @@ ALTER TABLE ONLY public.exercise_preset_entries
 
 ALTER TABLE ONLY public.exercise_preset_entries
     ADD CONSTRAINT exercise_preset_entries_workout_preset_id_fkey FOREIGN KEY (workout_preset_id) REFERENCES public.workout_presets(id) ON DELETE SET NULL;
+
+
+--
+-- Name: fasting_logs fasting_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fasting_logs
+    ADD CONSTRAINT fasting_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 
 --
@@ -3594,6 +3651,12 @@ ALTER TABLE public.external_data_providers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.family_access ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: fasting_logs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.fasting_logs ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: food_entries; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3832,6 +3895,13 @@ ALTER TABLE public.mood_entries ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY owner_policy ON public.ai_service_settings USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: fasting_logs owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.fasting_logs USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
 
 
 --
@@ -4427,6 +4497,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_uat;
 
 
 --
+-- Name: TABLE fasting_logs; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.fasting_logs TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_uat;
+
+
+--
 -- Name: TABLE food_entries; Type: ACL; Schema: public; Owner: -
 --
 
@@ -4862,35 +4941,35 @@ GRANT SELECT ON TABLE system.schema_migrations TO sparky_uat;
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: auth; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_test;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO sparky;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO sparky_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO sparky_test;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO sparky_uat;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_test;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES  TO sparky;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES  TO sparky_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES  TO sparky_test;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES  TO sparky_uat;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_test;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO sparky;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO sparky_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO sparky_test;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO sparky_uat;
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ck7h3Gg2DVFCrmeOxPYR0TB1Okq7KATU9FRJCEUEaxHh1vCCXt3JgJVztGQSR1N
+\unrestrict VXxb4CoQiZgTV0shJpzoV2XHzuJCarGTFHsEScIK09KnRI2tmISOU56TlTdrFMH
 

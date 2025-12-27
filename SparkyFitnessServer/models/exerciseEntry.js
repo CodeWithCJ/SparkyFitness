@@ -279,8 +279,8 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
            snapshot.secondary_muscles,
            snapshot.instructions,
            snapshot.images,
-           entryData.distance,
-           entryData.avg_heart_rate,
+           entryData.distance || null, // Ensure distance is not undefined
+           entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
            exercisePresetEntryId, // New parameter
          ]
       );
@@ -329,6 +329,48 @@ async function getExerciseEntryById(id, userId) {
         WHERE ee.id = $1`,
       [id]
     );
+    const exerciseEntry = result.rows[0];
+    if (exerciseEntry && exerciseEntry.equipment) {
+      try {
+        exerciseEntry.equipment = JSON.parse(exerciseEntry.equipment);
+      } catch (e) {
+        log('error', `Error parsing equipment for exercise entry ${exerciseEntry.id}:`, e);
+        exerciseEntry.equipment = []; // Default to empty array on parse error
+      }
+    }
+    if (exerciseEntry && exerciseEntry.primary_muscles) {
+      try {
+        exerciseEntry.primary_muscles = JSON.parse(exerciseEntry.primary_muscles);
+      } catch (e) {
+        log('error', `Error parsing primary_muscles for exercise entry ${exerciseEntry.id}:`, e);
+        exerciseEntry.primary_muscles = [];
+      }
+    }
+    if (exerciseEntry && exerciseEntry.secondary_muscles) {
+      try {
+        exerciseEntry.secondary_muscles = JSON.parse(exerciseEntry.secondary_muscles);
+      } catch (e) {
+        log('error', `Error parsing secondary_muscles for exercise entry ${exerciseEntry.id}:`, e);
+        exerciseEntry.secondary_muscles = [];
+      }
+    }
+    if (exerciseEntry && exerciseEntry.instructions) {
+      try {
+        exerciseEntry.instructions = JSON.parse(exerciseEntry.instructions);
+      } catch (e) {
+        log('error', `Error parsing instructions for exercise entry ${exerciseEntry.id}:`, e);
+        exerciseEntry.instructions = [];
+      }
+    }
+    if (exerciseEntry && exerciseEntry.images) {
+      try {
+        exerciseEntry.images = JSON.parse(exerciseEntry.images);
+      } catch (e) {
+        log('error', `Error parsing images for exercise entry ${exerciseEntry.id}:`, e);
+        exerciseEntry.images = [];
+      }
+    }
+    return exerciseEntry;
     return result.rows[0];
   } finally {
     client.release();
