@@ -115,7 +115,8 @@
           }
         }
       ],
-      "react-native-health-connect"
+      "react-native-health-connect",
+      "expo-web-browser"
     ]
   }
 }

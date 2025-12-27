@@ -27,6 +27,8 @@ import { getActiveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { HEALTH_METRICS } from '../constants/HealthMetrics'; // Import HEALTH_METRICS
 import { useTheme } from '../contexts/ThemeContext';
+import * as WebBrowser from 'expo-web-browser';
+
 
 const MainScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -89,7 +91,6 @@ const MainScreen = ({ navigation }) => {
       const autoOpenDashboard = async () => {
         // Check if we've already auto-opened the dashboard in this app session
         const hasAutoOpened = await loadStringPreference('hasAutoOpenedDashboard');
-
         if (hasAutoOpened !== 'true') {
           addLog('[MainScreen] First app launch - auto-opening web dashboard');
           // Small delay to ensure screen is fully focused and server config is loaded
@@ -699,45 +700,11 @@ const MainScreen = ({ navigation }) => {
 
       // Try to open with InAppBrowser (Custom Tabs on Android)
       try {
-        // if (await InAppBrowser.isAvailable()) {
-        //   await InAppBrowser.open(serverUrl, {
-        //     // iOS Properties
-        //     dismissButtonStyle: 'close',
-        //     preferredBarTintColor: '#007bff',
-        //     preferredControlTintColor: 'white',
-        //     readerMode: false,
-        //     animated: true,
-        //     modalPresentationStyle: 'pageSheet',
-        //     modalTransitionStyle: 'coverVertical',
-        //     modalEnabled: true,
-        //     enableBarCollapsing: false,
-        //     // Android Properties
-        //     showTitle: true,
-        //     toolbarColor: '#007bff',
-        //     secondaryToolbarColor: 'black',
-        //     navigationBarColor: 'black',
-        //     navigationBarDividerColor: 'white',
-        //     enableUrlBarHiding: true,
-        //     enableDefaultShare: true,
-        //     forceCloseOnRedirection: false,
-        //     // Specify full animation resource identifier(package:anim/name)
-        //     // or only resource name(in case of animation bundled with app).
-        //     animations: {
-        //       startEnter: 'slide_in_right',
-        //       startExit: 'slide_out_left',
-        //       endEnter: 'slide_in_left',
-        //       endExit: 'slide_out_right'
-        //     }
-        //   });
-        //   addLog('Web dashboard opened successfully', 'info', 'SUCCESS');
-        // } else {
-        // Fallback to default browser if InAppBrowser not available
-        addLog('InAppBrowser not available, using default browser', 'warn', 'WARNING');
-        await Linking.openURL(serverUrl);
-        // }
+        await WebBrowser.openBrowserAsync(serverUrl);
+        addLog('Web dashboard opened successfully with WebBrowser', 'info', 'SUCCESS');
       } catch (inAppError) {
         // Fallback to default browser on error
-        addLog(`InAppBrowser error: ${inAppError.message}, using default browser`, 'warn', 'WARNING');
+        addLog(`WebBrowser error: ${inAppError.message}, using default browser`, 'warn', 'WARNING');
         await Linking.openURL(serverUrl);
       }
     } catch (error) {
