@@ -55,6 +55,7 @@ jobs:
           else
             npm install --no-audit --progress=false
           fi
+          npx expo prebuild --platform ios
 
       # 4️⃣ Cache CocoaPods spec repo
       - name: Cache CocoaPods spec repo

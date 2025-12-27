@@ -1,20 +1,24 @@
 import React from 'react';
 import { View, TextInput, Button, Text, TouchableOpacity, Image, Alert } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import styles from '../screens/SettingsScreenStyles'; // Assuming styles are shared
+import styles from '../screens/SettingsScreenStyles';
+import { useTheme } from '../contexts/ThemeContext';
 
 const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, serverConfigs, activeConfigId, handleSetActiveConfig, handleDeleteConfig, handleEditConfig, handleAddNewConfig, isConnected, checkServerConnection }) => {
+  const { colors } = useTheme();
+
   return (
     <>
       {/* Server Configuration */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Server Configuration</Text>
+      <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Server Configuration</Text>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Server URL</Text>
-          <View style={styles.inputWithIcon}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Server URL</Text>
+          <View style={[styles.inputWithIcon, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
             <TextInput
-              style={[styles.input, { flex: 1, borderWidth: 0 }]}
+              style={[styles.input, { flex: 1, borderWidth: 0, color: colors.text }]}
               placeholder="https://your-server-url.com"
+              placeholderTextColor={colors.textMuted}
               value={url}
               onChangeText={setUrl}
               autoCapitalize="none"
@@ -29,11 +33,12 @@ const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, server
           </View>
         </View>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>API Key</Text>
-          <View style={styles.inputWithIcon}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>API Key</Text>
+          <View style={[styles.inputWithIcon, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
             <TextInput
-              style={[styles.input, { flex: 1, borderWidth: 0 }]}
+              style={[styles.input, { flex: 1, borderWidth: 0, color: colors.text }]}
               placeholder="Enter your API key"
+              placeholderTextColor={colors.textMuted}
               value={apiKey}
               onChangeText={setApiKey}
               secureTextEntry
@@ -46,15 +51,15 @@ const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, server
             </TouchableOpacity>
           </View>
         </View>
-        <Button title="Save Current Config" onPress={handleSaveConfig} />
+        <Button title="Save Current Config" onPress={handleSaveConfig} color={colors.primary} />
       </View>
 
       {/* Display existing configurations */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Manage Configurations</Text>
+      <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Manage Configurations</Text>
         {serverConfigs.map((item) => (
-          <View key={item.id} style={styles.serverConfigItem}>
-            <Text style={styles.serverConfigText}>
+          <View key={item.id} style={[styles.serverConfigItem, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.serverConfigText, { color: colors.text, flex: 1 }]}>
               {item.url} {item.id === activeConfigId ? '(Active)' : ''}
             </Text>
             <View style={styles.serverConfigActions}>

@@ -29,6 +29,7 @@ export interface SleepStageEvent {
 
 export interface SleepEntry {
   id: string;
+  user_id: string;
   entry_date: string;
   bedtime: string;
   wake_time: string;
@@ -36,6 +37,24 @@ export interface SleepEntry {
   time_asleep_in_seconds: number | null;
   sleep_score: number | null;
   source: string;
+  created_at: string;
+  updated_at: string;
+  deep_sleep_seconds: number | null;
+  light_sleep_seconds: number | null;
+  rem_sleep_seconds: number | null;
+  awake_sleep_seconds: number | null;
+  average_spo2_value: number | null;
+  lowest_spo2_value: number | null;
+  highest_spo2_value: number | null;
+  average_respiration_value: number | null;
+  lowest_respiration_value: number | null;
+  highest_respiration_value: number | null;
+  awake_count: number | null;
+  avg_sleep_stress: number | null;
+  restless_moments_count: number | null;
+  avg_overnight_hrv: number | null;
+  body_battery_change: number | null;
+  resting_heart_rate: number | null;
   stage_events?: SleepStageEvent[];
 }
 

@@ -51,7 +51,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
     }
     setLoading(true);
     try {
-      const response = await api.get(`/sleep?startDate=${selectedDate}&endDate=${selectedDate}`);
+      const response = await api.get(`/sleep/details?startDate=${selectedDate}&endDate=${selectedDate}`);
       setSleepEntries(response);
       info(loggingLevel, "SleepEntrySection: Sleep entries fetched successfully:", response);
     } catch (err) {
@@ -104,13 +104,16 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
           entry_date: selectedDate,
           bedtime: parsedBedtime.toISOString(),
           wake_time: parsedWakeTime.toISOString(),
-          duration_in_seconds: durationInSeconds,
+          duration_in_seconds: Number(durationInSeconds) || 0,
           source: 'manual',
-          stage_events: session.stageEvents.map(event => ({
-            ...event,
-            entry_id: '', // Will be assigned by the backend
-            id: event.id.startsWith('temp-') ? undefined : event.id, // Remove temporary IDs for new events
-          })),
+          stage_events: session.stageEvents
+            .filter(event => event)
+            .map(event => ({
+              ...event,
+              duration_in_seconds: Number(event.duration_in_seconds) || 0,
+              entry_id: '', // Will be assigned by the backend
+              id: event.id.startsWith('temp-') ? undefined : event.id, // Remove temporary IDs for new events
+            })),
         };
 
         await api.post('/sleep/manual_entry', { body: sleepEntryData });
@@ -190,21 +193,21 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
       const parsedWakeTime = parseISO(newWakeTime);
       const durationInMinutes = differenceInMinutes(parsedWakeTime, parsedBedtime);
       const durationInSeconds = durationInMinutes * 60;
- 
-       await api.put(`/sleep/${entryId}`, { body: { stage_events: eventsForApi, bedtime: newBedtime, wake_time: newWakeTime, duration_in_seconds: durationInSeconds } });
-       sonnerToast.success(t('sleepEntrySection.stagesUpdatedSuccessfully', 'Sleep stages and times updated successfully!'));
-       info(loggingLevel, `SleepEntrySection: Sleep stages and times for entry ${entryId} updated successfully.`);
-     } catch (err) {
-       error(loggingLevel, `SleepEntrySection: Error updating sleep stages and times for entry ${entryId}:`, err);
-       toast({
-         title: t('sleepEntrySection.error', 'Error'),
-         description: t('sleepEntrySection.failedToUpdateSleepStages', 'Failed to update sleep stages and times'),
-         variant: "destructive",
-       });
-     } finally {
-       setLoading(false);
-     }
-   };
+
+      await api.put(`/sleep/${entryId}`, { body: { stage_events: eventsForApi, bedtime: newBedtime, wake_time: newWakeTime, duration_in_seconds: durationInSeconds } });
+      sonnerToast.success(t('sleepEntrySection.stagesUpdatedSuccessfully', 'Sleep stages and times updated successfully!'));
+      info(loggingLevel, `SleepEntrySection: Sleep stages and times for entry ${entryId} updated successfully.`);
+    } catch (err) {
+      error(loggingLevel, `SleepEntrySection: Error updating sleep stages and times for entry ${entryId}:`, err);
+      toast({
+        title: t('sleepEntrySection.error', 'Error'),
+        description: t('sleepEntrySection.failedToUpdateSleepStages', 'Failed to update sleep stages and times'),
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDiscardExistingEntryStageEvents = (entryId: string) => {
     debug(loggingLevel, `SleepEntrySection: handleDiscardExistingEntryStageEvents for entry ${entryId}`);
@@ -306,6 +309,32 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-md font-semibold">Sleep Entry for {formatDateInUserTimezone(entry.bedtime, 'PPP')}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t('sleepEntrySection.duration', 'Duration')}: {(entry.duration_in_seconds / 3600).toFixed(1)}h &middot;
+                      {t('sleepEntrySection.asleep', 'Asleep')}: {(entry.time_asleep_in_seconds / 3600).toFixed(1)}h &middot;
+                      {t('sleepEntrySection.score', 'Score')}: {entry.sleep_score || 'N/A'} &middot;
+                      {t('sleepEntrySection.source', 'Source')}: {entry.source}
+                    </p>
+                    {entry.deep_sleep_seconds !== null && entry.deep_sleep_seconds !== undefined && (
+                      <p className="text-xs text-muted-foreground">
+                        {t('sleepEntrySection.deepSleep', 'Deep')}: {(entry.deep_sleep_seconds / 60).toFixed(0)}m &middot;
+                        {t('sleepEntrySection.lightSleep', 'Light')}: {(entry.light_sleep_seconds / 60).toFixed(0)}m &middot;
+                        {t('sleepEntrySection.remSleep', 'REM')}: {(entry.rem_sleep_seconds / 60).toFixed(0)}m &middot;
+                        {t('sleepEntrySection.awake', 'Awake')}: {(entry.awake_sleep_seconds / 60).toFixed(0)}m
+                      </p>
+                    )}
+                    {entry.average_spo2_value !== null && entry.average_spo2_value !== undefined && (
+                      <p className="text-xs text-muted-foreground">
+                        {t('sleepEntrySection.avgSpO2', 'Avg SpO2')}: {entry.average_spo2_value.toFixed(1)}% &middot;
+                        {t('sleepEntrySection.avgRespiration', 'Avg Respiration')}: {entry.average_respiration_value?.toFixed(1) || 'N/A'} bpm
+                      </p>
+                    )}
+                    {entry.avg_sleep_stress !== null && entry.avg_sleep_stress !== undefined && (
+                      <p className="text-xs text-muted-foreground">
+                        {t('sleepEntrySection.avgSleepStress', 'Avg Sleep Stress')}: {entry.avg_sleep_stress.toFixed(1)} &middot;
+                        {t('sleepEntrySection.avgOvernightHrv', 'Avg Overnight HRV')}: {entry.avg_overnight_hrv?.toFixed(1) || 'N/A'} ms
+                      </p>
+                    )}
                   </div>
                   <div className="flex space-x-2">
                     {editingEntryId === entry.id ? (
@@ -428,6 +457,22 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
                         duration: (entry.duration_in_seconds / 3600).toFixed(1),
                         sleepScore: entry.sleep_score,
                         source: entry.source,
+                        deepSleepSeconds: entry.deep_sleep_seconds,
+                        lightSleepSeconds: entry.light_sleep_seconds,
+                        remSleepSeconds: entry.rem_sleep_seconds,
+                        awakeSleepSeconds: entry.awake_sleep_seconds,
+                        averageSpo2Value: entry.average_spo2_value,
+                        lowestSpo2Value: entry.lowest_spo2_value,
+                        highestSpo2Value: entry.highest_spo2_value,
+                        averageRespirationValue: entry.average_respiration_value,
+                        lowestRespirationValue: entry.lowest_respiration_value,
+                        highestRespirationValue: entry.highest_respiration_value,
+                        awakeCount: entry.awake_count,
+                        avgSleepStress: entry.avg_sleep_stress,
+                        restlessMomentsCount: entry.restless_moments_count,
+                        avgOvernightHrv: entry.avg_overnight_hrv,
+                        bodyBatteryChange: entry.body_battery_change,
+                        restingHeartRate: entry.resting_heart_rate,
                       }}
                     />
                   );
