@@ -1,7 +1,7 @@
 const { getSystemClient } = require('../db/poolManager');
 const { encrypt, decrypt, ENCRYPTION_KEY } = require('../security/encryption');
 const { log } = require('../config/logging');
-const fetch = require('node-fetch'); // Import node-fetch
+const fetch = global.fetch || require('node-fetch'); // Import node-fetch, use global fetch if available
 const NodeCache = require('node-cache'); // Import node-cache for caching discovery documents
 
 const discoveryCache = new NodeCache({ stdTTL: 3600 }); // Cache discovery documents for 1 hour
@@ -18,6 +18,12 @@ async function getOidcProviders() {
             FROM oidc_providers
             ORDER BY id ASC`
         );
+        // Ensure a default timeout if not set or too low
+        result.rows.forEach(row => {
+            if (!row.timeout || row.timeout < 15000) {
+                row.timeout = 15000; // Default to 15 seconds
+            }
+        });
         return result.rows;
     } finally {
         client.release();
@@ -28,7 +34,7 @@ async function getOidcProviderById(id) {
     const client = await getSystemClient(); // System-level operation
     try {
         const result = await client.query(
-            `SELECT 
+            `SELECT
                 id, issuer_url, client_id,
                 encrypted_client_secret, client_secret_iv, client_secret_tag,
                 redirect_uris, scope, token_endpoint_auth_method, response_types, is_active,
@@ -42,6 +48,11 @@ async function getOidcProviderById(id) {
 
         if (!provider) {
             return null;
+        }
+
+        // Ensure a default timeout if not set or too low
+        if (!provider.timeout || provider.timeout < 15000) {
+            provider.timeout = 15000; // Default to 15 seconds
         }
 
         let decryptedClientSecret = null;
