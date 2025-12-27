@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     color: '#555',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#fff3cd', // Light yellow background
     alignSelf: 'center',
-    marginTop: 16,
+    marginBottom: 16,
   },
   configRequiredText: {
     color: '#856404', // Dark yellow text
@@ -117,7 +117,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#e6ffe6', // Light green background
     alignSelf: 'center',
-    marginTop: 16,
   },
   connectedStatusText: {
     marginLeft: 8,
@@ -144,19 +143,17 @@ const styles = StyleSheet.create({
   },
   serverConfigItem: {
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   serverConfigText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
   },
   serverConfigActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap', // Allow buttons to wrap to the next line
+    flexWrap: 'wrap',
     justifyContent: 'flex-end', // Align buttons to the right
     flex: 1, // Take available space
   },
@@ -171,10 +168,12 @@ const styles = StyleSheet.create({
     fontSize: 12, // Reduced font size
   },
   addConfigButton: {
-    backgroundColor: '#28a745',
-    padding: 12,
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
+    alignSelf: 'center',
   },
   addConfigButtonText: {
     color: '#fff',

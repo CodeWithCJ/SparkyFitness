@@ -88,29 +88,31 @@ const MainScreen = ({ navigation }) => {
       initialize();
 
       // Auto-open web dashboard on first app load only
-      const autoOpenDashboard = async () => {
-        // Check if we've already auto-opened the dashboard in this app session
-        const hasAutoOpened = await loadStringPreference('hasAutoOpenedDashboard');
-        if (hasAutoOpened !== 'true') {
-          addLog('[MainScreen] First app launch - auto-opening web dashboard');
-          // Small delay to ensure screen is fully focused and server config is loaded
-          await new Promise(resolve => setTimeout(resolve, 1500));
+      // Temporarily disabled for testing
+      //
+      // const autoOpenDashboard = async () => {
+      //   // Check if we've already auto-opened the dashboard in this app session
+      //   const hasAutoOpened = await loadStringPreference('hasAutoOpenedDashboard');
+      //   if (hasAutoOpened !== 'true') {
+      //     addLog('[MainScreen] First app launch - auto-opening web dashboard');
+      //     // Small delay to ensure screen is fully focused and server config is loaded
+      //     await new Promise(resolve => setTimeout(resolve, 1500));
 
-          try {
-            await openWebDashboard();
-            // Only mark as opened if successful (no error thrown)
-            await saveStringPreference('hasAutoOpenedDashboard', 'true');
-            addLog('[MainScreen] Web dashboard auto-open successful');
-          } catch (error) {
-            // Don't set the flag if opening failed - try again next time
-            addLog(`[MainScreen] Failed to auto-open dashboard: ${error.message}`, 'error', 'ERROR');
-          }
-        } else {
-          addLog('[MainScreen] Already auto-opened dashboard in this session - skipping');
-        }
-      };
+      //     try {
+      //       await openWebDashboard();
+      //       // Only mark as opened if successful (no error thrown)
+      //       await saveStringPreference('hasAutoOpenedDashboard', 'true');
+      //       addLog('[MainScreen] Web dashboard auto-open successful');
+      //     } catch (error) {
+      //       // Don't set the flag if opening failed - try again next time
+      //       addLog(`[MainScreen] Failed to auto-open dashboard: ${error.message}`, 'error', 'ERROR');
+      //     }
+      //   } else {
+      //     addLog('[MainScreen] Already auto-opened dashboard in this session - skipping');
+      //   }
+      // };
 
-      autoOpenDashboard();
+      // autoOpenDashboard();
 
       return () => {
         // Optional: cleanup function when the screen loses focus
@@ -754,7 +756,7 @@ const MainScreen = ({ navigation }) => {
 
         {/* Sync Now Button */}
         <TouchableOpacity style={styles.syncButtonContainer} onPress={handleSync} disabled={isSyncing || !isHealthConnectInitialized}>
-          <Image source={require('../../assets/icons/sync_now.png')} style={styles.metricIcon} />
+          <Image source={require('../../assets/icons/sync_now_alt.png')} style={styles.metricIcon} />
           <Text style={styles.syncButtonText}>{isSyncing ? "Syncing..." : "Sync Now"}</Text>
           <Text style={styles.syncButtonSubText}>Sync your health data to the server</Text>
         </TouchableOpacity>
@@ -792,21 +794,7 @@ const MainScreen = ({ navigation }) => {
         )}
       </ScrollView>
 
-      {/* Bottom Navigation Bar */}
-      <View style={[styles.bottomNavBar, { paddingBottom: insets.bottom, backgroundColor: colors.navBar }]}>
-        <TouchableOpacity style={styles.navBarItem} onPress={() => navigation.navigate('Main')}>
-          <Image source={require('../../assets/icons/home.png')} style={[styles.navBarIcon, styles.navBarIconActive]} />
-          <Text style={[styles.navBarText, styles.navBarTextActive]}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navBarItem} onPress={() => navigation.navigate('Settings')}>
-          <Image source={require('../../assets/icons/settings.png')} style={styles.navBarIcon} />
-          <Text style={styles.navBarText}>Settings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navBarItem} onPress={() => navigation.navigate('Logs')}>
-          <Image source={require('../../assets/icons/logs.png')} style={styles.navBarIcon} />
-          <Text style={styles.navBarText}>Logs</Text>
-        </TouchableOpacity>
-      </View>
+     
     </View>
   );
 };
@@ -913,7 +901,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   webButtonContainer: {
-    backgroundColor: '#28a745',
+    backgroundColor: '#007bff',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -922,6 +910,7 @@ const styles = StyleSheet.create({
   webButtonIcon: {
     fontSize: 32,
     marginBottom: 4,
+    color: '#fff',
   },
   webButtonText: {
     color: '#fff',

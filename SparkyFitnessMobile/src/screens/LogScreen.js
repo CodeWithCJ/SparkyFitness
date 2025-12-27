@@ -1,9 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Button, StyleSheet, TouchableOpacity, Image, Alert, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  Button,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Alert,
+  ScrollView,
+} from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import DropDownPicker from 'react-native-dropdown-picker'; // Use consistent dropdown library
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getLogs, clearLogs, getLogSummary, getLogLevel, setLogLevel } from '../services/LogService';
+import {
+  getLogs,
+  clearLogs,
+  getLogSummary,
+  getLogLevel,
+  setLogLevel,
+} from '../services/LogService';
 import { useTheme } from '../contexts/ThemeContext';
 
 const LogScreen = ({ navigation }) => {
@@ -12,7 +28,11 @@ const LogScreen = ({ navigation }) => {
   const [logs, setLogs] = useState([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [logSummary, setLogSummary] = useState({ SUCCESS: 0, WARNING: 0, ERROR: 0 });
+  const [logSummary, setLogSummary] = useState({
+    SUCCESS: 0,
+    WARNING: 0,
+    ERROR: 0,
+  });
   const [currentLogLevel, setCurrentLogLevel] = useState('info');
   const [logLevelOpen, setLogLevelOpen] = useState(false); // State for dropdown visibility
 
@@ -21,7 +41,7 @@ const LogScreen = ({ navigation }) => {
   const loadLogs = async (newOffset = 0, append = false) => {
     const storedLogs = await getLogs(newOffset, LOG_LIMIT);
     if (append) {
-      setLogs((prevLogs) => [...prevLogs, ...storedLogs]);
+      setLogs(prevLogs => [...prevLogs, ...storedLogs]);
     } else {
       setLogs(storedLogs);
     }
@@ -71,13 +91,14 @@ const LogScreen = ({ navigation }) => {
           },
         },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
-  const handleLogLevelChange = async (valOrFunc) => {
+  const handleLogLevelChange = async valOrFunc => {
     // DropDownPicker might pass a function or value
-    const level = typeof valOrFunc === 'function' ? valOrFunc(currentLogLevel) : valOrFunc;
+    const level =
+      typeof valOrFunc === 'function' ? valOrFunc(currentLogLevel) : valOrFunc;
 
     if (level && level !== currentLogLevel) {
       try {
@@ -93,7 +114,7 @@ const LogScreen = ({ navigation }) => {
     }
   };
 
-  const handleCopyLogToClipboard = (item) => {
+  const handleCopyLogToClipboard = item => {
     // Format the log entry as a string
     let logText = `Status: ${item.status}\n`;
     logText += `Message: ${item.message}\n`;
@@ -111,10 +132,13 @@ const LogScreen = ({ navigation }) => {
     Alert.alert('Copied', 'Log entry copied to clipboard');
   };
 
-
-
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.background, paddingTop: insets.top },
+      ]}
+    >
       <View style={{ padding: 16, paddingBottom: 0, zIndex: 100 }}>
         {/* Clear Logs Button */}
         <TouchableOpacity style={styles.clearButton} onPress={handleClearLogs}>
@@ -122,60 +146,114 @@ const LogScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         {/* Today's Summary */}
-        <View style={[styles.card, styles.summaryCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Today's Summary</Text>
+        <View
+          style={[
+            styles.card,
+            styles.summaryCard,
+            { backgroundColor: colors.card },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Today's Summary
+          </Text>
           <View style={styles.summaryContainer}>
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#28a745' }]}>{logSummary.SUCCESS}</Text>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Successful</Text>
+              <Text style={[styles.summaryCount, { color: '#28a745' }]}>
+                {logSummary.SUCCESS}
+              </Text>
+              <Text
+                style={[styles.summaryLabel, { color: colors.textSecondary }]}
+              >
+                Successful
+              </Text>
             </View>
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#ffc107' }]}>{logSummary.WARNING}</Text>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Warnings</Text>
+              <Text style={[styles.summaryCount, { color: '#ffc107' }]}>
+                {logSummary.WARNING}
+              </Text>
+              <Text
+                style={[styles.summaryLabel, { color: colors.textSecondary }]}
+              >
+                Warnings
+              </Text>
             </View>
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#dc3545' }]}>{logSummary.ERROR}</Text>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Errors</Text>
+              <Text style={[styles.summaryCount, { color: '#dc3545' }]}>
+                {logSummary.ERROR}
+              </Text>
+              <Text
+                style={[styles.summaryLabel, { color: colors.textSecondary }]}
+              >
+                Errors
+              </Text>
             </View>
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#007bff' }]}>{logSummary.info}</Text>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Info</Text>
+              <Text style={[styles.summaryCount, { color: '#007bff' }]}>
+                {logSummary.info}
+              </Text>
+              <Text
+                style={[styles.summaryLabel, { color: colors.textSecondary }]}
+              >
+                Info
+              </Text>
             </View>
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#800080' }]}>{logSummary.debug}</Text>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Debug</Text>
+              <Text style={[styles.summaryCount, { color: '#800080' }]}>
+                {logSummary.debug}
+              </Text>
+              <Text
+                style={[styles.summaryLabel, { color: colors.textSecondary }]}
+              >
+                Debug
+              </Text>
             </View>
           </View>
         </View>
 
         {/* Log Level Settings */}
-        <View style={[styles.card, { zIndex: 3000, backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Log Level</Text>
+        <View
+          style={[styles.card, { zIndex: 3000, backgroundColor: colors.card }]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Log Level
+          </Text>
           <DropDownPicker
             open={logLevelOpen}
             value={currentLogLevel}
             items={[
-              { label: "Silent", value: "silent" },
-              { label: "Error", value: "error" },
-              { label: "Warning", value: "warn" },
-              { label: "Info", value: "info" },
-              { label: "Debug", value: "debug" }
+              { label: 'Silent', value: 'silent' },
+              { label: 'Error', value: 'error' },
+              { label: 'Warning', value: 'warn' },
+              { label: 'Info', value: 'info' },
+              { label: 'Debug', value: 'debug' },
             ]}
             setOpen={setLogLevelOpen}
             setValue={handleLogLevelChange}
             listMode="SCROLLVIEW"
             containerStyle={styles.dropdownContainer}
-            style={[styles.dropdownStyle, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}
+            style={[
+              styles.dropdownStyle,
+              {
+                backgroundColor: colors.inputBackground,
+                borderColor: colors.border,
+              },
+            ]}
             textStyle={{ color: colors.text }}
-            dropDownContainerStyle={[styles.dropdownListContainerStyle, { backgroundColor: colors.card, borderColor: colors.border }]}
+            dropDownContainerStyle={[
+              styles.dropdownListContainerStyle,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
             itemStyle={styles.dropdownItemStyle}
             labelStyle={[styles.dropdownLabelStyle, { color: colors.text }]}
-            placeholderStyle={[styles.dropdownPlaceholderStyle, { color: colors.textMuted }]}
+            placeholderStyle={[
+              styles.dropdownPlaceholderStyle,
+              { color: colors.textMuted },
+            ]}
             selectedItemLabelStyle={styles.selectedItemLabelStyle}
             maxHeight={200}
             zIndex={3000}
             zIndexInverse={1000}
-            theme={isDarkMode ? "DARK" : "LIGHT"}
+            theme={isDarkMode ? 'DARK' : 'LIGHT'}
           />
         </View>
       </View>
@@ -188,20 +266,60 @@ const LogScreen = ({ navigation }) => {
             onPress={() => handleCopyLogToClipboard(item)}
             activeOpacity={0.7}
           >
-            <View style={[styles.logIconContainer, { backgroundColor: item.status === 'SUCCESS' ? '#28a745' : item.status === 'WARNING' ? '#ffc107' : '#dc3545' }]}>
-              <Image source={item.status === 'SUCCESS' ? require('../../assets/icons/success.png') : item.status === 'WARNING' ? require('../../assets/icons/warning.png') : require('../../assets/icons/error.png')} style={styles.logIcon} />
+            <View
+              style={[
+                styles.logIconContainer,
+                {
+                  backgroundColor:
+                    item.status === 'SUCCESS'
+                      ? '#28a745'
+                      : item.status === 'WARNING'
+                      ? '#ffc107'
+                      : '#dc3545',
+                },
+              ]}
+            >
+              <Image
+                source={
+                  item.status === 'SUCCESS'
+                    ? require('../../assets/icons/success.png')
+                    : item.status === 'WARNING'
+                    ? require('../../assets/icons/warning.png')
+                    : require('../../assets/icons/error.png')
+                }
+                style={styles.logIcon}
+              />
             </View>
             <View style={styles.logContent}>
-              <Text style={[styles.logStatus, { color: item.status === 'SUCCESS' ? '#28a745' : item.status === 'WARNING' ? '#ffc107' : '#dc3545' }]}>
+              <Text
+                style={[
+                  styles.logStatus,
+                  {
+                    color:
+                      item.status === 'SUCCESS'
+                        ? '#28a745'
+                        : item.status === 'WARNING'
+                        ? '#ffc107'
+                        : '#dc3545',
+                  },
+                ]}
+              >
                 {item.status}
               </Text>
-              <Text style={styles.logMessage} ellipsizeMode="clip">{item.message}</Text>
+              <Text style={styles.logMessage} ellipsizeMode="clip">
+                {item.message}
+              </Text>
               <View style={styles.logDetails}>
-                {item.details && item.details.map((detail, index) => (
-                  <Text key={index} style={styles.logDetailTag}>{detail}</Text>
-                ))}
+                {item.details &&
+                  item.details.map((detail, index) => (
+                    <Text key={index} style={styles.logDetailTag}>
+                      {detail}
+                    </Text>
+                  ))}
               </View>
-              <Text style={styles.logTimestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
+              <Text style={styles.logTimestamp}>
+                {new Date(item.timestamp).toLocaleString()}
+              </Text>
             </View>
           </TouchableOpacity>
         )}
@@ -209,7 +327,10 @@ const LogScreen = ({ navigation }) => {
         ListFooterComponent={() => (
           <>
             {hasMore && (
-              <TouchableOpacity style={styles.loadMoreButton} onPress={handleLoadMore}>
+              <TouchableOpacity
+                style={styles.loadMoreButton}
+                onPress={handleLoadMore}
+              >
                 <Text style={styles.loadMoreButtonText}>Load more logs</Text>
               </TouchableOpacity>
             )}
@@ -217,22 +338,6 @@ const LogScreen = ({ navigation }) => {
         )}
         contentContainerStyle={styles.flatListContentContainer}
       />
-
-      {/* Bottom Navigation Bar */}
-      <View style={[styles.bottomNavBar, { paddingBottom: insets.bottom, backgroundColor: colors.navBar }]}>
-        <TouchableOpacity style={styles.navBarItem} onPress={() => navigation.navigate('Main')}>
-          <Image source={require('../../assets/icons/home.png')} style={styles.navBarIcon} />
-          <Text style={styles.navBarText}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navBarItem} onPress={() => navigation.navigate('Settings')}>
-          <Image source={require('../../assets/icons/settings.png')} style={styles.navBarIcon} />
-          <Text style={styles.navBarText}>Settings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navBarItem} onPress={() => navigation.navigate('Logs')}>
-          <Image source={require('../../assets/icons/logs.png')} style={[styles.navBarIcon, styles.navBarIconActive]} />
-          <Text style={[styles.navBarText, styles.navBarTextActive]}>Logs</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -388,12 +493,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   clearButton: {
-    backgroundColor: '#dc3545', // Red color for clear button
+    backgroundColor: '#dc3545',
     borderRadius: 8,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     alignItems: 'center',
+    alignSelf: 'center',
     marginTop: 10,
-    marginBottom: 16, // Add some margin bottom
+    marginBottom: 16,
   },
   clearButtonText: {
     color: '#fff',
@@ -419,8 +526,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
   },
-  navBarIconActive: {
-  },
+  navBarIconActive: {},
   navBarText: {
     fontSize: 12,
     color: '#777',
@@ -438,7 +544,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10, // Reduced vertical padding
     marginBottom: 10, // Reduced margin bottom
   },
-
 });
 
 export default LogScreen;

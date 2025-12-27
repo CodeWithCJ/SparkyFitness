@@ -116,7 +116,11 @@
         }
       ],
       "react-native-health-connect",
-      "expo-web-browser"
-    ]
+      "expo-web-browser",
+      ["react-native-bottom-tabs", { "theme": "material3-dynamic" }]
+    ],
+    "experiments": {
+      "reactCompiler": true
+    }
   }
 }

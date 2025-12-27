@@ -71,7 +71,6 @@ const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFou
           placeholder="Select sync frequency"
           {...dropdownProps}
         />
-        <Text style={[styles.subLabel, { color: colors.textMuted }]}>How often should your health data be synced automatically?</Text>
       </View>
 
       {syncDuration === '4h' && (

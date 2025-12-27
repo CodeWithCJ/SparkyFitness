@@ -8,7 +8,7 @@ const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, server
   const { colors } = useTheme();
 
   return (
-    <>
+    <View style={{ marginBottom: 16 }}>
       {/* Server Configuration */}
       <View style={[styles.card, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Server Configuration</Text>
@@ -106,7 +106,7 @@ const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, server
           </Text>
         </TouchableOpacity>
       )}
-    </>
+    </View>
   );
 };
 

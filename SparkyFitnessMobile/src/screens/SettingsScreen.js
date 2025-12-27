@@ -304,21 +304,6 @@ const SettingsScreen = ({ navigation }) => {
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation Bar */}
-      <View style={[styles.bottomNavBar, { paddingBottom: insets.bottom, backgroundColor: colors.navBar }]}>
-        <TouchableOpacity style={styles.navBarItem} onPress={() => navigation.navigate('Main')}>
-          <Image source={require('../../assets/icons/home.png')} style={styles.navBarIcon} />
-          <Text style={styles.navBarText}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navBarItem} onPress={() => navigation.navigate('Settings')}>
-          <Image source={require('../../assets/icons/settings.png')} style={[styles.navBarIcon, styles.navBarIconActive]} />
-          <Text style={[styles.navBarText, styles.navBarTextActive]}>Settings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navBarItem} onPress={() => navigation.navigate('Logs')}>
-          <Image source={require('../../assets/icons/logs.png')} style={styles.navBarIcon} />
-          <Text style={styles.navBarText}>Logs</Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Server Configuration Modal - Remove this section */}
       {/* The modal content is now integrated directly into the main screen */}
