@@ -100,7 +100,8 @@
         "@kingstinct/react-native-healthkit",
         {
           "NSHealthShareUsageDescription": "This app requires HealthKit access to read and write health data.",
-          "NSHealthUpdateUsageDescription": "This app requires HealthKit access to read and write health data."
+          "NSHealthUpdateUsageDescription": "This app requires HealthKit access to read and write health data.",
+          "background": true
         }
       ],
       "react-native-background-fetch",
@@ -117,7 +118,13 @@
       ],
       "react-native-health-connect",
       "expo-web-browser",
-      ["react-native-bottom-tabs", { "theme": "material3-dynamic" }]
+      [
+        "react-native-bottom-tabs",
+        {
+          "theme": "material3-dynamic"
+        }
+      ],
+      "expo-font"
     ],
     "experiments": {
       "reactCompiler": true
