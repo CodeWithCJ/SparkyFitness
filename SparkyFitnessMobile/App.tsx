@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StatusBar, Platform, type ImageSourcePropType } from 'react-native';
+import { StatusBar, Platform, StyleSheet, type ImageSourcePropType } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   NavigationContainer,
@@ -29,6 +29,12 @@ type TabIcons = {
 function AppContent() {
   const { isDarkMode } = useTheme();
   const [icons, setIcons] = useState<TabIcons | null>(null);
+
+  const styles = StyleSheet.create({
+    tabBar: {
+      backgroundColor: isDarkMode ? '#1c1c1e' : '#ffffff',
+    },
+  });
 
   useEffect(() => {
     if (Platform.OS !== 'ios') {
@@ -67,13 +73,19 @@ function AppContent() {
     <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-        <Tab.Navigator initialRouteName="Main">
+        <Tab.Navigator
+            initialRouteName="Main"
+            tabBarActiveTintColor="#007bff"
+            tabBarInactiveTintColor="#888888"
+            activeIndicatorColor={isDarkMode ? '#424242' : '#E7EAEC'}
+            tabBarStyle={Platform.OS !== 'ios' ? styles.tabBar : undefined}
+          >
           <Tab.Screen
             name="Main"
             component={MainScreen}
             options={{
               tabBarIcon: () =>
-                Platform.OS === 'ios' ? { sfSymbol: 'house' } : icons!.home,
+                Platform.OS === 'ios' ? { sfSymbol: 'house.fill' } : icons!.home,
             }}
           />
           <Tab.Screen
@@ -81,7 +93,7 @@ function AppContent() {
             component={SettingsScreen}
             options={{
               tabBarIcon: () =>
-                Platform.OS === 'ios' ? { sfSymbol: 'gear' } : icons!.settings,
+                Platform.OS === 'ios' ? { sfSymbol: 'gearshape.fill' } : icons!.settings,
             }}
           />
           <Tab.Screen
@@ -89,7 +101,7 @@ function AppContent() {
             component={LogScreen}
             options={{
               tabBarIcon: () =>
-                Platform.OS === 'ios' ? { sfSymbol: 'document' } : icons!.document,
+                Platform.OS === 'ios' ? { sfSymbol: 'doc.fill' } : icons!.document,
             }}
           />
         </Tab.Navigator>
