@@ -43,7 +43,7 @@ const OidcCallback: React.FC = () => {
           const userInfo = await apiCall('/openid/api/me');
           if (userInfo && userInfo.userId && userInfo.email) {
             // Assuming the backend's /openid/api/me returns user details including userId, email, and role
-            signIn(userInfo.userId, userInfo.email, null, userInfo.role || 'user', 'oidc'); // Token is not directly from OIDC, it's session-based
+signIn(userInfo.userId, userInfo.email, userInfo.role || 'user', 'oidc');
             navigate(response.redirectUrl); // Navigate to the intended redirect URL (e.g., '/')
           } else {
             setError('Failed to retrieve user information after OIDC login.');
