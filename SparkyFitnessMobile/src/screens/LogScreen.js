@@ -140,11 +140,6 @@ const LogScreen = ({ navigation }) => {
       ]}
     >
       <View style={{ padding: 16, paddingBottom: 0, zIndex: 100 }}>
-        {/* Clear Logs Button */}
-        <TouchableOpacity style={styles.clearButton} onPress={handleClearLogs}>
-          <Text style={styles.clearButtonText}>Clear All Logs</Text>
-        </TouchableOpacity>
-
         {/* Today's Summary */}
         <View
           style={[
@@ -217,6 +212,7 @@ const LogScreen = ({ navigation }) => {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Log Level
           </Text>
+          <View style={styles.logLevelContent}>
           <DropDownPicker
             open={logLevelOpen}
             value={currentLogLevel}
@@ -255,6 +251,14 @@ const LogScreen = ({ navigation }) => {
             zIndexInverse={1000}
             theme={isDarkMode ? 'DARK' : 'LIGHT'}
           />
+          {/* Clear Logs Button */}
+          <TouchableOpacity
+            style={styles.clearButton}
+            onPress={handleClearLogs}
+          >
+            <Text style={styles.clearButtonText}>Clear All Logs</Text>
+          </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -275,6 +279,10 @@ const LogScreen = ({ navigation }) => {
                       ? '#28a745'
                       : item.status === 'WARNING'
                       ? '#ffc107'
+                      : item.status === 'INFO'
+                      ? '#007bff'
+                      : item.status === 'DEBUG'
+                      ? '#800080'
                       : '#dc3545',
                 },
               ]}
@@ -296,11 +304,15 @@ const LogScreen = ({ navigation }) => {
                   styles.logStatus,
                   {
                     color:
-                      item.status === 'SUCCESS'
-                        ? '#28a745'
-                        : item.status === 'WARNING'
-                        ? '#ffc107'
-                        : '#dc3545',
+                    item.status === 'SUCCESS'
+                      ? '#28a745'
+                      : item.status === 'WARNING'
+                      ? '#ffc107'
+                      : item.status === 'INFO'
+                      ? '#007bff'
+                      : item.status === 'DEBUG'
+                      ? '#800080'
+                      : '#dc3545',
                   },
                 ]}
               >
@@ -379,8 +391,13 @@ const styles = StyleSheet.create({
   // Standardized Dropdown Styles (Matches MainScreen)
   dropdownContainer: {
     height: 50,
-    marginBottom: 15,
     zIndex: 4000,
+    width: '50%'
+  },
+  logLevelContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   dropdownStyle: {
     backgroundColor: '#fafafa',
@@ -424,12 +441,12 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 1, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     width: '100%',
   },
   logIconContainer: {
@@ -473,11 +490,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     marginRight: 8,
     marginBottom: 4,
-    fontSize: 12,
+    fontSize: 14,
     color: '#333',
   },
   logTimestamp: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#777',
   },
   loadMoreButton: {
@@ -497,10 +514,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 24,
-    alignItems: 'center',
     alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 16,
   },
   clearButtonText: {
     color: '#fff',

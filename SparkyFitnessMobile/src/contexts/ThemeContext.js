@@ -18,6 +18,14 @@ export const lightColors = {
   inputBackground: '#fff',
   tagBackground: '#e0e0e0',
   metricBackground: '#f9f9f9', // Distinct light grey for metric items
+  // Status colors
+  success: '#28a745',
+  successBackground: '#e6ffe6',
+  warning: '#ffc107',
+  warningBackground: '#fff3cd',
+  warningText: '#856404',
+  danger: '#dc3545',
+  dangerBackground: '#ffe6e6',
 };
 
 export const darkColors = {
@@ -33,6 +41,14 @@ export const darkColors = {
   inputBackground: '#2c2c2c',
   tagBackground: '#3a3a3a',
   metricBackground: '#2c2c2c', // Dark grey for metric items
+  // Status colors
+  success: '#4ade80',
+  successBackground: '#14532d',
+  warning: '#facc15',
+  warningBackground: '#422006',
+  warningText: '#fef08a',
+  danger: '#f87171',
+  dangerBackground: '#450a0a',
 };
 
 export const amoledColors = {
@@ -48,6 +64,14 @@ export const amoledColors = {
   inputBackground: '#0f0f0f',
   tagBackground: '#1a1a1a',
   metricBackground: '#1a1a1a', // Darker grey for metric items
+  // Status colors
+  success: '#4ade80',
+  successBackground: '#0a2e14',
+  warning: '#facc15',
+  warningBackground: '#2a1503',
+  warningText: '#fef08a',
+  danger: '#f87171',
+  dangerBackground: '#2a0505',
 };
 
 const ThemeContext = createContext({

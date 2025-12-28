@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, TextInput, Button, Text, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, TextInput, Text, TouchableOpacity, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Clipboard from '@react-native-clipboard/clipboard';
 import styles from '../screens/SettingsScreenStyles';
 import { useTheme } from '../contexts/ThemeContext';
@@ -7,8 +8,22 @@ import { useTheme } from '../contexts/ThemeContext';
 const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, serverConfigs, activeConfigId, handleSetActiveConfig, handleDeleteConfig, handleEditConfig, handleAddNewConfig, isConnected, checkServerConnection }) => {
   const { colors } = useTheme();
 
+  const showConfigMenu = (item) => {
+    const isActive = item.id === activeConfigId;
+    Alert.alert(
+      item.url,
+      isActive ? 'Active configuration' : 'Select an action', // Alert text, not a button
+      [
+        ...(!isActive ? [{ text: 'Set Active', onPress: () => handleSetActiveConfig(item.id) }] : []),
+        { text: 'Edit', onPress: () => handleEditConfig(item) },
+        { text: 'Delete', style: 'destructive', onPress: () => handleDeleteConfig(item.id) },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View>
       {/* Server Configuration */}
       <View style={[styles.card, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Server Configuration</Text>
@@ -24,11 +39,21 @@ const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, server
               autoCapitalize="none"
               keyboardType="url"
             />
-            <TouchableOpacity style={styles.iconButton} onPress={() => Clipboard.setString(url)}>
-              <Image source={require('../../assets/icons/copy.png')} style={styles.icon} />
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => Clipboard.setString(url)}
+              accessibilityLabel="Copy URL to clipboard"
+              accessibilityRole="button"
+            >
+              <Ionicons name="copy-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={async () => setUrl(await Clipboard.getStringAsync())}>
-              <Image source={require('../../assets/icons/paste.png')} style={styles.icon} />
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={async () => setUrl(await Clipboard.getString())}
+              accessibilityLabel="Paste URL from clipboard"
+              accessibilityRole="button"
+            >
+              <Ionicons name="clipboard-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -43,15 +68,48 @@ const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, server
               onChangeText={setApiKey}
               secureTextEntry
             />
-            <TouchableOpacity style={styles.iconButton} onPress={() => Clipboard.setString(apiKey)}>
-              <Image source={require('../../assets/icons/copy.png')} style={styles.icon} />
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => Clipboard.setString(apiKey)}
+              accessibilityLabel="Copy API key to clipboard"
+              accessibilityRole="button"
+            >
+              <Ionicons name="copy-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={async () => setApiKey(await Clipboard.getStringAsync())}>
-              <Image source={require('../../assets/icons/paste.png')} style={styles.icon} />
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={async () => setApiKey(await Clipboard.getString())}
+              accessibilityLabel="Paste API key from clipboard"
+              accessibilityRole="button"
+            >
+              <Ionicons name="clipboard-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
-        <Button title="Save Current Config" onPress={handleSaveConfig} color={colors.primary} />
+        <TouchableOpacity style={styles.addConfigButton} onPress={handleSaveConfig}>
+          <Text style={styles.addConfigButtonText}>Save Current Config</Text>
+        </TouchableOpacity>
+
+        {/* Connection status indicator */}
+        {activeConfigId && (
+          <TouchableOpacity
+            style={[styles.statusRow]}
+            onPress={checkServerConnection}
+            accessibilityLabel={isConnected ? 'Connected to server. Tap to refresh.' : 'Connection failed. Tap to retry.'}
+            accessibilityRole="button"
+          >
+            <View style={[styles.dot, { backgroundColor: isConnected ? colors.success : colors.danger }]} />
+            <Text style={[styles.statusText, { color: isConnected ? colors.success : colors.danger }]}>
+              {isConnected ? 'Connected to server' : 'Connection failed'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        {!activeConfigId && (
+          <View style={[styles.statusRow, { backgroundColor: colors.warningBackground }]}>
+            <View style={[styles.dot, { backgroundColor: colors.warning }]} />
+            <Text style={[styles.statusText, { color: colors.warningText }]}>Configuration required</Text>
+          </View>
+        )}
       </View>
 
       {/* Display existing configurations */}
@@ -59,29 +117,28 @@ const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, server
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Manage Configurations</Text>
         {serverConfigs.map((item) => (
           <View key={item.id} style={[styles.serverConfigItem, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.serverConfigText, { color: colors.text, flex: 1 }]}>
-              {item.url} {item.id === activeConfigId ? '(Active)' : ''}
-            </Text>
-            <View style={styles.serverConfigActions}>
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#007bff' }]}
-                onPress={() => handleSetActiveConfig(item.id)}
+            <View style={styles.serverConfigInfo}>
+              <Text
+                style={[styles.serverConfigText, { color: colors.text }]}
+                numberOfLines={1}
+                ellipsizeMode="middle"
               >
-                <Text style={styles.actionButtonText}>Set Active</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#ffc107' }]}
-                onPress={() => handleEditConfig(item)}
-              >
-                <Text style={styles.actionButtonText}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#dc3545' }]}
-                onPress={() => handleDeleteConfig(item.id)}
-              >
-                <Text style={styles.actionButtonText}>Delete</Text>
-              </TouchableOpacity>
+                {item.url}
+              </Text>
+              {item.id === activeConfigId && (
+                <View style={[styles.activeBadge, { backgroundColor: colors.successBackground }]}>
+                  <Text style={[styles.activeBadgeText, { color: colors.success }]}>✓</Text>
+                </View>
+              )}
             </View>
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => showConfigMenu(item)}
+              accessibilityLabel={`Options for ${item.url}`}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.menuIcon, { color: colors.textSecondary }]}>⋮</Text>
+            </TouchableOpacity>
           </View>
         ))}
         <TouchableOpacity style={styles.addConfigButton} onPress={handleAddNewConfig}>
@@ -89,23 +146,6 @@ const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, server
         </TouchableOpacity>
       </View>
 
-      {/* Configuration required status */}
-      {!activeConfigId && (
-        <View style={styles.configRequiredContainer}>
-          <View style={[styles.dot, { backgroundColor: '#ffc107' }]}></View>
-          <Text style={styles.configRequiredText}>Configuration required</Text>
-        </View>
-      )}
-
-      {/* Connected to server status */}
-      {activeConfigId && (
-        <TouchableOpacity style={styles.connectedStatusContainer} onPress={checkServerConnection}>
-          <View style={[styles.dot, { backgroundColor: isConnected ? '#28a745' : '#dc3545' }]}></View>
-          <Text style={[styles.connectedStatusText, { color: isConnected ? '#28a745' : '#dc3545' }]}>
-            {isConnected ? 'Connected to server' : 'Connection failed'}
-          </Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 };

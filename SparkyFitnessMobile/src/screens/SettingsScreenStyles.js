@@ -19,7 +19,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   sectionTitle: {
     fontSize: 18,
@@ -61,8 +61,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-    paddingVertical: 8,
+    marginBottom: 8,
   },
   settingLabel: {
     fontSize: 16,
@@ -89,38 +88,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  configRequiredContainer: {
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#fff3cd', // Light yellow background
-    alignSelf: 'center',
-    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 16,
   },
-  configRequiredText: {
-    color: '#856404', // Dark yellow text
+  statusText: {
     marginLeft: 8,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: 14,
   },
   dot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-  },
-  connectedStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#e6ffe6', // Light green background
-    alignSelf: 'center',
-  },
-  connectedStatusText: {
-    marginLeft: 8,
-    fontWeight: 'bold',
   },
   modalContainer: {
     flex: 1,
@@ -142,30 +127,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   serverConfigItem: {
-    paddingVertical: 12,
+    paddingVertical: 8,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  serverConfigInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   serverConfigText: {
     fontSize: 14,
     color: '#333',
+    flexShrink: 1,
+    maxWidth: '80%',
   },
-  serverConfigActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end', // Align buttons to the right
-    flex: 1, // Take available space
+  activeBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  actionButton: {
-    marginLeft: 5, // Reduced margin
-    marginBottom: 5, // Add some vertical spacing
-    padding: 6, // Reduced padding
-    borderRadius: 5,
+  activeBadgeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    justifyContent: 'center',
   },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 12, // Reduced font size
+  menuButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuIcon: {
+    fontSize: 20,
+    fontWeight: 'bold',
   },
   addConfigButton: {
     backgroundColor: '#007bff',
@@ -222,6 +220,9 @@ const styles = StyleSheet.create({
     color: '#007bff',
     fontWeight: 'bold',
   },
+  footer: {
+    alignItems: 'center',
+  }
 });
 
 export default styles;

@@ -4,7 +4,7 @@ import { addLog } from './LogService';
 import { loadHealthPreference, loadSyncDuration, readStepRecords, aggregateStepsByDate, readActiveCaloriesRecords, aggregateActiveCaloriesByDate, readSleepSessionRecords, readStressRecords, readExerciseSessionRecords, readWorkoutRecords } from './healthConnectService';
 import { readSleepSessionRecords as readSleepSessionRecordsHK, readStressRecords as readStressRecordsHK, readWorkoutRecords as readWorkoutRecordsHK } from './healthkit';
 import { Platform } from 'react-native';
-
+import { saveLastSyncedTime } from './storage';
 const BACKGROUND_FETCH_TASK_ID = 'healthDataSync';
 
 const performBackgroundSync = async (taskId) => {
@@ -109,6 +109,7 @@ const performBackgroundSync = async (taskId) => {
       if (allAggregatedData.length > 0) {
         await syncHealthData(allAggregatedData);
         addLog('[Background Sync] Health data synced successfully.', 'info', 'SUCCESS');
+        await saveLastSyncedTime();
       } else {
         addLog('[Background Sync] No health data to sync.', 'info', 'INFO');
       }

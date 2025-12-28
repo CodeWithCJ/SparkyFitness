@@ -14,6 +14,8 @@ import AppearanceSettings from '../components/AppearanceSettings';
 import { useTheme } from '../contexts/ThemeContext';
 //import axios from 'axios'; // Import axios for API calls
 //import { getActiveServerConfig } from '../services/storage'; // Import to get server URL
+import * as Application from 'expo-application';
+
 
 const SettingsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -301,6 +303,10 @@ const SettingsScreen = ({ navigation }) => {
             appTheme={appTheme}
             setAppTheme={setAppTheme}
           />
+
+          <View style={styles.footer}>
+            <Text style={{ color: colors.textMuted }}>Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
+          </View>
         </View>
       </ScrollView>
 

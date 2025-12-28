@@ -21,8 +21,7 @@ const AppearanceSettings = ({ appTheme, setAppTheme }) => {
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
       <View style={[styles.settingItem, { zIndex: 1000 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Image source={require('../../assets/icons/settings.png')} style={[styles.icon, { tintColor: colors.text }]} />
-          <Text style={[styles.settingLabel, { marginLeft: 8, color: colors.text }]}>Theme</Text>
+          <Text style={[styles.settingLabel, { color: colors.text }]}>Theme</Text>
         </View>
         <DropDownPicker
           open={themeOpen}
