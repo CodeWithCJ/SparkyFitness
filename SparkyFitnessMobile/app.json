@@ -16,7 +16,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "org.SparkyApps.SparkyFitnessMobile",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "org.SparkyApps.SparkyFitnessMobile",
@@ -128,6 +131,11 @@
     ],
     "experiments": {
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "498a86c5-344f-4d2c-9033-dfd720e4a383"
+      }
     }
   }
 }
