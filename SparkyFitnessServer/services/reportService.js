@@ -5,10 +5,15 @@ const goalRepository = require('../models/goalRepository'); // Import goalReposi
 const preferenceRepository = require('../models/preferenceRepository');
 const bmrService = require('./bmrService');
 const sleepAnalyticsService = require('./sleepAnalyticsService'); // Import sleepAnalyticsService
+const customNutrientService = require('./customNutrientService');
+const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
 const { log } = require('../config/logging');
 
 async function getReportsData(authenticatedUserId, targetUserId, startDate, endDate) {
   try {
+
+    // Fetch custom nutrients first as they are needed for dynamic SQL generation in repositories
+    const customNutrients = await customNutrientService.getCustomNutrients(targetUserId);
 
     const [
       fetchedNutritionData,
@@ -18,16 +23,16 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
       customCategoriesResult,
       userProfile,
       userPreferences,
-      sleepAnalyticsData // New: Sleep analytics data
+      sleepAnalyticsData,
     ] = await Promise.all([
-      reportRepository.getNutritionData(targetUserId, startDate, endDate),
-      reportRepository.getTabularFoodData(targetUserId, startDate, endDate),
+      reportRepository.getNutritionData(targetUserId, startDate, endDate, customNutrients),
+      reportRepository.getTabularFoodData(targetUserId, startDate, endDate, customNutrients),
       reportRepository.getExerciseEntries(targetUserId, startDate, endDate),
       reportRepository.getMeasurementData(targetUserId, startDate, endDate),
       measurementRepository.getCustomCategories(targetUserId),
       userRepository.getUserProfile(targetUserId),
       preferenceRepository.getUserPreferences(targetUserId),
-      sleepAnalyticsService.getSleepAnalytics(targetUserId, startDate, endDate) // New: Fetch sleep analytics
+      sleepAnalyticsService.getSleepAnalytics(targetUserId, startDate, endDate),
     ]);
 
     const customMeasurementsData = {};
@@ -36,53 +41,67 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
       customMeasurementsData[category.id] = customMeasurementResult;
     }
 
-    const tabularData = tabularDataRaw.map(row => ({
-      ...row,
-      foods: {
-        name: row.food_name,
-        brand: row.brand,
-        calories: row.calories,
-        protein: row.protein,
-        carbs: row.carbs,
-        fat: row.fat,
-        saturated_fat: row.saturated_fat,
-        polyunsaturated_fat: row.polyunsaturated_fat,
-        monounsaturated_fat: row.monounsaturated_fat,
-        trans_fat: row.trans_fat,
-        cholesterol: row.cholesterol,
-        sodium: row.sodium,
-        potassium: row.potassium,
-        dietary_fiber: row.dietary_fiber,
-        sugars: row.sugars,
-        glycemic_index: row.glycemic_index,
-        vitamin_a: row.vitamin_a,
-        vitamin_c: row.vitamin_c,
-        calcium: row.calcium,
-        iron: row.iron,
-        serving_size: row.serving_size,
-      }
-    }));
+    const tabularData = tabularDataRaw.map(row => {
+      // Custom nutrients are now already in the row, scaled and summed by the repository
 
-    const nutritionData = fetchedNutritionData.map(item => ({
-      date: item.date,
-      calories: parseFloat(item.calories) || 0,
-      protein: parseFloat(item.protein) || 0,
-      carbs: parseFloat(item.carbs) || 0,
-      fat: parseFloat(item.fat) || 0,
-      saturated_fat: parseFloat(item.saturated_fat) || 0,
-      polyunsaturated_fat: parseFloat(item.polyunsaturated_fat) || 0,
-      monounsaturated_fat: parseFloat(item.monounsaturated_fat) || 0,
-      trans_fat: parseFloat(item.trans_fat) || 0,
-      cholesterol: parseFloat(item.cholesterol) || 0,
-      sodium: parseFloat(item.sodium) || 0,
-      potassium: parseFloat(item.potassium) || 0,
-      dietary_fiber: parseFloat(item.dietary_fiber) || 0,
-      sugars: parseFloat(item.sugars) || 0,
-      vitamin_a: parseFloat(item.vitamin_a) || 0,
-      vitamin_c: parseFloat(item.vitamin_c) || 0,
-      calcium: parseFloat(item.calcium) || 0,
-      iron: parseFloat(item.iron) || 0,
-    }));
+      return {
+        ...row,
+        foods: {
+          name: row.food_name,
+          brand: row.brand,
+          calories: row.calories,
+          protein: row.protein,
+          carbs: row.carbs,
+          fat: row.fat,
+          saturated_fat: row.saturated_fat,
+          polyunsaturated_fat: row.polyunsaturated_fat,
+          monounsaturated_fat: row.monounsaturated_fat,
+          trans_fat: row.trans_fat,
+          cholesterol: row.cholesterol,
+          sodium: row.sodium,
+          potassium: row.potassium,
+          dietary_fiber: row.dietary_fiber,
+          sugars: row.sugars,
+          glycemic_index: row.glycemic_index,
+          vitamin_a: row.vitamin_a,
+          vitamin_c: row.vitamin_c,
+          calcium: row.calcium,
+          iron: row.iron,
+          serving_size: row.serving_size,
+        }
+      };
+    });
+
+    const nutritionData = fetchedNutritionData.map(item => {
+      const mappedItem = {
+        date: item.date,
+        calories: parseFloat(item.calories) || 0,
+        protein: parseFloat(item.protein) || 0,
+        carbs: parseFloat(item.carbs) || 0,
+        fat: parseFloat(item.fat) || 0,
+        saturated_fat: parseFloat(item.saturated_fat) || 0,
+        polyunsaturated_fat: parseFloat(item.polyunsaturated_fat) || 0,
+        monounsaturated_fat: parseFloat(item.monounsaturated_fat) || 0,
+        trans_fat: parseFloat(item.trans_fat) || 0,
+        cholesterol: parseFloat(item.cholesterol) || 0,
+        sodium: parseFloat(item.sodium) || 0,
+        potassium: parseFloat(item.potassium) || 0,
+        dietary_fiber: parseFloat(item.dietary_fiber) || 0,
+        sugars: parseFloat(item.sugars) || 0,
+        vitamin_a: parseFloat(item.vitamin_a) || 0,
+        vitamin_c: parseFloat(item.vitamin_c) || 0,
+        calcium: parseFloat(item.calcium) || 0,
+        iron: parseFloat(item.iron) || 0,
+      };
+
+      // Map custom nutrients dynamically
+      customNutrients.forEach(cn => {
+        const key = cn.name; // Use exact name as key, matching frontend expectation
+        mappedItem[key] = parseFloat(item[key]) || 0;
+      });
+
+      return mappedItem;
+    });
 
     // BMR Calculation
     if (userProfile && userPreferences) {
@@ -155,33 +174,48 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
 
 async function getMiniNutritionTrends(authenticatedUserId, targetUserId, startDate, endDate) {
   try {
-
     if (!targetUserId) {
       log('error', 'getMiniNutritionTrends: targetUserId is undefined. Returning empty array.');
       return [];
     }
-    const result = await reportRepository.getMiniNutritionTrends(targetUserId, startDate, endDate);
+    // Fetch custom nutrients to include in the trends
+    const customNutrients = await customNutrientService.getCustomNutrients(targetUserId);
 
-    const formattedResults = result.map(row => ({
-      date: row.entry_date,
-      calories: parseFloat(row.total_calories || 0),
-      protein: parseFloat(row.total_protein || 0),
-      carbs: parseFloat(row.total_carbs || 0),
-      fat: parseFloat(row.total_fat || 0),
-      saturated_fat: parseFloat(row.total_saturated_fat) || 0,
-      polyunsaturated_fat: parseFloat(row.total_polyunsaturated_fat) || 0,
-      monounsaturated_fat: parseFloat(row.total_monounsaturated_fat) || 0,
-      trans_fat: parseFloat(row.total_trans_fat) || 0,
-      cholesterol: parseFloat(row.total_cholesterol) || 0,
-      sodium: parseFloat(row.total_sodium) || 0,
-      potassium: parseFloat(row.total_potassium) || 0,
-      dietary_fiber: parseFloat(row.total_dietary_fiber) || 0,
-      sugars: parseFloat(row.total_sugars) || 0,
-      vitamin_a: parseFloat(row.total_vitamin_a) || 0,
-      vitamin_c: parseFloat(row.total_vitamin_c) || 0,
-      calcium: parseFloat(row.total_calcium) || 0,
-      iron: parseFloat(row.total_iron) || 0,
-    }));
+    const result = await reportRepository.getMiniNutritionTrends(targetUserId, startDate, endDate, customNutrients);
+
+    const formattedResults = result.map(row => {
+      const mappedRow = {
+        date: row.entry_date,
+        calories: parseFloat(row.total_calories || 0),
+        protein: parseFloat(row.total_protein || 0),
+        carbs: parseFloat(row.total_carbs || 0),
+        fat: parseFloat(row.total_fat || 0),
+        saturated_fat: parseFloat(row.total_saturated_fat) || 0,
+        polyunsaturated_fat: parseFloat(row.total_polyunsaturated_fat) || 0,
+        monounsaturated_fat: parseFloat(row.total_monounsaturated_fat) || 0,
+        trans_fat: parseFloat(row.total_trans_fat) || 0,
+        cholesterol: parseFloat(row.total_cholesterol) || 0,
+        sodium: parseFloat(row.total_sodium) || 0,
+        potassium: parseFloat(row.total_potassium) || 0,
+        dietary_fiber: parseFloat(row.total_dietary_fiber) || 0,
+        sugars: parseFloat(row.total_sugars) || 0,
+        vitamin_a: parseFloat(row.total_vitamin_a) || 0,
+        vitamin_c: parseFloat(row.total_vitamin_c) || 0,
+        calcium: parseFloat(row.total_calcium) || 0,
+        iron: parseFloat(row.total_iron) || 0,
+      };
+
+      // Map custom nutrients dynamically
+      customNutrients.forEach(cn => {
+        // The repository will return them as columns like "MyNutrient", matching the nutrient name
+        // However, standard nutrients in this query are prefixed with "total_", so let's check how we implement the repo.
+        // Usually, for consistency, I might prefix them or just use the name.
+        // Let's assume for now I will use the raw name in the repo query to match getNutritionData pattern.
+        mappedRow[cn.name] = parseFloat(row[cn.name] || 0);
+      });
+
+      return mappedRow;
+    });
 
     return formattedResults;
   } catch (error) {
@@ -256,10 +290,10 @@ function calculateWorkoutConsistency(exerciseEntries, startDate, endDate) {
   }
 
   const workoutDates = [...new Set(exerciseEntries.map(e => new Date(e.entry_date).toISOString().split('T')[0]))].sort();
-  
+
   let currentStreak = 0;
   let longestStreak = 0;
-  
+
   if (workoutDates.length > 0) {
     // Calculate streaks
     let streak = 1;
@@ -298,7 +332,7 @@ function calculateWorkoutConsistency(exerciseEntries, startDate, endDate) {
   const end = new Date(endDate);
   const diffTime = Math.abs(end - start);
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-  
+
   const totalWorkouts = workoutDates.length;
   const weeklyFrequency = (totalWorkouts / diffDays) * 7;
   const monthlyFrequency = (totalWorkouts / diffDays) * 30;

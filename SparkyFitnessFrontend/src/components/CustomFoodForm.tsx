@@ -1,6 +1,7 @@
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from '@/utils/logging';
 
-import { GlycemicIndex } from "@/types/food";
+import { GlycemicIndex, Food } from "@/types/food";
+import { UserCustomNutrient } from "@/types/customNutrient";
+import { customNutrientService } from "@/services/customNutrientService";
 
 interface CustomFood {
   name: string;
@@ -36,6 +39,7 @@ interface CustomFood {
   servingUnit: string;
   is_quick_food?: boolean;
   glycemic_index?: GlycemicIndex;
+  custom_nutrients?: Record<string, string | number>; // Add custom nutrients
 }
 
 interface CustomFoodFormProps {
@@ -45,6 +49,7 @@ interface CustomFoodFormProps {
 const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
  const { t } = useTranslation();
  const { loggingLevel } = usePreferences();
+ const { toast } = useToast();
  debug(loggingLevel, "CustomFoodForm: Component rendered.");
  const [formData, setFormData] = useState<CustomFood>({
    name: "",
@@ -70,8 +75,28 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
    servingUnit: "g",
    is_quick_food: false,
    glycemic_index: "None", // Default to 'None'
+   custom_nutrients: {}, // Initialize custom_nutrients
  });
  const [servingSizeError, setServingSizeError] = useState<string | null>(null);
+ const [userCustomNutrients, setUserCustomNutrients] = useState<UserCustomNutrient[]>([]);
+
+ // Fetch user's custom nutrient definitions on component mount
+ useEffect(() => {
+   const fetchUserCustomNutrients = async () => {
+     try {
+       const fetchedNutrients = await customNutrientService.getCustomNutrients();
+       setUserCustomNutrients(fetchedNutrients);
+     } catch (err) {
+       error(loggingLevel, "CustomFoodForm: Failed to fetch user custom nutrients:", err);
+       toast({
+         title: "Error",
+         description: "Failed to load custom nutrient definitions.",
+         variant: "destructive",
+       });
+     }
+   };
+   fetchUserCustomNutrients();
+ }, [loggingLevel]);
  
    const handleSubmit = (e: React.FormEvent) => {
      e.preventDefault();
@@ -117,6 +142,7 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
        servingUnit: "g",
        is_quick_food: false,
        glycemic_index: "None",
+       custom_nutrients: {}, // Reset custom_nutrients
      });
      info(loggingLevel, "CustomFoodForm: Form data reset.");
    };
@@ -130,6 +156,16 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
       }
       return { ...prev, [field]: value };
     });
+  };
+
+  const handleCustomNutrientChange = (nutrientName: string, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      custom_nutrients: {
+        ...prev.custom_nutrients,
+        [nutrientName]: value,
+      },
+    }));
   };
  
   return (
@@ -424,7 +460,28 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
               />
             </div>
           </div>
- 
+
+          {userCustomNutrients.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Custom Nutrients</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {userCustomNutrients.map(nutrient => (
+                  <div key={nutrient.id} className="space-y-2">
+                    <Label htmlFor={`custom-${nutrient.name}`}>{nutrient.name} ({nutrient.unit})</Label>
+                    <Input
+                      id={`custom-${nutrient.name}`}
+                      type="number"
+                      value={formData.custom_nutrients?.[nutrient.name] || ''}
+                      onChange={(e) => handleCustomNutrientChange(nutrient.name, Number(e.target.value))}
+                      min="0"
+                      step="0.1"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => debug(loggingLevel, "CustomFoodForm: Cancel button clicked.")}>
               {t('customFoodForm.cancelButton', 'Cancel')}

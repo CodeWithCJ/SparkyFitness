@@ -53,6 +53,7 @@ export const saveFood = async (foodData: Food, variants: FoodVariant[], userId: 
           iron: variant.iron,
           is_default: variant.is_default || false, // Pass is_default flag
           glycemic_index: variant.glycemic_index,
+          custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
         },
       });
     }
@@ -82,6 +83,7 @@ export const saveFood = async (foodData: Food, variants: FoodVariant[], userId: 
         iron: variant.iron,
         is_default: variant.is_default || false, // Pass is_default flag
         glycemic_index: variant.glycemic_index,
+        custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
       }));
       await apiCall('/foods/food-variants/bulk', {
         method: 'POST',
@@ -127,6 +129,7 @@ export const saveFood = async (foodData: Food, variants: FoodVariant[], userId: 
       iron: primaryVariant.iron,
       is_default: true, // Explicitly mark as default for new food creation
       glycemic_index: primaryVariant.glycemic_index,
+      custom_nutrients: primaryVariant.custom_nutrients || {}, // Include custom nutrients
     };
 
     savedFood = await apiCall('/foods', {
@@ -158,6 +161,7 @@ export const saveFood = async (foodData: Food, variants: FoodVariant[], userId: 
       iron: variant.iron,
       is_default: false, // Explicitly mark as not default for additional variants
       glycemic_index: variant.glycemic_index,
+      custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
     }));
 
     if (additionalVariantsToInsert.length > 0) {

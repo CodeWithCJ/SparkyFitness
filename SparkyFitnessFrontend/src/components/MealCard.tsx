@@ -50,7 +50,10 @@ interface MealTotals {
   iron?: number;
   calcium?: number;
   glycemic_index?: GlycemicIndex; // Add glycemic_index to MealTotals
+  custom_nutrients?: Record<string, number>; // Add custom_nutrients support
 }
+
+import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
 
 interface MealCardProps {
   meal: {
@@ -72,6 +75,7 @@ interface MealCardProps {
   onConvertToMealClick: (mealType: string) => void;
   energyUnit: 'kcal' | 'kJ';
   convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number;
+  customNutrients?: UserCustomNutrient[]; // Add customNutrients prop
 }
 
 const MealCard = ({
@@ -88,6 +92,7 @@ const MealCard = ({
   onConvertToMealClick,
   energyUnit,
   convertEnergy,
+  customNutrients = [], // Default to empty array
 }: MealCardProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -134,7 +139,16 @@ const MealCard = ({
   ) || nutrientDisplayPreferences.find(
     (p) => p.view_group === "food_database" && p.platform === "desktop",
   );
-  const summableNutrients = ["calories", "protein", "carbs", "fat", "dietary_fiber", "sugars", "sodium", "cholesterol", "saturated_fat", "trans_fat", "potassium", "vitamin_a", "vitamin_c", "iron", "calcium"]; // Corrected 'sugar' to 'sugars'
+
+  // Create a base list of summable nutrients
+  const baseSummableNutrients = ["calories", "protein", "carbs", "fat", "dietary_fiber", "sugars", "sodium", "cholesterol", "saturated_fat", "trans_fat", "potassium", "vitamin_a", "vitamin_c", "iron", "calcium"];
+
+  // Add custom nutrient names to summable nutrients list if they exist
+  const summableNutrients = [
+    ...baseSummableNutrients,
+    ...customNutrients.filter(cn => !baseSummableNutrients.includes(cn.name)).map(cn => cn.name)
+  ];
+
   const allDisplayableNutrients = [...summableNutrients, "glycemic_index"];
 
   const defaultNutrients = ["calories", "protein", "carbs", "fat", "dietary_fiber"];
@@ -179,6 +193,17 @@ const MealCard = ({
     calcium: { color: "text-blue-400", label: "calcium", unit: "mg" },
     glycemic_index: { color: "text-purple-600", label: "GI", unit: "" },
   };
+
+  // Add custom nutrients to nutrientDetails
+  customNutrients.forEach(cn => {
+    if (!nutrientDetails[cn.name]) {
+      nutrientDetails[cn.name] = {
+        color: "text-indigo-500", // Default color for custom nutrients
+        label: cn.name,
+        unit: cn.unit
+      };
+    }
+  });
 
   return (
     <>
@@ -321,8 +346,7 @@ const MealCard = ({
                         {visibleNutrientsForGrid.map((nutrient) => {
                           const details = nutrientDetails[nutrient];
                           if (!details) return null;
-                          const value =
-                            entryNutrition[nutrient as keyof MealTotals] || 0;
+                          const value = (entryNutrition[nutrient as keyof MealTotals] as number) ?? entryNutrition.custom_nutrients?.[nutrient] ?? 0;
                           return (
                             <div key={nutrient} className="whitespace-nowrap">
                               <span className={`font-medium ${details.color}`}>
@@ -386,7 +410,8 @@ const MealCard = ({
                   {visibleNutrientsForGrid.map((nutrient) => {
                     const details = nutrientDetails[nutrient];
                     if (!details) return null;
-                    const value = totals[nutrient as keyof MealTotals] || 0;
+                    const val = totals[nutrient as keyof MealTotals];
+                    const value = (typeof val === 'number' || typeof val === 'string' ? val : totals.custom_nutrients?.[nutrient]) ?? 0;
                     return (
                       <div key={nutrient} className="text-center">
                         <div className={`font-bold ${details.color}`}>

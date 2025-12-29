@@ -123,6 +123,7 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
     const text = await response.text();
     const jsonResponse = text ? JSON.parse(text) : {};
     logging.debug(userLoggingLevel, `API Call: Received JSON response from ${url}:`, jsonResponse);
+    //console.log(`API Call: Returning JSON response for ${url}:`, jsonResponse); // Added console.log
     return jsonResponse;
   } catch (err: any) {
     const errorMessage = err instanceof Error ? err.message : String(err);

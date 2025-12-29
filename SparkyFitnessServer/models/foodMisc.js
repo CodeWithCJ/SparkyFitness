@@ -67,7 +67,8 @@ async function getRecentFoods(userId, limit, mealType) {
           'calcium', fv.calcium,
           'iron', fv.iron,
           'is_default', fv.is_default,
-          'glycemic_index', fv.glycemic_index
+          'glycemic_index', fv.glycemic_index,
+          'custom_nutrients', fv.custom_nutrients
         ) AS default_variant
       FROM foods f
       JOIN RecentFoodEntries rfe ON f.id = rfe.food_id
@@ -137,7 +138,8 @@ async function getTopFoods(userId, limit, mealType) {
           'calcium', fv.calcium,
           'iron', fv.iron,
           'is_default', fv.is_default,
-          'glycemic_index', fv.glycemic_index
+          'glycemic_index', fv.glycemic_index,
+          'custom_nutrients', fv.custom_nutrients
         ) AS default_variant
       FROM foods f
       JOIN TopFoodEntries tfe ON f.id = tfe.food_id
@@ -161,9 +163,11 @@ async function getDailyNutritionSummary(userId, date) {
         SUM(fe.protein * fe.quantity / fe.serving_size) AS total_protein,
         SUM(fe.carbs * fe.quantity / fe.serving_size) AS total_carbs,
         SUM(fe.fat * fe.quantity / fe.serving_size) AS total_fat,
-        SUM(fe.dietary_fiber * fe.quantity / fe.serving_size) AS total_dietary_fiber
-       FROM food_entries fe
-       WHERE fe.user_id = $1 AND fe.entry_date = $2`,
+        SUM(fe.dietary_fiber * fe.quantity / fe.serving_size) AS total_dietary_fiber,
+        jsonb_object_agg(key, value) AS total_custom_nutrients
+       FROM food_entries fe, jsonb_each_text(fe.custom_nutrients) AS custom_nutrient
+       WHERE fe.user_id = $1 AND fe.entry_date = $2
+       GROUP BY fe.user_id, fe.entry_date`,
       [userId, date]
     );
     return result.rows[0];
@@ -230,8 +234,9 @@ async function updateFoodEntriesSnapshot(userId, foodId, variantId, newSnapshotD
           calcium = $20,
           iron = $21,
           glycemic_index = $22,
+          custom_nutrients = $23,
           updated_at = now()
-       WHERE user_id = $23 AND food_id = $24 AND variant_id = $25
+       WHERE user_id = $24 AND food_id = $25 AND variant_id = $26
        RETURNING id`,
       [
         newSnapshotData.food_name,
@@ -256,6 +261,7 @@ async function updateFoodEntriesSnapshot(userId, foodId, variantId, newSnapshotD
         newSnapshotData.calcium,
         newSnapshotData.iron,
         newSnapshotData.glycemic_index,
+        newSnapshotData.custom_nutrients || {},
         userId,
         foodId,
         variantId,

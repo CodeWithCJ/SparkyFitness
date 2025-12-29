@@ -24,6 +24,7 @@ export interface FoodVariant {
   is_default?: boolean;
   is_locked?: boolean;
   glycemic_index?: GlycemicIndex;
+  custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
 }
 
 export interface Food {
@@ -39,6 +40,7 @@ export interface Food {
   variants?: FoodVariant[];
   is_quick_food?: boolean;
   glycemic_index?: GlycemicIndex;
+  custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
 }
 
 export interface FoodDeletionImpact {
@@ -96,6 +98,7 @@ export interface FoodEntry {
   iron?: number;
   glycemic_index?: GlycemicIndex;
   serving_size?: number;
+  custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
 }
 
 export interface CSVData {
@@ -127,4 +130,5 @@ export interface CSVData {
   vitamin_c: number;
   calcium: number;
   iron: number;
+  custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
 }

@@ -49,6 +49,7 @@ const oidcSettingsRoutes = require('./routes/oidcSettingsRoutes');
 const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
 const versionRoutes = require('./routes/versionRoutes');
 const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboarding routes
+const customNutrientRoutes = require('./routes/customNutrientRoutes'); // Import custom nutrient routes
 const { applyMigrations } = require('./utils/dbMigrations');
 const { applyRlsPolicies } = require('./utils/applyRlsPolicies');
 const { grantPermissions } = require('./db/grantPermissions');
@@ -334,6 +335,7 @@ app.use('/workout-presets', require('./routes/workoutPresetRoutes')); // Add wor
 app.use('/workout-plan-templates', require('./routes/workoutPlanTemplateRoutes')); // Add workout plan template routes
 app.use('/review', reviewRoutes);
 app.use('/onboarding', onboardingRoutes); // Add onboarding routes
+app.use('/custom-nutrients', customNutrientRoutes); // Add custom nutrient routes
 
 // Temporary debug route to log incoming requests for meal plan templates
 app.use(

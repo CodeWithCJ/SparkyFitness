@@ -1,9 +1,14 @@
 const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
-async function getNutritionData(userId, startDate, endDate) {
+async function getNutritionData(userId, startDate, endDate, customNutrients = []) {
   const client = await getClient(userId); // User-specific operation
   try {
+    // Generate dynamic SQL parts for custom nutrients
+    const customNutrientsSelectOuter = customNutrients.map(cn => `SUM("${cn.name}") AS "${cn.name}"`).join(',\n         ');
+    const customNutrientsSelectInner1 = customNutrients.map(cn => `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`).join(',\n           ');
+    const customNutrientsSelectInner2 = customNutrients.map(cn => `SUM((COALESCE((fe_meal.custom_nutrients->>'${cn.name}')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS "${cn.name}"`).join(',\n           ');
+
     const result = await client.query(
       `SELECT
          TO_CHAR(entry_date, 'YYYY-MM-DD') AS date,
@@ -23,7 +28,7 @@ async function getNutritionData(userId, startDate, endDate) {
          SUM(vitamin_a) AS vitamin_a,
          SUM(vitamin_c) AS vitamin_c,
          SUM(calcium) AS calcium,
-         SUM(iron) AS iron
+         SUM(iron) AS iron${customNutrientsSelectOuter ? ',\n         ' + customNutrientsSelectOuter : ''}
        FROM (
          SELECT
            fe.entry_date,
@@ -43,7 +48,7 @@ async function getNutritionData(userId, startDate, endDate) {
            (COALESCE(fe.vitamin_a, 0) * fe.quantity / fe.serving_size) AS vitamin_a,
            (COALESCE(fe.vitamin_c, 0) * fe.quantity / fe.serving_size) AS vitamin_c,
            (COALESCE(fe.calcium, 0) * fe.quantity / fe.serving_size) AS calcium,
-           (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron
+           (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron${customNutrientsSelectInner1 ? ',\n           ' + customNutrientsSelectInner1 : ''}
          FROM food_entries fe
          WHERE fe.user_id = $1 AND fe.entry_date BETWEEN $2 AND $3 AND fe.food_entry_meal_id IS NULL
          UNION ALL
@@ -65,7 +70,7 @@ async function getNutritionData(userId, startDate, endDate) {
            SUM((COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_a,
            SUM((COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_c,
            SUM((COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS calcium,
-           SUM((COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS iron
+           SUM((COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS iron${customNutrientsSelectInner2 ? ',\n           ' + customNutrientsSelectInner2 : ''}
          FROM food_entry_meals fem
          JOIN food_entries fe_meal ON fem.id = fe_meal.food_entry_meal_id
          WHERE fem.user_id = $1 AND fem.entry_date BETWEEN $2 AND $3
@@ -81,9 +86,14 @@ async function getNutritionData(userId, startDate, endDate) {
   }
 }
 
-async function getTabularFoodData(userId, startDate, endDate) {
+async function getTabularFoodData(userId, startDate, endDate, customNutrients = []) {
   const client = await getClient(userId); // User-specific operation
   try {
+    // Generate dynamic SQL parts for custom nutrients
+    const customNutrientsSelectCTE = customNutrients.map(cn => `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`).join(',\n          ');
+    const customNutrientsSelectOuter = customNutrients.map(cn => `cfe."${cn.name}"`).join(',\n        ');
+    const customNutrientsSelectMealAgg = customNutrients.map(cn => `SUM(cfe_meal."${cn.name}" * fem.quantity) AS "${cn.name}"`).join(',\n        ');
+
     const result = await client.query(
       `WITH CalculatedFoodEntries AS (
         SELECT
@@ -117,7 +127,7 @@ async function getTabularFoodData(userId, startDate, endDate) {
           (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron,
           fe.serving_size,
           fe.serving_unit,
-          fe.food_entry_meal_id
+          fe.food_entry_meal_id${customNutrientsSelectCTE ? ',\n          ' + customNutrientsSelectCTE : ''}
         FROM food_entries fe
         WHERE fe.user_id = $1 AND fe.entry_date BETWEEN $2 AND $3
       )
@@ -151,7 +161,7 @@ async function getTabularFoodData(userId, startDate, endDate) {
         cfe.iron,
         cfe.serving_size,
         cfe.serving_unit,
-        cfe.food_entry_meal_id
+        cfe.food_entry_meal_id${customNutrientsSelectOuter ? ',\n        ' + customNutrientsSelectOuter : ''}
       FROM CalculatedFoodEntries cfe
       WHERE cfe.food_entry_meal_id IS NULL -- Standalone food entries
       UNION ALL
@@ -231,7 +241,7 @@ async function getTabularFoodData(userId, startDate, endDate) {
         SUM(cfe_meal.iron * fem.quantity) AS iron,
         1 AS serving_size, -- Treat meal as single serving unit for calculations
         'serving' AS serving_unit,
-        fem.id AS food_entry_meal_id
+        fem.id AS food_entry_meal_id${customNutrientsSelectMealAgg ? ',\n        ' + customNutrientsSelectMealAgg : ''}
       FROM food_entry_meals fem
       JOIN CalculatedFoodEntries cfe_meal ON fem.id = cfe_meal.food_entry_meal_id
       WHERE fem.user_id = $1 AND fem.entry_date BETWEEN $2 AND $3
@@ -271,9 +281,16 @@ async function getCustomMeasurementsData(userId, categoryId, startDate, endDate)
   }
 }
 
-async function getMiniNutritionTrends(userId, startDate, endDate) {
+async function getMiniNutritionTrends(userId, startDate, endDate, customNutrients = []) {
   const client = await getClient(userId); // User-specific operation
   try {
+    // Generate dynamic SQL parts for custom nutrients
+    // Note: Standard nutrients use "total_" prefix in the outer select of the existing query.
+    // For custom nutrients, I will use their name directly to match the service mapping.
+    const customNutrientsSelectOuter = customNutrients.map(cn => `SUM("${cn.name}") AS "${cn.name}"`).join(',\n         ');
+    const customNutrientsSelectInner1 = customNutrients.map(cn => `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`).join(',\n           ');
+    const customNutrientsSelectInner2 = customNutrients.map(cn => `SUM((COALESCE((fe_meal.custom_nutrients->>'${cn.name}')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS "${cn.name}"`).join(',\n           ');
+
     const result = await client.query(
       `SELECT
          TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date,
@@ -293,7 +310,7 @@ async function getMiniNutritionTrends(userId, startDate, endDate) {
          SUM(vitamin_a) AS total_vitamin_a,
          SUM(vitamin_c) AS total_vitamin_c,
          SUM(calcium) AS total_calcium,
-         SUM(iron) AS total_iron
+         SUM(iron) AS total_iron${customNutrientsSelectOuter ? ',\n         ' + customNutrientsSelectOuter : ''}
        FROM (
          SELECT
            fe.entry_date,
@@ -313,7 +330,7 @@ async function getMiniNutritionTrends(userId, startDate, endDate) {
            (COALESCE(fe.vitamin_a, 0) * fe.quantity / fe.serving_size) AS vitamin_a,
            (COALESCE(fe.vitamin_c, 0) * fe.quantity / fe.serving_size) AS vitamin_c,
            (COALESCE(fe.calcium, 0) * fe.quantity / fe.serving_size) AS calcium,
-           (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron
+           (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron${customNutrientsSelectInner1 ? ',\n           ' + customNutrientsSelectInner1 : ''}
          FROM food_entries fe
          WHERE fe.user_id = $1 AND fe.entry_date BETWEEN $2 AND $3 AND fe.food_entry_meal_id IS NULL
          UNION ALL
@@ -335,7 +352,7 @@ async function getMiniNutritionTrends(userId, startDate, endDate) {
            SUM((COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_a,
            SUM((COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_c,
            SUM((COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS calcium,
-           SUM((COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS iron
+           SUM((COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS iron${customNutrientsSelectInner2 ? ',\n           ' + customNutrientsSelectInner2 : ''}
          FROM food_entry_meals fem
          JOIN food_entries fe_meal ON fem.id = fe_meal.food_entry_meal_id
          WHERE fem.user_id = $1 AND fem.entry_date BETWEEN $2 AND $3

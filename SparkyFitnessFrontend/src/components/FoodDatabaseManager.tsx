@@ -64,6 +64,8 @@ import { createFoodEntry } from "@/services/foodEntryService"; // Import foodEnt
 import { Food, FoodVariant, FoodDeletionImpact } from "@/types/food";
 import MealManagement from "./MealManagement"; // Import MealManagement
 import MealPlanCalendar from "./MealPlanCalendar"; // Import MealPlanCalendar
+import { customNutrientService } from "@/services/customNutrientService";
+import { UserCustomNutrient } from "@/types/customNutrient";
 
 const FoodDatabaseManager: React.FC = () => {
   const { t } = useTranslation();
@@ -76,6 +78,11 @@ const FoodDatabaseManager: React.FC = () => {
   const getEnergyUnitString = (unit: 'kcal' | 'kJ' = energyUnit): string => {
     return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
   };
+
+  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>([]);
+  const [dynamicNutrientDetails, setDynamicNutrientDetails] = useState<{
+    [key: string]: { color: string; label: string; unit: string };
+  }>({});
 
   const nutrientDetails: {
     [key: string]: { color: string; label: string; unit: string };

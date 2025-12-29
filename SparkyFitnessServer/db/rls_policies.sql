@@ -61,9 +61,10 @@ BEGIN
     'workout_presets',
     'sleep_entries',
     'sleep_entry_stages',
-    'fasting_logs'
-  ]::text[]) AS table_name;
-END $$;
+    'fasting_logs',
+        'user_custom_nutrients'
+      ]::text[]) AS table_name;
+    END $$;
 
 -- Step 3: Define reusable helper functions for common RLS conditions.
 CREATE OR REPLACE FUNCTION current_user_id() RETURNS uuid
@@ -184,6 +185,7 @@ SELECT create_owner_policy('user_oidc_links');
 SELECT create_owner_policy('user_preferences');
 SELECT create_owner_policy('user_water_containers');
 SELECT create_owner_policy('weekly_goal_plans');
+SELECT create_owner_policy('user_custom_nutrients');
 
 -- Diary access tables
 SELECT create_diary_policy('check_in_measurements');
@@ -213,6 +215,7 @@ SELECT create_library_policy('meals', 'is_public', ARRAY['can_view_food_library'
 SELECT create_library_policy('meal_plan_templates', 'false', ARRAY['can_view_food_library']);
 SELECT create_library_policy('workout_plan_templates', 'false', ARRAY['can_view_exercise_library']);
 SELECT create_library_policy('workout_presets', 'false', ARRAY['can_view_exercise_library']);
+
 
 -- Custom policies for special cases
 CREATE POLICY select_policy ON public.exercise_entry_sets FOR SELECT TO PUBLIC

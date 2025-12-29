@@ -13,7 +13,8 @@ import {
 } from '@/services/editFoodEntryService';
 import { getFoodById } from '@/services/foodService'; // Import getFoodById
 import { FoodVariant, FoodEntry, Food } from '@/types/food'; // Import Food type
-
+import { UserCustomNutrient } from "@/types/customNutrient";
+import { customNutrientService } from "@/services/customNutrientService";
 
 
 interface EditFoodEntryDialogProps {
@@ -37,6 +38,27 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
   const [loading, setLoading] = useState(false);
   const [latestFood, setLatestFood] = useState<Food | null>(null); // New state for latest food
   const [latestVariant, setLatestVariant] = useState<FoodVariant | null>(null); // New state for latest variant
+  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>([]);
+
+  useEffect(() => {
+    const fetchCustomNutrients = async () => {
+      try {
+        const nutrients = await customNutrientService.getCustomNutrients();
+        setCustomNutrients(nutrients);
+      } catch (error) {
+        console.error("Failed to fetch custom nutrients", error);
+        toast({
+          title: "Error",
+          description: "Could not load custom nutrients. Please try again later.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    if (open) {
+      fetchCustomNutrients();
+    }
+  }, [open]);
 
   useEffect(() => {
     debug(loggingLevel, "EditFoodEntryDialog entry/open useEffect triggered.", { entry, open });
@@ -91,7 +113,8 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
         vitamin_a: defaultVariant.vitamin_a || 0,
         vitamin_c: defaultVariant.vitamin_c || 0,
         calcium: defaultVariant.calcium || 0,
-        iron: defaultVariant.iron || 0
+        iron: defaultVariant.iron || 0,
+        custom_nutrients: defaultVariant.custom_nutrients || {},
       } : { // Fallback if no default variant found
         id: entry.food_id,
         serving_size: 100,
@@ -99,7 +122,8 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
         calories: 0, // kcal
         protein: 0, carbs: 0, fat: 0, saturated_fat: 0, polyunsaturated_fat: 0,
         monounsaturated_fat: 0, trans_fat: 0, cholesterol: 0, sodium: 0, potassium: 0,
-        dietary_fiber: 0, sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0
+        dietary_fiber: 0, sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0,
+        custom_nutrients: {},
       };
 
       let combinedVariants: FoodVariant[] = [primaryUnit];
@@ -126,7 +150,8 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
           vitamin_a: variant.vitamin_a || 0,
           vitamin_c: variant.vitamin_c || 0,
           calcium: variant.calcium || 0,
-          iron: variant.iron || 0
+          iron: variant.iron || 0,
+          custom_nutrients: variant.custom_nutrients || {},
         }));
 
         // Ensure the primary unit is always included and is the first option.
@@ -186,7 +211,8 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
         vitamin_a: entry.food_variants?.vitamin_a || 0,
         vitamin_c: entry.food_variants?.vitamin_c || 0,
         calcium: entry.food_variants?.calcium || 0,
-        iron: entry.food_variants?.iron || 0
+        iron: entry.food_variants?.iron || 0,
+        custom_nutrients: entry.food_variants?.custom_nutrients || {},
       };
 
       let combinedVariants: FoodVariant[] = [primaryUnit];
@@ -213,7 +239,8 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
           vitamin_a: variant.vitamin_a || 0,
           vitamin_c: variant.vitamin_c || 0,
           calcium: variant.calcium || 0,
-          iron: variant.iron || 0
+          iron: variant.iron || 0,
+          custom_nutrients: variant.custom_nutrients || {},
         }));
 
         // Ensure the primary unit is always included and is the first option.
@@ -290,7 +317,7 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
     debug(loggingLevel, "Calculated ratio for edit dialog:", ratio);
 
     // Apply the ratio to the selected variant's nutrition values
-    const nutrition = {
+    const nutrition: any = {
       calories: (latestVariant.calories * ratio) || 0, // Use latestVariant, this is in kcal
       protein: (latestVariant.protein * ratio) || 0, // Use latestVariant
       carbs: (latestVariant.carbs * ratio) || 0, // Use latestVariant
@@ -308,7 +335,15 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
       vitamin_c: (latestVariant.vitamin_c * ratio) || 0, // Use latestVariant
       calcium: (latestVariant.calcium * ratio) || 0, // Use latestVariant
       iron: (latestVariant.iron * ratio) || 0, // Use latestVariant
+      custom_nutrients: {},
     };
+
+    if (latestVariant.custom_nutrients) {
+      for (const key in latestVariant.custom_nutrients) {
+        nutrition.custom_nutrients[key] = (Number(latestVariant.custom_nutrients[key]) * ratio) || 0;
+      }
+    }
+
     debug(loggingLevel, "Calculated nutrition for edit dialog:", nutrition);
     return nutrition;
   };
@@ -486,6 +521,22 @@ const EditFoodEntryDialog = ({ entry, open, onOpenChange, onSave }: EditFoodEntr
                       </div>
                     </div>
                   </div>
+
+                  {customNutrients.length > 0 && nutrition.custom_nutrients && (
+                    <div>
+                      <h4 className="font-medium mb-3">Custom Nutrients</h4>
+                      <div className="grid grid-cols-4 gap-4">
+                        {customNutrients.map(nutrient => (
+                          <div key={nutrient.id}>
+                            <Label className="text-sm">{nutrient.name} ({nutrient.unit})</Label>
+                            <div className="text-lg font-medium">
+                              {(nutrition.custom_nutrients[nutrient.name] || 0).toFixed(1)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="bg-muted p-4 rounded-lg">
                     <h4 className="font-medium mb-2">Base Values (per {selectedVariant?.serving_size} {selectedVariant?.serving_unit}):</h4>

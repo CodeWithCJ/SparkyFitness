@@ -173,6 +173,7 @@ router.post("/callback", async (req, res, next) => {
     const params = { code, state };
 
     log('debug', `[OIDC Callback] Session state before callback: ${req.session.state}`);
+    log('debug', `[OIDC Callback] Using redirectUri for callback: ${redirectUri}`); // Added log
     const tokenSet = await client.callback(
       redirectUri,
       params,

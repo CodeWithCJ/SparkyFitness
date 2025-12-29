@@ -8,12 +8,15 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { debug, info, warn, error } from "@/utils/logging"; // Import logging utility
 import { useTranslation } from "react-i18next";
 
+import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+
 interface Goals {
   calories: number; // Stored internally as kcal
   protein: number;
   carbs: number;
   fat: number;
   dietary_fiber: number;
+  [key: string]: number; // Allow custom nutrients
 }
 
 interface DayTotals {
@@ -22,6 +25,7 @@ interface DayTotals {
   carbs: number;
   fat: number;
   dietary_fiber: number;
+  [key: string]: number; // Allow custom nutrients
 }
 
 interface DiaryTopControlsProps {
@@ -33,6 +37,7 @@ interface DiaryTopControlsProps {
   refreshTrigger?: number;
   energyUnit: 'kcal' | 'kJ';
   convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number;
+  customNutrients?: UserCustomNutrient[]; // Add customNutrients prop
 }
 
 const DiaryTopControls = ({
@@ -44,11 +49,12 @@ const DiaryTopControls = ({
   refreshTrigger = 0,
   energyUnit,
   convertEnergy,
+  customNutrients = [], // Default to empty array
 }: DiaryTopControlsProps) => {
   const { loggingLevel, nutrientDisplayPreferences } = usePreferences(); // Get logging level
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
-  
+
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
   };
@@ -116,11 +122,24 @@ const DiaryTopControls = ({
           <CardContent className="pb-4">
             <div className={`grid grid-cols-3 lg:grid-cols-5 gap-3`}>
               {visibleNutrients.map((nutrient) => {
-                const details = nutrientDetails[nutrient];
+                let details = nutrientDetails[nutrient];
+
+                // If standard details missing, check custom nutrients
+                if (!details && customNutrients) {
+                  const customNutrient = customNutrients.find(cn => cn.name === nutrient);
+                  if (customNutrient) {
+                    details = {
+                      color: "bg-indigo-400", // Default color for custom nutrients
+                      label: customNutrient.name,
+                      unit: customNutrient.unit
+                    };
+                  }
+                }
+
                 if (!details) return null;
 
-                const total = dayTotals[nutrient as keyof DayTotals]; // This is kcal
-                const goal = goals[nutrient as keyof Goals]; // This is kcal
+                const total = dayTotals[nutrient as keyof DayTotals] || 0; // This is kcal
+                const goal = goals[nutrient as keyof Goals] || 0; // This is kcal
 
                 // Convert to display unit for rendering
                 const displayedTotal = nutrient === 'calories' ? convertEnergy(total, 'kcal', energyUnit) : total;
@@ -154,6 +173,7 @@ const DiaryTopControls = ({
             <MiniNutritionTrends
               selectedDate={selectedDate}
               refreshTrigger={refreshTrigger}
+              customNutrients={customNutrients} // Pass customNutrients to chart
             />
           </CardContent>
         </Card>

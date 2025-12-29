@@ -47,7 +47,17 @@ import { getExerciseDashboardData, getSleepAnalyticsData } from '@/services/repo
 import { getCategories as getCustomCategories } from '@/services/customCategoryService';
 import { getRawStressData } from '@/services/customMeasurementService';
 import { getMoodEntries } from '@/services/moodService';
+import { customNutrientService } from "@/services/customNutrientService";
+import { UserCustomNutrient } from "@/types/customNutrient";
 import MoodChart from './MoodChart';
+
+interface ExtendedNutritionData extends NutritionData {
+  [key: string]: number | string; // Add index signature for custom nutrients
+}
+
+interface ExtendedDailyFoodEntry extends DailyFoodEntry {
+  [key: string]: any; // Add index signature for custom nutrients
+}
 
 const Reports = () => {
   const { t } = useTranslation();
@@ -58,15 +68,16 @@ const Reports = () => {
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
   };
-  const [nutritionData, setNutritionData] = useState<NutritionData[]>([]);
+  const [nutritionData, setNutritionData] = useState<ExtendedNutritionData[]>([]);
   const [measurementData, setMeasurementData] = useState<MeasurementData[]>([]);
-  const [tabularData, setTabularData] = useState<DailyFoodEntry[]>([]);
+  const [tabularData, setTabularData] = useState<ExtendedDailyFoodEntry[]>([]);
   const [exerciseEntries, setExerciseEntries] = useState<DailyExerciseEntry[]>([]); // New state for exercise entries
   const [exerciseDashboardData, setExerciseDashboardData] = useState<ExerciseDashboardData | null>(null); // New state for exercise dashboard data
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [customMeasurementsData, setCustomMeasurementsData] = useState<Record<string, CustomMeasurementData[]>>({});
   const [rawStressData, setRawStressData] = useState<StressDataPoint[]>([]); // New state for raw stress data
   const [moodData, setMoodData] = useState<MoodEntry[]>([]); // New state for mood data
+  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [fastingData, setFastingData] = useState<FastingLog[]>([]);
@@ -143,6 +154,7 @@ const Reports = () => {
         getRawStressData(activeUserId),
         getMoodEntries(activeUserId, startDate, endDate),
         getFastingDataRange(startDate, endDate),
+        customNutrientService.getCustomNutrients(),
       ]);
 
       // Process results from Promise.allSettled
@@ -152,6 +164,7 @@ const Reports = () => {
         rawStressDataResult,
         moodEntriesResult,
         fastingDataResult,
+        customNutrientsResult,
       ] = results;
       debug(loggingLevel, 'Reports: moodEntriesResult after Promise.allSettled:', moodEntriesResult);
       // Add logging for the status and value/reason of moodEntriesResult
@@ -162,8 +175,8 @@ const Reports = () => {
       }
 
       if (reportsDataResult.status === 'fulfilled') {
-        setNutritionData(reportsDataResult.value.nutritionData);
-        setTabularData(reportsDataResult.value.tabularData);
+        setNutritionData(reportsDataResult.value.nutritionData as ExtendedNutritionData[]);
+        setTabularData(reportsDataResult.value.tabularData as ExtendedDailyFoodEntry[]);
         setExerciseEntries(reportsDataResult.value.exerciseEntries);
         // Apply unit conversions to fetchedMeasurementData
         const measurementDataFormatted = reportsDataResult.value.measurementData.map(m => ({
@@ -222,6 +235,13 @@ const Reports = () => {
         setFastingData([]);
       }
 
+      if (customNutrientsResult.status === 'fulfilled') {
+        setCustomNutrients(customNutrientsResult.value);
+      } else {
+        error(loggingLevel, 'Reports: Failed to load custom nutrients:', customNutrientsResult.reason);
+        setCustomNutrients([]);
+      }
+
       info(loggingLevel, 'Reports: Reports loaded successfully.');
     } catch (error) {
       error(loggingLevel, 'Reports: Error loading reports:', error);
@@ -254,7 +274,8 @@ const Reports = () => {
         t('reports.foodDiaryExportHeaders.calories', 'Calories ({{unit}})', { unit: getEnergyUnitString(energyUnit) }), t('reports.foodDiaryExportHeaders.protein', 'Protein (g)'), t('reports.foodDiaryExportHeaders.carbs', 'Carbs (g)'), t('reports.foodDiaryExportHeaders.fat', 'Fat (g)'),
         t('reports.foodDiaryExportHeaders.saturatedFat', 'Saturated Fat (g)'), t('reports.foodDiaryExportHeaders.polyunsaturatedFat', 'Polyunsaturated Fat (g)'), t('reports.foodDiaryExportHeaders.monounsaturatedFat', 'Monounsaturated Fat (g)'), t('reports.foodDiaryExportHeaders.transFat', 'Trans Fat (g)'),
         t('reports.foodDiaryExportHeaders.cholesterol', 'Cholesterol (mg)'), t('reports.foodDiaryExportHeaders.sodium', 'Sodium (mg)'), t('reports.foodDiaryExportHeaders.potassium', 'Potassium (mg)'), t('reports.foodDiaryExportHeaders.dietaryFiber', 'Dietary Fiber (g)'), t('reports.foodDiaryExportHeaders.sugars', 'Sugars (g)'),
-        t('reports.foodDiaryExportHeaders.vitaminA', 'Vitamin A (μg)'), t('reports.foodDiaryExportHeaders.vitaminC', 'Vitamin C (mg)'), t('reports.foodDiaryExportHeaders.calcium', 'Calcium (mg)'), t('reports.foodDiaryExportHeaders.iron', 'Iron (mg)')
+        t('reports.foodDiaryExportHeaders.vitaminA', 'Vitamin A (μg)'), t('reports.foodDiaryExportHeaders.vitaminC', 'Vitamin C (mg)'), t('reports.foodDiaryExportHeaders.calcium', 'Calcium (mg)'), t('reports.foodDiaryExportHeaders.iron', 'Iron (mg)'),
+        ...customNutrients.map(nutrient => `${nutrient.name} (${nutrient.unit})`)
       ];
 
       // Group data by date and include totals
@@ -270,6 +291,11 @@ const Reports = () => {
       const calculateFoodDayTotal = (entries: DailyFoodEntry[]) => {
         return entries.reduce((total, entry) => {
           const calculatedNutrition = calculateFoodEntryNutrition(entry as any); // Cast to any for now
+          
+          const customNutrientTotals = customNutrients.reduce((acc, nutrient) => {
+            acc[nutrient.name] = (acc[nutrient.name] || 0) + (calculatedNutrition.custom_nutrients?.[nutrient.name] || 0);
+            return acc;
+          }, {} as Record<string, number>);
 
           return {
             calories: total.calories + calculatedNutrition.calories,
@@ -289,12 +315,14 @@ const Reports = () => {
             vitamin_c: total.vitamin_c + (calculatedNutrition.vitamin_c || 0),
             calcium: total.calcium + (calculatedNutrition.calcium || 0),
             iron: total.iron + (calculatedNutrition.iron || 0),
+            ...customNutrientTotals,
           };
         }, {
           calories: 0, protein: 0, carbs: 0, fat: 0, saturated_fat: 0,
           polyunsaturated_fat: 0, monounsaturated_fat: 0, trans_fat: 0,
           cholesterol: 0, sodium: 0, potassium: 0, dietary_fiber: 0,
-          sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0
+          sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0,
+          ...customNutrients.reduce((acc, nutrient) => ({ ...acc, [nutrient.name]: 0 }), {})
         });
       };
 
@@ -333,7 +361,8 @@ const Reports = () => {
               Math.round(calculatedNutrition.vitamin_a || 0).toString(), // μg - full number
               (calculatedNutrition.vitamin_c || 0).toFixed(2), // mg
               (calculatedNutrition.calcium || 0).toFixed(2), // mg
-              (calculatedNutrition.iron || 0).toFixed(2) // mg
+              (calculatedNutrition.iron || 0).toFixed(2), // mg
+              ...customNutrients.map(nutrient => (calculatedNutrition.custom_nutrients?.[nutrient.name] || 0).toFixed(1))
             ]);
           });
 
@@ -362,7 +391,8 @@ const Reports = () => {
             Math.round(totals.vitamin_a).toString(), // μg - full number
             totals.vitamin_c.toFixed(2), // mg
             totals.calcium.toFixed(2), // mg
-            totals.iron.toFixed(2) // mg
+            totals.iron.toFixed(2), // mg
+            ...customNutrients.map(nutrient => (totals[nutrient.name] || 0).toFixed(1))
           ]);
         });
 
@@ -731,7 +761,7 @@ const Reports = () => {
           </TabsList>
 
           <TabsContent value="charts" className="space-y-6">
-            <NutritionChartsGrid nutritionData={nutritionData} />
+            <NutritionChartsGrid nutritionData={nutritionData} customNutrients={customNutrients} />
             <MeasurementChartsGrid
               measurementData={measurementData}
               showWeightInKg={defaultWeightUnit === 'kg'}
@@ -868,6 +898,7 @@ const Reports = () => {
               onExportBodyMeasurements={exportBodyMeasurements}
               onExportCustomMeasurements={exportCustomMeasurements}
               onExportExerciseEntries={exportExerciseEntries} // Pass export function
+              customNutrients={customNutrients} // Pass customNutrients
             />
           </TabsContent>
         </Tabs>

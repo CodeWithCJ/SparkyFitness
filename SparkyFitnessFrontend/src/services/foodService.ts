@@ -38,6 +38,7 @@ interface FoodPayload {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
+  custom_nutrients?: Record<string, string | number>;
 }
 
 export const searchFoods = async (

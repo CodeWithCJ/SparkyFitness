@@ -65,6 +65,7 @@ async function createFood(authenticatedUserId, foodData) {
     const newFood = await foodRepository.createFood({
       ...foodData,
       glycemic_index: foodData.glycemic_index || null,
+      custom_nutrients: foodData.custom_nutrients || {},
     });
     return newFood;
   } catch (error) {
@@ -334,6 +335,7 @@ async function updateFoodVariant(authenticatedUserId, variantId, variantData) {
       {
         ...variantData,
         glycemic_index: variantData.glycemic_index || null,
+        custom_nutrients: variantData.custom_nutrients || {},
       },
       authenticatedUserId
     );
@@ -453,6 +455,7 @@ async function createOrGetFood(authenticatedUserId, foodSuggestion) {
       shared_with_public: foodSuggestion.shared_with_public || false,
       provider_type: foodSuggestion.provider_type || null,
       glycemic_index: foodSuggestion.glycemic_index || null,
+      custom_nutrients: foodSuggestion.custom_nutrients || {},
     };
 
     const newFood = await foodRepository.createFood(foodToCreate);
@@ -479,6 +482,7 @@ async function createOrGetFood(authenticatedUserId, foodSuggestion) {
       calcium: foodSuggestion.calcium || 0,
       iron: foodSuggestion.iron || 0,
       glycemic_index: foodSuggestion.glycemic_index || null,
+      custom_nutrients: foodSuggestion.custom_nutrients || {},
     };
     const newVariant = await foodRepository.createFoodVariant(
       defaultVariantData,
@@ -566,6 +570,7 @@ async function importFoodsInBulk(authenticatedUserId, foodDataArray) {
       foodDataArray.map(food => ({
         ...food,
         glycemic_index: food.glycemic_index || null,
+        custom_nutrients: food.custom_nutrients || {},
       }))
     );
   } catch (error) {
@@ -627,6 +632,7 @@ async function updateFoodEntriesSnapshot(authenticatedUserId, foodId, variantId)
       calcium: variant.calcium,
       iron: variant.iron,
       glycemic_index: variant.glycemic_index,
+      custom_nutrients: variant.custom_nutrients,
     };
 
     // Update all relevant food entries for the authenticated user

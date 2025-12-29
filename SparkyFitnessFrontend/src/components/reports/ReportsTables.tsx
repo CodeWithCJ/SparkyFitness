@@ -10,6 +10,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { debug, info, warn, error } from "@/utils/logging";
 import { parseISO } from "date-fns";
 import { formatNutrientValue, getNutrientUnit } from '@/lib/utils';
+import { UserCustomNutrient } from "@/types/customNutrient"; // Import UserCustomNutrient
 
 interface DailyFoodEntry {
   entry_date: string;
@@ -61,6 +62,8 @@ interface DailyFoodEntry {
   vitamin_c: number;
   calcium: number;
   iron: number;
+  custom_nutrients?: Record<string, number>; // Add custom_nutrients
+  [key: string]: any; // Add index signature to allow for custom nutrient properties
 }
 
 interface DailyExerciseEntry {
@@ -132,6 +135,7 @@ interface ReportsTablesProps {
   onExportBodyMeasurements: () => void;
   onExportCustomMeasurements: (category: CustomCategory) => void;
   onExportExerciseEntries: () => void; // New prop for exporting exercise entries
+  customNutrients: UserCustomNutrient[]; // Add customNutrients prop
 }
 
 const ReportsTables = ({
@@ -147,15 +151,18 @@ const ReportsTables = ({
   onExportBodyMeasurements,
   onExportCustomMeasurements,
   onExportExerciseEntries, // Destructure new prop
+  customNutrients, // Destructure customNutrients prop
 }: ReportsTablesProps) => {
   const { t } = useTranslation();
   const { loggingLevel, dateFormat, formatDateInUserTimezone, nutrientDisplayPreferences, weightUnit, convertWeight, energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
 
+  debug(loggingLevel, 'ReportsTables: customNutrients prop value:', customNutrients);
 
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const reportTabularPreferences = nutrientDisplayPreferences.find(p => p.view_group === 'report_tabular' && p.platform === platform);
   const visibleNutrients = reportTabularPreferences ? reportTabularPreferences.visible_nutrients : ['calories', 'protein', 'carbs', 'fat'];
+  debug(loggingLevel, 'ReportsTables: visibleNutrients array:', visibleNutrients);
   const [exerciseNameFilter, setExerciseNameFilter] = useState("");
   const [setTypeFilter, setSetTypeFilter] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
@@ -195,6 +202,11 @@ const ReportsTables = ({
 
       // Calculate totals for the day directly from the already calculated values
       const dailyTotals = entries.reduce((acc, entry) => {
+        const customNutrientsSum = customNutrients.reduce((sumAcc, cn) => {
+          sumAcc[cn.name] = (acc[cn.name] || 0) + (Number(entry[cn.name]) || 0);
+          return sumAcc;
+        }, {} as Record<string, number>);
+
         return {
           ...acc,
           calories: (acc.calories || 0) + (entry.calories || 0),
@@ -215,6 +227,7 @@ const ReportsTables = ({
           calcium: (acc.calcium || 0) + (entry.calcium || 0),
           iron: (acc.iron || 0) + (entry.iron || 0),
           glycemic_index: 'None', // GI is not aggregated in daily totals
+          ...customNutrientsSum,
         };
       }, {
         calories: 0, protein: 0, carbs: 0, fat: 0, saturated_fat: 0,
@@ -249,7 +262,8 @@ const ReportsTables = ({
         calcium: dailyTotals.calcium,
         iron: dailyTotals.iron,
         glycemic_index: 'None',
-        serving_size: 100 // Default value, not used for totals
+        serving_size: 100, // Default value, not used for totals
+        ...dailyTotals // Include custom nutrient totals
       });
     });
   debug(loggingLevel, `ReportsTables: Generated ${foodDataWithTotals.length} rows for food diary table.`);
@@ -330,17 +344,26 @@ const ReportsTables = ({
                   <TableHead className="min-w-[250px]">{t('reportsTables.food', 'Food')}</TableHead>
                   <TableHead>{t('reportsTables.quantity', 'Quantity')}</TableHead>
                   {visibleNutrients.map(nutrient => {
+                    // Check if it is a custom nutrient
+                    const customNutrient = customNutrients.find(cn => cn.name === nutrient);
+
                     // Create a human-friendly label and only show unit when available
                     const rawLabel = nutrient.replace(/_/g, ' ');
                     const toTitleCase = (s: string) => s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                     const label = nutrient === 'glycemic_index' ? t('reports.foodDiaryExportHeaders.glycemicIndex', 'Glycemic Index') : toTitleCase(rawLabel);
-                    const unit = nutrient === 'calories' ? getEnergyUnitString(energyUnit) : getNutrientUnit(nutrient);
+
+                    // Determine unit: use custom nutrient unit if available, otherwise standard logic
+                    const unit = customNutrient
+                      ? customNutrient.unit
+                      : (nutrient === 'calories' ? getEnergyUnitString(energyUnit) : getNutrientUnit(nutrient));
+
                     return <TableHead key={nutrient}>{label}{unit ? ` (${unit})` : ''}</TableHead>;
                   })}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {foodDataWithTotals.map((entry, index) => {
+                  debug(loggingLevel, `ReportsTables: Processing entry for food: ${entry.food_name}, custom_nutrients:`, entry.custom_nutrients);
                   return (
                     <TableRow key={index} className={entry.isTotal ? "bg-gray-50 dark:bg-gray-900 font-semibold border-t-2" : ""}>
                       <TableCell>{formatDateInUserTimezone(parseISO(entry.entry_date), dateFormat)}</TableCell>
@@ -359,6 +382,13 @@ const ReportsTables = ({
                         if (nutrient === 'glycemic_index') {
                           const giValue = entry.isTotal ? '' : (entry.glycemic_index || entry.foods?.glycemic_index || 'None');
                           return <TableCell key={nutrient}>{giValue}</TableCell>;
+                        }
+
+                        // Handle custom nutrients
+                        if (customNutrients.some(cn => cn.name === nutrient)) {
+                          // Values are now top-level properties on the entry object due to backend changes
+                          const customNutrientValue = (Number(entry[nutrient]) || 0).toFixed(1);
+                          return <TableCell key={nutrient}>{entry.isTotal && Number(customNutrientValue) === 0 ? '' : customNutrientValue}</TableCell>;
                         }
 
                         // Directly use the pre-calculated nutrient value from the entry

@@ -13,8 +13,8 @@ async function createFoodVariant(variantData, userId) {
         food_id, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
-        vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, now(), now()) RETURNING id`,
+        vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, now(), now()) RETURNING id`,
       [
         variantData.food_id,
         variantData.serving_size,
@@ -38,6 +38,7 @@ async function createFoodVariant(variantData, userId) {
         variantData.iron,
         variantData.is_default || false,
         sanitizeGlycemicIndex(variantData.glycemic_index),
+        variantData.custom_nutrients || {},
       ]
     );
     return result.rows[0];
@@ -50,7 +51,7 @@ async function getFoodVariantById(id, userId) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      "SELECT *, glycemic_index FROM food_variants WHERE id = $1",
+      "SELECT *, glycemic_index, custom_nutrients FROM food_variants WHERE id = $1",
       [id]
     );
     return result.rows[0];
@@ -121,8 +122,9 @@ async function updateFoodVariant(id, variantData, userId) {
         iron = COALESCE($20, iron),
         is_default = COALESCE($21, is_default),
         glycemic_index = COALESCE($22, glycemic_index),
+        custom_nutrients = COALESCE($23, custom_nutrients),
         updated_at = now()
-      WHERE id = $23
+      WHERE id = $24
       RETURNING *`,
       [
         variantData.food_id,
@@ -147,6 +149,7 @@ async function updateFoodVariant(id, variantData, userId) {
         variantData.iron,
         variantData.is_default,
         sanitizeGlycemicIndex(variantData.glycemic_index),
+        variantData.custom_nutrients || {},
         id,
       ]
     );
@@ -190,7 +193,7 @@ async function bulkCreateFoodVariants(variantsData, userId) {
         food_id, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
-        vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, created_at, updated_at
+        vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients, created_at, updated_at
       ) VALUES %L RETURNING id`;
 
     const values = variantsData.map((variant) => [
@@ -216,6 +219,7 @@ async function bulkCreateFoodVariants(variantsData, userId) {
       variant.iron,
       variant.is_default || false,
       sanitizeGlycemicIndex(variant.glycemic_index),
+      variant.custom_nutrients || {},
       "now()",
       "now()",
     ]);
