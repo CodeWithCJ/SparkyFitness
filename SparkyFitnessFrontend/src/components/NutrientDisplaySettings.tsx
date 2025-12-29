@@ -7,8 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { apiCall } from '@/services/api';
 import { toast } from "@/hooks/use-toast";
+import { customNutrientService } from "@/services/customNutrientService";
+import { UserCustomNutrient } from "@/types/customNutrient";
 
-const allNutrients = [
+const baseNutrients = [
     'calories', 'protein', 'carbs', 'fat', 'dietary_fiber', 'sugars', 'sodium',
     'cholesterol', 'saturated_fat', 'trans_fat', 'potassium',
     'vitamin_a', 'vitamin_c', 'iron', 'calcium', 'glycemic_index'
@@ -32,6 +34,7 @@ interface NutrientPreference {
 const NutrientDisplaySettings: React.FC = () => {
     const { nutrientDisplayPreferences, loadNutrientDisplayPreferences } = usePreferences();
     const [preferences, setPreferences] = useState<NutrientPreference[]>([]);
+    const [allNutrients, setAllNutrients] = useState<string[]>(baseNutrients);
     const [syncState, setSyncState] = useState<Record<string, boolean>>({});
     const [activePlatformTab, setActivePlatformTab] = useState<'desktop' | 'mobile'>('desktop');
     const [activeViewGroupTab, setActiveViewGroupTab] = useState<string>('summary');
@@ -39,6 +42,23 @@ const NutrientDisplaySettings: React.FC = () => {
     useEffect(() => {
         setPreferences(nutrientDisplayPreferences);
     }, [nutrientDisplayPreferences]);
+
+    useEffect(() => {
+        const fetchCustomNutrients = async () => {
+            try {
+                const customNutrients = await customNutrientService.getCustomNutrients();
+                const customNutrientNames = customNutrients.map(n => n.name);
+                setAllNutrients([...baseNutrients, ...customNutrientNames]);
+            } catch (error) {
+                toast({
+                    title: "Error",
+                    description: "Failed to load custom nutrients for display settings.",
+                    variant: "destructive",
+                });
+            }
+        };
+        fetchCustomNutrients();
+    }, []);
 
     useEffect(() => {
         const handler = setTimeout(() => {

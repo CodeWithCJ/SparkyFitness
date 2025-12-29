@@ -94,6 +94,11 @@ async function updateMeal(userId, mealId, updateData) {
           foodRepository.updateFood(foodId, userId, { shared_with_public: true })
         );
         await Promise.all(updatePromises);
+        // Also update custom_nutrients for each food to be shared
+        const customNutrientUpdatePromises = foodIds.map(foodId =>
+          foodRepository.updateFood(foodId, userId, { custom_nutrients: {} }) // Clear custom nutrients when sharing publicly
+        );
+        await Promise.all(customNutrientUpdatePromises);
         confirmationMessage = `Meal shared successfully. ${foodIds.length} associated foods have also been made public.`;
       }
     }
@@ -390,6 +395,7 @@ async function createMealFromDiaryEntries(userId, date, mealType, mealName, desc
         variant_id: entry.variant_id || food.default_variant.id, // Use entry's variant_id or default
         quantity: entry.quantity,
         unit: entry.unit,
+        custom_nutrients: entry.custom_nutrients || {},
       });
     }
 

@@ -18,8 +18,12 @@ async function createFoodEntry(entryData, createdByUserId) {
          FROM foods f
          JOIN food_variants fv ON f.id = fv.food_id
          WHERE f.id = $1 AND fv.id = $2`,
-        [entryData.food_id, entryData.variant_id]
-      );
+       [entryData.food_id, entryData.variant_id]
+     );
+     // Add custom_nutrients to the snapshot if available
+     if (foodSnapshotQuery.rows.length > 0) {
+       foodSnapshotQuery.rows[0].custom_nutrients = foodSnapshotQuery.rows[0].custom_nutrients || {};
+     }
 
       if (foodSnapshotQuery.rows.length === 0) {
         throw new Error("Food or variant not found for snapshotting.");
@@ -50,6 +54,7 @@ async function createFoodEntry(entryData, createdByUserId) {
         calcium: entryData.calcium,
         iron: entryData.iron,
         glycemic_index: entryData.glycemic_index,
+        custom_nutrients: entryData.custom_nutrients || {},
       };
     }
 
@@ -60,10 +65,10 @@ async function createFoodEntry(entryData, createdByUserId) {
          food_entry_meal_id, -- New column
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
-         potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, updated_by_user_id
+         potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, updated_by_user_id
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35
        ) RETURNING *`,
       [
         entryData.user_id,
@@ -99,6 +104,7 @@ async function createFoodEntry(entryData, createdByUserId) {
         snapshot.calcium,
         snapshot.iron,
         snapshot.glycemic_index,
+        snapshot.custom_nutrients || {},
         createdByUserId, // updated_by_user_id
       ]
     );
@@ -122,7 +128,7 @@ async function getFoodEntryById(entryId, userId) {
         fe.id, fe.food_id, fe.meal_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
         fe.food_entry_meal_id, fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat, fe.cholesterol, fe.sodium,
-        fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index,
+        fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index, fe.custom_nutrients,
         fe.user_id
        FROM food_entries fe
        WHERE fe.id = $1`,
@@ -191,8 +197,9 @@ async function updateFoodEntry(entryId, userId, actingUserId, entryData, snapsho
         vitamin_c = $25,
         calcium = $26,
         iron = $27,
-        glycemic_index = $28
-      WHERE id = $29
+        glycemic_index = $28,
+        custom_nutrients = $29
+      WHERE id = $30
       RETURNING *`,
       [
         entryData.quantity,
@@ -223,6 +230,7 @@ async function updateFoodEntry(entryId, userId, actingUserId, entryData, snapsho
         snapshotData.calcium,
         snapshotData.iron,
         snapshotData.glycemic_index,
+        snapshotData.custom_nutrients || {},
         entryId,
       ]
     );
@@ -243,7 +251,7 @@ async function getFoodEntriesByDate(userId, selectedDate) {
         fe.food_entry_meal_id, -- New column
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat, fe.cholesterol, fe.sodium,
-        fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index
+        fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index, fe.custom_nutrients
        FROM food_entries fe
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
        WHERE fe.user_id = $1 AND fe.entry_date = $2
@@ -267,7 +275,7 @@ async function getFoodEntriesByDateAndMealType(userId, date, mealType) {
         fe.food_entry_meal_id, -- New column
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat, fe.cholesterol, fe.sodium,
-        fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index
+        fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index, fe.custom_nutrients
        FROM food_entries fe
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
        WHERE fe.user_id = $1 AND fe.entry_date = $2 AND fe.meal_type = $3`,
@@ -292,7 +300,7 @@ async function getFoodEntriesByDateRange(userId, startDate, endDate) {
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat,
         fe.cholesterol, fe.sodium, fe.potassium, fe.dietary_fiber, fe.sugars,
-        fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index
+        fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index, fe.custom_nutrients
        FROM food_entries fe
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
        WHERE fe.user_id = $1 AND fe.entry_date BETWEEN $2 AND $3
@@ -342,7 +350,7 @@ async function bulkCreateFoodEntries(entriesData, authenticatedUserId) {
         created_by_user_id, updated_by_user_id,
         food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
-        potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index
+        potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients
       )
       VALUES %L RETURNING *`;
 
@@ -381,6 +389,7 @@ async function bulkCreateFoodEntries(entriesData, authenticatedUserId) {
       entry.calcium,
       entry.iron,
       entry.glycemic_index,
+      entry.custom_nutrients || {},
     ]);
 
     const formattedQuery = format(query, values);
@@ -400,7 +409,7 @@ async function getFoodEntryComponentsByFoodEntryMealId(foodEntryMealId, userId) 
         fe.id, fe.food_id, fe.meal_type, fe.quantity, fe.unit, fe.variant_id, fe.entry_date,
         fe.food_entry_meal_id, fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat, fe.cholesterol, fe.sodium,
-        fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index
+        fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index, fe.custom_nutrients
        FROM food_entries fe
        WHERE fe.food_entry_meal_id = $1`,
       [foodEntryMealId]

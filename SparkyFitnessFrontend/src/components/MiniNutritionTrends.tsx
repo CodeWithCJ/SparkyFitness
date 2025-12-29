@@ -12,13 +12,16 @@ import { loadMiniNutritionTrendData, DayData } from '@/services/miniNutritionTre
 import { formatNutrientValue } from '@/lib/utils';
 
 
+import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+
 interface MiniNutritionTrendsProps {
   selectedDate: string;
   refreshTrigger?: number;
+  customNutrients?: UserCustomNutrient[]; // Add customNutrients prop
 }
 
 
-const MiniNutritionTrends = ({ selectedDate, refreshTrigger }: MiniNutritionTrendsProps) => {
+const MiniNutritionTrends = ({ selectedDate, refreshTrigger, customNutrients = [] }: MiniNutritionTrendsProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
@@ -118,7 +121,19 @@ const MiniNutritionTrends = ({ selectedDate, refreshTrigger }: MiniNutritionTren
       </div>
 
       {visibleNutrients.map(nutrient => {
-        const details = nutrientDetails[nutrient];
+        let details = nutrientDetails[nutrient];
+
+        // Handle custom nutrients
+        if (!details && customNutrients) {
+          const customNutrient = customNutrients.find(cn => cn.name === nutrient);
+          if (customNutrient) {
+            details = {
+              color: '#8b5cf6', // Default purple color for custom nutrients
+              label: `${customNutrient.name} (${customNutrient.unit})`
+            };
+          }
+        }
+
         if (!details) return null;
 
         return (

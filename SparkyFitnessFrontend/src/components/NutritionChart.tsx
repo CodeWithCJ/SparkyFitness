@@ -1,6 +1,9 @@
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import { customNutrientService } from "@/services/customNutrientService";
+import { UserCustomNutrient } from "@/types/customNutrient";
 
 interface NutritionChartProps {
   protein: number;
@@ -9,9 +12,25 @@ interface NutritionChartProps {
   proteinGoal: number;
   carbsGoal: number;
   fatGoal: number;
+  customNutrients: Record<string, number>;
+  customNutrientGoals: Record<string, number>;
 }
 
-const NutritionChart = ({ protein, carbs, fat, proteinGoal, carbsGoal, fatGoal }: NutritionChartProps) => {
+const NutritionChart = ({ protein, carbs, fat, proteinGoal, carbsGoal, fatGoal, customNutrients, customNutrientGoals }: NutritionChartProps) => {
+  const [userCustomNutrients, setUserCustomNutrients] = useState<UserCustomNutrient[]>([]);
+
+  useEffect(() => {
+    const fetchUserCustomNutrients = async () => {
+      try {
+        const fetchedNutrients = await customNutrientService.getCustomNutrients();
+        setUserCustomNutrients(fetchedNutrients);
+      } catch (err) {
+        console.error("NutritionChart: Failed to fetch user custom nutrients:", err);
+      }
+    };
+    fetchUserCustomNutrients();
+  }, []);
+
   const pieData = [
     { name: 'Protein', value: protein * 4, color: '#3b82f6' },
     { name: 'Carbs', value: carbs * 4, color: '#f97316' },
@@ -22,6 +41,12 @@ const NutritionChart = ({ protein, carbs, fat, proteinGoal, carbsGoal, fatGoal }
     { name: 'Protein', current: protein, goal: proteinGoal, color: '#3b82f6' },
     { name: 'Carbs', current: carbs, goal: carbsGoal, color: '#f97316' },
     { name: 'Fat', current: fat, goal: fatGoal, color: '#eab308' },
+    ...userCustomNutrients.map(nutrient => ({
+      name: nutrient.name,
+      current: customNutrients[nutrient.name] || 0,
+      goal: customNutrientGoals[nutrient.name] || 0,
+      color: '#8884d8'
+    }))
   ];
 
   return (

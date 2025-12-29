@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { customNutrientService } from "@/services/customNutrientService";
+import { UserCustomNutrient } from "@/types/customNutrient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
@@ -21,6 +23,8 @@ const NutritionTrendChart = ({ selectedDate }: NutritionTrendChartProps) => {
   const { activeUserId } = useActiveUser();
   const [chartData, setChartData] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>([]);
+  const [nutrientConfigs, setNutrientConfigs] = useState<any>({});
   const { t } = useTranslation();
   const { formatDateInUserTimezone, nutrientDisplayPreferences, energyUnit, convertEnergy, getEnergyUnitString } = usePreferences(); // Destructure formatDateInUserTimezone, energyUnit, convertEnergy
   const isMobile = useIsMobile();
@@ -31,8 +35,18 @@ const NutritionTrendChart = ({ selectedDate }: NutritionTrendChartProps) => {
   const visibleNutrients = summaryPreferences ? summaryPreferences.visible_nutrients : ['calories', 'protein', 'carbs', 'fat'];
 
   useEffect(() => {
+    const fetchCustomNutrients = async () => {
+      try {
+        const nutrients = await customNutrientService.getCustomNutrients();
+        setCustomNutrients(nutrients);
+      } catch (error) {
+        console.error("Failed to fetch custom nutrients", error);
+      }
+    };
+
     if (user && activeUserId) {
       loadTrendData();
+      fetchCustomNutrients();
     }
   }, [user, activeUserId, selectedDate, formatDateInUserTimezone]); // Add formatDateInUserTimezone to dependencies
 
@@ -91,25 +105,34 @@ const NutritionTrendChart = ({ selectedDate }: NutritionTrendChartProps) => {
     );
   }
 
-  const nutrientConfigs = {
-    calories: { name: t('common.calories', 'Calories'), color: '#22c55e', unit: getEnergyUnitString(energyUnit) },
-    protein: { name: t('common.protein', 'Protein'), color: '#3b82f6', unit: 'g' },
-    carbs: { name: t('common.carbs', 'Carbs'), color: '#f97316', unit: 'g' },
-    fat: { name: t('common.fat', 'Fat'), color: '#eab308', unit: 'g' },
-    saturated_fat: { name: t('common.saturatedFat', 'Saturated Fat'), color: '#ff6b6b', unit: 'g' },
-    polyunsaturated_fat: { name: t('common.polyunsaturatedFat', 'Polyunsaturated Fat'), color: '#4ecdc4', unit: 'g' },
-    monounsaturated_fat: { name: t('common.monounsaturatedFat', 'Monounsaturated Fat'), color: '#45b7d1', unit: 'g' },
-    trans_fat: { name: t('common.transFat', 'Trans Fat'), color: '#f9ca24', unit: 'g' },
-    cholesterol: { name: t('common.cholesterol', 'Cholesterol'), color: '#eb4d4b', unit: 'mg' },
-    sodium: { name: t('common.sodium', 'Sodium'), color: '#6c5ce7', unit: 'mg' },
-    potassium: { name: t('common.potassium', 'Potassium'), color: '#a29bfe', unit: 'mg' },
-    dietary_fiber: { name: t('common.dietaryFiber', 'Dietary Fiber'), color: '#fd79a8', unit: 'g' },
-    sugars: { name: t('common.sugars', 'Sugars'), color: '#fdcb6e', unit: 'g' },
-    vitamin_a: { name: t('common.vitaminA', 'Vitamin A'), color: '#e17055', unit: 'μg' },
-    vitamin_c: { name: t('common.vitaminC', 'Vitamin C'), color: '#00b894', unit: 'mg' },
-    calcium: { name: t('common.calcium', 'Calcium'), color: '#0984e3', unit: 'mg' },
-    iron: { name: t('common.iron', 'Iron'), color: '#2d3436', unit: 'mg' }
-  };
+  useEffect(() => {
+    const baseConfigs = {
+      calories: { name: t('common.calories', 'Calories'), color: '#22c55e', unit: getEnergyUnitString(energyUnit) },
+      protein: { name: t('common.protein', 'Protein'), color: '#3b82f6', unit: 'g' },
+      carbs: { name: t('common.carbs', 'Carbs'), color: '#f97316', unit: 'g' },
+      fat: { name: t('common.fat', 'Fat'), color: '#eab308', unit: 'g' },
+      saturated_fat: { name: t('common.saturatedFat', 'Saturated Fat'), color: '#ff6b6b', unit: 'g' },
+      polyunsaturated_fat: { name: t('common.polyunsaturatedFat', 'Polyunsaturated Fat'), color: '#4ecdc4', unit: 'g' },
+      monounsaturated_fat: { name: t('common.monounsaturatedFat', 'Monounsaturated Fat'), color: '#45b7d1', unit: 'g' },
+      trans_fat: { name: t('common.transFat', 'Trans Fat'), color: '#f9ca24', unit: 'g' },
+      cholesterol: { name: t('common.cholesterol', 'Cholesterol'), color: '#eb4d4b', unit: 'mg' },
+      sodium: { name: t('common.sodium', 'Sodium'), color: '#6c5ce7', unit: 'mg' },
+      potassium: { name: t('common.potassium', 'Potassium'), color: '#a29bfe', unit: 'mg' },
+      dietary_fiber: { name: t('common.dietaryFiber', 'Dietary Fiber'), color: '#fd79a8', unit: 'g' },
+      sugars: { name: t('common.sugars', 'Sugars'), color: '#fdcb6e', unit: 'g' },
+      vitamin_a: { name: t('common.vitaminA', 'Vitamin A'), color: '#e17055', unit: 'μg' },
+      vitamin_c: { name: t('common.vitaminC', 'Vitamin C'), color: '#00b894', unit: 'mg' },
+      calcium: { name: t('common.calcium', 'Calcium'), color: '#0984e3', unit: 'mg' },
+      iron: { name: t('common.iron', 'Iron'), color: '#2d3436', unit: 'mg' }
+    };
+
+    const customNutrientConfigs = customNutrients.reduce((acc, nutrient) => {
+      acc[nutrient.name] = { name: nutrient.name, color: '#8884d8', unit: nutrient.unit };
+      return acc;
+    }, {} as any);
+
+    setNutrientConfigs({ ...baseConfigs, ...customNutrientConfigs });
+  }, [t, energyUnit, getEnergyUnitString, customNutrients]);
 
   return (
     <Card>

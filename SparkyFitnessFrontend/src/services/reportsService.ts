@@ -83,6 +83,8 @@ export interface DailyFoodEntry {
     calcium?: number;
     iron?: number;
   };
+  custom_nutrients?: Record<string, number>; // Add custom_nutrients
+  [key: string]: any; // Add index signature to allow for custom nutrient properties
 }
 
 export interface DailyExerciseEntry {

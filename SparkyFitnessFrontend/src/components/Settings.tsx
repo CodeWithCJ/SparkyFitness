@@ -33,6 +33,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import CalculationSettings from "@/pages/CalculationSettings";
 import TooltipWarning from "./TooltipWarning";
 import MFASettings from "./MFASettings"; // Import MFASettings component
+import CustomNutrientsSettings from "@/pages/CustomNutrientsSettings";
 
 interface Profile {
   id: string;
@@ -782,9 +783,22 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             <WaterContainerManager />
           </AccordionContent>
         </AccordionItem>
-
-        <AccordionItem value="nutrient-display" className="border rounded-lg mb-4">
-          <AccordionTrigger
+        
+                <AccordionItem value="custom-nutrients" className="border rounded-lg mb-4">
+                  <AccordionTrigger
+                    className="flex items-center gap-2 p-4 hover:no-underline"
+                    description="Manage your custom nutrient definitions"
+                  >
+                    <ListChecks className="h-5 w-5" />
+                    Custom Nutrients
+                  </AccordionTrigger>
+                  <AccordionContent className="p-4 pt-0">
+                    <CustomNutrientsSettings />
+                  </AccordionContent>
+                </AccordionItem>
+        
+                <AccordionItem value="nutrient-display" className="border rounded-lg mb-4">
+                  <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t('settings.nutrientDisplay.description', 'Choose which nutrients to display in food and meal views')}
           >

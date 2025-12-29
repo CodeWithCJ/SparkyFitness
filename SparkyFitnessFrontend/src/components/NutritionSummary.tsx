@@ -1,8 +1,11 @@
 
+import { useEffect, useState } from "react";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
+import { customNutrientService } from "@/services/customNutrientService";
+import { UserCustomNutrient } from "@/types/customNutrient";
 
 interface Goals {
   calories: number; // Stored internally as kcal
@@ -10,6 +13,7 @@ interface Goals {
   carbs: number;
   fat: number;
   dietary_fiber: number;
+  [key: string]: number | undefined;
 }
 
 interface DayTotals {
@@ -33,26 +37,48 @@ const NutritionSummary = ({ dayTotals, goals, selectedDate }: NutritionSummaryPr
   const platform = isMobile ? 'mobile' : 'desktop';
 
   const { t } = useTranslation();
+  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>([]);
+  const [nutrientDetails, setNutrientDetails] = useState<{ [key: string]: { color: string, label: string, unit: string } }>({});
 
+  useEffect(() => {
+    const fetchCustomNutrients = async () => {
+      try {
+        const nutrients = await customNutrientService.getCustomNutrients();
+        setCustomNutrients(nutrients);
+      } catch (error) {
+        console.error("Failed to fetch custom nutrients", error);
+      }
+    };
 
+    fetchCustomNutrients();
+  }, []);
 
-  const nutrientDetails: { [key: string]: { color: string, label: string, unit: string } } = {
-    calories: { color: 'bg-green-500', label: getEnergyUnitString(energyUnit), unit: '' },
-    protein: { color: 'bg-blue-500', label: 'protein', unit: 'g' },
-    carbs: { color: 'bg-orange-500', label: 'carbs', unit: 'g' },
-    fat: { color: 'bg-yellow-500', label: 'fat', unit: 'g' },
-    dietary_fiber: { color: 'bg-green-600', label: 'fiber', unit: 'g' },
-    sugars: { color: 'bg-pink-500', label: 'sugar', unit: 'g' },
-    sodium: { color: 'bg-purple-500', label: 'sodium', unit: 'mg' },
-    cholesterol: { color: 'bg-indigo-500', label: 'cholesterol', unit: 'mg' },
-    saturated_fat: { color: 'bg-red-500', label: 'sat fat', unit: 'g' },
-    trans_fat: { color: 'bg-red-700', label: 'trans fat', unit: 'g' },
-    potassium: { color: 'bg-teal-500', label: 'potassium', unit: 'mg' },
-    vitamin_a: { color: 'bg-yellow-400', label: 'vit a', unit: 'mcg' },
-    vitamin_c: { color: 'bg-orange-400', label: 'vit c', unit: 'mg' },
-    iron: { color: 'bg-gray-500', label: 'iron', unit: 'mg' },
-    calcium: { color: 'bg-blue-400', label: 'calcium', unit: 'mg' },
-  };
+  useEffect(() => {
+    const baseNutrientDetails: { [key: string]: { color: string, label: string, unit: string } } = {
+      calories: { color: 'bg-green-500', label: getEnergyUnitString(energyUnit), unit: '' },
+      protein: { color: 'bg-blue-500', label: 'protein', unit: 'g' },
+      carbs: { color: 'bg-orange-500', label: 'carbs', unit: 'g' },
+      fat: { color: 'bg-yellow-500', label: 'fat', unit: 'g' },
+      dietary_fiber: { color: 'bg-green-600', label: 'fiber', unit: 'g' },
+      sugars: { color: 'bg-pink-500', label: 'sugar', unit: 'g' },
+      sodium: { color: 'bg-purple-500', label: 'sodium', unit: 'mg' },
+      cholesterol: { color: 'bg-indigo-500', label: 'cholesterol', unit: 'mg' },
+      saturated_fat: { color: 'bg-red-500', label: 'sat fat', unit: 'g' },
+      trans_fat: { color: 'bg-red-700', label: 'trans fat', unit: 'g' },
+      potassium: { color: 'bg-teal-500', label: 'potassium', unit: 'mg' },
+      vitamin_a: { color: 'bg-yellow-400', label: 'vit a', unit: 'mcg' },
+      vitamin_c: { color: 'bg-orange-400', label: 'vit c', unit: 'mg' },
+      iron: { color: 'bg-gray-500', label: 'iron', unit: 'mg' },
+      calcium: { color: 'bg-blue-400', label: 'calcium', unit: 'mg' },
+    };
+
+    const customNutrientDetails = customNutrients.reduce((acc, nutrient) => {
+      acc[nutrient.name] = { color: 'bg-gray-400', label: nutrient.name, unit: nutrient.unit };
+      return acc;
+    }, {} as { [key: string]: { color: string, label: string, unit: string } });
+
+    setNutrientDetails({ ...baseNutrientDetails, ...customNutrientDetails });
+  }, [customNutrients, energyUnit]);
 
   const summaryPreferences = nutrientDisplayPreferences.find(p => p.view_group === 'summary' && p.platform === platform);
   const visibleNutrients = summaryPreferences ? summaryPreferences.visible_nutrients : ['calories', 'protein', 'carbs', 'fat', 'dietary_fiber'];
@@ -68,8 +94,15 @@ const NutritionSummary = ({ dayTotals, goals, selectedDate }: NutritionSummaryPr
             const details = nutrientDetails[nutrient];
             if (!details) return null;
 
-            const total = dayTotals[nutrient as keyof DayTotals]; // This is kcal
-            const goal = goals[nutrient as keyof Goals]; // This is kcal
+            let total = dayTotals[nutrient as keyof DayTotals]; // This is kcal
+
+            // If not found in top-level, check custom_nutrients
+            if (total === undefined && dayTotals.custom_nutrients) {
+              total = dayTotals.custom_nutrients[nutrient];
+            }
+            total = total || 0;
+
+            const goal = goals[nutrient as keyof Goals] || 0; // This is kcal - assuming goals currently only support top-level or are handled elsewhere. If goals support custom nutrients, similar check needed.
 
             // Convert to display unit for rendering
             const displayedTotal = nutrient === 'calories' ? convertEnergy(total, 'kcal', energyUnit) : total;

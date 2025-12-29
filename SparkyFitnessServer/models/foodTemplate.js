@@ -308,7 +308,8 @@ async function createFoodEntriesFromTemplate(
               variant.iron,
               null,
               userId,
-              newFoodEntryMeal.id
+              newFoodEntryMeal.id,
+              variant.custom_nutrients || {}
             ]);
           }
           log("info", `Created ${mealFoods.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}`);
@@ -328,7 +329,8 @@ async function createFoodEntriesFromTemplate(
             variant.calories, variant.protein, variant.carbs, variant.fat,
             variant.saturated_fat, variant.polyunsaturated_fat, variant.monounsaturated_fat, variant.trans_fat,
             variant.cholesterol, variant.sodium, variant.potassium, variant.dietary_fiber, variant.sugars,
-            variant.vitamin_a, variant.vitamin_c, variant.calcium, variant.iron, null, userId, null
+            variant.vitamin_a, variant.vitamin_c, variant.calcium, variant.iron, null, userId, null,
+            variant.custom_nutrients || {}
           ]);
           existingFoodEntries.add(entryKey);
         }
@@ -344,7 +346,7 @@ async function createFoodEntriesFromTemplate(
                 calories, protein, carbs, fat,
                 saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
                 cholesterol, sodium, potassium, dietary_fiber, sugars,
-                vitamin_a, vitamin_c, calcium, iron, meal_id, created_by_user_id, food_entry_meal_id
+                vitamin_a, vitamin_c, calcium, iron, meal_id, created_by_user_id, food_entry_meal_id, custom_nutrients
             ) VALUES %L`,
         foodEntriesToInsert
       );

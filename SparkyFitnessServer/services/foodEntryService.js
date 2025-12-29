@@ -98,6 +98,7 @@ async function updateFoodEntry(authenticatedUserId, actingUserId, entryId, entry
       calcium: variant.calcium,
       iron: variant.iron,
       glycemic_index: variant.glycemic_index,
+      custom_nutrients: variant.custom_nutrients,
     };
 
     const updatedEntry = await foodRepository.updateFoodEntry(
@@ -273,6 +274,7 @@ async function copyFoodEntries(
           calcium: entry.calcium,
           iron: entry.iron,
           glycemic_index: entry.glycemic_index,
+          custom_nutrients: entry.custom_nutrients || {},
         });
         log("debug", `copyFoodEntries: Adding entry for food_id: ${entry.food_id}, meal_type: ${targetMealType}, entry_date: ${targetDate}, variant_id: ${entry.variant_id}`);
         // Pass authenticatedUserId as the RLS user for bulkCreateFoodEntries
@@ -403,6 +405,7 @@ async function copyFoodEntriesFromYesterday(
           calcium: entry.calcium,
           iron: entry.iron,
           glycemic_index: entry.glycemic_index,
+          custom_nutrients: entry.custom_nutrients || {},
         });
       } else {
         log(
@@ -544,6 +547,7 @@ async function createFoodEntryMeal(authenticatedUserId, actingUserId, mealData) 
         calcium: variant.calcium,
         iron: variant.iron,
         glycemic_index: variant.glycemic_index,
+        custom_nutrients: variant.custom_nutrients,
       };
 
       // Scale the food quantity by the multiplier
@@ -658,6 +662,7 @@ async function updateFoodEntryMeal(authenticatedUserId, actingUserId, foodEntryM
         calcium: variant.calcium,
         iron: variant.iron,
         glycemic_index: variant.glycemic_index,
+        custom_nutrients: variant.custom_nutrients,
       };
 
       // Scale the food quantity

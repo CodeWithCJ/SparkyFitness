@@ -50,6 +50,10 @@ import AddExerciseDialog from "./AddExerciseDialog";
 import AddWorkoutPresetDialog from "./AddWorkoutPresetDialog";
 
 
+import { customNutrientService } from "@/services/customNutrientService"; // Add import
+import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+
+
 interface MealTotals {
   calories: number; // Stored internally as kcal
   protein: number;
@@ -66,6 +70,7 @@ interface MealTotals {
   vitamin_c: number;
   iron: number;
   calcium: number;
+  custom_nutrients?: Record<string, number>; // Add custom_nutrients support
 }
 
 interface FoodDiaryProps {
@@ -103,6 +108,7 @@ const FoodDiary = ({
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
   const [editingFoodEntryMeal, setEditingFoodEntryMeal] = useState<FoodEntryMeal | null>(null); // State for editing logged meal entry
   const [goals, setGoals] = useState<ExpandedGoals | null>(null);
+  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>([]); // Add state for custom nutrients
   const [dayTotals, setDayTotals] = useState<MealTotals>({
     calories: 0,
     protein: 0,
@@ -119,6 +125,7 @@ const FoodDiary = ({
     vitamin_c: 0,
     iron: 0,
     calcium: 0,
+    custom_nutrients: {},
   });
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<string>("");
@@ -139,6 +146,19 @@ const FoodDiary = ({
     setDate(parseDateInUserTimezone(selectedDate));
   }, [selectedDate, parseDateInUserTimezone]);
 
+  // Load custom nutrients
+  useEffect(() => {
+    const loadCustomNutrients = async () => {
+      try {
+        const fetchedCustomNutrients = await customNutrientService.getCustomNutrients();
+        setCustomNutrients(fetchedCustomNutrients);
+      } catch (err) {
+        error(loggingLevel, "Error loading custom nutrients:", err);
+      }
+    };
+    loadCustomNutrients();
+  }, [loggingLevel]);
+
   const normalizeGlycemicIndex = useCallback((value: any): GlycemicIndex => {
     if (value === null || value === undefined || value === '' || value === '0.0' || value === 0) {
       return 'None';
@@ -158,11 +178,21 @@ const FoodDiary = ({
 
       entries.forEach(entry => {
         const entryNutrition = calculateFoodEntryNutrition(entry); // Assumes this returns kcal
-        combinedItems.push({ nutrition: entryNutrition, meal_type: entry.meal_type });
+        // calculateFoodEntryNutrition returns custom_nutrients, we need to ensure they are passed along
+        combinedItems.push({
+          nutrition: {
+            ...entryNutrition,
+            // Explicitly ensure custom_nutrients are carried over if calculateFoodEntryNutrition returns them
+            custom_nutrients: entryNutrition.custom_nutrients || {}
+          },
+          meal_type: entry.meal_type
+        });
       });
 
       meals.forEach(meal => {
         // For FoodEntryMeal, its aggregated nutritional data is directly available (assumed to be in kcal)
+        // Note: FoodEntryMeal might need custom_nutrients support in its type if we want to support it for meals too
+        // For now assuming meals don't have custom nutrients aggregated yet or it needs backend support
         combinedItems.push({
           nutrition: {
             calories: (meal.calories || 0) * (meal.quantity || 1), // kcal
@@ -180,6 +210,7 @@ const FoodDiary = ({
             vitamin_c: (meal.vitamin_c || 0) * (meal.quantity || 1),
             iron: (meal.iron || 0) * (meal.quantity || 1),
             calcium: (meal.calcium || 0) * (meal.quantity || 1),
+            custom_nutrients: {} // Placeholder for meals
           },
           meal_type: meal.meal_type
         });
@@ -188,9 +219,24 @@ const FoodDiary = ({
       const totals = combinedItems.reduce(
         (acc, item) => {
           Object.keys(acc).forEach((key) => {
-            acc[key as keyof MealTotals] +=
-              item.nutrition[key as keyof MealTotals] || 0;
+            if (key === 'custom_nutrients') return; // Handle separately
+
+            const k = key as keyof MealTotals;
+            const val = item.nutrition[k];
+
+            // Safely add numbers, ignoring other types
+            if (typeof val === 'number') {
+              (acc as any)[key] += val;
+            }
           });
+
+          // Aggregate custom nutrients
+          if (item.nutrition.custom_nutrients && acc.custom_nutrients) {
+            Object.entries(item.nutrition.custom_nutrients).forEach(([name, value]) => {
+              acc.custom_nutrients![name] = (acc.custom_nutrients![name] || 0) + (value as number);
+            });
+          }
+
           return acc;
         },
         {
@@ -209,6 +255,7 @@ const FoodDiary = ({
           vitamin_c: 0,
           iron: 0,
           calcium: 0,
+          custom_nutrients: {} as Record<string, number>
         },
       );
 
@@ -299,9 +346,14 @@ const FoodDiary = ({
           vitamin_c: (item.vitamin_c || 0) * quantity,
           iron: (item.iron || 0) * quantity,
           calcium: (item.calcium || 0) * quantity,
+          custom_nutrients: {} // Meals don't support custom nutrients yet in this view
         };
       } else { // It's a FoodEntry
-        nutrition = calculateFoodEntryNutrition(item); // Assumes this returns kcal
+        const calculated = calculateFoodEntryNutrition(item);
+        nutrition = {
+          ...calculated,
+          custom_nutrients: calculated.custom_nutrients || {}
+        };
       }
       debug(loggingLevel, "Calculated nutrition for item:", nutrition);
       return nutrition;
@@ -450,9 +502,23 @@ const FoodDiary = ({
         (acc, item) => {
           const itemNutrition = getEntryNutrition(item);
           Object.keys(acc).forEach((key) => {
-            acc[key as keyof MealTotals] +=
-              itemNutrition[key as keyof MealTotals] || 0;
+            if (key === 'custom_nutrients') return; // Handle separately
+
+            const k = key as keyof MealTotals;
+            const val = itemNutrition[k];
+
+            if (typeof val === 'number') {
+              (acc as any)[key] += val;
+            }
           });
+
+          // Aggregate custom nutrients
+          if (itemNutrition.custom_nutrients && acc.custom_nutrients) {
+            Object.entries(itemNutrition.custom_nutrients).forEach(([name, value]) => {
+              acc.custom_nutrients![name] = (acc.custom_nutrients![name] || 0) + (value as number);
+            });
+          }
+
           return acc;
         },
         {
@@ -471,6 +537,7 @@ const FoodDiary = ({
           vitamin_c: 0,
           iron: 0,
           calcium: 0,
+          custom_nutrients: {} as Record<string, number>
         },
       );
       debug(loggingLevel, `Calculated totals for ${mealType}:`, totals);
@@ -748,6 +815,7 @@ const FoodDiary = ({
             refreshTrigger={externalRefreshTrigger}
             energyUnit={energyUnit}
             convertEnergy={convertEnergy}
+            customNutrients={customNutrients}
           />
 
           {/* Main Content - Meals and Exercise */}
@@ -766,6 +834,7 @@ const FoodDiary = ({
               onConvertToMealClick={handleConvertToMealClick}
               energyUnit={energyUnit}
               convertEnergy={convertEnergy}
+              customNutrients={customNutrients}
               key={`breakfast-${externalRefreshTrigger}`}
             />
             <MealCard
@@ -782,6 +851,7 @@ const FoodDiary = ({
               onConvertToMealClick={handleConvertToMealClick}
               energyUnit={energyUnit}
               convertEnergy={convertEnergy}
+              customNutrients={customNutrients}
               key={`lunch-${externalRefreshTrigger}`}
             />
             <MealCard
@@ -798,6 +868,7 @@ const FoodDiary = ({
               onConvertToMealClick={handleConvertToMealClick}
               energyUnit={energyUnit}
               convertEnergy={convertEnergy}
+              customNutrients={customNutrients}
               key={`dinner-${externalRefreshTrigger}`}
             />
             <MealCard
@@ -814,6 +885,7 @@ const FoodDiary = ({
               onConvertToMealClick={handleConvertToMealClick}
               energyUnit={energyUnit}
               convertEnergy={convertEnergy}
+              customNutrients={customNutrients}
               key={`snacks-${externalRefreshTrigger}`}
             />
 

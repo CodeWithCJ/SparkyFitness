@@ -52,7 +52,7 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
       polyunsaturated_fat: 0, monounsaturated_fat: 0, trans_fat: 0,
       cholesterol: 0, sodium: 0, potassium: 0, dietary_fiber: 0,
       sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0,
-      glycemic_index: 'None', water_ml: 0
+      glycemic_index: 'None', water_ml: 0, custom_nutrients: {}
     };
   }
 
@@ -75,6 +75,7 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     calcium: Number(source.calcium) || 0,
     iron: Number(source.iron) || 0,
     glycemic_index: source.glycemic_index,
+    custom_nutrients: source.custom_nutrients || {},
   };
 
   const effectiveReferenceSize = Number(source.serving_size) || 100;
@@ -100,6 +101,10 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     iron: (nutrientValuesPerReferenceSize.iron / effectiveReferenceSize) * entry.quantity,
     glycemic_index: nutrientValuesPerReferenceSize.glycemic_index, // Pass through glycemic_index
     water_ml: (entry.unit === 'ml' || entry.unit === 'liter' || entry.unit === 'oz') ? entry.quantity : 0, // Assuming water is tracked in ml, liter, or oz
+    custom_nutrients: Object.entries(nutrientValuesPerReferenceSize.custom_nutrients).reduce((acc, [key, value]) => {
+      acc[key] = (Number(value) / effectiveReferenceSize) * entry.quantity;
+      return acc;
+    }, {} as Record<string, number>),
   };
 };
 

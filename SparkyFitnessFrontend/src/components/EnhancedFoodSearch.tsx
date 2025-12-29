@@ -53,6 +53,9 @@ import { apiCall } from "@/services/api";
 import { getProviderCategory } from "@/services/externalProviderService"; // New import
 import { Food, FoodVariant, CSVData, GlycemicIndex } from "@/types/food";
 import { Meal } from "@/types/meal"; // Import Meal type
+import { customNutrientService } from "@/services/customNutrientService"; // Add custom nutrient service
+import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+
 interface OpenFoodFactsProduct {
   product_name: string;
   brands?: string;
@@ -78,7 +81,7 @@ interface EnhancedFoodSearchProps {
 
 type FoodDataForBackend = Omit<CSVData, "id">;
 
-const NutrientGrid = ({ food, visibleNutrients, energyUnit, convertEnergy, getEnergyUnitString }) => {
+const NutrientGrid = ({ food, visibleNutrients, energyUnit, convertEnergy, getEnergyUnitString, customNutrients = [] }) => {
   const { t } = useTranslation(); // Import useTranslation here
 
   const nutrientDetails: { [key: string]: { color: string; label: string; unit: string } } = {
@@ -99,6 +102,17 @@ const NutrientGrid = ({ food, visibleNutrients, energyUnit, convertEnergy, getEn
     calcium: { color: "text-blue-400", label: "calcium", unit: "mg" },
     glycemic_index: { color: "text-purple-600", label: "GI", unit: "" },
   };
+
+  // Add custom nutrients to nutrientDetails
+  customNutrients.forEach((cn: UserCustomNutrient) => {
+    if (!nutrientDetails[cn.name]) {
+      nutrientDetails[cn.name] = {
+        color: "text-indigo-500", // Default color for custom nutrients
+        label: cn.name,
+        unit: cn.unit
+      };
+    }
+  });
 
   const getGridClass = (cols: number) => {
     switch (cols) {
@@ -139,7 +153,16 @@ const NutrientGrid = ({ food, visibleNutrients, energyUnit, convertEnergy, getEn
         } else if (nutrient === "glycemic_index") {
           displayValue = food?.glycemic_index || "None";
         } else {
-          displayValue = Number((food?.[nutrient as keyof FoodVariant] as number) || 0).toFixed(digits);
+          let value = Number((food?.[nutrient as keyof FoodVariant] as number));
+
+          if (isNaN(value) && food?.custom_nutrients) {
+            const customVal = food.custom_nutrients[nutrient];
+            if (customVal !== undefined) {
+              value = Number(customVal);
+            }
+          }
+
+          displayValue = (value || 0).toFixed(digits);
         }
 
         return (
@@ -214,6 +237,7 @@ const EnhancedFoodSearch = ({
   >(null); // To store the ID of the selected provider
   const [hasOnlineSearchBeenPerformed, setHasOnlineSearchBeenPerformed] =
     useState(false);
+  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>([]); // Custom nutrients state
 
   // Load food data providers and set default
   useEffect(() => {
@@ -241,6 +265,18 @@ const EnhancedFoodSearch = ({
     };
     loadFoodDataProviders();
   }, [user, defaultFoodDataProviderId]);
+
+  useEffect(() => {
+    const fetchCustomNutrients = async () => {
+      try {
+        const fetched = await customNutrientService.getCustomNutrients();
+        setCustomNutrients(fetched);
+      } catch (err) {
+        error(loggingLevel, "Error fetching custom nutrients:", err);
+      }
+    };
+    fetchCustomNutrients();
+  }, [loggingLevel]);
 
   const searchDatabase = useCallback(
     async (term: string) => {
@@ -1062,7 +1098,7 @@ const EnhancedFoodSearch = ({
                               </Badge>
                             )}
                           </div>
-                          {food.default_variant && <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />}
+                          {food.default_variant && <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} customNutrients={customNutrients} />}
                           <p className="text-xs text-gray-500 mt-1">
                             Per {food.default_variant?.serving_size}
                             {food.default_variant?.serving_unit}
@@ -1115,7 +1151,7 @@ const EnhancedFoodSearch = ({
                               </Badge>
                             )}
                           </div>
-                          {food.default_variant && <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />}
+                          {food.default_variant && <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} customNutrients={customNutrients} />}
                           <p className="text-xs text-gray-500 mt-1">
                             Per {food.default_variant?.serving_size}
                             {food.default_variant?.serving_unit}
@@ -1280,7 +1316,7 @@ const EnhancedFoodSearch = ({
                         </Badge>
                       )}
                     </div>
-                    <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />
+                    <NutrientGrid food={food.default_variant} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} customNutrients={customNutrients} />
                     <p className="text-xs text-gray-500 mt-1">
                       Per {food.default_variant?.serving_size}
                       {food.default_variant?.serving_unit}
@@ -1321,7 +1357,7 @@ const EnhancedFoodSearch = ({
                       // For OpenFoodFacts, GI is not directly available in product.nutriments,
                       // so we'll display "None" or handle it as a special case.
                       glycemic_index: "None"
-                    }} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />
+                    }} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} customNutrients={customNutrients} />
                     <p className="text-xs text-gray-500 mt-1">Per 100g</p>
                   </div>
                   <Button
@@ -1366,7 +1402,7 @@ const EnhancedFoodSearch = ({
                       />
                     )}
                     {item.calories && (
-                      <NutrientGrid food={item} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />
+                      <NutrientGrid food={item} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} customNutrients={customNutrients} />
                     )}
                     {item.serving_size && item.serving_unit && (
                       <p className="text-xs text-gray-500 mt-1">
@@ -1413,7 +1449,7 @@ const EnhancedFoodSearch = ({
                       item.protein !== undefined &&
                       item.carbs !== undefined &&
                       item.fat !== undefined && (
-                        <NutrientGrid food={item} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />
+                        <NutrientGrid food={item} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} customNutrients={customNutrients} />
                       )}
                     {item.serving_size && item.serving_unit && (
                       <p className="text-xs text-gray-500 mt-1">
@@ -1457,7 +1493,7 @@ const EnhancedFoodSearch = ({
                       </Badge>
                     </div>
                     {item.foodNutrients && (
-                      <NutrientGrid food={formatUsdaNutrientsForDisplay(item, loggingLevel)} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} />
+                      <NutrientGrid food={formatUsdaNutrientsForDisplay(item, loggingLevel)} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} customNutrients={customNutrients} />
                     )}
                     {item.servingSize && item.servingSizeUnit && (
                       <p className="text-xs text-gray-500 mt-1">

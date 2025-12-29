@@ -7,6 +7,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { debug, info, warn, error } from "@/utils/logging";
 import { parseISO, format } from "date-fns"; // Import parseISO, format
 import { calculateSmartYAxisDomain, excludeIncompleteDay, getChartConfig, shouldExcludeIncompleteDay } from "@/utils/chartUtils";
+import { UserCustomNutrient } from "@/types/customNutrient"; // Import UserCustomNutrient
 interface NutritionData {
   date: string;
   calories: number;
@@ -26,13 +27,15 @@ interface NutritionData {
   vitamin_c: number;
   calcium: number;
   iron: number;
+  [key: string]: number | string; // Add index signature for custom nutrients
 }
 
 interface NutritionChartsGridProps {
   nutritionData: NutritionData[];
+  customNutrients: UserCustomNutrient[]; // Add customNutrients prop
 }
 
-const NutritionChartsGrid = ({ nutritionData }: NutritionChartsGridProps) => {
+const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionChartsGridProps) => {
   const { t } = useTranslation();
   const { loggingLevel, formatDateInUserTimezone, nutrientDisplayPreferences, energyUnit, convertEnergy } = usePreferences(); // Destructure formatDateInUserTimezone, energyUnit, convertEnergy
   const isMobile = useIsMobile();
@@ -84,6 +87,16 @@ const NutritionChartsGrid = ({ nutritionData }: NutritionChartsGridProps) => {
     { key: 'calcium', label: t('nutritionCharts.calcium', 'Calcium'), color: '#0984e3', unit: 'mg' },
     { key: 'iron', label: t('nutritionCharts.iron', 'Iron'), color: '#2d3436', unit: 'mg' }
   ];
+
+  // Dynamically add custom nutrients to allNutritionCharts
+  customNutrients.forEach(cn => {
+    allNutritionCharts.push({
+      key: cn.name,
+      label: cn.name,
+      color: '#808080', // A default color for custom nutrients
+      unit: cn.unit,
+    });
+  });
 
   const visibleCharts = reportChartPreferences
     ? allNutritionCharts.filter(chart => reportChartPreferences.visible_nutrients.includes(chart.key))

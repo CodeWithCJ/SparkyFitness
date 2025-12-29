@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/use-toast";
+import CustomNutrientsSettings from './CustomNutrientsSettings';
 
 const Settings = () => {
   const { t } = useTranslation();
@@ -13,7 +14,7 @@ const Settings = () => {
   const handleEnergyUnitChange = async (unit: 'kcal' | 'kJ') => {
     try {
       await setEnergyUnit(unit);
-      await saveAllPreferences(); // Persist the change
+      await saveAllPreferences();
       toast({
         title: t("settings.energyUnit.successTitle", "Success"),
         description: t("settings.energyUnit.successDescription", "Energy unit updated successfully."),
@@ -31,6 +32,16 @@ const Settings = () => {
   return (
     <div className="space-y-6 p-4 md:p-8">
       <h1 className="text-3xl font-bold">{t("settings.title", "Settings")}</h1>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Custom Nutrients</CardTitle>
+          <CardDescription>Manage your custom nutrient definitions.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CustomNutrientsSettings />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -53,11 +64,8 @@ const Settings = () => {
               {t("settings.units.energyUnitHint", "Choose your preferred unit for displaying energy values (e.g., calories, kilojoules).")}
             </p>
           </div>
-          {/* Other unit settings could go here */}
         </CardContent>
       </Card>
-
-      {/* Other settings cards could go here (e.g., profile, notifications, etc.) */}
     </div>
   );
 };
