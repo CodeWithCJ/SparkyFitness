@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { MessageSquare } from 'lucide-react';
 import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getAIServices } from '@/services/aiServiceSettingsService';
+import { getActiveAiServiceSetting } from '@/services/aiServiceSettingsService';
 import { useAuth } from '@/hooks/useAuth';
 
 const DraggableChatbotButton: React.FC = () => {
@@ -30,22 +30,45 @@ const DraggableChatbotButton: React.FC = () => {
     // }
   }, []);
 
-  useEffect(() => {
-    const checkAiProviders = async () => {
-      if (!loading && user?.id) { // Only fetch if not loading and user is available
-        try {
-          const services = await getAIServices();
-          setHasAiProvider(services && services.length > 0);
-        } catch (error) {
-          console.error("Failed to fetch AI services:", error);
-          setHasAiProvider(false);
-        }
-      } else if (!loading && !user) { // If loading is false and no user, ensure AI provider is false
+  const checkAiProviders = useCallback(async () => {
+    if (!loading && user?.id) { // Only fetch if not loading and user is available
+      try {
+        const activeService = await getActiveAiServiceSetting();
+        // Check for null, undefined, or empty object
+        const hasActive = activeService !== null &&
+                          activeService !== undefined &&
+                          Object.keys(activeService).length > 0;
+        setHasAiProvider(hasActive);
+      } catch (error) {
+        console.error("[DraggableChatbotButton] Failed to fetch AI services:", error);
         setHasAiProvider(false);
       }
-    };
+    } else if (!loading && !user) { // If loading is false and no user, ensure AI provider is false
+      setHasAiProvider(false);
+    }
+  }, [loading, user?.id]);
+
+  useEffect(() => {
     checkAiProviders();
-  }, [user?.id, loading]); // Depend on user.id and loading
+  }, [checkAiProviders]);
+
+  // Re-check when user returns to the tab (after potentially changing settings)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkAiProviders();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [checkAiProviders]);
+
+  // Re-check periodically to catch changes made in other tabs or after navigation
+  useEffect(() => {
+    const interval = setInterval(checkAiProviders, 5000); // Check every 5 seconds
+    return () => clearInterval(interval);
+  }, [checkAiProviders]);
 
   const isMobile = useIsMobile();
 
