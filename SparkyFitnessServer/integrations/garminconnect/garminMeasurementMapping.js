@@ -3,9 +3,9 @@ const garminMeasurementMapping = {
     'weight': { targetType: 'check_in', field: 'weight', dataType: 'numeric', measurementType: 'kg' },
     'body_fat_percentage': { targetType: 'check_in', field: 'body_fat_percentage', dataType: 'numeric', measurementType: '%' },
     'bmi': { targetType: 'custom', name: 'BMI', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
-    'body_water_percentage': { targetType: 'check_in', field: 'body_water_percentage', dataType: 'numeric', measurementType: '%' },
+    'body_water_percentage': { targetType: 'custom', name: 'Body Water Percentage', dataType: 'numeric', measurementType: '%', frequency: 'Daily' },
     'bone_mass': { targetType: 'custom', name: 'Bone Mass', dataType: 'numeric', measurementType: 'kg', frequency: 'Daily' },
-    'muscle_mass': { targetType: 'check_in', field: 'muscle_mass_kg', dataType: 'numeric', measurementType: 'kg' },
+    'muscle_mass': { targetType: 'custom', name: 'Muscle Mass', dataType: 'numeric', measurementType: 'kg', frequency: 'Daily' },
     'hydration': { targetType: 'check_in', field: 'water', dataType: 'numeric', measurementType: 'ml' },
 
     // Custom Measurements
@@ -45,7 +45,7 @@ const garminMeasurementMapping = {
     'stress_percentage_low': { targetType: 'custom', name: 'Stress Percentage Low', dataType: 'numeric', measurementType: '%', frequency: 'Daily' },
     'stress_percentage_medium': { targetType: 'custom', name: 'Stress Percentage Medium', dataType: 'numeric', measurementType: '%', frequency: 'Daily' },
     'stress_percentage_high': { targetType: 'custom', name: 'Stress Percentage High', dataType: 'numeric', measurementType: '%', frequency: 'Daily' },
-    'visceral_fat_level': { targetType: 'check_in', field: 'visceral_fat_level', dataType: 'integer', measurementType: 'N/A' },
+    'visceral_fat_level': { targetType: 'custom', name: 'Visceral Fat Level', dataType: 'integer', measurementType: 'N/A', frequency: 'Daily' },
 };
 
 module.exports = garminMeasurementMapping;
