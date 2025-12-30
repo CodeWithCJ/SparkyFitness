@@ -35,7 +35,7 @@ const stageLabels: { [key: string]: string } = {
 const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   if (!sleepChartData || !sleepChartData.segments || sleepChartData.segments.length === 0) {
     return (
@@ -111,7 +111,7 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
             y1={y1}
             x2={currentEndX}
             y2={y2}
-            stroke={theme === 'dark' ? 'white' : 'black'}
+            stroke={resolvedTheme === 'dark' ? 'white' : 'black'}
             strokeWidth={LINE_WIDTH}
           />
         );
@@ -125,7 +125,7 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
               y1={y1}
               x2={nextStartX}
               y2={y1}
-              stroke={theme === 'dark' ? 'white' : 'black'}
+              stroke={resolvedTheme === 'dark' ? 'white' : 'black'}
               strokeWidth={LINE_WIDTH}
               strokeDasharray="4 4"
             />
@@ -161,7 +161,7 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
           x="-10" // Position to the left of the chart
           y={yPos + STAGE_HEIGHT / 2 + 5} // Center vertically
           textAnchor="end"
-          fill={theme === 'dark' ? 'white' : 'black'}
+          fill={resolvedTheme === 'dark' ? 'white' : 'black'}
           fontSize="12"
         >
           {t(`sleepAnalyticsCharts.${stageType === 'light' ? 'core' : stageType}`, stageLabels[stageType])}
@@ -195,7 +195,7 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
           x={xPos}
           y={CHART_HEIGHT - CHART_PADDING_VERTICAL + 15} // Position below the chart
           textAnchor="middle"
-          fill={theme === 'dark' ? 'white' : 'black'}
+          fill={resolvedTheme === 'dark' ? 'white' : 'black'}
           fontSize="12"
         >
           {timeString}
@@ -250,7 +250,7 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
                   preserveAspectRatio="xMidYMid meet"
                   style={{ overflow: 'visible' }}
                 >
-                  <rect x="0" y="0" width={SVG_BASE_WIDTH} height={CHART_HEIGHT + 30} fill={theme === 'dark' ? 'black' : 'white'} />
+                  <rect x="0" y="0" width={SVG_BASE_WIDTH} height={CHART_HEIGHT + 30} fill={resolvedTheme === 'dark' ? 'black' : 'white'} />
                   {renderGridAndLabels()}
                   {renderConnectingLines()}
                   {renderSegments()}

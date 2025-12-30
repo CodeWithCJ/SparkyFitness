@@ -16,12 +16,12 @@ interface SleepAnalyticsChartsProps {
 
 const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({ sleepAnalyticsData, sleepHypnogramData }) => {
     const { formatDateInUserTimezone, dateFormat } = usePreferences();
-    const { theme } = useTheme();
+    const { resolvedTheme } = useTheme();
     const { t } = useTranslation();
-    const tickColor = theme === 'dark' ? '#E0E0E0' : '#333';
-    const gridColor = theme === 'dark' ? '#444' : '#ccc';
-    const tooltipBackgroundColor = theme === 'dark' ? '#333' : '#fff';
-    const tooltipBorderColor = theme === 'dark' ? '#555' : '#ccc';
+    const tickColor = resolvedTheme === 'dark' ? '#E0E0E0' : '#333';
+    const gridColor = resolvedTheme === 'dark' ? '#444' : '#ccc';
+    const tooltipBackgroundColor = resolvedTheme === 'dark' ? '#333' : '#fff';
+    const tooltipBorderColor = resolvedTheme === 'dark' ? '#555' : '#ccc';
 
     const formatTime = (seconds: number) => {
         const hours = Math.floor(seconds / 3600);
