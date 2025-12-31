@@ -53,6 +53,56 @@ const nutrientFields: NumericFoodVariantKeys[] = [
   "iron",
 ];
 
+// Local type that allows empty string for form inputs
+type FormFoodVariant = Omit<FoodVariant, NumericFoodVariantKeys> & {
+  [K in NumericFoodVariantKeys]?: number | "";
+};
+
+// Helper to convert FormFoodVariant to FoodVariant (empty strings become 0)
+const formVariantToFoodVariant = (variant: FormFoodVariant): FoodVariant => ({
+  ...variant,
+  serving_size: variant.serving_size || 100,
+  calories: variant.calories || 0,
+  protein: variant.protein || 0,
+  carbs: variant.carbs || 0,
+  fat: variant.fat || 0,
+  saturated_fat: variant.saturated_fat || 0,
+  polyunsaturated_fat: variant.polyunsaturated_fat || 0,
+  monounsaturated_fat: variant.monounsaturated_fat || 0,
+  trans_fat: variant.trans_fat || 0,
+  cholesterol: variant.cholesterol || 0,
+  sodium: variant.sodium || 0,
+  potassium: variant.potassium || 0,
+  dietary_fiber: variant.dietary_fiber || 0,
+  sugars: variant.sugars || 0,
+  vitamin_a: variant.vitamin_a || 0,
+  vitamin_c: variant.vitamin_c || 0,
+  calcium: variant.calcium || 0,
+  iron: variant.iron || 0,
+});
+
+// Helper to convert FoodVariant to FormFoodVariant (0 becomes empty string for display)
+const foodVariantToFormVariant = (variant: FoodVariant): FormFoodVariant => ({
+  ...variant,
+  calories: variant.calories === 0 ? "" : variant.calories,
+  protein: variant.protein === 0 ? "" : variant.protein,
+  carbs: variant.carbs === 0 ? "" : variant.carbs,
+  fat: variant.fat === 0 ? "" : variant.fat,
+  saturated_fat: variant.saturated_fat === 0 ? "" : variant.saturated_fat,
+  polyunsaturated_fat: variant.polyunsaturated_fat === 0 ? "" : variant.polyunsaturated_fat,
+  monounsaturated_fat: variant.monounsaturated_fat === 0 ? "" : variant.monounsaturated_fat,
+  trans_fat: variant.trans_fat === 0 ? "" : variant.trans_fat,
+  cholesterol: variant.cholesterol === 0 ? "" : variant.cholesterol,
+  sodium: variant.sodium === 0 ? "" : variant.sodium,
+  potassium: variant.potassium === 0 ? "" : variant.potassium,
+  dietary_fiber: variant.dietary_fiber === 0 ? "" : variant.dietary_fiber,
+  sugars: variant.sugars === 0 ? "" : variant.sugars,
+  vitamin_a: variant.vitamin_a === 0 ? "" : variant.vitamin_a,
+  vitamin_c: variant.vitamin_c === 0 ? "" : variant.vitamin_c,
+  calcium: variant.calcium === 0 ? "" : variant.calcium,
+  iron: variant.iron === 0 ? "" : variant.iron,
+});
+
 const sanitizeGlycemicIndexFrontend = (gi: string | null | undefined): GlycemicIndex => {
   const allowedGICategories: GlycemicIndex[] = ['None', 'Very Low', 'Low', 'Medium', 'High', 'Very High'];
   if (gi === null || gi === undefined || gi === '' || gi === "0" || gi === "0.0" || !allowedGICategories.includes(gi as GlycemicIndex)) {
@@ -109,8 +159,8 @@ const EnhancedCustomFoodForm = ({
     return unit === 'kcal' ? "kcal" : "kJ"; // Using simple strings here, can be replaced with t() if i18n is available
   };
   const [loading, setLoading] = useState(false);
-  const [variants, setVariants] = useState<FoodVariant[]>([]);
-  const [originalVariants, setOriginalVariants] = useState<FoodVariant[]>([]); // State to hold original, immutable variants
+  const [variants, setVariants] = useState<FormFoodVariant[]>([]);
+  const [originalVariants, setOriginalVariants] = useState<FormFoodVariant[]>([]); // State to hold original, immutable variants
   const [variantErrors, setVariantErrors] = useState<string[]>([]); // State to hold errors for each variant
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [syncFoodId, setSyncFoodId] = useState<string | null>(null);
@@ -160,7 +210,7 @@ const EnhancedCustomFoodForm = ({
         is_quick_food: food.is_quick_food || false,
       });
       if (food.variants && food.variants.length > 0) {
-        const mappedVariants = food.variants.map((v) => ({
+        const mappedVariants = food.variants.map((v) => foodVariantToFormVariant({
           ...v,
           is_locked: false,
           glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
@@ -177,8 +227,9 @@ const EnhancedCustomFoodForm = ({
         brand: "",
         is_quick_food: false,
       });
-      setVariants(initialVariants);
-      setOriginalVariants(JSON.parse(JSON.stringify(initialVariants))); // Deep copy for original values
+      const mappedInitialVariants = initialVariants.map(foodVariantToFormVariant);
+      setVariants(mappedInitialVariants);
+      setOriginalVariants(JSON.parse(JSON.stringify(mappedInitialVariants))); // Deep copy for original values
       setVariantErrors(new Array(initialVariants.length).fill(null)); // Initialize errors for initial variants
     } else {
       setFormData({
@@ -186,26 +237,26 @@ const EnhancedCustomFoodForm = ({
         brand: "",
         is_quick_food: false,
       });
-      const defaultVariant: FoodVariant = {
+      const defaultVariant: FormFoodVariant = {
         serving_size: 100,
         serving_unit: "g",
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        saturated_fat: 0,
-        polyunsaturated_fat: 0,
-        monounsaturated_fat: 0,
-        trans_fat: 0,
-        cholesterol: 0,
-        sodium: 0,
-        potassium: 0,
-        dietary_fiber: 0,
-        sugars: 0,
-        vitamin_a: 0,
-        vitamin_c: 0,
-        calcium: 0,
-        iron: 0,
+        calories: "",
+        protein: "",
+        carbs: "",
+        fat: "",
+        saturated_fat: "",
+        polyunsaturated_fat: "",
+        monounsaturated_fat: "",
+        trans_fat: "",
+        cholesterol: "",
+        sodium: "",
+        potassium: "",
+        dietary_fiber: "",
+        sugars: "",
+        vitamin_a: "",
+        vitamin_c: "",
+        calcium: "",
+        iron: "",
         is_default: true,
         is_locked: false,
         glycemic_index: "None" as GlycemicIndex,
@@ -215,7 +266,7 @@ const EnhancedCustomFoodForm = ({
       if (customNutrients && customNutrients.length > 0) {
         customNutrients.forEach(nutrient => {
           if (defaultVariant.custom_nutrients) {
-            defaultVariant.custom_nutrients[nutrient.name] = 0;
+            defaultVariant.custom_nutrients[nutrient.name] = "";
           }
         });
       }
@@ -232,7 +283,7 @@ const EnhancedCustomFoodForm = ({
     try {
       const data = await loadFoodVariants(food.id);
 
-      let loadedVariants: FoodVariant[] = [];
+      let loadedVariants: FormFoodVariant[] = [];
       let defaultVariant: FoodVariant | undefined;
 
       if (data && data.length > 0) {
@@ -254,14 +305,14 @@ const EnhancedCustomFoodForm = ({
         }
 
         if (defaultVariant) {
-          loadedVariants.push({ ...defaultVariant, is_locked: false }); // Initialize is_locked to false
+          loadedVariants.push(foodVariantToFormVariant({ ...defaultVariant, is_locked: false }));
           loadedVariants = loadedVariants.concat(
             data
               .filter((v) => v.id !== defaultVariant?.id)
-              .map((v) => ({ ...v, is_locked: false }))
-          ); // Initialize is_locked to false
+              .map((v) => foodVariantToFormVariant({ ...v, is_locked: false }))
+          );
         } else {
-          loadedVariants = data.map((v) => ({ ...v, is_locked: false })); // Fallback if no default is found, initialize is_locked to false
+          loadedVariants = data.map((v) => foodVariantToFormVariant({ ...v, is_locked: false }));
         }
       } else {
         // If no variants are returned, initialize with a single default variant
@@ -269,25 +320,25 @@ const EnhancedCustomFoodForm = ({
           {
             serving_size: 100,
             serving_unit: "g",
-            calories: 0, // kcal
-            protein: 0,
-            carbs: 0,
-            fat: 0,
-            saturated_fat: 0,
-            polyunsaturated_fat: 0,
-            monounsaturated_fat: 0,
-            trans_fat: 0,
-            cholesterol: 0,
-            sodium: 0,
-            potassium: 0,
-            dietary_fiber: 0,
-            sugars: 0,
-            vitamin_a: 0,
-            vitamin_c: 0,
-            calcium: 0,
-            iron: 0,
+            calories: "",
+            protein: "",
+            carbs: "",
+            fat: "",
+            saturated_fat: "",
+            polyunsaturated_fat: "",
+            monounsaturated_fat: "",
+            trans_fat: "",
+            cholesterol: "",
+            sodium: "",
+            potassium: "",
+            dietary_fiber: "",
+            sugars: "",
+            vitamin_a: "",
+            vitamin_c: "",
+            calcium: "",
+            iron: "",
             is_default: true,
-            is_locked: false, // Initialize as unlocked
+            is_locked: false,
           },
         ];
       }
@@ -296,28 +347,28 @@ const EnhancedCustomFoodForm = ({
     } catch (error) {
       console.error("Error loading variants:", error);
       // Fallback to a single default variant on error
-      const defaultVariant: FoodVariant = {
+      const defaultVariant: FormFoodVariant = {
         serving_size: 100,
         serving_unit: "g",
-        calories: 0, // kcal
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        saturated_fat: 0,
-        polyunsaturated_fat: 0,
-        monounsaturated_fat: 0,
-        trans_fat: 0,
-        cholesterol: 0,
-        sodium: 0,
-        potassium: 0,
-        dietary_fiber: 0,
-        sugars: 0,
-        vitamin_a: 0,
-        vitamin_c: 0,
-        calcium: 0,
-        iron: 0,
+        calories: "",
+        protein: "",
+        carbs: "",
+        fat: "",
+        saturated_fat: "",
+        polyunsaturated_fat: "",
+        monounsaturated_fat: "",
+        trans_fat: "",
+        cholesterol: "",
+        sodium: "",
+        potassium: "",
+        dietary_fiber: "",
+        sugars: "",
+        vitamin_a: "",
+        vitamin_c: "",
+        calcium: "",
+        iron: "",
         is_default: true,
-        is_locked: false, // Initialize as unlocked
+        is_locked: false,
         glycemic_index: sanitizeGlycemicIndexFrontend("None"),
         custom_nutrients: {},
       };
@@ -327,26 +378,26 @@ const EnhancedCustomFoodForm = ({
   };
 
   const addVariant = () => {
-    const newVariant: FoodVariant = {
+    const newVariant: FormFoodVariant = {
       serving_size: 1,
       serving_unit: "g",
-      calories: 0, // kcal
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      saturated_fat: 0,
-      polyunsaturated_fat: 0,
-      monounsaturated_fat: 0,
-      trans_fat: 0,
-      cholesterol: 0,
-      sodium: 0,
-      potassium: 0,
-      dietary_fiber: 0,
-      sugars: 0,
-      vitamin_a: 0,
-      vitamin_c: 0,
-      calcium: 0,
-      iron: 0,
+      calories: "",
+      protein: "",
+      carbs: "",
+      fat: "",
+      saturated_fat: "",
+      polyunsaturated_fat: "",
+      monounsaturated_fat: "",
+      trans_fat: "",
+      cholesterol: "",
+      sodium: "",
+      potassium: "",
+      dietary_fiber: "",
+      sugars: "",
+      vitamin_a: "",
+      vitamin_c: "",
+      calcium: "",
+      iron: "",
       is_default: false, // New variants are not default
       is_locked: false, // New variants are not locked
       glycemic_index: "None",
@@ -356,7 +407,7 @@ const EnhancedCustomFoodForm = ({
     if (customNutrients) {
       customNutrients.forEach(nutrient => {
         if (newVariant.custom_nutrients) {
-          newVariant.custom_nutrients[nutrient.name] = 0;
+          newVariant.custom_nutrients[nutrient.name] = "";
         }
       });
     }
@@ -368,7 +419,7 @@ const EnhancedCustomFoodForm = ({
 
   const duplicateVariant = (index: number) => {
     const variantToDuplicate = variants[index];
-    const newVariant: FoodVariant = {
+    const newVariant: FormFoodVariant = {
       ...variantToDuplicate,
       id: undefined, // New variant should not have an ID
       is_default: false, // New variant is not default
@@ -397,24 +448,33 @@ const EnhancedCustomFoodForm = ({
 
   const updateVariant = (
     index: number,
-    field: keyof FoodVariant | string, // Allow string for custom nutrients
+    field: keyof FormFoodVariant | string, // Allow string for custom nutrients
     value: string | number | boolean | GlycemicIndex
   ) => {
     const updatedVariants = [...variants];
     const updatedOriginalVariants = [...originalVariants]; // Get a mutable copy of original variants
     const currentVariant = updatedVariants[index];
-    let newVariant: FoodVariant;
+    let newVariant: FormFoodVariant;
+
+    // Handle nutrient fields - allow empty string, convert to number if not empty
+    const isNutrientField = nutrientFields.includes(field as NumericFoodVariantKeys);
 
     if (customNutrients.some(nutrient => nutrient.name === field)) {
+      // Custom nutrients - allow empty string
+      const processedValue = value === "" ? "" : Number(value);
       newVariant = {
         ...currentVariant,
         custom_nutrients: {
           ...currentVariant.custom_nutrients,
-          [field]: value as string | number,
+          [field]: processedValue,
         }
       };
+    } else if (isNutrientField) {
+      // Standard nutrient fields - allow empty string
+      const processedValue = value === "" ? "" : Number(value);
+      newVariant = { ...currentVariant, [field as keyof FormFoodVariant]: processedValue };
     } else {
-      newVariant = { ...currentVariant, [field as keyof FoodVariant]: value };
+      newVariant = { ...currentVariant, [field as keyof FormFoodVariant]: value };
     }
 
     const updatedErrors = [...variantErrors];
@@ -431,7 +491,7 @@ const EnhancedCustomFoodForm = ({
     }
 
     // Convert calories input from display unit (energyUnit) to internal kcal
-    if (field === "calories" && typeof value === 'number') {
+    if (field === "calories" && value !== "" && typeof value === 'number') {
       newVariant.calories = convertEnergy(value, energyUnit, 'kcal');
     }
 
@@ -558,7 +618,10 @@ const EnhancedCustomFoodForm = ({
         is_custom: true,
       };
 
-      const savedFood = await saveFood(foodData, variants, user.id, food?.id);
+      // Convert form variants (with possible empty strings) to proper FoodVariant (with numbers)
+      const variantsToSave = variants.map(formVariantToFoodVariant);
+
+      const savedFood = await saveFood(foodData, variantsToSave, user.id, food?.id);
 
       toast({
         title: "Success",
@@ -898,14 +961,15 @@ const EnhancedCustomFoodForm = ({
                               <Label>Calories ({getEnergyUnitString(energyUnit)})</Label>
                               <Input
                                 type="number"
-                                value={Math.round(convertEnergy(variant.calories, 'kcal', energyUnit))} // Display converted value
+                                value={variant.calories === "" ? "" : Math.round(convertEnergy(variant.calories, 'kcal', energyUnit))}
                                 onChange={(e) =>
                                   updateVariant(
                                     index,
                                     "calories",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -921,9 +985,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "protein",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -939,9 +1004,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "carbs",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -957,9 +1023,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "fat",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -984,9 +1051,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "saturated_fat",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1002,9 +1070,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "polyunsaturated_fat",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1020,9 +1089,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "monounsaturated_fat",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1038,9 +1108,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "trans_fat",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1065,9 +1136,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "cholesterol",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1083,9 +1155,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "sodium",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1101,9 +1174,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "potassium",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1119,9 +1193,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "dietary_fiber",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1146,9 +1221,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "sugars",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1164,9 +1240,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "vitamin_a",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1182,9 +1259,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "vitamin_c",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1200,9 +1278,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "calcium",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1224,9 +1303,10 @@ const EnhancedCustomFoodForm = ({
                                   updateVariant(
                                     index,
                                     "iron",
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>
@@ -1246,14 +1326,15 @@ const EnhancedCustomFoodForm = ({
                               <Input
                                 type="number"
                                 step="0.1"
-                                value={variant.custom_nutrients?.[nutrient.name] || ''}
+                                value={variant.custom_nutrients?.[nutrient.name] ?? ''}
                                 onChange={(e) =>
                                   updateVariant(
                                     index,
                                     nutrient.name,
-                                    Number(e.target.value)
+                                    e.target.value
                                   )
                                 }
+                                placeholder="0"
                                 disabled={variant.is_locked}
                               />
                             </div>

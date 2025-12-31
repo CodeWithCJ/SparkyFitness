@@ -18,23 +18,23 @@ import { customNutrientService } from "@/services/customNutrientService";
 interface CustomFood {
   name: string;
   brand?: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  saturated_fat?: number;
-  polyunsaturated_fat?: number;
-  monounsaturated_fat?: number;
-  trans_fat?: number;
-  cholesterol?: number;
-  sodium?: number;
-  potassium?: number;
-  dietary_fiber?: number;
-  sugars?: number;
-  vitamin_a?: number;
-  vitamin_c?: number;
-  calcium?: number;
-  iron?: number;
+  calories: number | "";
+  protein: number | "";
+  carbs: number | "";
+  fat: number | "";
+  saturated_fat?: number | "";
+  polyunsaturated_fat?: number | "";
+  monounsaturated_fat?: number | "";
+  trans_fat?: number | "";
+  cholesterol?: number | "";
+  sodium?: number | "";
+  potassium?: number | "";
+  dietary_fiber?: number | "";
+  sugars?: number | "";
+  vitamin_a?: number | "";
+  vitamin_c?: number | "";
+  calcium?: number | "";
+  iron?: number | "";
   servingSize: number | ""; // Allow empty string
   servingUnit: string;
   is_quick_food?: boolean;
@@ -54,28 +54,28 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
  const [formData, setFormData] = useState<CustomFood>({
    name: "",
    brand: "",
-   calories: 0,
-   protein: 0,
-   carbs: 0,
-   fat: 0,
-   saturated_fat: 0,
-   polyunsaturated_fat: 0,
-   monounsaturated_fat: 0,
-   trans_fat: 0,
-   cholesterol: 0,
-   sodium: 0,
-   potassium: 0,
-   dietary_fiber: 0,
-   sugars: 0,
-   vitamin_a: 0,
-   vitamin_c: 0,
-   calcium: 0,
-   iron: 0,
-   servingSize: "", // Initial value allows empty string
+   calories: "",
+   protein: "",
+   carbs: "",
+   fat: "",
+   saturated_fat: "",
+   polyunsaturated_fat: "",
+   monounsaturated_fat: "",
+   trans_fat: "",
+   cholesterol: "",
+   sodium: "",
+   potassium: "",
+   dietary_fiber: "",
+   sugars: "",
+   vitamin_a: "",
+   vitamin_c: "",
+   calcium: "",
+   iron: "",
+   servingSize: "",
    servingUnit: "g",
    is_quick_food: false,
-   glycemic_index: "None", // Default to 'None'
-   custom_nutrients: {}, // Initialize custom_nutrients
+   glycemic_index: "None",
+   custom_nutrients: {},
  });
  const [servingSizeError, setServingSizeError] = useState<string | null>(null);
  const [userCustomNutrients, setUserCustomNutrients] = useState<UserCustomNutrient[]>([]);
@@ -115,43 +115,71 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
      }
  
      setServingSizeError(null); // Clear any previous error
-     
-     info(loggingLevel, "CustomFoodForm: Saving custom food:", formData);
-     onSave(formData);
+
+     // Convert empty strings to 0 for saving
+     const dataToSave = {
+       ...formData,
+       calories: formData.calories || 0,
+       protein: formData.protein || 0,
+       carbs: formData.carbs || 0,
+       fat: formData.fat || 0,
+       saturated_fat: formData.saturated_fat || 0,
+       polyunsaturated_fat: formData.polyunsaturated_fat || 0,
+       monounsaturated_fat: formData.monounsaturated_fat || 0,
+       trans_fat: formData.trans_fat || 0,
+       cholesterol: formData.cholesterol || 0,
+       sodium: formData.sodium || 0,
+       potassium: formData.potassium || 0,
+       dietary_fiber: formData.dietary_fiber || 0,
+       sugars: formData.sugars || 0,
+       vitamin_a: formData.vitamin_a || 0,
+       vitamin_c: formData.vitamin_c || 0,
+       calcium: formData.calcium || 0,
+       iron: formData.iron || 0,
+     };
+     info(loggingLevel, "CustomFoodForm: Saving custom food:", dataToSave);
+     onSave(dataToSave);
      setFormData({
        name: "",
        brand: "",
-       calories: 0,
-       protein: 0,
-       carbs: 0,
-       fat: 0,
-       saturated_fat: 0,
-       polyunsaturated_fat: 0,
-       monounsaturated_fat: 0,
-       trans_fat: 0,
-       cholesterol: 0,
-       sodium: 0,
-       potassium: 0,
-       dietary_fiber: 0,
-       sugars: 0,
-       vitamin_a: 0,
-       vitamin_c: 0,
-       calcium: 0,
-       iron: 0,
-       servingSize: "", // Reset value allows empty string
+       calories: "",
+       protein: "",
+       carbs: "",
+       fat: "",
+       saturated_fat: "",
+       polyunsaturated_fat: "",
+       monounsaturated_fat: "",
+       trans_fat: "",
+       cholesterol: "",
+       sodium: "",
+       potassium: "",
+       dietary_fiber: "",
+       sugars: "",
+       vitamin_a: "",
+       vitamin_c: "",
+       calcium: "",
+       iron: "",
+       servingSize: "",
        servingUnit: "g",
        is_quick_food: false,
        glycemic_index: "None",
-       custom_nutrients: {}, // Reset custom_nutrients
+       custom_nutrients: {},
      });
      info(loggingLevel, "CustomFoodForm: Form data reset.");
    };
  
+  // List of nutrient fields that should allow empty string
+  const nutrientFields = [
+    "calories", "protein", "carbs", "fat", "saturated_fat", "polyunsaturated_fat",
+    "monounsaturated_fat", "trans_fat", "cholesterol", "sodium", "potassium",
+    "dietary_fiber", "sugars", "vitamin_a", "vitamin_c", "calcium", "iron", "servingSize"
+  ];
+
   const handleInputChange = (field: keyof CustomFood, value: string | number | boolean | GlycemicIndex) => {
     debug(loggingLevel, `CustomFoodForm: Input change for field "${field}":`, value);
     setFormData(prev => {
-      if (field === "servingSize") {
-        // Allow empty string, but store as number if valid, otherwise keep as string
+      if (nutrientFields.includes(field)) {
+        // Allow empty string for nutrient fields, convert to number if not empty
         return { ...prev, [field]: value === "" ? "" : Number(value) };
       }
       return { ...prev, [field]: value };
@@ -263,7 +291,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="calories"
                 type="number"
                 value={formData.calories}
-                onChange={(e) => handleInputChange("calories", Number(e.target.value))}
+                onChange={(e) => handleInputChange("calories", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -275,7 +304,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="protein"
                 type="number"
                 value={formData.protein}
-                onChange={(e) => handleInputChange("protein", Number(e.target.value))}
+                onChange={(e) => handleInputChange("protein", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -287,7 +317,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="carbs"
                 type="number"
                 value={formData.carbs}
-                onChange={(e) => handleInputChange("carbs", Number(e.target.value))}
+                onChange={(e) => handleInputChange("carbs", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -299,7 +330,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="fat"
                 type="number"
                 value={formData.fat}
-                onChange={(e) => handleInputChange("fat", Number(e.target.value))}
+                onChange={(e) => handleInputChange("fat", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -313,7 +345,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="saturated_fat"
                 type="number"
                 value={formData.saturated_fat}
-                onChange={(e) => handleInputChange("saturated_fat", Number(e.target.value))}
+                onChange={(e) => handleInputChange("saturated_fat", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -324,7 +357,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="polyunsaturated_fat"
                 type="number"
                 value={formData.polyunsaturated_fat}
-                onChange={(e) => handleInputChange("polyunsaturated_fat", Number(e.target.value))}
+                onChange={(e) => handleInputChange("polyunsaturated_fat", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -335,7 +369,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="monounsaturated_fat"
                 type="number"
                 value={formData.monounsaturated_fat}
-                onChange={(e) => handleInputChange("monounsaturated_fat", Number(e.target.value))}
+                onChange={(e) => handleInputChange("monounsaturated_fat", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -346,7 +381,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="trans_fat"
                 type="number"
                 value={formData.trans_fat}
-                onChange={(e) => handleInputChange("trans_fat", Number(e.target.value))}
+                onChange={(e) => handleInputChange("trans_fat", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -360,7 +396,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="cholesterol"
                 type="number"
                 value={formData.cholesterol}
-                onChange={(e) => handleInputChange("cholesterol", Number(e.target.value))}
+                onChange={(e) => handleInputChange("cholesterol", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -371,7 +408,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="sodium"
                 type="number"
                 value={formData.sodium}
-                onChange={(e) => handleInputChange("sodium", Number(e.target.value))}
+                onChange={(e) => handleInputChange("sodium", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -382,7 +420,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="potassium"
                 type="number"
                 value={formData.potassium}
-                onChange={(e) => handleInputChange("potassium", Number(e.target.value))}
+                onChange={(e) => handleInputChange("potassium", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -393,7 +432,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="dietary_fiber"
                 type="number"
                 value={formData.dietary_fiber}
-                onChange={(e) => handleInputChange("dietary_fiber", Number(e.target.value))}
+                onChange={(e) => handleInputChange("dietary_fiber", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -407,7 +447,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="sugars"
                 type="number"
                 value={formData.sugars}
-                onChange={(e) => handleInputChange("sugars", Number(e.target.value))}
+                onChange={(e) => handleInputChange("sugars", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -418,7 +459,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="vitamin_a"
                 type="number"
                 value={formData.vitamin_a}
-                onChange={(e) => handleInputChange("vitamin_a", Number(e.target.value))}
+                onChange={(e) => handleInputChange("vitamin_a", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -429,7 +471,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="vitamin_c"
                 type="number"
                 value={formData.vitamin_c}
-                onChange={(e) => handleInputChange("vitamin_c", Number(e.target.value))}
+                onChange={(e) => handleInputChange("vitamin_c", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -440,7 +483,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="calcium"
                 type="number"
                 value={formData.calcium}
-                onChange={(e) => handleInputChange("calcium", Number(e.target.value))}
+                onChange={(e) => handleInputChange("calcium", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -454,7 +498,8 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                 id="iron"
                 type="number"
                 value={formData.iron}
-                onChange={(e) => handleInputChange("iron", Number(e.target.value))}
+                onChange={(e) => handleInputChange("iron", e.target.value)}
+                placeholder="0"
                 min="0"
                 step="0.1"
               />
@@ -471,8 +516,9 @@ const CustomFoodForm = ({ onSave }: CustomFoodFormProps) => {
                     <Input
                       id={`custom-${nutrient.name}`}
                       type="number"
-                      value={formData.custom_nutrients?.[nutrient.name] || ''}
-                      onChange={(e) => handleCustomNutrientChange(nutrient.name, Number(e.target.value))}
+                      value={formData.custom_nutrients?.[nutrient.name] ?? ''}
+                      onChange={(e) => handleCustomNutrientChange(nutrient.name, e.target.value === "" ? "" : Number(e.target.value))}
+                      placeholder="0"
                       min="0"
                       step="0.1"
                     />
