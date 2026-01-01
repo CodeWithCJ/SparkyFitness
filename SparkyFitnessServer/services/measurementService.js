@@ -150,9 +150,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           break;
         case 'weight':
         case 'body_fat_percentage':
-        case 'body_water_percentage':
-        case 'muscle_mass_kg':
-        case 'visceral_fat_level':
           const numericValue = parseFloat(value);
           if (isNaN(numericValue) || numericValue <= 0) {
             errors.push({ error: `Invalid value for ${type}. Must be a positive number.`, entry: dataEntry });

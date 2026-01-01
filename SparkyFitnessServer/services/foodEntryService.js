@@ -813,7 +813,7 @@ async function getFoodEntryMealsByDate(authenticatedUserId, targetUserId, select
           carbs: (entry.carbs * entry.quantity) / entry.serving_size,
           fat: (entry.fat * entry.quantity) / entry.serving_size,
           sodium: (entry.sodium * entry.quantity) / entry.serving_size,
-          fiber: (entry.fiber * entry.quantity) / entry.serving_size,
+          fiber: (entry.dietary_fiber * entry.quantity) / entry.serving_size,
           sugars: (entry.sugars * entry.quantity) / entry.serving_size,
           saturated_fat: (entry.saturated_fat * entry.quantity) / entry.serving_size,
           cholesterol: (entry.cholesterol * entry.quantity) / entry.serving_size,
