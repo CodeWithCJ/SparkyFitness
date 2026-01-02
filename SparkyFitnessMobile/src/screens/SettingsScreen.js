@@ -305,7 +305,7 @@ const SettingsScreen = ({ navigation }) => {
           />
 
           <View style={styles.footer}>
-            <Text style={{ color: colors.textMuted }}>Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
+            <Text style={{ color: colors.textMuted, zIndex: 100 }}>Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
           </View>
         </View>
       </ScrollView>
