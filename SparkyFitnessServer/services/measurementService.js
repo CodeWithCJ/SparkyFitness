@@ -120,6 +120,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       // Handle specific types first, then fall back to custom measurements
       switch (type) {
         case 'step':
+        case 'steps':
           const stepValue = parseInt(value, 10);
           if (isNaN(stepValue) || !Number.isInteger(stepValue)) {
             errors.push({ error: "Invalid value for step. Must be an integer.", entry: dataEntry });

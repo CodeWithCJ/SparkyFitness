@@ -3,7 +3,7 @@ import uuid
 import time
 import os
 import json # Import the json module
-from datetime import date, timedelta, datetime # Import date and timedelta
+from datetime import date, timedelta, datetime, timezone # Import date, timedelta, and timezone
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse, JSONResponse
 from urllib.parse import urlencode, parse_qs
@@ -11,7 +11,6 @@ from pydantic import BaseModel
 import uvicorn
 from garminconnect import Garmin
 from garth.exc import GarthHTTPError, GarthException
-import pytz
 import json
 import os # Ensure os is imported for path operations
 from dotenv import load_dotenv # Import load_dotenv
@@ -86,20 +85,21 @@ def get_dates_in_range(start_date_str, end_date_str):
 
 def clean_garmin_data(data):
     """
-    Recursively remove fields that are None, 0, or specific Garmin internal IDs.
+    Recursively remove fields that are None or specific Garmin internal IDs.
     Also, attempt to parse strings that are valid JSON.
+    Note: Zero values are kept as they can be legitimate (0 steps, 0 floors, etc.)
     """
     if isinstance(data, dict):
         cleaned_dict = {}
         for k, v in data.items():
-            if v is not None and v != 0 and k not in ['ownerId', 'userProfilePk', 'permissionId', 'userRoles', 'equipmentTypeId'] and 'endConditionCompare' not in k:
+            if v is not None and k not in ['ownerId', 'userProfilePk', 'permissionId', 'userRoles', 'equipmentTypeId'] and 'endConditionCompare' not in k:
                 cleaned_value = clean_garmin_data(v)
-                if cleaned_value is not None and cleaned_value != 0:
+                if cleaned_value is not None:
                     cleaned_dict[k] = cleaned_value
         return cleaned_dict if cleaned_dict else None
     elif isinstance(data, list):
         cleaned_list = [clean_garmin_data(item) for item in data]
-        return [item for item in cleaned_list if item is not None and item != 0]
+        return [item for item in cleaned_list if item is not None]
     elif isinstance(data, str):
         # Attempt to parse string as JSON, handling non-standard escapes
         try:
@@ -174,6 +174,9 @@ def map_garmin_stress_to_mood(stress_level):
         return 50, "Neutral" # Default or unhandled range
 
 ALL_HEALTH_METRICS = [
+    # Daily summary metrics
+    "steps", "total_distance", "highly_active_seconds", "active_seconds", "sedentary_seconds",
+    # Health metrics
     "heart_rates", "sleep", "stress", "respiration", "spo2",
     "intensity_minutes", "training_readiness", "training_status", "max_metrics",
     "hrv", "lactate_threshold", "endurance_score", "hill_score", "race_predictions",
@@ -274,10 +277,21 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             try:
                 race_predictions_data = garmin.get_race_predictions()
                 if race_predictions_data:
+                    # Map Garmin race types to our field names
+                    race_type_map = {
+                        "FIVE_K": "race_prediction_5k",
+                        "TEN_K": "race_prediction_10k",
+                        "HALF_MARATHON": "race_prediction_half_marathon",
+                        "MARATHON": "race_prediction_marathon"
+                    }
+                    race_entry = {"date": start_date}
                     for prediction in race_predictions_data.get("racePredictionList", []):
-                        if prediction.get("raceType") == "FIVE_K":
-                            # Associate with the start_date for consistency
-                            health_data["race_predictions"].append({"date": start_date, "race_prediction_5k": prediction.get("predictedTime")})
+                        race_type = prediction.get("raceType")
+                        if race_type in race_type_map:
+                            race_entry[race_type_map[race_type]] = prediction.get("predictedTime")
+                    # Only add if we have at least one prediction
+                    if len(race_entry) > 1:
+                        health_data["race_predictions"].append(race_entry)
             except Exception as e:
                 logger.warning(f"Could not retrieve race predictions data: {e}")
 
@@ -291,21 +305,44 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 logger.warning(f"Could not retrieve pregnancy summary data: {e}")
 
         for current_date in dates_to_fetch:
-            # Daily Summary (steps, total_distance, highly_active_seconds, active_seconds, sedentary_seconds)
-            if any(metric in metric_types_to_fetch for metric in ["steps", "total_distance", "highly_active_seconds", "active_seconds", "sedentary_seconds"]):
+            logger.info(f"[GARMIN_SYNC] Fetching data for date: {current_date}")
+
+            # Daily Summary (steps, total_distance, highly_active_seconds, active_seconds, sedentary_seconds, body_battery)
+            if any(metric in metric_types_to_fetch for metric in ["steps", "total_distance", "highly_active_seconds", "active_seconds", "sedentary_seconds", "body_battery"]):
                 try:
                     summary_data = garmin.get_user_summary(current_date)
+                    logger.info(f"[GARMIN_SYNC] get_user_summary({current_date}) RAW RESPONSE KEYS: {list(summary_data.keys()) if summary_data else None}")
                     if summary_data:
                         if "steps" in metric_types_to_fetch:
                             health_data["steps"].append({"date": current_date, "value": summary_data.get("totalSteps")})
                         if "total_distance" in metric_types_to_fetch:
-                            health_data["total_distance"].append({"date": current_date, "value": safe_convert(summary_data.get("totalDistance"), meters_to_km)})
+                            distance = summary_data.get("totalDistance") or summary_data.get("totalDistanceMeters") or summary_data.get("distance")
+                            health_data["total_distance"].append({"date": current_date, "value": safe_convert(distance, meters_to_km)})
                         if "highly_active_seconds" in metric_types_to_fetch:
                             health_data["highly_active_seconds"].append({"date": current_date, "value": safe_convert(summary_data.get("highlyActiveSeconds"), seconds_to_minutes)})
                         if "active_seconds" in metric_types_to_fetch:
                             health_data["active_seconds"].append({"date": current_date, "value": safe_convert(summary_data.get("activeSeconds"), seconds_to_minutes)})
                         if "sedentary_seconds" in metric_types_to_fetch:
                             health_data["sedentary_seconds"].append({"date": current_date, "value": safe_convert(summary_data.get("sedentarySeconds"), seconds_to_minutes)})
+                        # Body Battery from user_summary (preferred source)
+                        if "body_battery" in metric_types_to_fetch:
+                            bb_highest = summary_data.get("bodyBatteryHighestValue")
+                            bb_lowest = summary_data.get("bodyBatteryLowestValue")
+                            bb_at_wake = summary_data.get("bodyBatteryAtWakeTime")
+                            bb_charged = summary_data.get("bodyBatteryChargedValue")
+                            bb_drained = summary_data.get("bodyBatteryDrainedValue")
+                            bb_current = summary_data.get("bodyBatteryMostRecentValue")
+                            if any([bb_highest, bb_lowest, bb_at_wake, bb_charged, bb_drained]):
+                                logger.info(f"[GARMIN_SYNC] Body battery from user_summary: highest={bb_highest}, lowest={bb_lowest}, atWake={bb_at_wake}, charged={bb_charged}, drained={bb_drained}, current={bb_current}")
+                                health_data["body_battery"].append({
+                                    "date": current_date,
+                                    "body_battery_highest": bb_highest,
+                                    "body_battery_lowest": bb_lowest,
+                                    "body_battery_at_wake": bb_at_wake,
+                                    "body_battery_charged": bb_charged,
+                                    "body_battery_drained": bb_drained,
+                                    "body_battery_current": bb_current
+                                })
                 except Exception as e:
                     logger.warning(f"Could not retrieve daily summary for {current_date}: {e}")
 
@@ -314,7 +351,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 try:
                     hydration_data = garmin.get_hydration_data(current_date)
                     if hydration_data and hydration_data.get("valueInML") is not None:
-                        health_data["water"].append({"date": current_date, "value": hydration_data["valueInML"]})
+                        health_data["hydration"].append({"date": current_date, "hydration": hydration_data["valueInML"]})
                 except Exception as e:
                     logger.warning(f"Could not retrieve hydration data for {current_date}: {e}")
 
@@ -323,7 +360,23 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 try:
                     floors_data = garmin.get_floors(current_date)
                     if floors_data:
-                        health_data["floors"].append({"date": current_date, "floors_ascended": floors_data.get("totalFloorsAscended"), "floors_descended": floors_data.get("totalFloorsDescended")})
+                        ascended = None
+                        descended = None
+
+                        # First try direct totals
+                        ascended = floors_data.get("totalFloorsAscended") or floors_data.get("floorsAscended")
+                        descended = floors_data.get("totalFloorsDescended") or floors_data.get("floorsDescended")
+
+                        # If not found, sum from floorValuesArray (intraday data)
+                        # Format: [startTime, endTime, floorsAscended, floorsDescended]
+                        if ascended is None and floors_data.get("floorValuesArray"):
+                            floor_values = floors_data.get("floorValuesArray", [])
+                            ascended = sum(entry[2] for entry in floor_values if len(entry) > 2 and entry[2] is not None)
+                            descended = sum(entry[3] for entry in floor_values if len(entry) > 3 and entry[3] is not None)
+                            logger.info(f"[GARMIN_SYNC] Floors summed from floorValuesArray: ascended={ascended}, descended={descended}")
+
+                        if ascended is not None or descended is not None:
+                            health_data["floors"].append({"date": current_date, "floors_ascended": ascended, "floors_descended": descended})
                 except Exception as e:
                     logger.warning(f"Could not retrieve floors data for {current_date}: {e}")
 
@@ -343,7 +396,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                     hr_list = garmin.get_heart_rates(current_date).get("heartRateValues") or []
                     for entry in hr_list:
                         if entry[1]:
-                            data["HeartRate"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "data": entry[1]})
+                            data["HeartRate"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=timezone.utc).isoformat(), "data": entry[1]})
                     health_data["heart_rates"].append(data)
                 except Exception as e:
                     logger.warning(f"Could not retrieve heart rate data for {current_date}: {e}")
@@ -352,6 +405,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             if "sleep" in metric_types_to_fetch:
                 try:
                     sleep_data_raw = garmin.get_sleep_data(current_date)
+                    logger.info(f"[GARMIN_SYNC] get_sleep_data({current_date}) dailySleepDTO keys: {list(sleep_data_raw.get('dailySleepDTO', {}).keys()) if sleep_data_raw else None}")
                     if sleep_data_raw:
                         sleep_summary = sleep_data_raw.get("dailySleepDTO", {})
                         
@@ -360,8 +414,8 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
 
                         # Prioritize sleep_summary's sleepStartTimestampGMT and sleepEndTimestampGMT
                         if sleep_summary.get("sleepStartTimestampGMT") and sleep_summary.get("sleepEndTimestampGMT"):
-                            bedtime_dt = datetime.fromtimestamp(sleep_summary["sleepStartTimestampGMT"] / 1000, tz=pytz.timezone("UTC"))
-                            wake_time_dt = datetime.fromtimestamp(sleep_summary["sleepEndTimestampGMT"] / 1000, tz=pytz.timezone("UTC"))
+                            bedtime_dt = datetime.fromtimestamp(sleep_summary["sleepStartTimestampGMT"] / 1000, tz=timezone.utc)
+                            wake_time_dt = datetime.fromtimestamp(sleep_summary["sleepEndTimestampGMT"] / 1000, tz=timezone.utc)
                         else:
                             # Fallback to SleepStageLevel timestamps if summary timestamps are missing
                             stage_events_raw = sleep_data_raw.get('sleepLevels', [])
@@ -369,96 +423,107 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                 # Sort by startGMT to ensure correct order
                                 sorted_stages = sorted(stage_events_raw, key=lambda x: datetime.strptime(x['startGMT'], '%Y-%m-%dT%H:%M:%S.%f'))
                                 if sorted_stages:
-                                    bedtime_dt = pytz.timezone("UTC").localize(datetime.strptime(sorted_stages[0]['startGMT'], '%Y-%m-%dT%H:%M:%S.%f'))
-                                    wake_time_dt = pytz.timezone("UTC").localize(datetime.strptime(sorted_stages[-1]['endGMT'], '%Y-%m-%dT%H:%M:%S.%f'))
+                                    bedtime_dt = datetime.strptime(sorted_stages[0]['startGMT'], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=timezone.utc)
+                                    wake_time_dt = datetime.strptime(sorted_stages[-1]['endGMT'], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=timezone.utc)
                         
-                        # If we still don't have valid bedtime/wake_time, skip this entry
+                        # If we still don't have valid bedtime/wake_time, skip this sleep entry (but continue with other metrics)
                         if not bedtime_dt or not wake_time_dt:
                             logger.warning(f"Skipping sleep entry for {current_date} due to missing or invalid bedtime/wake_time.")
-                            continue
-
-                        # Ensure duration_in_seconds is not None before using it
-                        duration_in_seconds = sleep_summary.get("sleepTimeSeconds")
-                        if duration_in_seconds is None:
-                            duration_in_seconds = int((wake_time_dt - bedtime_dt).total_seconds())
-                            logger.warning(f"sleepTimeSeconds is None for {current_date}. Calculated duration: {duration_in_seconds} seconds.")
-
-                        sleep_entry_data = {
-                            "entry_date": current_date, # This is the date the sleep record is associated with
-                            "bedtime": bedtime_dt.isoformat(),
-                            "wake_time": wake_time_dt.isoformat(),
-                            "duration_in_seconds": duration_in_seconds,
-                            "time_asleep_in_seconds": None, # Will be calculated from stage_events
-                            "source": "garmin",
-                            "sleep_score": ((sleep_summary.get("sleepScores") or {}).get("overall") or {}).get("value"),
-                            # Other fields from sleep_summary
-                            "deepSleepSeconds": 0,
-                            "lightSleepSeconds": 0,
-                            "remSleepSeconds": 0,
-                            "awakeSleepSeconds": 0,
-                            "averageSpO2Value": sleep_summary.get("averageSpO2Value"),
-                            "lowestSpO2Value": sleep_summary.get("lowestSpO2Value"),
-                            "highestSpO2Value": sleep_summary.get("highestSpO2Value"),
-                            "averageRespirationValue": sleep_summary.get("averageRespirationValue"),
-                            "lowestRespirationValue": sleep_summary.get("lowestRespirationValue"),
-                            "highestRespirationValue": sleep_summary.get("highestRespirationValue"),
-                            "awakeCount": sleep_summary.get("awakeCount"),
-                            "avgSleepStress": sleep_summary.get("avgSleepStress"),
-                            "restlessMomentsCount": sleep_data_raw.get("restlessMomentsCount"),
-                            "avgOvernightHrv": sleep_data_raw.get("avgOvernightHrv"),
-                            "bodyBatteryChange": sleep_data_raw.get("bodyBatteryChange"),
-                            "restingHeartRate": sleep_data_raw.get("restingHeartRate"),
-                            "stage_events": [] # This will be populated below
-                        }
-
-                        # Process Sleep Levels (Stages)
-                        sleep_levels_intraday = sleep_data_raw.get("sleepLevels")
-                        if sleep_levels_intraday:
-                            for entry in sleep_levels_intraday:
-                                if entry.get("activityLevel") is not None: # Include 0 for Deepsleep but not None
-                                    start_time_dt = pytz.timezone("UTC").localize(datetime.strptime(entry["startGMT"], '%Y-%m-%dT%H:%M:%S.%f'))
-                                    end_time_dt = pytz.timezone("UTC").localize(datetime.strptime(entry["endGMT"], '%Y-%m-%dT%H:%M:%S.%f'))
-                                    duration_in_seconds_stage = int((end_time_dt - start_time_dt).total_seconds())
-                                    
-                                    stage_type_map = {
-                                        0: 'awake',
-                                        1: 'rem',
-                                        2: 'light',
-                                        3: 'deep'
-                                    }
-                                    stage_type = stage_type_map.get(entry["activityLevel"], 'unknown')
-
-                                    sleep_entry_data["stage_events"].append({
-                                        "stage_type": stage_type,
-                                        "start_time": start_time_dt.isoformat(),
-                                        "end_time": end_time_dt.isoformat(),
-                                        "duration_in_seconds": duration_in_seconds_stage
-                                    })
-                                    # Sum up sleep stage durations
-                                    if stage_type == 'deep':
-                                        sleep_entry_data["deepSleepSeconds"] += duration_in_seconds_stage
-                                    elif stage_type == 'light':
-                                        sleep_entry_data["lightSleepSeconds"] += duration_in_seconds_stage
-                                    elif stage_type == 'rem':
-                                        sleep_entry_data["remSleepSeconds"] += duration_in_seconds_stage
-                                    elif stage_type == 'awake':
-                                        sleep_entry_data["awakeSleepSeconds"] += duration_in_seconds_stage
-
-                            # Calculate total time_asleep_in_seconds from summed stages
-                            sleep_entry_data["time_asleep_in_seconds"] = (
-                                sleep_entry_data["deepSleepSeconds"] +
-                                sleep_entry_data["lightSleepSeconds"] +
-                                sleep_entry_data["remSleepSeconds"]
-                            )
-                        
-                        # Only add to health_data if it's a valid sleep entry with at least basic info
-                        if sleep_entry_data["duration_in_seconds"] is not None and sleep_entry_data["duration_in_seconds"] > 0:
-                            health_data["sleep"].append(sleep_entry_data)
                         else:
-                            logger.warning(f"Skipping sleep entry for {current_date} due to invalid duration_in_seconds or missing sleep data.")
+                            # Ensure duration_in_seconds is not None before using it
+                            duration_in_seconds = sleep_summary.get("sleepTimeSeconds")
+                            if duration_in_seconds is None:
+                                duration_in_seconds = int((wake_time_dt - bedtime_dt).total_seconds())
+                                logger.warning(f"sleepTimeSeconds is None for {current_date}. Calculated duration: {duration_in_seconds} seconds.")
 
-                except Exception as e:
-                    logger.warning(f"Could not retrieve sleep data for {current_date}: {e}")
+                            # Get sleep stage durations from dailySleepDTO first (preferred)
+                            deep_sleep = sleep_summary.get("deepSleepSeconds") or 0
+                            light_sleep = sleep_summary.get("lightSleepSeconds") or 0
+                            rem_sleep = sleep_summary.get("remSleepSeconds") or 0
+                            awake_sleep = sleep_summary.get("awakeSleepSeconds") or sleep_summary.get("awakeDuringSleepSeconds") or 0
+                            logger.info(f"[GARMIN_SYNC] Sleep stages from dailySleepDTO: deep={deep_sleep}, light={light_sleep}, rem={rem_sleep}, awake={awake_sleep}")
+
+                            sleep_entry_data = {
+                                "entry_date": current_date, # This is the date the sleep record is associated with
+                                "bedtime": bedtime_dt.isoformat(),
+                                "wake_time": wake_time_dt.isoformat(),
+                                "duration_in_seconds": duration_in_seconds,
+                                "time_asleep_in_seconds": None, # Will be calculated from stage_events
+                                "source": "garmin",
+                                "sleep_score": ((sleep_summary.get("sleepScores") or {}).get("overall") or {}).get("value"),
+                                # Sleep stage durations from dailySleepDTO (snake_case for database)
+                                "deep_sleep_seconds": deep_sleep,
+                                "light_sleep_seconds": light_sleep,
+                                "rem_sleep_seconds": rem_sleep,
+                                "awake_sleep_seconds": awake_sleep,
+                                # SpO2 data (snake_case for database)
+                                "average_spo2_value": sleep_summary.get("averageSpO2Value"),
+                                "lowest_spo2_value": sleep_summary.get("lowestSpO2Value"),
+                                "highest_spo2_value": sleep_summary.get("highestSpO2Value"),
+                                # Respiration data (snake_case for database)
+                                "average_respiration_value": sleep_summary.get("averageRespirationValue"),
+                                "lowest_respiration_value": sleep_summary.get("lowestRespirationValue"),
+                                "highest_respiration_value": sleep_summary.get("highestRespirationValue"),
+                                # Other sleep metrics (snake_case for database)
+                                "awake_count": sleep_summary.get("awakeCount"),
+                                "avg_sleep_stress": sleep_summary.get("avgSleepStress"),
+                                "restless_moments_count": sleep_data_raw.get("restlessMomentsCount"),
+                                "avg_overnight_hrv": sleep_data_raw.get("avgOvernightHrv"),
+                                "body_battery_change": sleep_data_raw.get("bodyBatteryChange"),
+                                "resting_heart_rate": sleep_data_raw.get("restingHeartRate"),
+                                "stage_events": [] # This will be populated below
+                            }
+
+                            # Process Sleep Levels (Stages) - only sum if dailySleepDTO didn't have the values
+                            sleep_levels_intraday = sleep_data_raw.get("sleepLevels")
+                            needs_stage_sum = (deep_sleep == 0 and light_sleep == 0 and rem_sleep == 0)
+
+                            if sleep_levels_intraday:
+                                for entry in sleep_levels_intraday:
+                                    if entry.get("activityLevel") is not None: # Include 0 for Deepsleep but not None
+                                        start_time_dt = datetime.strptime(entry["startGMT"], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=timezone.utc)
+                                        end_time_dt = datetime.strptime(entry["endGMT"], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=timezone.utc)
+                                        duration_in_seconds_stage = int((end_time_dt - start_time_dt).total_seconds())
+
+                                        # Garmin activityLevel: 0=deep, 1=light, 2=rem, 3+=awake
+                                        stage_type_map = {
+                                            0: 'deep',
+                                            1: 'light',
+                                            2: 'rem',
+                                            3: 'awake'
+                                        }
+                                        stage_type = stage_type_map.get(entry["activityLevel"], 'unknown')
+
+                                        sleep_entry_data["stage_events"].append({
+                                            "stage_type": stage_type,
+                                            "start_time": start_time_dt.isoformat(),
+                                            "end_time": end_time_dt.isoformat(),
+                                            "duration_in_seconds": duration_in_seconds_stage
+                                        })
+
+                                        # Only sum from sleepLevels if dailySleepDTO didn't have values
+                                        if needs_stage_sum:
+                                            if stage_type == 'deep':
+                                                sleep_entry_data["deep_sleep_seconds"] += duration_in_seconds_stage
+                                            elif stage_type == 'light':
+                                                sleep_entry_data["light_sleep_seconds"] += duration_in_seconds_stage
+                                            elif stage_type == 'rem':
+                                                sleep_entry_data["rem_sleep_seconds"] += duration_in_seconds_stage
+                                            elif stage_type == 'awake':
+                                                sleep_entry_data["awake_sleep_seconds"] += duration_in_seconds_stage
+
+                            # Calculate total time_asleep_in_seconds
+                            sleep_entry_data["time_asleep_in_seconds"] = (
+                                sleep_entry_data["deep_sleep_seconds"] +
+                                sleep_entry_data["light_sleep_seconds"] +
+                                sleep_entry_data["rem_sleep_seconds"]
+                            )
+
+                            # Only add to health_data if it's a valid sleep entry with at least basic info
+                            if sleep_entry_data["duration_in_seconds"] is not None and sleep_entry_data["duration_in_seconds"] > 0:
+                                health_data["sleep"].append(sleep_entry_data)
+                            else:
+                                logger.warning(f"Skipping sleep entry for {current_date} due to invalid duration_in_seconds or missing sleep data.")
 
                 except Exception as e:
                     logger.warning(f"Could not retrieve sleep data for {current_date}: {e}")
@@ -471,19 +536,22 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                         "stressLevel": [],
                         "BodyBatteryLevel": []
                     }
-                    
-                    stress_list = garmin.get_stress_data(current_date).get('stressValuesArray') or []
+
+                    # Fetch stress data once and extract both arrays
+                    stress_response = garmin.get_stress_data(current_date)
+                    stress_list = stress_response.get('stressValuesArray') or []
+                    bb_list = stress_response.get('bodyBatteryValuesArray') or []
+
                     valid_stress_values = []
                     for entry in stress_list:
                         # Only include valid stress data points (0-100)
                         if entry[1] is not None and entry[1] >= 0:
-                            stress_data_entry["stressLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "stress_level": entry[1]})
+                            stress_data_entry["stressLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=timezone.utc).isoformat(), "stress_level": entry[1]})
                             valid_stress_values.append(entry[1])
-                    
-                    bb_list = garmin.get_stress_data(current_date).get('bodyBatteryValuesArray') or []
+
                     for entry in bb_list:
                         if entry[2] is not None and entry[2] >= 0: # Assuming BodyBatteryLevel is also non-negative
-                            stress_data_entry["BodyBatteryLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=pytz.timezone("UTC")).isoformat(), "stress_level": entry[2]})
+                            stress_data_entry["BodyBatteryLevel"].append({"time": datetime.fromtimestamp(entry[0]/1000, tz=timezone.utc).isoformat(), "stress_level": entry[2]})
                     
                     # Calculate average stress and map to mood
                     average_stress = None
@@ -513,8 +581,23 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             if "respiration" in metric_types_to_fetch:
                 try:
                     respiration_data = garmin.get_respiration_data(current_date)
+                    logger.info(f"[GARMIN_SYNC] get_respiration_data({current_date}) RAW RESPONSE: {respiration_data}")
                     if respiration_data:
-                        health_data["respiration"].append({"date": current_date, "average_respiration_rate": respiration_data.get("avgRespiration")})
+                        # Try to get both sleep and awake respiration values
+                        sleep_resp = respiration_data.get("avgSleepRespirationValue")
+                        awake_resp = respiration_data.get("avgWakingRespirationValue")
+                        # Fallback to general average if specific values not available
+                        avg_resp = respiration_data.get("avgRespiration")
+
+                        logger.info(f"[GARMIN_SYNC] Respiration: sleep={sleep_resp}, awake={awake_resp}, avg={avg_resp}")
+
+                        if sleep_resp or awake_resp or avg_resp:
+                            health_data["respiration"].append({
+                                "date": current_date,
+                                "sleep_respiration_avg": sleep_resp,
+                                "awake_respiration_avg": awake_resp,
+                                "average_respiration_rate": avg_resp or sleep_resp or awake_resp  # Keep for backwards compatibility
+                            })
                 except Exception as e:
                     logger.warning(f"Could not retrieve respiration data for {current_date}: {e}")
 
@@ -522,8 +605,40 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             if "spo2" in metric_types_to_fetch:
                 try:
                     spo2_data = garmin.get_spo2_data(current_date)
+                    logger.info(f"[GARMIN_SYNC] get_spo2_data({current_date}) RAW RESPONSE: {spo2_data}")
+                    avg_spo2 = None
+
                     if spo2_data:
-                        health_data["spo2"].append({"date": current_date, "average_spo2": spo2_data.get("avgSpO2")})
+                        # Try multiple possible field names for SpO2 average
+                        avg_spo2 = spo2_data.get("avgSpO2") or spo2_data.get("averageSpO2") or spo2_data.get("average") or spo2_data.get("latestSpO2Value")
+
+                        # Check if data is in nested structure
+                        if not avg_spo2 and spo2_data.get("dailySpO2Values"):
+                            daily_values = spo2_data.get("dailySpO2Values", [])
+                            if daily_values:
+                                # Get average from daily values
+                                spo2_readings = [v.get("spO2") or v.get("value") for v in daily_values if v.get("spO2") or v.get("value")]
+                                if spo2_readings:
+                                    avg_spo2 = sum(spo2_readings) / len(spo2_readings)
+                                    logger.info(f"[GARMIN_SYNC] SpO2 calculated from dailySpO2Values: {avg_spo2}")
+
+                        # Check for allDaySpO2 structure
+                        if not avg_spo2 and spo2_data.get("allDaySpO2"):
+                            all_day = spo2_data.get("allDaySpO2", {})
+                            avg_spo2 = all_day.get("averageValue") or all_day.get("avg") or all_day.get("avgSpO2")
+                            if avg_spo2:
+                                logger.info(f"[GARMIN_SYNC] SpO2 from allDaySpO2: {avg_spo2}")
+
+                    # Fallback: Try to get SpO2 from sleep data (already fetched)
+                    if not avg_spo2 and health_data.get("sleep"):
+                        for sleep_entry in health_data["sleep"]:
+                            if sleep_entry.get("entry_date") == current_date and sleep_entry.get("average_spo2_value"):
+                                avg_spo2 = sleep_entry.get("average_spo2_value")
+                                logger.info(f"[GARMIN_SYNC] SpO2 from sleep data fallback: {avg_spo2}")
+                                break
+
+                    if avg_spo2:
+                        health_data["spo2"].append({"date": current_date, "average_spo2": avg_spo2})
                 except Exception as e:
                     logger.warning(f"Could not retrieve SPO2 data for {current_date}: {e}")
 
@@ -540,8 +655,18 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             if "training_readiness" in metric_types_to_fetch:
                 try:
                     training_readiness_data = garmin.get_training_readiness(current_date)
+                    logger.info(f"[GARMIN_SYNC] get_training_readiness({current_date}) RAW RESPONSE: {training_readiness_data}")
                     if training_readiness_data:
-                        health_data["training_readiness"].append({"date": current_date, "training_readiness_score": training_readiness_data.get("score")})
+                        # API returns a list, not a dict
+                        if isinstance(training_readiness_data, list) and len(training_readiness_data) > 0:
+                            first_item = training_readiness_data[0]
+                            score = first_item.get("score") or first_item.get("trainingReadinessScore") or first_item.get("value")
+                            if score:
+                                health_data["training_readiness"].append({"date": current_date, "training_readiness_score": score})
+                        elif isinstance(training_readiness_data, dict):
+                            score = training_readiness_data.get("score") or training_readiness_data.get("trainingReadinessScore")
+                            if score:
+                                health_data["training_readiness"].append({"date": current_date, "training_readiness_score": score})
                 except Exception as e:
                     logger.warning(f"Could not retrieve training readiness data for {current_date}: {e}")
 
@@ -550,16 +675,44 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 try:
                     training_status_data = garmin.get_training_status(current_date)
                     if training_status_data:
-                        health_data["training_status"].append({"date": current_date, "status": training_status_data.get("status")})
+                        health_data["training_status"].append({"date": current_date, "training_status": training_status_data.get("status")})
                 except Exception as e:
                     logger.warning(f"Could not retrieve training status data for {current_date}: {e}")
 
-            # Max Metrics
+            # Max Metrics (VO2 Max)
             if "max_metrics" in metric_types_to_fetch:
                 try:
                     max_metrics_data = garmin.get_max_metrics(current_date)
+                    logger.info(f"[GARMIN_SYNC] get_max_metrics({current_date}) RAW RESPONSE: {max_metrics_data}")
+                    vo2_max_value = None
+
+                    # Try to extract VO2 Max from REST response
                     if max_metrics_data:
-                        health_data["max_metrics"].append({"date": current_date, "vo2_max": max_metrics_data.get("vo2Max")})
+                        if isinstance(max_metrics_data, list) and len(max_metrics_data) > 0:
+                            # If it's a list, get first item
+                            first_item = max_metrics_data[0]
+                            vo2_max_value = first_item.get("vo2Max") or first_item.get("vo2MaxValue") or first_item.get("generic", {}).get("vo2MaxPreciseValue")
+                            logger.info(f"[GARMIN_SYNC] VO2 Max from list: {vo2_max_value}")
+                        elif isinstance(max_metrics_data, dict):
+                            vo2_max_value = max_metrics_data.get("vo2Max") or max_metrics_data.get("vo2MaxValue") or max_metrics_data.get("generic", {}).get("vo2MaxPreciseValue")
+                            logger.info(f"[GARMIN_SYNC] VO2 Max from dict: {vo2_max_value}")
+
+                    # If REST didn't work, try GraphQL endpoint
+                    if not vo2_max_value:
+                        try:
+                            graphql_query = f'query{{vo2MaxScalar(startDate:"{current_date}", endDate:"{current_date}")}}'
+                            graphql_result = garmin.query_garmin_graphql({"query": graphql_query})
+                            logger.info(f"[GARMIN_SYNC] VO2 Max GraphQL RAW RESPONSE: {graphql_result}")
+                            if graphql_result and isinstance(graphql_result, dict):
+                                vo2_data = graphql_result.get("data", {}).get("vo2MaxScalar", [])
+                                if vo2_data and len(vo2_data) > 0:
+                                    vo2_max_value = vo2_data[0].get("vo2Max") or vo2_data[0].get("value")
+                                    logger.info(f"[GARMIN_SYNC] VO2 Max from GraphQL: {vo2_max_value}")
+                        except Exception as gql_e:
+                            logger.warning(f"GraphQL VO2 Max query failed: {gql_e}")
+
+                    if vo2_max_value:
+                        health_data["max_metrics"].append({"date": current_date, "vo2_max": vo2_max_value})
                 except Exception as e:
                     logger.warning(f"Could not retrieve max metrics data for {current_date}: {e}")
 
@@ -569,10 +722,35 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                     data = {}
                     data["date"] = current_date
                     data["hrvValue"] = []
-                    hrv_list = (garmin.get_hrv_data(current_date) or {}).get('hrvReadings') or []
+                    hrv_raw = garmin.get_hrv_data(current_date) or {}
+                    logger.info(f"[GARMIN_SYNC] get_hrv_data({current_date}) RAW KEYS: {list(hrv_raw.keys()) if hrv_raw else None}")
+                    logger.info(f"[GARMIN_SYNC] get_hrv_data({current_date}) RAW RESPONSE: {hrv_raw}")
+                    hrv_list = hrv_raw.get('hrvReadings') or []
+                    hrv_values = []
                     for entry in hrv_list:
                         if entry.get('hrvValue'):
-                            data["hrvValue"].append({"time": pytz.timezone("UTC").localize(datetime.strptime(entry['readingTimeGMT'],"%Y-%m-%dT%H:%M:%S.%f")).isoformat(), "data": entry.get('hrvValue')})
+                            data["hrvValue"].append({"time": datetime.strptime(entry['readingTimeGMT'], "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo=timezone.utc).isoformat(), "data": entry.get('hrvValue')})
+                            hrv_values.append(entry.get('hrvValue'))
+
+                    # Calculate average overnight HRV for the mapping
+                    if hrv_values:
+                        data["average_overnight_hrv"] = sum(hrv_values) / len(hrv_values)
+
+                    # Capture additional HRV fields from API if available
+                    data["hrv_status"] = hrv_raw.get("hrvStatus") or hrv_raw.get("status")
+                    data["weekly_avg"] = hrv_raw.get("weeklyAvg") or hrv_raw.get("sevenDayAvg")
+                    data["baseline_low"] = hrv_raw.get("baselineLowUpper") or hrv_raw.get("baselineLow")
+                    data["baseline_high"] = hrv_raw.get("baselineBalancedLow") or hrv_raw.get("baselineHigh")
+
+                    # Also check for lastNight and baseline in summary
+                    hrv_summary = hrv_raw.get("hrvSummary") or {}
+                    if hrv_summary:
+                        data["last_night_avg"] = hrv_summary.get("lastNightAvg") or hrv_summary.get("lastNight")
+                        data["last_night_5min_high"] = hrv_summary.get("lastNight5MinHigh")
+                        data["baseline_balanced_low"] = hrv_summary.get("baselineBalancedLow")
+                        data["baseline_balanced_upper"] = hrv_summary.get("baselineBalancedUpper")
+                        data["status"] = hrv_summary.get("status")
+                        logger.info(f"[GARMIN_SYNC] HRV Summary: lastNight={data.get('last_night_avg')}, baseline={data.get('baseline_balanced_low')}-{data.get('baseline_balanced_upper')}, status={data.get('status')}")
 
                     health_data["hrv"].append(data)
                 except Exception as e:
@@ -583,7 +761,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 try:
                     endurance_score_data = garmin.get_endurance_score(current_date, current_date)
                     if endurance_score_data:
-                        health_data["endurance_score"].append({"date": current_date, "score": endurance_score_data.get("score")})
+                        health_data["endurance_score"].append({"date": current_date, "endurance_score": endurance_score_data.get("score")})
                 except Exception as e:
                     logger.warning(f"Could not retrieve endurance score data for {current_date}: {e}")
 
@@ -592,7 +770,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 try:
                     hill_score_data = garmin.get_hill_score(current_date, current_date)
                     if hill_score_data:
-                        health_data["hill_score"].append({"date": current_date, "overall": hill_score_data.get("overall")})
+                        health_data["hill_score"].append({"date": current_date, "hill_score": hill_score_data.get("overall")})
                 except Exception as e:
                     logger.warning(f"Could not retrieve hill score data for {current_date}: {e}")
 
@@ -625,22 +803,34 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 except Exception as e:
                     logger.warning(f"Could not retrieve blood pressure data for {current_date}: {e}")
 
-            # Body Battery
+            # Body Battery fallback (only if not already fetched from user_summary)
             if "body_battery" in metric_types_to_fetch:
-                try:
-                    body_battery_data = garmin.get_body_battery(current_date, current_date)
-                    if body_battery_data and isinstance(body_battery_data, list) and len(body_battery_data) > 0:
-                        for bb_entry in body_battery_data:
-                            health_data["body_battery"].append({
-                                "date": current_date,
-                                "highest": bb_entry.get("highest"),
-                                "lowest": bb_entry.get("lowest"),
-                                "atWake": bb_entry.get("atWake"),
-                                "charged": bb_entry.get("charged"),
-                                "drained": bb_entry.get("drained")
-                            })
-                except Exception as e:
-                    logger.warning(f"Could not retrieve body battery data for {current_date}: {e}")
+                # Check if we already have body battery data for this date from user_summary
+                has_bb_for_date = any(bb.get("date") == current_date for bb in health_data.get("body_battery", []))
+                if not has_bb_for_date:
+                    try:
+                        body_battery_data = garmin.get_body_battery(current_date, current_date)
+                        logger.info(f"[GARMIN_SYNC] get_body_battery({current_date}) fallback RAW RESPONSE: {body_battery_data}")
+                        if body_battery_data and isinstance(body_battery_data, list) and len(body_battery_data) > 0:
+                            for bb_entry in body_battery_data:
+                                # Extract from bodyBatteryValuesArray if available
+                                bb_values = bb_entry.get("bodyBatteryValuesArray", [])
+                                bb_highest = max([v[1] for v in bb_values], default=None) if bb_values else None
+                                bb_lowest = min([v[1] for v in bb_values], default=None) if bb_values else None
+                                bb_current = bb_values[-1][1] if bb_values else None
+
+                                logger.info(f"[GARMIN_SYNC] Body battery fallback entry: highest={bb_highest}, lowest={bb_lowest}, charged={bb_entry.get('charged')}, drained={bb_entry.get('drained')}")
+                                health_data["body_battery"].append({
+                                    "date": current_date,
+                                    "body_battery_highest": bb_highest,
+                                    "body_battery_lowest": bb_lowest,
+                                    "body_battery_at_wake": None,  # Not available in this endpoint
+                                    "body_battery_charged": bb_entry.get("charged"),
+                                    "body_battery_drained": bb_entry.get("drained"),
+                                    "body_battery_current": bb_current
+                                })
+                    except Exception as e:
+                        logger.warning(f"Could not retrieve body battery data for {current_date}: {e}")
 
             # Menstrual Data
             if "menstrual_data" in metric_types_to_fetch:
@@ -660,20 +850,23 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 except Exception as e:
                     logger.warning(f"Could not retrieve menstrual calendar data for {current_date}: {e}")
 
-            # Body Composition
+            # Body Composition (weight, body fat, bone mass, muscle mass)
             if "body_composition" in metric_types_to_fetch:
                 try:
                     body_composition_data = garmin.get_body_composition(current_date, current_date)
+                    logger.info(f"[GARMIN_SYNC] get_body_composition({current_date}) RAW RESPONSE KEYS: {list(body_composition_data.keys()) if body_composition_data else 'None'}")
                     if body_composition_data and body_composition_data.get("dateWeightList"):
                         for entry in body_composition_data["dateWeightList"]:
+                            logger.info(f"[GARMIN_SYNC] Body composition entry ALL KEYS: {list(entry.keys())}")
+                            logger.info(f"[GARMIN_SYNC] Body composition entry VALUES: weight={entry.get('weight')}, bodyFat={entry.get('bodyFat')}, boneMass={entry.get('boneMass')}, muscleMass={entry.get('muscleMass')}, bmi={entry.get('bmi')}, bodyWater={entry.get('bodyWater')}")
                             health_data["body_composition"].append({
                                 "date": entry.get("date"), # Use the date from the entry itself
                                 "weight": safe_convert(entry.get("weight"), grams_to_kg),
                                 "body_fat_percentage": entry.get("bodyFat"),
                                 "bmi": entry.get("bmi"),
                                 "body_water_percentage": entry.get("bodyWater"),
-                                "bone_mass": entry.get("boneMass"),
-                                "muscle_mass": entry.get("muscleMass")
+                                "bone_mass": safe_convert(entry.get("boneMass"), grams_to_kg),
+                                "muscle_mass": safe_convert(entry.get("muscleMass"), grams_to_kg)
                             })
                 except Exception as e:
                     logger.warning(f"Could not retrieve body composition data for {current_date}: {e}")
@@ -724,15 +917,20 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
 
         # Further filter to remove null or empty values before returning
         final_health_data = {k: v for k, v in cleaned_health_data.items() if v} # Filter out empty lists
-        
+
+        # Log summary of what data was collected
+        logger.info(f"[GARMIN_SYNC] ========== SYNC SUMMARY ==========")
+        logger.info(f"[GARMIN_SYNC] User: {user_id}, Date range: {start_date} to {end_date}")
+        for metric_name, entries in final_health_data.items():
+            entry_count = len(entries) if isinstance(entries, list) else 1
+            logger.info(f"[GARMIN_SYNC] {metric_name}: {entry_count} entries")
+        logger.info(f"[GARMIN_SYNC] ===================================")
+
         # Save data to local file if GARMIN_DATA_SOURCE is not "local"
         _save_to_local_file(filename, {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data})
 
         logger.debug(f"Final health data being returned: {final_health_data}")
-        logger.info(f"Successfully retrieved and cleaned health and wellness data for user {user_id} from {start_date} to {end_date}. Data: {final_health_data}")
-        
-        # Save data to local file if GARMIN_DATA_SOURCE is not "local"
-        _save_to_local_file(filename, {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data})
+        logger.info(f"Successfully retrieved and cleaned health and wellness data for user {user_id} from {start_date} to {end_date}.")
 
         return {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data}
 

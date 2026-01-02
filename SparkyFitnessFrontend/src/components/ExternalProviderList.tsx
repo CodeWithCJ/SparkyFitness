@@ -213,31 +213,46 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
               )}
               {editData.provider_type === 'garmin' && (
                 <>
-                  <div>
-                    <Label>Garmin Email</Label>
-                    <Input
-                      type="email"
-                      value={editData.app_id || ''}
-                      onChange={(e) => setEditData(prev => ({ ...prev, app_id: e.target.value }))}
-                      placeholder="Enter Garmin Email"
-                      autoComplete="username"
-                    />
-                  </div>
-                  <div>
-                    <Label>Garmin Password</Label>
-                    <Input
-                      type="password"
-                      value={editData.app_key || ''}
-                      onChange={(e) => setEditData(prev => ({ ...prev, app_key: e.target.value }))}
-                      placeholder="Enter Garmin Password"
-                      autoComplete="current-password"
-                    />
-                  </div>
-                  <p className="text-sm text-muted-foreground col-span-2">
-                    Note: Garmin Connect integration is tested with few metrics only. Ensure your Docker Compose is updated to include Garmin section.
-                    <br />
-                    Sparky Fitness does not store your Garmin email or password. They are used only during login to obtain secure tokens.
-                  </p>
+                  {/* Show connection status for connected Garmin accounts instead of credential fields */}
+                  {(provider.garmin_connect_status === 'linked' || provider.garmin_connect_status === 'connected') ? (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                        <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                        <span className="font-medium">Connected to Garmin</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Your Garmin account is connected. To reconnect with different credentials, disconnect first and add a new provider.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <Label>Garmin Email</Label>
+                        <Input
+                          type="email"
+                          value={editData.app_id || ''}
+                          onChange={(e) => setEditData(prev => ({ ...prev, app_id: e.target.value }))}
+                          placeholder="Enter Garmin Email"
+                          autoComplete="username"
+                        />
+                      </div>
+                      <div>
+                        <Label>Garmin Password</Label>
+                        <Input
+                          type="password"
+                          value={editData.app_key || ''}
+                          onChange={(e) => setEditData(prev => ({ ...prev, app_key: e.target.value }))}
+                          placeholder="Enter Garmin Password"
+                          autoComplete="current-password"
+                        />
+                      </div>
+                      <p className="text-sm text-muted-foreground col-span-2">
+                        Note: Garmin Connect integration is tested with few metrics only. Ensure your Docker Compose is updated to include Garmin section.
+                        <br />
+                        Sparky Fitness does not store your Garmin email or password. They are used only during login to obtain secure tokens.
+                      </p>
+                    </>
+                  )}
                 </>
               )}
               {(editData.provider_type === 'withings' || editData.provider_type === 'garmin') && (

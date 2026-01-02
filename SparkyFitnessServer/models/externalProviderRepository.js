@@ -6,7 +6,7 @@ async function getExternalDataProviders(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public, encrypted_access_token FROM external_data_providers ORDER BY created_at DESC',
+      'SELECT id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public, encrypted_access_token, sync_frequency FROM external_data_providers ORDER BY created_at DESC',
       []
     );
     // log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
@@ -242,7 +242,7 @@ async function getExternalDataProviderById(providerId) {
   try {
     const result = await client.query(
       `SELECT
-        id, provider_name, provider_type, user_id, is_active, base_url, shared_with_public,
+        id, provider_name, provider_type, user_id, is_active, base_url, shared_with_public, sync_frequency,
         encrypted_app_id, app_id_iv, app_id_tag,
         encrypted_app_key, app_key_iv, app_key_tag,
         token_expires_at, external_user_id,
@@ -305,7 +305,7 @@ async function getExternalDataProviderByUserIdAndProviderName(userId, providerNa
     log('debug', `Fetching external data provider for user ${userId} and provider ${providerName}`);
     const result = await client.query(
       `SELECT
-        id, provider_name, provider_type, encrypted_app_id, app_id_iv, app_id_tag,
+        id, provider_name, provider_type, user_id, sync_frequency, encrypted_app_id, app_id_iv, app_id_tag,
         encrypted_app_key, app_key_iv, app_key_tag,
         token_expires_at, external_user_id, is_active, base_url, shared_with_public, updated_at,
         encrypted_garth_dump, garth_dump_iv, garth_dump_tag

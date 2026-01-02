@@ -13,6 +13,55 @@ const garminService = require('../services/garminService');
 
 router.use(express.json());
 
+// Date validation constants
+const MAX_DATE_RANGE_DAYS = 365; // Maximum allowed date range
+const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/; // YYYY-MM-DD format
+
+/**
+ * Validate date parameters for Garmin sync endpoints
+ * @param {string} startDate - Start date in YYYY-MM-DD format
+ * @param {string} endDate - End date in YYYY-MM-DD format
+ * @returns {{ valid: boolean, error?: string }} Validation result
+ */
+function validateDateRange(startDate, endDate) {
+    // Check required
+    if (!startDate || !endDate) {
+        return { valid: false, error: 'startDate and endDate are required.' };
+    }
+
+    // Check format
+    if (!DATE_FORMAT_REGEX.test(startDate) || !DATE_FORMAT_REGEX.test(endDate)) {
+        return { valid: false, error: 'Dates must be in YYYY-MM-DD format.' };
+    }
+
+    const start = moment(startDate, 'YYYY-MM-DD', true);
+    const end = moment(endDate, 'YYYY-MM-DD', true);
+
+    // Check valid dates
+    if (!start.isValid() || !end.isValid()) {
+        return { valid: false, error: 'Invalid date values provided.' };
+    }
+
+    // Check start is before or equal to end
+    if (start.isAfter(end)) {
+        return { valid: false, error: 'startDate must be before or equal to endDate.' };
+    }
+
+    // Check date range limit
+    const daysDiff = end.diff(start, 'days');
+    if (daysDiff > MAX_DATE_RANGE_DAYS) {
+        return { valid: false, error: `Date range cannot exceed ${MAX_DATE_RANGE_DAYS} days.` };
+    }
+
+    // Check not too far in the future (allow 1 day buffer for timezone differences)
+    const tomorrow = moment().add(1, 'day').endOf('day');
+    if (end.isAfter(tomorrow)) {
+        return { valid: false, error: 'endDate cannot be in the future.' };
+    }
+
+    return { valid: true };
+}
+
 // Endpoint for Garmin direct login
 router.post('/login', authenticate, async (req, res, next) => {
     try {
@@ -63,10 +112,11 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
         const { startDate, endDate, metricTypes } = req.body;
         log('debug', `[garminRoutes] Sync health_and_wellness received startDate: ${startDate}, endDate: ${endDate}`);
 
-        if (!startDate || !endDate) {
-            return res.status(400).json({ error: 'startDate and endDate are required.' });
+        const dateValidation = validateDateRange(startDate, endDate);
+        if (!dateValidation.valid) {
+            return res.status(400).json({ error: dateValidation.error });
         }
-        
+
         const healthWellnessData = await garminConnectService.syncGarminHealthAndWellness(userId, startDate, endDate, metricTypes);
         log('debug', `Raw healthWellnessData from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, healthWellnessData);
 
@@ -77,17 +127,22 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
         // Existing processing for other metrics (if any)
         const processedHealthData = [];
 
+        log('info', `[GARMIN_SYNC] Processing metrics from Garmin. Available metrics: ${Object.keys(healthWellnessData.data || {}).join(', ')}`);
+
         for (const metric in healthWellnessData.data) {
             // Skip stress as it's handled by processGarminHealthAndWellnessData
             if (metric === 'stress') continue;
 
             const dailyEntries = healthWellnessData.data[metric];
+            log('info', `[GARMIN_SYNC] Processing metric '${metric}': ${dailyEntries?.length || 0} entries`);
+
             if (Array.isArray(dailyEntries)) {
                 for (const entry of dailyEntries) {
                     const calendarDateRaw = entry.date;
                     if (!calendarDateRaw) continue;
 
                     const calendarDate = moment(calendarDateRaw).format('YYYY-MM-DD');
+                    log('debug', `[GARMIN_SYNC] Entry for ${metric} on ${calendarDate}: ${JSON.stringify(entry)}`);
 
                     for (const key in entry) {
                         if (key === 'date') continue;
@@ -100,9 +155,13 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
                         }
                         if (mapping) {
                             const value = entry[key];
-                            if (value === null || value === undefined) continue;
+                            if (value === null || value === undefined) {
+                                log('debug', `[GARMIN_SYNC] Skipping ${key}: value is null/undefined`);
+                                continue;
+                            }
 
                             const type = mapping.targetType === 'check_in' ? mapping.field : mapping.name;
+                            log('info', `[GARMIN_SYNC] Mapped ${key}=${value} -> type='${type}' (${mapping.targetType})`);
                             processedHealthData.push({
                                 type: type,
                                 value: value,
@@ -111,11 +170,15 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
                                 dataType: mapping.dataType,
                                 measurementType: mapping.measurementType
                             });
+                        } else {
+                            log('warn', `[GARMIN_SYNC] No mapping found for key '${key}' in metric '${metric}'`);
                         }
                     }
                 }
             }
         }
+
+        log('info', `[GARMIN_SYNC] Total processed health data items: ${processedHealthData.length}`);
 
         log('debug', `Processed health data for measurementService:`, processedHealthData);
 
@@ -148,8 +211,9 @@ router.post('/sync/activities_and_workouts', authenticate, async (req, res, next
         const { startDate, endDate, activityType } = req.body;
         log('debug', `[garminRoutes] Sync activities_and_workouts received startDate: ${startDate}, endDate: ${endDate}`);
 
-        if (!startDate || !endDate) {
-            return res.status(400).json({ error: 'startDate and endDate are required.' });
+        const dateValidation = validateDateRange(startDate, endDate);
+        if (!dateValidation.valid) {
+            return res.status(400).json({ error: dateValidation.error });
         }
 
         const rawData = await garminConnectService.fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, activityType);
@@ -218,8 +282,9 @@ router.post('/sleep_data', authenticate, async (req, res, next) => {
         if (!sleepData || !Array.isArray(sleepData)) {
             return res.status(400).json({ error: 'Invalid sleepData format. Expected an array.' });
         }
-        if (!startDate || !endDate) {
-            return res.status(400).json({ error: 'startDate and endDate are required for sleep data sync.' });
+        const dateValidation = validateDateRange(startDate, endDate);
+        if (!dateValidation.valid) {
+            return res.status(400).json({ error: dateValidation.error });
         }
 
         const result = await garminService.processGarminSleepData(userId, userId, sleepData, startDate, endDate);

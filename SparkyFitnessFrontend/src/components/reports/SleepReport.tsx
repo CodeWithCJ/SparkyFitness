@@ -8,12 +8,9 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { api } from '@/services/api';
 import { debug, info, warn, error } from '@/utils/logging'; // Import warn
 import { toast as sonnerToast } from "sonner";
-import { format } from 'date-fns';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { SleepEntry, SleepStageEvent, SleepAnalyticsData, CombinedSleepData, SleepChartData } from '@/types';
 import SleepAnalyticsTable from './SleepAnalyticsTable';
 import SleepAnalyticsCharts from './SleepAnalyticsCharts';
-import SleepStageChart from './SleepStageChart';
 import { useTranslation } from 'react-i18next';
 
 
@@ -45,10 +42,8 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
       const response = await api.get(`/sleep?startDate=${startDate}&endDate=${endDate}`);
       setSleepEntries(response);
       info(loggingLevel, "SleepReport: Sleep entries fetched successfully:", response);
-      console.log("Fetched sleep entries:", response);
     } catch (err) {
       error(loggingLevel, 'SleepReport: Error fetching sleep entries:', err);
-      console.error("Error fetching sleep entries:", err);
       sonnerToast.error(t('sleepReport.failedToLoadSleepEntries', 'Failed to load sleep entries'));
     } finally {
       setLoading(false);
@@ -169,22 +164,55 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
     }));
   };
 
+  // Extract SpO2 data from sleep entries
+  const processSpO2Data = () => {
+    return sleepEntries.map(entry => ({
+      date: entry.entry_date,
+      average: entry.average_spo2_value,
+      lowest: entry.lowest_spo2_value,
+      highest: entry.highest_spo2_value,
+    }));
+  };
+
+  // Extract HRV data from sleep entries
+  const processHRVData = () => {
+    return sleepEntries.map(entry => ({
+      date: entry.entry_date,
+      avg_overnight_hrv: entry.avg_overnight_hrv,
+    }));
+  };
+
+  // Extract Respiration data from sleep entries
+  const processRespirationData = () => {
+    return sleepEntries.map(entry => ({
+      date: entry.entry_date,
+      average: entry.average_respiration_value,
+      lowest: entry.lowest_respiration_value,
+      highest: entry.highest_respiration_value,
+    }));
+  };
+
+  // Extract Heart Rate data from sleep entries
+  const processHeartRateData = () => {
+    return sleepEntries.map(entry => ({
+      date: entry.entry_date,
+      resting_heart_rate: entry.resting_heart_rate,
+    }));
+  };
+
+  // Get the most recent sleep entry for the summary card
+  const getLatestSleepEntry = () => {
+    if (sleepEntries.length === 0) return null;
+    return [...sleepEntries].sort(
+      (a, b) => new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime()
+    )[0];
+  };
+
   if (loading) {
     return <p>{t('sleepReport.loadingSleepData', 'Loading sleep data...')}</p>;
   }
 
   const combinedSleepData = processSleepData();
-  console.log("Processed combinedSleepData:", combinedSleepData);
-  const chartData = combinedSleepData.map(data => ({
-    date: formatDateInUserTimezone(data.sleepEntry.entry_date, dateFormat),
-    totalSleepDuration: data.sleepAnalyticsData.totalSleepDuration / 60, // in minutes
-    timeAsleep: data.sleepAnalyticsData.timeAsleep / 60, // in minutes
-    sleepScore: data.sleepAnalyticsData.sleepScore,
-    awake: data.sleepAnalyticsData.stagePercentages.awake,
-    rem: data.sleepAnalyticsData.stagePercentages.rem,
-    light: data.sleepAnalyticsData.stagePercentages.light,
-    deep: data.sleepAnalyticsData.stagePercentages.deep,
-  }));
 
   return (
     <div className="space-y-6">
@@ -201,6 +229,11 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
               <SleepAnalyticsCharts
                 sleepAnalyticsData={combinedSleepData.map(item => item.sleepAnalyticsData)}
                 sleepHypnogramData={processSleepChartData()}
+                spo2Data={processSpO2Data()}
+                hrvData={processHRVData()}
+                respirationData={processRespirationData()}
+                heartRateData={processHeartRateData()}
+                latestSleepEntry={getLatestSleepEntry()}
               />
               <SleepAnalyticsTable combinedSleepData={combinedSleepData} onExport={exportSleepDataToCSV} />
             </div>
