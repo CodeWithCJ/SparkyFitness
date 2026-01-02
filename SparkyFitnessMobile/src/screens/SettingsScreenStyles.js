@@ -10,6 +10,9 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 80, // Adjust this value based on your bottomNavBar height
   },
+  scrollViewContent: {
+    paddingBottom: 130,
+  },
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -222,6 +225,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
+    zIndex: 100
   }
 });
 

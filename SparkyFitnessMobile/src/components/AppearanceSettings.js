@@ -17,9 +17,9 @@ const AppearanceSettings = ({ appTheme, setAppTheme }) => {
   ];
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card }]}>
+    <View style={[styles.card, { backgroundColor: colors.card, zIndex: 1000 }]}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
-      <View style={[styles.settingItem, { zIndex: 1000 }]}>
+      <View style={[styles.settingItem, { zIndex: 4000 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={[styles.settingLabel, { color: colors.text }]}>Theme</Text>
         </View>
@@ -35,12 +35,13 @@ const AppearanceSettings = ({ appTheme, setAppTheme }) => {
             }
           }}
           listMode="SCROLLVIEW"
-          containerStyle={{ flex: 1, maxWidth: 200 }}
+          containerStyle={{ flex: 1, maxWidth: 200, zIndex: 4000 }}
           style={{ backgroundColor: colors.inputBackground, borderColor: colors.border }}
           textStyle={{ color: colors.text }}
           dropDownContainerStyle={{ backgroundColor: colors.card, borderColor: colors.border }}
           placeholder="Select a theme"
           theme={isDarkMode ? "DARK" : "LIGHT"}
+          dropDownDirection="BOTTOM"
         />
       </View>
     </View>

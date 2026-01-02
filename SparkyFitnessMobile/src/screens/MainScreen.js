@@ -794,7 +794,7 @@ const MainScreen = ({ navigation }) => {
             placeholderStyle={[styles.dropdownPlaceholderStyle, { color: colors.textMuted }]}
             selectedItemLabelStyle={styles.selectedItemLabelStyle}
             maxHeight={200}
-            zIndex={3000}
+            zIndex={5000}
             zIndexInverse={1000}
             listMode="SCROLLVIEW"
             theme={isDarkMode ? "DARK" : "LIGHT"}
@@ -884,6 +884,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 12,
+    zIndex: 4500,
   },
   timeRangeLabel: {
     fontSize: 16,

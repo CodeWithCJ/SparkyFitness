@@ -266,7 +266,7 @@ const LogScreen = ({ navigation }) => {
         data={logs}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={styles.logItem}
+            style={[styles.logItem, { backgroundColor: colors.card }]}
             onPress={() => handleCopyLogToClipboard(item)}
             activeOpacity={0.7}
           >
@@ -318,13 +318,13 @@ const LogScreen = ({ navigation }) => {
               >
                 {item.status}
               </Text>
-              <Text style={styles.logMessage} ellipsizeMode="clip">
+              <Text style={[styles.logMessage, { color: colors.text }]} ellipsizeMode="clip">
                 {item.message}
               </Text>
               <View style={styles.logDetails}>
                 {item.details &&
                   item.details.map((detail, index) => (
-                    <Text key={index} style={styles.logDetailTag}>
+                    <Text key={index} style={[styles.logDetailTag, { color: colors.text }]}>
                       {detail}
                     </Text>
                   ))}
@@ -491,7 +491,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 4,
     fontSize: 14,
-    color: '#333',
   },
   logTimestamp: {
     fontSize: 14,
