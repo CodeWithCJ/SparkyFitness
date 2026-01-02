@@ -129,7 +129,7 @@ export const processFoodInput = async (data: {
       info(userLoggingLevel, 'Inserting food entry...');
       let insertError = null;
       try {
-        await apiCall('/foods/food-entries', {
+        await apiCall('/food-entries', {
           method: 'POST',
           body: {
 food_id: food.id,
@@ -338,7 +338,7 @@ export const addFoodOption = async (optionIndex: number, originalMetadata: any, 
     });
     let entryError = null;
     try {
-      await apiCall('/foods/food-entries', {
+      await apiCall('/food-entries', {
         method: 'POST',
         body: {
           food_id: foodId,
