@@ -1,6 +1,6 @@
 {
   "name": "sparkyfitnessserver",
-  "version": "0.16.2",
+  "version": "0.16.3",
   "main": "SparkyFitnessServer.js",
   "scripts": {
     "start": "nodemon --watch . --watch routes --watch services --watch models SparkyFitnessServer.js",
