@@ -17,6 +17,16 @@ import MeasurementChartsGrid from "./reports/MeasurementChartsGrid";
 import ReportsTables from "./reports/ReportsTables";
 import ExerciseReportsDashboard from "./reports/ExerciseReportsDashboard"; // Import ExerciseReportsDashboard
 import SleepReport from "./reports/SleepReport"; // Import SleepReport
+import BodyBatteryCard, { BODY_BATTERY_METRICS } from "./reports/BodyBatteryCard"; // Import BodyBatteryCard
+import RespirationCard, { RESPIRATION_METRICS } from "./reports/RespirationCard"; // Import RespirationCard
+
+// Metrics to hide from the custom measurements charts (shown in dedicated cards instead)
+const HIDDEN_CUSTOM_METRICS = [
+  ...BODY_BATTERY_METRICS,
+  ...RESPIRATION_METRICS,  // Shown in dedicated Respiration card
+  'Average SpO2',  // Shown in Sleep tab SpO2 card
+  'Average Overnight HRV',  // Shown in Sleep tab HRV card
+];
 import StressChart from "./StressChart"; // Import StressChart
 import { log, debug, info, warn, error, UserLoggingLevel } from "@/utils/logging";
 import { format, parseISO, addDays } from 'date-fns'; // Import format, parseISO, addDays from date-fns
@@ -768,12 +778,24 @@ const Reports = () => {
               showMeasurementsInCm={defaultMeasurementUnit === 'cm'}
             />
 
-            {/* Custom Measurements Charts */}
+            {/* Body Battery Card */}
+            <BodyBatteryCard
+              categories={customCategories}
+              measurementsData={customMeasurementsData}
+            />
+
+            {/* Respiration Card */}
+            <RespirationCard
+              categories={customCategories}
+              measurementsData={customMeasurementsData}
+            />
+
+            {/* Custom Measurements Charts (excluding dedicated cards) */}
             {customCategories.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">{t('reports.customMeasurementsTitle', "Custom Measurements")}</h3>
                 <div className="space-y-4">
-                  {customCategories.filter(c => c.data_type === 'numeric').map((category) => {
+                  {customCategories.filter(c => c.data_type === 'numeric' && !HIDDEN_CUSTOM_METRICS.includes(c.name)).map((category) => {
                     const data = customMeasurementsData[category.id] || [];
                     const chartData = formatCustomChartData(category, data);
 

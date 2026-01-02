@@ -21,6 +21,36 @@ import { format, parseISO, differenceInMinutes, addDays } from 'date-fns';
 import { SleepEntry, SleepStageEvent } from '@/types';
 import SleepTimelineEditor from './SleepTimelineEditor';
 
+// Helper to aggregate sleep stages from stage_events (same approach as reports page)
+const aggregateSleepStages = (stageEvents: SleepStageEvent[] | undefined) => {
+  if (!stageEvents || stageEvents.length === 0) return null;
+
+  const stages = stageEvents.reduce((acc, event) => {
+    if (event?.stage_type && event?.duration_in_seconds) {
+      acc[event.stage_type] = (acc[event.stage_type] || 0) + event.duration_in_seconds;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Only return if we have at least one stage
+  if (Object.keys(stages).length === 0) return null;
+
+  return {
+    deep: stages['deep'] || 0,
+    light: stages['light'] || 0,
+    rem: stages['rem'] || 0,
+    awake: stages['awake'] || 0
+  };
+};
+
+// Format duration: show hours if >= 60 min, otherwise minutes
+const formatStageDuration = (seconds: number): string => {
+  const minutes = seconds / 60;
+  if (minutes >= 60) {
+    return `${(minutes / 60).toFixed(1)}h`;
+  }
+  return `${minutes.toFixed(0)}m`;
+};
 
 interface SleepEntrySectionProps {
   selectedDate: string;
@@ -315,14 +345,22 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({ selectedDate }) =
                       {t('sleepEntrySection.score', 'Score')}: {entry.sleep_score || 'N/A'} &middot;
                       {t('sleepEntrySection.source', 'Source')}: {entry.source}
                     </p>
-                    {entry.deep_sleep_seconds !== null && entry.deep_sleep_seconds !== undefined && (
-                      <p className="text-xs text-muted-foreground">
-                        {t('sleepEntrySection.deepSleep', 'Deep')}: {(entry.deep_sleep_seconds / 60).toFixed(0)}m &middot;
-                        {t('sleepEntrySection.lightSleep', 'Light')}: {(entry.light_sleep_seconds / 60).toFixed(0)}m &middot;
-                        {t('sleepEntrySection.remSleep', 'REM')}: {(entry.rem_sleep_seconds / 60).toFixed(0)}m &middot;
-                        {t('sleepEntrySection.awake', 'Awake')}: {(entry.awake_sleep_seconds / 60).toFixed(0)}m
-                      </p>
-                    )}
+                    {(() => {
+                      // Try to aggregate from stage_events first (preferred), fall back to pre-aggregated fields
+                      const stages = aggregateSleepStages(entry.stage_events) || (
+                        (entry.deep_sleep_seconds || entry.light_sleep_seconds || entry.rem_sleep_seconds || entry.awake_sleep_seconds)
+                          ? { deep: entry.deep_sleep_seconds || 0, light: entry.light_sleep_seconds || 0, rem: entry.rem_sleep_seconds || 0, awake: entry.awake_sleep_seconds || 0 }
+                          : null
+                      );
+                      return stages ? (
+                        <p className="text-xs text-muted-foreground">
+                          {t('sleepEntrySection.deepSleep', 'Deep')}: {formatStageDuration(stages.deep)} &middot;
+                          {t('sleepEntrySection.lightSleep', 'Light')}: {formatStageDuration(stages.light)} &middot;
+                          {t('sleepEntrySection.remSleep', 'REM')}: {formatStageDuration(stages.rem)} &middot;
+                          {t('sleepEntrySection.awake', 'Awake')}: {formatStageDuration(stages.awake)}
+                        </p>
+                      ) : null;
+                    })()}
                     {entry.average_spo2_value !== null && entry.average_spo2_value !== undefined && (
                       <p className="text-xs text-muted-foreground">
                         {t('sleepEntrySection.avgSpO2', 'Avg SpO2')}: {entry.average_spo2_value.toFixed(1)}% &middot;

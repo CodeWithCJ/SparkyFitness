@@ -586,7 +586,7 @@ const ReportsTables = ({
                     <TableRow>
                       <TableHead>{t('reportsTables.date', 'Date')}</TableHead>
                       <TableHead>{t('reports.customMeasurementsExportHeaders.time', 'Time')}</TableHead>
-                      <TableHead>{t('reports.customMeasurementsExportHeaders.value', 'Value')} ({category.measurement_type})</TableHead>
+                      <TableHead>{t('reports.customMeasurementsExportHeaders.value', 'Value')} ({category.measurement_type === 'kg' ? weightUnit : category.measurement_type})</TableHead>
                       <TableHead>{t('reportsTables.notes', 'Notes')}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -598,11 +598,18 @@ const ReportsTables = ({
                       const minutes = timestamp.getMinutes();
                       const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 
+                      // Convert kg values to user's preferred weight unit
+                      const displayValue = typeof measurement.value === 'number'
+                        ? (category.measurement_type === 'kg'
+                          ? convertWeight(measurement.value, 'kg', weightUnit).toFixed(2)
+                          : measurement.value.toFixed(2))
+                        : String(measurement.value);
+
                       return (
                         <TableRow key={index}>
                           <TableCell>{measurement.entry_date && !isNaN(parseISO(measurement.entry_date).getTime()) ? formatDateInUserTimezone(parseISO(measurement.entry_date), dateFormat) : ''}</TableCell>
                           <TableCell>{formattedHour}</TableCell>
-                          <TableCell>{typeof measurement.value === 'number' ? measurement.value.toFixed(2) : String(measurement.value)}</TableCell>
+                          <TableCell>{displayValue}</TableCell>
                           <TableCell>{measurement.notes || '-'}</TableCell>
                         </TableRow>
                       );

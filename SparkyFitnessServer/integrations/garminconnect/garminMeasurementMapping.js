@@ -2,6 +2,7 @@ const garminMeasurementMapping = {
     // Check-in Measurements
     'weight': { targetType: 'check_in', field: 'weight', dataType: 'numeric', measurementType: 'kg' },
     'body_fat_percentage': { targetType: 'check_in', field: 'body_fat_percentage', dataType: 'numeric', measurementType: '%' },
+    'steps': { targetType: 'check_in', field: 'steps', dataType: 'integer', measurementType: 'count' },
     'bmi': { targetType: 'custom', name: 'BMI', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
     'body_water_percentage': { targetType: 'custom', name: 'Body Water Percentage', dataType: 'numeric', measurementType: '%', frequency: 'Daily' },
     'bone_mass': { targetType: 'custom', name: 'Bone Mass', dataType: 'numeric', measurementType: 'kg', frequency: 'Daily' },
@@ -13,12 +14,23 @@ const garminMeasurementMapping = {
     'sleep_duration': { targetType: 'custom', name: 'Sleep Duration', dataType: 'numeric', measurementType: 'minutes', frequency: 'Daily' },
     'stress_level': { targetType: 'custom', name: 'Stress Level', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
     'average_respiration_rate': { targetType: 'custom', name: 'Average Respiration Rate', dataType: 'numeric', measurementType: 'brpm', frequency: 'Daily' },
+    'sleep_respiration_avg': { targetType: 'custom', name: 'Sleep Respiration Avg', dataType: 'numeric', measurementType: 'brpm', frequency: 'Daily' },
+    'awake_respiration_avg': { targetType: 'custom', name: 'Awake Respiration Avg', dataType: 'numeric', measurementType: 'brpm', frequency: 'Daily' },
     'average_spo2': { targetType: 'custom', name: 'Average SpO2', dataType: 'numeric', measurementType: '%', frequency: 'Daily' },
     'total_intensity_minutes': { targetType: 'custom', name: 'Total Intensity Minutes', dataType: 'numeric', measurementType: 'minutes', frequency: 'Daily' },
     'training_readiness_score': { targetType: 'custom', name: 'Training Readiness Score', dataType: 'integer', measurementType: 'N/A', frequency: 'Daily' },
     'training_status': { targetType: 'custom', name: 'Training Status', dataType: 'text', measurementType: 'N/A', frequency: 'Daily' },
     'vo2_max': { targetType: 'custom', name: 'VO2 Max', dataType: 'numeric', measurementType: 'mL/kg/min', frequency: 'Daily' },
     'average_overnight_hrv': { targetType: 'custom', name: 'Average Overnight HRV', dataType: 'numeric', measurementType: 'ms', frequency: 'Daily' },
+    // HRV Baseline fields from Garmin
+    'hrv_status': { targetType: 'custom', name: 'HRV Status', dataType: 'text', measurementType: 'N/A', frequency: 'Daily' },
+    'weekly_avg': { targetType: 'custom', name: 'HRV Weekly Average', dataType: 'numeric', measurementType: 'ms', frequency: 'Daily' },
+    'baseline_low': { targetType: 'custom', name: 'HRV Baseline Low', dataType: 'numeric', measurementType: 'ms', frequency: 'Daily' },
+    'baseline_high': { targetType: 'custom', name: 'HRV Baseline High', dataType: 'numeric', measurementType: 'ms', frequency: 'Daily' },
+    'last_night_avg': { targetType: 'custom', name: 'HRV Last Night Average', dataType: 'numeric', measurementType: 'ms', frequency: 'Daily' },
+    'last_night_5min_high': { targetType: 'custom', name: 'HRV Last Night 5min High', dataType: 'numeric', measurementType: 'ms', frequency: 'Daily' },
+    'baseline_balanced_low': { targetType: 'custom', name: 'HRV Baseline Balanced Low', dataType: 'numeric', measurementType: 'ms', frequency: 'Daily' },
+    'baseline_balanced_upper': { targetType: 'custom', name: 'HRV Baseline Balanced Upper', dataType: 'numeric', measurementType: 'ms', frequency: 'Daily' },
     'lactate_threshold_hr': { targetType: 'custom', name: 'Lactate Threshold HR', dataType: 'numeric', measurementType: 'bpm', frequency: 'Daily' },
     'endurance_score': { targetType: 'custom', name: 'Endurance Score', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
     'hill_score': { targetType: 'custom', name: 'Hill Score', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
@@ -29,7 +41,9 @@ const garminMeasurementMapping = {
     'body_battery_at_wake': { targetType: 'custom', name: 'Body Battery At Wake', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
     'body_battery_charged': { targetType: 'custom', name: 'Body Battery Charged', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
     'body_battery_drained': { targetType: 'custom', name: 'Body Battery Drained', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
+    'body_battery_current': { targetType: 'custom', name: 'Body Battery Current', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
     'total_distance': { targetType: 'custom', name: 'Total Distance', dataType: 'numeric', measurementType: 'km', frequency: 'Daily' },
+    // Note: These fields are named "_seconds" for Garmin API compatibility, but Python converts to minutes before storing
     'highly_active_seconds': { targetType: 'custom', name: 'Highly Active Minutes', dataType: 'numeric', measurementType: 'minutes', frequency: 'Daily' },
     'active_seconds': { targetType: 'custom', name: 'Active Minutes', dataType: 'numeric', measurementType: 'minutes', frequency: 'Daily' },
     'sedentary_seconds': { targetType: 'custom', name: 'Sedentary Minutes', dataType: 'numeric', measurementType: 'minutes', frequency: 'Daily' },
@@ -46,6 +60,19 @@ const garminMeasurementMapping = {
     'stress_percentage_medium': { targetType: 'custom', name: 'Stress Percentage Medium', dataType: 'numeric', measurementType: '%', frequency: 'Daily' },
     'stress_percentage_high': { targetType: 'custom', name: 'Stress Percentage High', dataType: 'numeric', measurementType: '%', frequency: 'Daily' },
     'visceral_fat_level': { targetType: 'custom', name: 'Visceral Fat Level', dataType: 'integer', measurementType: 'N/A', frequency: 'Daily' },
+
+    // Fitness and Training Metrics
+    'fitness_age': { targetType: 'custom', name: 'Fitness Age', dataType: 'integer', measurementType: 'years', frequency: 'Daily' },
+    'recovery_time': { targetType: 'custom', name: 'Recovery Time', dataType: 'numeric', measurementType: 'hours', frequency: 'Daily' },
+    'training_load': { targetType: 'custom', name: 'Training Load', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
+    'acute_load': { targetType: 'custom', name: 'Acute Training Load', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
+    'chronic_load': { targetType: 'custom', name: 'Chronic Training Load', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
+    'training_load_balance': { targetType: 'custom', name: 'Training Load Balance', dataType: 'numeric', measurementType: 'N/A', frequency: 'Daily' },
+
+    // Race Predictions (additional distances)
+    'race_prediction_10k': { targetType: 'custom', name: '10K Race Prediction', dataType: 'numeric', measurementType: 'seconds', frequency: 'Daily' },
+    'race_prediction_half_marathon': { targetType: 'custom', name: 'Half Marathon Race Prediction', dataType: 'numeric', measurementType: 'seconds', frequency: 'Daily' },
+    'race_prediction_marathon': { targetType: 'custom', name: 'Marathon Race Prediction', dataType: 'numeric', measurementType: 'seconds', frequency: 'Daily' },
 };
 
 module.exports = garminMeasurementMapping;
