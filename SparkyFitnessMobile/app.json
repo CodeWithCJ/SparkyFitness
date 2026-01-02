@@ -5,13 +5,14 @@
     "version": "1.0.0",
     "scheme": "sparkyfitnessmobile",
     "orientation": "portrait",
-    "icon": "./assets/icons/appstore.png",
+    "icon": "./assets/icons/appstore.png",        
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
+    "jsEngine": "hermes",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
@@ -138,4 +139,5 @@
       }
     }
   }
+  
 }
