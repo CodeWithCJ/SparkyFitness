@@ -12,6 +12,12 @@ services:
       - sparkyfitness-network
     ports:
       - "5432:5432" # Expose database port for local development
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SPARKY_FITNESS_DB_USER:-sparky} -d ${SPARKY_FITNESS_DB_NAME:-sparkyfitness_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   sparkyfitness-server:
     build:
@@ -51,7 +57,14 @@ services:
       - "3010:3010" # Expose backend port for local development
     restart: always
     depends_on:
-      - sparkyfitness-db
+      sparkyfitness-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3010/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     volumes:
       - ../SparkyFitnessServer:/app/SparkyFitnessServer # Mount source for live reloading
       - /app/SparkyFitnessServer/node_modules # Preserve node_modules
@@ -70,8 +83,10 @@ services:
       - sparkyfitness-network
     restart: always
     depends_on:
-      - sparkyfitness-server
-      - sparkyfitness-garmin
+      sparkyfitness-server:
+        condition: service_healthy
+      sparkyfitness-garmin:
+        condition: service_started
 
   sparkyfitness-garmin:
     build:
