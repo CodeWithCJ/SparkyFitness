@@ -5,6 +5,7 @@ import * as HealthConnectPreferences from './healthconnect/preferences';
 import * as api from './api';
 import { HEALTH_METRICS } from '../constants/HealthMetrics';
 import { addLog } from './LogService';
+import { Platform } from 'react-native';
 
 export const initHealthConnect = HealthConnect.initHealthConnect;
 export const requestHealthPermissions = HealthConnect.requestHealthPermissions;
@@ -15,7 +16,12 @@ export const readStepRecords = async (startDate, endDate) => HealthConnect.readH
 export const readActiveCaloriesRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
 export const readHeartRateRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('HeartRate', startDate, endDate);
 export const readSleepSessionRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('SleepSession', startDate, endDate);
-export const readStressRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('Stress', startDate, endDate);
+export const readStressRecords = Platform.OS === 'ios'
+  ? async (startDate, endDate) => HealthConnect.readHealthRecords('Stress', startDate, endDate)
+  : async () => {
+    addLog('[HealthConnectService] Stress metric is Android‑only; skipping.', 'info');
+    return [];
+  };
 export const readExerciseSessionRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('ExerciseSession', startDate, endDate);
 export const readWorkoutRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('Workout', startDate, endDate);
 

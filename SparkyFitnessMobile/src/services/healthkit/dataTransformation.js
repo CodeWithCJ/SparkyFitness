@@ -104,6 +104,47 @@ export const transformHealthRecords = (records, metricConfig) => {
             value = record.mass?.inKilograms;
             recordDate = getDateString(record.time);
             break;
+          case 'BloodAlcoholContent':
+          case 'WalkingAsymmetryPercentage':
+          case 'WalkingDoubleSupportPercentage':
+            value = record.value !== undefined ? record.value * 100 : null; // HK returns decimal, convert to %
+            recordDate = getDateString(record.startTime || record.time);
+            break;
+          case 'CervicalMucus':
+          case 'MenstruationFlow':
+          case 'OvulationTest':
+          case 'IntermenstrualBleeding':
+            addLog(`[HealthKitService] Qualitative record type '${recordType}' is not fully transformed. Passing raw value.`, 'warn', 'WARNING');
+            value = record.value; // Pass raw value, might be string/enum
+            recordDate = getDateString(record.startTime);
+            break;
+          case 'StepsCadence':
+          case 'HeartRateVariabilityRmssd':
+          case 'WalkingSpeed':
+          case 'WalkingStepLength':
+          case 'RunningGroundContactTime':
+          case 'RunningStrideLength':
+          case 'RunningPower':
+          case 'RunningVerticalOscillation':
+          case 'RunningSpeed':
+          case 'CyclingSpeed':
+          case 'CyclingPower':
+          case 'CyclingCadence':
+          case 'CyclingFunctionalThresholdPower':
+          case 'EnvironmentalAudioExposure':
+          case 'HeadphoneAudioExposure':
+          case 'AppleMoveTime':
+          case 'AppleExerciseTime':
+          case 'AppleStandTime':
+            value = record.value;
+            recordDate = getDateString(record.startTime || record.time);
+            break;
+          case 'DietaryFatTotal':
+          case 'DietaryProtein':
+          case 'DietarySodium':
+            value = record.value;
+            recordDate = getDateString(record.startTime);
+            break;
           case 'Workout':
             if (record.startTime && record.endTime) {
               // HKWorkoutActivityType Mapping

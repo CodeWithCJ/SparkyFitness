@@ -586,7 +586,74 @@ export const transformHealthRecords = (records, metricConfig) => {
           case 'SexualActivity':
             addLog(`[HealthConnectService] Skipping qualitative ${recordType} record`);
             return;
-
+          case 'CyclingPedalingCadence':
+            if (record.startTime && record.samples) {
+              record.samples.forEach(sample => {
+                transformedData.push({
+                  value: sample.revolutionsPerMinute,
+                  type: outputType,
+                  date: record.startTime.split('T')[0],
+                  unit: unit,
+                });
+              });
+            }
+            return;
+          case 'ExerciseRoute':
+            if (record.route) {
+              value = record.route;
+              recordDate = record.startTime.split('T')[0];
+            }
+            break;
+          case 'IntermenstrualBleeding':
+            if (record.time) {
+              value = 1;
+              recordDate = record.time.split('T')[0];
+            }
+            break;
+          case 'MenstruationPeriod':
+            if (record.startTime && record.endTime) {
+              const start = new Date(record.startTime);
+              const end = new Date(record.endTime);
+              for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+                transformedData.push({
+                  value: 1,
+                  type: outputType,
+                  date: new Date(d).toISOString().split('T')[0],
+                  unit: unit,
+                });
+              }
+            }
+            return;
+          case 'StepsCadence':
+            if (record.startTime && record.samples) {
+              record.samples.forEach(sample => {
+                transformedData.push({
+                  value: sample.rate,
+                  type: outputType,
+                  date: record.startTime.split('T')[0],
+                  unit: unit,
+                });
+              });
+            }
+            return;
+          case 'HeartRateVariabilityRmssd':
+            if (record.time && record.heartRateVariabilityMillis) {
+              value = record.heartRateVariabilityMillis;
+              recordDate = record.time.split('T')[0];
+            }
+            break;
+          case 'BloodAlcoholContent':
+            if (record.time && record.percentage) {
+              value = record.percentage.inPercent;
+              recordDate = record.time.split('T')[0];
+            }
+            break;
+          case 'BloodOxygenSaturation':
+            if (record.time && record.percentage) {
+              value = record.percentage.inPercent;
+              recordDate = record.time.split('T')[0];
+            }
+            break;
           default:
             addLog(`[HealthConnectService] Unhandled record type in transformation: ${recordType}`, 'warn', 'WARNING');
             return;
