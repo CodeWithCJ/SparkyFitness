@@ -71,6 +71,7 @@ services:
     restart: always
     depends_on:
       - sparkyfitness-server
+      - sparkyfitness-garmin
 
   sparkyfitness-garmin:
     build:
