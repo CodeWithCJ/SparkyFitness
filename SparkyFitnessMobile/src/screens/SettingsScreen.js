@@ -283,13 +283,6 @@ const SettingsScreen = ({ navigation }) => {
             checkServerConnection={checkServerConnection}
           />
 
-          <HealthDataSync
-            healthMetricStates={healthMetricStates}
-            handleToggleHealthMetric={handleToggleHealthMetric}
-            isAllMetricsEnabled={isAllMetricsEnabled}
-            handleToggleAllMetrics={handleToggleAllMetrics}
-          />
-
           <SyncFrequency
             syncDuration={syncDuration}
             setSyncDuration={setSyncDuration}
@@ -302,6 +295,13 @@ const SettingsScreen = ({ navigation }) => {
           <AppearanceSettings
             appTheme={appTheme}
             setAppTheme={setAppTheme}
+          />
+
+          <HealthDataSync
+            healthMetricStates={healthMetricStates}
+            handleToggleHealthMetric={handleToggleHealthMetric}
+            isAllMetricsEnabled={isAllMetricsEnabled}
+            handleToggleAllMetrics={handleToggleAllMetrics}
           />
 
           <View style={styles.footer}>

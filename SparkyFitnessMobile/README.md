@@ -4,7 +4,7 @@ Sparky Fitness Mobile is a React Native application built with Expo, designed to
 ## Development
 
 ```bash
-npx expo prebuild -c
+npx expo prebuild
 npx expo run:android
 npx expo run:ios
 
