@@ -85,8 +85,15 @@ async function getMostRecentJob(userId) {
   }
 }
 
+// Allowlist of fields that can be dynamically updated in updateJobStatus
+const ALLOWED_UPDATE_FIELDS = ['error_message', 'started_at', 'completed_at'];
+
 /**
- * Update job status
+ * Update job status with optional additional fields
+ * @param {string} userId - User ID
+ * @param {string} jobId - Job ID
+ * @param {string} status - New status
+ * @param {Object} additionalFields - Additional fields to update (must be in allowlist)
  */
 async function updateJobStatus(userId, jobId, status, additionalFields = {}) {
   const client = await getClient(userId);
@@ -104,6 +111,11 @@ async function updateJobStatus(userId, jobId, status, additionalFields = {}) {
     }
 
     for (const [key, value] of Object.entries(additionalFields)) {
+      // Validate field name against allowlist to prevent SQL injection
+      if (!ALLOWED_UPDATE_FIELDS.includes(key)) {
+        log('warn', `Attempted to update non-allowed field: ${key}`);
+        continue;
+      }
       updates.push(`${key} = $${paramIndex}`);
       values.push(value);
       paramIndex++;
@@ -124,6 +136,9 @@ async function updateJobStatus(userId, jobId, status, additionalFields = {}) {
 
 /**
  * Update job progress after processing a chunk
+ * @param {string} userId - User ID
+ * @param {string} jobId - Job ID
+ * @param {Object} progressData - Progress data including current_stage
  */
 async function updateJobProgress(userId, jobId, progressData) {
   const client = await getClient(userId);
@@ -132,7 +147,8 @@ async function updateJobProgress(userId, jobId, progressData) {
       current_chunk_start,
       current_chunk_end,
       chunks_completed,
-      last_successful_date
+      last_successful_date,
+      current_stage
     } = progressData;
 
     const result = await client.query(
@@ -141,13 +157,35 @@ async function updateJobProgress(userId, jobId, progressData) {
          current_chunk_end = $4,
          chunks_completed = $5,
          last_successful_date = $6,
+         current_stage = $7,
          updated_at = NOW()
        WHERE id = $1 AND user_id = $2
        RETURNING *`,
-      [jobId, userId, current_chunk_start, current_chunk_end, chunks_completed, last_successful_date]
+      [jobId, userId, current_chunk_start, current_chunk_end, chunks_completed, last_successful_date, current_stage || null]
     );
 
     return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Update just the current stage (lightweight update for frequent status changes)
+ * @param {string} userId - User ID
+ * @param {string} jobId - Job ID
+ * @param {string} stage - Current stage description
+ */
+async function updateJobStage(userId, jobId, stage) {
+  const client = await getClient(userId);
+  try {
+    await client.query(
+      `UPDATE garmin_sync_jobs SET
+         current_stage = $3,
+         updated_at = NOW()
+       WHERE id = $1 AND user_id = $2`,
+      [jobId, userId, stage]
+    );
   } finally {
     client.release();
   }
@@ -175,20 +213,29 @@ async function addFailedChunk(userId, jobId, chunkData) {
 }
 
 /**
- * Get jobs that need to be resumed (paused or running but stale)
+ * Delete old completed/failed/cancelled jobs to prevent table bloat
+ * Keeps jobs from the last 30 days by default
+ * @param {string} userId - User ID
+ * @param {number} retentionDays - Number of days to retain jobs (default: 30)
+ * @returns {Promise<number>} Number of jobs deleted
  */
-async function getResumableJobs(userId) {
+async function cleanupOldJobs(userId, retentionDays = 30) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT * FROM garmin_sync_jobs
+      `DELETE FROM garmin_sync_jobs
        WHERE user_id = $1
-       AND status IN ('paused', 'running')
-       AND updated_at < NOW() - INTERVAL '5 minutes'
-       ORDER BY created_at DESC`,
-      [userId]
+       AND status IN ('completed', 'failed', 'cancelled')
+       AND created_at < NOW() - INTERVAL '1 day' * $2
+       RETURNING id`,
+      [userId, retentionDays]
     );
-    return result.rows;
+
+    if (result.rows.length > 0) {
+      log('info', `Cleaned up ${result.rows.length} old Garmin sync jobs for user ${userId}`);
+    }
+
+    return result.rows.length;
   } finally {
     client.release();
   }
@@ -201,6 +248,7 @@ module.exports = {
   getMostRecentJob,
   updateJobStatus,
   updateJobProgress,
+  updateJobStage,
   addFailedChunk,
-  getResumableJobs
+  cleanupOldJobs
 };

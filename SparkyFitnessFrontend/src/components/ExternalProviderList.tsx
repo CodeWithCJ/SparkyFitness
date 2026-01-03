@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Trash2, Edit, Lock, Share2, RefreshCw, Link2Off, Clipboard, History } from "lucide-react";
+import { Trash2, Edit, Lock, Share2, RefreshCw, Link2Off, Clipboard, History, CheckCircle } from "lucide-react";
 import { ExternalDataProvider } from "./ExternalProviderSettings";
 import GarminSyncProgress from './GarminSyncProgress';
 import { SyncStatus } from '@/services/garminSyncService';
@@ -37,6 +37,7 @@ interface ExternalProviderListProps {
   onCancelSync?: () => void;
   syncLoading?: boolean;
   lastSuccessfulSync?: string | null;
+  syncJustCompleted?: boolean;
 }
 
 const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
@@ -66,6 +67,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
   onCancelSync,
   syncLoading = false,
   lastSuccessfulSync,
+  syncJustCompleted = false,
 }) => {
   return (
     <div className="space-y-4">
@@ -386,6 +388,15 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                           onCancel={onCancelSync || (() => {})}
                           loading={syncLoading}
                         />
+                      )}
+                      {/* Show success message when sync just completed */}
+                      {syncJustCompleted && !garminSyncStatus?.hasActiveJob && (
+                        <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                            Sync completed successfully
+                          </span>
+                        </div>
                       )}
                     </>
                   )}

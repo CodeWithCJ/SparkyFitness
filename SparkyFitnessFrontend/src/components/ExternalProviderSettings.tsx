@@ -56,6 +56,8 @@ const ExternalProviderSettings = () => {
   const [garminSyncStatus, setGarminSyncStatus] = useState<SyncStatus | null>(null);
   const [showHistoricalImport, setShowHistoricalImport] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
+  const [pollTrigger, setPollTrigger] = useState(0); // Increment to restart polling
+  const [syncJustCompleted, setSyncJustCompleted] = useState(false); // Show success briefly
 
   const loadProviders = useCallback(async () => {
     if (!user) return;
@@ -139,14 +141,29 @@ const ExternalProviderSettings = () => {
     }
   }, [user, loadProviders, setDefaultFoodDataProviderId]);
 
+  // Check if user has a Garmin provider configured
+  const hasGarminProvider = providers.some(p => p.provider_type === 'garmin');
+
   // Poll for Garmin sync status
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
+    let errorCount = 0;
+    let wasActive = false;
+    const MAX_ERRORS = 3;
 
     const pollStatus = async () => {
       try {
         const status = await getSyncStatus();
         setGarminSyncStatus(status);
+        errorCount = 0; // Reset error count on success
+
+        // Detect when sync just completed
+        if (wasActive && !status.hasActiveJob) {
+          setSyncJustCompleted(true);
+          // Hide success message after 5 seconds
+          setTimeout(() => setSyncJustCompleted(false), 5000);
+        }
+        wasActive = status.hasActiveJob;
 
         // Stop polling if no active job
         if (!status.hasActiveJob && interval) {
@@ -155,22 +172,30 @@ const ExternalProviderSettings = () => {
           loadProviders(); // Refresh provider list on completion
         }
       } catch (error) {
+        errorCount++;
         console.error('Error polling sync status:', error);
+
+        // Stop polling after too many consecutive errors
+        if (errorCount >= MAX_ERRORS && interval) {
+          console.error('Stopping sync status polling after repeated failures');
+          clearInterval(interval);
+          interval = null;
+        }
       }
     };
 
-    // Initial fetch
-    pollStatus();
-
-    // Start polling if there might be an active job
-    if (providers.some(p => p.provider_type === 'garmin')) {
+    // Only poll if user has Garmin configured
+    if (hasGarminProvider) {
+      // Initial fetch
+      pollStatus();
+      // Start polling interval
       interval = setInterval(pollStatus, 3000);
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [providers.length]);
+  }, [hasGarminProvider, loadProviders, pollTrigger]);
 
   const handleAddProviderSuccess = () => {
     setShowAddForm(false);
@@ -417,6 +442,8 @@ const ExternalProviderSettings = () => {
           title: "Sync Started",
           description: result.message,
         });
+        // Restart polling to pick up the new job
+        setPollTrigger(prev => prev + 1);
       } else if (result.status === 'already_running') {
         toast({
           title: "Sync In Progress",
@@ -448,18 +475,10 @@ const ExternalProviderSettings = () => {
       if (result.status === 'started') {
         toast({
           title: "Historical Import Started",
-          description: `Importing ${result.chunksTotal} chunks (est. ${result.estimatedMinutes} min)`,
+          description: `Importing ${result.chunksTotal} chunks`,
         });
-        // Don't close dialog - let it show progress
-        // Trigger immediate status poll to pick up the new job
-        setTimeout(async () => {
-          try {
-            const status = await getSyncStatus();
-            setGarminSyncStatus(status);
-          } catch (e) {
-            console.error('Error polling after start:', e);
-          }
-        }, 500);
+        // Restart polling to pick up the new job
+        setPollTrigger(prev => prev + 1);
         return true;
       } else if (result.status === 'already_running') {
         toast({
@@ -488,6 +507,8 @@ const ExternalProviderSettings = () => {
     try {
       await resumeSync(garminSyncStatus.job.id);
       toast({ title: "Sync Resumed" });
+      // Restart polling
+      setPollTrigger(prev => prev + 1);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -619,6 +640,7 @@ const ExternalProviderSettings = () => {
                 onCancelSync={handleCancelSync}
                 syncLoading={syncLoading}
                 lastSuccessfulSync={garminSyncStatus?.lastSuccessfulSync}
+                syncJustCompleted={syncJustCompleted}
               />
             </>
           )}

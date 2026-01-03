@@ -10,6 +10,7 @@ export interface SyncJob {
   chunksTotal: number;
   percentComplete: number;
   currentChunkRange: string | null;
+  currentStage: string | null;
   errorMessage: string | null;
   failedChunks: Array<{ start: string; end: string; error: string }>;
   createdAt: string;

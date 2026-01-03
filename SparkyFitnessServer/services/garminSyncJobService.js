@@ -73,15 +73,16 @@ function checkChunkNeedsSync(chunkStart, chunkEnd, existingDates) {
 }
 
 /**
- * Calculate chunks for a date range
+ * Calculate date chunks for processing a date range in smaller batches
+ * @param {string} startDate - Start date (YYYY-MM-DD)
+ * @param {string} endDate - End date (YYYY-MM-DD)
+ * @param {number} chunkSizeDays - Number of days per chunk (default: 7)
+ * @returns {Array<{start: string, end: string}>} Array of chunk date ranges
  */
 function calculateChunks(startDate, endDate, chunkSizeDays = CHUNK_SIZE_DAYS) {
-  console.log('[CHUNKS] Starting with:', startDate, 'to', endDate);
   const chunks = [];
   let currentStart = moment(startDate);
   const end = moment(endDate);
-
-  console.log('[CHUNKS] Parsed dates - currentStart:', currentStart.format('YYYY-MM-DD'), 'end:', end.format('YYYY-MM-DD'));
 
   let iteration = 0;
   const maxIterations = 1000; // Safety limit
@@ -89,7 +90,7 @@ function calculateChunks(startDate, endDate, chunkSizeDays = CHUNK_SIZE_DAYS) {
   while (currentStart.isSameOrBefore(end)) {
     iteration++;
     if (iteration > maxIterations) {
-      console.error('[CHUNKS] ERROR: Exceeded max iterations!');
+      log('error', 'calculateChunks exceeded max iterations - possible infinite loop');
       break;
     }
 
@@ -97,8 +98,6 @@ function calculateChunks(startDate, endDate, chunkSizeDays = CHUNK_SIZE_DAYS) {
       moment(currentStart).add(chunkSizeDays - 1, 'days'),
       end
     );
-
-    console.log('[CHUNKS] Iteration', iteration, '- currentStart:', currentStart.format('YYYY-MM-DD'), 'chunkEnd:', chunkEnd.format('YYYY-MM-DD'));
 
     chunks.push({
       start: currentStart.format('YYYY-MM-DD'),
@@ -109,12 +108,15 @@ function calculateChunks(startDate, endDate, chunkSizeDays = CHUNK_SIZE_DAYS) {
     currentStart = moment(chunkEnd).add(1, 'day');
   }
 
-  console.log('[CHUNKS] Done, total chunks:', chunks.length);
+  log('debug', `Calculated ${chunks.length} chunks for range ${startDate} to ${endDate}`);
   return chunks;
 }
 
 /**
- * Start an incremental sync (from last successful sync to today)
+ * Start an incremental sync from last successful sync date to today
+ * @param {string} userId - User ID
+ * @param {string[]|null} metricTypes - Optional array of metric types to sync
+ * @returns {Promise<{status: string, jobId?: string, message: string, chunksTotal?: number}>}
  */
 async function startIncrementalSync(userId, metricTypes = null) {
   // Check for existing active job
@@ -177,14 +179,18 @@ async function startIncrementalSync(userId, metricTypes = null) {
 
 /**
  * Start a historical sync with custom date range
+ * @param {string} userId - User ID
+ * @param {string} startDate - Start date (YYYY-MM-DD)
+ * @param {string} endDate - End date (YYYY-MM-DD)
+ * @param {string[]|null} metricTypes - Optional array of metric types to sync
+ * @param {boolean} skipExisting - Skip dates that already have data (default: true)
+ * @returns {Promise<{status: string, jobId?: string, chunksTotal?: number, estimatedMinutes?: number, message: string}>}
  */
 async function startHistoricalSync(userId, startDate, endDate, metricTypes = null, skipExisting = true) {
-  console.log('[HISTORICAL_SYNC] startHistoricalSync called');
   // Validate dates
   if (!startDate || !endDate) {
     throw new Error('startDate and endDate are required');
   }
-  console.log('[HISTORICAL_SYNC] Dates validated, skipExisting:', skipExisting);
 
   const start = moment(startDate);
   const end = moment(endDate);
@@ -202,9 +208,7 @@ async function startHistoricalSync(userId, startDate, endDate, metricTypes = nul
   }
 
   // Check for existing active job
-  console.log('[HISTORICAL_SYNC] Checking for active job...');
   const activeJob = await garminSyncJobRepository.getActiveJob(userId);
-  console.log('[HISTORICAL_SYNC] Active job check done:', activeJob ? 'found' : 'none');
   if (activeJob) {
     return {
       status: 'already_running',
@@ -214,26 +218,16 @@ async function startHistoricalSync(userId, startDate, endDate, metricTypes = nul
   }
 
   // Verify Garmin is connected
-  console.log('[HISTORICAL_SYNC] Checking Garmin provider...');
   const provider = await externalProviderRepository.getGarminProvider(userId);
-  console.log('[HISTORICAL_SYNC] Provider check done:', provider ? 'found' : 'none');
   if (!provider) {
     throw new Error('Garmin not connected. Please link your Garmin account first.');
   }
 
-  console.log('[HISTORICAL_SYNC] About to call calculateChunks with:', startDate, 'to', endDate);
-  let chunks;
-  try {
-    chunks = calculateChunks(startDate, endDate);
-    console.log('[HISTORICAL_SYNC] calculateChunks returned:', chunks.length, 'chunks');
-  } catch (chunkErr) {
-    console.error('[HISTORICAL_SYNC] calculateChunks threw error:', chunkErr);
-    throw chunkErr;
-  }
+  const chunks = calculateChunks(startDate, endDate);
   const estimatedMinutes = Math.ceil(chunks.length * 0.5); // ~30 seconds per chunk
-  console.log('[HISTORICAL_SYNC] Chunks calculated:', chunks.length);
 
-  console.log('[HISTORICAL_SYNC] Creating job...');
+  log('info', `Creating historical sync job: ${startDate} to ${endDate}, ${chunks.length} chunks, skipExisting: ${skipExisting}`);
+
   const job = await garminSyncJobRepository.createJob(userId, {
     start_date: startDate,
     end_date: endDate,
@@ -257,7 +251,9 @@ async function startHistoricalSync(userId, startDate, endDate, metricTypes = nul
 }
 
 /**
- * Get current sync status for a user
+ * Get current sync status for a user including active job details
+ * @param {string} userId - User ID
+ * @returns {Promise<{hasActiveJob: boolean, job: Object|null, lastSuccessfulSync: string|null}>}
  */
 async function getJobStatus(userId) {
   const activeJob = await garminSyncJobRepository.getActiveJob(userId);
@@ -294,6 +290,7 @@ async function getJobStatus(userId) {
       chunksTotal: activeJob.chunks_total,
       percentComplete,
       currentChunkRange,
+      currentStage: activeJob.current_stage || null,
       errorMessage: activeJob.error_message,
       failedChunks: activeJob.failed_chunks || [],
       createdAt: activeJob.created_at,
@@ -304,7 +301,11 @@ async function getJobStatus(userId) {
 }
 
 /**
- * Resume a paused or failed job
+ * Resume a paused or failed sync job
+ * @param {string} userId - User ID
+ * @param {string} jobId - Job ID to resume
+ * @returns {Promise<{status: string, jobId: string}>}
+ * @throws {Error} If job not found or cannot be resumed
  */
 async function resumeJob(userId, jobId) {
   const job = await garminSyncJobRepository.getJobById(userId, jobId);
@@ -329,7 +330,11 @@ async function resumeJob(userId, jobId) {
 }
 
 /**
- * Cancel an active job
+ * Cancel an active, pending, or paused sync job
+ * @param {string} userId - User ID
+ * @param {string} jobId - Job ID to cancel
+ * @returns {Promise<{status: string, jobId: string}>}
+ * @throws {Error} If job not found or cannot be cancelled
  */
 async function cancelJob(userId, jobId) {
   const job = await garminSyncJobRepository.getJobById(userId, jobId);
@@ -355,14 +360,19 @@ async function cancelJob(userId, jobId) {
 
 /**
  * Process a sync job (runs in background)
+ * Uses both in-memory tracking and database status to prevent duplicate processing.
+ * The database status is the source of truth for multi-instance scenarios.
+ * @param {string} userId - User ID
+ * @param {string} jobId - Job ID to process
  */
 async function processJob(userId, jobId) {
-  // Prevent duplicate processing
+  // In-memory check for single-instance duplicate prevention (fast path)
   if (activeProcessing.has(jobId)) {
-    log('info', `Job ${jobId} is already being processed`);
+    log('info', `Job ${jobId} is already being processed in this instance`);
     return;
   }
 
+  // Mark as processing before any async operations
   activeProcessing.set(jobId, true);
 
   try {
@@ -372,12 +382,18 @@ async function processJob(userId, jobId) {
       return;
     }
 
+    // Database-level check: if already running, another process has it
+    if (job.status === 'running') {
+      log('info', `Job ${jobId} is already running (possibly in another instance)`);
+      return;
+    }
+
     if (job.status === 'cancelled' || job.status === 'completed') {
       log('info', `Job ${jobId} is ${job.status}, skipping`);
       return;
     }
 
-    // Mark as running
+    // Mark as running in database (acts as a distributed lock)
     await garminSyncJobRepository.updateJobStatus(userId, jobId, 'running');
 
     // Calculate remaining chunks
@@ -414,6 +430,7 @@ async function processJob(userId, jobId) {
       try {
         // Check which days in this chunk need syncing (skip_existing mode)
         if (skipExisting) {
+          await garminSyncJobRepository.updateJobStage(userId, jobId, 'Checking existing data...');
           const { needsSync, missingDates } = checkChunkNeedsSync(chunk.start, chunk.end, existingDates);
           if (!needsSync) {
             log('info', `Job ${jobId}: Chunk ${chunkNum} skipped (all days have data: ${chunk.start} to ${chunk.end})`);
@@ -422,7 +439,8 @@ async function processJob(userId, jobId) {
               current_chunk_start: chunk.start,
               current_chunk_end: chunk.end,
               chunks_completed: job.chunks_completed + i + 1,
-              last_successful_date: chunk.end
+              last_successful_date: chunk.end,
+              current_stage: 'Skipped (data exists)'
             });
             continue;
           }
@@ -434,13 +452,15 @@ async function processJob(userId, jobId) {
           current_chunk_start: chunk.start,
           current_chunk_end: chunk.end,
           chunks_completed: job.chunks_completed + i,
-          last_successful_date: job.last_successful_date
+          last_successful_date: job.last_successful_date,
+          current_stage: 'Starting chunk...'
         });
 
         // Sync this chunk
         log('info', `Job ${jobId}: Processing chunk ${chunkNum} - ${chunk.start} to ${chunk.end}`);
 
         // Fetch health and wellness data
+        await garminSyncJobRepository.updateJobStage(userId, jobId, 'Fetching health data...');
         const healthData = await garminConnectService.syncGarminHealthAndWellness(
           userId,
           chunk.start,
@@ -450,6 +470,7 @@ async function processJob(userId, jobId) {
 
         // Process the data
         if (healthData && healthData.data) {
+          await garminSyncJobRepository.updateJobStage(userId, jobId, 'Processing health data...');
           await garminService.processGarminHealthAndWellnessData(
             userId,
             userId,
@@ -460,6 +481,7 @@ async function processJob(userId, jobId) {
 
           // Process sleep data if present
           if (healthData.data.sleep && healthData.data.sleep.length > 0) {
+            await garminSyncJobRepository.updateJobStage(userId, jobId, `Processing ${healthData.data.sleep.length} sleep entries...`);
             await garminService.processGarminSleepData(
               userId,
               userId,
@@ -471,6 +493,7 @@ async function processJob(userId, jobId) {
         }
 
         // Fetch activities
+        await garminSyncJobRepository.updateJobStage(userId, jobId, 'Fetching activities...');
         const activityData = await garminConnectService.fetchGarminActivitiesAndWorkouts(
           userId,
           chunk.start,
@@ -479,6 +502,8 @@ async function processJob(userId, jobId) {
         );
 
         if (activityData) {
+          const activityCount = activityData.activities?.length || 0;
+          await garminSyncJobRepository.updateJobStage(userId, jobId, `Processing ${activityCount} activities...`);
           await garminService.processActivitiesAndWorkouts(
             userId,
             activityData,
@@ -492,7 +517,8 @@ async function processJob(userId, jobId) {
           current_chunk_start: chunk.start,
           current_chunk_end: chunk.end,
           chunks_completed: job.chunks_completed + i + 1,
-          last_successful_date: chunk.end
+          last_successful_date: chunk.end,
+          current_stage: 'Chunk complete'
         });
 
         log('info', `Job ${jobId}: Completed chunk ${chunk.start} to ${chunk.end}`);
@@ -517,6 +543,11 @@ async function processJob(userId, jobId) {
 
     // Update provider's last successful sync date
     await externalProviderRepository.updateLastSyncDate(userId, 'garmin', job.end_date);
+
+    // Clean up old jobs (runs async, doesn't block completion)
+    garminSyncJobRepository.cleanupOldJobs(userId).catch(err => {
+      log('warn', `Failed to cleanup old jobs: ${err.message}`);
+    });
 
     log('info', `Job ${jobId} completed successfully`);
 

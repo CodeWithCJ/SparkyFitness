@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download } from "lucide-react";
+import { Download, ChevronDown, ChevronUp } from "lucide-react";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { debug, info, warn, error } from "@/utils/logging";
@@ -167,6 +167,7 @@ const ReportsTables = ({
   const [setTypeFilter, setSetTypeFilter] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [expandedJsonRows, setExpandedJsonRows] = useState<Record<string, boolean>>({});
 
   info(loggingLevel, 'ReportsTables: Rendering component.');
 
@@ -598,12 +599,56 @@ const ReportsTables = ({
                       const minutes = timestamp.getMinutes();
                       const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 
-                      // Convert kg values to user's preferred weight unit
-                      const displayValue = typeof measurement.value === 'number'
-                        ? (category.measurement_type === 'kg'
+                      // Check if this is JSON data
+                      const isJsonType = category.measurement_type?.toLowerCase() === 'json';
+                      const valueStr = String(measurement.value);
+                      const isLongValue = valueStr.length > 100;
+                      const rowKey = `${category.id}-${index}`;
+                      const isExpanded = expandedJsonRows[rowKey];
+
+                      // For JSON types, try to parse and show data point count
+                      let displayValue: React.ReactNode;
+                      if (isJsonType || (isLongValue && valueStr.startsWith('['))) {
+                        try {
+                          const parsed = JSON.parse(valueStr);
+                          const dataPointCount = Array.isArray(parsed) ? parsed.length : 1;
+                          displayValue = (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">
+                                  {t('reportsTables.dataPoints', '{{count}} data points', { count: dataPointCount })}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2"
+                                  onClick={() => setExpandedJsonRows(prev => ({ ...prev, [rowKey]: !prev[rowKey] }))}
+                                >
+                                  {isExpanded ? (
+                                    <><ChevronUp className="h-3 w-3 mr-1" />{t('reportsTables.hide', 'Hide')}</>
+                                  ) : (
+                                    <><ChevronDown className="h-3 w-3 mr-1" />{t('reportsTables.show', 'Show')}</>
+                                  )}
+                                </Button>
+                              </div>
+                              {isExpanded && (
+                                <pre className="text-xs bg-muted p-2 rounded max-h-48 overflow-auto whitespace-pre-wrap break-all">
+                                  {JSON.stringify(parsed, null, 2)}
+                                </pre>
+                              )}
+                            </div>
+                          );
+                        } catch {
+                          // If JSON parsing fails, show truncated value
+                          displayValue = isLongValue ? `${valueStr.substring(0, 50)}...` : valueStr;
+                        }
+                      } else if (typeof measurement.value === 'number') {
+                        displayValue = category.measurement_type === 'kg'
                           ? convertWeight(measurement.value, 'kg', weightUnit).toFixed(2)
-                          : measurement.value.toFixed(2))
-                        : String(measurement.value);
+                          : measurement.value.toFixed(2);
+                      } else {
+                        displayValue = valueStr;
+                      }
 
                       return (
                         <TableRow key={index}>

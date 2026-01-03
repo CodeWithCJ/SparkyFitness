@@ -3,23 +3,21 @@
 /**
  * Garmin Historical Import CLI Script
  *
+ * This is a convenience wrapper around the garminSyncJobService for command-line usage.
+ * All sync logic is handled by the service - this script just provides CLI access.
+ *
  * Usage:
- *   node scripts/garmin-historical-import.js --user-id=<uuid> --start=YYYY-MM-DD --end=YYYY-MM-DD [--chunk-days=30]
+ *   node scripts/garmin-historical-import.js --user-id=<uuid> --start=YYYY-MM-DD --end=YYYY-MM-DD [--skip-existing=true]
  *
  * Example:
  *   node scripts/garmin-historical-import.js --user-id=8b9b60d7-d248-4a47-ba1b-e4f08be03b6b --start=2020-01-01 --end=2026-01-03
- *
- * Run with increased memory if needed:
- *   NODE_OPTIONS="--max-old-space-size=4096" node scripts/garmin-historical-import.js ...
  */
 
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
 const moment = require('moment');
-const garminConnectService = require('../integrations/garminconnect/garminConnectService');
-const garminService = require('../services/garminService');
-const externalProviderRepository = require('../models/externalProviderRepository');
-const { getClient } = require('../db/poolManager');
+const garminSyncJobService = require('../services/garminSyncJobService');
+const garminSyncJobRepository = require('../models/garminSyncJobRepository');
 
 // Parse command line arguments
 function parseArgs() {
@@ -31,27 +29,6 @@ function parseArgs() {
     }
   });
   return args;
-}
-
-// Calculate chunks for a date range
-function calculateChunks(startDate, endDate, chunkSizeDays = 30) {
-  const chunks = [];
-  let currentStart = moment(startDate);
-  const end = moment(endDate);
-
-  while (currentStart.isSameOrBefore(end)) {
-    const chunkEnd = moment.min(
-      moment(currentStart).add(chunkSizeDays - 1, 'days'),
-      end
-    );
-    chunks.push({
-      start: currentStart.format('YYYY-MM-DD'),
-      end: chunkEnd.format('YYYY-MM-DD')
-    });
-    currentStart = chunkEnd.add(1, 'day');
-  }
-
-  return chunks;
 }
 
 // Format duration in human readable format
@@ -82,7 +59,7 @@ async function main() {
   // Validate arguments
   if (!args['user-id']) {
     console.error('Error: --user-id is required');
-    console.error('Usage: node scripts/garmin-historical-import.js --user-id=<uuid> --start=YYYY-MM-DD --end=YYYY-MM-DD');
+    console.error('Usage: node scripts/garmin-historical-import.js --user-id=<uuid> --start=YYYY-MM-DD --end=YYYY-MM-DD [--skip-existing=true]');
     process.exit(1);
   }
 
@@ -94,7 +71,7 @@ async function main() {
   const userId = args['user-id'];
   const startDate = args['start'];
   const endDate = args['end'];
-  const chunkDays = parseInt(args['chunk-days'] || '30', 10);
+  const skipExisting = args['skip-existing'] !== 'false'; // Default to true
 
   // Validate dates
   if (!moment(startDate, 'YYYY-MM-DD', true).isValid()) {
@@ -116,128 +93,85 @@ async function main() {
   console.log('║           GARMIN HISTORICAL DATA IMPORT                    ║');
   console.log('╚════════════════════════════════════════════════════════════╝\n');
 
-  console.log(`User ID:     ${userId}`);
-  console.log(`Date Range:  ${startDate} to ${endDate}`);
-  console.log(`Chunk Size:  ${chunkDays} days\n`);
-
-  // Verify Garmin is connected
-  console.log('Checking Garmin connection...');
-  const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
-
-  if (!provider) {
-    console.error('Error: Garmin not connected for this user. Please link your Garmin account first.');
-    process.exit(1);
-  }
-
-  console.log('✓ Garmin account connected\n');
-
-  // Calculate chunks
-  const chunks = calculateChunks(startDate, endDate, chunkDays);
-  console.log(`Total chunks to process: ${chunks.length}`);
-  console.log(`Estimated time: ${Math.ceil(chunks.length * 0.5)} - ${Math.ceil(chunks.length * 2)} minutes\n`);
+  console.log(`User ID:       ${userId}`);
+  console.log(`Date Range:    ${startDate} to ${endDate}`);
+  console.log(`Skip Existing: ${skipExisting}\n`);
 
   const startTime = Date.now();
-  const failedChunks = [];
-  let successCount = 0;
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    const chunkNum = i + 1;
+  try {
+    // Start the historical sync using the service
+    console.log('Starting historical sync...');
+    const result = await garminSyncJobService.startHistoricalSync(
+      userId,
+      startDate,
+      endDate,
+      null, // All metric types
+      skipExisting
+    );
 
-    // Clear line and show progress
-    process.stdout.write(`\r${progressBar(i, chunks.length)} Chunk ${chunkNum}/${chunks.length}: ${chunk.start} to ${chunk.end}     `);
-
-    try {
-      // Fetch health and wellness data
-      const healthData = await garminConnectService.syncGarminHealthAndWellness(
-        userId,
-        chunk.start,
-        chunk.end,
-        null // All metric types
-      );
-
-      // Process the data
-      if (healthData && healthData.data) {
-        await garminService.processGarminHealthAndWellnessData(
-          userId,
-          userId,
-          healthData.data,
-          chunk.start,
-          chunk.end
-        );
-
-        // Process sleep data if present
-        if (healthData.data.sleep && healthData.data.sleep.length > 0) {
-          await garminService.processGarminSleepData(
-            userId,
-            userId,
-            healthData.data.sleep,
-            chunk.start,
-            chunk.end
-          );
-        }
-      }
-
-      // Fetch activities
-      const activityData = await garminConnectService.fetchGarminActivitiesAndWorkouts(
-        userId,
-        chunk.start,
-        chunk.end,
-        null
-      );
-
-      if (activityData) {
-        await garminService.processActivitiesAndWorkouts(
-          userId,
-          activityData,
-          chunk.start,
-          chunk.end
-        );
-      }
-
-      successCount++;
-
-    } catch (error) {
-      console.log(`\n⚠ Error processing chunk ${chunk.start} to ${chunk.end}: ${error.message}`);
-      failedChunks.push({ ...chunk, error: error.message });
+    if (result.status === 'already_running') {
+      console.log(`\n⚠ A sync job is already in progress (Job ID: ${result.jobId})`);
+      console.log('Please wait for it to complete or cancel it first.');
+      process.exit(1);
     }
 
-    // Small delay to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 500));
-  }
+    console.log(`✓ Sync job created (ID: ${result.jobId})`);
+    console.log(`  Chunks to process: ${result.chunksTotal}\n`);
 
-  // Final progress
-  process.stdout.write(`\r${progressBar(chunks.length, chunks.length)} Complete!                                        \n`);
+    // Poll for status until complete
+    let lastChunksCompleted = 0;
+    while (true) {
+      const status = await garminSyncJobService.getJobStatus(userId);
 
-  const elapsed = Date.now() - startTime;
+      if (!status.hasActiveJob) {
+        // Job finished
+        const job = await garminSyncJobRepository.getMostRecentJob(userId);
+        const elapsed = Date.now() - startTime;
 
-  console.log('\n╔════════════════════════════════════════════════════════════╗');
-  console.log('║                    IMPORT COMPLETE                         ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+        process.stdout.write(`\r${progressBar(job.chunks_total, job.chunks_total)} Complete!                                        \n`);
 
-  console.log(`Total time:      ${formatDuration(elapsed)}`);
-  console.log(`Chunks processed: ${successCount}/${chunks.length}`);
+        console.log('\n╔════════════════════════════════════════════════════════════╗');
+        console.log('║                    IMPORT COMPLETE                         ║');
+        console.log('╚════════════════════════════════════════════════════════════╝\n');
 
-  if (failedChunks.length > 0) {
-    console.log(`\n⚠ Failed chunks (${failedChunks.length}):`);
-    failedChunks.forEach(fc => {
-      console.log(`  - ${fc.start} to ${fc.end}: ${fc.error}`);
-    });
-    console.log('\nTo retry failed chunks, run the script again with the specific date ranges.');
-  } else {
-    console.log('\n✓ All chunks processed successfully!');
-  }
+        console.log(`Total time:       ${formatDuration(elapsed)}`);
+        console.log(`Final status:     ${job.status}`);
+        console.log(`Chunks processed: ${job.chunks_completed}/${job.chunks_total}`);
 
-  // Update last sync date
-  try {
-    await externalProviderRepository.updateLastSyncDate(userId, 'garmin', endDate);
-    console.log(`\n✓ Updated last sync date to ${endDate}`);
+        if (job.failed_chunks && job.failed_chunks.length > 0) {
+          console.log(`\n⚠ Failed chunks (${job.failed_chunks.length}):`);
+          job.failed_chunks.forEach(fc => {
+            console.log(`  - ${fc.start} to ${fc.end}: ${fc.error}`);
+          });
+        } else if (job.status === 'completed') {
+          console.log('\n✓ All chunks processed successfully!');
+        }
+
+        if (job.error_message) {
+          console.log(`\n✗ Error: ${job.error_message}`);
+        }
+
+        console.log('\nDone!\n');
+        process.exit(job.status === 'completed' ? 0 : 1);
+      }
+
+      // Show progress
+      const job = status.job;
+      if (job.chunksCompleted !== lastChunksCompleted) {
+        const range = job.currentChunkRange || `${job.startDate} - ${job.endDate}`;
+        process.stdout.write(`\r${progressBar(job.chunksCompleted, job.chunksTotal)} Chunk ${job.chunksCompleted}/${job.chunksTotal}: ${range}     `);
+        lastChunksCompleted = job.chunksCompleted;
+      }
+
+      // Wait before polling again
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
   } catch (error) {
-    console.log(`\n⚠ Could not update last sync date: ${error.message}`);
+    console.error('\n✗ Error:', error.message);
+    process.exit(1);
   }
-
-  console.log('\nDone!\n');
-  process.exit(failedChunks.length > 0 ? 1 : 0);
 }
 
 // Run the script

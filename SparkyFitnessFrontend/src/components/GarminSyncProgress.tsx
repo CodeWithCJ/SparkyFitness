@@ -11,12 +11,43 @@ interface GarminSyncProgressProps {
   loading?: boolean;
 }
 
+// Stage weights for sub-chunk progress (0.0 to 1.0)
+const STAGE_WEIGHTS: Record<string, number> = {
+  'Checking existing data...': 0.05,
+  'Starting chunk...': 0.1,
+  'Fetching health data...': 0.2,
+  'Processing health data...': 0.4,
+  'Fetching activities...': 0.6,
+  'Skipped (data exists)': 1.0,
+  'Chunk complete': 1.0,
+};
+
+// Get weight for a stage (handles dynamic stages like "Processing X sleep entries...")
+const getStageWeight = (stage: string | null): number => {
+  if (!stage) return 0;
+  if (STAGE_WEIGHTS[stage] !== undefined) return STAGE_WEIGHTS[stage];
+  if (stage.includes('sleep entries')) return 0.5;
+  if (stage.includes('activities...') && stage.includes('Processing')) return 0.8;
+  return 0.5; // Default mid-point for unknown stages
+};
+
 const GarminSyncProgress: React.FC<GarminSyncProgressProps> = ({
   job,
   onResume,
   onCancel,
   loading = false
 }) => {
+  // Calculate more granular progress including current stage
+  const calculateDetailedProgress = (): number => {
+    if (job.chunksTotal === 0) return 0;
+    if (job.status === 'completed') return 100;
+
+    const stageWeight = job.status === 'running' ? getStageWeight(job.currentStage) : 0;
+    const progress = ((job.chunksCompleted + stageWeight) / job.chunksTotal) * 100;
+    return Math.min(Math.round(progress), 99); // Cap at 99% until truly complete
+  };
+
+  const detailedProgress = calculateDetailedProgress();
   const getStatusIcon = () => {
     switch (job.status) {
       case 'running':
@@ -66,11 +97,11 @@ const GarminSyncProgress: React.FC<GarminSyncProgressProps> = ({
           </span>
         </div>
         <span className="text-sm text-muted-foreground">
-          {job.percentComplete}%
+          {detailedProgress}%
         </span>
       </div>
 
-      <Progress value={job.percentComplete} className="h-2" />
+      <Progress value={detailedProgress} className="h-2" />
 
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
@@ -80,6 +111,12 @@ const GarminSyncProgress: React.FC<GarminSyncProgressProps> = ({
           {job.chunksCompleted} / {job.chunksTotal} chunks
         </span>
       </div>
+
+      {job.status === 'running' && job.currentStage && (
+        <div className="text-xs text-muted-foreground">
+          {job.currentStage}
+        </div>
+      )}
 
       {(showResumeButton || showCancelButton) && (
         <div className="flex gap-2 pt-1">
