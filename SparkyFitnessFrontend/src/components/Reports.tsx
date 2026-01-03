@@ -105,11 +105,11 @@ const Reports = () => {
   useEffect(() => {
     debug(loggingLevel, 'Reports: Timezone preference changed or component mounted, initializing/re-initializing default date range.');
     const today = new Date();
-    const twoWeeksAgo = new Date();
-    twoWeeksAgo.setDate(today.getDate() - 14);
-    debug(loggingLevel, 'Reports: Inside date re-initialization useEffect - today:', today, 'twoWeeksAgo:', twoWeeksAgo);
-    debug(loggingLevel, 'Reports: Inside date re-initialization useEffect - formatted today:', formatDateInUserTimezone(today, 'yyyy-MM-dd'), 'formatted twoWeeksAgo:', formatDateInUserTimezone(twoWeeksAgo, 'yyyy-MM-dd'));
-    setStartDate(formatDateInUserTimezone(twoWeeksAgo, 'yyyy-MM-dd'));
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(today.getDate() - 7);
+    debug(loggingLevel, 'Reports: Inside date re-initialization useEffect - today:', today, 'oneWeekAgo:', oneWeekAgo);
+    debug(loggingLevel, 'Reports: Inside date re-initialization useEffect - formatted today:', formatDateInUserTimezone(today, 'yyyy-MM-dd'), 'formatted oneWeekAgo:', formatDateInUserTimezone(oneWeekAgo, 'yyyy-MM-dd'));
+    setStartDate(formatDateInUserTimezone(oneWeekAgo, 'yyyy-MM-dd'));
     setEndDate(formatDateInUserTimezone(today, 'yyyy-MM-dd'));
 
     // Debug logs for new Date() and toISOString() moved here to access loggingLevel

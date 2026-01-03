@@ -64,12 +64,17 @@ async function processGarminHealthAndWellnessData(userId, actingUserId, healthDa
               "JSON"
             );
 
+            // Ensure raw_stress_data is stored as a JSON string, not a PostgreSQL array
+            const stressDataValue = typeof raw_stress_data === 'string'
+              ? raw_stress_data
+              : JSON.stringify(raw_stress_data);
+
             await measurementService.upsertCustomMeasurementEntry(
               userId,
               actingUserId,
               {
                 category_id: customCategory.id,
-                value: raw_stress_data,
+                value: stressDataValue,
                 entry_date: date,
                 notes: `Source: Garmin`,
                 source: 'garmin',
@@ -468,11 +473,59 @@ async function processGarminSleepData(userId, actingUserId, sleepDataArray, star
   const processedResults = [];
   const errors = [];
 
-  // Comprehensive cleanup for Garmin-sourced sleep data for the date range
-  log('info', `[garminService] Performing comprehensive cleanup for Garmin sleep data for user ${userId} from ${startDate} to ${endDate}.`);
-  await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(userId, 'garmin', startDate, endDate);
+  // Get existing sleep entries to check for detailed stage data
+  const existingEntries = await sleepRepository.getSleepEntriesByUserIdAndDateRange(userId, startDate, endDate);
+  const existingDetailedDates = new Set(
+    existingEntries
+      .filter(entry => entry.source === 'garmin' && entry.has_detailed_stages === true)
+      .map(entry => entry.entry_date instanceof Date
+        ? entry.entry_date.toISOString().split('T')[0]
+        : String(entry.entry_date).split('T')[0])
+  );
+
+  log('info', `[garminService] Found ${existingDetailedDates.size} existing entries with detailed stages`);
+
+  // Filter sleep entries: skip synthetic entries if detailed data already exists
+  const entriesToProcess = [];
+  const skippedEntries = [];
 
   for (const sleepEntry of sleepDataArray) {
+    const entryDate = sleepEntry.entry_date instanceof Date
+      ? sleepEntry.entry_date.toISOString().split('T')[0]
+      : String(sleepEntry.entry_date).split('T')[0];
+
+    const hasDetailedExisting = existingDetailedDates.has(entryDate);
+    const isNewSynthetic = sleepEntry.has_detailed_stages === false;
+
+    if (isNewSynthetic && hasDetailedExisting) {
+      // Skip this entry - don't overwrite detailed data with synthetic
+      log('info', `[garminService] Skipping synthetic sleep data for ${entryDate} - detailed data already exists`);
+      skippedEntries.push({ date: entryDate, reason: 'preserved_detailed_stages' });
+    } else {
+      entriesToProcess.push(sleepEntry);
+    }
+  }
+
+  // Only delete entries we're going to re-process
+  if (entriesToProcess.length > 0) {
+    const datesToDelete = entriesToProcess.map(entry => {
+      const d = entry.entry_date instanceof Date
+        ? entry.entry_date.toISOString().split('T')[0]
+        : String(entry.entry_date).split('T')[0];
+      return d;
+    });
+
+    log('info', `[garminService] Processing ${entriesToProcess.length} sleep entries, skipping ${skippedEntries.length} (detailed data preserved)`);
+
+    // Delete only the specific dates we're updating
+    // Also delete Health Connect entries - Garmin has priority (more detailed data)
+    for (const dateToDelete of datesToDelete) {
+      await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(userId, 'garmin', dateToDelete, dateToDelete);
+      await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(userId, 'Health Connect', dateToDelete, dateToDelete);
+    }
+  }
+
+  for (const sleepEntry of entriesToProcess) {
     try {
       const result = await measurementService.processSleepEntry(userId, actingUserId, sleepEntry);
       processedResults.push({ status: 'success', data: result });
@@ -491,7 +544,8 @@ async function processGarminSleepData(userId, actingUserId, sleepDataArray, star
   } else {
     return {
       message: "All Garmin sleep data successfully processed.",
-      processed: processedResults
+      processed: processedResults,
+      skipped: skippedEntries
     };
   }
 }

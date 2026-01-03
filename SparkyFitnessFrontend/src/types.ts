@@ -56,6 +56,7 @@ export interface SleepEntry {
   body_battery_change: number | null;
   resting_heart_rate: number | null;
   stage_events?: SleepStageEvent[];
+  has_detailed_stages?: boolean; // True if detailed stage timing, false if synthetic from summary
 }
 
 export interface SleepStageSummary {
@@ -88,6 +89,7 @@ export interface CombinedSleepData {
 export interface SleepChartData {
   date: string;
   segments: SleepStageEvent[];
+  has_detailed_stages?: boolean; // True if detailed timing data, false if synthetic from summary
 }
 
 export const SLEEP_STAGE_COLORS: { [key: string]: string } = {

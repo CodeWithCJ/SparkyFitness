@@ -6,6 +6,7 @@ import { Activity } from 'lucide-react';
 import { getSpO2Color } from './SpO2Gauge';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
+import ZoomableChart from '../ZoomableChart';
 
 interface SpO2DataPoint {
   date: string;
@@ -76,95 +77,99 @@ const SpO2Card: React.FC<SpO2CardProps> = ({ data }) => {
   const status = t(statusKey, statusDefault);
 
   return (
-    <Card className="w-full h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center text-lg">
-          <Activity className="w-5 h-5 mr-2" />
-          {t('sleepHealth.pulseOx', 'Pulse Ox (SpO2)')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {/* Top: Value and stats */}
-        <div className="flex items-center justify-center gap-6 mb-4">
-          <div className="text-center">
-            <p className="text-4xl font-bold" style={{ color }}>
-              {latestValue}%
-            </p>
-            <p className="text-sm font-medium" style={{ color }}>{status}</p>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <div className="text-center">
-              <p className="text-lg font-bold text-green-500">{stats.avgSpO2}%</p>
-              <p className="text-xs text-muted-foreground">{t('sleepHealth.avgSpO2', 'Average')}</p>
-            </div>
-            {stats.minSpO2 !== null && (
+    <ZoomableChart title={t('sleepHealth.pulseOx', 'Pulse Ox (SpO2)')}>
+      {(isMaximized) => (
+        <Card className="w-full h-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center text-lg">
+              <Activity className="w-5 h-5 mr-2" />
+              {t('sleepHealth.pulseOx', 'Pulse Ox (SpO2)')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Top: Value and stats */}
+            <div className="flex items-center justify-center gap-6 mb-4">
               <div className="text-center">
-                <p className="text-lg font-bold" style={{ color: getSpO2Color(stats.minSpO2) }}>
-                  {stats.minSpO2}%
+                <p className="text-4xl font-bold" style={{ color }}>
+                  {latestValue}%
                 </p>
-                <p className="text-xs text-muted-foreground">{t('sleepHealth.lowestSpO2', 'Lowest')}</p>
+                <p className="text-sm font-medium" style={{ color }}>{status}</p>
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* Chart */}
-        <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} barCategoryGap="20%">
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis
-                dataKey="displayDate"
-                fontSize={10}
-                tickLine={false}
-                stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
-              />
-              <YAxis
-                domain={[80, 100]}
-                fontSize={10}
-                tickLine={false}
-                axisLine={false}
-                stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                tickFormatter={(value) => `${value}%`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--background))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px',
-                  color: 'hsl(var(--foreground))'
-                }}
-                formatter={(value: number) => [`${value}%`]}
-              />
-              <Bar dataKey="average" radius={[4, 4, 0, 0]}>
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={getSpO2Color(entry.average || 0)} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+              <div className="flex flex-col gap-2">
+                <div className="text-center">
+                  <p className="text-lg font-bold text-green-500">{stats.avgSpO2}%</p>
+                  <p className="text-xs text-muted-foreground">{t('sleepHealth.avgSpO2', 'Average')}</p>
+                </div>
+                {stats.minSpO2 !== null && (
+                  <div className="text-center">
+                    <p className="text-lg font-bold" style={{ color: getSpO2Color(stats.minSpO2) }}>
+                      {stats.minSpO2}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t('sleepHealth.lowestSpO2', 'Lowest')}</p>
+                  </div>
+                )}
+              </div>
+            </div>
 
-        {/* Legend */}
-        <div className="flex justify-center gap-3 mt-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#22c55e' }} />
-            <span>≥90%</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#eab308' }} />
-            <span>80-89%</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ef4444' }} />
-            <span>&lt;80%</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+            {/* Chart */}
+            <div className={isMaximized ? "h-[calc(95vh-250px)]" : "h-32"}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} barCategoryGap="20%">
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="displayDate"
+                    fontSize={10}
+                    tickLine={false}
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis
+                    domain={[80, 100]}
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(value) => `${value}%`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                      color: 'hsl(var(--foreground))'
+                    }}
+                    formatter={(value: number) => [`${value}%`]}
+                  />
+                  <Bar dataKey="average" radius={[4, 4, 0, 0]}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={getSpO2Color(entry.average || 0)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Legend */}
+            <div className="flex justify-center gap-3 mt-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#22c55e' }} />
+                <span>≥90%</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#eab308' }} />
+                <span>80-89%</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ef4444' }} />
+                <span>&lt;80%</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </ZoomableChart>
   );
 };
 

@@ -392,6 +392,44 @@ async function deleteExternalDataProvider(id, userId) {
   }
 }
 
+/**
+ * Get Garmin provider for a user
+ */
+async function getGarminProvider(userId) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT * FROM external_data_providers
+       WHERE user_id = $1 AND provider_type = 'garmin' AND is_active = true
+       LIMIT 1`,
+      [userId]
+    );
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Update last successful sync date for a provider (only if new date is later)
+ */
+async function updateLastSyncDate(userId, providerType, syncDate) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `UPDATE external_data_providers
+       SET last_successful_sync_date = $3, updated_at = NOW()
+       WHERE user_id = $1 AND provider_type = $2
+         AND (last_successful_sync_date IS NULL OR last_successful_sync_date < $3)
+       RETURNING *`,
+      [userId, providerType, syncDate]
+    );
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   getExternalDataProviders,
   getExternalDataProvidersByUserId, // now accepts (viewerUserId, targetUserId)
@@ -403,6 +441,8 @@ module.exports = {
   getExternalDataProviderByUserIdAndProviderName,
   updateProviderLastSync, // Add the new function to exports
   getProvidersByType, // Add the new function to exports
+  getGarminProvider,
+  updateLastSyncDate,
 };
 
 async function updateProviderLastSync(providerId, lastSyncAt) {

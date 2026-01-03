@@ -162,13 +162,18 @@ async function fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, acti
         const decryptedGarthDump = provider.garth_dump;
         log('debug', `fetchGarminActivitiesAndWorkouts: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
         
-        const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`, {
+        const payload = {
             user_id: userId,
             tokens: decryptedGarthDump,
             start_date: startDate,
-            end_date: endDate,
-            activity_type: activityType
-        }, {
+            end_date: endDate
+        };
+        // Only include activity_type if it's a non-null string
+        if (activityType) {
+            payload.activity_type = activityType;
+        }
+
+        const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`, payload, {
             timeout: 120000 // 2 minutes timeout
         });
 

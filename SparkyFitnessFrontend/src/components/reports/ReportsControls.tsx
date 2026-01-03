@@ -11,7 +11,8 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { debug, info, warn, error } from "@/utils/logging";
-import { format, parseISO } from 'date-fns'; // Import format and parseISO from date-fns
+import { format, parseISO, subDays, subMonths, subYears } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 
 
@@ -28,8 +29,30 @@ const ReportsControls = ({
   onStartDateChange,
   onEndDateChange,
 }: ReportsControlsProps) => {
+  const { t } = useTranslation();
   const { formatDate, parseDateInUserTimezone, formatDateInUserTimezone, loggingLevel } = usePreferences();
   info(loggingLevel, 'ReportsControls: Rendering component.');
+
+  const handlePresetClick = (preset: 'week' | 'month' | 'year') => {
+    const today = new Date();
+    let newStartDate: Date;
+
+    switch (preset) {
+      case 'week':
+        newStartDate = subDays(today, 7);
+        break;
+      case 'month':
+        newStartDate = subMonths(today, 1);
+        break;
+      case 'year':
+        newStartDate = subYears(today, 1);
+        break;
+    }
+
+    debug(loggingLevel, `ReportsControls: Preset '${preset}' selected, setting date range.`);
+    onStartDateChange(formatDateInUserTimezone(newStartDate, 'yyyy-MM-dd'));
+    onEndDateChange(formatDateInUserTimezone(today, 'yyyy-MM-dd'));
+  };
 
   const handleStartDateSelect = (newDate: Date | undefined) => {
     if (newDate) {
@@ -84,7 +107,33 @@ const ReportsControls = ({
     <Card>
       <CardContent className="p-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-          <div />
+          {/* Date Preset Buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePresetClick('week')}
+              className="text-sm"
+            >
+              {t('reports.pastWeek', 'Past Week')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePresetClick('month')}
+              className="text-sm"
+            >
+              {t('reports.pastMonth', 'Past Month')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePresetClick('year')}
+              className="text-sm"
+            >
+              {t('reports.pastYear', 'Past Year')}
+            </Button>
+          </div>
 
           {/* Date Range Controls */}
           <div className="flex flex-col md:flex-row md:items-center gap-4">
