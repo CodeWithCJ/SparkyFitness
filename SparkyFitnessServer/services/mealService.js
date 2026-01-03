@@ -409,6 +409,8 @@ async function createMealFromDiaryEntries(userId, date, mealType, mealName, desc
       name: mealName || defaultMealName,
       description: description,
       is_public: isPublic,
+      serving_size: 1.0,
+      serving_unit: 'serving',
       foods: mealFoods,
     };
 
