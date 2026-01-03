@@ -5,6 +5,7 @@ import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveCo
 import { Activity } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
+import ZoomableChart from '../ZoomableChart';
 
 interface HRVDataPoint {
   date: string;
@@ -100,90 +101,94 @@ const HRVCard: React.FC<HRVCardProps> = ({ data }) => {
   const yMax = Math.ceil(maxHRV + 10);
 
   return (
-    <Card className="w-full h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center text-lg">
-          <Activity className="w-5 h-5 mr-2" />
-          {t('sleepHealth.hrvStatus', 'HRV Status')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {/* Top: Value and stats */}
-        <div className="flex items-center justify-center gap-6 mb-4">
-          <div className="text-center">
-            <p className="text-4xl font-bold" style={{ color }}>
-              {Math.round(latestHRV)}
-            </p>
-            <p className="text-xs text-muted-foreground">ms</p>
-            <p className="text-sm font-medium" style={{ color }}>{status}</p>
-          </div>
+    <ZoomableChart title={t('sleepHealth.hrvStatus', 'HRV Status')}>
+      {(isMaximized) => (
+        <Card className="w-full h-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center text-lg">
+              <Activity className="w-5 h-5 mr-2" />
+              {t('sleepHealth.hrvStatus', 'HRV Status')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Top: Value and stats */}
+            <div className="flex items-center justify-center gap-6 mb-4">
+              <div className="text-center">
+                <p className="text-4xl font-bold" style={{ color }}>
+                  {Math.round(latestHRV)}
+                </p>
+                <p className="text-xs text-muted-foreground">ms</p>
+                <p className="text-sm font-medium" style={{ color }}>{status}</p>
+              </div>
 
-          <div className="flex flex-col gap-2">
-            <div className="text-center">
-              <p className="text-lg font-bold text-blue-500">{stats?.avg}</p>
-              <p className="text-xs text-muted-foreground">{t('sleepHealth.avgHRV', 'Avg')}</p>
+              <div className="flex flex-col gap-2">
+                <div className="text-center">
+                  <p className="text-lg font-bold text-blue-500">{stats?.avg}</p>
+                  <p className="text-xs text-muted-foreground">{t('sleepHealth.avgHRV', 'Avg')}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-gray-500">
+                    {Math.round(baseline.low)}-{Math.round(baseline.high)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{t('sleepHealth.baseline', 'Baseline')}</p>
+                </div>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-gray-500">
-                {Math.round(baseline.low)}-{Math.round(baseline.high)}
-              </p>
-              <p className="text-xs text-muted-foreground">{t('sleepHealth.baseline', 'Baseline')}</p>
+
+            {/* Chart */}
+            <div className={isMaximized ? "h-[calc(95vh-250px)]" : "h-32"}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={transformedData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="displayDate"
+                    fontSize={10}
+                    tickLine={false}
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis
+                    domain={[yMin, yMax]}
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                      color: 'hsl(var(--foreground))'
+                    }}
+                    formatter={(value: number) => [`${value?.toFixed(0)} ms`]}
+                  />
+                  <ReferenceArea
+                    y1={baseline.low}
+                    y2={baseline.high}
+                    fill="hsl(var(--muted))"
+                    fillOpacity={0.5}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="hrv"
+                    stroke="#22c55e"
+                    strokeWidth={2}
+                    dot={{ fill: '#22c55e', strokeWidth: 2, r: 3 }}
+                    connectNulls
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-        </div>
 
-        {/* Chart */}
-        <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={transformedData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis
-                dataKey="displayDate"
-                fontSize={10}
-                tickLine={false}
-                stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
-              />
-              <YAxis
-                domain={[yMin, yMax]}
-                fontSize={10}
-                tickLine={false}
-                axisLine={false}
-                stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--background))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px',
-                  color: 'hsl(var(--foreground))'
-                }}
-                formatter={(value: number) => [`${value?.toFixed(0)} ms`]}
-              />
-              <ReferenceArea
-                y1={baseline.low}
-                y2={baseline.high}
-                fill="hsl(var(--muted))"
-                fillOpacity={0.5}
-              />
-              <Line
-                type="monotone"
-                dataKey="hrv"
-                stroke="#22c55e"
-                strokeWidth={2}
-                dot={{ fill: '#22c55e', strokeWidth: 2, r: 3 }}
-                connectNulls
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="text-center mt-2 text-xs text-muted-foreground">
-          {t('sleepHealth.hrvDisclaimer', '*Baseline from your data (mean ± std dev)')}
-        </div>
-      </CardContent>
-    </Card>
+            <div className="text-center mt-2 text-xs text-muted-foreground">
+              {t('sleepHealth.hrvDisclaimer', '*Baseline from your data (mean ± std dev)')}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </ZoomableChart>
   );
 };
 

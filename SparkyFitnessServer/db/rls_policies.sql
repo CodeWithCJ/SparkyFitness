@@ -62,7 +62,8 @@ BEGIN
     'sleep_entries',
     'sleep_entry_stages',
     'fasting_logs',
-        'user_custom_nutrients'
+        'user_custom_nutrients',
+        'garmin_sync_jobs'
       ]::text[]) AS table_name;
     END $$;
 
@@ -294,3 +295,4 @@ WITH CHECK (EXISTS (SELECT 1 FROM public.workout_presets wp WHERE wp.id = workou
 
 SELECT create_owner_policy('user_ignored_updates');
 SELECT create_owner_policy('fasting_logs');
+SELECT create_owner_policy('garmin_sync_jobs');

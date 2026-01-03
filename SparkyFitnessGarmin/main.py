@@ -471,11 +471,13 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                 "avg_overnight_hrv": sleep_data_raw.get("avgOvernightHrv"),
                                 "body_battery_change": sleep_data_raw.get("bodyBatteryChange"),
                                 "resting_heart_rate": sleep_data_raw.get("restingHeartRate"),
-                                "stage_events": [] # This will be populated below
+                                "stage_events": [], # This will be populated below
+                                "has_detailed_stages": True  # Will be set to False if using synthetic stages
                             }
 
                             # Process Sleep Levels (Stages) - only sum if dailySleepDTO didn't have the values
                             sleep_levels_intraday = sleep_data_raw.get("sleepLevels")
+                            logger.info(f"[GARMIN_SYNC] sleepLevels for {current_date}: {len(sleep_levels_intraday) if sleep_levels_intraday else 'None'}")
                             needs_stage_sum = (deep_sleep == 0 and light_sleep == 0 and rem_sleep == 0)
 
                             if sleep_levels_intraday:
@@ -511,6 +513,34 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                                 sleep_entry_data["rem_sleep_seconds"] += duration_in_seconds_stage
                                             elif stage_type == 'awake':
                                                 sleep_entry_data["awake_sleep_seconds"] += duration_in_seconds_stage
+                            else:
+                                # Fallback: Create synthetic stage events from summary durations
+                                # This allows hypnogram charts to at least show sleep stage proportions
+                                # when detailed intraday data is not available (common for historical data)
+                                logger.info(f"[GARMIN_SYNC] No sleepLevels for {current_date}, creating synthetic stages from summary")
+                                sleep_entry_data["has_detailed_stages"] = False  # Mark as synthetic data
+                                current_time = bedtime_dt
+
+                                # Order: deep -> light -> rem -> awake (typical sleep cycle order)
+                                stages_to_create = [
+                                    ('deep', deep_sleep),
+                                    ('light', light_sleep),
+                                    ('rem', rem_sleep),
+                                    ('awake', awake_sleep)
+                                ]
+
+                                for stage_type, stage_seconds in stages_to_create:
+                                    if stage_seconds and stage_seconds > 0:
+                                        end_time = current_time + timedelta(seconds=stage_seconds)
+                                        sleep_entry_data["stage_events"].append({
+                                            "stage_type": stage_type,
+                                            "start_time": current_time.isoformat(),
+                                            "end_time": end_time.isoformat(),
+                                            "duration_in_seconds": stage_seconds
+                                        })
+                                        current_time = end_time
+
+                                logger.info(f"[GARMIN_SYNC] Created {len(sleep_entry_data['stage_events'])} synthetic stage events")
 
                             # Calculate total time_asleep_in_seconds
                             sleep_entry_data["time_asleep_in_seconds"] = (

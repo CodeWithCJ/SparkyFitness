@@ -6,6 +6,7 @@ import { SleepChartData, SLEEP_STAGE_COLORS } from '@/types';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import ZoomableChart from '../ZoomableChart';
 import { useTheme } from '@/contexts/ThemeContext';
+import SleepStagePieChart from './SleepStagePieChart';
 
 interface SleepStageChartProps {
   sleepChartData: SleepChartData;
@@ -48,6 +49,11 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
         </CardContent>
       </Card>
     );
+  }
+
+  // If we don't have detailed stage timing, show a pie chart instead of the hypnogram
+  if (sleepChartData.has_detailed_stages === false) {
+    return <SleepStagePieChart sleepChartData={sleepChartData} />;
   }
 
   const sortedSegments = sleepChartData.segments
@@ -220,6 +226,20 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
             <CardTitle>{t("sleepReport.sleepHypnogram", "Sleep Hypnogram")} - {formatDateInUserTimezone(sleepChartData.date, dateFormat)}</CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Total Sleep Time (excluding awake) */}
+            {(() => {
+              const totalSleepSeconds = sortedSegments
+                .filter(s => s.stage_type !== 'awake')
+                .reduce((acc, s) => acc + (new Date(s.end_time).getTime() - new Date(s.start_time).getTime()) / 1000, 0);
+              const totalHours = Math.floor(totalSleepSeconds / 3600);
+              const totalMinutes = Math.floor((totalSleepSeconds % 3600) / 60);
+              return (
+                <div className="text-center mb-4">
+                  <p className="text-3xl font-bold text-primary">{totalHours}h {totalMinutes}m</p>
+                  <p className="text-sm text-muted-foreground">{t('sleepReport.totalSleepTime', 'Total Sleep Time')}</p>
+                </div>
+              );
+            })()}
             <div className="mb-4 flex flex-wrap justify-center gap-x-4 gap-y-2">
               {Object.entries(stageLabels).map(([stageKey, stageLabel]) => {
                 const totalDurationSeconds = sortedSegments

@@ -44,6 +44,7 @@ services:
       SPARKY_FITNESS_EMAIL_PASS: ${SPARKY_FITNESS_EMAIL_PASS}
       SPARKY_FITNESS_EMAIL_FROM: ${SPARKY_FITNESS_EMAIL_FROM}
       NODE_ENV: ${NODE_ENV:-development}
+      NODE_OPTIONS: "--max-old-space-size=4096"
       GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:8000 # Add Garmin microservice URL
     networks:
       - sparkyfitness-network
@@ -71,7 +72,6 @@ services:
     restart: always
     depends_on:
       - sparkyfitness-server
-      - sparkyfitness-garmin # Frontend depends on Garmin microservice
 
   sparkyfitness-garmin:
     build:

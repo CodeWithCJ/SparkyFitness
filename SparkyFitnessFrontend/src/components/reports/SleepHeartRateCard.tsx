@@ -5,6 +5,7 @@ import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveCo
 import { Heart } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
+import ZoomableChart from '../ZoomableChart';
 
 interface HeartRateDataPoint {
   date: string;
@@ -73,82 +74,86 @@ const SleepHeartRateCard: React.FC<SleepHeartRateCardProps> = ({ data }) => {
   const yMax = stats.max + 10;
 
   return (
-    <Card className="w-full h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center text-lg">
-          <Heart className="w-5 h-5 mr-2" />
-          {t('sleepHealth.restingHeartRate', 'Resting Heart Rate')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {/* Top: Value and stats */}
-        <div className="flex items-center justify-center gap-6 mb-4">
-          <div className="text-center">
-            <p className="text-4xl font-bold" style={{ color }}>
-              {latestValue}
-            </p>
-            <p className="text-xs text-muted-foreground">bpm</p>
-            <p className="text-sm font-medium" style={{ color }}>{status}</p>
-          </div>
+    <ZoomableChart title={t('sleepHealth.restingHeartRate', 'Resting Heart Rate')}>
+      {(isMaximized) => (
+        <Card className="w-full h-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center text-lg">
+              <Heart className="w-5 h-5 mr-2" />
+              {t('sleepHealth.restingHeartRate', 'Resting Heart Rate')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Top: Value and stats */}
+            <div className="flex items-center justify-center gap-6 mb-4">
+              <div className="text-center">
+                <p className="text-4xl font-bold" style={{ color }}>
+                  {latestValue}
+                </p>
+                <p className="text-xs text-muted-foreground">bpm</p>
+                <p className="text-sm font-medium" style={{ color }}>{status}</p>
+              </div>
 
-          <div className="flex flex-col gap-2">
-            <div className="text-center">
-              <p className="text-lg font-bold text-blue-500">{stats.avg}</p>
-              <p className="text-xs text-muted-foreground">{t('sleepHealth.avgHR', 'Avg')}</p>
+              <div className="flex flex-col gap-2">
+                <div className="text-center">
+                  <p className="text-lg font-bold text-blue-500">{stats.avg}</p>
+                  <p className="text-xs text-muted-foreground">{t('sleepHealth.avgHR', 'Avg')}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-gray-500">{stats.min}-{stats.max}</p>
+                  <p className="text-xs text-muted-foreground">{t('sleepHealth.range', 'Range')}</p>
+                </div>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-gray-500">{stats.min}-{stats.max}</p>
-              <p className="text-xs text-muted-foreground">{t('sleepHealth.range', 'Range')}</p>
+
+            {/* Chart */}
+            <div className={isMaximized ? "h-[calc(95vh-250px)]" : "h-32"}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="displayDate"
+                    fontSize={10}
+                    tickLine={false}
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis
+                    domain={[yMin, yMax]}
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                      color: 'hsl(var(--foreground))'
+                    }}
+                    formatter={(value: number) => [`${value} bpm`]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="rhr"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    dot={{ fill: '#ef4444', strokeWidth: 2, r: 3 }}
+                    connectNulls
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-        </div>
 
-        {/* Chart */}
-        <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis
-                dataKey="displayDate"
-                fontSize={10}
-                tickLine={false}
-                stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
-              />
-              <YAxis
-                domain={[yMin, yMax]}
-                fontSize={10}
-                tickLine={false}
-                axisLine={false}
-                stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--background))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px',
-                  color: 'hsl(var(--foreground))'
-                }}
-                formatter={(value: number) => [`${value} bpm`]}
-              />
-              <Line
-                type="monotone"
-                dataKey="rhr"
-                stroke="#ef4444"
-                strokeWidth={2}
-                dot={{ fill: '#ef4444', strokeWidth: 2, r: 3 }}
-                connectNulls
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="text-center mt-2 text-xs text-muted-foreground">
-          {t('sleepHealth.normalRHR', 'Normal adult: 60-100 bpm')}
-        </div>
-      </CardContent>
-    </Card>
+            <div className="text-center mt-2 text-xs text-muted-foreground">
+              {t('sleepHealth.normalRHR', 'Normal adult: 60-100 bpm')}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </ZoomableChart>
   );
 };
 

@@ -161,6 +161,7 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
     return sleepEntries.map(entry => ({
       date: entry.entry_date,
       segments: entry.stage_events?.filter(event => event != null) || [], // Add null check here
+      has_detailed_stages: entry.has_detailed_stages, // Pass through the detailed stages flag
     }));
   };
 

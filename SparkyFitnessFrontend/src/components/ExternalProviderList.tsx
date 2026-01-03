@@ -5,8 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Trash2, Edit, Lock, Share2, RefreshCw, Link2Off, Clipboard } from "lucide-react";
+import { Trash2, Edit, Lock, Share2, RefreshCw, Link2Off, Clipboard, History } from "lucide-react";
 import { ExternalDataProvider } from "./ExternalProviderSettings";
+import GarminSyncProgress from './GarminSyncProgress';
+import { SyncStatus } from '@/services/garminSyncService';
 
 interface ExternalProviderListProps {
   providers: ExternalDataProvider[];
@@ -29,6 +31,12 @@ interface ExternalProviderListProps {
   loadProviders: () => void;
   toast: any; // Replace with a more specific toast type if available
   cancelEditing: () => void;
+  garminSyncStatus?: SyncStatus | null;
+  onHistoricalImport?: () => void;
+  onResumeSync?: () => void;
+  onCancelSync?: () => void;
+  syncLoading?: boolean;
+  lastSuccessfulSync?: string | null;
 }
 
 const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
@@ -52,6 +60,12 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
   loadProviders,
   toast,
   cancelEditing,
+  garminSyncStatus,
+  onHistoricalImport,
+  onResumeSync,
+  onCancelSync,
+  syncLoading = false,
+  lastSuccessfulSync,
 }) => {
   return (
     <div className="space-y-4">
@@ -349,7 +363,29 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+                          {/* Historical Import button */}
+                          {!garminSyncStatus?.hasActiveJob && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={onHistoricalImport}
+                              disabled={loading || syncLoading}
+                              className="ml-2"
+                            >
+                              <History className="h-4 w-4 mr-2" />
+                              Historical Import
+                            </Button>
+                          )}
                         </>
+                      )}
+                      {/* Show sync progress if active */}
+                      {garminSyncStatus?.hasActiveJob && garminSyncStatus.job && (
+                        <GarminSyncProgress
+                          job={garminSyncStatus.job}
+                          onResume={onResumeSync || (() => {})}
+                          onCancel={onCancelSync || (() => {})}
+                          loading={syncLoading}
+                        />
                       )}
                     </>
                   )}
@@ -459,14 +495,22 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                 </div>
               </div>
               {provider.provider_type === 'garmin' && (provider.garmin_connect_status === 'linked' || provider.garmin_connect_status === 'connected') && (
-                <div className="text-sm text-muted-foreground">
-                  {provider.garmin_last_status_check && (
-                    <span>Last Status Check: {new Date(provider.garmin_last_status_check).toLocaleString()}</span>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  {garminSyncStatus?.lastSuccessfulSync && (
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium text-green-600 dark:text-green-400">✓ Synced up to:</span>
+                      <span>{new Date(garminSyncStatus.lastSuccessfulSync).toLocaleDateString()}</span>
+                    </div>
                   )}
-                  {provider.garmin_last_status_check && provider.garmin_token_expires && <span> | </span>}
-                  {provider.garmin_token_expires && (
-                    <span>Token Expires: {new Date(provider.garmin_token_expires).toLocaleString()}</span>
-                  )}
+                  <div>
+                    {provider.garmin_last_status_check && (
+                      <span>Last Status Check: {new Date(provider.garmin_last_status_check).toLocaleString()}</span>
+                    )}
+                    {provider.garmin_last_status_check && provider.garmin_token_expires && <span> | </span>}
+                    {provider.garmin_token_expires && (
+                      <span>Token Expires: {new Date(provider.garmin_token_expires).toLocaleString()}</span>
+                    )}
+                  </div>
                 </div>
               )}
               <div>

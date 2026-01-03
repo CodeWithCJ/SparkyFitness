@@ -10,11 +10,12 @@ const moment = require('moment'); // Import moment for date manipulation
 const exerciseService = require('../services/exerciseService');
 const activityDetailsRepository = require('../models/activityDetailsRepository');
 const garminService = require('../services/garminService');
+const garminSyncJobService = require('../services/garminSyncJobService');
 
 router.use(express.json());
 
 // Date validation constants
-const MAX_DATE_RANGE_DAYS = 365; // Maximum allowed date range
+const MAX_DATE_RANGE_DAYS = 3650; // Maximum allowed date range
 const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/; // YYYY-MM-DD format
 
 /**
@@ -290,6 +291,91 @@ router.post('/sleep_data', authenticate, async (req, res, next) => {
         const result = await garminService.processGarminSleepData(userId, userId, sleepData, startDate, endDate);
         res.status(200).json(result);
     } catch (error) {
+        next(error);
+    }
+});
+
+// Start incremental sync (since last successful sync)
+router.post('/sync/incremental', authenticate, async (req, res, next) => {
+    try {
+        const userId = req.userId;
+        const { metricTypes } = req.body;
+
+        const result = await garminSyncJobService.startIncrementalSync(userId, metricTypes);
+        res.status(200).json(result);
+    } catch (error) {
+        log('error', `Error starting incremental sync for user ${req.userId}:`, error);
+        next(error);
+    }
+});
+
+// Start historical sync with custom date range
+router.post('/sync/historical', authenticate, async (req, res, next) => {
+    console.log('[HISTORICAL_SYNC] Route hit at', new Date().toISOString());
+    try {
+        const userId = req.userId;
+        const { startDate, endDate, skipExisting, metricTypes } = req.body;
+        console.log('[HISTORICAL_SYNC] Params:', { userId, startDate, endDate, skipExisting });
+
+        const result = await garminSyncJobService.startHistoricalSync(
+            userId,
+            startDate,
+            endDate,
+            metricTypes,
+            skipExisting !== false // Default to true if not specified
+        );
+        log('info', `[HISTORICAL_SYNC] Job started: ${JSON.stringify(result)}`);
+        res.status(200).json(result);
+    } catch (error) {
+        log('error', `Error starting historical sync for user ${req.userId}:`, error);
+        next(error);
+    }
+});
+
+// Get current sync status (for polling)
+router.get('/sync/status', authenticate, async (req, res, next) => {
+    try {
+        const userId = req.userId;
+        const status = await garminSyncJobService.getJobStatus(userId);
+        res.status(200).json(status);
+    } catch (error) {
+        log('error', `Error getting sync status for user ${req.userId}:`, error);
+        next(error);
+    }
+});
+
+// Resume a paused or failed job
+router.post('/sync/resume', authenticate, async (req, res, next) => {
+    try {
+        const userId = req.userId;
+        const { jobId } = req.body;
+
+        if (!jobId) {
+            return res.status(400).json({ error: 'jobId is required' });
+        }
+
+        const result = await garminSyncJobService.resumeJob(userId, jobId);
+        res.status(200).json(result);
+    } catch (error) {
+        log('error', `Error resuming sync for user ${req.userId}:`, error);
+        next(error);
+    }
+});
+
+// Cancel an active job
+router.post('/sync/cancel', authenticate, async (req, res, next) => {
+    try {
+        const userId = req.userId;
+        const { jobId } = req.body;
+
+        if (!jobId) {
+            return res.status(400).json({ error: 'jobId is required' });
+        }
+
+        const result = await garminSyncJobService.cancelJob(userId, jobId);
+        res.status(200).json(result);
+    } catch (error) {
+        log('error', `Error cancelling sync for user ${req.userId}:`, error);
         next(error);
     }
 });
