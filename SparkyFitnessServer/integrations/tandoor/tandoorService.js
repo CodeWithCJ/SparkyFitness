@@ -142,16 +142,31 @@ class TandoorService {
     }
 
     mapTandoorRecipeToSparkyFood(tandoorRecipe, userId) {
-        log('debug', 'Raw Tandoor Recipe Data:', JSON.stringify(tandoorRecipe, null, 2));
+        log('debug', `[Tandoor Mapping] Starting mapping for recipe ID: ${tandoorRecipe.id} ("${tandoorRecipe.name}")`);
 
-        // Helper to extract numeric property from tandoor 'properties' array
-        const extractFromProperties = (props, propNames) => {
+        const extractFromProperties = (props, candidates) => {
             if (!Array.isArray(props)) return null;
-            for (const name of propNames) {
-                const found = props.find(p => p.property_type && p.property_type.name && p.property_type.name.toLowerCase() === name.toLowerCase());
+            
+            for (const cand of candidates) {
+                const candNorm = cand.toLowerCase().replace(/[^a-z0-9]/g, '');
+                
+                const found = props.find(p => {
+                    const pt = p.property_type;
+                    if (!pt) return false;
+                    
+                    const nameNorm = (pt.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const slugNorm = (pt.open_data_slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    
+                    // Match against name OR the slug (e.g., "property-calories" matches "calories")
+                    return nameNorm === candNorm || slugNorm.includes(candNorm);
+                });
+
                 if (found && found.property_amount !== undefined && found.property_amount !== null) {
                     const num = Number(found.property_amount);
-                    if (!Number.isNaN(num)) return num;
+                    if (!Number.isNaN(num)) {
+                        log('debug', `[Tandoor Mapping] Found property match: ${cand} = ${num}`);
+                        return num;
+                    }
                 }
             }
             return null;
@@ -163,49 +178,53 @@ class TandoorService {
         const nutrition = tandoorRecipe.nutrition || {};
 
         // Generic getter that checks multiple candidate names across nutrition object keys and properties
-        const getNutritionValue = (candidates) => {
-            if (nutrition && typeof nutrition === 'object' && Object.keys(nutrition).length) {
-                for (const k of Object.keys(nutrition)) {
-                    const keyNorm = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    for (const c of candidates) {
-                        const candNorm = c.toLowerCase().replace(/[^a-z0-9]/g, '');
-                        if (keyNorm === candNorm) {
-                            const v = nutrition[k];
-                            const num = Number(v);
-                            if (!Number.isNaN(num)) return num;
+        const getNutritionValue = (candidates, label) => {
+            if (Array.isArray(tandoorRecipe.nutrition)) {
+                for (const item of tandoorRecipe.nutrition) {
+                    if (item.name && item.value !== undefined) {
+                        const keyNorm = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        for (const c of candidates) {
+                            const candNorm = c.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            if (keyNorm === candNorm) {
+                                const num = Number(item.value);
+                                if (!Number.isNaN(num)) {
+                                    log('debug', `[Tandoor Mapping] Nutrition Match: Found "${label}" via Tandoor key "${item.name}" = ${num}`);
+                                    return num;
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // Fallback to properties array
-            for (const c of candidates) {
-                const val = extractFromProperties(properties, [c]);
-                if (val !== null) return val;
+            const fallbackVal = extractFromProperties(properties, candidates);
+            if (fallbackVal !== null) {
+                return fallbackVal;
             }
 
+            log('debug', `[Tandoor Mapping] No Match: Could not find value for "${label}" (Candidates: ${candidates.join(', ')})`);
             return null;
         };
 
         // Candidate name lists for common nutrients (covering common variants/case)
         const nutrientsMap = {
-            calories: ['calories', 'cal', 'kcal', 'energy', 'kcalories'],
-            protein: ['protein', 'proteins', 'protein_g', 'proteins_g'],
-            carbs: ['carbohydrates', 'carbohydrate', 'carbs', 'carb'],
-            fat: ['fat', 'fats', 'totalfat', 'total_fat', 'total fat'],
-            saturated_fat: ['saturated fat', 'saturated_fat', 'saturatedfat', 'sat fat', 'sat_fat'],
-            polyunsaturated_fat: ['polyunsaturated fat', 'polyunsaturated_fat', 'polyunsaturatedfat', 'pufa'],
-            monounsaturated_fat: ['monounsaturated fat', 'monounsaturated_fat', 'monounsaturatedfat', 'mufa'],
-            trans_fat: ['trans fat', 'trans_fat', 'transfat'],
-            cholesterol: ['cholesterol'],
-            sodium: ['sodium', 'na', 'salt (na)'],
-            potassium: ['potassium', 'k'],
-            dietary_fiber: ['fiber', 'dietary fiber', 'dietary_fiber', 'fibre'],
-            sugars: ['sugars', 'sugar'],
-            vitamin_a: ['vitamin a', 'vit a', 'vitamin_a', 'vitamina'],
-            vitamin_c: ['vitamin c', 'vit c', 'vitamin_c', 'vitaminc'],
-            calcium: ['calcium', 'ca'],
-            iron: ['iron', 'fe']
+            calories: ['calories', 'cal', 'kcal', 'energy', 'kcalories', 'property-calories', 'property-energy'],
+            protein: ['protein', 'proteins', 'protein_g', 'proteins_g', 'property-proteins'],
+            carbs: ['carbohydrates', 'carbohydrate', 'carbs', 'carb', 'property-carbohydrates'],
+            fat: ['fat', 'fats', 'totalfat', 'total_fat', 'total fat', 'property-fats'],
+            saturated_fat: ['saturated fat', 'saturated_fat', 'saturatedfat', 'sat fat', 'sat_fat', 'property-fatty-acids-total-saturated'],
+            polyunsaturated_fat: ['polyunsaturated fat', 'polyunsaturated_fat', 'polyunsaturatedfat', 'pufa', 'property-fatty-acids-total-polyunsaturated'],
+            monounsaturated_fat: ['monounsaturated fat', 'monounsaturated_fat', 'monounsaturatedfat', 'mufa', 'property-fatty-acids-total-monounsaturated'],
+            trans_fat: ['trans fat', 'trans_fat', 'transfat', 'property-fatty-acids-total-trans'],
+            cholesterol: ['cholesterol', 'property-cholesterol'],
+            sodium: ['sodium', 'na', 'salt (na)', 'property-sodium'],
+            potassium: ['potassium', 'k', 'property-potassium-k'],
+            dietary_fiber: ['fiber', 'dietary fiber', 'dietary_fiber', 'fibre', 'property-fiber'],
+            sugars: ['sugars', 'sugar', 'property-sugar'],
+            vitamin_a: ['vitamin a', 'vit a', 'vitamin_a', 'vitamina', 'property-vitamin-a-rae'],
+            vitamin_c: ['vitamin c', 'vit c', 'vitamin_c', 'vitaminc', 'property-vitamin-c-total-ascorbic-acid'],
+            calcium: ['calcium', 'ca', 'property-calcium-ca'],
+            iron: ['iron', 'fe', 'property-iron-fe']
         };
 
         const calories = getNutritionValue(nutrientsMap.calories);
@@ -231,18 +250,14 @@ class TandoorService {
         }
 
         // Default serving information: preserve recipe servings count when provided (numeric)
-        let defaultServing = 1;
+        let recipeYield = 1;
         if (tandoorRecipe.servings && !Number.isNaN(Number(tandoorRecipe.servings))) {
-            defaultServing = Number(tandoorRecipe.servings);
+            recipeYield = Number(tandoorRecipe.servings);
         } else if (Array.isArray(tandoorRecipe.servings_text) && tandoorRecipe.servings_text.length && !Number.isNaN(Number(tandoorRecipe.servings_text[0]))) {
-            defaultServing = Number(tandoorRecipe.servings_text[0]);
-        } else if (typeof tandoorRecipe.servings_text === 'string') {
-            const m = tandoorRecipe.servings_text.match(/\d+(?:\.\d+)?/);
-            if (m) defaultServing = Number(m[0]);
+            recipeYield = Number(tandoorRecipe.servings_text[0]);
         }
 
-        // Normalize unit to lowercase 'serving' so frontend recognizes the unit type
-        const servingUnit = 'serving';
+        log('debug', `[Tandoor Mapping] Recipe makes ${recipeYield} servings. Data is per-serving.`);
 
         return {
             food: {
@@ -258,8 +273,9 @@ class TandoorService {
                 is_quick_food: false,
             },
             variant: {
-                serving_size: defaultServing,
-                serving_unit: servingUnit,
+                // Tandoor nutrition values are alway for 1 serving
+                serving_size: 1, 
+                serving_unit: 'serving',
                 // Map nutrition values (fallbacks may be null -> coerce to 0)
                 calories: Number(calories) || 0,
                 protein: Number(protein) || 0,
