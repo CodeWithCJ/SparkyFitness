@@ -951,6 +951,7 @@ const EnhancedCustomFoodForm = ({
                       </div>
 
                       {/* Main Macros: Responsive Grid (1 col on mobile, 2 on sm, 3 on md, 4 on lg) */}
+                      {(["calories", "protein", "carbs", "fat"].some(nutrient => visibleNutrients.includes(nutrient))) && (
                       <div className="mt-4">
                         <h5 className="text-sm font-medium text-gray-700 mb-3">
                           Main Nutrients
@@ -1033,8 +1034,10 @@ const EnhancedCustomFoodForm = ({
                           )}
                         </div>
                       </div>
+                      )}
 
                       {/* Detailed Fat Information: Responsive Grid */}
+                      {(["saturated_fat", "polyunsaturated_fat", "monounsaturated_fat", "trans_fat"].some(nutrient => visibleNutrients.includes(nutrient))) && (
                       <div>
                         <h5 className="text-sm font-medium text-gray-700 mb-3">
                           Fat Breakdown
@@ -1118,8 +1121,10 @@ const EnhancedCustomFoodForm = ({
                           )}
                         </div>
                       </div>
+                      )}
 
                       {/* Minerals and Other Nutrients: Responsive Grid */}
+                      {(["cholesterol", "sodium", "potassium", "dietary_fiber"].some(nutrient => visibleNutrients.includes(nutrient))) && (
                       <div>
                         <h5 className="text-sm font-medium text-gray-700 mb-3">
                           Minerals & Other
@@ -1203,8 +1208,10 @@ const EnhancedCustomFoodForm = ({
                           )}
                         </div>
                       </div>
+                      )}
 
                       {/* Sugars and Vitamins: Responsive Grid */}
+                      {(["sugars", "vitamin_a", "vitamin_c", "calcium"].some(nutrient => visibleNutrients.includes(nutrient))) && (
                       <div>
                         <h5 className="text-sm font-medium text-gray-700 mb-3">
                           Sugars & Vitamins
@@ -1288,6 +1295,7 @@ const EnhancedCustomFoodForm = ({
                           )}
                         </div>
                       </div>
+                      )}
 
                       {/* Last row of nutrients: Responsive Grid */}
                       <div>
