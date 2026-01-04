@@ -147,14 +147,14 @@
         "close": "Schließen"
     },
     "exercise": {
-        "title": "Aufgaben",
+        "title": "Übungen",
         "addExerciseDialog": {
-            "title": "Aufgabe hinzufügen",
-            "description": "Füge eine neue Aufgabe zu deiner Datenbank, indem du eine benutzerdefinierte Aufgabe erstellst oder eine Aufgabe aus einer externen Quelle importierst.",
+            "title": "Übung hinzufügen",
+            "description": "Füge ein neues Training zu deiner Datenbank hinzu, indem du eine benutzerdefinierte Übung erstellst oder eine Übung aus einer externen Quelle importierst.",
             "myExercisesTab": "Meine Aufgaben",
             "workoutPresetTab": "Workout Voreinstellung",
             "onlineTab": "Online",
-            "addCustomTab": "Benutzerdefinierte Aufgabe erstellen",
+            "addCustomTab": "Benutzerdefinierte Übung erstellen",
             "importCSVTab": "CSV importieren",
             "nameLabel": "Name",
             "categoryLabel": "Kategorie",
