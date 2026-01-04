@@ -10,7 +10,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "jest"
+    "test": "jest",
+    "add-missing-translations": "node scripts/add-missing-translations.js"
   },
   "jest": {
     "testEnvironment": "jsdom",
