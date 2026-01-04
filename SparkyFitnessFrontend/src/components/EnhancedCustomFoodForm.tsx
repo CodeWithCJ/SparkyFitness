@@ -930,25 +930,27 @@ const EnhancedCustomFoodForm = ({
                         {variant.serving_unit}
                       </h4>
                       {/* Glycemic Index for this variant */}
-                      <div className="mt-4">
-                        <Label htmlFor={`glycemic_index-${index}`}>Glycemic Index (GI)</Label>
-                        <Select
-                          value={variant.glycemic_index || "None"}
-                          onValueChange={(value: GlycemicIndex) => updateVariant(index, "glycemic_index", value)}
-                        >
-                          <SelectTrigger id={`glycemic_index-${index}`} className="w-[180px]">
-                            <SelectValue placeholder="Select GI" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="None">None</SelectItem>
-                            <SelectItem value="Very Low">Very Low</SelectItem>
-                            <SelectItem value="Low">Low</SelectItem>
-                            <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="High">High</SelectItem>
-                            <SelectItem value="Very High">Very High</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {visibleNutrients.includes("glycemic_index") && (
+                        <div className="mt-4">
+                          <Label htmlFor={`glycemic_index-${index}`}>Glycemic Index (GI)</Label>
+                          <Select
+                            value={variant.glycemic_index || "None"}
+                            onValueChange={(value: GlycemicIndex) => updateVariant(index, "glycemic_index", value)}
+                          >
+                            <SelectTrigger id={`glycemic_index-${index}`} className="w-[180px]">
+                              <SelectValue placeholder="Select GI" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="None">None</SelectItem>
+                              <SelectItem value="Very Low">Very Low</SelectItem>
+                              <SelectItem value="Low">Low</SelectItem>
+                              <SelectItem value="Medium">Medium</SelectItem>
+                              <SelectItem value="High">High</SelectItem>
+                              <SelectItem value="Very High">Very High</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
 
                       {/* Main Macros: Responsive Grid (1 col on mobile, 2 on sm, 3 on md, 4 on lg) */}
                       <div className="mt-4">
