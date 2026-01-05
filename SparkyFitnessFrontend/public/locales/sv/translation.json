@@ -20,7 +20,11 @@
         "frontend": "Frontend:",
         "backend": "Backend:",
         "externalApis": "Externa API:er:",
-        "close": "Stäng"
+        "close": "Stäng",
+        "wgerApi": "Wger API (Träningsdata)",
+        "foodDataApis": "API:er för livsmedelsdata:",
+        "nutritionixApi": "Nutritionix API",
+        "fatsecretApi": "FatSecret API"
     },
     "exerciseSearch": {
         "loading": "Laddar..."
