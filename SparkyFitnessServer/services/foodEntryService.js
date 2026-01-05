@@ -607,22 +607,27 @@ async function updateFoodEntryMeal(authenticatedUserId, actingUserId, foodEntryM
     log("info", `[DEBUG] updateFoodEntryMeal Service Data:`, updatedMealData); // DEBUG LOG
 
     // Calculate portion multiplier
+    // Foods from getFoodEntryMealWithComponents now have BASE (unscaled) quantities,
+    // so we just apply the new quantity as the multiplier
     let multiplier = 1.0;
+    const newQuantity = updatedMealData.quantity || 1.0;
+
     if (updatedMealData.meal_template_id) {
       // Fetch meal template to get reference serving size
       const mealTemplate = await mealService.getMealById(authenticatedUserId, updatedMealData.meal_template_id);
       if (mealTemplate && mealTemplate.serving_size) {
-        const consumedQuantity = updatedMealData.quantity || 1.0;
         const referenceServingSize = mealTemplate.serving_size || 1.0;
         if (updatedMealData.unit === 'serving') {
-          multiplier = consumedQuantity;
+          multiplier = newQuantity;
         } else {
-          multiplier = consumedQuantity / referenceServingSize;
+          multiplier = newQuantity / referenceServingSize;
         }
-        log("info", `Update portion scaling: multiplier ${multiplier} (consumed: ${consumedQuantity}, reference: ${referenceServingSize})`);
+        log("info", `Update portion scaling (with template): multiplier ${multiplier} (consumed: ${newQuantity}, reference: ${referenceServingSize})`);
       }
     } else {
-      log("info", "No meal_template_id provided for update, using multiplier 1.0");
+      // No template - foods have base quantities, so multiplier is just the new quantity
+      multiplier = newQuantity;
+      log("info", `Update portion scaling (no template): multiplier ${multiplier} (quantity: ${newQuantity})`);
     }
 
     // 3. Create new component food_entries records
@@ -709,47 +714,76 @@ async function getFoodEntryMealWithComponents(authenticatedUserId, foodEntryMeal
     let totalProtein = 0;
     let totalCarbs = 0;
     let totalFat = 0;
+    let totalSodium = 0;
+    let totalFiber = 0;
+    let totalSugars = 0;
+    let totalSaturatedFat = 0;
+    let totalCholesterol = 0;
     let totalCarbsForGI = 0;
     let weightedGIAccumulator = 0;
 
     componentFoodEntries.forEach(entry => {
-      totalCalories += (entry.calories * entry.quantity) / (entry.serving_size || 1); // Ensure division by zero is handled
-      totalProtein += (entry.protein * entry.quantity) / (entry.serving_size || 1);
-      totalCarbs += (entry.carbs * entry.quantity) / (entry.serving_size || 1);
-      totalFat += (entry.fat * entry.quantity) / (entry.serving_size || 1);
+      const servingSize = entry.serving_size || 1;
+      totalCalories += (entry.calories * entry.quantity) / servingSize;
+      totalProtein += (entry.protein * entry.quantity) / servingSize;
+      totalCarbs += (entry.carbs * entry.quantity) / servingSize;
+      totalFat += (entry.fat * entry.quantity) / servingSize;
+      totalSodium += (entry.sodium * entry.quantity) / servingSize;
+      totalFiber += (entry.dietary_fiber * entry.quantity) / servingSize;
+      totalSugars += (entry.sugars * entry.quantity) / servingSize;
+      totalSaturatedFat += (entry.saturated_fat * entry.quantity) / servingSize;
+      totalCholesterol += (entry.cholesterol * entry.quantity) / servingSize;
 
       if (entry.glycemic_index && entry.carbs) {
         const giValue = getGlycemicIndexValue(entry.glycemic_index);
         if (giValue !== null) {
-          weightedGIAccumulator += giValue * ((entry.carbs * entry.quantity) / (entry.serving_size || 1));
-          totalCarbsForGI += ((entry.carbs * entry.quantity) / (entry.serving_size || 1));
+          weightedGIAccumulator += giValue * ((entry.carbs * entry.quantity) / servingSize);
+          totalCarbsForGI += ((entry.carbs * entry.quantity) / servingSize);
         }
       }
     });
 
     const aggregatedGlycemicIndex = totalCarbsForGI > 0 ? weightedGIAccumulator / totalCarbsForGI : null;
 
+    // Get the meal quantity to unscale the food quantities for editing
+    const mealQuantity = foodEntryMeal.quantity || 1;
+
     return {
       ...foodEntryMeal,
-      foods: componentFoodEntries.map(entry => ({ // Map component food entries to MealFood structure
-        food_id: entry.food_id,
-        food_name: entry.food_name,
-        variant_id: entry.variant_id,
-        quantity: entry.quantity,
-        unit: entry.unit,
-        calories: entry.calories, // Store base value
-        protein: entry.protein,   // Store base value
-        carbs: entry.carbs,       // Store base value
-        fat: entry.fat,         // Store base value
-        serving_size: entry.serving_size,
-        serving_unit: entry.serving_unit,
-      })),
+      foods: componentFoodEntries.map(entry => {
+        // Return BASE (unscaled) quantities so MealBuilder can correctly calculate preview
+        // The entry.quantity is already scaled by mealQuantity, so divide to get base
+        const baseQuantity = entry.quantity / mealQuantity;
+        return {
+          food_id: entry.food_id,
+          food_name: entry.food_name,
+          variant_id: entry.variant_id,
+          quantity: baseQuantity, // BASE quantity for MealBuilder calculation
+          unit: entry.unit,
+          calories: entry.calories, // BASE value per serving_size
+          protein: entry.protein,
+          carbs: entry.carbs,
+          fat: entry.fat,
+          sodium: entry.sodium,
+          dietary_fiber: entry.dietary_fiber,
+          sugars: entry.sugars,
+          saturated_fat: entry.saturated_fat,
+          cholesterol: entry.cholesterol,
+          serving_size: entry.serving_size,
+          serving_unit: entry.serving_unit,
+        };
+      }),
+      // Aggregated totals are still calculated (for display when not editing)
       calories: totalCalories,
       protein: totalProtein,
       carbs: totalCarbs,
       fat: totalFat,
+      sodium: totalSodium,
+      dietary_fiber: totalFiber,
+      sugars: totalSugars,
+      saturated_fat: totalSaturatedFat,
+      cholesterol: totalCholesterol,
       glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
-      // Add other aggregated nutrients if needed
     };
 
   } catch (error) {
@@ -813,7 +847,7 @@ async function getFoodEntryMealsByDate(authenticatedUserId, targetUserId, select
           carbs: (entry.carbs * entry.quantity) / entry.serving_size,
           fat: (entry.fat * entry.quantity) / entry.serving_size,
           sodium: (entry.sodium * entry.quantity) / entry.serving_size,
-          fiber: (entry.dietary_fiber * entry.quantity) / entry.serving_size,
+          dietary_fiber: (entry.dietary_fiber * entry.quantity) / entry.serving_size,
           sugars: (entry.sugars * entry.quantity) / entry.serving_size,
           saturated_fat: (entry.saturated_fat * entry.quantity) / entry.serving_size,
           cholesterol: (entry.cholesterol * entry.quantity) / entry.serving_size,
@@ -825,7 +859,7 @@ async function getFoodEntryMealsByDate(authenticatedUserId, targetUserId, select
         carbs: totalCarbs,
         fat: totalFat,
         sodium: totalSodium,
-        fiber: totalFiber,
+        dietary_fiber: totalFiber,
         sugars: totalSugars,
         saturated_fat: totalSaturatedFat,
         cholesterol: totalCholesterol,
