@@ -41,7 +41,6 @@ import {
   IntermenstrualBleedingRecord,
   MenstruationPeriodRecord,
   StepsCadenceRecord,
-  HeartRateVariabilityRmssdRecord,
   BloodAlcoholContentRecord,
   BloodOxygenSaturationRecord,
   DietaryFatTotalRecord,
