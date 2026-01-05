@@ -119,7 +119,6 @@ export const transformHealthRecords = (records, metricConfig) => {
             recordDate = getDateString(record.startTime);
             break;
           case 'StepsCadence':
-          case 'HeartRateVariabilityRmssd':
           case 'WalkingSpeed':
           case 'WalkingStepLength':
           case 'RunningGroundContactTime':

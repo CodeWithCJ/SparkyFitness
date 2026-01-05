@@ -636,12 +636,6 @@ export const transformHealthRecords = (records, metricConfig) => {
               });
             }
             return;
-          case 'HeartRateVariabilityRmssd':
-            if (record.time && record.heartRateVariabilityMillis) {
-              value = record.heartRateVariabilityMillis;
-              recordDate = record.time.split('T')[0];
-            }
-            break;
           case 'BloodAlcoholContent':
             if (record.time && record.percentage) {
               value = record.percentage.inPercent;

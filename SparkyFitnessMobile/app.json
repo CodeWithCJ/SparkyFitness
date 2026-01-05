@@ -49,8 +49,10 @@
         "android.permission.health.WRITE_BONE_MASS",
         "android.permission.health.READ_CERVICAL_MUCUS",
         "android.permission.health.WRITE_CERVICAL_MUCUS",
-        "android.permission.health.READ_EXERCISE",
-        "android.permission.health.WRITE_EXERCISE",
+        "android.permission.health.READ_CYCLING_PEDALING_CADENCE",
+        "android.permission.health.WRITE_CYCLING_PEDALING_CADENCE",
+        "android.permission.health.READ_EXERCISE_SESSION",
+        "android.permission.health.WRITE_EXERCISE_SESSION",
         "android.permission.health.READ_DISTANCE",
         "android.permission.health.WRITE_DISTANCE",
         "android.permission.health.READ_ELEVATION_GAINED",
@@ -65,6 +67,8 @@
         "android.permission.health.WRITE_HYDRATION",
         "android.permission.health.READ_LEAN_BODY_MASS",
         "android.permission.health.WRITE_LEAN_BODY_MASS",
+        "android.permission.health.READ_INTERMENSTRUAL_BLEEDING",
+        "android.permission.health.WRITE_INTERMENSTRUAL_BLEEDING",
         "android.permission.health.READ_MENSTRUATION",
         "android.permission.health.WRITE_MENSTRUATION",
         "android.permission.health.READ_NUTRITION",
@@ -87,6 +91,8 @@
         "android.permission.health.WRITE_SPEED",
         "android.permission.health.READ_STEPS",
         "android.permission.health.WRITE_STEPS",
+        "android.permission.health.READ_STEPS_CADENCE",
+        "android.permission.health.WRITE_STEPS_CADENCE",
         "android.permission.health.READ_TOTAL_CALORIES_BURNED",
         "android.permission.health.WRITE_TOTAL_CALORIES_BURNED",
         "android.permission.health.READ_VO2_MAX",
@@ -109,7 +115,6 @@
         }
       ],
       "react-native-background-fetch",
-      "expo-health-connect",
       [
         "expo-build-properties",
         {
