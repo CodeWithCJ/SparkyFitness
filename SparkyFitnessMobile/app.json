@@ -115,6 +115,7 @@
         }
       ],
       "react-native-background-fetch",
+      "expo-health-connect",
       [
         "expo-build-properties",
         {
