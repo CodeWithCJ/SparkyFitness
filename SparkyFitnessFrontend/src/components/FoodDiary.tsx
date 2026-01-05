@@ -191,25 +191,25 @@ const FoodDiary = ({
 
       meals.forEach(meal => {
         // For FoodEntryMeal, its aggregated nutritional data is directly available (assumed to be in kcal)
-        // Note: FoodEntryMeal might need custom_nutrients support in its type if we want to support it for meals too
-        // For now assuming meals don't have custom nutrients aggregated yet or it needs backend support
+        // Note: The backend already scales component food entries by the meal quantity when creating,
+        // and aggregates those scaled values. Do NOT multiply by quantity again here.
         combinedItems.push({
           nutrition: {
-            calories: (meal.calories || 0) * (meal.quantity || 1), // kcal
-            protein: (meal.protein || 0) * (meal.quantity || 1),
-            carbs: (meal.carbs || 0) * (meal.quantity || 1),
-            fat: (meal.fat || 0) * (meal.quantity || 1),
-            dietary_fiber: (meal.dietary_fiber || 0) * (meal.quantity || 1),
-            sugars: (meal.sugars || 0) * (meal.quantity || 1),
-            sodium: (meal.sodium || 0) * (meal.quantity || 1),
-            cholesterol: (meal.cholesterol || 0) * (meal.quantity || 1),
-            saturated_fat: (meal.saturated_fat || 0) * (meal.quantity || 1),
-            trans_fat: (meal.trans_fat || 0) * (meal.quantity || 1),
-            potassium: (meal.potassium || 0) * (meal.quantity || 1),
-            vitamin_a: (meal.vitamin_a || 0) * (meal.quantity || 1),
-            vitamin_c: (meal.vitamin_c || 0) * (meal.quantity || 1),
-            iron: (meal.iron || 0) * (meal.quantity || 1),
-            calcium: (meal.calcium || 0) * (meal.quantity || 1),
+            calories: meal.calories || 0, // kcal - already aggregated with quantity
+            protein: meal.protein || 0,
+            carbs: meal.carbs || 0,
+            fat: meal.fat || 0,
+            dietary_fiber: meal.dietary_fiber || 0,
+            sugars: meal.sugars || 0,
+            sodium: meal.sodium || 0,
+            cholesterol: meal.cholesterol || 0,
+            saturated_fat: meal.saturated_fat || 0,
+            trans_fat: meal.trans_fat || 0,
+            potassium: meal.potassium || 0,
+            vitamin_a: meal.vitamin_a || 0,
+            vitamin_c: meal.vitamin_c || 0,
+            iron: meal.iron || 0,
+            calcium: meal.calcium || 0,
             custom_nutrients: {} // Placeholder for meals
           },
           meal_type: meal.meal_type
@@ -329,23 +329,24 @@ const FoodDiary = ({
       debug(loggingLevel, "Calculating entry nutrition for item:", item);
       let nutrition: MealTotals;
       if ('foods' in item) { // It's a FoodEntryMeal, use its aggregated properties (assumed to be in kcal)
-        const quantity = item.quantity || 1;
+        // Note: The backend already scales component food entries by the meal quantity when creating,
+        // and aggregates those scaled values. Do NOT multiply by quantity again here.
         nutrition = {
-          calories: (item.calories || 0) * quantity, // kcal
-          protein: (item.protein || 0) * quantity,
-          carbs: (item.carbs || 0) * quantity,
-          fat: (item.fat || 0) * quantity,
-          dietary_fiber: (item.dietary_fiber || 0) * quantity,
-          sugars: (item.sugars || 0) * quantity,
-          sodium: (item.sodium || 0) * quantity,
-          cholesterol: (item.cholesterol || 0) * quantity,
-          saturated_fat: (item.saturated_fat || 0) * quantity,
-          trans_fat: (item.trans_fat || 0) * quantity,
-          potassium: (item.potassium || 0) * quantity,
-          vitamin_a: (item.vitamin_a || 0) * quantity,
-          vitamin_c: (item.vitamin_c || 0) * quantity,
-          iron: (item.iron || 0) * quantity,
-          calcium: (item.calcium || 0) * quantity,
+          calories: item.calories || 0, // kcal - already aggregated with quantity
+          protein: item.protein || 0,
+          carbs: item.carbs || 0,
+          fat: item.fat || 0,
+          dietary_fiber: item.dietary_fiber || 0,
+          sugars: item.sugars || 0,
+          sodium: item.sodium || 0,
+          cholesterol: item.cholesterol || 0,
+          saturated_fat: item.saturated_fat || 0,
+          trans_fat: item.trans_fat || 0,
+          potassium: item.potassium || 0,
+          vitamin_a: item.vitamin_a || 0,
+          vitamin_c: item.vitamin_c || 0,
+          iron: item.iron || 0,
+          calcium: item.calcium || 0,
           custom_nutrients: {} // Meals don't support custom nutrients yet in this view
         };
       } else { // It's a FoodEntry

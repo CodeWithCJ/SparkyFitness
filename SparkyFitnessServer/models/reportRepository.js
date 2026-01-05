@@ -7,7 +7,8 @@ async function getNutritionData(userId, startDate, endDate, customNutrients = []
     // Generate dynamic SQL parts for custom nutrients
     const customNutrientsSelectOuter = customNutrients.map(cn => `SUM("${cn.name}") AS "${cn.name}"`).join(',\n         ');
     const customNutrientsSelectInner1 = customNutrients.map(cn => `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`).join(',\n           ');
-    const customNutrientsSelectInner2 = customNutrients.map(cn => `SUM((COALESCE((fe_meal.custom_nutrients->>'${cn.name}')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS "${cn.name}"`).join(',\n           ');
+    // Note: fe_meal.quantity is already scaled, so do NOT multiply by fem.quantity
+    const customNutrientsSelectInner2 = customNutrients.map(cn => `SUM(COALESCE((fe_meal.custom_nutrients->>'${cn.name}')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`).join(',\n           ');
 
     const result = await client.query(
       `SELECT
@@ -54,23 +55,25 @@ async function getNutritionData(userId, startDate, endDate, customNutrients = []
          UNION ALL
          SELECT
            fem.entry_date,
-           SUM((fe_meal.calories * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS calories,
-           SUM((fe_meal.protein * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS protein,
-           SUM((fe_meal.carbs * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS carbs,
-           SUM((fe_meal.fat * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS fat,
-           SUM((COALESCE(fe_meal.saturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS saturated_fat,
-           SUM((COALESCE(fe_meal.polyunsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS polyunsaturated_fat,
-           SUM((COALESCE(fe_meal.monounsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS monounsaturated_fat,
-           SUM((COALESCE(fe_meal.trans_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS trans_fat,
-           SUM((COALESCE(fe_meal.cholesterol, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS cholesterol,
-           SUM((COALESCE(fe_meal.sodium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS sodium,
-           SUM((COALESCE(fe_meal.potassium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS potassium,
-           SUM((COALESCE(fe_meal.dietary_fiber, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS dietary_fiber,
-           SUM((COALESCE(fe_meal.sugars, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS sugars,
-           SUM((COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_a,
-           SUM((COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_c,
-           SUM((COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS calcium,
-           SUM((COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS iron${customNutrientsSelectInner2 ? ',\n           ' + customNutrientsSelectInner2 : ''}
+           -- Note: fe_meal.quantity is already scaled by the meal quantity when created,
+           -- so we should NOT multiply by fem.quantity again
+           SUM(fe_meal.calories * fe_meal.quantity / fe_meal.serving_size) AS calories,
+           SUM(fe_meal.protein * fe_meal.quantity / fe_meal.serving_size) AS protein,
+           SUM(fe_meal.carbs * fe_meal.quantity / fe_meal.serving_size) AS carbs,
+           SUM(fe_meal.fat * fe_meal.quantity / fe_meal.serving_size) AS fat,
+           SUM(COALESCE(fe_meal.saturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS saturated_fat,
+           SUM(COALESCE(fe_meal.polyunsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS polyunsaturated_fat,
+           SUM(COALESCE(fe_meal.monounsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS monounsaturated_fat,
+           SUM(COALESCE(fe_meal.trans_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS trans_fat,
+           SUM(COALESCE(fe_meal.cholesterol, 0) * fe_meal.quantity / fe_meal.serving_size) AS cholesterol,
+           SUM(COALESCE(fe_meal.sodium, 0) * fe_meal.quantity / fe_meal.serving_size) AS sodium,
+           SUM(COALESCE(fe_meal.potassium, 0) * fe_meal.quantity / fe_meal.serving_size) AS potassium,
+           SUM(COALESCE(fe_meal.dietary_fiber, 0) * fe_meal.quantity / fe_meal.serving_size) AS dietary_fiber,
+           SUM(COALESCE(fe_meal.sugars, 0) * fe_meal.quantity / fe_meal.serving_size) AS sugars,
+           SUM(COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_a,
+           SUM(COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_c,
+           SUM(COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) AS calcium,
+           SUM(COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) AS iron${customNutrientsSelectInner2 ? ',\n           ' + customNutrientsSelectInner2 : ''}
          FROM food_entry_meals fem
          JOIN food_entries fe_meal ON fem.id = fe_meal.food_entry_meal_id
          WHERE fem.user_id = $1 AND fem.entry_date BETWEEN $2 AND $3
@@ -92,7 +95,8 @@ async function getTabularFoodData(userId, startDate, endDate, customNutrients = 
     // Generate dynamic SQL parts for custom nutrients
     const customNutrientsSelectCTE = customNutrients.map(cn => `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`).join(',\n          ');
     const customNutrientsSelectOuter = customNutrients.map(cn => `cfe."${cn.name}"`).join(',\n        ');
-    const customNutrientsSelectMealAgg = customNutrients.map(cn => `SUM(cfe_meal."${cn.name}" * fem.quantity) AS "${cn.name}"`).join(',\n        ');
+    // Note: cfe_meal values already include scaled quantity, so do NOT multiply by fem.quantity
+    const customNutrientsSelectMealAgg = customNutrients.map(cn => `SUM(cfe_meal."${cn.name}") AS "${cn.name}"`).join(',\n        ');
 
     const result = await client.query(
       `WITH CalculatedFoodEntries AS (
@@ -175,19 +179,21 @@ async function getTabularFoodData(userId, startDate, endDate, customNutrients = 
         fem.user_id,
         fem.name AS food_name, -- Meal name as food_name
         fem.description AS brand_name, -- Meal description as brand_name
-        SUM(cfe_meal.calories * fem.quantity) AS calories,
-        SUM(cfe_meal.protein * fem.quantity) AS protein,
-        SUM(cfe_meal.carbs * fem.quantity) AS carbs,
-        SUM(cfe_meal.fat * fem.quantity) AS fat,
-        SUM(cfe_meal.saturated_fat * fem.quantity) AS saturated_fat,
-        SUM(cfe_meal.polyunsaturated_fat * fem.quantity) AS polyunsaturated_fat,
-        SUM(cfe_meal.monounsaturated_fat * fem.quantity) AS monounsaturated_fat,
-        SUM(cfe_meal.trans_fat * fem.quantity) AS trans_fat,
-        SUM(cfe_meal.cholesterol * fem.quantity) AS cholesterol,
-        SUM(cfe_meal.sodium * fem.quantity) AS sodium,
-        SUM(cfe_meal.potassium * fem.quantity) AS potassium,
-        SUM(cfe_meal.dietary_fiber * fem.quantity) AS dietary_fiber,
-        SUM(cfe_meal.sugars * fem.quantity) AS sugars,
+        -- Note: cfe_meal values already include scaled quantity (fe.quantity is pre-scaled),
+        -- so we should NOT multiply by fem.quantity again
+        SUM(cfe_meal.calories) AS calories,
+        SUM(cfe_meal.protein) AS protein,
+        SUM(cfe_meal.carbs) AS carbs,
+        SUM(cfe_meal.fat) AS fat,
+        SUM(cfe_meal.saturated_fat) AS saturated_fat,
+        SUM(cfe_meal.polyunsaturated_fat) AS polyunsaturated_fat,
+        SUM(cfe_meal.monounsaturated_fat) AS monounsaturated_fat,
+        SUM(cfe_meal.trans_fat) AS trans_fat,
+        SUM(cfe_meal.cholesterol) AS cholesterol,
+        SUM(cfe_meal.sodium) AS sodium,
+        SUM(cfe_meal.potassium) AS potassium,
+        SUM(cfe_meal.dietary_fiber) AS dietary_fiber,
+        SUM(cfe_meal.sugars) AS sugars,
         (CASE
             WHEN SUM(cfe_meal.carbs) = 0 THEN 'None'
             ELSE
@@ -235,10 +241,10 @@ async function getTabularFoodData(userId, startDate, endDate, customNutrients = 
                     ELSE 'Very High'
                 END)
         END) AS glycemic_index,
-        SUM(cfe_meal.vitamin_a * fem.quantity) AS vitamin_a,
-        SUM(cfe_meal.vitamin_c * fem.quantity) AS vitamin_c,
-        SUM(cfe_meal.calcium * fem.quantity) AS calcium,
-        SUM(cfe_meal.iron * fem.quantity) AS iron,
+        SUM(cfe_meal.vitamin_a) AS vitamin_a,
+        SUM(cfe_meal.vitamin_c) AS vitamin_c,
+        SUM(cfe_meal.calcium) AS calcium,
+        SUM(cfe_meal.iron) AS iron,
         1 AS serving_size, -- Treat meal as single serving unit for calculations
         'serving' AS serving_unit,
         fem.id AS food_entry_meal_id${customNutrientsSelectMealAgg ? ',\n        ' + customNutrientsSelectMealAgg : ''}
@@ -289,7 +295,8 @@ async function getMiniNutritionTrends(userId, startDate, endDate, customNutrient
     // For custom nutrients, I will use their name directly to match the service mapping.
     const customNutrientsSelectOuter = customNutrients.map(cn => `SUM("${cn.name}") AS "${cn.name}"`).join(',\n         ');
     const customNutrientsSelectInner1 = customNutrients.map(cn => `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`).join(',\n           ');
-    const customNutrientsSelectInner2 = customNutrients.map(cn => `SUM((COALESCE((fe_meal.custom_nutrients->>'${cn.name}')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS "${cn.name}"`).join(',\n           ');
+    // Note: fe_meal.quantity is already scaled, so do NOT multiply by fem.quantity
+    const customNutrientsSelectInner2 = customNutrients.map(cn => `SUM(COALESCE((fe_meal.custom_nutrients->>'${cn.name}')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`).join(',\n           ');
 
     const result = await client.query(
       `SELECT
@@ -336,23 +343,25 @@ async function getMiniNutritionTrends(userId, startDate, endDate, customNutrient
          UNION ALL
          SELECT
            fem.entry_date,
-           SUM((fe_meal.calories * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS calories,
-           SUM((fe_meal.protein * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS protein,
-           SUM((fe_meal.carbs * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS carbs,
-           SUM((fe_meal.fat * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS fat,
-           SUM((COALESCE(fe_meal.saturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS saturated_fat,
-           SUM((COALESCE(fe_meal.polyunsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS polyunsaturated_fat,
-           SUM((COALESCE(fe_meal.monounsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS monounsaturated_fat,
-           SUM((COALESCE(fe_meal.trans_fat, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS trans_fat,
-           SUM((COALESCE(fe_meal.cholesterol, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS cholesterol,
-           SUM((COALESCE(fe_meal.sodium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS sodium,
-           SUM((COALESCE(fe_meal.potassium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS potassium,
-           SUM((COALESCE(fe_meal.dietary_fiber, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS dietary_fiber,
-           SUM((COALESCE(fe_meal.sugars, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS sugars,
-           SUM((COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_a,
-           SUM((COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS vitamin_c,
-           SUM((COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS calcium,
-           SUM((COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) * fem.quantity) AS iron${customNutrientsSelectInner2 ? ',\n           ' + customNutrientsSelectInner2 : ''}
+           -- Note: fe_meal.quantity is already scaled by the meal quantity when created,
+           -- so we should NOT multiply by fem.quantity again
+           SUM(fe_meal.calories * fe_meal.quantity / fe_meal.serving_size) AS calories,
+           SUM(fe_meal.protein * fe_meal.quantity / fe_meal.serving_size) AS protein,
+           SUM(fe_meal.carbs * fe_meal.quantity / fe_meal.serving_size) AS carbs,
+           SUM(fe_meal.fat * fe_meal.quantity / fe_meal.serving_size) AS fat,
+           SUM(COALESCE(fe_meal.saturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS saturated_fat,
+           SUM(COALESCE(fe_meal.polyunsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS polyunsaturated_fat,
+           SUM(COALESCE(fe_meal.monounsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS monounsaturated_fat,
+           SUM(COALESCE(fe_meal.trans_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS trans_fat,
+           SUM(COALESCE(fe_meal.cholesterol, 0) * fe_meal.quantity / fe_meal.serving_size) AS cholesterol,
+           SUM(COALESCE(fe_meal.sodium, 0) * fe_meal.quantity / fe_meal.serving_size) AS sodium,
+           SUM(COALESCE(fe_meal.potassium, 0) * fe_meal.quantity / fe_meal.serving_size) AS potassium,
+           SUM(COALESCE(fe_meal.dietary_fiber, 0) * fe_meal.quantity / fe_meal.serving_size) AS dietary_fiber,
+           SUM(COALESCE(fe_meal.sugars, 0) * fe_meal.quantity / fe_meal.serving_size) AS sugars,
+           SUM(COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_a,
+           SUM(COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_c,
+           SUM(COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) AS calcium,
+           SUM(COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) AS iron${customNutrientsSelectInner2 ? ',\n           ' + customNutrientsSelectInner2 : ''}
          FROM food_entry_meals fem
          JOIN food_entries fe_meal ON fem.id = fe_meal.food_entry_meal_id
          WHERE fem.user_id = $1 AND fem.entry_date BETWEEN $2 AND $3

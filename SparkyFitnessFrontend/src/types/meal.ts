@@ -23,6 +23,11 @@ export interface MealFood {
   protein?: number;
   carbs?: number;
   fat?: number;
+  sodium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  saturated_fat?: number;
+  cholesterol?: number;
   serving_size?: number;
   serving_unit?: string;
 }

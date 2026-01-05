@@ -245,10 +245,10 @@ async function getFoodEntriesByDate(userId, selectedDate) {
   try {
     const result = await client.query(
       `SELECT
-        fe.id, fe.food_id, fe.meal_id, fe.meal_type, 
-        (CASE WHEN fe.food_entry_meal_id IS NOT NULL THEN fe.quantity * COALESCE(fem.quantity, 1) ELSE fe.quantity END) as quantity,
+        fe.id, fe.food_id, fe.meal_id, fe.meal_type,
+        fe.quantity, -- Note: quantity is already scaled when created for meal components
         fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
-        fe.food_entry_meal_id, -- New column
+        fe.food_entry_meal_id,
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat, fe.cholesterol, fe.sodium,
         fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index, fe.custom_nutrients
@@ -270,9 +270,9 @@ async function getFoodEntriesByDateAndMealType(userId, date, mealType) {
     const result = await client.query(
       `SELECT
         fe.id, fe.food_id, fe.meal_id, fe.meal_type,
-        (CASE WHEN fe.food_entry_meal_id IS NOT NULL THEN fe.quantity * COALESCE(fem.quantity, 1) ELSE fe.quantity END) as quantity,
+        fe.quantity, -- Note: quantity is already scaled when created for meal components
         fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
-        fe.food_entry_meal_id, -- New column
+        fe.food_entry_meal_id,
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat, fe.cholesterol, fe.sodium,
         fe.potassium, fe.dietary_fiber, fe.sugars, fe.vitamin_a, fe.vitamin_c, fe.calcium, fe.iron, fe.glycemic_index, fe.custom_nutrients
@@ -294,9 +294,9 @@ async function getFoodEntriesByDateRange(userId, startDate, endDate) {
     const result = await client.query(
       `SELECT
         fe.id, fe.food_id, fe.meal_id, fe.meal_type,
-        (CASE WHEN fe.food_entry_meal_id IS NOT NULL THEN fe.quantity * COALESCE(fem.quantity, 1) ELSE fe.quantity END) as quantity,
+        fe.quantity, -- Note: quantity is already scaled when created for meal components
         fe.unit, fe.variant_id, fe.entry_date, fe.meal_plan_template_id,
-        fe.food_entry_meal_id, -- New column
+        fe.food_entry_meal_id,
         fe.food_name, fe.brand_name, fe.serving_size, fe.serving_unit, fe.calories, fe.protein, fe.carbs, fe.fat,
         fe.saturated_fat, fe.polyunsaturated_fat, fe.monounsaturated_fat, fe.trans_fat,
         fe.cholesterol, fe.sodium, fe.potassium, fe.dietary_fiber, fe.sugars,
