@@ -17,14 +17,14 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "org.SparkyApps.SparkyFitnessMobile",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "org.SparkyApps.SparkyFitnessMobile",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/appstore.png",
         "backgroundColor": "#FFFFFF"
