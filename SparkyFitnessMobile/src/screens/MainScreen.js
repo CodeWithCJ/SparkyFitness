@@ -7,18 +7,15 @@ import { useFocusEffect } from '@react-navigation/native'; // Import useFocusEff
 // import InAppBrowser from 'react-native-inappbrowser-reborn';
 import {
   initHealthConnect,
-  readStepRecords,
-  aggregateStepsByDate,
-  readActiveCaloriesRecords,
-  aggregateActiveCaloriesByDate,
-  aggregateTotalCaloriesByDate, // ADD THIS LINE
-  readHeartRateRecords,
+  aggregateTotalCaloriesByDate,
   aggregateHeartRateByDate,
   loadHealthPreference,
   saveStringPreference,
   loadStringPreference,
   getSyncStartDate,
   readHealthRecords,
+  getAggregatedStepsByDate,
+  getAggregatedActiveCaloriesByDate,
 } from '../services/healthConnectService';
 import { syncHealthData as healthConnectSyncData } from '../services/healthConnectService';
 import { saveTimeRange, loadTimeRange, loadLastSyncedTime, saveLastSyncedTime } from '../services/storage'; // Import saveTimeRange and loadTimeRange
@@ -157,6 +154,25 @@ const MainScreen = ({ navigation }) => {
         let displayValue = 'N/A';
 
         try {
+          // For Steps and ActiveCaloriesBurned, use the aggregation API directly (handles deduplication)
+          if (metric.recordType === 'Steps') {
+            const aggregatedSteps = await getAggregatedStepsByDate(startDate, endDate);
+            const totalSteps = aggregatedSteps.reduce((sum, record) => sum + record.value, 0);
+            displayValue = totalSteps.toLocaleString();
+            newHealthData[metric.id] = displayValue;
+            addLog(`[MainScreen] ${metric.label}: ${displayValue}`);
+            continue;
+          }
+
+          if (metric.recordType === 'ActiveCaloriesBurned') {
+            const aggregatedCalories = await getAggregatedActiveCaloriesByDate(startDate, endDate);
+            const totalCalories = aggregatedCalories.reduce((sum, record) => sum + record.value, 0);
+            displayValue = totalCalories.toLocaleString();
+            newHealthData[metric.id] = displayValue;
+            addLog(`[MainScreen] ${metric.label}: ${displayValue}`);
+            continue;
+          }
+
           // Read records using the generic readHealthRecords function
           records = await readHealthRecords(metric.recordType, startDate, endDate);
 
@@ -168,18 +184,6 @@ const MainScreen = ({ navigation }) => {
 
           // Handle different metric types
           switch (metric.recordType) {
-            case 'Steps':
-              const aggregatedSteps = aggregateStepsByDate(records);
-              const totalSteps = aggregatedSteps.reduce((sum, record) => sum + record.value, 0);
-              displayValue = totalSteps.toLocaleString();
-              break;
-
-            case 'ActiveCaloriesBurned':
-              const aggregatedCalories = aggregateActiveCaloriesByDate(records);
-              const totalCalories = aggregatedCalories.reduce((sum, record) => sum + record.value, 0);
-              displayValue = totalCalories.toLocaleString();
-              break;
-
             case 'TotalCaloriesBurned':
               const aggregatedTotalCalories = await aggregateTotalCaloriesByDate(records);
               // Filter to only include 'total_calories' entries, excluding 'Active Calories' entries

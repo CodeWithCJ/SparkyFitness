@@ -30,6 +30,10 @@ export const aggregateStepsByDate = HealthConnectAggregation.aggregateStepsByDat
 export const aggregateTotalCaloriesByDate = HealthConnectAggregation.aggregateTotalCaloriesByDate;
 export const aggregateActiveCaloriesByDate = HealthConnectAggregation.aggregateActiveCaloriesByDate;
 
+// Deduplicated aggregation functions (use Health Connect's aggregation API)
+export const getAggregatedStepsByDate = HealthConnect.getAggregatedStepsByDate;
+export const getAggregatedActiveCaloriesByDate = HealthConnect.getAggregatedActiveCaloriesByDate;
+
 export const transformHealthRecords = HealthConnectTransformation.transformHealthRecords;
 
 export const saveHealthPreference = HealthConnectPreferences.saveHealthPreference;
@@ -58,45 +62,47 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
 
   for (const type of healthDataTypesToSync) {
     try {
-      addLog(`[HealthConnectService] Reading ${type} records...`);
-      const rawRecords = await HealthConnect.readHealthRecords(type, startDate, endDate);
-
-      if (rawRecords.length === 0) {
-        addLog(`[HealthConnectService] No ${type} records found`);
-        continue;
-      }
-
-      addLog(`[HealthConnectService] Found ${rawRecords.length} raw ${type} records`);
-
       const metricConfig = HEALTH_METRICS.find(m => m.recordType === type);
       if (!metricConfig) {
         addLog(`[HealthConnectService] No metric configuration found for record type: ${type}. Skipping.`, 'warn', 'WARNING');
         continue;
       }
 
-      let dataToTransform = rawRecords;
+      let dataToTransform = [];
 
+      // For Steps and ActiveCaloriesBurned, use aggregation API directly (handles deduplication)
       if (type === 'Steps') {
-        dataToTransform = HealthConnectAggregation.aggregateStepsByDate(rawRecords);
-        addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw Steps records into ${dataToTransform.length} daily totals`);
-      } else if (type === 'HeartRate') {
-        dataToTransform = HealthConnectAggregation.aggregateHeartRateByDate(rawRecords);
-        addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw HeartRate records into ${dataToTransform.length} daily averages`);
+        dataToTransform = await HealthConnect.getAggregatedStepsByDate(startDate, endDate);
+        addLog(`[HealthConnectService] Got ${dataToTransform.length} deduplicated daily step totals`);
       } else if (type === 'ActiveCaloriesBurned') {
-        dataToTransform = HealthConnectAggregation.aggregateActiveCaloriesByDate(rawRecords);
-        addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw ActiveCaloriesBurned records into ${dataToTransform.length} daily totals`);
-      } else if (type === 'TotalCaloriesBurned') {
-        dataToTransform = await HealthConnectAggregation.aggregateTotalCaloriesByDate(rawRecords);
-        addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw TotalCaloriesBurned records into ${dataToTransform.length} daily totals`);
-      } else if (type === 'SleepSession') {
-        // SleepSession records are already structured as sessions, no further aggregation needed here
-        addLog(`[HealthConnectService] Processing raw SleepSession records.`);
-      } else if (type === 'Stress') {
-        // Stress records are typically individual measurements, no aggregation needed here
-        addLog(`[HealthConnectService] Processing raw Stress records.`);
-      } else if (type === 'ExerciseSession') {
-        // ExerciseSession records are already structured as sessions, no further aggregation needed here
-        addLog(`[HealthConnectService] Processing raw ExerciseSession records.`);
+        dataToTransform = await HealthConnect.getAggregatedActiveCaloriesByDate(startDate, endDate);
+        addLog(`[HealthConnectService] Got ${dataToTransform.length} deduplicated daily calorie totals`);
+      } else {
+        // For other types, read raw records
+        addLog(`[HealthConnectService] Reading ${type} records...`);
+        const rawRecords = await HealthConnect.readHealthRecords(type, startDate, endDate);
+
+        if (rawRecords.length === 0) {
+          addLog(`[HealthConnectService] No ${type} records found`);
+          continue;
+        }
+
+        addLog(`[HealthConnectService] Found ${rawRecords.length} raw ${type} records`);
+        dataToTransform = rawRecords;
+
+        if (type === 'HeartRate') {
+          dataToTransform = HealthConnectAggregation.aggregateHeartRateByDate(rawRecords);
+          addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw HeartRate records into ${dataToTransform.length} daily averages`);
+        } else if (type === 'TotalCaloriesBurned') {
+          dataToTransform = await HealthConnectAggregation.aggregateTotalCaloriesByDate(rawRecords);
+          addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw TotalCaloriesBurned records into ${dataToTransform.length} daily totals`);
+        } else if (type === 'SleepSession') {
+          addLog(`[HealthConnectService] Processing raw SleepSession records.`);
+        } else if (type === 'Stress') {
+          addLog(`[HealthConnectService] Processing raw Stress records.`);
+        } else if (type === 'ExerciseSession') {
+          addLog(`[HealthConnectService] Processing raw ExerciseSession records.`);
+        }
       }
 
       const transformed = HealthConnectTransformation.transformHealthRecords(dataToTransform, metricConfig);

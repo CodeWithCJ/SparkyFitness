@@ -128,6 +128,110 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
   }
 };
 
+// Get daily aggregated steps for a date range
+// Note: Uses readRecords + manual aggregation since aggregateRecord API has issues
+export const getAggregatedStepsByDate = async (startDate, endDate) => {
+  addLog(`[HealthConnectService] getAggregatedStepsByDate called: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+  try {
+    const rawRecords = await readRecords('Steps', {
+      timeRangeFilter: {
+        operator: 'between',
+        startTime: startDate.toISOString(),
+        endTime: endDate.toISOString(),
+      },
+    });
+
+    const records = rawRecords.records || [];
+    addLog(`[HealthConnectService] Read ${records.length} raw step records`);
+
+    if (records.length === 0) {
+      return [];
+    }
+
+    // Aggregate by date
+    const aggregatedData = records.reduce((acc, record) => {
+      try {
+        const timeToUse = record.endTime || record.startTime;
+        const date = timeToUse.split('T')[0];
+        const steps = record.count || 0;
+
+        if (!acc[date]) {
+          acc[date] = 0;
+        }
+        acc[date] += steps;
+      } catch (error) {
+        addLog(`[HealthConnectService] Error processing step record: ${error.message}`);
+      }
+      return acc;
+    }, {});
+
+    const results = Object.keys(aggregatedData).map(date => ({
+      date,
+      value: aggregatedData[date],
+      type: 'step',
+    }));
+
+    addLog(`[HealthConnectService] Aggregated into ${results.length} daily totals`);
+    return results;
+  } catch (error) {
+    addLog(`[HealthConnectService] Error in getAggregatedStepsByDate: ${error.message}`, 'error', 'ERROR');
+    return [];
+  }
+};
+
+// Get daily aggregated active calories for a date range
+// Note: Uses readRecords + manual aggregation since aggregateRecord API has issues
+export const getAggregatedActiveCaloriesByDate = async (startDate, endDate) => {
+  addLog(`[HealthConnectService] getAggregatedActiveCaloriesByDate called: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+  try {
+    const rawRecords = await readRecords('ActiveCaloriesBurned', {
+      timeRangeFilter: {
+        operator: 'between',
+        startTime: startDate.toISOString(),
+        endTime: endDate.toISOString(),
+      },
+    });
+
+    const records = rawRecords.records || [];
+    addLog(`[HealthConnectService] Read ${records.length} raw calorie records`);
+
+    if (records.length === 0) {
+      return [];
+    }
+
+    // Aggregate by date
+    const aggregatedData = records.reduce((acc, record) => {
+      try {
+        const timeToUse = record.endTime || record.startTime;
+        const date = timeToUse.split('T')[0];
+        const calories = record.energy?.inKilocalories || 0;
+
+        if (!acc[date]) {
+          acc[date] = 0;
+        }
+        acc[date] += calories;
+      } catch (error) {
+        addLog(`[HealthConnectService] Error processing calorie record: ${error.message}`);
+      }
+      return acc;
+    }, {});
+
+    const results = Object.keys(aggregatedData).map(date => ({
+      date,
+      value: Math.round(aggregatedData[date]),
+      type: 'active_calories',
+    }));
+
+    addLog(`[HealthConnectService] Aggregated into ${results.length} daily totals`);
+    return results;
+  } catch (error) {
+    addLog(`[HealthConnectService] Error in getAggregatedActiveCaloriesByDate: ${error.message}`, 'error', 'ERROR');
+    return [];
+  }
+};
+
 export const getSyncStartDate = (duration) => {
   const now = new Date();
   let startDate = new Date(now);
