@@ -277,8 +277,6 @@ export const getAggregatedStepsByDate = async (startDate, endDate) => {
   const results = [];
   const currentDate = new Date(startDate);
 
-  addLog(`[HealthKitService] getAggregatedStepsByDate called: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-
   while (currentDate <= endDate) {
     const dayStart = new Date(currentDate);
     dayStart.setHours(0, 0, 0, 0);
@@ -293,7 +291,6 @@ export const getAggregatedStepsByDate = async (startDate, endDate) => {
     }
 
     try {
-      addLog(`[HealthKitService] Querying stats for ${dayStart.toISOString()} to ${dayEnd.toISOString()}`);
       const stats = await queryStatisticsForQuantity(
         'HKQuantityTypeIdentifierStepCount',
         ['cumulativeSum'],
@@ -309,7 +306,6 @@ export const getAggregatedStepsByDate = async (startDate, endDate) => {
       );
 
       const dateStr = dayStart.toISOString().split('T')[0];
-      addLog(`[HealthKitService] Stats result for ${dateStr}: ${JSON.stringify(stats)}`);
 
       if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
         results.push({
@@ -317,9 +313,6 @@ export const getAggregatedStepsByDate = async (startDate, endDate) => {
           value: Math.round(stats.sumQuantity.quantity),
           type: 'step',
         });
-        addLog(`[HealthKitService] Aggregated Steps for ${dateStr}: ${stats.sumQuantity.quantity}`);
-      } else {
-        addLog(`[HealthKitService] No steps for ${dateStr}`);
       }
     } catch (error) {
       addLog(`[HealthKitService] Failed to get aggregated steps: ${error.message}`, 'error', 'ERROR');
@@ -328,7 +321,6 @@ export const getAggregatedStepsByDate = async (startDate, endDate) => {
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  addLog(`[HealthKitService] getAggregatedStepsByDate returning ${results.length} results`);
   return results;
 };
 

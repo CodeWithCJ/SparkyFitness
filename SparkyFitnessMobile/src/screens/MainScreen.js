@@ -160,7 +160,6 @@ const MainScreen = ({ navigation }) => {
             const totalSteps = aggregatedSteps.reduce((sum, record) => sum + record.value, 0);
             displayValue = totalSteps.toLocaleString();
             newHealthData[metric.id] = displayValue;
-            addLog(`[MainScreen] ${metric.label}: ${displayValue}`);
             continue;
           }
 
@@ -169,7 +168,6 @@ const MainScreen = ({ navigation }) => {
             const totalCalories = aggregatedCalories.reduce((sum, record) => sum + record.value, 0);
             displayValue = totalCalories.toLocaleString();
             newHealthData[metric.id] = displayValue;
-            addLog(`[MainScreen] ${metric.label}: ${displayValue}`);
             continue;
           }
 
