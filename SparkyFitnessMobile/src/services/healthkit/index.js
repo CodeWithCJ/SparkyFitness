@@ -236,6 +236,9 @@ export const getSyncStartDate = (duration) => {
   let startDate = new Date(now);
 
   switch (duration) {
+    case 'today':
+      startDate.setHours(0, 0, 0, 0);
+      break;
     case '24h':
       startDate.setDate(now.getDate() - 1);
       startDate.setHours(0, 0, 0, 0);

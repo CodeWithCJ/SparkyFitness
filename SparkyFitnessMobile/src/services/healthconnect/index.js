@@ -133,6 +133,9 @@ export const getSyncStartDate = (duration) => {
   let startDate = new Date(now);
 
   switch (duration) {
+    case 'today':
+      // Already set to midnight
+      break;
     case '24h':
       startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;

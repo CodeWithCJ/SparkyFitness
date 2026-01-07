@@ -45,6 +45,7 @@ const MainScreen = ({ navigation }) => {
   const isAndroid = Platform.OS === 'android';
 
   const timeRangeOptions = [
+    { label: "Today", value: "today" },
     { label: "Last 24 Hours", value: "24h" },
     { label: "Last 3 Days", value: "3d" },
     { label: "Last 7 Days", value: "7d" },
