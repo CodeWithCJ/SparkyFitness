@@ -17,6 +17,10 @@ export const aggregateHeartRateByDate = HealthKitAggregation.aggregateHeartRateB
 export const aggregateActiveCaloriesByDate = HealthKitAggregation.aggregateActiveCaloriesByDate;
 export const aggregateTotalCaloriesByDate = HealthKitAggregation.aggregateTotalCaloriesByDate;
 
+// Deduplicated aggregation functions (use HealthKit's statistics API)
+export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
+export const getAggregatedActiveCaloriesByDate = HealthKit.getAggregatedActiveCaloriesByDate;
+
 export const transformHealthRecords = HealthKitTransformation.transformHealthRecords;
 
 export const saveHealthPreference = HealthKitPreferences.saveHealthPreference;
@@ -43,56 +47,57 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
 
   for (const type of healthDataTypesToSync) {
     try {
-      addLog(`[HealthKitService] Reading ${type} records...`);
-      const rawRecords = await HealthKit.readHealthRecords(type, startDate, endDate);
-
-      if (!rawRecords || rawRecords.length === 0) {
-        addLog(`[HealthKitService] No ${type} records found`);
-        continue;
-      }
-
       const metricConfig = HEALTH_METRICS.find(m => m.recordType === type);
       if (!metricConfig) {
         addLog(`[HealthKitService] No metric configuration found for record type: ${type}`, 'warn', 'WARNING');
         continue;
       }
 
-      let dataToTransform = rawRecords;
+      let dataToTransform = [];
 
-      // Aggregate data where necessary
+      // For Steps and ActiveCaloriesBurned, use aggregation API directly (handles deduplication)
       if (type === 'Steps') {
-        dataToTransform = HealthKitAggregation.aggregateStepsByDate(rawRecords);
-      } else if (type === 'HeartRate') {
-        dataToTransform = HealthKitAggregation.aggregateHeartRateByDate(rawRecords);
+        dataToTransform = await HealthKit.getAggregatedStepsByDate(startDate, endDate);
+        addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily step totals`);
       } else if (type === 'ActiveCaloriesBurned') {
-        dataToTransform = HealthKitAggregation.aggregateActiveCaloriesByDate(rawRecords);
-      } else if (type === 'TotalCaloriesBurned') {
-        // Special Handling for iOS: Total Calories = Active + Basal (BMR)
-        // HealthKit doesn't have a "Total" type, so we must manually fetch Active calories
-        // and combine them with the Basal calories we already fetched (rawRecords for TotalCaloriesBurned maps to Basal).
+        dataToTransform = await HealthKit.getAggregatedActiveCaloriesByDate(startDate, endDate);
+        addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily calorie totals`);
+      } else {
+        // For other types, read raw records
+        addLog(`[HealthKitService] Reading ${type} records...`);
+        const rawRecords = await HealthKit.readHealthRecords(type, startDate, endDate);
 
-        try {
-          addLog(`[HealthKitService] Fetching Active Calories to add to Total Calories calculation...`);
-          const activeRecords = await HealthKit.readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
+        if (!rawRecords || rawRecords.length === 0) {
+          addLog(`[HealthKitService] No ${type} records found`);
+          continue;
+        }
 
-          if (activeRecords && activeRecords.length > 0) {
-            addLog(`[HealthKitService] Found ${activeRecords.length} Active Calories records to merge with ${rawRecords.length} BMR records`);
-            // Combine Basal (rawRecords) + Active (activeRecords)
-            // The aggregation function simply sums all energy records by date, so this effectively calculates (Basal + Active)
-            const combinedRecords = [...rawRecords, ...activeRecords];
-            dataToTransform = HealthKitAggregation.aggregateTotalCaloriesByDate(combinedRecords);
-          } else {
-            addLog(`[HealthKitService] No Active Calories found to merge. Total Calories will only be BMR.`);
+        dataToTransform = rawRecords;
+
+        if (type === 'HeartRate') {
+          dataToTransform = HealthKitAggregation.aggregateHeartRateByDate(rawRecords);
+        } else if (type === 'TotalCaloriesBurned') {
+          // Special Handling for iOS: Total Calories = Active + Basal (BMR)
+          try {
+            addLog(`[HealthKitService] Fetching Active Calories to add to Total Calories calculation...`);
+            const activeRecords = await HealthKit.readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
+
+            if (activeRecords && activeRecords.length > 0) {
+              addLog(`[HealthKitService] Found ${activeRecords.length} Active Calories records to merge with ${rawRecords.length} BMR records`);
+              const combinedRecords = [...rawRecords, ...activeRecords];
+              dataToTransform = HealthKitAggregation.aggregateTotalCaloriesByDate(combinedRecords);
+            } else {
+              addLog(`[HealthKitService] No Active Calories found to merge. Total Calories will only be BMR.`);
+              dataToTransform = HealthKitAggregation.aggregateTotalCaloriesByDate(rawRecords);
+            }
+          } catch (err) {
+            addLog(`[HealthKitService] Error fetching extra active calories for total calc: ${err.message}`, 'warn', 'WARNING');
             dataToTransform = HealthKitAggregation.aggregateTotalCaloriesByDate(rawRecords);
           }
-        } catch (err) {
-          addLog(`[HealthKitService] Error fetching extra active calories for total calc: ${err.message}`, 'warn', 'WARNING');
-          // Fallback to just BMR if active fails
-          dataToTransform = HealthKitAggregation.aggregateTotalCaloriesByDate(rawRecords);
+        } else if (type === 'SleepSession') {
+          dataToTransform = HealthKitAggregation.aggregateSleepSessions(rawRecords);
+          addLog(`[HealthKitService] Aggregated SleepSession records.`);
         }
-      } else if (type === 'SleepSession') {
-        dataToTransform = HealthKitAggregation.aggregateSleepSessions(rawRecords);
-        addLog(`[HealthKitService] Aggregated SleepSession records.`);
       }
 
       const transformed = HealthKitTransformation.transformHealthRecords(dataToTransform, metricConfig);

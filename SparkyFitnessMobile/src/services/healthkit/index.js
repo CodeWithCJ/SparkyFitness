@@ -1,8 +1,8 @@
 import {
   requestAuthorization,
   queryQuantitySamples,
+  queryStatisticsForQuantity,
   isHealthDataAvailable,
-  HKQuantityTypeIdentifier,
   HKCategoryTypeIdentifier,
   queryCategorySamples,
   queryWorkoutSamples,
@@ -236,6 +236,9 @@ export const getSyncStartDate = (duration) => {
   let startDate = new Date(now);
 
   switch (duration) {
+    case 'today':
+      startDate.setHours(0, 0, 0, 0);
+      break;
     case '24h':
       startDate.setDate(now.getDate() - 1);
       startDate.setHours(0, 0, 0, 0);
@@ -261,6 +264,120 @@ export const getSyncStartDate = (duration) => {
       break;
   }
   return startDate;
+};
+
+// Get aggregated (deduplicated) data for cumulative types like Steps and ActiveCaloriesBurned
+// This uses HealthKit's statistics query which handles deduplication automatically
+export const getAggregatedStepsByDate = async (startDate, endDate) => {
+  if (!isHealthKitAvailable) {
+    addLog(`[HealthKitService] HealthKit not available for aggregated steps`, 'warn', 'WARNING');
+    return [];
+  }
+
+  const results = [];
+  const currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const dayStart = new Date(currentDate);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(currentDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // Don't query future dates
+    const now = new Date();
+    if (dayEnd > now) {
+      dayEnd.setTime(now.getTime());
+    }
+
+    try {
+      const stats = await queryStatisticsForQuantity(
+        'HKQuantityTypeIdentifierStepCount',
+        ['cumulativeSum'],
+        {
+          filter: {
+            date: {
+              startDate: dayStart,
+              endDate: dayEnd,
+            },
+          },
+          unit: 'count',
+        }
+      );
+
+      const dateStr = dayStart.toISOString().split('T')[0];
+
+      if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
+        results.push({
+          date: dateStr,
+          value: Math.round(stats.sumQuantity.quantity),
+          type: 'step',
+        });
+      }
+    } catch (error) {
+      addLog(`[HealthKitService] Failed to get aggregated steps: ${error.message}`, 'error', 'ERROR');
+    }
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return results;
+};
+
+export const getAggregatedActiveCaloriesByDate = async (startDate, endDate) => {
+  if (!isHealthKitAvailable) {
+    addLog(`[HealthKitService] HealthKit not available for aggregated calories`, 'warn', 'WARNING');
+    return [];
+  }
+
+  const results = [];
+  const currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const dayStart = new Date(currentDate);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(currentDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // Don't query future dates
+    const now = new Date();
+    if (dayEnd > now) {
+      dayEnd.setTime(now.getTime());
+    }
+
+    try {
+      const stats = await queryStatisticsForQuantity(
+        'HKQuantityTypeIdentifierActiveEnergyBurned',
+        ['cumulativeSum'],
+        {
+          filter: {
+            date: {
+              startDate: dayStart,
+              endDate: dayEnd,
+            },
+          },
+          unit: 'kcal',
+        }
+      );
+
+      if (stats && stats.sumQuantity) {
+        const dateStr = dayStart.toISOString().split('T')[0];
+        results.push({
+          date: dateStr,
+          value: Math.round(stats.sumQuantity.quantity),
+          type: 'active_calories',
+        });
+        addLog(`[HealthKitService] Aggregated Active Calories for ${dateStr}: ${stats.sumQuantity.quantity}`);
+      }
+    } catch (error) {
+      addLog(`[HealthKitService] Failed to get aggregated calories: ${error.message}`, 'error', 'ERROR');
+    }
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return results;
 };
 
 // Read health records from HealthKit

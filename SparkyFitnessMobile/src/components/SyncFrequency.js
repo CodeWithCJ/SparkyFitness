@@ -56,7 +56,7 @@ const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFou
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card, zIndex: 2000 }]}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>Sync Frequency</Text>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Background Sync Frequency</Text>
 
       <View style={[styles.inputGroup, { zIndex: 3000 }]}>
         <Text style={[styles.label, { color: colors.textSecondary }]}>Sync Interval</Text>

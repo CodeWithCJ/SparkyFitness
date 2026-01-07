@@ -1,7 +1,7 @@
 import BackgroundFetch from 'react-native-background-fetch';
 import { syncHealthData } from './api';
 import { addLog } from './LogService';
-import { loadHealthPreference, loadSyncDuration, readStepRecords, aggregateStepsByDate, readActiveCaloriesRecords, aggregateActiveCaloriesByDate, readSleepSessionRecords, readStressRecords, readExerciseSessionRecords, readWorkoutRecords } from './healthConnectService';
+import { loadHealthPreference, loadSyncDuration, getAggregatedStepsByDate, getAggregatedActiveCaloriesByDate, readSleepSessionRecords, readStressRecords, readExerciseSessionRecords, readWorkoutRecords } from './healthConnectService';
 import { readSleepSessionRecords as readSleepSessionRecordsHK, readStressRecords as readStressRecordsHK, readWorkoutRecords as readWorkoutRecordsHK } from './healthkit';
 import { Platform } from 'react-native';
 import { saveLastSyncedTime } from './storage';
@@ -62,15 +62,15 @@ const performBackgroundSync = async (taskId) => {
       let allAggregatedData = [];
 
       if (isStepsEnabled) {
-        const stepRecords = await readStepRecords(startDate, endDate);
-        const aggregatedStepsData = aggregateStepsByDate(stepRecords);
+        const aggregatedStepsData = await getAggregatedStepsByDate(startDate, endDate);
         allAggregatedData = allAggregatedData.concat(aggregatedStepsData);
+        addLog(`[Background Sync] Got ${aggregatedStepsData.length} deduplicated step records`);
       }
 
       if (isActiveCaloriesEnabled) {
-        const activeCaloriesRecords = await readActiveCaloriesRecords(startDate, endDate);
-        const aggregatedActiveCaloriesData = aggregateActiveCaloriesByDate(activeCaloriesRecords);
+        const aggregatedActiveCaloriesData = await getAggregatedActiveCaloriesByDate(startDate, endDate);
         allAggregatedData = allAggregatedData.concat(aggregatedActiveCaloriesData);
+        addLog(`[Background Sync] Got ${aggregatedActiveCaloriesData.length} deduplicated calorie records`);
       }
 
       if (isSleepSessionEnabled) {
