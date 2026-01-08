@@ -6,6 +6,9 @@ const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepo
 const workoutPresetRepository = require('../models/workoutPresetRepository'); // New import
 const measurementService = require('./measurementService'); // Import measurementService
 const moodRepository = require('../models/moodRepository'); // Import moodRepository
+const garminConnectService = require('../integrations/garminconnect/garminConnectService');
+const garminMeasurementMapping = require('../integrations/garminconnect/garminMeasurementMapping');
+const moment = require('moment');
 
 async function processActivitiesAndWorkouts(userId, data, startDate, endDate) {
   const { activities, workouts } = data;
@@ -496,6 +499,108 @@ async function processGarminSleepData(userId, actingUserId, sleepDataArray, star
   }
 }
 
+async function syncGarminData(userId, syncType = 'manual') {
+  let startDate, endDate;
+  const today = moment();
+
+  if (syncType === 'manual') {
+    endDate = today.format('YYYY-MM-DD');
+    startDate = today.clone().subtract(7, 'days').format('YYYY-MM-DD');
+  } else if (syncType === 'scheduled') {
+    endDate = today.format('YYYY-MM-DD');
+    startDate = today.format('YYYY-MM-DD');
+  } else {
+    throw new Error("Invalid syncType. Must be 'manual' or 'scheduled'.");
+  }
+
+  log('info', `[garminService] Starting Garmin sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}.`);
+  const results = {
+    health: null,
+    activities: null
+  };
+
+  try {
+    // 1. Sync Health and Wellness
+    log('info', `[garminService] Fetching Health and Wellness data...`);
+    const healthWellnessData = await garminConnectService.syncGarminHealthAndWellness(userId, startDate, endDate, []);
+
+    // 2. Process Health and Wellness (Stress, Mood, etc.)
+    const processedGarminHealthData = await processGarminHealthAndWellnessData(userId, userId, healthWellnessData.data, startDate, endDate);
+
+    // 3. Map and Process other Health Metrics (Steps, Weight, etc.)
+    const processedHealthData = [];
+    for (const metric in healthWellnessData.data) {
+      if (metric === 'stress') continue; // Already processed
+
+      const dailyEntries = healthWellnessData.data[metric];
+      if (Array.isArray(dailyEntries)) {
+        for (const entry of dailyEntries) {
+          const calendarDateRaw = entry.date;
+          if (!calendarDateRaw) continue;
+
+          const calendarDate = moment(calendarDateRaw).format('YYYY-MM-DD');
+
+          for (const key in entry) {
+            if (key === 'date') continue;
+
+            let mapping = garminMeasurementMapping[key];
+            if (!mapping && key === 'value') {
+              mapping = garminMeasurementMapping[metric];
+            }
+            if (mapping) {
+              const value = entry[key];
+              if (value === null || value === undefined) continue;
+
+              const type = mapping.targetType === 'check_in' ? mapping.field : mapping.name;
+              processedHealthData.push({
+                type: type,
+                value: value,
+                date: calendarDate,
+                source: 'garmin',
+                dataType: mapping.dataType,
+                measurementType: mapping.measurementType
+              });
+            }
+          }
+        }
+      }
+    }
+
+    let measurementServiceResult = {};
+    if (processedHealthData.length > 0) {
+      measurementServiceResult = await measurementService.processHealthData(processedHealthData, userId, userId);
+    }
+
+    // 4. Process Sleep
+    let processedSleepData = {};
+    if (healthWellnessData.data && healthWellnessData.data.sleep && healthWellnessData.data.sleep.length > 0) {
+      processedSleepData = await processGarminSleepData(userId, userId, healthWellnessData.data.sleep, startDate, endDate);
+    }
+
+    results.health = {
+      processedGarminHealthData,
+      measurementServiceResult,
+      processedSleepData
+    };
+
+    // 5. Sync Activities and Workouts
+    log('info', `[garminService] Fetching Activities and Workouts data...`);
+    const activitiesData = await garminConnectService.fetchGarminActivitiesAndWorkouts(userId, startDate, endDate);
+
+    // 6. Process Activities and Workouts
+    const processedActivities = await processActivitiesAndWorkouts(userId, activitiesData, startDate, endDate);
+
+    results.activities = processedActivities;
+    log('info', `[garminService] Full Garmin sync completed for user ${userId}.`);
+
+  } catch (error) {
+    log('error', `[garminService] Error during full Garmin sync for user ${userId}:`, error);
+    throw error; // Re-throw to be handled by caller
+  }
+
+  return results;
+}
+
 module.exports = {
   processActivitiesAndWorkouts,
   processGarminWorkoutSession,
@@ -503,4 +608,5 @@ module.exports = {
   processGarminSimpleActivity,
   processGarminSleepData,
   processGarminHealthAndWellnessData,
+  syncGarminData
 };
