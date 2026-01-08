@@ -21,6 +21,8 @@ export const aggregateTotalCaloriesByDate = HealthKitAggregation.aggregateTotalC
 export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
 export const getAggregatedActiveCaloriesByDate = HealthKit.getAggregatedActiveCaloriesByDate;
 export const getAggregatedTotalCaloriesByDate = HealthKit.getAggregatedTotalCaloriesByDate;
+export const getAggregatedDistanceByDate = HealthKit.getAggregatedDistanceByDate;
+export const getAggregatedFloorsClimbedByDate = HealthKit.getAggregatedFloorsClimbedByDate;
 
 export const transformHealthRecords = HealthKitTransformation.transformHealthRecords;
 
@@ -56,13 +58,19 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
 
       let dataToTransform = [];
 
-      // For Steps and ActiveCaloriesBurned, use aggregation API directly (handles deduplication)
+      // For cumulative metrics, use aggregation API directly (handles deduplication)
       if (type === 'Steps') {
         dataToTransform = await HealthKit.getAggregatedStepsByDate(startDate, endDate);
         addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily step totals`);
       } else if (type === 'ActiveCaloriesBurned') {
         dataToTransform = await HealthKit.getAggregatedActiveCaloriesByDate(startDate, endDate);
         addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily calorie totals`);
+      } else if (type === 'Distance') {
+        dataToTransform = await HealthKit.getAggregatedDistanceByDate(startDate, endDate);
+        addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily distance totals`);
+      } else if (type === 'FloorsClimbed') {
+        dataToTransform = await HealthKit.getAggregatedFloorsClimbedByDate(startDate, endDate);
+        addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily floors totals`);
       } else {
         // For other types, read raw records
         addLog(`[HealthKitService] Reading ${type} records...`);

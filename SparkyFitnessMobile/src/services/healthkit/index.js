@@ -440,6 +440,120 @@ export const getAggregatedTotalCaloriesByDate = async (startDate, endDate) => {
   return results;
 };
 
+// Get aggregated distance by date using HealthKit's statistics query (handles deduplication)
+export const getAggregatedDistanceByDate = async (startDate, endDate) => {
+  if (!isHealthKitAvailable) {
+    addLog(`[HealthKitService] HealthKit not available for aggregated distance`, 'warn', 'WARNING');
+    return [];
+  }
+
+  const results = [];
+  const currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const dayStart = new Date(currentDate);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(currentDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // Don't query future dates
+    const now = new Date();
+    if (dayEnd > now) {
+      dayEnd.setTime(now.getTime());
+    }
+
+    try {
+      const stats = await queryStatisticsForQuantity(
+        'HKQuantityTypeIdentifierDistanceWalkingRunning',
+        ['cumulativeSum'],
+        {
+          filter: {
+            date: {
+              startDate: dayStart,
+              endDate: dayEnd,
+            },
+          },
+          unit: 'm',
+        }
+      );
+
+      const dateStr = dayStart.toISOString().split('T')[0];
+
+      if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
+        results.push({
+          date: dateStr,
+          value: Math.round(stats.sumQuantity.quantity),
+          type: 'distance',
+        });
+      }
+    } catch (error) {
+      addLog(`[HealthKitService] Failed to get aggregated distance: ${error.message}`, 'error', 'ERROR');
+    }
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return results;
+};
+
+// Get aggregated floors climbed by date using HealthKit's statistics query (handles deduplication)
+export const getAggregatedFloorsClimbedByDate = async (startDate, endDate) => {
+  if (!isHealthKitAvailable) {
+    addLog(`[HealthKitService] HealthKit not available for aggregated floors`, 'warn', 'WARNING');
+    return [];
+  }
+
+  const results = [];
+  const currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const dayStart = new Date(currentDate);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(currentDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // Don't query future dates
+    const now = new Date();
+    if (dayEnd > now) {
+      dayEnd.setTime(now.getTime());
+    }
+
+    try {
+      const stats = await queryStatisticsForQuantity(
+        'HKQuantityTypeIdentifierFlightsClimbed',
+        ['cumulativeSum'],
+        {
+          filter: {
+            date: {
+              startDate: dayStart,
+              endDate: dayEnd,
+            },
+          },
+          unit: 'count',
+        }
+      );
+
+      const dateStr = dayStart.toISOString().split('T')[0];
+
+      if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
+        results.push({
+          date: dateStr,
+          value: Math.round(stats.sumQuantity.quantity),
+          type: 'floors_climbed',
+        });
+      }
+    } catch (error) {
+      addLog(`[HealthKitService] Failed to get aggregated floors: ${error.message}`, 'error', 'ERROR');
+    }
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return results;
+};
+
 // Read health records from HealthKit
 export const readHealthRecords = async (recordType, startDate, endDate) => {
   if (!isHealthKitAvailable) {

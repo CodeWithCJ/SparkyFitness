@@ -17,6 +17,8 @@ import {
   getAggregatedStepsByDate,
   getAggregatedActiveCaloriesByDate,
   getAggregatedTotalCaloriesByDate,
+  getAggregatedDistanceByDate,
+  getAggregatedFloorsClimbedByDate,
 } from '../services/healthConnectService';
 import { syncHealthData as healthConnectSyncData } from '../services/healthConnectService';
 import { saveTimeRange, loadTimeRange, loadLastSyncedTime, saveLastSyncedTime } from '../services/storage'; // Import saveTimeRange and loadTimeRange
@@ -177,6 +179,22 @@ const MainScreen = ({ navigation }) => {
             const totalCaloriesSum = aggregatedTotalCalories.reduce((sum, record) => sum + record.value, 0);
             displayValue = totalCaloriesSum.toLocaleString();
             console.log(`[MainScreen] Fetched Total Calories: ${displayValue}`);
+            newHealthData[metric.id] = displayValue;
+            continue;
+          }
+
+          if (metric.recordType === 'Distance') {
+            const aggregatedDistance = await getAggregatedDistanceByDate(startDate, endDate);
+            const totalMeters = aggregatedDistance.reduce((sum, record) => sum + record.value, 0);
+            displayValue = `${(totalMeters / 1000).toFixed(2)} km`;
+            newHealthData[metric.id] = displayValue;
+            continue;
+          }
+
+          if (metric.recordType === 'FloorsClimbed') {
+            const aggregatedFloors = await getAggregatedFloorsClimbedByDate(startDate, endDate);
+            const totalFloors = Math.round(aggregatedFloors.reduce((sum, record) => sum + record.value, 0));
+            displayValue = totalFloors.toLocaleString();
             newHealthData[metric.id] = displayValue;
             continue;
           }

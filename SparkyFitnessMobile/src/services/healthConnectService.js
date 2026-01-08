@@ -34,6 +34,38 @@ export const aggregateActiveCaloriesByDate = HealthConnectAggregation.aggregateA
 export const getAggregatedStepsByDate = HealthConnect.getAggregatedStepsByDate;
 export const getAggregatedActiveCaloriesByDate = HealthConnect.getAggregatedActiveCaloriesByDate;
 
+// Android implementations for additional aggregation functions
+// These aggregate raw records by date since Android Health Connect doesn't have the same statistics API as HealthKit
+export const getAggregatedTotalCaloriesByDate = async (startDate, endDate) => {
+  const records = await HealthConnect.readHealthRecords('TotalCaloriesBurned', startDate, endDate);
+  const byDate = {};
+  records.forEach(record => {
+    const date = new Date(record.startTime || record.time).toISOString().split('T')[0];
+    byDate[date] = (byDate[date] || 0) + (record.energy?.inKilocalories || 0);
+  });
+  return Object.entries(byDate).map(([date, value]) => ({ date, value: Math.round(value), type: 'total_calories' }));
+};
+
+export const getAggregatedDistanceByDate = async (startDate, endDate) => {
+  const records = await HealthConnect.readHealthRecords('Distance', startDate, endDate);
+  const byDate = {};
+  records.forEach(record => {
+    const date = new Date(record.startTime || record.time).toISOString().split('T')[0];
+    byDate[date] = (byDate[date] || 0) + (record.distance?.inMeters || 0);
+  });
+  return Object.entries(byDate).map(([date, value]) => ({ date, value: Math.round(value), type: 'distance' }));
+};
+
+export const getAggregatedFloorsClimbedByDate = async (startDate, endDate) => {
+  const records = await HealthConnect.readHealthRecords('FloorsClimbed', startDate, endDate);
+  const byDate = {};
+  records.forEach(record => {
+    const date = new Date(record.startTime || record.time).toISOString().split('T')[0];
+    byDate[date] = (byDate[date] || 0) + (record.floors || 0);
+  });
+  return Object.entries(byDate).map(([date, value]) => ({ date, value: Math.round(value), type: 'floors_climbed' }));
+};
+
 export const transformHealthRecords = HealthConnectTransformation.transformHealthRecords;
 
 export const saveHealthPreference = HealthConnectPreferences.saveHealthPreference;
