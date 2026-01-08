@@ -19,17 +19,17 @@ const defaultPreferences = [
     // Desktop
     { view_group: 'summary', platform: 'desktop', visible_nutrients: defaultNutrients },
     { view_group: 'quick_info', platform: 'desktop', visible_nutrients: defaultNutrients },
-    { view_group: 'food_database', platform: 'desktop', visible_nutrients: [] }, // Will be populated dynamically
-    { view_group: 'goal', platform: 'desktop', visible_nutrients: [] }, // Will be populated dynamically
-    { view_group: 'report_tabular', platform: 'desktop', visible_nutrients: [] }, // Will be populated dynamically
-    { view_group: 'report_chart', platform: 'desktop', visible_nutrients: [] }, // Will be populated dynamically
+    { view_group: 'food_database', platform: 'desktop', visible_nutrients: predefinedNutrients },
+    { view_group: 'goal', platform: 'desktop', visible_nutrients: predefinedNutrients },
+    { view_group: 'report_tabular', platform: 'desktop', visible_nutrients: predefinedNutrients },
+    { view_group: 'report_chart', platform: 'desktop', visible_nutrients: predefinedNutrients },
     // Mobile
     { view_group: 'summary', platform: 'mobile', visible_nutrients: defaultNutrients },
     { view_group: 'quick_info', platform: 'mobile', visible_nutrients: defaultNutrients },
-    { view_group: 'food_database', platform: 'mobile', visible_nutrients: [] }, // Will be populated dynamically
-    { view_group: 'goal', platform: 'mobile', visible_nutrients: [] }, // Will be populated dynamically
-    { view_group: 'report_tabular', platform: 'mobile', visible_nutrients: [] }, // Will be populated dynamically
-    { view_group: 'report_chart', platform: 'mobile', visible_nutrients: [] }, // Will be populated dynamically
+    { view_group: 'food_database', platform: 'mobile', visible_nutrients: predefinedNutrients },
+    { view_group: 'goal', platform: 'mobile', visible_nutrients: predefinedNutrients },
+    { view_group: 'report_tabular', platform: 'mobile', visible_nutrients: predefinedNutrients },
+    { view_group: 'report_chart', platform: 'mobile', visible_nutrients: predefinedNutrients },
 ];
 
 async function getNutrientDisplayPreferences(userId) {
@@ -42,7 +42,9 @@ async function getNutrientDisplayPreferences(userId) {
     // Populate the dynamically set visible_nutrients
     dynamicDefaultPreferences.forEach(pref => {
         if (pref.view_group === 'food_database' || pref.view_group === 'goal' || pref.view_group === 'report_tabular' || pref.view_group === 'report_chart') {
-            pref.visible_nutrients = allNutrientsDynamic;
+            if (!pref.visible_nutrients || pref.visible_nutrients.length === 0) {
+                pref.visible_nutrients = allNutrientsDynamic;
+            }
         }
     });
 
@@ -58,11 +60,36 @@ async function upsertNutrientDisplayPreference(userId, viewGroup, platform, visi
 
 async function resetNutrientDisplayPreference(userId, viewGroup, platform) {
     await nutrientDisplayPreferenceRepository.deleteNutrientDisplayPreference(userId, viewGroup, platform);
-    return defaultPreferences.find(p => p.view_group === viewGroup && p.platform === platform);
+
+    const allNutrientsDynamic = await getAllNutrients(userId);
+
+    let defaultVisibleNutrients = [];
+    if (viewGroup === 'summary' || viewGroup === 'quick_info') {
+        defaultVisibleNutrients = defaultNutrients; // Use the smaller default set for these
+    } else {
+        defaultVisibleNutrients = allNutrientsDynamic; // Use all nutrients for other view groups
+    }
+
+    const newDefaultPreference = await nutrientDisplayPreferenceRepository.upsertNutrientDisplayPreference(
+        userId,
+        viewGroup,
+        platform,
+        defaultVisibleNutrients
+    );
+    return newDefaultPreference;
 }
 
 async function createDefaultNutrientPreferencesForUser(userId) {
-    return await nutrientDisplayPreferenceRepository.createDefaultNutrientPreferences(userId, defaultPreferences);
+    const allNutrientsDynamic = await getAllNutrients(userId);
+    const dynamicDefaultPreferences = JSON.parse(JSON.stringify(defaultPreferences));
+
+    dynamicDefaultPreferences.forEach(pref => {
+        if (pref.view_group === 'food_database' || pref.view_group === 'goal' || pref.view_group === 'report_tabular' || pref.view_group === 'report_chart') {
+            pref.visible_nutrients = allNutrientsDynamic;
+        }
+    });
+
+    return await nutrientDisplayPreferenceRepository.createDefaultNutrientPreferences(userId, dynamicDefaultPreferences);
 }
 
 module.exports = {
