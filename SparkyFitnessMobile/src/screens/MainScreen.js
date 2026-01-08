@@ -16,6 +16,7 @@ import {
   readHealthRecords,
   getAggregatedStepsByDate,
   getAggregatedActiveCaloriesByDate,
+  getAggregatedTotalCaloriesByDate,
 } from '../services/healthConnectService';
 import { syncHealthData as healthConnectSyncData } from '../services/healthConnectService';
 import { saveTimeRange, loadTimeRange, loadLastSyncedTime, saveLastSyncedTime } from '../services/storage'; // Import saveTimeRange and loadTimeRange
@@ -171,6 +172,15 @@ const MainScreen = ({ navigation }) => {
             continue;
           }
 
+          if (metric.recordType === 'TotalCaloriesBurned') {
+            const aggregatedTotalCalories = await getAggregatedTotalCaloriesByDate(startDate, endDate);
+            const totalCaloriesSum = aggregatedTotalCalories.reduce((sum, record) => sum + record.value, 0);
+            displayValue = totalCaloriesSum.toLocaleString();
+            console.log(`[MainScreen] Fetched Total Calories: ${displayValue}`);
+            newHealthData[metric.id] = displayValue;
+            continue;
+          }
+
           // Read records using the generic readHealthRecords function
           records = await readHealthRecords(metric.recordType, startDate, endDate);
 
@@ -182,15 +192,6 @@ const MainScreen = ({ navigation }) => {
 
           // Handle different metric types
           switch (metric.recordType) {
-            case 'TotalCaloriesBurned':
-              const aggregatedTotalCalories = await aggregateTotalCaloriesByDate(records);
-              // Filter to only include 'total_calories' entries, excluding 'Active Calories' entries
-              const totalCaloriesSum = aggregatedTotalCalories
-                .filter(record => record.type === 'total_calories')
-                .reduce((sum, record) => sum + record.value, 0);
-              // Convert from calories to kilocalories (divide by 1000)
-              displayValue = Math.round(totalCaloriesSum).toLocaleString();
-              break;
 
             case 'HeartRate':
               const aggregatedHeartRate = aggregateHeartRateByDate(records);

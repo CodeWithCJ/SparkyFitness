@@ -380,6 +380,66 @@ export const getAggregatedActiveCaloriesByDate = async (startDate, endDate) => {
   return results;
 };
 
+export const getAggregatedTotalCaloriesByDate = async (startDate, endDate) => {
+  if (!isHealthKitAvailable) {
+    addLog(`[HealthKitService] HealthKit not available for aggregated total calories`, 'warn', 'WARNING');
+    return [];
+  }
+
+  const results = [];
+  const currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const dayStart = new Date(currentDate);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(currentDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const now = new Date();
+    if (dayEnd > now) {
+      dayEnd.setTime(now.getTime());
+    }
+
+    try {
+      // Query both basal and active with full precision, then sum
+      const [basalStats, activeStats] = await Promise.all([
+        queryStatisticsForQuantity(
+          'HKQuantityTypeIdentifierBasalEnergyBurned',
+          ['cumulativeSum'],
+          { filter: { date: { startDate: dayStart, endDate: dayEnd } }, unit: 'kcal' }
+        ),
+        queryStatisticsForQuantity(
+          'HKQuantityTypeIdentifierActiveEnergyBurned',
+          ['cumulativeSum'],
+          { filter: { date: { startDate: dayStart, endDate: dayEnd } }, unit: 'kcal' }
+        ),
+      ]);
+
+      const basal = basalStats?.sumQuantity?.quantity || 0;
+      const active = activeStats?.sumQuantity?.quantity || 0;
+
+      if (basal > 0 || active > 0) {
+        const dateStr = dayStart.toISOString().split('T')[0];
+        const total = Math.round(basal + active);
+        results.push({
+          date: dateStr,
+          value: total,
+          type: 'total_calories',
+        });
+        addLog(`[HealthKitService] Aggregated Total Calories for ${dateStr}: ${total} (basal: ${basal.toFixed(2)}, active: ${active.toFixed(2)})`);
+      }
+    } catch (error) {
+      addLog(`[HealthKitService] Failed to get aggregated total calories: ${error.message}`, 'error', 'ERROR');
+    }
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  addLog(`[HealthKitService] Got ${results.length} total calorie entries`);
+  return results;
+};
+
 // Read health records from HealthKit
 export const readHealthRecords = async (recordType, startDate, endDate) => {
   if (!isHealthKitAvailable) {

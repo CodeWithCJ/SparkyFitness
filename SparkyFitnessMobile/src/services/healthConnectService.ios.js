@@ -20,6 +20,7 @@ export const aggregateTotalCaloriesByDate = HealthKitAggregation.aggregateTotalC
 // Deduplicated aggregation functions (use HealthKit's statistics API)
 export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
 export const getAggregatedActiveCaloriesByDate = HealthKit.getAggregatedActiveCaloriesByDate;
+export const getAggregatedTotalCaloriesByDate = HealthKit.getAggregatedTotalCaloriesByDate;
 
 export const transformHealthRecords = HealthKitTransformation.transformHealthRecords;
 
@@ -77,23 +78,9 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
         if (type === 'HeartRate') {
           dataToTransform = HealthKitAggregation.aggregateHeartRateByDate(rawRecords);
         } else if (type === 'TotalCaloriesBurned') {
-          // Special Handling for iOS: Total Calories = Active + Basal (BMR)
-          try {
-            addLog(`[HealthKitService] Fetching Active Calories to add to Total Calories calculation...`);
-            const activeRecords = await HealthKit.readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
-
-            if (activeRecords && activeRecords.length > 0) {
-              addLog(`[HealthKitService] Found ${activeRecords.length} Active Calories records to merge with ${rawRecords.length} BMR records`);
-              const combinedRecords = [...rawRecords, ...activeRecords];
-              dataToTransform = HealthKitAggregation.aggregateTotalCaloriesByDate(combinedRecords);
-            } else {
-              addLog(`[HealthKitService] No Active Calories found to merge. Total Calories will only be BMR.`);
-              dataToTransform = HealthKitAggregation.aggregateTotalCaloriesByDate(rawRecords);
-            }
-          } catch (err) {
-            addLog(`[HealthKitService] Error fetching extra active calories for total calc: ${err.message}`, 'warn', 'WARNING');
-            dataToTransform = HealthKitAggregation.aggregateTotalCaloriesByDate(rawRecords);
-          }
+          // Use deduplicated statistics query (matches Health app behavior)
+          dataToTransform = await HealthKit.getAggregatedTotalCaloriesByDate(startDate, endDate);
+          addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily total calorie entries`);
         } else if (type === 'SleepSession') {
           dataToTransform = HealthKitAggregation.aggregateSleepSessions(rawRecords);
           addLog(`[HealthKitService] Aggregated SleepSession records.`);
