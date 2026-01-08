@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict QvWxraazhVKCi8JK09Ni7mo2ViSnfKbL600Izy0c4jK4Z9TbqKzhAgnxfmbC7ne
+\restrict Hb9PePndvFR0vQvRT7LibJs74ogZtZW4BjX9ezkShB8cbvZsnfAY1d8Oj2PNNme
 
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 18.0
@@ -1168,6 +1168,7 @@ CREATE TABLE public.food_entries (
     updated_by_user_id uuid,
     meal_id uuid,
     food_entry_meal_id uuid,
+    custom_nutrients jsonb DEFAULT '{}'::jsonb,
     CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
     CONSTRAINT food_entries_meal_type_check CHECK ((meal_type = ANY (ARRAY['breakfast'::text, 'lunch'::text, 'dinner'::text, 'snacks'::text])))
 );
@@ -1238,6 +1239,7 @@ CREATE TABLE public.food_variants (
     iron numeric DEFAULT 0,
     is_default boolean DEFAULT false,
     glycemic_index text,
+    custom_nutrients jsonb DEFAULT '{}'::jsonb,
     CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text])))
 );
 
@@ -1635,6 +1637,20 @@ CREATE TABLE public.user_api_keys (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     last_used_at timestamp with time zone,
     is_active boolean DEFAULT true NOT NULL
+);
+
+
+--
+-- Name: user_custom_nutrients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_custom_nutrients (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    name text NOT NULL,
+    unit text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2461,11 +2477,27 @@ ALTER TABLE ONLY public.mood_entries
 
 
 --
+-- Name: user_custom_nutrients unique_user_nutrient_name; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_nutrients
+    ADD CONSTRAINT unique_user_nutrient_name UNIQUE (user_id, name);
+
+
+--
 -- Name: external_data_providers unique_user_provider; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.external_data_providers
     ADD CONSTRAINT unique_user_provider UNIQUE (user_id, provider_name);
+
+
+--
+-- Name: user_custom_nutrients user_custom_nutrients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_nutrients
+    ADD CONSTRAINT user_custom_nutrients_pkey PRIMARY KEY (id);
 
 
 --
@@ -3002,7 +3034,7 @@ ALTER TABLE ONLY public.admin_activity_logs
 --
 
 ALTER TABLE ONLY public.check_in_measurements
-    ADD CONSTRAINT check_in_measurements_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT check_in_measurements_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -3010,7 +3042,7 @@ ALTER TABLE ONLY public.check_in_measurements
 --
 
 ALTER TABLE ONLY public.check_in_measurements
-    ADD CONSTRAINT check_in_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT check_in_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -3018,7 +3050,7 @@ ALTER TABLE ONLY public.check_in_measurements
 --
 
 ALTER TABLE ONLY public.custom_categories
-    ADD CONSTRAINT custom_categories_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT custom_categories_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -3026,7 +3058,7 @@ ALTER TABLE ONLY public.custom_categories
 --
 
 ALTER TABLE ONLY public.custom_categories
-    ADD CONSTRAINT custom_categories_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT custom_categories_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -3034,7 +3066,7 @@ ALTER TABLE ONLY public.custom_categories
 --
 
 ALTER TABLE ONLY public.custom_measurements
-    ADD CONSTRAINT custom_measurements_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT custom_measurements_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -3042,7 +3074,7 @@ ALTER TABLE ONLY public.custom_measurements
 --
 
 ALTER TABLE ONLY public.custom_measurements
-    ADD CONSTRAINT custom_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT custom_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -3066,7 +3098,7 @@ ALTER TABLE ONLY public.exercise_entries
 --
 
 ALTER TABLE ONLY public.exercise_entries
-    ADD CONSTRAINT exercise_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT exercise_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -3226,7 +3258,15 @@ ALTER TABLE ONLY public.food_entries
 --
 
 ALTER TABLE ONLY public.food_entries
-    ADD CONSTRAINT food_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT food_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: food_entries food_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entries
+    ADD CONSTRAINT food_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 
 --
@@ -3406,6 +3446,14 @@ ALTER TABLE ONLY public.sleep_entry_stages
 
 
 --
+-- Name: user_custom_nutrients user_custom_nutrients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_nutrients
+    ADD CONSTRAINT user_custom_nutrients_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_ignored_updates user_ignored_updates_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3450,7 +3498,7 @@ ALTER TABLE ONLY public.user_water_containers
 --
 
 ALTER TABLE ONLY public.water_intake
-    ADD CONSTRAINT water_intake_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT water_intake_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -3458,7 +3506,7 @@ ALTER TABLE ONLY public.water_intake
 --
 
 ALTER TABLE ONLY public.water_intake
-    ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -3964,6 +4012,13 @@ CREATE POLICY owner_policy ON public.sparky_chat_history USING ((user_id = publi
 --
 
 CREATE POLICY owner_policy ON public.user_api_keys USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: user_custom_nutrients owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_custom_nutrients USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
 
 
 --
@@ -4723,6 +4778,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_api_keys TO sparky_uat;
 
 
 --
+-- Name: TABLE user_custom_nutrients; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_uat;
+
+
+--
 -- Name: TABLE user_goals; Type: ACL; Schema: public; Owner: -
 --
 
@@ -4972,5 +5036,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QvWxraazhVKCi8JK09Ni7mo2ViSnfKbL600Izy0c4jK4Z9TbqKzhAgnxfmbC7ne
+\unrestrict Hb9PePndvFR0vQvRT7LibJs74ogZtZW4BjX9ezkShB8cbvZsnfAY1d8Oj2PNNme
 
