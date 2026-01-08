@@ -220,12 +220,32 @@ router.post('/sync/activities_and_workouts', authenticate, async (req, res, next
         log('debug', `Raw activities and workouts data from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, rawData);
 
         const result = await garminService.processActivitiesAndWorkouts(userId, rawData, startDate, endDate);
-        
+
         res.status(200).json(result);
     } catch (error) {
         next(error);
     }
 });
+
+// New simplified sync endpoint
+router.post('/sync', authenticate, async (req, res, next) => {
+    try {
+        const userId = req.userId;
+        log('info', `[garminRoutes] Manual full sync requested for user ${userId}`);
+        const result = await garminService.syncGarminData(userId, 'manual');
+
+        // Update the last sync timestamp
+        const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
+        if (provider) {
+            await externalProviderRepository.updateProviderLastSync(provider.id, new Date());
+        }
+
+        res.status(200).json(result);
+    } catch (error) {
+        next(error);
+    }
+});
+
 
 // Endpoint to get Garmin connection status and token info
 router.get('/status', authenticate, async (req, res, next) => {

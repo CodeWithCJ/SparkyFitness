@@ -62,6 +62,8 @@ const { performBackup, applyRetentionPolicy } = require('./services/backupServic
 const externalProviderRepository = require('./models/externalProviderRepository'); // Import externalProviderRepository
 const withingsService = require('./integrations/withings/withingsService'); // Import withingsService
 const garminConnectService = require('./integrations/garminconnect/garminConnectService'); // Import garminConnectService
+const garminService = require('./services/garminService'); // Import garminService
+
 
 const app = express();
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
@@ -428,7 +430,7 @@ const scheduleGarminSyncs = async () => {
 
           if ((now.getTime() - lastSyncAt.getTime()) >= (60 * 60 * 1000)) {
             log('info', `Hourly Garmin sync for user ${userId}`);
-            await garminConnectService.syncGarminHealthAndWellness(userId, now.toISOString().split('T')[0], now.toISOString().split('T')[0], []);
+            await garminService.syncGarminData(userId, 'scheduled');
             await externalProviderRepository.updateProviderLastSync(provider.id, now);
           }
         }
@@ -451,7 +453,7 @@ const scheduleGarminSyncs = async () => {
 
           if (now.getDate() !== lastSyncAt.getDate() || now.getMonth() !== lastSyncAt.getMonth() || now.getFullYear() !== lastSyncAt.getFullYear()) {
             log('info', `Daily Garmin sync for user ${userId}`);
-            await garminConnectService.syncGarminHealthAndWellness(userId, now.toISOString().split('T')[0], now.toISOString().split('T')[0], []);
+            await garminService.syncGarminData(userId, 'scheduled');
             await externalProviderRepository.updateProviderLastSync(provider.id, now);
           }
         }
