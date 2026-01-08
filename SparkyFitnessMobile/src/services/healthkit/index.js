@@ -68,6 +68,21 @@ const SUPPORTED_HK_TYPES = new Set([
   'HKQuantityTypeIdentifierAppleStandTime',
 ]);
 
+// Map record types to the unit we want HealthKit to return values in.
+// Without specifying a unit, HealthKit returns values in the user's preferred/locale unit,
+// which can cause issues if we assume a specific unit (e.g., kg vs lbs).
+const HEALTHKIT_UNIT_MAP = {
+  'Weight': 'kg',
+  'Height': 'm',
+  'LeanBodyMass': 'kg',
+  'Distance': 'm',
+  'Hydration': 'L',
+  'BodyTemperature': 'degC',
+  'BasalBodyTemperature': 'degC',
+  'BloodGlucose': 'mmol/L',
+  // Add other metrics that need explicit units as needed
+};
+
 // Map our internal health metric types to the official HealthKit identifiers
 const HEALTHKIT_TYPE_MAP = {
   'Steps': 'HKQuantityTypeIdentifierStepCount',
@@ -670,8 +685,15 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
       return [];
     }
 
-    console.log(`[HealthKitService DEBUG] Calling queryQuantitySamples for ${recordType} with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
-    const samples = await queryQuantitySamples(identifier, { from: startDate, to: endDate, limit: queryLimit });
+    // Get the expected unit for this record type (if any)
+    const unit = HEALTHKIT_UNIT_MAP[recordType];
+    const queryOptions = { from: startDate, to: endDate, limit: queryLimit };
+    if (unit) {
+      queryOptions.unit = unit;
+    }
+
+    console.log(`[HealthKitService DEBUG] Calling queryQuantitySamples for ${recordType} with from: ${startDate.toISOString()}, to: ${endDate.toISOString()}, limit: ${queryLimit}, unit: ${unit || 'default'}`);
+    const samples = await queryQuantitySamples(identifier, queryOptions);
 
     // Defensive check: Ensure samples is an array before proceeding
     if (!Array.isArray(samples)) {
