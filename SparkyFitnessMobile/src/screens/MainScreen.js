@@ -64,19 +64,23 @@ const MainScreen = ({ navigation }) => {
     }
     setIsHealthConnectInitialized(initialized);
 
+    // Load selected time range preference FIRST (before setting any state)
+    // This prevents a race condition where healthMetricStates updates trigger
+    // useEffect with the old selectedTimeRange value
+    const loadedTimeRange = await loadTimeRange();
+    const initialTimeRange = loadedTimeRange !== null ? loadedTimeRange : '3d';
+    addLog(`[MainScreen] Loaded selectedTimeRange from storage: ${initialTimeRange}`);
+
     // Load preferences from AsyncStorage for all health metrics
     const newHealthMetricStates = {};
     for (const metric of HEALTH_METRICS) {
       const enabled = await loadHealthPreference(metric.preferenceKey);
       newHealthMetricStates[metric.stateKey] = enabled !== null ? enabled : false;
     }
-    setHealthMetricStates(newHealthMetricStates);
 
-    // Load selected time range preference
-    const loadedTimeRange = await loadTimeRange();
-    const initialTimeRange = loadedTimeRange !== null ? loadedTimeRange : '3d';
-    setSelectedTimeRange(initialTimeRange); // Initialize with loaded preference or default
-    addLog(`[MainScreen] Loaded selectedTimeRange from storage: ${initialTimeRange}`); // Add this log
+    // Set both states together so React can batch them
+    setSelectedTimeRange(initialTimeRange);
+    setHealthMetricStates(newHealthMetricStates);
 
     // Fetch initial health data after setting the time range
     await fetchHealthData(newHealthMetricStates, initialTimeRange); // Pass the loaded states and initial time range

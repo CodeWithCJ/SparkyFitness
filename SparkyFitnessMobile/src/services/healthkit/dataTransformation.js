@@ -145,6 +145,7 @@ export const transformHealthRecords = (records, metricConfig) => {
             recordDate = getDateString(record.startTime);
             break;
           case 'Workout':
+          case 'ExerciseSession':
             if (record.startTime && record.endTime) {
               // HKWorkoutActivityType Mapping
               // Source: https://developer.apple.com/documentation/healthkit/hkworkoutactivitytype
