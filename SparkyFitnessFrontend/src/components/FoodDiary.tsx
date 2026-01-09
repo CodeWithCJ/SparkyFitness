@@ -44,15 +44,19 @@ import { Meal as MealType, FoodEntryMeal } from "@/types/meal"; // Added FoodEnt
 import { FoodEntry } from "@/types/food";
 import { ExpandedGoals } from "@/types/goals";
 import { Exercise } from "@/services/exerciseSearchService";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { PresetExercise, WorkoutPreset } from "@/types/workout";
 import AddExerciseDialog from "./AddExerciseDialog";
 import AddWorkoutPresetDialog from "./AddWorkoutPresetDialog";
 
-
 import { customNutrientService } from "@/services/customNutrientService"; // Add import
 import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
-
 
 interface MealTotals {
   calories: number; // Stored internally as kcal
@@ -99,16 +103,21 @@ const FoodDiary = ({
     convertEnergy,
   } = usePreferences();
   debug(loggingLevel, "FoodDiary component rendered for date:", selectedDate);
-  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+  const getEnergyUnitString = (unit: "kcal" | "kJ"): string => {
+    return unit === "kcal"
+      ? t("common.kcalUnit", "kcal")
+      : t("common.kJUnit", "kJ");
   };
   const [date, setDate] = useState<Date>(new Date(selectedDate));
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
   const [foodEntryMeals, setFoodEntryMeals] = useState<FoodEntryMeal[]>([]); // New state for logged meals
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
-  const [editingFoodEntryMeal, setEditingFoodEntryMeal] = useState<FoodEntryMeal | null>(null); // State for editing logged meal entry
+  const [editingFoodEntryMeal, setEditingFoodEntryMeal] =
+    useState<FoodEntryMeal | null>(null); // State for editing logged meal entry
   const [goals, setGoals] = useState<ExpandedGoals | null>(null);
-  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>([]); // Add state for custom nutrients
+  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>(
+    []
+  ); // Add state for custom nutrients
   const [dayTotals, setDayTotals] = useState<MealTotals>({
     calories: 0,
     protein: 0,
@@ -131,12 +140,17 @@ const FoodDiary = ({
   const [selectedMealType, setSelectedMealType] = useState<string>("");
   const [isUnitSelectorOpen, setIsUnitSelectorOpen] = useState(false);
   const [isLogMealDialogOpen, setIsLogMealDialogOpen] = useState(false);
-  const [selectedMealTemplate, setSelectedMealTemplate] = useState<MealType | null>(null);
+  const [selectedMealTemplate, setSelectedMealTemplate] =
+    useState<MealType | null>(null);
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
   const [copySourceMealType, setCopySourceMealType] = useState<string>("");
-  const [isConvertToMealDialogOpen, setIsConvertToMealDialogOpen] = useState(false);
-  const [convertToMealSourceMealType, setConvertToMealSourceMealType] = useState<string>("");
-  const [exercisesToLogFromPreset, setExercisesToLogFromPreset] = useState<PresetExercise[]>([]);
+  const [isConvertToMealDialogOpen, setIsConvertToMealDialogOpen] =
+    useState(false);
+  const [convertToMealSourceMealType, setConvertToMealSourceMealType] =
+    useState<string>("");
+  const [exercisesToLogFromPreset, setExercisesToLogFromPreset] = useState<
+    PresetExercise[]
+  >([]);
 
   const currentUserId = activeUserId;
   debug(loggingLevel, "Current user ID:", currentUserId);
@@ -150,7 +164,8 @@ const FoodDiary = ({
   useEffect(() => {
     const loadCustomNutrients = async () => {
       try {
-        const fetchedCustomNutrients = await customNutrientService.getCustomNutrients();
+        const fetchedCustomNutrients =
+          await customNutrientService.getCustomNutrients();
         setCustomNutrients(fetchedCustomNutrients);
       } catch (err) {
         error(loggingLevel, "Error loading custom nutrients:", err);
@@ -160,36 +175,52 @@ const FoodDiary = ({
   }, [loggingLevel]);
 
   const normalizeGlycemicIndex = useCallback((value: any): GlycemicIndex => {
-    if (value === null || value === undefined || value === '' || value === '0.0' || value === 0) {
-      return 'None';
+    if (
+      value === null ||
+      value === undefined ||
+      value === "" ||
+      value === "0.0" ||
+      value === 0
+    ) {
+      return "None";
     }
-    const validGlycemicIndexes: GlycemicIndex[] = ['None', 'Very Low', 'Low', 'Medium', 'High', 'Very High'];
+    const validGlycemicIndexes: GlycemicIndex[] = [
+      "None",
+      "Very Low",
+      "Low",
+      "Medium",
+      "High",
+      "Very High",
+    ];
     if (validGlycemicIndexes.includes(value as GlycemicIndex)) {
       return value as GlycemicIndex;
     }
-    return 'None';
+    return "None";
   }, []);
 
   const _calculateDayTotals = useCallback(
     (entries: FoodEntry[], meals: FoodEntryMeal[]) => {
-      debug(loggingLevel, "Calculating day totals for entries and meals:", { entries, meals });
+      debug(loggingLevel, "Calculating day totals for entries and meals:", {
+        entries,
+        meals,
+      });
 
-      const combinedItems: { nutrition: MealTotals, meal_type: string }[] = [];
+      const combinedItems: { nutrition: MealTotals; meal_type: string }[] = [];
 
-      entries.forEach(entry => {
+      entries.forEach((entry) => {
         const entryNutrition = calculateFoodEntryNutrition(entry); // Assumes this returns kcal
         // calculateFoodEntryNutrition returns custom_nutrients, we need to ensure they are passed along
         combinedItems.push({
           nutrition: {
             ...entryNutrition,
             // Explicitly ensure custom_nutrients are carried over if calculateFoodEntryNutrition returns them
-            custom_nutrients: entryNutrition.custom_nutrients || {}
+            custom_nutrients: entryNutrition.custom_nutrients || {},
           },
-          meal_type: entry.meal_type
+          meal_type: entry.meal_type,
         });
       });
 
-      meals.forEach(meal => {
+      meals.forEach((meal) => {
         // For FoodEntryMeal, its aggregated nutritional data is directly available (assumed to be in kcal)
         // Note: The backend already scales component food entries by the meal quantity when creating,
         // and aggregates those scaled values. Do NOT multiply by quantity again here.
@@ -210,31 +241,34 @@ const FoodDiary = ({
             vitamin_c: meal.vitamin_c || 0,
             iron: meal.iron || 0,
             calcium: meal.calcium || 0,
-            custom_nutrients: {} // Placeholder for meals
+            custom_nutrients: {}, // Placeholder for meals
           },
-          meal_type: meal.meal_type
+          meal_type: meal.meal_type,
         });
       });
 
       const totals = combinedItems.reduce(
         (acc, item) => {
           Object.keys(acc).forEach((key) => {
-            if (key === 'custom_nutrients') return; // Handle separately
+            if (key === "custom_nutrients") return; // Handle separately
 
             const k = key as keyof MealTotals;
             const val = item.nutrition[k];
 
             // Safely add numbers, ignoring other types
-            if (typeof val === 'number') {
+            if (typeof val === "number") {
               (acc as any)[key] += val;
             }
           });
 
           // Aggregate custom nutrients
           if (item.nutrition.custom_nutrients && acc.custom_nutrients) {
-            Object.entries(item.nutrition.custom_nutrients).forEach(([name, value]) => {
-              acc.custom_nutrients![name] = (acc.custom_nutrients![name] || 0) + (value as number);
-            });
+            Object.entries(item.nutrition.custom_nutrients).forEach(
+              ([name, value]) => {
+                acc.custom_nutrients![name] =
+                  (acc.custom_nutrients![name] || 0) + (value as number);
+              }
+            );
           }
 
           return acc;
@@ -255,45 +289,68 @@ const FoodDiary = ({
           vitamin_c: 0,
           iron: 0,
           calcium: 0,
-          custom_nutrients: {} as Record<string, number>
-        },
+          custom_nutrients: {} as Record<string, number>,
+        }
       );
 
       info(loggingLevel, "Day totals calculated:", totals);
       setDayTotals(totals);
     },
-    [loggingLevel],
+    [loggingLevel]
   );
 
   const _loadFoodEntriesAndMeals = useCallback(async () => {
-    debug(loggingLevel, "Loading food entries and meals for date:", selectedDate);
+    debug(
+      loggingLevel,
+      "Loading food entries and meals for date:",
+      selectedDate
+    );
     if (!currentUserId) return;
 
     try {
       // Fetch standalone food entries
-      const fetchedFoodEntries = await loadFoodEntries(currentUserId, selectedDate);
-      const processedFoodEntries = (fetchedFoodEntries || []).map(entry => ({
+      const fetchedFoodEntries = await loadFoodEntries(
+        currentUserId,
+        selectedDate
+      );
+      const processedFoodEntries = (fetchedFoodEntries || []).map((entry) => ({
         ...entry,
-        glycemic_index: normalizeGlycemicIndex(entry.glycemic_index)
+        glycemic_index: normalizeGlycemicIndex(entry.glycemic_index),
       }));
       // Filter out entries that are components of food_entry_meals (i.e., food_entry_meal_id is NOT NULL)
-      const standaloneFoodEntries = processedFoodEntries.filter(entry => !entry.food_entry_meal_id);
+      const standaloneFoodEntries = processedFoodEntries.filter(
+        (entry) => !entry.food_entry_meal_id
+      );
       setFoodEntries(standaloneFoodEntries);
-      debug(loggingLevel, "Processed standalone food entries:", standaloneFoodEntries);
-
+      debug(
+        loggingLevel,
+        "Processed standalone food entries:",
+        standaloneFoodEntries
+      );
 
       // Fetch logged meal entries with components
-      const fetchedFoodEntryMeals = await getFoodEntryMealsByDate(currentUserId, selectedDate);
+      const fetchedFoodEntryMeals = await getFoodEntryMealsByDate(
+        currentUserId,
+        selectedDate
+      );
       setFoodEntryMeals(fetchedFoodEntryMeals || []);
-      debug(loggingLevel, "Fetched food entry meals with components:", fetchedFoodEntryMeals);
+      debug(
+        loggingLevel,
+        "Fetched food entry meals with components:",
+        fetchedFoodEntryMeals
+      );
 
       _calculateDayTotals(standaloneFoodEntries, fetchedFoodEntryMeals);
-
     } catch (err) {
       error(loggingLevel, "Error loading food entries or meals:", err);
     }
-  }, [currentUserId, selectedDate, loggingLevel, _calculateDayTotals, normalizeGlycemicIndex]);
-
+  }, [
+    currentUserId,
+    selectedDate,
+    loggingLevel,
+    _calculateDayTotals,
+    normalizeGlycemicIndex,
+  ]);
 
   const _loadGoals = useCallback(async () => {
     debug(loggingLevel, "Loading goals for date:", selectedDate);
@@ -310,7 +367,7 @@ const FoodDiary = ({
     debug(
       loggingLevel,
       "currentUserId, selectedDate, externalRefreshTrigger useEffect triggered.",
-      { currentUserId, selectedDate, externalRefreshTrigger },
+      { currentUserId, selectedDate, externalRefreshTrigger }
     );
     if (currentUserId) {
       _loadFoodEntriesAndMeals();
@@ -328,7 +385,8 @@ const FoodDiary = ({
     (item: FoodEntry | FoodEntryMeal): MealTotals => {
       debug(loggingLevel, "Calculating entry nutrition for item:", item);
       let nutrition: MealTotals;
-      if ('foods' in item) { // It's a FoodEntryMeal, use its aggregated properties (assumed to be in kcal)
+      if ("foods" in item) {
+        // It's a FoodEntryMeal, use its aggregated properties (assumed to be in kcal)
         // Note: The backend already scales component food entries by the meal quantity when creating,
         // and aggregates those scaled values. Do NOT multiply by quantity again here.
         nutrition = {
@@ -347,44 +405,57 @@ const FoodDiary = ({
           vitamin_c: item.vitamin_c || 0,
           iron: item.iron || 0,
           calcium: item.calcium || 0,
-          custom_nutrients: {} // Meals don't support custom nutrients yet in this view
+          custom_nutrients: {}, // Meals don't support custom nutrients yet in this view
         };
-      } else { // It's a FoodEntry
+      } else {
+        // It's a FoodEntry
         const calculated = calculateFoodEntryNutrition(item);
         nutrition = {
           ...calculated,
-          custom_nutrients: calculated.custom_nutrients || {}
+          custom_nutrients: calculated.custom_nutrients || {},
         };
       }
       debug(loggingLevel, "Calculated nutrition for item:", nutrition);
       return nutrition;
     },
-    [loggingLevel],
+    [loggingLevel]
   );
 
   const getMealData = useCallback(
-    (mealType: string): { name: string; type: string; entries: (FoodEntry | FoodEntryMeal)[]; targetCalories: number } => {
+    (
+      mealType: string
+    ): {
+      name: string;
+      type: string;
+      entries: (FoodEntry | FoodEntryMeal)[];
+      targetCalories: number;
+    } => {
       debug(loggingLevel, "Getting meal data for meal type:", mealType);
+      console.log(mealType)
       const mealNames = {
         breakfast: t("common.breakfast", "Breakfast"),
         lunch: t("common.lunch", "Lunch"),
         dinner: t("common.dinner", "Dinner"),
         snacks: t("common.snacks", "Snacks"),
+        snacks_1: t("common.snacks_1", "Snacks_1"),
       };
 
       // Filter both standalone food entries and food entry meals
       const entries = foodEntries.filter(
-        (entry) => entry.meal_type === mealType,
+        (entry) => entry.meal_type === mealType
       );
       const meals = foodEntryMeals.filter(
-        (meal) => meal.meal_type === mealType,
+        (meal) => meal.meal_type === mealType
       );
 
-      const combinedEntries: (FoodEntry | FoodEntryMeal)[] = [...entries, ...meals];
+      const combinedEntries: (FoodEntry | FoodEntryMeal)[] = [
+        ...entries,
+        ...meals,
+      ];
 
       debug(
         loggingLevel,
-        `Found ${combinedEntries.length} items for meal type ${mealType}.`,
+        `Found ${combinedEntries.length} items for meal type ${mealType}.`
       );
 
       return {
@@ -396,7 +467,7 @@ const FoodDiary = ({
           : 0,
       };
     },
-    [foodEntries, foodEntryMeals, goals, loggingLevel, t],
+    [foodEntries, foodEntryMeals, goals, loggingLevel, t]
   );
 
   const handleDataChange = useCallback(() => {
@@ -413,7 +484,7 @@ const FoodDiary = ({
       setIsCopyDialogOpen(true);
       debug(loggingLevel, "Opening copy dialog for meal type:", mealType);
     },
-    [debug, loggingLevel],
+    [debug, loggingLevel]
   );
 
   const handleCopyFoodEntries = useCallback(
@@ -429,19 +500,25 @@ const FoodDiary = ({
           selectedDate,
           copySourceMealType,
           targetDate,
-          targetMealType,
+          targetMealType
         );
         info(loggingLevel, "Food entries copied successfully.");
         toast({
           title: t("foodDiary.success", "Success"),
-          description: t("foodDiary.entryCopied", "Food entries copied successfully"),
+          description: t(
+            "foodDiary.entryCopied",
+            "Food entries copied successfully"
+          ),
         });
         handleDataChange();
       } catch (err) {
         error(loggingLevel, "Error copying food entries:", err);
         toast({
           title: t("foodDiary.error", "Error"),
-          description: t("foodDiary.entryCopyError", "Failed to copy food entries."),
+          description: t(
+            "foodDiary.entryCopyError",
+            "Failed to copy food entries."
+          ),
           variant: "destructive",
         });
       } finally {
@@ -456,7 +533,7 @@ const FoodDiary = ({
       loggingLevel,
       toast,
       error,
-    ],
+    ]
   );
 
   const handleCopyFromYesterday = useCallback(
@@ -470,19 +547,25 @@ const FoodDiary = ({
         info(loggingLevel, "Food entries copied from yesterday successfully.");
         toast({
           title: t("foodDiary.success", "Success"),
-          description: t("foodDiary.copiedFromYesterday", "Food entries copied from yesterday successfully"),
+          description: t(
+            "foodDiary.copiedFromYesterday",
+            "Food entries copied from yesterday successfully"
+          ),
         });
         handleDataChange();
       } catch (err) {
         error(loggingLevel, "Error copying food entries from yesterday:", err);
         toast({
           title: t("foodDiary.error", "Error"),
-          description: t("foodDiary.copyFromYesterdayError", "Failed to copy food entries from yesterday."),
+          description: t(
+            "foodDiary.copyFromYesterdayError",
+            "Failed to copy food entries from yesterday."
+          ),
           variant: "destructive",
         });
       }
     },
-    [selectedDate, handleDataChange, info, loggingLevel, toast, error],
+    [selectedDate, handleDataChange, info, loggingLevel, toast, error]
   );
 
   const getMealTotals = useCallback(
@@ -490,34 +573,39 @@ const FoodDiary = ({
       debug(loggingLevel, "Calculating meal totals for meal type:", mealType);
 
       const entries = foodEntries.filter(
-        (entry) => entry.meal_type === mealType,
+        (entry) => entry.meal_type === mealType
       );
       const meals = foodEntryMeals.filter(
-        (meal) => meal.meal_type === mealType,
+        (meal) => meal.meal_type === mealType
       );
 
-      const combinedItems: (FoodEntry | FoodEntryMeal)[] = [...entries, ...meals];
-
+      const combinedItems: (FoodEntry | FoodEntryMeal)[] = [
+        ...entries,
+        ...meals,
+      ];
 
       const totals = combinedItems.reduce(
         (acc, item) => {
           const itemNutrition = getEntryNutrition(item);
           Object.keys(acc).forEach((key) => {
-            if (key === 'custom_nutrients') return; // Handle separately
+            if (key === "custom_nutrients") return; // Handle separately
 
             const k = key as keyof MealTotals;
             const val = itemNutrition[k];
 
-            if (typeof val === 'number') {
+            if (typeof val === "number") {
               (acc as any)[key] += val;
             }
           });
 
           // Aggregate custom nutrients
           if (itemNutrition.custom_nutrients && acc.custom_nutrients) {
-            Object.entries(itemNutrition.custom_nutrients).forEach(([name, value]) => {
-              acc.custom_nutrients![name] = (acc.custom_nutrients![name] || 0) + (value as number);
-            });
+            Object.entries(itemNutrition.custom_nutrients).forEach(
+              ([name, value]) => {
+                acc.custom_nutrients![name] =
+                  (acc.custom_nutrients![name] || 0) + (value as number);
+              }
+            );
           }
 
           return acc;
@@ -538,13 +626,13 @@ const FoodDiary = ({
           vitamin_c: 0,
           iron: 0,
           calcium: 0,
-          custom_nutrients: {} as Record<string, number>
-        },
+          custom_nutrients: {} as Record<string, number>,
+        }
       );
       debug(loggingLevel, `Calculated totals for ${mealType}:`, totals);
       return totals;
     },
-    [foodEntries, foodEntryMeals, getEntryNutrition, loggingLevel],
+    [foodEntries, foodEntryMeals, getEntryNutrition, loggingLevel]
   );
 
   const handleDateSelect = useCallback(
@@ -557,14 +645,7 @@ const FoodDiary = ({
         onDateChange(dateString);
       }
     },
-    [
-      debug,
-      loggingLevel,
-      setDate,
-      formatDateInUserTimezone,
-      info,
-      onDateChange,
-    ],
+    [debug, loggingLevel, setDate, formatDateInUserTimezone, info, onDateChange]
   );
 
   const handlePreviousDay = useCallback(() => {
@@ -583,13 +664,18 @@ const FoodDiary = ({
 
   const handleFoodSelect = useCallback(
     async (item: Food | MealType, mealType: string) => {
-      if ('is_custom' in item) { // It's a Food
+      if ("is_custom" in item) {
+        // It's a Food
         debug(loggingLevel, "Handling food select:", { food: item, mealType });
         setSelectedFood(item as Food);
         setSelectedMealType(mealType);
         setIsUnitSelectorOpen(true);
-      } else { // It's a Meal Template (not FoodEntryMeal)
-        debug(loggingLevel, "Handling meal template select:", { meal: item, mealType });
+      } else {
+        // It's a Meal Template (not FoodEntryMeal)
+        debug(loggingLevel, "Handling meal template select:", {
+          meal: item,
+          mealType,
+        });
         const mealTemplate = item as MealType; // cast as Meal (MealType in grep was likely alias or similar, strictly Meal interface is better)
         setSelectedMealTemplate(mealTemplate);
         setSelectedMealType(mealType);
@@ -605,7 +691,7 @@ const FoodDiary = ({
       selectedDate, // Added selectedDate to dependencies
       formatDateInUserTimezone, // Added to dependencies for clarity
       parseDateInUserTimezone, // Added to dependencies for clarity
-    ],
+    ]
   );
 
   const handleFoodUnitSelect = useCallback(
@@ -613,7 +699,7 @@ const FoodDiary = ({
       food: Food,
       quantity: number,
       unit: string,
-      selectedVariant: FoodVariant,
+      selectedVariant: FoodVariant
     ) => {
       debug(loggingLevel, "Handling food unit select:", {
         food,
@@ -631,13 +717,16 @@ const FoodDiary = ({
           variant_id: selectedVariant.id,
           entry_date: formatDateInUserTimezone(
             parseDateInUserTimezone(selectedDate),
-            "yyyy-MM-dd",
+            "yyyy-MM-dd"
           ),
         });
         info(loggingLevel, "Food entry added successfully.");
         toast({
           title: t("foodDiary.success", "Success"),
-          description: t("foodDiary.entryAdded", "Food entry added successfully"),
+          description: t(
+            "foodDiary.entryAdded",
+            "Food entry added successfully"
+          ),
         });
         handleDataChange();
       } catch (err) {
@@ -660,14 +749,14 @@ const FoodDiary = ({
       selectedDate, // Added selectedDate to dependencies
       formatDateInUserTimezone, // Added to dependencies for clarity
       parseDateInUserTimezone, // Added to dependencies for clarity
-    ],
+    ]
   );
 
   const handleRemoveEntry = useCallback(
-    async (itemId: string, itemType: 'foodEntry' | 'foodEntryMeal') => {
+    async (itemId: string, itemType: "foodEntry" | "foodEntryMeal") => {
       debug(loggingLevel, "Handling remove entry:", { itemId, itemType });
       try {
-        if (itemType === 'foodEntryMeal') {
+        if (itemType === "foodEntryMeal") {
           await deleteFoodEntryMeal(itemId); // userId is handled by backend RLS
           info(loggingLevel, `Food entry meal ${itemId} removed successfully.`);
         } else {
@@ -676,7 +765,10 @@ const FoodDiary = ({
         }
         toast({
           title: t("foodDiary.success", "Success"),
-          description: t("foodDiary.entryRemoved", "Food entry removed successfully"),
+          description: t(
+            "foodDiary.entryRemoved",
+            "Food entry removed successfully"
+          ),
         });
         handleDataChange();
       } catch (err) {
@@ -692,31 +784,50 @@ const FoodDiary = ({
       toast,
       handleDataChange,
       error,
-    ],
+    ]
   );
 
   const handleEditEntry = useCallback(
     (entry: FoodEntry | FoodEntryMeal) => {
       debug(loggingLevel, "handleEditEntry called with entry:", entry);
       if (!currentUserId) {
-        error(loggingLevel, "currentUserId is undefined when trying to edit entry.");
+        error(
+          loggingLevel,
+          "currentUserId is undefined when trying to edit entry."
+        );
         toast({
           title: t("foodDiary.error", "Error"),
-          description: t("foodDiary.userNotFound", "User not found, cannot edit entry."),
+          description: t(
+            "foodDiary.userNotFound",
+            "User not found, cannot edit entry."
+          ),
           variant: "destructive",
         });
         return;
       }
 
-      if ((entry as FoodEntryMeal).foods !== undefined) { // It's a FoodEntryMeal based on 'foods' property
+      if ((entry as FoodEntryMeal).foods !== undefined) {
+        // It's a FoodEntryMeal based on 'foods' property
         setEditingFoodEntryMeal(entry as FoodEntryMeal);
         setEditingEntry(null);
-      } else { // It's a FoodEntry (standalone or part of a meal)
+      } else {
+        // It's a FoodEntry (standalone or part of a meal)
         setEditingEntry(entry as FoodEntry);
         setEditingFoodEntryMeal(null);
       }
     },
-    [debug, loggingLevel, currentUserId, setEditingEntry, setEditingFoodEntryMeal, t, info, warn, error, toast],
+    [
+      debug,
+      loggingLevel,
+      currentUserId,
+      setEditingEntry,
+      setEditingFoodEntryMeal,
+      t,
+      info,
+      warn,
+      error,
+      toast,
+    ]
   );
 
   const handleEditFood = useCallback(
@@ -724,11 +835,11 @@ const FoodDiary = ({
       debug(
         loggingLevel,
         "Handling edit food, triggering data change for food:",
-        food,
+        food
       );
       handleDataChange();
     },
-    [debug, loggingLevel, handleDataChange],
+    [debug, loggingLevel, handleDataChange]
   );
 
   const handleExerciseAdded = useCallback(() => {
@@ -736,19 +847,26 @@ const FoodDiary = ({
     handleDataChange();
   }, [debug, loggingLevel, handleDataChange]);
 
-  const handleWorkoutPresetSelected = useCallback((preset: WorkoutPreset) => {
-    debug(loggingLevel, "Workout preset selected:", preset);
-    // TODO: Fix this type mismatch
-    // setExercisesToLogFromPreset(preset.exercises.map(e => ({...e, reps: e.reps || null, weight: e.weight || null})) || []);
-  }, [debug, loggingLevel]);
+  const handleWorkoutPresetSelected = useCallback(
+    (preset: WorkoutPreset) => {
+      debug(loggingLevel, "Workout preset selected:", preset);
+      // TODO: Fix this type mismatch
+      // setExercisesToLogFromPreset(preset.exercises.map(e => ({...e, reps: e.reps || null, weight: e.weight || null})) || []);
+    },
+    [debug, loggingLevel]
+  );
 
   const handleConvertToMealClick = useCallback(
     (mealType: string) => {
       setConvertToMealSourceMealType(mealType);
       setIsConvertToMealDialogOpen(true);
-      debug(loggingLevel, "Opening Convert to Meal dialog for meal type:", mealType);
+      debug(
+        loggingLevel,
+        "Opening Convert to Meal dialog for meal type:",
+        mealType
+      );
     },
-    [debug, loggingLevel],
+    [debug, loggingLevel]
   );
 
   return (
@@ -757,7 +875,9 @@ const FoodDiary = ({
       <Card className="dark:text-slate-300">
         <CardHeader>
           <div className="flex flex-col space-y-4 items-center sm:flex-row sm:justify-between sm:space-y-0">
-            <CardTitle className="text-xl font-semibold ">{t("foodDiary.title", "Food Diary")}</CardTitle>
+            <CardTitle className="text-xl font-semibold ">
+              {t("foodDiary.title", "Food Diary")}
+            </CardTitle>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -774,11 +894,15 @@ const FoodDiary = ({
                     variant="outline"
                     className={cn(
                       "justify-start text-left font-normal",
-                      !date && "text-muted-foreground",
+                      !date && "text-muted-foreground"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? formatDate(date) : <span>{t("foodDiary.pickADate", "Pick a Date")}</span>}
+                    {date ? (
+                      formatDate(date)
+                    ) : (
+                      <span>{t("foodDiary.pickADate", "Pick a Date")}</span>
+                    )}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -827,7 +951,9 @@ const FoodDiary = ({
               onFoodSelect={handleFoodSelect}
               onEditEntry={handleEditEntry}
               onEditFood={handleEditFood}
-              onRemoveEntry={(itemId, itemType) => handleRemoveEntry(itemId, itemType)}
+              onRemoveEntry={(itemId, itemType) =>
+                handleRemoveEntry(itemId, itemType)
+              }
               getEntryNutrition={getEntryNutrition}
               onMealAdded={handleDataChange}
               onCopyClick={handleCopyClick}
@@ -844,7 +970,9 @@ const FoodDiary = ({
               onFoodSelect={handleFoodSelect}
               onEditEntry={handleEditEntry}
               onEditFood={handleEditFood}
-              onRemoveEntry={(itemId, itemType) => handleRemoveEntry(itemId, itemType)}
+              onRemoveEntry={(itemId, itemType) =>
+                handleRemoveEntry(itemId, itemType)
+              }
               getEntryNutrition={getEntryNutrition}
               onMealAdded={handleDataChange}
               onCopyClick={handleCopyClick}
@@ -861,7 +989,9 @@ const FoodDiary = ({
               onFoodSelect={handleFoodSelect}
               onEditEntry={handleEditEntry}
               onEditFood={handleEditFood}
-              onRemoveEntry={(itemId, itemType) => handleRemoveEntry(itemId, itemType)}
+              onRemoveEntry={(itemId, itemType) =>
+                handleRemoveEntry(itemId, itemType)
+              }
               getEntryNutrition={getEntryNutrition}
               onMealAdded={handleDataChange}
               onCopyClick={handleCopyClick}
@@ -878,7 +1008,9 @@ const FoodDiary = ({
               onFoodSelect={handleFoodSelect}
               onEditEntry={handleEditEntry}
               onEditFood={handleEditFood}
-              onRemoveEntry={(itemId, itemType) => handleRemoveEntry(itemId, itemType)}
+              onRemoveEntry={(itemId, itemType) =>
+                handleRemoveEntry(itemId, itemType)
+              }
               getEntryNutrition={getEntryNutrition}
               onMealAdded={handleDataChange}
               onCopyClick={handleCopyClick}
@@ -949,7 +1081,7 @@ const FoodDiary = ({
         onOpenChange={setIsLogMealDialogOpen}
         date={formatDateInUserTimezone(
           parseDateInUserTimezone(selectedDate),
-          "yyyy-MM-dd",
+          "yyyy-MM-dd"
         )}
         mealType={selectedMealType}
         onSave={() => {

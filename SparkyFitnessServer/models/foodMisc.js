@@ -20,7 +20,7 @@ async function getRecentFoods(userId, limit, mealType) {
   let mealTypeCondition = "";
   if (mealType) {
     queryParams.push(mealType);
-    mealTypeCondition = `AND fe.meal_type = $${queryParams.length}`;
+    mealTypeCondition = `AND (LOWER(mt.name) = LOWER($${queryParams.length}) OR fe.meal_type_id::text = $${queryParams.length})`;
   }
   queryParams.push(limit);
 
@@ -90,7 +90,7 @@ async function getTopFoods(userId, limit, mealType) {
   let mealTypeCondition = "";
   if (mealType) {
     queryParams.push(mealType);
-    mealTypeCondition = `AND fe.meal_type = $${queryParams.length}`;
+    mealTypeCondition = `AND (LOWER(mt.name) = LOWER($${queryParams.length}) OR fe.meal_type_id::text = $${queryParams.length})`;
   }
   queryParams.push(limit);
 

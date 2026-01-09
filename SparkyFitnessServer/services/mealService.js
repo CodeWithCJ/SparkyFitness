@@ -7,6 +7,17 @@ const { log } = require('../config/logging');
 
 // --- Meal Template Service Functions ---
 
+
+async function resolveMealTypeId(userId, mealTypeName) {
+  if (!mealTypeName) return null;
+  const types = await mealTypeRepository.getAllMealTypes(userId);
+  const match = types.find(t => t.name.toLowerCase() === mealTypeName.toLowerCase());
+  return match ? match.id : null;
+}
+
+
+
+
 async function createMeal(userId, mealData) {
   try {
     mealData.user_id = userId;
@@ -241,6 +252,17 @@ async function logMealPlanEntryToDiary(userId, mealPlanId, targetDate) {
       throw new Error('Meal plan entry not found or not authorized.');
     }
 
+
+    let mealTypeId = mealPlanEntry.meal_type_id;
+    if (!mealTypeId && mealPlanEntry.meal_type) {
+        mealTypeId = await resolveMealTypeId(userId, mealPlanEntry.meal_type);
+    }
+    if (!mealTypeId) {
+        throw new Error(`Invalid meal type configuration for plan entry ${mealPlanId}`);
+    }
+
+
+
     const entriesToCreate = [];
 
     if (mealPlanEntry.meal_id) {
@@ -253,7 +275,7 @@ async function logMealPlanEntryToDiary(userId, mealPlanId, targetDate) {
         entriesToCreate.push({
           user_id: userId,
           food_id: foodItem.food_id,
-          meal_type: mealPlanEntry.meal_type,
+          meal_type_id: mealTypeId, 
           quantity: foodItem.quantity,
           unit: foodItem.unit,
           entry_date: targetDate || mealPlanEntry.plan_date,
@@ -266,7 +288,7 @@ async function logMealPlanEntryToDiary(userId, mealPlanId, targetDate) {
       entriesToCreate.push({
         user_id: userId,
         food_id: mealPlanEntry.food_id,
-        meal_type: mealPlanEntry.meal_type,
+        meal_type_id: mealTypeId, 
         quantity: mealPlanEntry.quantity,
         unit: mealPlanEntry.unit,
         entry_date: targetDate || mealPlanEntry.plan_date,
