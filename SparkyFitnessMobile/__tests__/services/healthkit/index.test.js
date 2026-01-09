@@ -2,6 +2,7 @@ import {
   getSyncStartDate,
   initHealthConnect,
   getAggregatedStepsByDate,
+  getAggregatedTotalCaloriesByDate,
   readHealthRecords,
 } from '../../../src/services/healthkit/index';
 
@@ -9,6 +10,8 @@ import {
   isHealthDataAvailable,
   queryStatisticsForQuantity,
   queryQuantitySamples,
+  queryWorkoutSamples,
+  queryCategorySamples,
 } from '@kingstinct/react-native-healthkit';
 
 jest.mock('../../../src/services/LogService', () => ({
@@ -223,6 +226,103 @@ describe('getAggregatedStepsByDate', () => {
   });
 });
 
+describe('getAggregatedTotalCaloriesByDate', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    isHealthDataAvailable.mockResolvedValue(true);
+  });
+
+  test('returns empty array when HealthKit is unavailable', async () => {
+    isHealthDataAvailable.mockResolvedValue(false);
+    await initHealthConnect();
+
+    const startDate = new Date('2024-01-15');
+    const endDate = new Date('2024-01-15');
+
+    const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
+
+    expect(result).toEqual([]);
+  });
+
+  test('sums basal + active energy correctly', async () => {
+    await initHealthConnect();
+
+    // Mock Promise.all returning both basal and active
+    queryStatisticsForQuantity
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 1500 } }) // basal
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 500 } }); // active
+
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    const expectedDateStr = startDate.toISOString().split('T')[0];
+
+    const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      date: expectedDateStr,
+      value: 2000, // 1500 + 500
+      type: 'total_calories',
+    });
+  });
+
+  test('uses only active when basal returns null', async () => {
+    await initHealthConnect();
+
+    queryStatisticsForQuantity
+      .mockResolvedValueOnce(null) // basal is null
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 500 } }); // active
+
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe(500);
+  });
+
+  test('uses only basal when active returns null', async () => {
+    await initHealthConnect();
+
+    queryStatisticsForQuantity
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 1500 } }) // basal
+      .mockResolvedValueOnce(null); // active is null
+
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe(1500);
+  });
+
+  test('skips day when both basal and active return null/zero', async () => {
+    await initHealthConnect();
+
+    queryStatisticsForQuantity
+      .mockResolvedValueOnce(null) // basal is null
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 0 } }); // active is zero
+
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
+
+    expect(result).toHaveLength(0);
+  });
+});
+
 describe('readHealthRecords', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -354,5 +454,439 @@ describe('readHealthRecords', () => {
     );
 
     expect(result).toEqual([]);
+  });
+
+  describe('Workout records', () => {
+    test('fetches workouts using queryWorkoutSamples', async () => {
+      await initHealthConnect();
+
+      const mockGetAllStatistics = jest.fn().mockResolvedValue({});
+      queryWorkoutSamples.mockResolvedValue([
+        {
+          startDate: '2024-01-15T08:00:00Z',
+          endDate: '2024-01-15T09:00:00Z',
+          workoutActivityType: 37,
+          duration: 3600,
+          totalEnergyBurned: { inKilocalories: 500 },
+          totalDistance: { inMeters: 5000 },
+          getAllStatistics: mockGetAllStatistics,
+        },
+      ]);
+
+      const result = await readHealthRecords(
+        'Workout',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(queryWorkoutSamples).toHaveBeenCalled();
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        startTime: '2024-01-15T08:00:00Z',
+        endTime: '2024-01-15T09:00:00Z',
+        activityType: 37,
+        duration: 3600,
+      });
+    });
+
+    test('uses stats from getAllStatistics when available', async () => {
+      await initHealthConnect();
+
+      const mockGetAllStatistics = jest.fn().mockResolvedValue({
+        'HKQuantityTypeIdentifierActiveEnergyBurned': {
+          sumQuantity: { quantity: 600 },
+        },
+        'HKQuantityTypeIdentifierDistanceWalkingRunning': {
+          sumQuantity: { quantity: 6000 },
+        },
+      });
+
+      queryWorkoutSamples.mockResolvedValue([
+        {
+          startDate: '2024-01-15T08:00:00Z',
+          endDate: '2024-01-15T09:00:00Z',
+          workoutActivityType: 37,
+          duration: 3600,
+          totalEnergyBurned: { inKilocalories: 500 }, // Should be overridden by stats
+          totalDistance: { inMeters: 5000 }, // Should be overridden by stats
+          getAllStatistics: mockGetAllStatistics,
+        },
+      ]);
+
+      const result = await readHealthRecords(
+        'Workout',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(mockGetAllStatistics).toHaveBeenCalled();
+      expect(result[0].totalEnergyBurned).toBe(600);
+      expect(result[0].totalDistance).toBe(6000);
+    });
+
+    test('falls back to direct properties when getAllStatistics fails', async () => {
+      await initHealthConnect();
+
+      const mockGetAllStatistics = jest.fn().mockRejectedValue(new Error('Stats unavailable'));
+      queryWorkoutSamples.mockResolvedValue([
+        {
+          startDate: '2024-01-15T08:00:00Z',
+          endDate: '2024-01-15T09:00:00Z',
+          workoutActivityType: 37,
+          duration: 3600,
+          totalEnergyBurned: { inKilocalories: 500 },
+          totalDistance: { inMeters: 5000 },
+          getAllStatistics: mockGetAllStatistics,
+        },
+      ]);
+
+      const result = await readHealthRecords(
+        'Workout',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result[0].totalEnergyBurned).toBe(500);
+      expect(result[0].totalDistance).toBe(5000);
+    });
+
+    test('checks multiple distance types in order', async () => {
+      await initHealthConnect();
+
+      // Only cycling distance available
+      const mockGetAllStatistics = jest.fn().mockResolvedValue({
+        'HKQuantityTypeIdentifierDistanceCycling': {
+          sumQuantity: { quantity: 15000 },
+        },
+      });
+
+      queryWorkoutSamples.mockResolvedValue([
+        {
+          startDate: '2024-01-15T08:00:00Z',
+          endDate: '2024-01-15T09:00:00Z',
+          workoutActivityType: 13,
+          duration: 3600,
+          totalEnergyBurned: 400,
+          totalDistance: 0,
+          getAllStatistics: mockGetAllStatistics,
+        },
+      ]);
+
+      const result = await readHealthRecords(
+        'Workout',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result[0].totalDistance).toBe(15000);
+    });
+
+    test('returns empty array for empty workouts response', async () => {
+      await initHealthConnect();
+
+      queryWorkoutSamples.mockResolvedValue([]);
+
+      const result = await readHealthRecords(
+        'Workout',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('SleepSession records', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      isHealthDataAvailable.mockResolvedValue(true);
+    });
+
+    test('transforms sleep samples to expected format', async () => {
+      await initHealthConnect();
+
+      queryCategorySamples.mockResolvedValue([
+        {
+          startDate: '2024-01-15T22:00:00Z',
+          endDate: '2024-01-15T23:30:00Z',
+          value: 'ASLEEP',
+          metadata: { customKey: 'customValue' },
+          sourceName: 'Apple Watch',
+          sourceId: 'com.apple.health',
+        },
+      ]);
+
+      const result = await readHealthRecords(
+        'SleepSession',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-15T23:30:00Z',
+        value: 'ASLEEP',
+        metadata: { customKey: 'customValue' },
+        sourceName: 'Apple Watch',
+        sourceId: 'com.apple.health',
+      });
+    });
+
+    test('filters out records outside requested date range', async () => {
+      await initHealthConnect();
+
+      const startDate = new Date('2024-01-15T00:00:00Z');
+      const endDate = new Date('2024-01-15T23:59:59Z');
+
+      queryCategorySamples.mockResolvedValue([
+        // Before range (start before requested start)
+        {
+          startDate: '2024-01-14T22:00:00Z',
+          endDate: '2024-01-15T06:00:00Z',
+          value: 'ASLEEP',
+        },
+        // Within range
+        {
+          startDate: '2024-01-15T22:00:00Z',
+          endDate: '2024-01-15T23:30:00Z',
+          value: 'ASLEEP',
+        },
+        // After range (end after requested end)
+        {
+          startDate: '2024-01-15T23:00:00Z',
+          endDate: '2024-01-16T06:00:00Z',
+          value: 'ASLEEP',
+        },
+      ]);
+
+      const result = await readHealthRecords('SleepSession', startDate, endDate);
+
+      // Only the record fully within range should be included
+      expect(result).toHaveLength(1);
+      expect(result[0].startTime).toBe('2024-01-15T22:00:00Z');
+    });
+
+    test('includes sleep sessions spanning midnight when fully within range', async () => {
+      await initHealthConnect();
+
+      // Request a 2-day range
+      const startDate = new Date('2024-01-15T00:00:00Z');
+      const endDate = new Date('2024-01-16T23:59:59Z');
+
+      queryCategorySamples.mockResolvedValue([
+        {
+          startDate: '2024-01-15T23:30:00Z',
+          endDate: '2024-01-16T07:30:00Z',
+          value: 'ASLEEP',
+        },
+      ]);
+
+      const result = await readHealthRecords('SleepSession', startDate, endDate);
+
+      // Session spanning midnight is included because both start and end are within the 2-day range
+      expect(result).toHaveLength(1);
+      expect(result[0].startTime).toBe('2024-01-15T23:30:00Z');
+      expect(result[0].endTime).toBe('2024-01-16T07:30:00Z');
+    });
+
+    test('returns empty array when queryCategorySamples returns empty', async () => {
+      await initHealthConnect();
+
+      queryCategorySamples.mockResolvedValue([]);
+
+      const result = await readHealthRecords(
+        'SleepSession',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Stress records', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      isHealthDataAvailable.mockResolvedValue(true);
+    });
+
+    test('transforms mindful sessions to expected format', async () => {
+      await initHealthConnect();
+
+      queryCategorySamples.mockResolvedValue([
+        {
+          startDate: '2024-01-15T08:00:00Z',
+          endDate: '2024-01-15T08:15:00Z',
+          value: 0, // Raw value from HealthKit
+        },
+      ]);
+
+      const result = await readHealthRecords(
+        'Stress',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        startTime: '2024-01-15T08:00:00Z',
+        endTime: '2024-01-15T08:15:00Z',
+        value: 1,
+      });
+    });
+
+    test('always sets value to 1 regardless of raw sample value', async () => {
+      // MindfulSession is presence-based - value 1 indicates session occurred
+      await initHealthConnect();
+
+      queryCategorySamples.mockResolvedValue([
+        { startDate: '2024-01-15T08:00:00Z', endDate: '2024-01-15T08:15:00Z', value: 0 },
+        { startDate: '2024-01-15T12:00:00Z', endDate: '2024-01-15T12:30:00Z', value: 5 },
+        { startDate: '2024-01-15T18:00:00Z', endDate: '2024-01-15T18:10:00Z', value: null },
+      ]);
+
+      const result = await readHealthRecords(
+        'Stress',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(3);
+      expect(result.every(r => r.value === 1)).toBe(true);
+    });
+
+    test('returns empty array when queryCategorySamples returns empty', async () => {
+      await initHealthConnect();
+
+      queryCategorySamples.mockResolvedValue([]);
+
+      const result = await readHealthRecords(
+        'Stress',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('BloodPressure records', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      isHealthDataAvailable.mockResolvedValue(true);
+    });
+
+    test('transforms paired readings to expected format', async () => {
+      await initHealthConnect();
+
+      const timestamp = '2024-01-15T08:00:00Z';
+
+      queryQuantitySamples
+        .mockResolvedValueOnce([{ startDate: timestamp, quantity: 120 }]) // systolic
+        .mockResolvedValueOnce([{ startDate: timestamp, quantity: 80 }]); // diastolic
+
+      const result = await readHealthRecords(
+        'BloodPressure',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        systolic: { inMillimetersOfMercury: 120 },
+        diastolic: { inMillimetersOfMercury: 80 },
+        time: timestamp,
+      });
+    });
+
+    test('merges systolic and diastolic by matching timestamp', async () => {
+      await initHealthConnect();
+
+      queryQuantitySamples
+        .mockResolvedValueOnce([
+          { startDate: '2024-01-15T08:00:00Z', quantity: 120 },
+          { startDate: '2024-01-15T12:00:00Z', quantity: 118 },
+        ])
+        .mockResolvedValueOnce([
+          { startDate: '2024-01-15T08:00:00Z', quantity: 80 },
+          { startDate: '2024-01-15T12:00:00Z', quantity: 78 },
+        ]);
+
+      const result = await readHealthRecords(
+        'BloodPressure',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        systolic: { inMillimetersOfMercury: 120 },
+        diastolic: { inMillimetersOfMercury: 80 },
+        time: '2024-01-15T08:00:00Z',
+      });
+      expect(result[1]).toMatchObject({
+        systolic: { inMillimetersOfMercury: 118 },
+        diastolic: { inMillimetersOfMercury: 78 },
+        time: '2024-01-15T12:00:00Z',
+      });
+    });
+
+    test('filters out unpaired readings', async () => {
+      await initHealthConnect();
+
+      queryQuantitySamples
+        .mockResolvedValueOnce([
+          { startDate: '2024-01-15T08:00:00Z', quantity: 120 }, // Has matching diastolic
+          { startDate: '2024-01-15T10:00:00Z', quantity: 125 }, // No matching diastolic
+        ])
+        .mockResolvedValueOnce([
+          { startDate: '2024-01-15T08:00:00Z', quantity: 80 }, // Has matching systolic
+          { startDate: '2024-01-15T14:00:00Z', quantity: 82 }, // No matching systolic
+        ]);
+
+      const result = await readHealthRecords(
+        'BloodPressure',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      // Only the paired reading at 08:00 should be included
+      expect(result).toHaveLength(1);
+      expect(result[0].time).toBe('2024-01-15T08:00:00Z');
+    });
+
+    test('returns empty array when no pairs exist', async () => {
+      await initHealthConnect();
+
+      // Systolic and diastolic at different times - no matches
+      queryQuantitySamples
+        .mockResolvedValueOnce([{ startDate: '2024-01-15T08:00:00Z', quantity: 120 }])
+        .mockResolvedValueOnce([{ startDate: '2024-01-15T10:00:00Z', quantity: 80 }]);
+
+      const result = await readHealthRecords(
+        'BloodPressure',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    test('returns empty array when both queries return empty', async () => {
+      await initHealthConnect();
+
+      queryQuantitySamples
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const result = await readHealthRecords(
+        'BloodPressure',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toEqual([]);
+    });
   });
 });
