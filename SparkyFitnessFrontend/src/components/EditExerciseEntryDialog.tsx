@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast"; // Import toast
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from '@/utils/logging';
+import { formatWeight } from '@/utils/numberFormatting';
 import { fetchExerciseDetails } from '@/services/editExerciseEntryService';
 import { updateExerciseEntry, ExerciseEntry } from '@/services/exerciseEntryService';
 import { WorkoutPresetSet } from "@/types/workout";
@@ -147,7 +148,7 @@ const SortableSetItem = React.memo(
               <Input
                 id={`weight-${setIndex}`}
                 type="number"
-                value={set.weight ?? ""}
+                value={set.weight !== undefined && set.weight !== null ? formatWeight(set.weight) : ""}
                 onChange={(e) =>
                   handleSetChange(setIndex, "weight", Number(e.target.value))
                 }

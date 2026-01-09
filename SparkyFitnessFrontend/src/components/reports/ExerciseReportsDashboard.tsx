@@ -22,7 +22,7 @@ import { getExerciseProgressData } from '@/services/exerciseEntryService';
 import { getAvailableEquipment, getAvailableMuscleGroups, getAvailableExercises } from '@/services/exerciseSearchService';
 import { addDays, subDays, addMonths, subMonths, addYears, subYears, parseISO } from 'date-fns';
 
-import { formatNumber } from "@/utils/numberFormatting";
+import { formatNumber, formatWeight } from "@/utils/numberFormatting";
 
 // Utility function to calculate total tonnage
 const calculateTotalTonnage = (entries: { sets: { weight: number | string; reps: number | string; }[] }[]) => {
@@ -223,11 +223,11 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                 <span className="text-sm text-center">{t('exerciseReportsDashboard.totalWorkouts', 'Total Workouts')}</span>
               </div>
               <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-green-500 to-teal-600 text-white shadow-lg h-full">
-                <span className="text-3xl font-bold">{formatNumber(convertWeight(totalTonnage, 'kg', weightUnit))} {weightUnit}</span>
+                <span className="text-3xl font-bold">{formatWeight(convertWeight(totalTonnage, 'kg', weightUnit))} {weightUnit}</span>
                 <span className="text-sm text-center">{t('exerciseReportsDashboard.totalTonnage', 'Total Tonnage')}</span>
               </div>
               <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-600 text-white shadow-lg h-full">
-                <span className="text-3xl font-bold">{formatNumber(convertWeight(exerciseDashboardData.keyStats.totalVolume, 'kg', weightUnit))} {weightUnit}</span>
+                <span className="text-3xl font-bold">{formatWeight(convertWeight(exerciseDashboardData.keyStats.totalVolume, 'kg', weightUnit))} {weightUnit}</span>
                 <span className="text-sm text-center">{t('exerciseReportsDashboard.totalVolume', 'Total Volume')}</span>
               </div>
               <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-red-500 to-pink-600 text-white shadow-lg h-full">
@@ -384,12 +384,12 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                 existingEntry = { date, volume: 0, comparisonVolume: 0 };
                 acc.push(existingEntry);
               }
-              existingEntry.volume += entry.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0);
+              existingEntry.volume += parseFloat(formatWeight(entry.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0)));
               // For comparison, we need to find the corresponding entry in comparisonExerciseProgressData
               // This assumes a 1:1 date mapping for simplicity, might need more complex logic for real-world scenarios
               const comparisonEntry = Object.values(comparisonExerciseProgressData).flat().find(compEntry => compEntry.entry_date === entry.entry_date);
               if (comparisonEntry) {
-                existingEntry.comparisonVolume += comparisonEntry.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0);
+                existingEntry.comparisonVolume += parseFloat(formatWeight(comparisonEntry.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0)));
               }
               return acc;
             }, [] as { date: string; volume: number; comparisonVolume: number }[]).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -407,8 +407,8 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
-                    <YAxis label={{ value: t('exerciseReportsDashboard.volumeCurrent', `Volume (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                    <YAxis tickFormatter={(value) => formatWeight(value)} label={{ value: t('exerciseReportsDashboard.volumeCurrent', `Volume (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
+                    <Tooltip formatter={(value: number) => `${formatWeight(value)} ${weightUnit}`} contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
                     <Legend />
                     <Bar
                       dataKey="volume"
@@ -696,18 +696,18 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
                     <span className="text-xl font-bold">
-                      {convertWeight(prVisualizationData.oneRM, 'kg', weightUnit).toFixed(1)} {weightUnit}
+                      {formatWeight(convertWeight(prVisualizationData.oneRM, 'kg', weightUnit))} {weightUnit}
                     </span>
                     <span className="text-sm text-muted-foreground">{t('exerciseReportsDashboard.estimated1RM', 'Estimated 1RM')}</span>
                     <span className="text-xs text-muted-foreground">
                       ({prVisualizationData.reps} {t('exerciseReportsDashboard.repsAt', 'reps @')}{" "}
-                      {convertWeight(prVisualizationData.weight, 'kg', weightUnit)} {weightUnit} {t('exerciseReportsDashboard.on', 'on')}{" "}
+                      {formatWeight(convertWeight(prVisualizationData.weight, 'kg', weightUnit))} {weightUnit} {t('exerciseReportsDashboard.on', 'on')}{" "}
                       {formatDateInUserTimezone(prVisualizationData.date, 'MMM dd, yyyy')})
                     </span>
                   </div>
                   <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
                     <span className="text-xl font-bold">
-                      {convertWeight(prVisualizationData.weight, 'kg', weightUnit).toFixed(1)} {weightUnit}
+                      {formatWeight(convertWeight(prVisualizationData.weight, 'kg', weightUnit))} {weightUnit}
                     </span>
                     <span className="text-sm text-muted-foreground">{t('exerciseReportsDashboard.maxWeight', 'Max Weight')}</span>
                     <span className="text-xs text-muted-foreground">
@@ -721,7 +721,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                     </span>
                     <span className="text-sm text-muted-foreground">{t('exerciseReportsDashboard.maxReps', 'Max Reps')}</span>
                     <span className="text-xs text-muted-foreground">
-                      ({convertWeight(prVisualizationData.weight, 'kg', weightUnit)} {weightUnit} {t('exerciseReportsDashboard.on', 'on')}{" "}
+                      ({formatWeight(convertWeight(prVisualizationData.weight, 'kg', weightUnit))} {weightUnit} {t('exerciseReportsDashboard.on', 'on')}{" "}
                       {formatDateInUserTimezone(prVisualizationData.date, 'MMM dd, yyyy')})
                     </span>
                   </div>
