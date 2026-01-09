@@ -7,3 +7,7 @@ export const formatNumber = (num: number): string => {
   }
   return (num / 1000000).toFixed(1) + 'M';
 };
+
+export const formatWeight = (num: number): string => {
+  return num.toFixed(1);
+};
