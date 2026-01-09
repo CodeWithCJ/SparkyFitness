@@ -59,18 +59,36 @@
 
 ### Workout Example
 
+
 ```json
 {
-  "type": "Workout",
-  "timestamp": "2024-01-15T08:00:00Z",
-  "source": "HealthKit",
-  "activityType": "Running",
-  "duration": 1800,            // seconds
-  "caloriesBurned": 350,
-  "distance": 5000,            // meters
-  "raw_data": {...}            // optional, stored as activity details
+    "type": "ExerciseSession",
+    "source": "HealthKit",
+    "date": "2026-01-08",
+    "entry_date": "2026-01-08",
+    "timestamp": "2026-01-08T22:43:00.000Z",
+    "startTime": "2026-01-08T22:43:00.000Z",
+    "endTime": "2026-01-08T23:43:00.000Z",
+    "duration": 3600,
+    "activityType": "Running",
+    "title": "Running",
+    "caloriesBurned": 500,
+    "distance": 20,
+    "notes": "Source: HealthKit",
+    "raw_data": {
+        "startTime": "2026-01-08T22:43:00.000Z",
+        "endTime": "2026-01-08T23:43:00.000Z",
+        "activityType": 37,
+        "duration": {
+            "unit": "s",
+            "quantity": 3600
+        },
+        "totalEnergyBurned": 500,
+        "totalDistance": 20
+    }
 }
 ```
+
 
 ### Response
 
