@@ -19,7 +19,7 @@ const AppNavigator = () => {
 };
 
 describe('<MainScreen />', () => {
-  test('navigation from home to details screen', async () => {
+  test('renders Open Web Dashboard button', async () => {
     render(<AppNavigator />);
     expect(screen.getByText('Open Web Dashboard')).toBeVisible();
     

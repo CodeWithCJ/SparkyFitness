@@ -54,7 +54,18 @@ describe('syncHealthData (iOS)', () => {
 
     expect(result.success).toBe(true);
     expect(result.apiResponse).toEqual({ processed: 1, success: true });
-    expect(api.syncHealthData).toHaveBeenCalled();
+
+    // Verify the data shape sent to API - this catches transformation bugs
+    expect(api.syncHealthData).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'step',
+          value: 5000,
+          date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+          unit: 'count',
+        }),
+      ])
+    );
   });
 
   test('returns error when API call fails', async () => {
@@ -73,8 +84,9 @@ describe('syncHealthData (iOS)', () => {
     // Steps returns no data (this is the behavior when query fails - it returns empty)
     queryStatisticsForQuantity.mockResolvedValue(null);
     // HeartRate succeeds
+    const today = new Date().toISOString();
     queryQuantitySamples.mockResolvedValue([
-      { startDate: new Date().toISOString(), quantity: 72 },
+      { startDate: today, quantity: 72 },
     ]);
     api.syncHealthData.mockResolvedValue({ success: true });
 
@@ -84,7 +96,17 @@ describe('syncHealthData (iOS)', () => {
     });
 
     expect(result.success).toBe(true);
-    // HeartRate data should still be synced even though Steps had no data
-    expect(api.syncHealthData).toHaveBeenCalled();
+
+    // Verify HeartRate data is synced with correct shape, even though Steps had no data
+    expect(api.syncHealthData).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'heart_rate',
+          value: 72,
+          date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+          unit: 'bpm',
+        }),
+      ])
+    );
   });
 });
