@@ -7,6 +7,7 @@ import {
   saveSyncDuration,
   loadSyncDuration,
 } from '../../../src/services/healthconnect/preferences';
+import { addLog } from '../../../src/services/LogService';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -82,21 +83,30 @@ describe('preferences', () => {
       expect(result).toBeNull();
     });
 
-    test('handles save error gracefully', async () => {
+    test('logs error and returns undefined on save error', async () => {
       AsyncStorage.setItem.mockRejectedValueOnce(new Error('Storage full'));
 
-      // Should not throw
-      await saveHealthPreference('key', 'value');
+      const result = await saveHealthPreference('testKey', 'value');
 
-      expect(AsyncStorage.setItem).toHaveBeenCalled();
+      expect(result).toBeUndefined();
+      expect(addLog).toHaveBeenCalledWith(
+        '[HealthConnectService] Failed to save preference testKey: Storage full',
+        'error',
+        'ERROR'
+      );
     });
 
-    test('returns null on load error', async () => {
+    test('logs error and returns null on load error', async () => {
       AsyncStorage.getItem.mockRejectedValueOnce(new Error('Storage error'));
 
-      const result = await loadHealthPreference('key');
+      const result = await loadHealthPreference('testKey');
 
       expect(result).toBeNull();
+      expect(addLog).toHaveBeenCalledWith(
+        '[HealthConnectService] Failed to load preference testKey: Storage error',
+        'error',
+        'ERROR'
+      );
     });
   });
 
@@ -127,20 +137,30 @@ describe('preferences', () => {
       expect(result).toBeNull();
     });
 
-    test('handles save error gracefully', async () => {
+    test('logs error and returns undefined on save error', async () => {
       AsyncStorage.setItem.mockRejectedValueOnce(new Error('Storage full'));
 
-      await saveStringPreference('key', 'value');
+      const result = await saveStringPreference('serverUrl', 'https://example.com');
 
-      expect(AsyncStorage.setItem).toHaveBeenCalled();
+      expect(result).toBeUndefined();
+      expect(addLog).toHaveBeenCalledWith(
+        '[HealthConnectService] Failed to save string preference serverUrl: Storage full',
+        'error',
+        'ERROR'
+      );
     });
 
-    test('returns null on load error', async () => {
+    test('logs error and returns null on load error', async () => {
       AsyncStorage.getItem.mockRejectedValueOnce(new Error('Storage error'));
 
-      const result = await loadStringPreference('key');
+      const result = await loadStringPreference('serverUrl');
 
       expect(result).toBeNull();
+      expect(addLog).toHaveBeenCalledWith(
+        '[HealthConnectService] Failed to load string preference serverUrl: Storage error',
+        'error',
+        'ERROR'
+      );
     });
   });
 
@@ -171,20 +191,30 @@ describe('preferences', () => {
       expect(result).toBe('24h');
     });
 
-    test("returns '24h' on load error", async () => {
+    test("logs error and returns '24h' on load error", async () => {
       AsyncStorage.getItem.mockRejectedValueOnce(new Error('Storage error'));
 
       const result = await loadSyncDuration();
 
       expect(result).toBe('24h');
+      expect(addLog).toHaveBeenCalledWith(
+        '[HealthConnectService] Failed to load sync duration: Storage error',
+        'error',
+        'ERROR'
+      );
     });
 
-    test('handles save error gracefully', async () => {
+    test('logs error and returns undefined on save error', async () => {
       AsyncStorage.setItem.mockRejectedValueOnce(new Error('Storage full'));
 
-      await saveSyncDuration('30d');
+      const result = await saveSyncDuration('30d');
 
-      expect(AsyncStorage.setItem).toHaveBeenCalled();
+      expect(result).toBeUndefined();
+      expect(addLog).toHaveBeenCalledWith(
+        '[HealthConnectService] Failed to save sync duration: Storage full',
+        'error',
+        'ERROR'
+      );
     });
 
     test('stores various duration values correctly', async () => {

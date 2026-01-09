@@ -163,7 +163,8 @@ export const aggregateActiveCaloriesByDate = (records) => {
   }
 
   const validRecords = records.filter(record =>
-    record.startTime && record.energy && typeof record.energy.inCalories === 'number'
+    record.startTime && record.energy &&
+    (typeof record.energy.inCalories === 'number' || typeof record.energy.inKilocalories === 'number')
   );
 
   if (validRecords.length === 0) {

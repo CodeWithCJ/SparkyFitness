@@ -146,14 +146,12 @@ describe('aggregateHeartRateByDate', () => {
       expect(result.find(r => r.date === '2024-01-16').value).toBe(80);
     });
 
-    test('returns 0 when count is 0 for a date (edge case)', () => {
-      // This tests the ternary in the result mapping
-      // In practice, this shouldn't happen since we filter valid records
+    test('produces correct output structure with date, value, and type', () => {
       const records = [
         { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
       ];
       const result = aggregateHeartRateByDate(records);
-      expect(result[0].value).toBe(72);
+      expect(result[0]).toEqual({ date: '2024-01-15', value: 72, type: 'heart_rate' });
     });
   });
 
@@ -597,17 +595,15 @@ describe('aggregateActiveCaloriesByDate', () => {
       expect(result[0].value).toBe(500);
     });
 
-    test('skips records with energy but missing inCalories', () => {
-      // Note: aggregateActiveCaloriesByDate requires inCalories in the filter
+    test('includes records with inKilocalories but no inCalories', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', energy: { inKilocalories: 500 } },
         { startTime: '2024-01-15T12:00:00Z', energy: { inCalories: 600 } },
       ];
       const result = aggregateActiveCaloriesByDate(records);
-      // First record is skipped because filter requires inCalories
-      // But in the reduce, it checks inKilocalories first - this is a potential bug noted in the plan
+      // Both records should be included - filter accepts either inCalories or inKilocalories
       expect(result).toHaveLength(1);
-      expect(result[0].value).toBe(600);
+      expect(result[0].value).toBe(1100); // 500 + 600
     });
 
     test('skips records with missing startTime', () => {
