@@ -1,11 +1,27 @@
 import React from 'react';
-import { View, Text, Switch, Image, Alert } from 'react-native';
+import { View, Text, Switch, Image } from 'react-native';
 import styles from '../screens/SettingsScreenStyles';
-import { HEALTH_METRICS } from '../constants/HealthMetrics';
-
+import { HEALTH_METRICS, HealthMetric } from '../constants/HealthMetrics';
 import { useTheme } from '../contexts/ThemeContext';
 
-const HealthDataSync = ({ healthMetricStates, handleToggleHealthMetric, isAllMetricsEnabled, handleToggleAllMetrics }) => {
+// Re-export HealthMetric for backwards compatibility
+export type { HealthMetric };
+
+export type HealthMetricStates = Record<string, boolean>;
+
+interface HealthDataSyncProps {
+  healthMetricStates: HealthMetricStates;
+  handleToggleHealthMetric: (metric: HealthMetric, newValue: boolean) => void;
+  isAllMetricsEnabled: boolean;
+  handleToggleAllMetrics: () => void;
+}
+
+const HealthDataSync: React.FC<HealthDataSyncProps> = ({
+  healthMetricStates,
+  handleToggleHealthMetric,
+  isAllMetricsEnabled,
+  handleToggleAllMetrics,
+}) => {
   const { colors } = useTheme();
 
   return (

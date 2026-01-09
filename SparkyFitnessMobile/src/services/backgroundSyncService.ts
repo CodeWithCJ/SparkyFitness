@@ -1,27 +1,36 @@
-import BackgroundFetch from 'react-native-background-fetch';
-import { syncHealthData } from './api';
+import BackgroundFetch, { HeadlessEvent } from 'react-native-background-fetch';
+import { syncHealthData, HealthDataPayload } from './api';
 import { addLog } from './LogService';
-import { loadHealthPreference, loadSyncDuration, getAggregatedStepsByDate, getAggregatedActiveCaloriesByDate, readSleepSessionRecords, readStressRecords, readExerciseSessionRecords, readWorkoutRecords } from './healthConnectService';
-import { readSleepSessionRecords as readSleepSessionRecordsHK, readStressRecords as readStressRecordsHK, readWorkoutRecords as readWorkoutRecordsHK } from './healthkit';
-import { Platform } from 'react-native';
+import {
+  loadHealthPreference,
+  loadSyncDuration,
+  getAggregatedStepsByDate,
+  getAggregatedActiveCaloriesByDate,
+  readSleepSessionRecords,
+  readStressRecords,
+  readExerciseSessionRecords,
+  readWorkoutRecords,
+} from './healthConnectService';
 import { saveLastSyncedTime } from './storage';
+import { SyncInterval } from './healthconnect/preferences';
+
 const BACKGROUND_FETCH_TASK_ID = 'healthDataSync';
 
-const performBackgroundSync = async (taskId) => {
+const performBackgroundSync = async (taskId: string): Promise<void> => {
   console.log('[BackgroundFetch] taskId', taskId);
   addLog(`[Background Sync] Background fetch triggered: ${taskId}`);
 
   try {
-    const isStepsEnabled = await loadHealthPreference('syncStepsEnabled');
-    const isActiveCaloriesEnabled = await loadHealthPreference('syncCaloriesEnabled');
-    const isSleepSessionEnabled = await loadHealthPreference('isSleepSessionSyncEnabled');
-    const isStressEnabled = await loadHealthPreference('isStressSyncEnabled');
-    const isExerciseSessionEnabled = await loadHealthPreference('isExerciseSessionSyncEnabled');
-    const isWorkoutEnabled = await loadHealthPreference('isWorkoutSyncEnabled');
+    const isStepsEnabled = await loadHealthPreference<boolean>('syncStepsEnabled');
+    const isActiveCaloriesEnabled = await loadHealthPreference<boolean>('syncCaloriesEnabled');
+    const isSleepSessionEnabled = await loadHealthPreference<boolean>('isSleepSessionSyncEnabled');
+    const isStressEnabled = await loadHealthPreference<boolean>('isStressSyncEnabled');
+    const isExerciseSessionEnabled = await loadHealthPreference<boolean>('isExerciseSessionSyncEnabled');
+    const isWorkoutEnabled = await loadHealthPreference<boolean>('isWorkoutSyncEnabled');
 
-    const syncDuration = await loadSyncDuration(); // This will be '1h', '4h', '24h'
-    const fourHourSyncTime = await loadHealthPreference('fourHourSyncTime');
-    const dailySyncTime = await loadHealthPreference('dailySyncTime');
+    const syncDuration = await loadSyncDuration() as SyncInterval; // Background sync uses SyncInterval ('1h', '4h', '24h')
+    const fourHourSyncTime = await loadHealthPreference<string>('fourHourSyncTime') ?? '00:00';
+    const dailySyncTime = await loadHealthPreference<string>('dailySyncTime') ?? '00:00';
 
     let shouldSync = false;
     const now = new Date();
@@ -59,51 +68,42 @@ const performBackgroundSync = async (taskId) => {
         startDate.setHours(0, 0, 0, 0);
       }
 
-      let allAggregatedData = [];
+      const allAggregatedData: HealthDataPayload = [];
 
       if (isStepsEnabled) {
         const aggregatedStepsData = await getAggregatedStepsByDate(startDate, endDate);
-        allAggregatedData = allAggregatedData.concat(aggregatedStepsData);
+        allAggregatedData.push(...aggregatedStepsData);
         addLog(`[Background Sync] Got ${aggregatedStepsData.length} deduplicated step records`);
       }
 
       if (isActiveCaloriesEnabled) {
         const aggregatedActiveCaloriesData = await getAggregatedActiveCaloriesByDate(startDate, endDate);
-        allAggregatedData = allAggregatedData.concat(aggregatedActiveCaloriesData);
+        allAggregatedData.push(...aggregatedActiveCaloriesData);
         addLog(`[Background Sync] Got ${aggregatedActiveCaloriesData.length} deduplicated calorie records`);
       }
 
       if (isSleepSessionEnabled) {
-        let sleepRecords;
-        if (Platform.OS === 'ios') {
-          sleepRecords = await readSleepSessionRecordsHK(startDate, endDate);
-        } else {
-          sleepRecords = await readSleepSessionRecords(startDate, endDate);
-        }
+        const sleepRecords = await readSleepSessionRecords(startDate, endDate);
         // Sleep records are already aggregated by session, no further aggregation needed
-        allAggregatedData = allAggregatedData.concat(sleepRecords);
+        allAggregatedData.push(...(sleepRecords as HealthDataPayload));
       }
 
       if (isStressEnabled) {
-        let stressRecords;
-        if (Platform.OS === 'ios') {
-          stressRecords = await readStressRecordsHK(startDate, endDate);
-        } else {
-          stressRecords = await readStressRecords(startDate, endDate);
-        }
+        const stressRecords = await readStressRecords(startDate, endDate);
         // Stress records are individual measurements, no further aggregation needed
-        allAggregatedData = allAggregatedData.concat(stressRecords);
+        allAggregatedData.push(...(stressRecords as HealthDataPayload));
       }
 
       if (isExerciseSessionEnabled) {
-        let exerciseRecords;
-        if (Platform.OS === 'ios') {
-          exerciseRecords = await readWorkoutRecordsHK(startDate, endDate); // HealthKit uses 'Workout' for exercise sessions
-        } else {
-          exerciseRecords = await readExerciseSessionRecords(startDate, endDate);
-        }
+        const exerciseRecords = await readExerciseSessionRecords(startDate, endDate);
         // Exercise records are individual sessions, no further aggregation needed
-        allAggregatedData = allAggregatedData.concat(exerciseRecords);
+        allAggregatedData.push(...(exerciseRecords as HealthDataPayload));
+      }
+
+      if (isWorkoutEnabled) {
+        const workoutRecords = await readWorkoutRecords(startDate, endDate);
+        // Workout records are individual sessions, no further aggregation needed
+        allAggregatedData.push(...(workoutRecords as HealthDataPayload));
       }
 
       if (allAggregatedData.length > 0) {
@@ -117,16 +117,17 @@ const performBackgroundSync = async (taskId) => {
       addLog(`[Background Sync] Not time to sync yet. Current time: ${now.toLocaleTimeString()}, Sync frequency: ${syncDuration}`);
     }
   } catch (error) {
-    addLog(`[Background Sync] Sync Error: ${error.message}`, 'error', 'ERROR');
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Background Sync] Sync Error: ${message}`, 'error', 'ERROR');
   }
 
   BackgroundFetch.finish(taskId);
 };
 
-export const HeadlessTask = async (event) => {
+export const HeadlessTask = async (event: HeadlessEvent): Promise<void> => {
   // Get taskId from event
-  let taskId = event.taskId;
-  let isTimeout = event.timeout;
+  const taskId = event.taskId;
+  const isTimeout = event.timeout;
   if (isTimeout) {
     console.log('[BackgroundFetch] Headless TIMEOUT:', taskId);
     BackgroundFetch.finish(taskId);
@@ -136,7 +137,7 @@ export const HeadlessTask = async (event) => {
   await performBackgroundSync(taskId);
 };
 
-export const configureBackgroundSync = async () => {
+export const configureBackgroundSync = async (): Promise<void> => {
   BackgroundFetch.configure({
     minimumFetchInterval: 15, // <-- minutes (15 is minimum allowed)
     stopOnTerminate: false,    // <-- Android only,
@@ -147,27 +148,31 @@ export const configureBackgroundSync = async () => {
     requiresCharging: false,    // Don't require charging
     requiresDeviceIdle: false,  // Don't require device to be idle
     requiresBatteryNotLow: false, // Don't require battery not to be low
-  }, async (taskId) => {
+  }, async (taskId: string) => {
     await performBackgroundSync(taskId);
-  }, (error) => {
-    addLog(`[Background Sync] Background fetch failed to configure: ${error.message}`, 'error', 'ERROR');
+  }, (taskId: string) => {
+    // This callback is called on timeout - taskId is passed, not an error
+    addLog(`[Background Sync] Background fetch timeout for task: ${taskId}`, 'error', 'ERROR');
+    BackgroundFetch.finish(taskId);
   });
 };
 
-export const startBackgroundSync = async () => {
+export const startBackgroundSync = async (): Promise<void> => {
   try {
-    await BackgroundFetch.start(BACKGROUND_FETCH_TASK_ID);
+    await BackgroundFetch.start();
     addLog('[Background Sync] Background fetch started successfully.');
   } catch (error) {
-    addLog(`[Background Sync] Background fetch failed to start: ${error.message}`, 'error', 'ERROR');
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Background Sync] Background fetch failed to start: ${message}`, 'error', 'ERROR');
   }
 };
 
-export const stopBackgroundSync = async () => {
+export const stopBackgroundSync = async (): Promise<void> => {
   try {
     await BackgroundFetch.stop(BACKGROUND_FETCH_TASK_ID);
     addLog('[Background Sync] Background fetch stopped successfully.');
   } catch (error) {
-    addLog(`[Background Sync] Background fetch failed to stop: ${error.message}`, 'error', 'ERROR');
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Background Sync] Background fetch failed to stop: ${message}`, 'error', 'ERROR');
   }
 };

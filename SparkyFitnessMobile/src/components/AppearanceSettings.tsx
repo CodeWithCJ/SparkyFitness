@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, Image } from 'react-native';
-import DropDownPicker from 'react-native-dropdown-picker';
+import { View, Text } from 'react-native';
+import DropDownPicker, { ItemType } from 'react-native-dropdown-picker';
 import styles from '../screens/SettingsScreenStyles';
 
 import { useTheme } from '../contexts/ThemeContext';
 
-const AppearanceSettings = ({ appTheme, setAppTheme }) => {
+type ThemePreference = 'Light' | 'Dark' | 'Amoled' | 'System';
+
+interface AppearanceSettingsProps {
+  appTheme: ThemePreference;
+  setAppTheme: (theme: ThemePreference) => void;
+}
+
+const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ appTheme, setAppTheme }) => {
   const [themeOpen, setThemeOpen] = useState(false);
   const { colors, isDarkMode } = useTheme();
 
-  const themeItems = [
+  const themeItems: ItemType<ThemePreference>[] = [
     { label: 'Light', value: 'Light' },
     { label: 'Dark', value: 'Dark' },
     { label: 'AMOLED', value: 'Amoled' },

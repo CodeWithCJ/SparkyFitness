@@ -1,47 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { View, Alert, Text, TouchableOpacity, Image, ScrollView, Platform } from 'react-native';
+import { View, Alert, Text, ScrollView, Platform } from 'react-native';
 import styles from './SettingsScreenStyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig } from '../services/storage';
+import type { ServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
-import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference, saveSyncDuration, loadSyncDuration, saveStringPreference, loadStringPreference } from '../services/healthConnectService';
+import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference, loadSyncDuration, loadStringPreference } from '../services/healthConnectService';
+import type { SyncInterval } from '../services/healthconnect/preferences';
 import { checkServerConnection } from '../services/api';
 import { HEALTH_METRICS } from '../constants/HealthMetrics';
-import ServerConfig from '../components/ServerConfig';
+import type { HealthMetric } from '../constants/HealthMetrics';
+import ServerConfigComponent from '../components/ServerConfig';
 import HealthDataSync from '../components/HealthDataSync';
 import SyncFrequency from '../components/SyncFrequency';
 import AppearanceSettings from '../components/AppearanceSettings';
 import { useTheme } from '../contexts/ThemeContext';
-//import axios from 'axios'; // Import axios for API calls
-//import { getActiveServerConfig } from '../services/storage'; // Import to get server URL
 import * as Application from 'expo-application';
+import type { HealthMetricStates } from '../types/healthRecords';
 
+interface SettingsScreenProps {
+  navigation: { navigate: (screen: string) => void };
+}
 
-const SettingsScreen = ({ navigation }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { theme: appTheme, setTheme: setAppTheme, colors, isDarkMode } = useTheme();
-  const [url, setUrl] = useState('');
-  const [apiKey, setApiKey] = useState('');
+  const { theme: appTheme, setTheme: setAppTheme, colors } = useTheme();
+  const [url, setUrl] = useState<string>('');
+  const [apiKey, setApiKey] = useState<string>('');
 
-  const [healthMetricStates, setHealthMetricStates] = useState(
-    HEALTH_METRICS.reduce((acc, metric) => ({ ...acc, [metric.stateKey]: false }), {})
+  const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>(
+    HEALTH_METRICS.reduce((acc, metric) => ({ ...acc, [metric.stateKey]: false }), {} as HealthMetricStates)
   );
-  const [isAllMetricsEnabled, setIsAllMetricsEnabled] = useState(false);
+  const [isAllMetricsEnabled, setIsAllMetricsEnabled] = useState<boolean>(false);
 
-  const [syncDuration, setSyncDuration] = useState('24h'); // Default to 24 hours
-  const [fourHourSyncTime, setFourHourSyncTime] = useState('00:00');
-  const [dailySyncTime, setDailySyncTime] = useState('00:00');
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [serverConfigs, setServerConfigs] = useState([]);
-  const [activeConfigId, setActiveConfigId] = useState(null);
-  const [currentConfigId, setCurrentConfigId] = useState(null); // For editing existing config
-  const [isConnected, setIsConnected] = useState(false); // State for server connection status
+  const [syncDuration, setSyncDuration] = useState<SyncInterval>('24h');
+  const [fourHourSyncTime, setFourHourSyncTime] = useState<string>('00:00');
+  const [dailySyncTime, setDailySyncTime] = useState<string>('00:00');
+  const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
+  const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
+  const [currentConfigId, setCurrentConfigId] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
 
-  // Friendly platform-specific label for Health settings used in alerts
-  // e.g. 'Health Connect settings' on Android, 'Health app settings' on iOS
   const healthSettingsName = Platform.OS === 'android' ? 'Health Connect settings' : 'Health app settings';
 
-  const loadConfig = async () => {
+  const loadConfig = async (): Promise<void> => {
     const allConfigs = await getAllServerConfigs();
     setServerConfigs(allConfigs);
 
@@ -53,34 +55,33 @@ const SettingsScreen = ({ navigation }) => {
       setActiveConfigId(activeConfig.id);
       setCurrentConfigId(activeConfig.id);
     } else if (allConfigs.length > 0 && !activeConfig) {
-      // If no active config, but configs exist, set the first one as active
       await setActiveServerConfig(allConfigs[0].id);
       setUrl(allConfigs[0].url);
       setApiKey(allConfigs[0].apiKey);
       setActiveConfigId(allConfigs[0].id);
       setCurrentConfigId(allConfigs[0].id);
     } else if (allConfigs.length === 0) {
-      // If no configs exist, clear everything
       setUrl('');
       setApiKey('');
       setActiveConfigId(null);
       setCurrentConfigId(null);
     }
 
-    // Load Health Connect preferences
-    const newHealthMetricStates = {};
+    const newHealthMetricStates: HealthMetricStates = {};
     for (const metric of HEALTH_METRICS) {
-      const enabled = await loadHealthPreference(metric.preferenceKey);
-      newHealthMetricStates[metric.stateKey] = enabled !== null ? enabled : false;
+      const enabled = await loadHealthPreference<boolean>(metric.preferenceKey);
+      newHealthMetricStates[metric.stateKey] = enabled === true;
     }
     setHealthMetricStates(newHealthMetricStates);
-    // Check if all metrics are enabled to set the initial state of the master toggle
     const allEnabled = HEALTH_METRICS.every(metric => newHealthMetricStates[metric.stateKey]);
     setIsAllMetricsEnabled(allEnabled);
 
-    // Load sync duration preference
     const duration = await loadSyncDuration();
-    setSyncDuration(duration !== null ? duration : '24h');
+    // loadSyncDuration returns SyncDuration, but SyncFrequency uses SyncInterval
+    // Only accept valid SyncInterval values, default to '24h'
+    const validIntervals: SyncInterval[] = ['1h', '4h', '24h'];
+    const loadedInterval = validIntervals.includes(duration as SyncInterval) ? (duration as SyncInterval) : '24h';
+    setSyncDuration(loadedInterval);
 
     const fourHourTime = await loadStringPreference('fourHourSyncTime');
     setFourHourSyncTime(fourHourTime !== null ? fourHourTime : '00:00');
@@ -88,13 +89,8 @@ const SettingsScreen = ({ navigation }) => {
     const dailyTime = await loadStringPreference('dailySyncTime');
     setDailySyncTime(dailyTime !== null ? dailyTime : '00:00');
 
-    // Initialize Health Connect
     await initHealthConnect();
 
-
-    // Theme is now managed by ThemeContext
-
-    // Check server connection status
     const connectionStatus = await checkServerConnection();
     addLog(`[SettingsScreen] Server connection status: ${connectionStatus}`);
     setIsConnected(connectionStatus);
@@ -102,56 +98,51 @@ const SettingsScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadConfig();
-  }, [activeConfigId]); // Re-check connection when active config changes
+  }, [activeConfigId]);
 
-  const handleThemeChange = async (itemValue) => {
-    await setAppTheme(itemValue);
-  };
-
-  const handleSaveConfig = async () => {
+  const handleSaveConfig = async (): Promise<void> => {
     if (!url || !apiKey) {
       Alert.alert('Error', 'Please enter both a server URL and an API key.');
       return;
     }
     try {
-      const normalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url; // Remove trailing slash
-      const configToSave = {
-        id: currentConfigId || Date.now().toString(), // Use existing ID or generate new
+      const normalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+      const configToSave: ServerConfig = {
+        id: currentConfigId || Date.now().toString(),
         url: normalizedUrl,
         apiKey,
       };
       await saveServerConfig(configToSave);
 
-
-      await loadConfig(); // Reload all configs and active one
+      await loadConfig();
       Alert.alert('Success', 'Settings saved successfully.');
-      setShowConfigModal(false);
       addLog('Settings saved successfully.', 'info', 'SUCCESS');
     } catch (error) {
-      console.error('Failed to save settings:', error); // Log the actual error
-      Alert.alert('Error', `Failed to save settings: ${error.message || error}`);
-      addLog(`Failed to save settings: ${error.message || error}`, 'error', 'ERROR');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Failed to save settings:', error);
+      Alert.alert('Error', `Failed to save settings: ${errorMessage}`);
+      addLog(`Failed to save settings: ${errorMessage}`, 'error', 'ERROR');
     }
   };
 
-  const handleSetActiveConfig = async (configId) => {
+  const handleSetActiveConfig = async (configId: string): Promise<void> => {
     try {
       await setActiveServerConfig(configId);
-      await loadConfig(); // Reload to update active config in UI
+      await loadConfig();
       Alert.alert('Success', 'Active server configuration changed.');
-      setShowConfigModal(false);
       addLog('Active server configuration changed.', 'info', 'SUCCESS');
     } catch (error) {
-      console.error('Failed to set active server configuration:', error); // Log the actual error
-      addLog(`Failed to set active server configuration: ${error.message || error}`, 'error', 'ERROR');
-      Alert.alert('Error', `Failed to set active server configuration: ${error.message || error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Failed to set active server configuration:', error);
+      addLog(`Failed to set active server configuration: ${errorMessage}`, 'error', 'ERROR');
+      Alert.alert('Error', `Failed to set active server configuration: ${errorMessage}`);
     }
   };
 
-  const handleDeleteConfig = async (configId) => {
+  const handleDeleteConfig = async (configId: string): Promise<void> => {
     try {
       await deleteServerConfig(configId);
-      await loadConfig(); // Reload configs
+      await loadConfig();
       if (activeConfigId === configId) {
         setUrl('');
         setApiKey('');
@@ -161,25 +152,29 @@ const SettingsScreen = ({ navigation }) => {
       Alert.alert('Success', 'Server configuration deleted.');
       addLog('Server configuration deleted.', 'info', 'SUCCESS');
     } catch (error) {
-      console.error('Failed to delete server configuration:', error); // Log the actual error
-      Alert.alert('Error', `Failed to delete server configuration: ${error.message || error}`);
-      addLog(`Failed to delete server configuration: ${error.message || error}`, 'error', 'ERROR');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Failed to delete server configuration:', error);
+      Alert.alert('Error', `Failed to delete server configuration: ${errorMessage}`);
+      addLog(`Failed to delete server configuration: ${errorMessage}`, 'error', 'ERROR');
     }
   };
 
-  const handleEditConfig = (config) => {
+  const handleEditConfig = (config: ServerConfig): void => {
     setUrl(config.url);
     setApiKey(config.apiKey);
     setCurrentConfigId(config.id);
   };
 
-  const handleAddNewConfig = () => {
+  const handleAddNewConfig = (): void => {
     setUrl('');
     setApiKey('');
     setCurrentConfigId(null);
   };
 
-  const handleToggleHealthMetric = async (metric, newValue) => {
+  const handleToggleHealthMetric = async (
+    metric: HealthMetric,
+    newValue: boolean
+  ): Promise<void> => {
     setHealthMetricStates(prevStates => ({
       ...prevStates,
       [metric.stateKey]: newValue,
@@ -192,7 +187,7 @@ const SettingsScreen = ({ navigation }) => {
           Alert.alert('Permission Denied', `Please grant ${metric.label.toLowerCase()} permission in ${healthSettingsName}.`);
           setHealthMetricStates(prevStates => ({
             ...prevStates,
-            [metric.stateKey]: false, // Revert toggle if permission not granted
+            [metric.stateKey]: false,
           }));
           await saveHealthPreference(metric.preferenceKey, false);
           addLog(`Permission Denied: ${metric.label} permission not granted.`, 'warn', 'WARNING');
@@ -200,42 +195,39 @@ const SettingsScreen = ({ navigation }) => {
           addLog(`${metric.label} sync enabled and permissions granted.`, 'info', 'SUCCESS');
         }
       } catch (permissionError) {
-        Alert.alert('Permission Error', `Failed to request ${metric.label.toLowerCase()} permissions: ${permissionError.message}`);
+        const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
+        Alert.alert('Permission Error', `Failed to request ${metric.label.toLowerCase()} permissions: ${errorMessage}`);
         setHealthMetricStates(prevStates => ({
           ...prevStates,
-          [metric.stateKey]: false, // Revert toggle on any permission error
+          [metric.stateKey]: false,
         }));
         await saveHealthPreference(metric.preferenceKey, false);
-        addLog(`Permission Request Error for ${metric.label}: ${permissionError.message}`, 'error', 'ERROR');
+        addLog(`Permission Request Error for ${metric.label}: ${errorMessage}`, 'error', 'ERROR');
       }
     }
   };
 
-  const handleToggleAllMetrics = async (newValue) => {
+  const handleToggleAllMetrics = async (): Promise<void> => {
+    const newValue = !isAllMetricsEnabled;
     setIsAllMetricsEnabled(newValue);
 
-    const newHealthMetricStates = {};
+    const newHealthMetricStates: HealthMetricStates = {};
     HEALTH_METRICS.forEach(metric => {
       newHealthMetricStates[metric.stateKey] = newValue;
     });
 
-    // If enabling, request all permissions at once
     if (newValue) {
-      // 1. Collect all unique permissions
       const allPermissions = HEALTH_METRICS.flatMap(metric => metric.permissions);
-      
+
       try {
-        // 2. Request all permissions in a single call
         addLog('[SettingsScreen] Requesting all permissions...');
         const granted = await requestHealthPermissions(allPermissions);
-        
+
         if (!granted) {
-          // If any permission is denied, show a generic alert.
           Alert.alert(
             'Permissions Required',
             `Some permissions were not granted. Please enable all required health permissions in the ${healthSettingsName} to sync all data.`
           );
-          // Revert all toggles to off if permissions were not fully granted
           setIsAllMetricsEnabled(false);
           HEALTH_METRICS.forEach(metric => {
             newHealthMetricStates[metric.stateKey] = false;
@@ -245,17 +237,16 @@ const SettingsScreen = ({ navigation }) => {
           addLog('[SettingsScreen] All permissions granted successfully.', 'info', 'SUCCESS');
         }
       } catch (permissionError) {
-        Alert.alert('Permission Error', `An error occurred while requesting health permissions: ${permissionError.message}`);
-        // Revert all toggles if there was an error
+        const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
+        Alert.alert('Permission Error', `An error occurred while requesting health permissions: ${errorMessage}`);
         setIsAllMetricsEnabled(false);
         HEALTH_METRICS.forEach(metric => {
           newHealthMetricStates[metric.stateKey] = false;
         });
-        addLog(`[SettingsScreen] Error requesting all permissions: ${permissionError.message}`, 'error', 'ERROR');
+        addLog(`[SettingsScreen] Error requesting all permissions: ${errorMessage}`, 'error', 'ERROR');
       }
     }
 
-    // 3. Update state and storage for all metrics after permissions are handled
     setHealthMetricStates(newHealthMetricStates);
     for (const metric of HEALTH_METRICS) {
       await saveHealthPreference(metric.preferenceKey, newHealthMetricStates[metric.stateKey]);
@@ -267,7 +258,7 @@ const SettingsScreen = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top}]}>
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
         <View style={styles.contentContainer}>
-          <ServerConfig
+          <ServerConfigComponent
             url={url}
             setUrl={setUrl}
             apiKey={apiKey}
@@ -309,10 +300,6 @@ const SettingsScreen = ({ navigation }) => {
           </View>
         </View>
       </ScrollView>
-
-
-      {/* Server Configuration Modal - Remove this section */}
-      {/* The modal content is now integrated directly into the main screen */}
     </View>
   );
 };

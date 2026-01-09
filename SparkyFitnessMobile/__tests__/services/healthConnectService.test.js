@@ -25,9 +25,9 @@ jest.mock('../../src/constants/HealthMetrics', () => ({
 
 const api = require('../../src/services/api');
 
-// Load the Android-specific file using explicit .js extension
-// This bypasses Jest's platform resolution which would otherwise load .ios.js
-const androidService = require('../../src/services/healthConnectService.js');
+// Load the Android-specific file using explicit .ts extension
+// This bypasses Jest's platform resolution which would otherwise load .ios.ts
+const androidService = require('../../src/services/healthConnectService.ts');
 
 describe('healthConnectService.js (Android)', () => {
   beforeEach(() => {

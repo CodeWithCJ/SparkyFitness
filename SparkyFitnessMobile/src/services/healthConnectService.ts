@@ -3,27 +3,48 @@ import * as HealthConnectAggregation from './healthconnect/dataAggregation';
 import * as HealthConnectTransformation from './healthconnect/dataTransformation';
 import * as HealthConnectPreferences from './healthconnect/preferences';
 import * as api from './api';
+import { HealthDataPayload } from './api';
 import { HEALTH_METRICS } from '../constants/HealthMetrics';
 import { addLog } from './LogService';
-import { Platform } from 'react-native';
+import {
+  AggregatedHealthRecord,
+  SyncResult,
+  HealthMetricStates,
+} from '../types/healthRecords';
+import { SyncDuration } from './healthconnect/preferences';
 
 export const initHealthConnect = HealthConnect.initHealthConnect;
 export const requestHealthPermissions = HealthConnect.requestHealthPermissions;
 export const readHealthRecords = HealthConnect.readHealthRecords;
 export const getSyncStartDate = HealthConnect.getSyncStartDate;
 
-export const readStepRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('Steps', startDate, endDate);
-export const readActiveCaloriesRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
-export const readHeartRateRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('HeartRate', startDate, endDate);
-export const readSleepSessionRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('SleepSession', startDate, endDate);
-export const readStressRecords = Platform.OS === 'ios'
-  ? async (startDate, endDate) => HealthConnect.readHealthRecords('Stress', startDate, endDate)
-  : async () => {
-    addLog('[HealthConnectService] Stress metric is Android‑only; skipping.', 'info');
-    return [];
-  };
-export const readExerciseSessionRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('ExerciseSession', startDate, endDate);
-export const readWorkoutRecords = async (startDate, endDate) => HealthConnect.readHealthRecords('Workout', startDate, endDate);
+export const readStepRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
+  HealthConnect.readHealthRecords('Steps', startDate, endDate);
+
+export const readActiveCaloriesRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
+  HealthConnect.readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
+
+export const readHeartRateRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
+  HealthConnect.readHealthRecords('HeartRate', startDate, endDate);
+
+export const readSleepSessionRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
+  HealthConnect.readHealthRecords('SleepSession', startDate, endDate);
+
+// Stress metric is iOS-only (maps to MindfulSession in HealthKit)
+// Android Health Connect doesn't have a Stress record type
+export const readStressRecords = async (
+  _startDate: Date,
+  _endDate: Date
+): Promise<unknown[]> => {
+  addLog('[HealthConnectService] Stress metric is iOS-only; skipping on Android.', 'info');
+  return [];
+};
+
+export const readExerciseSessionRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
+  HealthConnect.readHealthRecords('ExerciseSession', startDate, endDate);
+
+export const readWorkoutRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
+  HealthConnect.readHealthRecords('Workout', startDate, endDate);
 
 export const aggregateHeartRateByDate = HealthConnectAggregation.aggregateHeartRateByDate;
 export const aggregateStepsByDate = HealthConnectAggregation.aggregateStepsByDate;
@@ -36,31 +57,52 @@ export const getAggregatedActiveCaloriesByDate = HealthConnect.getAggregatedActi
 
 // Android implementations for additional aggregation functions
 // These aggregate raw records by date since Android Health Connect doesn't have the same statistics API as HealthKit
-export const getAggregatedTotalCaloriesByDate = async (startDate, endDate) => {
-  const records = await HealthConnect.readHealthRecords('TotalCaloriesBurned', startDate, endDate);
-  const byDate = {};
+export const getAggregatedTotalCaloriesByDate = async (
+  startDate: Date,
+  endDate: Date
+): Promise<AggregatedHealthRecord[]> => {
+  const records = await HealthConnect.readHealthRecords('TotalCaloriesBurned', startDate, endDate) as Array<{
+    startTime?: string;
+    time?: string;
+    energy?: { inKilocalories?: number };
+  }>;
+  const byDate: Record<string, number> = {};
   records.forEach(record => {
-    const date = new Date(record.startTime || record.time).toISOString().split('T')[0];
+    const date = new Date(record.startTime || record.time || '').toISOString().split('T')[0];
     byDate[date] = (byDate[date] || 0) + (record.energy?.inKilocalories || 0);
   });
   return Object.entries(byDate).map(([date, value]) => ({ date, value: Math.round(value), type: 'total_calories' }));
 };
 
-export const getAggregatedDistanceByDate = async (startDate, endDate) => {
-  const records = await HealthConnect.readHealthRecords('Distance', startDate, endDate);
-  const byDate = {};
+export const getAggregatedDistanceByDate = async (
+  startDate: Date,
+  endDate: Date
+): Promise<AggregatedHealthRecord[]> => {
+  const records = await HealthConnect.readHealthRecords('Distance', startDate, endDate) as Array<{
+    startTime?: string;
+    time?: string;
+    distance?: { inMeters?: number };
+  }>;
+  const byDate: Record<string, number> = {};
   records.forEach(record => {
-    const date = new Date(record.startTime || record.time).toISOString().split('T')[0];
+    const date = new Date(record.startTime || record.time || '').toISOString().split('T')[0];
     byDate[date] = (byDate[date] || 0) + (record.distance?.inMeters || 0);
   });
   return Object.entries(byDate).map(([date, value]) => ({ date, value: Math.round(value), type: 'distance' }));
 };
 
-export const getAggregatedFloorsClimbedByDate = async (startDate, endDate) => {
-  const records = await HealthConnect.readHealthRecords('FloorsClimbed', startDate, endDate);
-  const byDate = {};
+export const getAggregatedFloorsClimbedByDate = async (
+  startDate: Date,
+  endDate: Date
+): Promise<AggregatedHealthRecord[]> => {
+  const records = await HealthConnect.readHealthRecords('FloorsClimbed', startDate, endDate) as Array<{
+    startTime?: string;
+    time?: string;
+    floors?: number;
+  }>;
+  const byDate: Record<string, number> = {};
   records.forEach(record => {
-    const date = new Date(record.startTime || record.time).toISOString().split('T')[0];
+    const date = new Date(record.startTime || record.time || '').toISOString().split('T')[0];
     byDate[date] = (byDate[date] || 0) + (record.floors || 0);
   });
   return Object.entries(byDate).map(([date, value]) => ({ date, value: Math.round(value), type: 'floors_climbed' }));
@@ -75,7 +117,10 @@ export const loadStringPreference = HealthConnectPreferences.loadStringPreferenc
 export const saveSyncDuration = HealthConnectPreferences.saveSyncDuration;
 export const loadSyncDuration = HealthConnectPreferences.loadSyncDuration;
 
-export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
+export const syncHealthData = async (
+  syncDuration: SyncDuration,
+  healthMetricStates: HealthMetricStates = {}
+): Promise<SyncResult> => {
   addLog(`[HealthConnectService] Starting health data sync for duration: ${syncDuration}`);
   const startDate = HealthConnect.getSyncStartDate(syncDuration);
 
@@ -89,8 +134,8 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
 
   addLog(`[HealthConnectService] Will sync ${healthDataTypesToSync.length} metric types: ${healthDataTypesToSync.join(', ')}`);
 
-  let allTransformedData = [];
-  const syncErrors = [];
+  const allTransformedData: HealthDataPayload = [];
+  const syncErrors: { type: string; error: string }[] = [];
 
   for (const type of healthDataTypesToSync) {
     try {
@@ -100,7 +145,7 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
         continue;
       }
 
-      let dataToTransform = [];
+      let dataToTransform: unknown[] = [];
 
       // For Steps and ActiveCaloriesBurned, use aggregation API directly (handles deduplication)
       if (type === 'Steps') {
@@ -123,10 +168,14 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
         dataToTransform = rawRecords;
 
         if (type === 'HeartRate') {
-          dataToTransform = HealthConnectAggregation.aggregateHeartRateByDate(rawRecords);
+          dataToTransform = HealthConnectAggregation.aggregateHeartRateByDate(
+            rawRecords as Parameters<typeof HealthConnectAggregation.aggregateHeartRateByDate>[0]
+          );
           addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw HeartRate records into ${dataToTransform.length} daily averages`);
         } else if (type === 'TotalCaloriesBurned') {
-          dataToTransform = await HealthConnectAggregation.aggregateTotalCaloriesByDate(rawRecords);
+          dataToTransform = HealthConnectAggregation.aggregateTotalCaloriesByDate(
+            rawRecords as Parameters<typeof HealthConnectAggregation.aggregateTotalCaloriesByDate>[0]
+          );
           addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw TotalCaloriesBurned records into ${dataToTransform.length} daily totals`);
         } else if (type === 'SleepSession') {
           addLog(`[HealthConnectService] Processing raw SleepSession records.`);
@@ -141,15 +190,16 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
 
       if (transformed.length > 0) {
         addLog(`[HealthConnectService] Successfully transformed ${transformed.length} ${type} records`);
-        allTransformedData = allTransformedData.concat(transformed);
+        allTransformedData.push(...(transformed as HealthDataPayload));
       } else {
         addLog(`[HealthConnectService] No ${type} records were transformed (all may have been invalid)`, 'warn', 'WARNING');
       }
     } catch (error) {
-      const errorMsg = `Error reading or transforming ${type} records: ${error.message}`;
+      const message = error instanceof Error ? error.message : String(error);
+      const errorMsg = `Error reading or transforming ${type} records: ${message}`;
       addLog(`[HealthConnectService] ${errorMsg}`, 'error', 'ERROR');
       console.error(`[HealthConnectService] ${errorMsg}`, error);
-      syncErrors.push({ type, error: error.message });
+      syncErrors.push({ type, error: message });
     }
   }
 
@@ -161,8 +211,9 @@ export const syncHealthData = async (syncDuration, healthMetricStates = {}) => {
       addLog(`[HealthConnectService] Server sync response: ${JSON.stringify(apiResponse)}`);
       return { success: true, apiResponse, syncErrors };
     } catch (error) {
-      addLog(`[HealthConnectService] Error sending data to server: ${error.message}`);
-      return { success: false, error: error.message, syncErrors };
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[HealthConnectService] Error sending data to server: ${message}`);
+      return { success: false, error: message, syncErrors };
     }
   } else {
     addLog(`[HealthConnectService] No health data to sync.`);

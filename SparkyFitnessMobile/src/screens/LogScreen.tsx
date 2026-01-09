@@ -3,15 +3,13 @@ import {
   View,
   Text,
   FlatList,
-  Button,
   StyleSheet,
   TouchableOpacity,
   Image,
   Alert,
-  ScrollView,
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import DropDownPicker from 'react-native-dropdown-picker'; // Use consistent dropdown library
+import DropDownPicker from 'react-native-dropdown-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   getLogs,
@@ -20,25 +18,34 @@ import {
   getLogLevel,
   setLogLevel,
 } from '../services/LogService';
+import type { LogEntry, LogSummary, LogLevel } from '../services/LogService';
 import { useTheme } from '../contexts/ThemeContext';
 
-const LogScreen = ({ navigation }) => {
+interface LogScreenProps {
+  navigation: { navigate: (screen: string) => void };
+}
+
+const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDarkMode } = useTheme();
-  const [logs, setLogs] = useState([]);
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [logSummary, setLogSummary] = useState({
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [offset, setOffset] = useState<number>(0);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [logSummary, setLogSummary] = useState<LogSummary>({
     SUCCESS: 0,
     WARNING: 0,
     ERROR: 0,
+    info: 0,
+    warn: 0,
+    error: 0,
+    debug: 0,
   });
-  const [currentLogLevel, setCurrentLogLevel] = useState('info');
-  const [logLevelOpen, setLogLevelOpen] = useState(false); // State for dropdown visibility
+  const [currentLogLevel, setCurrentLogLevel] = useState<LogLevel>('info');
+  const [logLevelOpen, setLogLevelOpen] = useState<boolean>(false);
 
-  const LOG_LIMIT = 30; // Number of logs to load per request
+  const LOG_LIMIT = 30;
 
-  const loadLogs = async (newOffset = 0, append = false) => {
+  const loadLogs = async (newOffset = 0, append = false): Promise<void> => {
     const storedLogs = await getLogs(newOffset, LOG_LIMIT);
     if (append) {
       setLogs(prevLogs => [...prevLogs, ...storedLogs]);
@@ -49,12 +56,12 @@ const LogScreen = ({ navigation }) => {
     setHasMore(storedLogs.length === LOG_LIMIT);
   };
 
-  const loadSummary = async () => {
+  const loadSummary = async (): Promise<void> => {
     const summary = await getLogSummary();
     setLogSummary(summary);
   };
 
-  const loadLogLevel = async () => {
+  const loadLogLevel = async (): Promise<void> => {
     const level = await getLogLevel();
     setCurrentLogLevel(level);
   };
@@ -65,13 +72,13 @@ const LogScreen = ({ navigation }) => {
     loadLogLevel();
   }, []);
 
-  const handleLoadMore = () => {
+  const handleLoadMore = (): void => {
     if (hasMore) {
       loadLogs(offset, true);
     }
   };
 
-  const handleClearLogs = async () => {
+  const handleClearLogs = async (): Promise<void> => {
     Alert.alert(
       'Clear Logs',
       'Are you sure you want to clear all logs?',
@@ -87,7 +94,15 @@ const LogScreen = ({ navigation }) => {
             setLogs([]);
             setOffset(0);
             setHasMore(true);
-            setLogSummary({ SUCCESS: 0, WARNING: 0, ERROR: 0 });
+            setLogSummary({
+              SUCCESS: 0,
+              WARNING: 0,
+              ERROR: 0,
+              info: 0,
+              warn: 0,
+              error: 0,
+              debug: 0,
+            });
           },
         },
       ],
@@ -95,8 +110,9 @@ const LogScreen = ({ navigation }) => {
     );
   };
 
-  const handleLogLevelChange = async valOrFunc => {
-    // DropDownPicker might pass a function or value
+  const handleLogLevelChange = async (
+    valOrFunc: LogLevel | ((prev: LogLevel) => LogLevel)
+  ): Promise<void> => {
     const level =
       typeof valOrFunc === 'function' ? valOrFunc(currentLogLevel) : valOrFunc;
 
@@ -104,7 +120,6 @@ const LogScreen = ({ navigation }) => {
       try {
         await setLogLevel(level);
         setCurrentLogLevel(level);
-        // Optionally reload logs based on new level, though addLog handles filtering
         loadLogs(0, false);
         loadSummary();
       } catch (error) {
@@ -114,8 +129,7 @@ const LogScreen = ({ navigation }) => {
     }
   };
 
-  const handleCopyLogToClipboard = item => {
-    // Format the log entry as a string
+  const handleCopyLogToClipboard = (item: LogEntry): void => {
     let logText = `Status: ${item.status}\n`;
     logText += `Message: ${item.message}\n`;
 
@@ -125,10 +139,8 @@ const LogScreen = ({ navigation }) => {
 
     logText += `Timestamp: ${new Date(item.timestamp).toLocaleString()}`;
 
-    // Copy to clipboard
     Clipboard.setString(logText);
 
-    // Show confirmation
     Alert.alert('Copied', 'Log entry copied to clipboard');
   };
 
@@ -149,7 +161,7 @@ const LogScreen = ({ navigation }) => {
           ]}
         >
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Today's Summary
+            {"Today's Summary"}
           </Text>
           <View style={styles.summaryContainer}>
             <View style={styles.summaryItem}>
@@ -217,11 +229,11 @@ const LogScreen = ({ navigation }) => {
             open={logLevelOpen}
             value={currentLogLevel}
             items={[
-              { label: 'Silent', value: 'silent' },
-              { label: 'Error', value: 'error' },
-              { label: 'Warning', value: 'warn' },
-              { label: 'Info', value: 'info' },
-              { label: 'Debug', value: 'debug' },
+              { label: 'Silent', value: 'silent' as LogLevel },
+              { label: 'Error', value: 'error' as LogLevel },
+              { label: 'Warning', value: 'warn' as LogLevel },
+              { label: 'Info', value: 'info' as LogLevel },
+              { label: 'Debug', value: 'debug' as LogLevel },
             ]}
             setOpen={setLogLevelOpen}
             setValue={handleLogLevelChange}
@@ -239,7 +251,6 @@ const LogScreen = ({ navigation }) => {
               styles.dropdownListContainerStyle,
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
-            itemStyle={styles.dropdownItemStyle}
             labelStyle={[styles.dropdownLabelStyle, { color: colors.text }]}
             placeholderStyle={[
               styles.dropdownPlaceholderStyle,
@@ -264,7 +275,7 @@ const LogScreen = ({ navigation }) => {
 
       <FlatList
         data={logs}
-        renderItem={({ item }) => (
+        renderItem={({ item }: { item: LogEntry }) => (
           <TouchableOpacity
             style={[styles.logItem, { backgroundColor: colors.card }]}
             onPress={() => handleCopyLogToClipboard(item)}
@@ -281,8 +292,6 @@ const LogScreen = ({ navigation }) => {
                       ? '#ffc107'
                       : item.status === 'INFO'
                       ? '#007bff'
-                      : item.status === 'DEBUG'
-                      ? '#800080'
                       : '#dc3545',
                 },
               ]}
@@ -310,8 +319,6 @@ const LogScreen = ({ navigation }) => {
                       ? '#ffc107'
                       : item.status === 'INFO'
                       ? '#007bff'
-                      : item.status === 'DEBUG'
-                      ? '#800080'
                       : '#dc3545',
                   },
                 ]}
@@ -362,12 +369,12 @@ const styles = StyleSheet.create({
   headerContainer: {
     padding: 16,
     paddingBottom: 0,
-    zIndex: 100, // Ensure header sits above list content if overlap occurs
+    zIndex: 100,
   },
   flatListContentContainer: {
     padding: 16,
-    paddingTop: 8, // Add spacing between header and list
-    paddingBottom: 80, // Adjust this value based on your bottomNavBar height
+    paddingTop: 8,
+    paddingBottom: 80,
   },
   card: {
     backgroundColor: '#fff',
@@ -388,7 +395,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#333',
   },
-  // Standardized Dropdown Styles (Matches MainScreen)
   dropdownContainer: {
     height: 50,
     zIndex: 4000,
@@ -550,12 +556,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   summaryCard: {
-    paddingVertical: 10, // Reduced vertical padding
-    marginBottom: 10, // Reduced margin bottom
+    paddingVertical: 10,
+    marginBottom: 10,
   },
   logLevelCard: {
-    paddingVertical: 10, // Reduced vertical padding
-    marginBottom: 10, // Reduced margin bottom
+    paddingVertical: 10,
+    marginBottom: 10,
   },
 });
 

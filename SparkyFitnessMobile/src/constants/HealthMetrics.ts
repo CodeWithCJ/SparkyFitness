@@ -1,6 +1,25 @@
-import { Platform } from 'react-native';
+import { Platform, ImageSourcePropType } from 'react-native';
 
-const ALL_HEALTH_METRICS = [
+export interface HealthMetricPermission {
+  accessType: 'read' | 'write';
+  recordType: string;
+}
+
+export interface HealthMetric {
+  id: string;
+  label: string;
+  stateKey: string;
+  preferenceKey: string;
+  recordType: string;
+  unit: string;
+  icon: ImageSourcePropType;
+  permissions: HealthMetricPermission[];
+  type: string;
+  platforms?: ('android' | 'ios')[];
+  category?: string;
+}
+
+const ALL_HEALTH_METRICS: HealthMetric[] = [
   { id: 'steps', label: 'Steps', stateKey: 'isStepsSyncEnabled', preferenceKey: 'syncStepsEnabled', recordType: 'Steps', unit: 'count', icon: require('../../assets/icons/steps.png'), permissions: [{ accessType: 'read', recordType: 'Steps' }, { accessType: 'write', recordType: 'Steps' }], type: 'step' },
   { id: 'calories', label: 'Active Calories', stateKey: 'isCaloriesSyncEnabled', preferenceKey: 'syncCaloriesEnabled', recordType: 'ActiveCaloriesBurned', unit: 'kcal', icon: require('../../assets/icons/calories.png'), permissions: [{ accessType: 'read', recordType: 'ActiveCaloriesBurned' }], type: 'Active Calories' },
   { id: 'totalCalories', label: 'Total Calories', stateKey: 'isTotalCaloriesSyncEnabled', preferenceKey: 'syncTotalCaloriesEnabled', recordType: 'TotalCaloriesBurned', unit: 'kcal', icon: require('../../assets/icons/calories.png'), permissions: [{ accessType: 'read', recordType: 'TotalCaloriesBurned' }], type: 'Active Calories' },
@@ -14,18 +33,18 @@ const ALL_HEALTH_METRICS = [
   { id: 'basalMetabolicRate', label: 'Basal Metabolic Rate', stateKey: 'isBasalMetabolicRateSyncEnabled', preferenceKey: 'syncBasalMetabolicRateEnabled', recordType: 'BasalMetabolicRate', unit: 'kcal', icon: require('../../assets/icons/basal_metabolic_rate.png'), permissions: [{ accessType: 'read', recordType: 'BasalMetabolicRate' }], type: 'basal_metabolic_rate' },
   { id: 'bloodGlucose', label: 'Blood Glucose', stateKey: 'isBloodGlucoseSyncEnabled', preferenceKey: 'syncBloodGlucoseEnabled', recordType: 'BloodGlucose', unit: 'mmol/L', icon: require('../../assets/icons/blood_glucose.png'), permissions: [{ accessType: 'read', recordType: 'BloodGlucose' }], type: 'blood_glucose' },
   { id: 'bodyFat', label: 'Body Fat', stateKey: 'isBodyFatSyncEnabled', preferenceKey: 'syncBodyFatEnabled', recordType: 'BodyFat', unit: '%', icon: require('../../assets/icons/body_fat.png'), permissions: [{ accessType: 'read', recordType: 'BodyFat' }], type: 'body_fat' },
-  { id: 'bodyTemperature', label: 'Body Temperature', stateKey: 'isBodyTemperatureSyncEnabled', preferenceKey: 'syncBodyTemperatureEnabled', recordType: 'BodyTemperature', unit: 'celsius', icon: require('../../assets/icons/body_temperature.png'), permissions: [{ accessType: 'read', recordType: 'BodyTemperature' }], type: 'body_temperature' },  
+  { id: 'bodyTemperature', label: 'Body Temperature', stateKey: 'isBodyTemperatureSyncEnabled', preferenceKey: 'syncBodyTemperatureEnabled', recordType: 'BodyTemperature', unit: 'celsius', icon: require('../../assets/icons/body_temperature.png'), permissions: [{ accessType: 'read', recordType: 'BodyTemperature' }], type: 'body_temperature' },
   { id: 'distance', label: 'Distance', stateKey: 'isDistanceSyncEnabled', preferenceKey: 'syncDistanceEnabled', recordType: 'Distance', unit: 'm', icon: require('../../assets/icons/distance.png'), permissions: [{ accessType: 'read', recordType: 'Distance' }], type: 'distance', platforms: ['android', 'ios'] },
-  
+
   { id: 'exerciseSession', label: 'Exercise Session', stateKey: 'isExerciseSessionSyncEnabled', preferenceKey: 'syncExerciseSessionEnabled', recordType: 'ExerciseSession', unit: 'min', icon: require('../../assets/icons/exercise_session.png'), permissions: [{ accessType: 'read', recordType: 'ExerciseSession' }], type: 'exercise_session' },
   { id: 'floorsClimbed', label: 'Floors Climbed', stateKey: 'isFloorsClimbedSyncEnabled', preferenceKey: 'syncFloorsClimbedEnabled', recordType: 'FloorsClimbed', unit: 'count', icon: require('../../assets/icons/floors_climbed.png'), permissions: [{ accessType: 'read', recordType: 'FloorsClimbed' }], type: 'floors_climbed' },
   { id: 'height', label: 'Height', stateKey: 'isHeightSyncEnabled', preferenceKey: 'syncHeightEnabled', recordType: 'Height', unit: 'm', icon: require('../../assets/icons/height.png'), permissions: [{ accessType: 'read', recordType: 'Height' }], type: 'height' },
   { id: 'hydration', label: 'Hydration', stateKey: 'isHydrationSyncEnabled', preferenceKey: 'syncHydrationEnabled', recordType: 'Hydration', unit: 'L', icon: require('../../assets/icons/hydration.png'), permissions: [{ accessType: 'read', recordType: 'Hydration' }], type: 'hydration' },
   { id: 'leanBodyMass', label: 'Lean Body Mass', stateKey: 'isLeanBodyMassSyncEnabled', preferenceKey: 'syncLeanBodyMassEnabled', recordType: 'LeanBodyMass', unit: 'kg', icon: require('../../assets/icons/lean_body_mass.png'), permissions: [{ accessType: 'read', recordType: 'LeanBodyMass' }], type: 'lean_body_mass' },
-  
+
   { id: 'respiratoryRate', label: 'Respiratory Rate', stateKey: 'isRespiratoryRateSyncEnabled', preferenceKey: 'syncRespiratoryRateEnabled', recordType: 'RespiratoryRate', unit: 'breaths/min', icon: require('../../assets/icons/respiratory_rate.png'), permissions: [{ accessType: 'read', recordType: 'RespiratoryRate' }], type: 'respiratory_rate' },
   { id: 'restingHeartRate', label: 'Resting Heart Rate', stateKey: 'isRestingHeartRateSyncEnabled', preferenceKey: 'syncRestingHeartRateEnabled', recordType: 'RestingHeartRate', unit: 'bpm', icon: require('../../assets/icons/resting_heart_rate.png'), permissions: [{ accessType: 'read', recordType: 'RestingHeartRate' }], type: 'resting_heart_rate' },
-  
+
   { id: 'vo2Max', label: 'VO2 Max', stateKey: 'isVo2MaxSyncEnabled', preferenceKey: 'syncVo2MaxEnabled', recordType: 'Vo2Max', unit: 'ml/min/kg', icon: require('../../assets/icons/vo2_max.png'), permissions: [{ accessType: 'read', recordType: 'Vo2Max' }], type: 'vo2_max' },
   { id: 'wheelchairPushes', label: 'Wheelchair Pushes', stateKey: 'isWheelchairPushesSyncEnabled', preferenceKey: 'syncWheelchairPushesEnabled', recordType: 'WheelchairPushes', unit: 'count', icon: require('../../assets/icons/wheelchair_pushes.png'), permissions: [{ accessType: 'read', recordType: 'WheelchairPushes' }], type: 'wheelchair_pushes' },
   // ---- Added missing metrics ----
@@ -78,9 +97,9 @@ const ALL_HEALTH_METRICS = [
   // End of added metrics
 ];
 
-const HEALTH_METRICS = ALL_HEALTH_METRICS.filter(metric => {
+const HEALTH_METRICS: HealthMetric[] = ALL_HEALTH_METRICS.filter(metric => {
   if (metric.platforms) {
-    return metric.platforms.includes(Platform.OS);
+    return metric.platforms.includes(Platform.OS as 'android' | 'ios');
   }
   return true;
 });

@@ -1,25 +1,46 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export type LogLevel = 'silent' | 'error' | 'warn' | 'info' | 'debug';
+export type LogStatus = 'SUCCESS' | 'WARNING' | 'ERROR' | 'INFO';
+
+export interface LogEntry {
+  timestamp: string;
+  message: string;
+  level: LogLevel;
+  status: LogStatus;
+  details: string[];
+}
+
+export interface LogSummary {
+  SUCCESS: number;
+  WARNING: number;
+  ERROR: number;
+  info: number;
+  warn: number;
+  error: number;
+  debug: number;
+}
+
 const LOG_KEY = 'app_logs';
 const LOG_LEVEL_KEY = 'log_level';
 
-// Define log levels
 const LOG_LEVELS = {
-  'silent': 0,
-  'error': 1,
-  'warn': 2,
-  'info': 3,
-  'debug': 4,
-};
+  silent: 0,
+  error: 1,
+  warn: 2,
+  info: 3,
+  debug: 4,
+} as const;
 
 /**
  * Adds a new log entry with a specified level and optional details.
- * @param {string} message - The log message.
- * @param {string} level - The log level (e.g., 'info', 'warn', 'error', 'debug').
- * @param {string} status - The status of the log (e.g., 'SUCCESS', 'WARNING', 'ERROR').
- * @param {Array<string>} details - Optional array of strings for additional details.
  */
-export const addLog = async (message, level = 'info', status = 'INFO', details = []) => {
+export const addLog = async (
+  message: string,
+  level: LogLevel = 'info',
+  status: LogStatus = 'INFO',
+  details: string[] = []
+): Promise<void> => {
   try {
     const currentLogLevel = await getLogLevel();
     if (LOG_LEVELS[level] > LOG_LEVELS[currentLogLevel]) {
@@ -28,8 +49,8 @@ export const addLog = async (message, level = 'info', status = 'INFO', details =
 
     console.log(`[LogService] Attempting to add log: [${level.toUpperCase()}] ${message}`);
     const existingLogs = await AsyncStorage.getItem(LOG_KEY);
-    const logs = existingLogs ? JSON.parse(existingLogs) : [];
-    const newLog = {
+    const logs: LogEntry[] = existingLogs ? (JSON.parse(existingLogs) as LogEntry[]) : [];
+    const newLog: LogEntry = {
       timestamp: new Date().toISOString(),
       message,
       level,
@@ -40,18 +61,18 @@ export const addLog = async (message, level = 'info', status = 'INFO', details =
     await AsyncStorage.setItem(LOG_KEY, JSON.stringify(logs));
     console.log(`[LogService] Successfully added log: [${level.toUpperCase()}] ${message}`);
   } catch (error) {
-    console.error(`[LogService] Failed to add log: ${error.message}`, error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[LogService] Failed to add log: ${errorMessage}`, error);
   }
 };
 
 /**
  * Clears logs older than a specified number of days.
- * @param {number} daysToKeep - The number of days to keep logs for. Logs older than this will be deleted.
  */
-export const pruneLogs = async (daysToKeep = 3) => {
+export const pruneLogs = async (daysToKeep: number = 3): Promise<void> => {
   try {
     const existingLogs = await AsyncStorage.getItem(LOG_KEY);
-    let logs = existingLogs ? JSON.parse(existingLogs) : [];
+    const logs: LogEntry[] = existingLogs ? (JSON.parse(existingLogs) as LogEntry[]) : [];
 
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
@@ -75,29 +96,29 @@ export const pruneLogs = async (daysToKeep = 3) => {
 
 /**
  * Retrieves log entries with pagination, filtered by current log level.
- * @param {number} offset - The starting index for logs.
- * @param {number} limit - The maximum number of logs to retrieve.
- * @param {string|null} filterLevel - Optional log level to filter by. If null, uses stored log level.
- * @returns {Promise<Array>} An array of log objects.
  */
-export const getLogs = async (offset = 0, limit = 30, filterLevel = null) => {
+export const getLogs = async (
+  offset: number = 0,
+  limit: number = 30,
+  filterLevel: LogLevel | null = null
+): Promise<LogEntry[]> => {
   try {
     // Prune logs before retrieving them
     await pruneLogs();
     const existingLogs = await AsyncStorage.getItem(LOG_KEY);
-    let logs = existingLogs ? JSON.parse(existingLogs) : [];
-    
+    let logs: LogEntry[] = existingLogs ? (JSON.parse(existingLogs) as LogEntry[]) : [];
+
     // Filter logs by current log level
     const currentLogLevel = filterLevel || await getLogLevel();
     const currentLevelValue = LOG_LEVELS[currentLogLevel];
-    
+
     // Only show logs that are at or below the current log level threshold
     // e.g., if level is 'warn' (2), show 'error' (1) and 'warn' (2) but not 'info' (3) or 'debug' (4)
     logs = logs.filter(log => {
-      const logLevelValue = LOG_LEVELS[log.level] || LOG_LEVELS['info'];
+      const logLevelValue = LOG_LEVELS[log.level] ?? LOG_LEVELS['info'];
       return logLevelValue <= currentLevelValue;
     });
-    
+
     return logs.slice(offset, offset + limit);
   } catch (error) {
     console.error('Failed to get logs', error);
@@ -107,9 +128,8 @@ export const getLogs = async (offset = 0, limit = 30, filterLevel = null) => {
 
 /**
  * Clears all log entries.
- * @returns {Promise<void>}
  */
-export const clearLogs = async () => {
+export const clearLogs = async (): Promise<void> => {
   try {
     await AsyncStorage.removeItem(LOG_KEY);
     console.log('[LogService] All logs cleared.');
@@ -120,9 +140,8 @@ export const clearLogs = async () => {
 
 /**
  * Sets the current log level.
- * @param {string} level - The log level (e.g., 'silent', 'info', 'warn', 'error', 'debug').
  */
-export const setLogLevel = async (level) => {
+export const setLogLevel = async (level: LogLevel): Promise<void> => {
   try {
     if (LOG_LEVELS[level] !== undefined) {
       await AsyncStorage.setItem(LOG_LEVEL_KEY, level);
@@ -136,12 +155,11 @@ export const setLogLevel = async (level) => {
 
 /**
  * Retrieves the current log level.
- * @returns {Promise<string>} The current log level, defaults to 'info'.
  */
-export const getLogLevel = async () => {
+export const getLogLevel = async (): Promise<LogLevel> => {
   try {
     const level = await AsyncStorage.getItem(LOG_LEVEL_KEY);
-    return level || 'info'; // Default to 'info'
+    return (level as LogLevel) || 'info'; // Default to 'info'
   } catch (error) {
     console.error('Failed to get log level', error);
     return 'info';
@@ -150,14 +168,13 @@ export const getLogLevel = async () => {
 
 /**
  * Retrieves a summary of log entries (successful, warnings, errors).
- * @returns {Promise<object>} An object with counts for successful, warnings, and failed logs.
  */
-export const getLogSummary = async () => {
+export const getLogSummary = async (): Promise<LogSummary> => {
   try {
     const existingLogs = await AsyncStorage.getItem(LOG_KEY);
-    const logs = existingLogs ? JSON.parse(existingLogs) : [];
+    const logs: LogEntry[] = existingLogs ? (JSON.parse(existingLogs) as LogEntry[]) : [];
 
-    const summary = {
+    const summary: LogSummary = {
       SUCCESS: 0,
       WARNING: 0,
       ERROR: 0,
@@ -185,9 +202,9 @@ export const getLogSummary = async () => {
           summary.ERROR++;
         }
 
-        // Count by level
-        if (summary[log.level] !== undefined) {
-          summary[log.level]++;
+        // Count by level (silent is not counted)
+        if (log.level !== 'silent' && log.level in summary) {
+          summary[log.level as keyof Pick<LogSummary, 'info' | 'warn' | 'error' | 'debug'>]++;
         }
       }
     });

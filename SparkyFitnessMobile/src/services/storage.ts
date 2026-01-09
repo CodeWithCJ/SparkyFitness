@@ -1,5 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export interface ServerConfig {
+  id: string;
+  url: string;
+  apiKey: string;
+}
+
+export type TimeRange = 'today' | '24h' | '3d' | '7d' | '30d' | '90d';
+
 const SERVER_CONFIGS_KEY = 'serverConfigs';
 const ACTIVE_SERVER_CONFIG_ID_KEY = 'activeServerConfigId';
 const TIME_RANGE_KEY = 'timeRange';
@@ -9,12 +17,10 @@ const LAST_SYNCED_TIME_KEY = 'lastSyncedTime';
  * Saves a new server configuration or updates an existing one.
  * If a config with the same ID exists, it updates it. Otherwise, it adds a new one.
  * Also sets the saved/updated config as the active one.
- * @param {object} config - The configuration object, must have a unique 'id'.
- * @returns {Promise<void>}
  */
-export const saveServerConfig = async (config) => {
+export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
   try {
-    let configs = await getAllServerConfigs();
+    const configs = await getAllServerConfigs();
     const index = configs.findIndex(c => c.id === config.id);
 
     if (index > -1) {
@@ -33,9 +39,8 @@ export const saveServerConfig = async (config) => {
 
 /**
  * Retrieves the currently active server configuration.
- * @returns {Promise<object|null>} The active configuration object or null if not found.
  */
-export const getActiveServerConfig = async () => {
+export const getActiveServerConfig = async (): Promise<ServerConfig | null> => {
   try {
     const activeId = await AsyncStorage.getItem(ACTIVE_SERVER_CONFIG_ID_KEY);
     if (!activeId) {
@@ -54,12 +59,11 @@ export const getActiveServerConfig = async () => {
 
 /**
  * Retrieves all saved server configurations.
- * @returns {Promise<Array<object>>} An array of configuration objects.
  */
-export const getAllServerConfigs = async () => {
+export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
   try {
     const jsonValue = await AsyncStorage.getItem(SERVER_CONFIGS_KEY);
-    return jsonValue != null ? JSON.parse(jsonValue) : [];
+    return jsonValue != null ? (JSON.parse(jsonValue) as ServerConfig[]) : [];
   } catch (e) {
     console.error('Failed to retrieve all server configs.', e);
     return [];
@@ -68,10 +72,8 @@ export const getAllServerConfigs = async () => {
 
 /**
  * Sets a specific server configuration as the active one.
- * @param {string} configId - The ID of the configuration to set as active.
- * @returns {Promise<void>}
  */
-export const setActiveServerConfig = async (configId) => {
+export const setActiveServerConfig = async (configId: string): Promise<void> => {
   try {
     await AsyncStorage.setItem(ACTIVE_SERVER_CONFIG_ID_KEY, configId);
   } catch (e) {
@@ -83,10 +85,8 @@ export const setActiveServerConfig = async (configId) => {
 /**
  * Deletes a specific server configuration.
  * If the deleted config was active, it clears the active config.
- * @param {string} configId - The ID of the configuration to delete.
- * @returns {Promise<void>}
  */
-export const deleteServerConfig = async (configId) => {
+export const deleteServerConfig = async (configId: string): Promise<void> => {
   try {
     let configs = await getAllServerConfigs();
     configs = configs.filter(config => config.id !== configId);
@@ -104,10 +104,8 @@ export const deleteServerConfig = async (configId) => {
 
 /**
  * Saves the selected time range.
- * @param {string} timeRange - The time range string (e.g., 'today', 'last_week').
- * @returns {Promise<void>}
  */
-export const saveTimeRange = async (timeRange) => {
+export const saveTimeRange = async (timeRange: TimeRange): Promise<void> => {
   try {
     await AsyncStorage.setItem(TIME_RANGE_KEY, timeRange);
   } catch (e) {
@@ -118,19 +116,18 @@ export const saveTimeRange = async (timeRange) => {
 
 /**
  * Retrieves the saved time range.
- * @returns {Promise<string|null>} The time range string or null if not found.
  */
-export const loadTimeRange = async () => {
+export const loadTimeRange = async (): Promise<TimeRange | null> => {
   try {
     const timeRange = await AsyncStorage.getItem(TIME_RANGE_KEY);
-    return timeRange;
+    return timeRange as TimeRange | null;
   } catch (e) {
     console.error('Failed to load time range.', e);
     return null;
   }
 };
 
-export const loadLastSyncedTime = async () => {
+export const loadLastSyncedTime = async (): Promise<string | null> => {
   try {
     const synced = await AsyncStorage.getItem(LAST_SYNCED_TIME_KEY);
     return synced;
@@ -138,9 +135,9 @@ export const loadLastSyncedTime = async () => {
     console.error('Failed to retrieve sync time.', error);
     return null;
   }
-}
+};
 
-export const saveLastSyncedTime = async () => {
+export const saveLastSyncedTime = async (): Promise<string | null> => {
   try {
     const timestamp = new Date().toISOString();
     await AsyncStorage.setItem(LAST_SYNCED_TIME_KEY, timestamp);
@@ -149,4 +146,4 @@ export const saveLastSyncedTime = async () => {
     console.error('Failed to save sync time.', error);
     return null;
   }
-}
+};

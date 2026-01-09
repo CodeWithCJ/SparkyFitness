@@ -4,11 +4,42 @@ import { Ionicons } from '@expo/vector-icons';
 import Clipboard from '@react-native-clipboard/clipboard';
 import styles from '../screens/SettingsScreenStyles';
 import { useTheme } from '../contexts/ThemeContext';
+import { ServerConfig as ServerConfigType } from '../services/storage';
 
-const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, serverConfigs, activeConfigId, handleSetActiveConfig, handleDeleteConfig, handleEditConfig, handleAddNewConfig, isConnected, checkServerConnection }) => {
+interface ServerConfigProps {
+  url: string;
+  setUrl: React.Dispatch<React.SetStateAction<string>>;
+  apiKey: string;
+  setApiKey: React.Dispatch<React.SetStateAction<string>>;
+  handleSaveConfig: () => void;
+  serverConfigs: ServerConfigType[];
+  activeConfigId: string | null;
+  handleSetActiveConfig: (id: string) => void;
+  handleDeleteConfig: (id: string) => void;
+  handleEditConfig: (config: ServerConfigType) => void;
+  handleAddNewConfig: () => void;
+  isConnected: boolean;
+  checkServerConnection: () => Promise<boolean>;
+}
+
+const ServerConfig: React.FC<ServerConfigProps> = ({
+  url,
+  setUrl,
+  apiKey,
+  setApiKey,
+  handleSaveConfig,
+  serverConfigs,
+  activeConfigId,
+  handleSetActiveConfig,
+  handleDeleteConfig,
+  handleEditConfig,
+  handleAddNewConfig,
+  isConnected,
+  checkServerConnection,
+}) => {
   const { colors } = useTheme();
 
-  const showConfigMenu = (item) => {
+  const showConfigMenu = (item: ServerConfigType) => {
     const isActive = item.id === activeConfigId;
     Alert.alert(
       item.url,
@@ -16,8 +47,8 @@ const ServerConfig = ({ url, setUrl, apiKey, setApiKey, handleSaveConfig, server
       [
         ...(!isActive ? [{ text: 'Set Active', onPress: () => handleSetActiveConfig(item.id) }] : []),
         { text: 'Edit', onPress: () => handleEditConfig(item) },
-        { text: 'Delete', style: 'destructive', onPress: () => handleDeleteConfig(item.id) },
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive' as const, onPress: () => handleDeleteConfig(item.id) },
+        { text: 'Cancel', style: 'cancel' as const },
       ]
     );
   };

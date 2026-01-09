@@ -1,11 +1,17 @@
 import { getActiveServerConfig } from './storage';
 
+export interface HealthDataPayloadItem {
+  type: string;
+  date: string;  // YYYY-MM-DD format
+  value: number;
+}
+
+export type HealthDataPayload = HealthDataPayloadItem[];
+
 /**
  * Sends health data to the server.
- * @param {Array} data - The health data to send.
- * @returns {Promise<object>} The server's response.
  */
-export const syncHealthData = async (data) => {
+export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> => {
   const config = await getActiveServerConfig();
   if (!config) {
     throw new Error('Server configuration not found.');
@@ -42,9 +48,8 @@ export const syncHealthData = async (data) => {
 
 /**
  * Checks the server connection status.
- * @returns {Promise<boolean>} True if connection is successful, false otherwise.
  */
-export const checkServerConnection = async () => {
+export const checkServerConnection = async (): Promise<boolean> => {
   const config = await getActiveServerConfig();
   if (!config || !config.url) {
     console.log('[API Service] No active server configuration found for connection check.');

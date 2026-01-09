@@ -4,8 +4,44 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const THEME_KEY = '@HealthConnect:appTheme';
 
+export interface ThemeColors {
+  background: string;
+  card: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  border: string;
+  primary: string;
+  navBar: string;
+  navBarBorder: string;
+  inputBackground: string;
+  tagBackground: string;
+  metricBackground: string;
+  // Status colors
+  success: string;
+  successBackground: string;
+  warning: string;
+  warningBackground: string;
+  warningText: string;
+  danger: string;
+  dangerBackground: string;
+}
+
+export type ThemePreference = 'System' | 'Light' | 'Dark' | 'Amoled';
+export type EffectiveTheme = 'light' | 'dark' | 'amoled';
+
+export interface ThemeContextValue {
+  theme: ThemePreference;
+  effectiveTheme: EffectiveTheme;
+  isDarkMode: boolean;
+  isAmoled: boolean;
+  colors: ThemeColors;
+  setTheme: (theme: ThemePreference) => Promise<void>;
+  isLoading: boolean;
+}
+
 // Theme color definitions
-export const lightColors = {
+export const lightColors: ThemeColors = {
   background: '#f0f2f5',
   card: '#fff',
   text: '#333',
@@ -28,7 +64,7 @@ export const lightColors = {
   dangerBackground: '#ffe6e6',
 };
 
-export const darkColors = {
+export const darkColors: ThemeColors = {
   background: '#121212',
   card: '#1e1e1e',
   text: '#e0e0e0',
@@ -51,7 +87,7 @@ export const darkColors = {
   dangerBackground: '#450a0a',
 };
 
-export const amoledColors = {
+export const amoledColors: ThemeColors = {
   background: '#000000',
   card: '#0a0a0a',
   text: '#ffffff',
@@ -74,18 +110,23 @@ export const amoledColors = {
   dangerBackground: '#2a0505',
 };
 
-const ThemeContext = createContext({
+const ThemeContext = createContext<ThemeContextValue>({
   theme: 'System',
   effectiveTheme: 'light',
   isDarkMode: false,
   isAmoled: false,
   colors: lightColors,
   setTheme: async () => { },
+  isLoading: true,
 });
 
-export const ThemeProvider = ({ children }) => {
+interface ThemeProviderProps {
+  children: React.ReactNode;
+}
+
+export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const systemColorScheme = useColorScheme();
-  const [theme, setThemeState] = useState('System');
+  const [theme, setThemeState] = useState<ThemePreference>('System');
   const [isLoading, setIsLoading] = useState(true);
 
   // Load saved theme preference on mount
@@ -94,7 +135,7 @@ export const ThemeProvider = ({ children }) => {
       try {
         const savedTheme = await AsyncStorage.getItem(THEME_KEY);
         if (savedTheme) {
-          setThemeState(savedTheme);
+          setThemeState(savedTheme as ThemePreference);
         }
       } catch (error) {
         console.error('Failed to load theme preference:', error);
@@ -106,7 +147,7 @@ export const ThemeProvider = ({ children }) => {
   }, []);
 
   // Save theme preference
-  const setTheme = async (newTheme) => {
+  const setTheme = async (newTheme: ThemePreference): Promise<void> => {
     try {
       setThemeState(newTheme);
       await AsyncStorage.setItem(THEME_KEY, newTheme);
@@ -116,23 +157,23 @@ export const ThemeProvider = ({ children }) => {
   };
 
   // Calculate effective theme based on user preference and system setting
-  const effectiveTheme = (() => {
+  const effectiveTheme: EffectiveTheme = (() => {
     if (theme === 'System') {
-      return systemColorScheme || 'light';
+      return (systemColorScheme || 'light') as EffectiveTheme;
     }
-    return theme.toLowerCase();
+    return theme.toLowerCase() as EffectiveTheme;
   })();
 
   const isDarkMode = effectiveTheme === 'dark' || effectiveTheme === 'amoled';
   const isAmoled = effectiveTheme === 'amoled';
 
-  const colors = (() => {
+  const colors: ThemeColors = (() => {
     if (effectiveTheme === 'amoled') return amoledColors;
     if (effectiveTheme === 'dark') return darkColors;
     return lightColors;
   })();
 
-  const value = {
+  const value: ThemeContextValue = {
     theme,
     effectiveTheme,
     isDarkMode,
@@ -149,7 +190,7 @@ export const ThemeProvider = ({ children }) => {
   );
 };
 
-export const useTheme = () => {
+export const useTheme = (): ThemeContextValue => {
   const context = useContext(ThemeContext);
   if (!context) {
     throw new Error('useTheme must be used within a ThemeProvider');

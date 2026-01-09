@@ -3,19 +3,23 @@ import {
   queryQuantitySamples,
   queryStatisticsForQuantity,
   isHealthDataAvailable,
-  HKCategoryTypeIdentifier,
   queryCategorySamples,
   queryWorkoutSamples,
 } from '@kingstinct/react-native-healthkit';
 import { Platform, Alert } from 'react-native';
 import { addLog } from '../LogService';
 import { HEALTH_METRICS } from '../../constants/HealthMetrics';
+import {
+  AggregatedHealthRecord,
+  PermissionRequest,
+} from '../../types/healthRecords';
+import { SyncDuration } from './preferences';
 
 // Track if HealthKit is available on this device
 let isHealthKitAvailable = false;
 
 // Define all supported HealthKit type identifiers for this app
-const SUPPORTED_HK_TYPES = new Set([
+const SUPPORTED_HK_TYPES = new Set<string>([
   'HKQuantityTypeIdentifierStepCount',
   'HKQuantityTypeIdentifierHeartRate',
   'HKQuantityTypeIdentifierActiveEnergyBurned',
@@ -71,7 +75,7 @@ const SUPPORTED_HK_TYPES = new Set([
 // Map record types to the unit we want HealthKit to return values in.
 // Without specifying a unit, HealthKit returns values in the user's preferred/locale unit,
 // which can cause issues if we assume a specific unit (e.g., kg vs lbs).
-const HEALTHKIT_UNIT_MAP = {
+const HEALTHKIT_UNIT_MAP: Record<string, string> = {
   'Weight': 'kg',
   'Height': 'm',
   'LeanBodyMass': 'kg',
@@ -84,7 +88,7 @@ const HEALTHKIT_UNIT_MAP = {
 };
 
 // Map our internal health metric types to the official HealthKit identifiers
-const HEALTHKIT_TYPE_MAP = {
+const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   'Steps': 'HKQuantityTypeIdentifierStepCount',
   'HeartRate': 'HKQuantityTypeIdentifierHeartRate',
   'ActiveCaloriesBurned': 'HKQuantityTypeIdentifierActiveEnergyBurned',
@@ -143,7 +147,7 @@ const HEALTHKIT_TYPE_MAP = {
 
 
 // Alias for cross-platform compatibility - Android uses initHealthConnect
-export const initHealthConnect = async () => {
+export const initHealthConnect = async (): Promise<boolean> => {
   try {
     isHealthKitAvailable = await isHealthDataAvailable();
     if (!isHealthKitAvailable) {
@@ -151,13 +155,16 @@ export const initHealthConnect = async () => {
     }
     return isHealthKitAvailable;
   } catch (error) {
-    addLog(`[HealthKitService] Failed to check HealthKit availability: ${error.message}`, 'error', 'ERROR');
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[HealthKitService] Failed to check HealthKit availability: ${message}`, 'error', 'ERROR');
     isHealthKitAvailable = false;
     return false;
   }
 };
 
-export const requestHealthPermissions = async (permissionsToRequest) => {
+export const requestHealthPermissions = async (
+  permissionsToRequest: PermissionRequest[]
+): Promise<boolean> => {
   if (!isHealthKitAvailable) {
     addLog('[HealthKitService] Cannot request permissions; HealthKit not available.', 'warn', 'WARNING');
     Alert.alert(
@@ -167,7 +174,7 @@ export const requestHealthPermissions = async (permissionsToRequest) => {
     return false;
   }
 
-  const isSimulator = Platform.OS === 'ios' && Platform.constants?.simulator === true;
+  const isSimulator = Platform.OS === 'ios' && (Platform.constants as { simulator?: boolean })?.simulator === true;
   if (isSimulator && !global?.FORCE_HEALTHKIT_ON_SIM) {
     console.warn('[HealthKitService] Simulator detected - HealthKit authorization skipped.');
     return true;
@@ -178,8 +185,8 @@ export const requestHealthPermissions = async (permissionsToRequest) => {
     return true;
   }
 
-  const readPermissionsSet = new Set();
-  const writePermissionsSet = new Set();
+  const readPermissionsSet = new Set<string>();
+  const writePermissionsSet = new Set<string>();
 
   permissionsToRequest.forEach(p => {
     const healthkitIdentifier = HEALTHKIT_TYPE_MAP[p.recordType];
@@ -225,7 +232,11 @@ export const requestHealthPermissions = async (permissionsToRequest) => {
   try {
     addLog(`[HealthKitService] Requesting authorization - Read: [${toRead.join(', ')}], Write: [${toShare.join(', ')}]`, 'info', 'INFO');
 
-    const result = await requestAuthorization({ toRead, toWrite: toShare });
+    // HealthKit library expects 'toRead' and 'toShare' arrays
+    const result = await requestAuthorization({
+      toRead: toRead as Parameters<typeof requestAuthorization>[0]['toRead'],
+      toShare: toShare as Parameters<typeof requestAuthorization>[0]['toShare'],
+    });
 
     if (result) {
       addLog(`[HealthKitService] Authorization request completed successfully.`, 'info', 'SUCCESS');
@@ -236,17 +247,18 @@ export const requestHealthPermissions = async (permissionsToRequest) => {
     return true;
 
   } catch (error) {
-    addLog(`[HealthKitService] Failed to request permissions: ${error.message}`, 'error', 'ERROR');
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[HealthKitService] Failed to request permissions: ${message}`, 'error', 'ERROR');
     console.error('[HealthKitService] Permission request error', error);
     Alert.alert(
       'Permission Error',
-      `An unexpected error occurred while trying to request Health permissions: ${error.message}`
+      `An unexpected error occurred while trying to request Health permissions: ${message}`
     );
     return false;
   }
 };
 
-export const getSyncStartDate = (duration) => {
+export const getSyncStartDate = (duration: SyncDuration): Date => {
   const now = new Date();
   let startDate = new Date(now);
 
@@ -283,13 +295,16 @@ export const getSyncStartDate = (duration) => {
 
 // Get aggregated (deduplicated) data for cumulative types like Steps and ActiveCaloriesBurned
 // This uses HealthKit's statistics query which handles deduplication automatically
-export const getAggregatedStepsByDate = async (startDate, endDate) => {
+export const getAggregatedStepsByDate = async (
+  startDate: Date,
+  endDate: Date
+): Promise<AggregatedHealthRecord[]> => {
   if (!isHealthKitAvailable) {
     addLog(`[HealthKitService] HealthKit not available for aggregated steps`, 'warn', 'WARNING');
     return [];
   }
 
-  const results = [];
+  const results: AggregatedHealthRecord[] = [];
   const currentDate = new Date(startDate);
 
   while (currentDate <= endDate) {
@@ -330,7 +345,8 @@ export const getAggregatedStepsByDate = async (startDate, endDate) => {
         });
       }
     } catch (error) {
-      addLog(`[HealthKitService] Failed to get aggregated steps: ${error.message}`, 'error', 'ERROR');
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[HealthKitService] Failed to get aggregated steps: ${message}`, 'error', 'ERROR');
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
@@ -339,13 +355,16 @@ export const getAggregatedStepsByDate = async (startDate, endDate) => {
   return results;
 };
 
-export const getAggregatedActiveCaloriesByDate = async (startDate, endDate) => {
+export const getAggregatedActiveCaloriesByDate = async (
+  startDate: Date,
+  endDate: Date
+): Promise<AggregatedHealthRecord[]> => {
   if (!isHealthKitAvailable) {
     addLog(`[HealthKitService] HealthKit not available for aggregated calories`, 'warn', 'WARNING');
     return [];
   }
 
-  const results = [];
+  const results: AggregatedHealthRecord[] = [];
   const currentDate = new Date(startDate);
 
   while (currentDate <= endDate) {
@@ -386,7 +405,8 @@ export const getAggregatedActiveCaloriesByDate = async (startDate, endDate) => {
         addLog(`[HealthKitService] Aggregated Active Calories for ${dateStr}: ${stats.sumQuantity.quantity}`);
       }
     } catch (error) {
-      addLog(`[HealthKitService] Failed to get aggregated calories: ${error.message}`, 'error', 'ERROR');
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[HealthKitService] Failed to get aggregated calories: ${message}`, 'error', 'ERROR');
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
@@ -395,13 +415,16 @@ export const getAggregatedActiveCaloriesByDate = async (startDate, endDate) => {
   return results;
 };
 
-export const getAggregatedTotalCaloriesByDate = async (startDate, endDate) => {
+export const getAggregatedTotalCaloriesByDate = async (
+  startDate: Date,
+  endDate: Date
+): Promise<AggregatedHealthRecord[]> => {
   if (!isHealthKitAvailable) {
     addLog(`[HealthKitService] HealthKit not available for aggregated total calories`, 'warn', 'WARNING');
     return [];
   }
 
-  const results = [];
+  const results: AggregatedHealthRecord[] = [];
   const currentDate = new Date(startDate);
 
   while (currentDate <= endDate) {
@@ -445,7 +468,8 @@ export const getAggregatedTotalCaloriesByDate = async (startDate, endDate) => {
         addLog(`[HealthKitService] Aggregated Total Calories for ${dateStr}: ${total} (basal: ${basal.toFixed(2)}, active: ${active.toFixed(2)})`);
       }
     } catch (error) {
-      addLog(`[HealthKitService] Failed to get aggregated total calories: ${error.message}`, 'error', 'ERROR');
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[HealthKitService] Failed to get aggregated total calories: ${message}`, 'error', 'ERROR');
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
@@ -456,13 +480,16 @@ export const getAggregatedTotalCaloriesByDate = async (startDate, endDate) => {
 };
 
 // Get aggregated distance by date using HealthKit's statistics query (handles deduplication)
-export const getAggregatedDistanceByDate = async (startDate, endDate) => {
+export const getAggregatedDistanceByDate = async (
+  startDate: Date,
+  endDate: Date
+): Promise<AggregatedHealthRecord[]> => {
   if (!isHealthKitAvailable) {
     addLog(`[HealthKitService] HealthKit not available for aggregated distance`, 'warn', 'WARNING');
     return [];
   }
 
-  const results = [];
+  const results: AggregatedHealthRecord[] = [];
   const currentDate = new Date(startDate);
 
   while (currentDate <= endDate) {
@@ -503,7 +530,8 @@ export const getAggregatedDistanceByDate = async (startDate, endDate) => {
         });
       }
     } catch (error) {
-      addLog(`[HealthKitService] Failed to get aggregated distance: ${error.message}`, 'error', 'ERROR');
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[HealthKitService] Failed to get aggregated distance: ${message}`, 'error', 'ERROR');
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
@@ -513,13 +541,16 @@ export const getAggregatedDistanceByDate = async (startDate, endDate) => {
 };
 
 // Get aggregated floors climbed by date using HealthKit's statistics query (handles deduplication)
-export const getAggregatedFloorsClimbedByDate = async (startDate, endDate) => {
+export const getAggregatedFloorsClimbedByDate = async (
+  startDate: Date,
+  endDate: Date
+): Promise<AggregatedHealthRecord[]> => {
   if (!isHealthKitAvailable) {
     addLog(`[HealthKitService] HealthKit not available for aggregated floors`, 'warn', 'WARNING');
     return [];
   }
 
-  const results = [];
+  const results: AggregatedHealthRecord[] = [];
   const currentDate = new Date(startDate);
 
   while (currentDate <= endDate) {
@@ -560,7 +591,8 @@ export const getAggregatedFloorsClimbedByDate = async (startDate, endDate) => {
         });
       }
     } catch (error) {
-      addLog(`[HealthKitService] Failed to get aggregated floors: ${error.message}`, 'error', 'ERROR');
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[HealthKitService] Failed to get aggregated floors: ${message}`, 'error', 'ERROR');
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
@@ -570,7 +602,11 @@ export const getAggregatedFloorsClimbedByDate = async (startDate, endDate) => {
 };
 
 // Read health records from HealthKit
-export const readHealthRecords = async (recordType, startDate, endDate) => {
+export const readHealthRecords = async (
+  recordType: string,
+  startDate: Date,
+  endDate: Date
+): Promise<unknown[]> => {
   if (!isHealthKitAvailable) {
     addLog(`[HealthKitService] HealthKit not available, returning empty records for ${recordType}`, 'warn', 'WARNING');
     return [];
@@ -590,7 +626,10 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
     // Handle special cases first
     if (recordType === 'SleepSession') {
       console.log(`[HealthKitService DEBUG] Calling queryCategorySamples for SleepSession with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
-      const samples = await queryCategorySamples(identifier, { from: startDate, to: endDate, limit: queryLimit });
+      const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
+        ascending: false,
+        limit: queryLimit,
+      });
       addLog(`[HealthKitService] Raw samples (Sleep) returned by native query: Count = ${samples.length}, First 5: ${JSON.stringify(samples.slice(0, 5))}`);
       addLog(`[HealthKitService] Read ${samples.length} Sleep records`);
       const filteredSamples = samples.filter(s => {
@@ -609,16 +648,24 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
         startTime: s.startDate,
         endTime: s.endDate,
         value: s.value, // 'ASLEEP', 'INBED', etc. value is often an enum in HK
-        metadata: s.metadata,
-        sourceName: s.sourceName,
-        sourceId: s.sourceId,
+        metadata: (s as unknown as { metadata?: unknown }).metadata,
+        sourceName: (s as unknown as { sourceName?: string }).sourceName,
+        sourceId: (s as unknown as { sourceId?: string }).sourceId,
       }));
     }
 
     if (recordType === 'Stress') {
       console.log(`[HealthKitService DEBUG] Calling queryCategorySamples for Stress (MindfulSession) with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
-      const samples = await queryCategorySamples(identifier, { from: startDate, to: endDate, limit: queryLimit });
-      return samples.map(s => ({
+      const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
+        ascending: false,
+        limit: queryLimit,
+      });
+      // Filter samples manually by date range
+      const filteredSamples = samples.filter(s => {
+        const recordStartDate = new Date(s.startDate);
+        return recordStartDate >= startDate && recordStartDate <= endDate;
+      });
+      return filteredSamples.map(s => ({
         startTime: s.startDate,
         endTime: s.endDate,
         value: 1, // MindfulSession doesn't have a direct stress level, so we'll just record its presence
@@ -630,25 +677,37 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
 
       // Filter uses nested date object with Date objects (not ISO strings)
       const workouts = await queryWorkoutSamples({
-        filter: {
-          date: {
-            startDate: startDate,
-            endDate: endDate
-          }
-        },
-        limit: queryLimit
+        ascending: false,
+        limit: queryLimit,
       });
 
-      if (workouts.length > 0) {
-        console.log(`[HealthKitService DEBUG] First Workout Keys: ${JSON.stringify(Object.keys(workouts[0]))}`);
-        console.log(`[HealthKitService DEBUG] First Workout: ${JSON.stringify(workouts[0])}`);
+      // Filter workouts by date range manually
+      const filteredWorkouts = workouts.filter(w => {
+        const workoutStart = new Date(w.startDate);
+        const workoutEnd = new Date(w.endDate);
+        return workoutStart >= startDate && workoutEnd <= endDate;
+      });
+
+      if (filteredWorkouts.length > 0) {
+        console.log(`[HealthKitService DEBUG] First Workout Keys: ${JSON.stringify(Object.keys(filteredWorkouts[0]))}`);
+        console.log(`[HealthKitService DEBUG] First Workout: ${JSON.stringify(filteredWorkouts[0])}`);
       }
 
       // Fetch statistics (calories, distance) for each workout
-      const workoutsWithStats = await Promise.all(workouts.map(async (w) => {
+      const workoutsWithStats = await Promise.all(filteredWorkouts.map(async (w) => {
+        // Cast workout to access potential direct properties (may exist on older workouts)
+        const workoutAny = w as unknown as {
+          totalEnergyBurned?: number | { inKilocalories?: number };
+          totalDistance?: number | { inMeters?: number };
+        };
+
         // Start with direct properties from workout sample (fallback for older workouts)
-        let totalEnergyBurned = w.totalEnergyBurned?.inKilocalories ?? w.totalEnergyBurned ?? 0;
-        let totalDistance = w.totalDistance?.inMeters ?? w.totalDistance ?? 0;
+        let totalEnergyBurned = typeof workoutAny.totalEnergyBurned === 'object'
+          ? (workoutAny.totalEnergyBurned?.inKilocalories ?? 0)
+          : (workoutAny.totalEnergyBurned ?? 0);
+        let totalDistance = typeof workoutAny.totalDistance === 'object'
+          ? (workoutAny.totalDistance?.inMeters ?? 0)
+          : (workoutAny.totalDistance ?? 0);
 
         try {
           const stats = await w.getAllStatistics();
@@ -677,7 +736,8 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
           }
         } catch (err) {
           // Stats fetch failed - keep using direct properties from workout
-          console.log(`[HealthKitService DEBUG] Error fetching workout stats, using direct properties: ${err.message}`);
+          const errMessage = err instanceof Error ? err.message : String(err);
+          console.log(`[HealthKitService DEBUG] Error fetching workout stats, using direct properties: ${errMessage}`);
         }
 
         return {
@@ -695,16 +755,34 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
 
     if (recordType === 'BloodPressure') {
       //console.log(`[HealthKitService DEBUG] Calling queryQuantitySamples for BloodPressureSystolic with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
-      const systolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureSystolic', { from: startDate, to: endDate, limit: queryLimit });
+      const systolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureSystolic', {
+        ascending: false,
+        limit: queryLimit,
+      });
       console.log(`[HealthKitService DEBUG] Calling queryQuantitySamples for BloodPressureDiastolic with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
-      const diastolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureDiastolic', { from: startDate, to: endDate, limit: queryLimit });
-      //addLog(`[HealthKitService] Raw systolic samples (BloodPressure) returned by native query: Count = ${systolicSamples.length}, First 5: ${JSON.stringify(systolicSamples.slice(0, 5))}`);
-      //addLog(`[HealthKitService] Raw diastolic samples (BloodPressure) returned by native query: Count = ${diastolicSamples.length}, First 5: ${JSON.stringify(diastolicSamples.slice(0, 5))}`);
+      const diastolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureDiastolic', {
+        ascending: false,
+        limit: queryLimit,
+      });
 
-      const bpMap = new Map();
-      systolicSamples.forEach(s => bpMap.set(s.startDate, { systolic: s.quantity, time: s.startDate }));
-      diastolicSamples.forEach(s => {
-        const existing = bpMap.get(s.startDate);
+      // Filter by date range manually
+      const filteredSystolic = systolicSamples.filter(s => {
+        const sampleDate = new Date(s.startDate);
+        return sampleDate >= startDate && sampleDate <= endDate;
+      });
+      const filteredDiastolic = diastolicSamples.filter(s => {
+        const sampleDate = new Date(s.startDate);
+        return sampleDate >= startDate && sampleDate <= endDate;
+      });
+
+      const bpMap = new Map<string, { systolic?: number; diastolic?: number; time: string }>();
+      filteredSystolic.forEach(s => {
+        const timeStr = typeof s.startDate === 'string' ? s.startDate : new Date(s.startDate).toISOString();
+        bpMap.set(timeStr, { systolic: s.quantity, time: timeStr });
+      });
+      filteredDiastolic.forEach(s => {
+        const timeStr = typeof s.startDate === 'string' ? s.startDate : new Date(s.startDate).toISOString();
+        const existing = bpMap.get(timeStr);
         if (existing) existing.diastolic = s.quantity;
       });
 
@@ -728,13 +806,16 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
 
     // Get the expected unit for this record type (if any)
     const unit = HEALTHKIT_UNIT_MAP[recordType];
-    const queryOptions = { from: startDate, to: endDate, limit: queryLimit };
+    const queryOptions: { ascending: boolean; limit: number; unit?: string } = {
+      ascending: false,
+      limit: queryLimit,
+    };
     if (unit) {
       queryOptions.unit = unit;
     }
 
     console.log(`[HealthKitService DEBUG] Calling queryQuantitySamples for ${recordType} with from: ${startDate.toISOString()}, to: ${endDate.toISOString()}, limit: ${queryLimit}, unit: ${unit || 'default'}`);
-    const samples = await queryQuantitySamples(identifier, queryOptions);
+    const samples = await queryQuantitySamples(identifier as Parameters<typeof queryQuantitySamples>[0], queryOptions);
 
     // Defensive check: Ensure samples is an array before proceeding
     if (!Array.isArray(samples)) {
@@ -749,7 +830,7 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
     // Manual filtering for iOS as a workaround for potential library issues where the native
     // query may not respect the date range, returning all historical data.
     const filteredSamples = samples.filter((record, index) => {
-      const recordDate = new Date(record.startDate || record.time);
+      const recordDate = new Date(record.startDate);
       const isWithinRange = recordDate >= startDate && recordDate <= endDate;
       if (index < 10 || !isWithinRange) { // Log first 10 records and any out-of-range records
         //addLog(`[HealthKitService] Filter check for ${recordType} - Record Date: ${recordDate.toISOString()}, Start Date: ${startDate.toISOString()}, End Date: ${endDate.toISOString()}, Within Range: ${isWithinRange}`);
@@ -793,8 +874,8 @@ export const readHealthRecords = async (recordType, startDate, endDate) => {
       }
     });
   } catch (error) {
-    addLog(`[HealthKitService] Error reading ${recordType}: ${error.message}`, 'error', 'ERROR');
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[HealthKitService] Error reading ${recordType}: ${message}`, 'error', 'ERROR');
     return [];
   }
 };
-

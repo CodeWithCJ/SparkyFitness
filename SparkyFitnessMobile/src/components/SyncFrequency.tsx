@@ -3,16 +3,39 @@ import { View, Text } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import styles from '../screens/SettingsScreenStyles';
 import { saveSyncDuration, saveStringPreference } from '../services/healthConnectService';
+// Import type directly from preferences module (type is identical in both platform variants)
+import type { SyncInterval } from '../services/healthconnect/preferences';
 
 import { useTheme } from '../contexts/ThemeContext';
 
-const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFourHourSyncTime, dailySyncTime, setDailySyncTime }) => {
-  const [syncDurationOpen, setSyncDurationOpen] = useState(false);
-  const [fourHourTimeOpen, setFourHourTimeOpen] = useState(false);
-  const [dailyTimeOpen, setDailyTimeOpen] = useState(false);
+interface SyncDurationItem {
+  label: string;
+  value: SyncInterval;
+}
+
+interface SyncFrequencyProps {
+  syncDuration: SyncInterval;
+  setSyncDuration: React.Dispatch<React.SetStateAction<SyncInterval>>;
+  fourHourSyncTime: string;
+  setFourHourSyncTime: React.Dispatch<React.SetStateAction<string>>;
+  dailySyncTime: string;
+  setDailySyncTime: React.Dispatch<React.SetStateAction<string>>;
+}
+
+const SyncFrequency: React.FC<SyncFrequencyProps> = ({
+  syncDuration,
+  setSyncDuration,
+  fourHourSyncTime,
+  setFourHourSyncTime,
+  dailySyncTime,
+  setDailySyncTime,
+}) => {
+  const [syncDurationOpen, setSyncDurationOpen] = useState<boolean>(false);
+  const [fourHourTimeOpen, setFourHourTimeOpen] = useState<boolean>(false);
+  const [dailyTimeOpen, setDailyTimeOpen] = useState<boolean>(false);
   const { colors, isDarkMode } = useTheme();
 
-  const syncDurationItems = [
+  const syncDurationItems: SyncDurationItem[] = [
     { label: 'Hourly', value: '1h' },
     { label: 'Every 4 Hours', value: '4h' },
     { label: 'Daily', value: '24h' },
@@ -25,21 +48,21 @@ const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFou
     return { label: `${hour}:00`, value: `${hour}:00` };
   });
 
-  const onSyncDurationOpen = (open) => {
+  const onSyncDurationOpen = (open: boolean) => {
     if (open) {
       setFourHourTimeOpen(false);
       setDailyTimeOpen(false);
     }
   };
 
-  const onFourHourTimeOpen = (open) => {
+  const onFourHourTimeOpen = (open: boolean) => {
     if (open) {
       setSyncDurationOpen(false);
       setDailyTimeOpen(false);
     }
   };
 
-  const onDailyTimeOpen = (open) => {
+  const onDailyTimeOpen = (open: boolean) => {
     if (open) {
       setSyncDurationOpen(false);
       setFourHourTimeOpen(false);
@@ -47,11 +70,11 @@ const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFou
   };
 
   const dropdownProps = {
-    listMode: "SCROLLVIEW",
+    listMode: "SCROLLVIEW" as const,
     style: { backgroundColor: colors.inputBackground, borderColor: colors.border },
     textStyle: { color: colors.text },
     dropDownContainerStyle: { backgroundColor: colors.card, borderColor: colors.border },
-    theme: isDarkMode ? "DARK" : "LIGHT"
+    theme: isDarkMode ? "DARK" as const : "LIGHT" as const
   };
 
   return (
@@ -67,7 +90,7 @@ const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFou
           setOpen={setSyncDurationOpen}
           onOpen={() => onSyncDurationOpen(true)}
           setValue={setSyncDuration}
-          onSelectItem={(item) => saveSyncDuration(item.value)}
+          onSelectItem={(item) => saveSyncDuration(item.value as SyncInterval)}
           placeholder="Select sync frequency"
           {...dropdownProps}
         />
@@ -83,7 +106,7 @@ const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFou
             setOpen={setFourHourTimeOpen}
             onOpen={() => onFourHourTimeOpen(true)}
             setValue={setFourHourSyncTime}
-            onSelectItem={(item) => saveStringPreference('fourHourSyncTime', item.value)}
+            onSelectItem={(item) => item.value && saveStringPreference('fourHourSyncTime', item.value)}
             placeholder="Select a time"
             {...dropdownProps}
           />
@@ -100,7 +123,7 @@ const SyncFrequency = ({ syncDuration, setSyncDuration, fourHourSyncTime, setFou
             setOpen={setDailyTimeOpen}
             onOpen={() => onDailyTimeOpen(true)}
             setValue={setDailySyncTime}
-            onSelectItem={(item) => saveStringPreference('dailySyncTime', item.value)}
+            onSelectItem={(item) => item.value && saveStringPreference('dailySyncTime', item.value)}
             placeholder="Select a time"
             {...dropdownProps}
           />

@@ -1,6 +1,14 @@
 import { addLog } from '../LogService';
+import {
+  HCHeartRateRecord,
+  HCStepsRecord,
+  HCEnergyRecord,
+  HeartRateAccumulator,
+  SumAccumulator,
+  AggregatedHealthRecord,
+} from '../../types/healthRecords';
 
-export const aggregateHeartRateByDate = (records) => {
+export const aggregateHeartRateByDate = (records: HCHeartRateRecord[]): AggregatedHealthRecord[] => {
   if (!Array.isArray(records)) {
     addLog(`[HealthConnectService] aggregateHeartRateByDate received non-array records: ${JSON.stringify(records)}`, 'warn', 'WARNING');
     console.warn('aggregateHeartRateByDate received non-array records:', records);
@@ -18,7 +26,7 @@ export const aggregateHeartRateByDate = (records) => {
 
   addLog(`[HealthConnectService] Aggregating ${validRecords.length} heart rate records`);
 
-  const aggregatedData = validRecords.reduce((acc, record) => {
+  const aggregatedData = validRecords.reduce<HeartRateAccumulator>((acc, record) => {
     try {
       const date = record.startTime.split('T')[0];
       const heartRate = record.samples.reduce((sum, sample) =>
@@ -30,13 +38,13 @@ export const aggregateHeartRateByDate = (records) => {
       acc[date].total += heartRate;
       acc[date].count++;
     } catch (error) {
-      addLog(`[HealthConnectService] Error processing heart rate record: ${error.message}`, 'warn', 'WARNING');
+      addLog(`[HealthConnectService] Error processing heart rate record: ${(error as Error).message}`, 'warn', 'WARNING');
     }
 
     return acc;
   }, {});
 
-  const result = Object.keys(aggregatedData).map(date => ({
+  const result: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({
     date,
     value: aggregatedData[date].count > 0 ? Math.round(aggregatedData[date].total / aggregatedData[date].count) : 0,
     type: 'heart_rate',
@@ -46,7 +54,7 @@ export const aggregateHeartRateByDate = (records) => {
   return result;
 };
 
-export const aggregateStepsByDate = (records) => {
+export const aggregateStepsByDate = (records: HCStepsRecord[]): AggregatedHealthRecord[] => {
   if (!Array.isArray(records)) {
     addLog(`[HealthConnectService] aggregateStepsByDate received non-array records: ${JSON.stringify(records)}`, 'warn', 'WARNING');
     console.warn('aggregateStepsByDate received non-array records:', records);
@@ -64,7 +72,7 @@ export const aggregateStepsByDate = (records) => {
 
   addLog(`[HealthConnectService] Aggregating ${validRecords.length} step records`);
 
-  const aggregatedData = validRecords.reduce((acc, record) => {
+  const aggregatedData = validRecords.reduce<SumAccumulator>((acc, record) => {
     try {
       // Use endTime for steps to avoid previous day assignment
       // If endTime doesn't exist, fall back to startTime
@@ -77,13 +85,13 @@ export const aggregateStepsByDate = (records) => {
       }
       acc[date] += steps;
     } catch (error) {
-      addLog(`[HealthConnectService] Error processing step record: ${error.message}`, 'warn', 'WARNING');
+      addLog(`[HealthConnectService] Error processing step record: ${(error as Error).message}`, 'warn', 'WARNING');
     }
 
     return acc;
   }, {});
 
-  const result = Object.keys(aggregatedData).map(date => ({
+  const result: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({
     date,
     value: aggregatedData[date],
     type: 'step',
@@ -93,7 +101,7 @@ export const aggregateStepsByDate = (records) => {
   return result;
 };
 
-export const aggregateTotalCaloriesByDate = async (records) => {
+export const aggregateTotalCaloriesByDate = (records: HCEnergyRecord[]): AggregatedHealthRecord[] => {
   if (!Array.isArray(records)) {
     addLog(`[HealthConnectService] aggregateTotalCaloriesByDate received non-array records: ${JSON.stringify(records)}`, 'warn', 'WARNING');
     console.warn('aggregateTotalCaloriesByDate received non-array records:', records);
@@ -111,7 +119,7 @@ export const aggregateTotalCaloriesByDate = async (records) => {
 
   addLog(`[HealthConnectService] Aggregating ${validRecords.length} total calories records`);
 
-  const aggregatedData = validRecords.reduce((acc, record) => {
+  const aggregatedData = validRecords.reduce<SumAccumulator>((acc, record) => {
     try {
       // Use endTime for total calories to avoid previous day assignment (consistent with Steps)
       // If endTime doesn't exist, fall back to startTime
@@ -139,13 +147,13 @@ export const aggregateTotalCaloriesByDate = async (records) => {
       }
       acc[date] += valInKcal;
     } catch (error) {
-      addLog(`[HealthConnectService] Error processing total calories record: ${error.message}`, 'warn', 'WARNING');
+      addLog(`[HealthConnectService] Error processing total calories record: ${(error as Error).message}`, 'warn', 'WARNING');
     }
 
     return acc;
   }, {});
 
-  const result = Object.keys(aggregatedData).map(date => ({
+  const result: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({
     date,
     value: aggregatedData[date],
     type: 'total_calories',
@@ -155,7 +163,7 @@ export const aggregateTotalCaloriesByDate = async (records) => {
   return result;
 };
 
-export const aggregateActiveCaloriesByDate = (records) => {
+export const aggregateActiveCaloriesByDate = (records: HCEnergyRecord[]): AggregatedHealthRecord[] => {
   if (!Array.isArray(records)) {
     addLog(`[HealthConnectService] aggregateActiveCaloriesByDate received non-array records: ${JSON.stringify(records)}`, 'warn', 'WARNING');
     console.warn('aggregateActiveCaloriesByDate received non-array records:', records);
@@ -174,7 +182,7 @@ export const aggregateActiveCaloriesByDate = (records) => {
 
   addLog(`[HealthConnectService] Aggregating ${validRecords.length} active calories records`);
 
-  const aggregatedData = validRecords.reduce((acc, record) => {
+  const aggregatedData = validRecords.reduce<SumAccumulator>((acc, record) => {
     try {
       const date = record.startTime.split('T')[0];
 
@@ -204,13 +212,13 @@ export const aggregateActiveCaloriesByDate = (records) => {
       }
       acc[date] += valInKcal;
     } catch (error) {
-      addLog(`[HealthConnectService] Error processing active calories record: ${error.message}`, 'warn', 'WARNING');
+      addLog(`[HealthConnectService] Error processing active calories record: ${(error as Error).message}`, 'warn', 'WARNING');
     }
 
     return acc;
   }, {});
 
-  const result = Object.keys(aggregatedData).map(date => ({
+  const result: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({
     date,
     value: aggregatedData[date],
     type: 'Active Calories',
