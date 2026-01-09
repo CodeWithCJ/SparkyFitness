@@ -22,6 +22,7 @@
     "axios": "^1.13.0",
     "expo": "~54.0.31",
     "expo-application": "~7.0.8",
+    "expo-asset": "~12.0.12",
     "expo-constants": "~18.0.13",
     "expo-dev-client": "^6.0.20",
     "expo-font": "~14.0.10",
@@ -53,7 +54,6 @@
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "29.5.14",
     "@types/react": "~19.1.10",
-    "@types/react-test-renderer": "^19.1.0",
     "babel-preset-expo": "~54.0.9",
     "eslint": "^9.39.2",
     "expo-build-properties": "~1.0.10",
@@ -61,7 +61,6 @@
     "jest-expo": "~54.0.16",
     "prettier": "2.8.8",
     "react-native-nitro-modules": "^0.30.0",
-    "react-test-renderer": "19.1.0",
     "typescript": "^5.8.3"
   },
   "engines": {
@@ -70,8 +69,20 @@
   "jest": {
     "preset": "jest-expo",
     "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": [
+      "./jest.setup.js"
+    ],
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg)"
+    ],
+    "collectCoverage": true,
+    "collectCoverageFrom": [
+      "**/*.{ts,tsx,js,jsx}",
+      "!**/coverage/**",
+      "!**/node_modules/**",
+      "!**/babel.config.js",
+      "!**/expo-env.d.ts",
+      "!**/.expo/**"
     ]
   }
 }
