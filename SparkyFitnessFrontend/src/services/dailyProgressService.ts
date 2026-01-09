@@ -11,6 +11,8 @@ export interface Goals {
 import { FoodEntry } from '@/types/food'; // Import FoodEntry from the central types file
 import { GroupedExerciseEntry } from './exerciseEntryService'; // Import GroupedExerciseEntry
 
+import { WorkoutPresetSet } from '@/types/workout'; // Import WorkoutPresetSet
+
 export interface ExerciseEntry {
   id: string;
   exercise_id: string;
@@ -18,6 +20,7 @@ export interface ExerciseEntry {
   calories_burned: number;
   entry_date: string;
   notes?: string;
+  sets?: WorkoutPresetSet[]; // Add sets property
   exercises: {
     id: string;
     name: string;

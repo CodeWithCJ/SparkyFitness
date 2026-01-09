@@ -668,7 +668,7 @@ const ExerciseCard = ({
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100">
-                    {totalDurationMinutes.toFixed(1)}
+                    {totalDurationMinutes.toFixed(0)}
                   </div>
                   <div className="text-xs text-gray-500">{t("common.minutesUnit", "Min")}</div>
                 </div>
