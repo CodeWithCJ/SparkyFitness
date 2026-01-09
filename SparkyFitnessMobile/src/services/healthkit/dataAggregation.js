@@ -4,6 +4,7 @@ export const aggregateStepsByDate = (records) => {
   if (!Array.isArray(records)) return [];
   const aggregatedData = records.reduce((acc, record) => {
     try {
+      if (record.value == null || Number.isNaN(record.value)) return acc;
       const date = new Date(record.endTime || record.startTime).toISOString().split('T')[0];
       if (!acc[date]) acc[date] = 0;
       acc[date] += record.value;
@@ -22,6 +23,7 @@ export const aggregateHeartRateByDate = (records) => {
     try {
       const date = new Date(record.startTime).toISOString().split('T')[0];
       const heartRate = record.samples[0].beatsPerMinute;
+      if (heartRate == null || Number.isNaN(heartRate)) return acc;
       if (!acc[date]) acc[date] = { total: 0, count: 0 };
       acc[date].total += heartRate;
       acc[date].count++;
