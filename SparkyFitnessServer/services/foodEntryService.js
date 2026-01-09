@@ -2,6 +2,7 @@ const foodRepository = require("../models/foodRepository");
 const foodEntryMealRepository = require("../models/foodEntryMealRepository"); // New import
 const mealService = require("./mealService");
 const { log } = require("../config/logging");
+const mealTypeRepository = require("../models/mealType");
 
 // Helper functions (already defined)
 function getGlycemicIndexValue(category) {

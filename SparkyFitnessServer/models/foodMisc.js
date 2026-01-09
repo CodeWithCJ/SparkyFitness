@@ -31,6 +31,7 @@ async function getRecentFoods(userId, limit, mealType) {
           fe.food_id,
           MAX(fe.entry_date) AS last_used_date
         FROM food_entries fe
+        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id 
         WHERE fe.user_id = $1 ${mealTypeCondition}
         GROUP BY fe.food_id
         ORDER BY last_used_date DESC
@@ -101,6 +102,7 @@ async function getTopFoods(userId, limit, mealType) {
           fe.food_id,
           COUNT(fe.food_id) AS usage_count
         FROM food_entries fe
+        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
         WHERE fe.user_id = $1 ${mealTypeCondition}
         GROUP BY fe.food_id
         ORDER BY usage_count DESC

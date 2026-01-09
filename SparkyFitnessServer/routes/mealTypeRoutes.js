@@ -8,9 +8,9 @@ const {
   deleteMealType,
 } = require("../models/mealType"); 
 const { log } = require("../config/logging");
-// const { authenticate } = require("../middleware/authMiddleware");
+const { authenticate } = require("../middleware/authMiddleware");
 
-// router.use(authenticate);
+router.use(authenticate);
 
 /**
  * GET /
@@ -18,7 +18,8 @@ const { log } = require("../config/logging");
  */
 router.get("/", async (req, res) => {
   try {
-    const userId = req.user.id;
+    console.log(req.userId)
+    const userId = req.userId;
     const mealTypes = await getAllMealTypes(userId);
     res.status(200).json(mealTypes);
   } catch (error) {
@@ -33,7 +34,7 @@ router.get("/", async (req, res) => {
  */
 router.get("/:id", async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.userId;
     const { id } = req.params;
 
     const mealType = await getMealTypeById(id, userId);
@@ -56,7 +57,7 @@ router.get("/:id", async (req, res) => {
  */
 router.post("/", async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.userId;
     const { name, sort_order } = req.body;
 
     if (!name) {
@@ -87,7 +88,7 @@ router.post("/", async (req, res) => {
  */
 router.put("/:id", async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.userId;
     const { id } = req.params;
     const { name, sort_order } = req.body;
 
@@ -118,7 +119,7 @@ router.put("/:id", async (req, res) => {
  */
 router.delete("/:id", async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.userId;
     const { id } = req.params;
 
     const deleted = await deleteMealType(id, userId);
