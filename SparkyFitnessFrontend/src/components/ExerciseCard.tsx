@@ -50,6 +50,7 @@ import {
 } from "@/services/exerciseService";
 import { WorkoutPresetSet, WorkoutPreset, PresetExercise } from "@/types/workout"; // Import PresetExercise
 import { getExerciseById } from "@/services/exerciseService"; // Import getExerciseById
+import { formatMinutesToHHMM } from "@/utils/timeFormatters"; // Import the new utility function
 
 // New imports for refactored components
 import ExerciseEntryDisplay from "./ExerciseEntryDisplay";
@@ -585,10 +586,10 @@ const ExerciseCard = ({
   }, { sum: 0, count: 0 });
 
   const averageHeartRate = totalHeartRates.count > 0 ? totalHeartRates.sum / totalHeartRates.count : 0;
-
-  return (
-    <Card>
-      <CardHeader>
+ 
+   return (
+     <Card>
+       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="dark:text-slate-300">{t("exerciseCard.title", "Exercise")}</CardTitle>
           <TooltipProvider>
@@ -668,7 +669,7 @@ const ExerciseCard = ({
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100">
-                    {totalDurationMinutes.toFixed(1)}
+                    {formatMinutesToHHMM(totalDurationMinutes)}
                   </div>
                   <div className="text-xs text-gray-500">{t("common.minutesUnit", "Min")}</div>
                 </div>

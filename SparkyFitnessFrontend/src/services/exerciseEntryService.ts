@@ -74,6 +74,7 @@ export const fetchExerciseEntries = async (selectedDate: string): Promise<Groupe
         ...entry,
         exercises: entry.exercises ? entry.exercises.map((ex: any) => ({
           ...ex,
+          sets: ex.sets ? parseJsonArray(ex.sets) : [], // Parse sets if it's a JSON string
           exercise_snapshot: {
             ...ex.exercise_snapshot, // Use the existing snapshot
             equipment: parseJsonArray(ex.exercise_snapshot.equipment),
@@ -95,6 +96,7 @@ export const fetchExerciseEntries = async (selectedDate: string): Promise<Groupe
     } else {
       return {
         ...entry,
+        sets: entry.sets ? parseJsonArray(entry.sets) : [], // Parse sets if it's a JSON string
         exercise_snapshot: {
           ...entry.exercise_snapshot, // Use the existing snapshot
           equipment: parseJsonArray(entry.exercise_snapshot.equipment),
