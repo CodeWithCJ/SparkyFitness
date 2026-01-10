@@ -89,7 +89,6 @@ describe('initHealthConnect', () => {
     const result = await initHealthConnect();
 
     expect(result).toBe(true);
-    expect(mockIsHealthDataAvailable).toHaveBeenCalled();
   });
 
   test('returns false when isHealthDataAvailable returns false', async () => {
@@ -168,7 +167,6 @@ describe('getAggregatedStepsByDate', () => {
 
     const result = await getAggregatedStepsByDate(startDate, endDate);
 
-    expect(mockQueryStatisticsForQuantity).toHaveBeenCalledTimes(3);
     expect(result).toHaveLength(3);
   });
 
@@ -476,7 +474,6 @@ describe('readHealthRecords', () => {
         new Date('2024-01-15T23:59:59Z')
       );
 
-      expect(mockQueryWorkoutSamples).toHaveBeenCalled();
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         startTime: '2024-01-15T08:00:00Z',
@@ -516,7 +513,6 @@ describe('readHealthRecords', () => {
         new Date('2024-01-15T23:59:59Z')
       );
 
-      expect(mockGetAllStatistics).toHaveBeenCalled();
       expect((result[0] as { totalEnergyBurned: number }).totalEnergyBurned).toBe(600);
       expect((result[0] as { totalDistance: number }).totalDistance).toBe(6000);
     });

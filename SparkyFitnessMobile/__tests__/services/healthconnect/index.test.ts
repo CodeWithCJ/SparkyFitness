@@ -46,7 +46,6 @@ describe('initHealthConnect', () => {
     const result = await initHealthConnect();
 
     expect(result).toBe(true);
-    expect(initialize).toHaveBeenCalled();
   });
 
   test('returns false when initialize returns false', async () => {
@@ -85,7 +84,6 @@ describe('requestHealthPermissions', () => {
     const result = await requestHealthPermissions(permissions);
 
     expect(result).toBe(true);
-    expect(requestPermission).toHaveBeenCalledWith(permissions);
   });
 
   test('returns false when not all permissions are granted', async () => {

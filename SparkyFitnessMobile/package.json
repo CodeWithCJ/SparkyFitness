@@ -83,6 +83,9 @@
       "!**/coverage/**",
       "!**/node_modules/**",
       "!**/babel.config.js",
+      "!**/metro.config.js",
+      "!**/.prettierrc.js",
+      "!**/eslint.config.js",
       "!**/expo-env.d.ts",
       "!**/.expo/**"
     ]
