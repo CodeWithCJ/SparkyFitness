@@ -67,6 +67,13 @@ import {
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
 import { HEALTH_METRICS } from '../../constants/HealthMetrics';
+import {
+  aggregateStepsByDate,
+  aggregateHeartRateByDate,
+  aggregateActiveCaloriesByDate,
+  aggregateTotalCaloriesByDate,
+} from './dataAggregation';
+import { transformHealthRecords } from './dataTransformation';
 
 export const initHealthConnect = async () => {
   try {

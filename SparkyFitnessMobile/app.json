@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "scheme": "sparkyfitnessmobile",
     "orientation": "portrait",
-    "icon": "./assets/icons/appstore.png",        
+    "icon": "./assets/icons/appstore.png",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
@@ -128,7 +128,8 @@
       ],
       "react-native-health-connect",
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      "expo-asset"
     ],
     "experiments": {
       "reactCompiler": true
@@ -139,5 +140,4 @@
       }
     }
   }
-  
 }

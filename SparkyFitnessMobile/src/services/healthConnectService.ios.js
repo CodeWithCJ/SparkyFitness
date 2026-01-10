@@ -12,10 +12,7 @@ export const readHealthRecords = HealthKit.readHealthRecords;
 export const getSyncStartDate = HealthKit.getSyncStartDate;
 
 
-export const aggregateStepsByDate = HealthKitAggregation.aggregateStepsByDate;
 export const aggregateHeartRateByDate = HealthKitAggregation.aggregateHeartRateByDate;
-export const aggregateActiveCaloriesByDate = HealthKitAggregation.aggregateActiveCaloriesByDate;
-export const aggregateTotalCaloriesByDate = HealthKitAggregation.aggregateTotalCaloriesByDate;
 
 // Deduplicated aggregation functions (use HealthKit's statistics API)
 export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
