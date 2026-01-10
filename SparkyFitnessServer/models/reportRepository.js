@@ -147,6 +147,7 @@ async function getTabularFoodData(
           fe.id,
           TO_CHAR(fe.entry_date, 'YYYY-MM-DD') AS entry_date,
           mt.name AS meal_type,
+          mt.sort_order AS sort_order,
           fe.quantity,
           fe.unit,
           fe.food_id,
@@ -310,7 +311,15 @@ async function getTabularFoodData(
       JOIN CalculatedFoodEntries cfe_meal ON fem.id = cfe_meal.food_entry_meal_id
       LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
       WHERE fem.user_id = $1 AND fem.entry_date BETWEEN $2 AND $3
-      GROUP BY fem.id, fem.entry_date, fem.meal_type, fem.name, fem.description, fem.user_id, fem.quantity
+      GROUP BY 
+        fem.id, 
+        fem.entry_date, 
+        mt.name,
+        mt.sort_order,
+        fem.name, 
+        fem.description, 
+        fem.user_id, 
+        fem.quantity
       ORDER BY entry_date, sort_order ASC, food_name ASC`,
       [userId, startDate, endDate]
     );

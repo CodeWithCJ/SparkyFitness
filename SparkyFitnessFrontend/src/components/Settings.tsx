@@ -49,6 +49,7 @@ import {
   Sparkles,
   QrCode,
   Mail,
+  UtensilsCrossed,
 } from "lucide-react";
 import { apiCall } from "@/services/api"; // Assuming a common API utility
 import { useAuth } from "@/hooks/useAuth";
@@ -1191,14 +1192,11 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               "Create and manage custom meals"
             )}
           >
-            <Tag className="h-5 w-5" />
+            <UtensilsCrossed className="h-5 w-5" />
             {t("settings.customMeals.title", "Custom Meals")}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
-            <MealTypeManager
-            // categories={customCategories}
-            // onCategoriesChange={setCustomCategories}
-            />
+            <MealTypeManager />
           </AccordionContent>
         </AccordionItem>
 

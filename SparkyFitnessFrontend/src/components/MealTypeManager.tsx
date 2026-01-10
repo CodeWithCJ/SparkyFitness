@@ -37,11 +37,9 @@ const MealTypeManager = () => {
   const [editingMealType, setEditingMealType] =
     useState<MealTypeDefinition | null>(null);
 
-  // Form States
   const [newName, setNewName] = useState("");
   const [newSortOrder, setNewSortOrder] = useState(100);
 
-  // Load Data
   const fetchMealTypes = async () => {
     if (user) {
       try {
@@ -65,7 +63,6 @@ const MealTypeManager = () => {
     fetchMealTypes();
   }, [user]);
 
-  // Handlers
   const handleAdd = async () => {
     if (!newName.trim()) return;
 
@@ -296,7 +293,7 @@ const MealTypeManager = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {t("mealTypeManager.editTitle", "Edit Category")}
+              {t("mealTypeManager.editTitle", "Edit Meals")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
