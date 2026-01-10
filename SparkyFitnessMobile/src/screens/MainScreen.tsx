@@ -183,7 +183,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
           switch (metric.recordType) {
 
             case 'HeartRate':
-              const aggregatedHeartRate = aggregateHeartRateByDate(records as Array<{ startTime: string; samples: Array<{ beatsPerMinute: number }> }>);
+              const aggregatedHeartRate = aggregateHeartRateByDate(records as { startTime: string; samples: { beatsPerMinute: number }[] }[]);
               const totalHeartRateSum = aggregatedHeartRate.reduce((sum, record) => sum + record.value, 0);
               const avgHeartRate = totalHeartRateSum > 0 && aggregatedHeartRate.length > 0
                 ? Math.round(totalHeartRateSum / aggregatedHeartRate.length)
@@ -192,7 +192,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             case 'Weight':
-              const latestWeight = (records as Array<{ time: string; weight?: { inKilograms: number } }>).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
+              const latestWeight = (records as { time: string; weight?: { inKilograms: number } }[]).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
               displayValue = latestWeight.weight?.inKilograms
                 ? `${latestWeight.weight.inKilograms.toFixed(1)} kg`
                 : '0 kg';
@@ -293,7 +293,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             case 'BloodPressure':
-              const latestBP = (records as Array<{ time: string; systolic?: { inMillimetersOfMercury: number }; diastolic?: { inMillimetersOfMercury: number } }>).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
+              const latestBP = (records as { time: string; systolic?: { inMillimetersOfMercury: number }; diastolic?: { inMillimetersOfMercury: number } }[]).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
               const systolic = latestBP.systolic?.inMillimetersOfMercury;
               const diastolic = latestBP.diastolic?.inMillimetersOfMercury;
               displayValue = (systolic && diastolic)
@@ -302,7 +302,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             case 'SleepSession':
-              const totalSleepMinutes = (records as Array<{ startTime: string; endTime: string }>).reduce((sum, record) => {
+              const totalSleepMinutes = (records as { startTime: string; endTime: string }[]).reduce((sum, record) => {
                 const duration = (new Date(record.endTime).getTime() - new Date(record.startTime).getTime()) / (1000 * 60);
                 return sum + duration;
               }, 0);
@@ -312,19 +312,19 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             case 'Distance':
-              const totalDistance = (records as Array<{ distance?: { inMeters: number } }>).reduce((sum, record) =>
+              const totalDistance = (records as { distance?: { inMeters: number } }[]).reduce((sum, record) =>
                 sum + (record.distance?.inMeters || 0), 0);
               displayValue = `${(totalDistance / 1000).toFixed(2)} km`;
               break;
 
             case 'Hydration':
-              const totalHydration = (records as Array<{ volume?: { inLiters: number } }>).reduce((sum, record) =>
+              const totalHydration = (records as { volume?: { inLiters: number } }[]).reduce((sum, record) =>
                 sum + (record.volume?.inLiters || 0), 0);
               displayValue = `${totalHydration.toFixed(2)} L`;
               break;
 
             case 'Height':
-              const latestHeight = (records as Array<{ time: string; height?: { inMeters: number } }>).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
+              const latestHeight = (records as { time: string; height?: { inMeters: number } }[]).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
               displayValue = latestHeight.height?.inMeters
                 ? `${(latestHeight.height.inMeters * 100).toFixed(1)} cm`
                 : '0 cm';
@@ -332,14 +332,14 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
 
             case 'BasalBodyTemperature':
             case 'BodyTemperature':
-              const latestTemp = (records as Array<{ time?: string; startTime?: string; temperature?: { inCelsius: number } }>).sort((a, b) => new Date(b.time || b.startTime || '').getTime() - new Date(a.time || a.startTime || '').getTime())[0];
+              const latestTemp = (records as { time?: string; startTime?: string; temperature?: { inCelsius: number } }[]).sort((a, b) => new Date(b.time || b.startTime || '').getTime() - new Date(a.time || a.startTime || '').getTime())[0];
               displayValue = latestTemp.temperature?.inCelsius
                 ? `${latestTemp.temperature.inCelsius.toFixed(1)}°C`
                 : '0°C';
               break;
 
             case 'BloodGlucose':
-              const latestGlucose = (records as Array<{ time: string; level?: { inMillimolesPerLiter?: number; inMilligramsPerDeciliter?: number }; bloodGlucose?: { inMillimolesPerLiter?: number; inMilligramsPerDeciliter?: number } }>).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
+              const latestGlucose = (records as { time: string; level?: { inMillimolesPerLiter?: number; inMilligramsPerDeciliter?: number }; bloodGlucose?: { inMillimolesPerLiter?: number; inMilligramsPerDeciliter?: number } }[]).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
               let glucoseValue = latestGlucose.level?.inMillimolesPerLiter
                 || latestGlucose.bloodGlucose?.inMillimolesPerLiter
                 || (latestGlucose.level?.inMilligramsPerDeciliter ? latestGlucose.level.inMilligramsPerDeciliter / 18.018 : null)
@@ -409,7 +409,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             case 'RestingHeartRate':
-              const avgRestingHR = (records as Array<{ beatsPerMinute?: number }>).reduce((sum, record) =>
+              const avgRestingHR = (records as { beatsPerMinute?: number }[]).reduce((sum, record) =>
                 sum + (record.beatsPerMinute || 0), 0) / records.length;
               displayValue = avgRestingHR > 0 ? `${Math.round(avgRestingHR)} bpm` : '0 bpm';
               break;
@@ -492,7 +492,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
 
             case 'LeanBodyMass':
             case 'BoneMass':
-              const latestMass = (records as Array<{ startTime?: string; time?: string; mass?: { inKilograms: number } }>).sort((a, b) => new Date(b.startTime || b.time || '').getTime() - new Date(a.startTime || a.time || '').getTime())[0];
+              const latestMass = (records as { startTime?: string; time?: string; mass?: { inKilograms: number } }[]).sort((a, b) => new Date(b.startTime || b.time || '').getTime() - new Date(a.startTime || a.time || '').getTime())[0];
               displayValue = latestMass.mass?.inKilograms
                 ? `${latestMass.mass.inKilograms.toFixed(1)} kg`
                 : '0 kg';
@@ -580,17 +580,17 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             case 'FloorsClimbed':
-              const totalFloors = (records as Array<{ floors?: number }>).reduce((sum, record) => sum + (record.floors || 0), 0);
+              const totalFloors = (records as { floors?: number }[]).reduce((sum, record) => sum + (record.floors || 0), 0);
               displayValue = totalFloors.toLocaleString();
               break;
 
             case 'WheelchairPushes':
-              const totalPushes = (records as Array<{ count?: number }>).reduce((sum, record) => sum + (record.count || 0), 0);
+              const totalPushes = (records as { count?: number }[]).reduce((sum, record) => sum + (record.count || 0), 0);
               displayValue = totalPushes.toLocaleString();
               break;
 
             case 'ExerciseSession':
-              const totalExerciseMinutes = (records as Array<{ startTime: string; endTime: string }>).reduce((sum, record) => {
+              const totalExerciseMinutes = (records as { startTime: string; endTime: string }[]).reduce((sum, record) => {
                 const duration = (new Date(record.endTime).getTime() - new Date(record.startTime).getTime()) / (1000 * 60);
                 return sum + duration;
               }, 0);
@@ -598,31 +598,31 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             case 'ElevationGained':
-              const totalElevation = (records as Array<{ elevation?: { inMeters: number } }>).reduce((sum, record) =>
+              const totalElevation = (records as { elevation?: { inMeters: number } }[]).reduce((sum, record) =>
                 sum + (record.elevation?.inMeters || 0), 0);
               displayValue = `${Math.round(totalElevation)} m`;
               break;
 
             case 'Power':
-              const avgPower = (records as Array<{ power?: { inWatts: number } }>).reduce((sum, record) =>
+              const avgPower = (records as { power?: { inWatts: number } }[]).reduce((sum, record) =>
                 sum + (record.power?.inWatts || 0), 0) / records.length;
               displayValue = `${Math.round(avgPower)} W`;
               break;
 
             case 'Speed':
-              const avgSpeed = (records as Array<{ speed?: { inMetersPerSecond: number } }>).reduce((sum, record) =>
+              const avgSpeed = (records as { speed?: { inMetersPerSecond: number } }[]).reduce((sum, record) =>
                 sum + (record.speed?.inMetersPerSecond || 0), 0) / records.length;
               displayValue = `${avgSpeed.toFixed(2)} m/s`;
               break;
 
             case 'RespiratoryRate':
-              const avgRespRate = (records as Array<{ rate?: number }>).reduce((sum, record) =>
+              const avgRespRate = (records as { rate?: number }[]).reduce((sum, record) =>
                 sum + (record.rate || 0), 0) / records.length;
               displayValue = `${Math.round(avgRespRate)} br/min`;
               break;
 
             case 'Nutrition':
-              const totalNutrition = (records as Array<{ energy?: { inCalories: number } }>).reduce((sum, record) =>
+              const totalNutrition = (records as { energy?: { inCalories: number } }[]).reduce((sum, record) =>
                 sum + (record.energy?.inCalories || 0), 0);
               displayValue = `${Math.round(totalNutrition / 1000)} kcal`;
               break;

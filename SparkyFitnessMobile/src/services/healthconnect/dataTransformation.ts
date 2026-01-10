@@ -645,7 +645,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             return;
 
           case 'CyclingPedalingCadence': {
-            const samples = rec.samples as Array<{ revolutionsPerMinute: number }> | undefined;
+            const samples = rec.samples as { revolutionsPerMinute: number }[] | undefined;
             if (rec.startTime && samples) {
               samples.forEach(sample => {
                 transformedData.push({
@@ -691,7 +691,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             return;
 
           case 'StepsCadence': {
-            const samples = rec.samples as Array<{ rate: number }> | undefined;
+            const samples = rec.samples as { rate: number }[] | undefined;
             if (rec.startTime && samples) {
               samples.forEach(sample => {
                 transformedData.push({

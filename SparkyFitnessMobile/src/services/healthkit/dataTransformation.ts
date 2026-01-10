@@ -6,7 +6,6 @@ import {
   TransformedExerciseSession,
   AggregatedSleepSession,
 } from '../../types/healthRecords';
-import { SleepStageEvent } from '../../types/mobileHealthData';
 
 // HKWorkoutActivityType Mapping
 // Source: https://developer.apple.com/documentation/healthkit/hkworkoutactivitytype
@@ -43,7 +42,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
     try {
       return new Date(date as string | number | Date).toISOString().split('T')[0];
     } catch (e) {
-      addLog(`[HealthKitService] Could not convert date: ${date}`, 'warn', 'WARNING');
+      addLog(`[HealthKitService] Could not convert date: ${date}. ${e}`, 'warn', 'WARNING');
       return null;
     }
   };

@@ -61,11 +61,11 @@ export const getAggregatedTotalCaloriesByDate = async (
   startDate: Date,
   endDate: Date
 ): Promise<AggregatedHealthRecord[]> => {
-  const records = await HealthConnect.readHealthRecords('TotalCaloriesBurned', startDate, endDate) as Array<{
+  const records = await HealthConnect.readHealthRecords('TotalCaloriesBurned', startDate, endDate) as {
     startTime?: string;
     time?: string;
     energy?: { inKilocalories?: number };
-  }>;
+  }[];
   const byDate: Record<string, number> = {};
   records.forEach(record => {
     const date = new Date(record.startTime || record.time || '').toISOString().split('T')[0];
@@ -78,11 +78,11 @@ export const getAggregatedDistanceByDate = async (
   startDate: Date,
   endDate: Date
 ): Promise<AggregatedHealthRecord[]> => {
-  const records = await HealthConnect.readHealthRecords('Distance', startDate, endDate) as Array<{
+  const records = await HealthConnect.readHealthRecords('Distance', startDate, endDate) as {
     startTime?: string;
     time?: string;
     distance?: { inMeters?: number };
-  }>;
+  }[];
   const byDate: Record<string, number> = {};
   records.forEach(record => {
     const date = new Date(record.startTime || record.time || '').toISOString().split('T')[0];
@@ -95,11 +95,11 @@ export const getAggregatedFloorsClimbedByDate = async (
   startDate: Date,
   endDate: Date
 ): Promise<AggregatedHealthRecord[]> => {
-  const records = await HealthConnect.readHealthRecords('FloorsClimbed', startDate, endDate) as Array<{
+  const records = await HealthConnect.readHealthRecords('FloorsClimbed', startDate, endDate) as {
     startTime?: string;
     time?: string;
     floors?: number;
-  }>;
+  }[];
   const byDate: Record<string, number> = {};
   records.forEach(record => {
     const date = new Date(record.startTime || record.time || '').toISOString().split('T')[0];

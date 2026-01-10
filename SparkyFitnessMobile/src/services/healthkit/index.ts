@@ -8,7 +8,6 @@ import {
 } from '@kingstinct/react-native-healthkit';
 import { Platform, Alert } from 'react-native';
 import { addLog } from '../LogService';
-import { HEALTH_METRICS } from '../../constants/HealthMetrics';
 import {
   AggregatedHealthRecord,
   PermissionRequest,

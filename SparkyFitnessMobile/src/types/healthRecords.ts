@@ -8,13 +8,13 @@ import { SleepStageEvent } from './mobileHealthData';
 /** Heart rate record from Health Connect */
 export interface HCHeartRateRecord {
   startTime: string;
-  samples: Array<{ beatsPerMinute: number }>;
+  samples: { beatsPerMinute: number }[];
 }
 
 /** Heart rate record from HealthKit */
 export interface HKHeartRateRecord {
   startTime: string;
-  samples: Array<{ beatsPerMinute: number }>;
+  samples: { beatsPerMinute: number }[];
 }
 
 /** Steps record from Health Connect */
