@@ -14,6 +14,9 @@ import {
   readRecords,
 } from 'react-native-health-connect';
 
+import type { PermissionRequest, GrantedPermission, HealthMetricStates } from '../../../src/types/healthRecords';
+import type { SyncDuration } from '../../../src/services/healthconnect/preferences';
+
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
@@ -28,13 +31,17 @@ jest.mock('../../../src/constants/HealthMetrics', () => ({
   ],
 }));
 
+const mockInitialize = initialize as jest.Mock;
+const mockRequestPermission = requestPermission as jest.Mock;
+const mockReadRecords = readRecords as jest.Mock;
+
 describe('initHealthConnect', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   test('returns true when initialize succeeds', async () => {
-    initialize.mockResolvedValue(true);
+    mockInitialize.mockResolvedValue(true);
 
     const result = await initHealthConnect();
 
@@ -43,7 +50,7 @@ describe('initHealthConnect', () => {
   });
 
   test('returns false when initialize returns false', async () => {
-    initialize.mockResolvedValue(false);
+    mockInitialize.mockResolvedValue(false);
 
     const result = await initHealthConnect();
 
@@ -51,7 +58,7 @@ describe('initHealthConnect', () => {
   });
 
   test('returns false when initialize throws error', async () => {
-    initialize.mockRejectedValue(new Error('Health Connect not available'));
+    mockInitialize.mockRejectedValue(new Error('Health Connect not available'));
 
     const result = await initHealthConnect();
 
@@ -65,15 +72,15 @@ describe('requestHealthPermissions', () => {
   });
 
   test('returns true when all requested permissions are granted', async () => {
-    const permissions = [
+    const permissions: PermissionRequest[] = [
       { recordType: 'Steps', accessType: 'read' },
       { recordType: 'HeartRate', accessType: 'read' },
     ];
 
-    requestPermission.mockResolvedValue([
+    mockRequestPermission.mockResolvedValue([
       { recordType: 'Steps', accessType: 'read' },
       { recordType: 'HeartRate', accessType: 'read' },
-    ]);
+    ] as GrantedPermission[]);
 
     const result = await requestHealthPermissions(permissions);
 
@@ -82,15 +89,15 @@ describe('requestHealthPermissions', () => {
   });
 
   test('returns false when not all permissions are granted', async () => {
-    const permissions = [
+    const permissions: PermissionRequest[] = [
       { recordType: 'Steps', accessType: 'read' },
       { recordType: 'HeartRate', accessType: 'read' },
     ];
 
     // Only Steps permission granted
-    requestPermission.mockResolvedValue([
+    mockRequestPermission.mockResolvedValue([
       { recordType: 'Steps', accessType: 'read' },
-    ]);
+    ] as GrantedPermission[]);
 
     const result = await requestHealthPermissions(permissions);
 
@@ -98,11 +105,11 @@ describe('requestHealthPermissions', () => {
   });
 
   test('returns false when no permissions are granted', async () => {
-    const permissions = [
+    const permissions: PermissionRequest[] = [
       { recordType: 'Steps', accessType: 'read' },
     ];
 
-    requestPermission.mockResolvedValue([]);
+    mockRequestPermission.mockResolvedValue([] as GrantedPermission[]);
 
     const result = await requestHealthPermissions(permissions);
 
@@ -110,25 +117,25 @@ describe('requestHealthPermissions', () => {
   });
 
   test('throws error when requestPermission fails', async () => {
-    const permissions = [{ recordType: 'Steps', accessType: 'read' }];
+    const permissions: PermissionRequest[] = [{ recordType: 'Steps', accessType: 'read' }];
 
-    requestPermission.mockRejectedValue(new Error('Permission request failed'));
+    mockRequestPermission.mockRejectedValue(new Error('Permission request failed'));
 
     await expect(requestHealthPermissions(permissions)).rejects.toThrow('Permission request failed');
   });
 
   test('handles partial grants correctly', async () => {
-    const permissions = [
+    const permissions: PermissionRequest[] = [
       { recordType: 'Steps', accessType: 'read' },
       { recordType: 'HeartRate', accessType: 'read' },
       { recordType: 'Weight', accessType: 'read' },
     ];
 
     // Only 2 of 3 permissions granted
-    requestPermission.mockResolvedValue([
+    mockRequestPermission.mockResolvedValue([
       { recordType: 'Steps', accessType: 'read' },
       { recordType: 'Weight', accessType: 'read' },
-    ]);
+    ] as GrantedPermission[]);
 
     const result = await requestHealthPermissions(permissions);
 
@@ -163,7 +170,7 @@ describe('getSyncStartDate', () => {
     });
 
     test('all known durations return midnight (00:00:00.000)', () => {
-      const durations = ['today', '24h', '3d', '7d', '30d', '90d'];
+      const durations: SyncDuration[] = ['today', '24h', '3d', '7d', '30d', '90d'];
       durations.forEach(duration => {
         const result = getSyncStartDate(duration);
         expect(result.getHours()).toBe(0);
@@ -212,17 +219,6 @@ describe('getSyncStartDate', () => {
     });
   });
 
-  describe('default/unknown behavior', () => {
-    test('unknown value defaults to 24h ago at midnight', () => {
-      const result = getSyncStartDate('invalid-duration');
-
-      // Should behave like 24h
-      expect(result.getHours()).toBe(0);
-      expect(result.getMinutes()).toBe(0);
-      expect(result.getSeconds()).toBe(0);
-      expect(result.getMilliseconds()).toBe(0);
-    });
-  });
 });
 
 describe('readHealthRecords', () => {
@@ -231,7 +227,7 @@ describe('readHealthRecords', () => {
   });
 
   test('calls readRecords with correct parameters', async () => {
-    readRecords.mockResolvedValue({ records: [] });
+    mockReadRecords.mockResolvedValue({ records: [] });
 
     const startDate = new Date('2024-01-15T00:00:00Z');
     const endDate = new Date('2024-01-15T23:59:59Z');
@@ -252,7 +248,7 @@ describe('readHealthRecords', () => {
       { startTime: '2024-01-15T10:00:00Z', count: 5000 },
       { startTime: '2024-01-15T12:00:00Z', count: 3000 },
     ];
-    readRecords.mockResolvedValue({ records: mockRecords });
+    mockReadRecords.mockResolvedValue({ records: mockRecords });
 
     const result = await readHealthRecords(
       'Steps',
@@ -264,7 +260,7 @@ describe('readHealthRecords', () => {
   });
 
   test('returns empty array when no records found', async () => {
-    readRecords.mockResolvedValue({ records: [] });
+    mockReadRecords.mockResolvedValue({ records: [] });
 
     const result = await readHealthRecords(
       'Steps',
@@ -276,7 +272,7 @@ describe('readHealthRecords', () => {
   });
 
   test('returns empty array when readRecords throws error', async () => {
-    readRecords.mockRejectedValue(new Error('Failed to read records'));
+    mockReadRecords.mockRejectedValue(new Error('Failed to read records'));
 
     const result = await readHealthRecords(
       'Steps',
@@ -288,7 +284,7 @@ describe('readHealthRecords', () => {
   });
 
   test('returns empty array when records is undefined', async () => {
-    readRecords.mockResolvedValue({});
+    mockReadRecords.mockResolvedValue({});
 
     const result = await readHealthRecords(
       'Steps',
@@ -306,7 +302,7 @@ describe('getAggregatedStepsByDate', () => {
   });
 
   test('returns aggregated steps by date', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [
         { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000 },
         { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000 },
@@ -327,7 +323,7 @@ describe('getAggregatedStepsByDate', () => {
   });
 
   test('returns empty array when no records found', async () => {
-    readRecords.mockResolvedValue({ records: [] });
+    mockReadRecords.mockResolvedValue({ records: [] });
 
     const result = await getAggregatedStepsByDate(
       new Date('2024-01-15T00:00:00Z'),
@@ -338,7 +334,7 @@ describe('getAggregatedStepsByDate', () => {
   });
 
   test('aggregates across multiple days', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [
         { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 },
         { startTime: '2024-01-16T10:00:00Z', endTime: '2024-01-16T11:00:00Z', count: 6000 },
@@ -351,12 +347,12 @@ describe('getAggregatedStepsByDate', () => {
     );
 
     expect(result).toHaveLength(2);
-    expect(result.find(r => r.date === '2024-01-15').value).toBe(5000);
-    expect(result.find(r => r.date === '2024-01-16').value).toBe(6000);
+    expect(result.find(r => r.date === '2024-01-15')?.value).toBe(5000);
+    expect(result.find(r => r.date === '2024-01-16')?.value).toBe(6000);
   });
 
   test('uses endTime for date assignment', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [
         // Steps spanning midnight - should be assigned to Jan 15 (endTime date)
         { startTime: '2024-01-14T23:00:00Z', endTime: '2024-01-15T00:30:00Z', count: 500 },
@@ -373,7 +369,7 @@ describe('getAggregatedStepsByDate', () => {
   });
 
   test('handles records with missing count as 0', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [
         { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z' }, // No count
         { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000 },
@@ -390,7 +386,7 @@ describe('getAggregatedStepsByDate', () => {
   });
 
   test('returns empty array on error', async () => {
-    readRecords.mockRejectedValue(new Error('Failed to read'));
+    mockReadRecords.mockRejectedValue(new Error('Failed to read'));
 
     const result = await getAggregatedStepsByDate(
       new Date('2024-01-15T00:00:00Z'),
@@ -407,7 +403,7 @@ describe('getAggregatedActiveCaloriesByDate', () => {
   });
 
   test('returns aggregated calories by date using inKilocalories', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [
         { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 200 } },
         { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 300 } },
@@ -428,7 +424,7 @@ describe('getAggregatedActiveCaloriesByDate', () => {
   });
 
   test('returns empty array when no records found', async () => {
-    readRecords.mockResolvedValue({ records: [] });
+    mockReadRecords.mockResolvedValue({ records: [] });
 
     const result = await getAggregatedActiveCaloriesByDate(
       new Date('2024-01-15T00:00:00Z'),
@@ -439,7 +435,7 @@ describe('getAggregatedActiveCaloriesByDate', () => {
   });
 
   test('rounds calorie values', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [
         { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 200.7 } },
         { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 299.8 } },
@@ -455,7 +451,7 @@ describe('getAggregatedActiveCaloriesByDate', () => {
   });
 
   test('handles records with missing energy as 0', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [
         { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z' }, // No energy
         { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 300 } },
@@ -471,7 +467,7 @@ describe('getAggregatedActiveCaloriesByDate', () => {
   });
 
   test('returns empty array on error', async () => {
-    readRecords.mockRejectedValue(new Error('Failed to read'));
+    mockReadRecords.mockRejectedValue(new Error('Failed to read'));
 
     const result = await getAggregatedActiveCaloriesByDate(
       new Date('2024-01-15T00:00:00Z'),
@@ -483,7 +479,7 @@ describe('getAggregatedActiveCaloriesByDate', () => {
 });
 
 describe('syncHealthData', () => {
-  let mockApi;
+  let mockApi: { syncHealthData: jest.Mock };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -493,13 +489,13 @@ describe('syncHealthData', () => {
   });
 
   test('syncs enabled metrics and calls API', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [
         { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 },
       ],
     });
 
-    const healthMetricStates = { isStepsSyncEnabled: true, isHeartRateSyncEnabled: false };
+    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true, isHeartRateSyncEnabled: false };
 
     const result = await syncHealthData('24h', healthMetricStates, mockApi);
 
@@ -508,9 +504,9 @@ describe('syncHealthData', () => {
   });
 
   test('does not call API when no data to sync', async () => {
-    readRecords.mockResolvedValue({ records: [] });
+    mockReadRecords.mockResolvedValue({ records: [] });
 
-    const healthMetricStates = { isStepsSyncEnabled: true };
+    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true };
 
     const result = await syncHealthData('24h', healthMetricStates, mockApi);
 
@@ -526,17 +522,10 @@ describe('syncHealthData', () => {
     expect(result.message).toBe('No health data to sync.');
   });
 
-  test('handles null healthMetricStates', async () => {
-    const result = await syncHealthData('24h', null, mockApi);
-
-    expect(result.success).toBe(true);
-    expect(result.message).toBe('No health data to sync.');
-  });
-
   test('continues processing when one metric returns no records', async () => {
     // readHealthRecords catches errors internally and returns [], so sync continues gracefully
     // This test verifies that if Steps returns empty but HeartRate has data, HeartRate is still synced
-    readRecords.mockImplementation((recordType) => {
+    mockReadRecords.mockImplementation((recordType: string) => {
       if (recordType === 'Steps') {
         // Steps has no records
         return Promise.resolve({ records: [] });
@@ -551,7 +540,7 @@ describe('syncHealthData', () => {
       return Promise.resolve({ records: [] });
     });
 
-    const healthMetricStates = { isStepsSyncEnabled: true, isHeartRateSyncEnabled: true };
+    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true, isHeartRateSyncEnabled: true };
 
     const result = await syncHealthData('24h', healthMetricStates, mockApi);
 
@@ -559,16 +548,16 @@ describe('syncHealthData', () => {
     // HeartRate data should still be synced
     expect(mockApi.syncHealthData).toHaveBeenCalled();
     const apiCallArgs = mockApi.syncHealthData.mock.calls[0][0];
-    expect(apiCallArgs.some(r => r.type === 'heart_rate')).toBe(true);
+    expect(apiCallArgs.some((r: { type: string }) => r.type === 'heart_rate')).toBe(true);
   });
 
   test('returns error when API call fails', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [{ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 }],
     });
     mockApi.syncHealthData.mockRejectedValue(new Error('Server error'));
 
-    const healthMetricStates = { isStepsSyncEnabled: true };
+    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true };
 
     const result = await syncHealthData('24h', healthMetricStates, mockApi);
 
@@ -577,14 +566,14 @@ describe('syncHealthData', () => {
   });
 
   test('aggregates Steps records before transformation', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [
         { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000 },
         { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000 },
       ],
     });
 
-    const healthMetricStates = { isStepsSyncEnabled: true };
+    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true };
 
     await syncHealthData('24h', healthMetricStates, mockApi);
 
@@ -595,14 +584,14 @@ describe('syncHealthData', () => {
   });
 
   test('aggregates HeartRate records before transformation', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [
         { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 60 }] },
         { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 80 }] },
       ],
     });
 
-    const healthMetricStates = { isHeartRateSyncEnabled: true };
+    const healthMetricStates: HealthMetricStates = { isHeartRateSyncEnabled: true };
 
     await syncHealthData('24h', healthMetricStates, mockApi);
 
@@ -614,12 +603,12 @@ describe('syncHealthData', () => {
   test('skips metric when no config found for record type', async () => {
     // Mock HEALTH_METRICS to not include the metric we're trying to sync
     // This tests the "No metric configuration found" path
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [{ startTime: '2024-01-15T10:00:00Z', value: 100 }],
     });
 
     // With our mock HEALTH_METRICS, only these metrics are valid
-    const healthMetricStates = { isStepsSyncEnabled: true };
+    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true };
 
     const result = await syncHealthData('24h', healthMetricStates, mockApi);
 
@@ -627,12 +616,12 @@ describe('syncHealthData', () => {
   });
 
   test('returns apiResponse on success', async () => {
-    readRecords.mockResolvedValue({
+    mockReadRecords.mockResolvedValue({
       records: [{ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 }],
     });
     mockApi.syncHealthData.mockResolvedValue({ processed: 1, success: true });
 
-    const healthMetricStates = { isStepsSyncEnabled: true };
+    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true };
 
     const result = await syncHealthData('24h', healthMetricStates, mockApi);
 

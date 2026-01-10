@@ -1,11 +1,13 @@
 /**
- * Tests for healthConnectService.js (Android)
+ * Tests for healthConnectService.ts (Android)
  *
- * Note: We use jest.isolateModules to explicitly load the Android file
- * since Jest's platform resolution on macOS defaults to .ios.js files.
+ * Note: We use require() to explicitly load the Android file
+ * since Jest's platform resolution on macOS defaults to .ios.ts files.
  */
 
 import { readRecords } from 'react-native-health-connect';
+
+import type { AggregatedHealthRecord } from '../../src/types/healthRecords';
 
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -23,20 +25,25 @@ jest.mock('../../src/constants/HealthMetrics', () => ({
   ],
 }));
 
-const api = require('../../src/services/api');
+const mockReadRecords = readRecords as jest.Mock;
 
 // Load the Android-specific file using explicit .ts extension
 // This bypasses Jest's platform resolution which would otherwise load .ios.ts
-const androidService = require('../../src/services/healthConnectService.ts');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const androidService = require('../../src/services/healthConnectService.ts') as {
+  getAggregatedTotalCaloriesByDate: (startDate: Date, endDate: Date) => Promise<AggregatedHealthRecord[]>;
+  getAggregatedDistanceByDate: (startDate: Date, endDate: Date) => Promise<AggregatedHealthRecord[]>;
+  getAggregatedFloorsClimbedByDate: (startDate: Date, endDate: Date) => Promise<AggregatedHealthRecord[]>;
+};
 
-describe('healthConnectService.js (Android)', () => {
+describe('healthConnectService.ts (Android)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   describe('getAggregatedTotalCaloriesByDate', () => {
     test('aggregates calories by date from multiple records', async () => {
-      readRecords.mockResolvedValue({
+      mockReadRecords.mockResolvedValue({
         records: [
           { startTime: '2024-01-15T08:00:00Z', energy: { inKilocalories: 200 } },
           { startTime: '2024-01-15T12:00:00Z', energy: { inKilocalories: 300 } },
@@ -57,7 +64,7 @@ describe('healthConnectService.js (Android)', () => {
     });
 
     test('returns empty array when no records', async () => {
-      readRecords.mockResolvedValue({ records: [] });
+      mockReadRecords.mockResolvedValue({ records: [] });
 
       const result = await androidService.getAggregatedTotalCaloriesByDate(
         new Date('2024-01-15T00:00:00Z'),
@@ -68,7 +75,7 @@ describe('healthConnectService.js (Android)', () => {
     });
 
     test('handles records with time field (fallback from startTime)', async () => {
-      readRecords.mockResolvedValue({
+      mockReadRecords.mockResolvedValue({
         records: [
           { time: '2024-01-16T10:00:00Z', energy: { inKilocalories: 150 } },
         ],
@@ -83,7 +90,7 @@ describe('healthConnectService.js (Android)', () => {
     });
 
     test('handles missing energy property (treats as 0)', async () => {
-      readRecords.mockResolvedValue({
+      mockReadRecords.mockResolvedValue({
         records: [
           { startTime: '2024-01-15T08:00:00Z' },
           { startTime: '2024-01-15T12:00:00Z', energy: { inKilocalories: 300 } },
@@ -99,7 +106,7 @@ describe('healthConnectService.js (Android)', () => {
     });
 
     test('rounds calorie values', async () => {
-      readRecords.mockResolvedValue({
+      mockReadRecords.mockResolvedValue({
         records: [
           { startTime: '2024-01-15T08:00:00Z', energy: { inKilocalories: 200.7 } },
           { startTime: '2024-01-15T12:00:00Z', energy: { inKilocalories: 299.8 } },
@@ -115,7 +122,7 @@ describe('healthConnectService.js (Android)', () => {
     });
 
     test('groups multiple days correctly', async () => {
-      readRecords.mockResolvedValue({
+      mockReadRecords.mockResolvedValue({
         records: [
           { startTime: '2024-01-15T10:00:00Z', energy: { inKilocalories: 200 } },
           { startTime: '2024-01-16T10:00:00Z', energy: { inKilocalories: 300 } },
@@ -129,14 +136,14 @@ describe('healthConnectService.js (Android)', () => {
       );
 
       expect(result).toHaveLength(2);
-      expect(result.find(r => r.date === '2024-01-15').value).toBe(200);
-      expect(result.find(r => r.date === '2024-01-16').value).toBe(400);
+      expect(result.find(r => r.date === '2024-01-15')?.value).toBe(200);
+      expect(result.find(r => r.date === '2024-01-16')?.value).toBe(400);
     });
   });
 
   describe('getAggregatedDistanceByDate', () => {
     test('aggregates distance by date', async () => {
-      readRecords.mockResolvedValue({
+      mockReadRecords.mockResolvedValue({
         records: [
           { startTime: '2024-01-15T08:00:00Z', distance: { inMeters: 1000 } },
           { startTime: '2024-01-15T12:00:00Z', distance: { inMeters: 2000 } },
@@ -157,7 +164,7 @@ describe('healthConnectService.js (Android)', () => {
     });
 
     test('returns empty array when no records', async () => {
-      readRecords.mockResolvedValue({ records: [] });
+      mockReadRecords.mockResolvedValue({ records: [] });
 
       const result = await androidService.getAggregatedDistanceByDate(
         new Date('2024-01-15T00:00:00Z'),
@@ -168,7 +175,7 @@ describe('healthConnectService.js (Android)', () => {
     });
 
     test('handles missing distance property', async () => {
-      readRecords.mockResolvedValue({
+      mockReadRecords.mockResolvedValue({
         records: [
           { startTime: '2024-01-15T08:00:00Z' },
           { startTime: '2024-01-15T12:00:00Z', distance: { inMeters: 2000 } },
@@ -186,7 +193,7 @@ describe('healthConnectService.js (Android)', () => {
 
   describe('getAggregatedFloorsClimbedByDate', () => {
     test('aggregates floors by date', async () => {
-      readRecords.mockResolvedValue({
+      mockReadRecords.mockResolvedValue({
         records: [
           { startTime: '2024-01-15T08:00:00Z', floors: 5 },
           { startTime: '2024-01-15T12:00:00Z', floors: 3 },
@@ -207,7 +214,7 @@ describe('healthConnectService.js (Android)', () => {
     });
 
     test('returns empty array when no records', async () => {
-      readRecords.mockResolvedValue({ records: [] });
+      mockReadRecords.mockResolvedValue({ records: [] });
 
       const result = await androidService.getAggregatedFloorsClimbedByDate(
         new Date('2024-01-15T00:00:00Z'),
@@ -218,7 +225,7 @@ describe('healthConnectService.js (Android)', () => {
     });
 
     test('handles missing floors property', async () => {
-      readRecords.mockResolvedValue({
+      mockReadRecords.mockResolvedValue({
         records: [
           { startTime: '2024-01-15T08:00:00Z' },
           { startTime: '2024-01-15T12:00:00Z', floors: 3 },

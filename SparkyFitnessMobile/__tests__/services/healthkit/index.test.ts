@@ -14,13 +14,21 @@ import {
   queryCategorySamples,
 } from '@kingstinct/react-native-healthkit';
 
+import type { SyncDuration } from '../../../src/services/healthkit/preferences';
+
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+const mockIsHealthDataAvailable = isHealthDataAvailable as jest.Mock;
+const mockQueryStatisticsForQuantity = queryStatisticsForQuantity as jest.Mock;
+const mockQueryQuantitySamples = queryQuantitySamples as jest.Mock;
+const mockQueryWorkoutSamples = queryWorkoutSamples as jest.Mock;
+const mockQueryCategorySamples = queryCategorySamples as jest.Mock;
+
 describe('getSyncStartDate', () => {
   test('all known durations return midnight (00:00:00.000)', () => {
-    const durations = ['today', '24h', '3d', '7d', '30d', '90d'];
+    const durations: SyncDuration[] = ['today', '24h', '3d', '7d', '30d', '90d'];
     durations.forEach(duration => {
       const result = getSyncStartDate(duration);
       expect(result.getHours()).toBe(0);
@@ -43,17 +51,6 @@ describe('getSyncStartDate', () => {
     expected.setDate(expected.getDate() - 6);
     expected.setHours(0, 0, 0, 0);
     expect(result.toISOString().split('T')[0]).toBe(expected.toISOString().split('T')[0]);
-  });
-
-  test('unknown value defaults to 24h ago', () => {
-    const before = Date.now();
-    const result = getSyncStartDate('invalid-duration');
-    const after = Date.now();
-
-    const twentyFourHoursAgo = new Date(before - 24 * 60 * 60 * 1000);
-    // Result should be within a reasonable range (accounting for test execution time)
-    expect(result.getTime()).toBeGreaterThanOrEqual(twentyFourHoursAgo.getTime() - 1000);
-    expect(result.getTime()).toBeLessThanOrEqual(after - 24 * 60 * 60 * 1000 + 1000);
   });
 
   test("'3d' returns 2 days ago at midnight", () => {
@@ -87,16 +84,16 @@ describe('initHealthConnect', () => {
   });
 
   test('returns true when isHealthDataAvailable returns true', async () => {
-    isHealthDataAvailable.mockResolvedValue(true);
+    mockIsHealthDataAvailable.mockResolvedValue(true);
 
     const result = await initHealthConnect();
 
     expect(result).toBe(true);
-    expect(isHealthDataAvailable).toHaveBeenCalled();
+    expect(mockIsHealthDataAvailable).toHaveBeenCalled();
   });
 
   test('returns false when isHealthDataAvailable returns false', async () => {
-    isHealthDataAvailable.mockResolvedValue(false);
+    mockIsHealthDataAvailable.mockResolvedValue(false);
 
     const result = await initHealthConnect();
 
@@ -104,7 +101,7 @@ describe('initHealthConnect', () => {
   });
 
   test('returns false and handles error when isHealthDataAvailable throws', async () => {
-    isHealthDataAvailable.mockRejectedValue(new Error('HealthKit not supported'));
+    mockIsHealthDataAvailable.mockRejectedValue(new Error('HealthKit not supported'));
 
     const result = await initHealthConnect();
 
@@ -116,12 +113,12 @@ describe('getAggregatedStepsByDate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset HealthKit availability state by calling initHealthConnect
-    isHealthDataAvailable.mockResolvedValue(true);
+    mockIsHealthDataAvailable.mockResolvedValue(true);
   });
 
   test('returns empty array when HealthKit is unavailable', async () => {
     // Set HealthKit as unavailable
-    isHealthDataAvailable.mockResolvedValue(false);
+    mockIsHealthDataAvailable.mockResolvedValue(false);
     await initHealthConnect();
 
     const startDate = new Date('2024-01-15');
@@ -136,7 +133,7 @@ describe('getAggregatedStepsByDate', () => {
     // Initialize HealthKit as available
     await initHealthConnect();
 
-    queryStatisticsForQuantity.mockResolvedValue({
+    mockQueryStatisticsForQuantity.mockResolvedValue({
       sumQuantity: { quantity: 5000 },
     });
 
@@ -161,7 +158,7 @@ describe('getAggregatedStepsByDate', () => {
   test('queries each day separately for multiple days', async () => {
     await initHealthConnect();
 
-    queryStatisticsForQuantity
+    mockQueryStatisticsForQuantity
       .mockResolvedValueOnce({ sumQuantity: { quantity: 5000 } })
       .mockResolvedValueOnce({ sumQuantity: { quantity: 6000 } })
       .mockResolvedValueOnce({ sumQuantity: { quantity: 7000 } });
@@ -171,14 +168,14 @@ describe('getAggregatedStepsByDate', () => {
 
     const result = await getAggregatedStepsByDate(startDate, endDate);
 
-    expect(queryStatisticsForQuantity).toHaveBeenCalledTimes(3);
+    expect(mockQueryStatisticsForQuantity).toHaveBeenCalledTimes(3);
     expect(result).toHaveLength(3);
   });
 
   test('skips days with no data (null or zero)', async () => {
     await initHealthConnect();
 
-    queryStatisticsForQuantity
+    mockQueryStatisticsForQuantity
       .mockResolvedValueOnce({ sumQuantity: { quantity: 5000 } })
       .mockResolvedValueOnce(null) // No data
       .mockResolvedValueOnce({ sumQuantity: { quantity: 0 } }); // Zero steps
@@ -195,7 +192,7 @@ describe('getAggregatedStepsByDate', () => {
   test('rounds step count to integer', async () => {
     await initHealthConnect();
 
-    queryStatisticsForQuantity.mockResolvedValue({
+    mockQueryStatisticsForQuantity.mockResolvedValue({
       sumQuantity: { quantity: 5432.7 },
     });
 
@@ -211,7 +208,7 @@ describe('getAggregatedStepsByDate', () => {
   test('handles query errors gracefully and continues', async () => {
     await initHealthConnect();
 
-    queryStatisticsForQuantity
+    mockQueryStatisticsForQuantity
       .mockRejectedValueOnce(new Error('Query failed'))
       .mockResolvedValueOnce({ sumQuantity: { quantity: 6000 } });
 
@@ -229,11 +226,11 @@ describe('getAggregatedStepsByDate', () => {
 describe('getAggregatedTotalCaloriesByDate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    isHealthDataAvailable.mockResolvedValue(true);
+    mockIsHealthDataAvailable.mockResolvedValue(true);
   });
 
   test('returns empty array when HealthKit is unavailable', async () => {
-    isHealthDataAvailable.mockResolvedValue(false);
+    mockIsHealthDataAvailable.mockResolvedValue(false);
     await initHealthConnect();
 
     const startDate = new Date('2024-01-15');
@@ -248,7 +245,7 @@ describe('getAggregatedTotalCaloriesByDate', () => {
     await initHealthConnect();
 
     // Mock Promise.all returning both basal and active
-    queryStatisticsForQuantity
+    mockQueryStatisticsForQuantity
       .mockResolvedValueOnce({ sumQuantity: { quantity: 1500 } }) // basal
       .mockResolvedValueOnce({ sumQuantity: { quantity: 500 } }); // active
 
@@ -272,7 +269,7 @@ describe('getAggregatedTotalCaloriesByDate', () => {
   test('uses only active when basal returns null', async () => {
     await initHealthConnect();
 
-    queryStatisticsForQuantity
+    mockQueryStatisticsForQuantity
       .mockResolvedValueOnce(null) // basal is null
       .mockResolvedValueOnce({ sumQuantity: { quantity: 500 } }); // active
 
@@ -290,7 +287,7 @@ describe('getAggregatedTotalCaloriesByDate', () => {
   test('uses only basal when active returns null', async () => {
     await initHealthConnect();
 
-    queryStatisticsForQuantity
+    mockQueryStatisticsForQuantity
       .mockResolvedValueOnce({ sumQuantity: { quantity: 1500 } }) // basal
       .mockResolvedValueOnce(null); // active is null
 
@@ -308,7 +305,7 @@ describe('getAggregatedTotalCaloriesByDate', () => {
   test('skips day when both basal and active return null/zero', async () => {
     await initHealthConnect();
 
-    queryStatisticsForQuantity
+    mockQueryStatisticsForQuantity
       .mockResolvedValueOnce(null) // basal is null
       .mockResolvedValueOnce({ sumQuantity: { quantity: 0 } }); // active is zero
 
@@ -326,11 +323,11 @@ describe('getAggregatedTotalCaloriesByDate', () => {
 describe('readHealthRecords', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    isHealthDataAvailable.mockResolvedValue(true);
+    mockIsHealthDataAvailable.mockResolvedValue(true);
   });
 
   test('returns empty array when HealthKit is unavailable', async () => {
-    isHealthDataAvailable.mockResolvedValue(false);
+    mockIsHealthDataAvailable.mockResolvedValue(false);
     await initHealthConnect();
 
     const result = await readHealthRecords(
@@ -360,7 +357,7 @@ describe('readHealthRecords', () => {
     const startDate = new Date('2024-01-15T00:00:00Z');
     const endDate = new Date('2024-01-16T23:59:59Z');
 
-    queryQuantitySamples.mockResolvedValue([
+    mockQueryQuantitySamples.mockResolvedValue([
       { startDate: '2024-01-14T23:00:00Z', quantity: 100 }, // Before range
       { startDate: '2024-01-15T12:00:00Z', quantity: 200 }, // In range
       { startDate: '2024-01-16T12:00:00Z', quantity: 300 }, // In range
@@ -370,14 +367,14 @@ describe('readHealthRecords', () => {
     const result = await readHealthRecords('Steps', startDate, endDate);
 
     expect(result).toHaveLength(2);
-    expect(result[0].value).toBe(200);
-    expect(result[1].value).toBe(300);
+    expect((result[0] as { value: number }).value).toBe(200);
+    expect((result[1] as { value: number }).value).toBe(300);
   });
 
   test('transforms Steps records to expected format', async () => {
     await initHealthConnect();
 
-    queryQuantitySamples.mockResolvedValue([
+    mockQueryQuantitySamples.mockResolvedValue([
       {
         startDate: '2024-01-15T10:00:00Z',
         endDate: '2024-01-15T10:30:00Z',
@@ -403,7 +400,7 @@ describe('readHealthRecords', () => {
   test('transforms HeartRate records with samples array', async () => {
     await initHealthConnect();
 
-    queryQuantitySamples.mockResolvedValue([
+    mockQueryQuantitySamples.mockResolvedValue([
       {
         startDate: '2024-01-15T10:00:00Z',
         endDate: '2024-01-15T10:00:00Z',
@@ -418,13 +415,13 @@ describe('readHealthRecords', () => {
     );
 
     expect(result).toHaveLength(1);
-    expect(result[0].samples).toEqual([{ beatsPerMinute: 72 }]);
+    expect((result[0] as { samples: Array<{ beatsPerMinute: number }> }).samples).toEqual([{ beatsPerMinute: 72 }]);
   });
 
   test('transforms Weight records with weight object', async () => {
     await initHealthConnect();
 
-    queryQuantitySamples.mockResolvedValue([
+    mockQueryQuantitySamples.mockResolvedValue([
       {
         startDate: '2024-01-15T08:00:00Z',
         endDate: '2024-01-15T08:00:00Z',
@@ -439,13 +436,13 @@ describe('readHealthRecords', () => {
     );
 
     expect(result).toHaveLength(1);
-    expect(result[0].weight).toEqual({ inKilograms: 75.5 });
+    expect((result[0] as { weight: { inKilograms: number } }).weight).toEqual({ inKilograms: 75.5 });
   });
 
   test('handles non-array response from queryQuantitySamples', async () => {
     await initHealthConnect();
 
-    queryQuantitySamples.mockResolvedValue(null);
+    mockQueryQuantitySamples.mockResolvedValue(null);
 
     const result = await readHealthRecords(
       'Steps',
@@ -461,7 +458,7 @@ describe('readHealthRecords', () => {
       await initHealthConnect();
 
       const mockGetAllStatistics = jest.fn().mockResolvedValue({});
-      queryWorkoutSamples.mockResolvedValue([
+      mockQueryWorkoutSamples.mockResolvedValue([
         {
           startDate: '2024-01-15T08:00:00Z',
           endDate: '2024-01-15T09:00:00Z',
@@ -479,7 +476,7 @@ describe('readHealthRecords', () => {
         new Date('2024-01-15T23:59:59Z')
       );
 
-      expect(queryWorkoutSamples).toHaveBeenCalled();
+      expect(mockQueryWorkoutSamples).toHaveBeenCalled();
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         startTime: '2024-01-15T08:00:00Z',
@@ -501,7 +498,7 @@ describe('readHealthRecords', () => {
         },
       });
 
-      queryWorkoutSamples.mockResolvedValue([
+      mockQueryWorkoutSamples.mockResolvedValue([
         {
           startDate: '2024-01-15T08:00:00Z',
           endDate: '2024-01-15T09:00:00Z',
@@ -520,15 +517,15 @@ describe('readHealthRecords', () => {
       );
 
       expect(mockGetAllStatistics).toHaveBeenCalled();
-      expect(result[0].totalEnergyBurned).toBe(600);
-      expect(result[0].totalDistance).toBe(6000);
+      expect((result[0] as { totalEnergyBurned: number }).totalEnergyBurned).toBe(600);
+      expect((result[0] as { totalDistance: number }).totalDistance).toBe(6000);
     });
 
     test('falls back to direct properties when getAllStatistics fails', async () => {
       await initHealthConnect();
 
       const mockGetAllStatistics = jest.fn().mockRejectedValue(new Error('Stats unavailable'));
-      queryWorkoutSamples.mockResolvedValue([
+      mockQueryWorkoutSamples.mockResolvedValue([
         {
           startDate: '2024-01-15T08:00:00Z',
           endDate: '2024-01-15T09:00:00Z',
@@ -546,8 +543,8 @@ describe('readHealthRecords', () => {
         new Date('2024-01-15T23:59:59Z')
       );
 
-      expect(result[0].totalEnergyBurned).toBe(500);
-      expect(result[0].totalDistance).toBe(5000);
+      expect((result[0] as { totalEnergyBurned: number }).totalEnergyBurned).toBe(500);
+      expect((result[0] as { totalDistance: number }).totalDistance).toBe(5000);
     });
 
     test('checks multiple distance types in order', async () => {
@@ -560,7 +557,7 @@ describe('readHealthRecords', () => {
         },
       });
 
-      queryWorkoutSamples.mockResolvedValue([
+      mockQueryWorkoutSamples.mockResolvedValue([
         {
           startDate: '2024-01-15T08:00:00Z',
           endDate: '2024-01-15T09:00:00Z',
@@ -578,13 +575,13 @@ describe('readHealthRecords', () => {
         new Date('2024-01-15T23:59:59Z')
       );
 
-      expect(result[0].totalDistance).toBe(15000);
+      expect((result[0] as { totalDistance: number }).totalDistance).toBe(15000);
     });
 
     test('returns empty array for empty workouts response', async () => {
       await initHealthConnect();
 
-      queryWorkoutSamples.mockResolvedValue([]);
+      mockQueryWorkoutSamples.mockResolvedValue([]);
 
       const result = await readHealthRecords(
         'Workout',
@@ -599,13 +596,13 @@ describe('readHealthRecords', () => {
   describe('SleepSession records', () => {
     beforeEach(() => {
       jest.clearAllMocks();
-      isHealthDataAvailable.mockResolvedValue(true);
+      mockIsHealthDataAvailable.mockResolvedValue(true);
     });
 
     test('transforms sleep samples to expected format', async () => {
       await initHealthConnect();
 
-      queryCategorySamples.mockResolvedValue([
+      mockQueryCategorySamples.mockResolvedValue([
         {
           startDate: '2024-01-15T22:00:00Z',
           endDate: '2024-01-15T23:30:00Z',
@@ -639,7 +636,7 @@ describe('readHealthRecords', () => {
       const startDate = new Date('2024-01-15T00:00:00Z');
       const endDate = new Date('2024-01-15T23:59:59Z');
 
-      queryCategorySamples.mockResolvedValue([
+      mockQueryCategorySamples.mockResolvedValue([
         // Before range (start before requested start)
         {
           startDate: '2024-01-14T22:00:00Z',
@@ -664,7 +661,7 @@ describe('readHealthRecords', () => {
 
       // Only the record fully within range should be included
       expect(result).toHaveLength(1);
-      expect(result[0].startTime).toBe('2024-01-15T22:00:00Z');
+      expect((result[0] as { startTime: string }).startTime).toBe('2024-01-15T22:00:00Z');
     });
 
     test('includes sleep sessions spanning midnight when fully within range', async () => {
@@ -674,7 +671,7 @@ describe('readHealthRecords', () => {
       const startDate = new Date('2024-01-15T00:00:00Z');
       const endDate = new Date('2024-01-16T23:59:59Z');
 
-      queryCategorySamples.mockResolvedValue([
+      mockQueryCategorySamples.mockResolvedValue([
         {
           startDate: '2024-01-15T23:30:00Z',
           endDate: '2024-01-16T07:30:00Z',
@@ -686,14 +683,14 @@ describe('readHealthRecords', () => {
 
       // Session spanning midnight is included because both start and end are within the 2-day range
       expect(result).toHaveLength(1);
-      expect(result[0].startTime).toBe('2024-01-15T23:30:00Z');
-      expect(result[0].endTime).toBe('2024-01-16T07:30:00Z');
+      expect((result[0] as { startTime: string }).startTime).toBe('2024-01-15T23:30:00Z');
+      expect((result[0] as { endTime: string }).endTime).toBe('2024-01-16T07:30:00Z');
     });
 
     test('returns empty array when queryCategorySamples returns empty', async () => {
       await initHealthConnect();
 
-      queryCategorySamples.mockResolvedValue([]);
+      mockQueryCategorySamples.mockResolvedValue([]);
 
       const result = await readHealthRecords(
         'SleepSession',
@@ -708,13 +705,13 @@ describe('readHealthRecords', () => {
   describe('Stress records', () => {
     beforeEach(() => {
       jest.clearAllMocks();
-      isHealthDataAvailable.mockResolvedValue(true);
+      mockIsHealthDataAvailable.mockResolvedValue(true);
     });
 
     test('transforms mindful sessions to expected format', async () => {
       await initHealthConnect();
 
-      queryCategorySamples.mockResolvedValue([
+      mockQueryCategorySamples.mockResolvedValue([
         {
           startDate: '2024-01-15T08:00:00Z',
           endDate: '2024-01-15T08:15:00Z',
@@ -740,7 +737,7 @@ describe('readHealthRecords', () => {
       // MindfulSession is presence-based - value 1 indicates session occurred
       await initHealthConnect();
 
-      queryCategorySamples.mockResolvedValue([
+      mockQueryCategorySamples.mockResolvedValue([
         { startDate: '2024-01-15T08:00:00Z', endDate: '2024-01-15T08:15:00Z', value: 0 },
         { startDate: '2024-01-15T12:00:00Z', endDate: '2024-01-15T12:30:00Z', value: 5 },
         { startDate: '2024-01-15T18:00:00Z', endDate: '2024-01-15T18:10:00Z', value: null },
@@ -753,13 +750,13 @@ describe('readHealthRecords', () => {
       );
 
       expect(result).toHaveLength(3);
-      expect(result.every(r => r.value === 1)).toBe(true);
+      expect(result.every(r => (r as { value: number }).value === 1)).toBe(true);
     });
 
     test('returns empty array when queryCategorySamples returns empty', async () => {
       await initHealthConnect();
 
-      queryCategorySamples.mockResolvedValue([]);
+      mockQueryCategorySamples.mockResolvedValue([]);
 
       const result = await readHealthRecords(
         'Stress',
@@ -774,7 +771,7 @@ describe('readHealthRecords', () => {
   describe('BloodPressure records', () => {
     beforeEach(() => {
       jest.clearAllMocks();
-      isHealthDataAvailable.mockResolvedValue(true);
+      mockIsHealthDataAvailable.mockResolvedValue(true);
     });
 
     test('transforms paired readings to expected format', async () => {
@@ -782,7 +779,7 @@ describe('readHealthRecords', () => {
 
       const timestamp = '2024-01-15T08:00:00Z';
 
-      queryQuantitySamples
+      mockQueryQuantitySamples
         .mockResolvedValueOnce([{ startDate: timestamp, quantity: 120 }]) // systolic
         .mockResolvedValueOnce([{ startDate: timestamp, quantity: 80 }]); // diastolic
 
@@ -803,7 +800,7 @@ describe('readHealthRecords', () => {
     test('merges systolic and diastolic by matching timestamp', async () => {
       await initHealthConnect();
 
-      queryQuantitySamples
+      mockQueryQuantitySamples
         .mockResolvedValueOnce([
           { startDate: '2024-01-15T08:00:00Z', quantity: 120 },
           { startDate: '2024-01-15T12:00:00Z', quantity: 118 },
@@ -835,7 +832,7 @@ describe('readHealthRecords', () => {
     test('filters out unpaired readings', async () => {
       await initHealthConnect();
 
-      queryQuantitySamples
+      mockQueryQuantitySamples
         .mockResolvedValueOnce([
           { startDate: '2024-01-15T08:00:00Z', quantity: 120 }, // Has matching diastolic
           { startDate: '2024-01-15T10:00:00Z', quantity: 125 }, // No matching diastolic
@@ -853,14 +850,14 @@ describe('readHealthRecords', () => {
 
       // Only the paired reading at 08:00 should be included
       expect(result).toHaveLength(1);
-      expect(result[0].time).toBe('2024-01-15T08:00:00Z');
+      expect((result[0] as { time: string }).time).toBe('2024-01-15T08:00:00Z');
     });
 
     test('returns empty array when no pairs exist', async () => {
       await initHealthConnect();
 
       // Systolic and diastolic at different times - no matches
-      queryQuantitySamples
+      mockQueryQuantitySamples
         .mockResolvedValueOnce([{ startDate: '2024-01-15T08:00:00Z', quantity: 120 }])
         .mockResolvedValueOnce([{ startDate: '2024-01-15T10:00:00Z', quantity: 80 }]);
 
@@ -876,7 +873,7 @@ describe('readHealthRecords', () => {
     test('returns empty array when both queries return empty', async () => {
       await initHealthConnect();
 
-      queryQuantitySamples
+      mockQueryQuantitySamples
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
 

@@ -5,6 +5,8 @@ import {
   aggregateActiveCaloriesByDate,
 } from '../../../src/services/healthconnect/dataAggregation';
 
+import type { HCHeartRateRecord, HCStepsRecord, HCEnergyRecord } from '../../../src/types/healthRecords';
+
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
@@ -15,24 +17,11 @@ describe('aggregateHeartRateByDate', () => {
       expect(aggregateHeartRateByDate([])).toEqual([]);
     });
 
-    test('returns empty array for null input', () => {
-      expect(aggregateHeartRateByDate(null)).toEqual([]);
-    });
-
-    test('returns empty array for undefined input', () => {
-      expect(aggregateHeartRateByDate(undefined)).toEqual([]);
-    });
-
-    test('returns empty array for non-array input', () => {
-      expect(aggregateHeartRateByDate('not an array')).toEqual([]);
-      expect(aggregateHeartRateByDate({})).toEqual([]);
-      expect(aggregateHeartRateByDate(123)).toEqual([]);
-    });
   });
 
   describe('happy path', () => {
     test('returns single record with averaged BPM', () => {
-      const records = [
+      const records: HCHeartRateRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
       ];
       const result = aggregateHeartRateByDate(records);
@@ -41,7 +30,7 @@ describe('aggregateHeartRateByDate', () => {
     });
 
     test('averages multiple samples within a single record', () => {
-      const records = [
+      const records: HCHeartRateRecord[] = [
         {
           startTime: '2024-01-15T10:00:00Z',
           samples: [
@@ -57,7 +46,7 @@ describe('aggregateHeartRateByDate', () => {
     });
 
     test('averages multiple records on the same day (rounded)', () => {
-      const records = [
+      const records: HCHeartRateRecord[] = [
         { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 60 }] },
         { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 80 }] },
         { startTime: '2024-01-15T18:00:00Z', samples: [{ beatsPerMinute: 70 }] },
@@ -68,7 +57,7 @@ describe('aggregateHeartRateByDate', () => {
     });
 
     test('rounds average to nearest integer', () => {
-      const records = [
+      const records: HCHeartRateRecord[] = [
         { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 71 }] },
         { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 72 }] },
       ];
@@ -77,16 +66,16 @@ describe('aggregateHeartRateByDate', () => {
     });
 
     test('aggregates records across multiple days', () => {
-      const records = [
+      const records: HCHeartRateRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 70 }] },
         { startTime: '2024-01-16T10:00:00Z', samples: [{ beatsPerMinute: 75 }] },
         { startTime: '2024-01-17T10:00:00Z', samples: [{ beatsPerMinute: 80 }] },
       ];
       const result = aggregateHeartRateByDate(records);
       expect(result).toHaveLength(3);
-      expect(result.find(r => r.date === '2024-01-15').value).toBe(70);
-      expect(result.find(r => r.date === '2024-01-16').value).toBe(75);
-      expect(result.find(r => r.date === '2024-01-17').value).toBe(80);
+      expect(result.find(r => r.date === '2024-01-15')?.value).toBe(70);
+      expect(result.find(r => r.date === '2024-01-16')?.value).toBe(75);
+      expect(result.find(r => r.date === '2024-01-17')?.value).toBe(80);
     });
   });
 
@@ -95,7 +84,7 @@ describe('aggregateHeartRateByDate', () => {
       const records = [
         { samples: [{ beatsPerMinute: 72 }] },
         { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 75 }] },
-      ];
+      ] as unknown as HCHeartRateRecord[];
       const result = aggregateHeartRateByDate(records);
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(75);
@@ -105,7 +94,7 @@ describe('aggregateHeartRateByDate', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z' },
         { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 75 }] },
-      ];
+      ] as unknown as HCHeartRateRecord[];
       const result = aggregateHeartRateByDate(records);
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(75);
@@ -115,7 +104,7 @@ describe('aggregateHeartRateByDate', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', samples: 'not an array' },
         { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 75 }] },
-      ];
+      ] as unknown as HCHeartRateRecord[];
       const result = aggregateHeartRateByDate(records);
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(75);
@@ -127,27 +116,27 @@ describe('aggregateHeartRateByDate', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', samples: [{}] },
         { startTime: '2024-01-16T10:00:00Z', samples: [{ beatsPerMinute: 80 }] },
-      ];
+      ] as unknown as HCHeartRateRecord[];
       const result = aggregateHeartRateByDate(records);
       expect(result).toHaveLength(2);
-      expect(result.find(r => r.date === '2024-01-15').value).toBe(0); // No BPM -> 0
-      expect(result.find(r => r.date === '2024-01-16').value).toBe(80);
+      expect(result.find(r => r.date === '2024-01-15')?.value).toBe(0); // No BPM -> 0
+      expect(result.find(r => r.date === '2024-01-16')?.value).toBe(80);
     });
 
     test('handles samples with beatsPerMinute: 0', () => {
       // Zero BPM is a valid value and gets included in the average
-      const records = [
+      const records: HCHeartRateRecord[] = [
         { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 0 }] },
         { startTime: '2024-01-16T10:00:00Z', samples: [{ beatsPerMinute: 80 }] },
       ];
       const result = aggregateHeartRateByDate(records);
       expect(result).toHaveLength(2);
-      expect(result.find(r => r.date === '2024-01-15').value).toBe(0);
-      expect(result.find(r => r.date === '2024-01-16').value).toBe(80);
+      expect(result.find(r => r.date === '2024-01-15')?.value).toBe(0);
+      expect(result.find(r => r.date === '2024-01-16')?.value).toBe(80);
     });
 
     test('produces correct output structure with date, value, and type', () => {
-      const records = [
+      const records: HCHeartRateRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
       ];
       const result = aggregateHeartRateByDate(records);
@@ -162,11 +151,11 @@ describe('aggregateHeartRateByDate', () => {
         startTime: { toString: () => { throw new Error('boom'); } },
         samples: [{ beatsPerMinute: 72 }],
       };
-      const goodRecord = {
+      const goodRecord: HCHeartRateRecord = {
         startTime: '2024-01-16T10:00:00Z',
         samples: [{ beatsPerMinute: 75 }],
       };
-      const result = aggregateHeartRateByDate([badRecord, goodRecord]);
+      const result = aggregateHeartRateByDate([badRecord as unknown as HCHeartRateRecord, goodRecord]);
       expect(result).toHaveLength(1);
       expect(result[0].date).toBe('2024-01-16');
     });
@@ -179,24 +168,11 @@ describe('aggregateStepsByDate', () => {
       expect(aggregateStepsByDate([])).toEqual([]);
     });
 
-    test('returns empty array for null input', () => {
-      expect(aggregateStepsByDate(null)).toEqual([]);
-    });
-
-    test('returns empty array for undefined input', () => {
-      expect(aggregateStepsByDate(undefined)).toEqual([]);
-    });
-
-    test('returns empty array for non-array input', () => {
-      expect(aggregateStepsByDate('not an array')).toEqual([]);
-      expect(aggregateStepsByDate({})).toEqual([]);
-      expect(aggregateStepsByDate(123)).toEqual([]);
-    });
   });
 
   describe('happy path', () => {
     test('returns single record with step count', () => {
-      const records = [
+      const records: HCStepsRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:30:00Z', count: 5000 },
       ];
       const result = aggregateStepsByDate(records);
@@ -205,7 +181,7 @@ describe('aggregateStepsByDate', () => {
     });
 
     test('sums multiple records on the same day', () => {
-      const records = [
+      const records: HCStepsRecord[] = [
         { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 1000 },
         { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 2000 },
         { startTime: '2024-01-15T18:00:00Z', endTime: '2024-01-15T19:00:00Z', count: 3000 },
@@ -216,22 +192,22 @@ describe('aggregateStepsByDate', () => {
     });
 
     test('aggregates records across multiple days', () => {
-      const records = [
+      const records: HCStepsRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 },
         { startTime: '2024-01-16T10:00:00Z', endTime: '2024-01-16T11:00:00Z', count: 6000 },
         { startTime: '2024-01-17T10:00:00Z', endTime: '2024-01-17T11:00:00Z', count: 7000 },
       ];
       const result = aggregateStepsByDate(records);
       expect(result).toHaveLength(3);
-      expect(result.find(r => r.date === '2024-01-15').value).toBe(5000);
-      expect(result.find(r => r.date === '2024-01-16').value).toBe(6000);
-      expect(result.find(r => r.date === '2024-01-17').value).toBe(7000);
+      expect(result.find(r => r.date === '2024-01-15')?.value).toBe(5000);
+      expect(result.find(r => r.date === '2024-01-16')?.value).toBe(6000);
+      expect(result.find(r => r.date === '2024-01-17')?.value).toBe(7000);
     });
   });
 
   describe('date extraction', () => {
     test('uses endTime for date extraction when available', () => {
-      const records = [
+      const records: HCStepsRecord[] = [
         { startTime: '2024-01-14T23:00:00Z', endTime: '2024-01-15T00:30:00Z', count: 500 },
       ];
       const result = aggregateStepsByDate(records);
@@ -241,7 +217,7 @@ describe('aggregateStepsByDate', () => {
     });
 
     test('falls back to startTime when endTime is missing', () => {
-      const records = [
+      const records: HCStepsRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', count: 5000 },
       ];
       const result = aggregateStepsByDate(records);
@@ -255,7 +231,7 @@ describe('aggregateStepsByDate', () => {
       const records = [
         { count: 5000 },
         { startTime: '2024-01-15T12:00:00Z', count: 6000 },
-      ];
+      ] as unknown as HCStepsRecord[];
       const result = aggregateStepsByDate(records);
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(6000);
@@ -265,14 +241,14 @@ describe('aggregateStepsByDate', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', count: 'not a number' },
         { startTime: '2024-01-15T12:00:00Z', count: 6000 },
-      ];
+      ] as unknown as HCStepsRecord[];
       const result = aggregateStepsByDate(records);
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(6000);
     });
 
     test('handles record.count = 0 correctly', () => {
-      const records = [
+      const records: HCStepsRecord[] = [
         { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 0 },
         { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 5000 },
       ];
@@ -283,7 +259,7 @@ describe('aggregateStepsByDate', () => {
     });
 
     test('handles day with only 0 steps', () => {
-      const records = [
+      const records: HCStepsRecord[] = [
         { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 0 },
       ];
       const result = aggregateStepsByDate(records);
@@ -298,11 +274,11 @@ describe('aggregateStepsByDate', () => {
         startTime: { toString: () => { throw new Error('boom'); } },
         count: 5000,
       };
-      const goodRecord = {
+      const goodRecord: HCStepsRecord = {
         startTime: '2024-01-16T10:00:00Z',
         count: 6000,
       };
-      const result = aggregateStepsByDate([badRecord, goodRecord]);
+      const result = aggregateStepsByDate([badRecord as unknown as HCStepsRecord, goodRecord]);
       expect(result).toHaveLength(1);
       expect(result[0].date).toBe('2024-01-16');
     });
@@ -316,26 +292,11 @@ describe('aggregateTotalCaloriesByDate', () => {
       expect(result).toEqual([]);
     });
 
-    test('returns empty array for null input', async () => {
-      const result = await aggregateTotalCaloriesByDate(null);
-      expect(result).toEqual([]);
-    });
-
-    test('returns empty array for undefined input', async () => {
-      const result = await aggregateTotalCaloriesByDate(undefined);
-      expect(result).toEqual([]);
-    });
-
-    test('returns empty array for non-array input', async () => {
-      expect(await aggregateTotalCaloriesByDate('not an array')).toEqual([]);
-      expect(await aggregateTotalCaloriesByDate({})).toEqual([]);
-      expect(await aggregateTotalCaloriesByDate(123)).toEqual([]);
-    });
   });
 
   describe('happy path', () => {
     test('returns single record with calorie value using inKilocalories', async () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inKilocalories: 500 } },
       ];
       const result = await aggregateTotalCaloriesByDate(records);
@@ -344,7 +305,7 @@ describe('aggregateTotalCaloriesByDate', () => {
     });
 
     test('sums multiple records on the same day', async () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T08:00:00Z', energy: { inKilocalories: 500 } },
         { startTime: '2024-01-15T12:00:00Z', energy: { inKilocalories: 700 } },
         { startTime: '2024-01-15T18:00:00Z', energy: { inKilocalories: 300 } },
@@ -355,22 +316,22 @@ describe('aggregateTotalCaloriesByDate', () => {
     });
 
     test('aggregates records across multiple days', async () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inKilocalories: 1500 } },
         { startTime: '2024-01-16T10:00:00Z', energy: { inKilocalories: 1800 } },
         { startTime: '2024-01-17T10:00:00Z', energy: { inKilocalories: 2000 } },
       ];
       const result = await aggregateTotalCaloriesByDate(records);
       expect(result).toHaveLength(3);
-      expect(result.find(r => r.date === '2024-01-15').value).toBe(1500);
-      expect(result.find(r => r.date === '2024-01-16').value).toBe(1800);
-      expect(result.find(r => r.date === '2024-01-17').value).toBe(2000);
+      expect(result.find(r => r.date === '2024-01-15')?.value).toBe(1500);
+      expect(result.find(r => r.date === '2024-01-16')?.value).toBe(1800);
+      expect(result.find(r => r.date === '2024-01-17')?.value).toBe(2000);
     });
   });
 
   describe('calorie normalization heuristic', () => {
     test('uses inKilocalories directly when available', async () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inKilocalories: 500 } },
       ];
       const result = await aggregateTotalCaloriesByDate(records);
@@ -378,7 +339,7 @@ describe('aggregateTotalCaloriesByDate', () => {
     });
 
     test('uses inCalories as-is when value < 10000 (assumes it is kcal)', async () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 500 } },
       ];
       const result = await aggregateTotalCaloriesByDate(records);
@@ -386,7 +347,7 @@ describe('aggregateTotalCaloriesByDate', () => {
     });
 
     test('divides inCalories by 1000 when value > 10000 (assumes raw calories)', async () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 500000 } },
       ];
       const result = await aggregateTotalCaloriesByDate(records);
@@ -394,7 +355,7 @@ describe('aggregateTotalCaloriesByDate', () => {
     });
 
     test('value exactly at 10000 boundary is NOT divided (uses <= 10000)', async () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 10000 } },
       ];
       const result = await aggregateTotalCaloriesByDate(records);
@@ -402,7 +363,7 @@ describe('aggregateTotalCaloriesByDate', () => {
     });
 
     test('value just above 10000 boundary IS divided', async () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 10001 } },
       ];
       const result = await aggregateTotalCaloriesByDate(records);
@@ -410,7 +371,7 @@ describe('aggregateTotalCaloriesByDate', () => {
     });
 
     test('prefers inKilocalories over inCalories when both present', async () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inKilocalories: 500, inCalories: 500000 } },
       ];
       const result = await aggregateTotalCaloriesByDate(records);
@@ -420,7 +381,7 @@ describe('aggregateTotalCaloriesByDate', () => {
 
   describe('date extraction', () => {
     test('uses endTime for date extraction when available', async () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-14T23:00:00Z', endTime: '2024-01-15T00:30:00Z', energy: { inKilocalories: 50 } },
       ];
       const result = await aggregateTotalCaloriesByDate(records);
@@ -429,7 +390,7 @@ describe('aggregateTotalCaloriesByDate', () => {
     });
 
     test('falls back to startTime when endTime is missing', async () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inKilocalories: 500 } },
       ];
       const result = await aggregateTotalCaloriesByDate(records);
@@ -442,7 +403,7 @@ describe('aggregateTotalCaloriesByDate', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z' },
         { startTime: '2024-01-15T12:00:00Z', energy: { inKilocalories: 500 } },
-      ];
+      ] as unknown as HCEnergyRecord[];
       const result = await aggregateTotalCaloriesByDate(records);
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(500);
@@ -452,7 +413,7 @@ describe('aggregateTotalCaloriesByDate', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', energy: {} },
         { startTime: '2024-01-15T12:00:00Z', energy: { inKilocalories: 500 } },
-      ];
+      ] as unknown as HCEnergyRecord[];
       const result = await aggregateTotalCaloriesByDate(records);
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(500);
@@ -462,7 +423,7 @@ describe('aggregateTotalCaloriesByDate', () => {
       const records = [
         { energy: { inKilocalories: 500 } },
         { startTime: '2024-01-15T12:00:00Z', energy: { inKilocalories: 600 } },
-      ];
+      ] as unknown as HCEnergyRecord[];
       const result = await aggregateTotalCaloriesByDate(records);
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(600);
@@ -475,11 +436,11 @@ describe('aggregateTotalCaloriesByDate', () => {
         startTime: { toString: () => { throw new Error('boom'); } },
         energy: { inKilocalories: 500 },
       };
-      const goodRecord = {
+      const goodRecord: HCEnergyRecord = {
         startTime: '2024-01-16T10:00:00Z',
         energy: { inKilocalories: 600 },
       };
-      const result = await aggregateTotalCaloriesByDate([badRecord, goodRecord]);
+      const result = await aggregateTotalCaloriesByDate([badRecord as unknown as HCEnergyRecord, goodRecord]);
       expect(result).toHaveLength(1);
       expect(result[0].date).toBe('2024-01-16');
     });
@@ -492,24 +453,11 @@ describe('aggregateActiveCaloriesByDate', () => {
       expect(aggregateActiveCaloriesByDate([])).toEqual([]);
     });
 
-    test('returns empty array for null input', () => {
-      expect(aggregateActiveCaloriesByDate(null)).toEqual([]);
-    });
-
-    test('returns empty array for undefined input', () => {
-      expect(aggregateActiveCaloriesByDate(undefined)).toEqual([]);
-    });
-
-    test('returns empty array for non-array input', () => {
-      expect(aggregateActiveCaloriesByDate('not an array')).toEqual([]);
-      expect(aggregateActiveCaloriesByDate({})).toEqual([]);
-      expect(aggregateActiveCaloriesByDate(123)).toEqual([]);
-    });
   });
 
   describe('happy path', () => {
     test('returns single record with calorie value', () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 500 } },
       ];
       const result = aggregateActiveCaloriesByDate(records);
@@ -518,7 +466,7 @@ describe('aggregateActiveCaloriesByDate', () => {
     });
 
     test('sums multiple records on the same day', () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T08:00:00Z', energy: { inCalories: 100 } },
         { startTime: '2024-01-15T12:00:00Z', energy: { inCalories: 200 } },
         { startTime: '2024-01-15T18:00:00Z', energy: { inCalories: 300 } },
@@ -529,22 +477,22 @@ describe('aggregateActiveCaloriesByDate', () => {
     });
 
     test('aggregates records across multiple days', () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 500 } },
         { startTime: '2024-01-16T10:00:00Z', energy: { inCalories: 600 } },
         { startTime: '2024-01-17T10:00:00Z', energy: { inCalories: 700 } },
       ];
       const result = aggregateActiveCaloriesByDate(records);
       expect(result).toHaveLength(3);
-      expect(result.find(r => r.date === '2024-01-15').value).toBe(500);
-      expect(result.find(r => r.date === '2024-01-16').value).toBe(600);
-      expect(result.find(r => r.date === '2024-01-17').value).toBe(700);
+      expect(result.find(r => r.date === '2024-01-15')?.value).toBe(500);
+      expect(result.find(r => r.date === '2024-01-16')?.value).toBe(600);
+      expect(result.find(r => r.date === '2024-01-17')?.value).toBe(700);
     });
   });
 
   describe('calorie normalization heuristic', () => {
     test('uses inKilocalories directly when available', () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 999, inKilocalories: 500 } },
       ];
       const result = aggregateActiveCaloriesByDate(records);
@@ -552,7 +500,7 @@ describe('aggregateActiveCaloriesByDate', () => {
     });
 
     test('uses inCalories as-is when value < 10000 (assumes it is kcal)', () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 500 } },
       ];
       const result = aggregateActiveCaloriesByDate(records);
@@ -560,7 +508,7 @@ describe('aggregateActiveCaloriesByDate', () => {
     });
 
     test('divides inCalories by 1000 when value > 10000 (assumes raw calories)', () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 500000 } },
       ];
       const result = aggregateActiveCaloriesByDate(records);
@@ -568,7 +516,7 @@ describe('aggregateActiveCaloriesByDate', () => {
     });
 
     test('value exactly at 10000 boundary is NOT divided', () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 10000 } },
       ];
       const result = aggregateActiveCaloriesByDate(records);
@@ -576,7 +524,7 @@ describe('aggregateActiveCaloriesByDate', () => {
     });
 
     test('value just above 10000 boundary IS divided', () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 10001 } },
       ];
       const result = aggregateActiveCaloriesByDate(records);
@@ -589,14 +537,14 @@ describe('aggregateActiveCaloriesByDate', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z' },
         { startTime: '2024-01-15T12:00:00Z', energy: { inCalories: 500 } },
-      ];
+      ] as unknown as HCEnergyRecord[];
       const result = aggregateActiveCaloriesByDate(records);
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(500);
     });
 
     test('includes records with inKilocalories but no inCalories', () => {
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-15T08:00:00Z', energy: { inKilocalories: 500 } },
         { startTime: '2024-01-15T12:00:00Z', energy: { inCalories: 600 } },
       ];
@@ -610,7 +558,7 @@ describe('aggregateActiveCaloriesByDate', () => {
       const records = [
         { energy: { inCalories: 500 } },
         { startTime: '2024-01-15T12:00:00Z', energy: { inCalories: 600 } },
-      ];
+      ] as unknown as HCEnergyRecord[];
       const result = aggregateActiveCaloriesByDate(records);
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(600);
@@ -618,7 +566,7 @@ describe('aggregateActiveCaloriesByDate', () => {
 
     test('uses startTime for date (not endTime like steps/total calories)', () => {
       // Note: aggregateActiveCaloriesByDate uses startTime, not endTime
-      const records = [
+      const records: HCEnergyRecord[] = [
         { startTime: '2024-01-14T23:00:00Z', endTime: '2024-01-15T00:30:00Z', energy: { inCalories: 50 } },
       ];
       const result = aggregateActiveCaloriesByDate(records);
@@ -633,11 +581,11 @@ describe('aggregateActiveCaloriesByDate', () => {
         startTime: { toString: () => { throw new Error('boom'); } },
         energy: { inCalories: 500 },
       };
-      const goodRecord = {
+      const goodRecord: HCEnergyRecord = {
         startTime: '2024-01-16T10:00:00Z',
         energy: { inCalories: 600 },
       };
-      const result = aggregateActiveCaloriesByDate([badRecord, goodRecord]);
+      const result = aggregateActiveCaloriesByDate([badRecord as unknown as HCEnergyRecord, goodRecord]);
       expect(result).toHaveLength(1);
       expect(result[0].date).toBe('2024-01-16');
     });

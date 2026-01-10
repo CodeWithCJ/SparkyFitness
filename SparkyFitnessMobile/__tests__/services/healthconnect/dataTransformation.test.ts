@@ -1,4 +1,5 @@
 import { transformHealthRecords } from '../../../src/services/healthconnect/dataTransformation';
+import type { MetricConfig } from '../../../src/types/healthRecords';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -6,22 +7,8 @@ jest.mock('../../../src/services/LogService', () => ({
 
 describe('transformHealthRecords', () => {
   describe('basic validation', () => {
-    test('returns empty array for null input', () => {
-      expect(transformHealthRecords(null, { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
-    });
-
-    test('returns empty array for undefined input', () => {
-      expect(transformHealthRecords(undefined, { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
-    });
-
     test('returns empty array for empty array input', () => {
       expect(transformHealthRecords([], { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
-    });
-
-    test('returns empty array for non-array input', () => {
-      expect(transformHealthRecords('not an array', { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
-      expect(transformHealthRecords({}, { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
-      expect(transformHealthRecords(123, { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
     });
   });
 

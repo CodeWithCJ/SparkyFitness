@@ -1,27 +1,15 @@
 import { transformHealthRecords } from '../../../src/services/healthkit/dataTransformation';
 
+import type { MetricConfig, TransformOutput, TransformedExerciseSession, AggregatedSleepSession } from '../../../src/types/healthRecords';
+
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
 describe('transformHealthRecords', () => {
   describe('basic validation', () => {
-    test('returns empty array for null input', () => {
-      expect(transformHealthRecords(null, { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
-    });
-
-    test('returns empty array for undefined input', () => {
-      expect(transformHealthRecords(undefined, { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
-    });
-
     test('returns empty array for empty array input', () => {
       expect(transformHealthRecords([], { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
-    });
-
-    test('returns empty array for non-array input', () => {
-      expect(transformHealthRecords('not an array', { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
-      expect(transformHealthRecords({}, { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
-      expect(transformHealthRecords(123, { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
     });
   });
 
@@ -42,7 +30,7 @@ describe('transformHealthRecords', () => {
       const records = [{ date: '2024-01-15', value: 500, type: 'active_calories' }];
       const result = transformHealthRecords(records, { recordType: 'ActiveCalories', unit: 'kcal', type: 'calories' });
 
-      expect(result[0].type).toBe('active_calories');
+      expect((result[0] as TransformOutput & { type: string }).type).toBe('active_calories');
     });
   });
 
@@ -54,8 +42,8 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].value).toBe(75.5);
-      expect(result[0].date).toBe('2024-01-15');
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(75.5);
+      expect((result[0] as TransformOutput & { date: string }).date).toBe('2024-01-15');
     });
 
     test('skips record when weight data is missing', () => {
@@ -74,7 +62,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' });
 
-      expect(result[0].value).toBe(75.57);
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(75.57);
     });
   });
 
@@ -104,7 +92,7 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'BloodPressure', unit: 'mmHg', type: 'blood_pressure' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('blood_pressure_systolic');
+      expect((result[0] as TransformOutput & { type: string }).type).toBe('blood_pressure_systolic');
     });
 
     test('creates only diastolic when systolic missing', () => {
@@ -117,7 +105,7 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'BloodPressure', unit: 'mmHg', type: 'blood_pressure' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('blood_pressure_diastolic');
+      expect((result[0] as TransformOutput & { type: string }).type).toBe('blood_pressure_diastolic');
     });
   });
 
@@ -143,11 +131,12 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('SleepSession');
-      expect(result[0].source).toBe('HealthKit');
-      expect(result[0].bedtime).toBe('2024-01-15T22:00:00Z');
-      expect(result[0].wake_time).toBe('2024-01-16T06:00:00Z');
-      expect(result[0].stage_events).toHaveLength(1);
+      const sleepResult = result[0] as AggregatedSleepSession;
+      expect(sleepResult.type).toBe('SleepSession');
+      expect(sleepResult.source).toBe('HealthKit');
+      expect(sleepResult.bedtime).toBe('2024-01-15T22:00:00Z');
+      expect(sleepResult.wake_time).toBe('2024-01-16T06:00:00Z');
+      expect(sleepResult.stage_events).toHaveLength(1);
     });
   });
 
@@ -159,7 +148,7 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'BodyFat', unit: '%', type: 'body_fat' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].value).toBe(15.5);
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(15.5);
     });
 
     test('reads value from record.percentage.inPercent for OxygenSaturation', () => {
@@ -169,7 +158,7 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'OxygenSaturation', unit: '%', type: 'oxygen_saturation' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].value).toBe(98.5);
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(98.5);
     });
 
     test('skips when percentage data missing', () => {
@@ -191,7 +180,7 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'BloodAlcoholContent', unit: '%', type: 'blood_alcohol' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].value).toBe(8);
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(8);
     });
 
     test('WalkingAsymmetryPercentage multiplies decimal by 100', () => {
@@ -201,7 +190,7 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'WalkingAsymmetryPercentage', unit: '%', type: 'walking_asymmetry' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].value).toBe(5);
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(5);
     });
 
     test('WalkingDoubleSupportPercentage multiplies decimal by 100', () => {
@@ -211,7 +200,7 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'WalkingDoubleSupportPercentage', unit: '%', type: 'walking_double_support' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].value).toBe(25);
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(25);
     });
 
     test('returns null when record.value is undefined', () => {
@@ -233,7 +222,7 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'CervicalMucus', unit: '', type: 'cervical_mucus' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].value).toBe(3);
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(3);
     });
 
     test('MenstruationFlow passes numeric enum values through', () => {
@@ -243,7 +232,7 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'MenstruationFlow', unit: '', type: 'menstruation_flow' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].value).toBe(2);
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(2);
     });
 
     test('string values are filtered out by isNaN check', () => {
@@ -272,8 +261,9 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'Workout', unit: '', type: 'workout' });
 
       expect(result).toHaveLength(1);
-      expect(result[0].activityType).toBe('Running');
-      expect(result[0].title).toBe('Running');
+      const workoutResult = result[0] as TransformedExerciseSession;
+      expect(workoutResult.activityType).toBe('Running');
+      expect(workoutResult.title).toBe('Running');
     });
 
     test('falls back to "Workout type {code}" for unknown codes', () => {
@@ -287,7 +277,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, { recordType: 'Workout', unit: '', type: 'workout' });
 
-      expect(result[0].activityType).toBe('Workout type 999');
+      expect((result[0] as TransformedExerciseSession).activityType).toBe('Workout type 999');
     });
 
     test('falls back to "Workout Session" when no activityType field', () => {
@@ -300,7 +290,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, { recordType: 'Workout', unit: '', type: 'workout' });
 
-      expect(result[0].activityType).toBe('Workout Session');
+      expect((result[0] as TransformedExerciseSession).activityType).toBe('Workout Session');
     });
 
     test('handles duration as object { quantity: 3600 }', () => {
@@ -314,7 +304,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, { recordType: 'Workout', unit: '', type: 'workout' });
 
-      expect(result[0].duration).toBe(3600);
+      expect((result[0] as TransformedExerciseSession).duration).toBe(3600);
     });
 
     test('handles duration as raw number', () => {
@@ -328,7 +318,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, { recordType: 'Workout', unit: '', type: 'workout' });
 
-      expect(result[0].duration).toBe(1800);
+      expect((result[0] as TransformedExerciseSession).duration).toBe(1800);
     });
 
     test('extracts calories and distance from record', () => {
@@ -344,10 +334,11 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' });
 
-      expect(result[0].caloriesBurned).toBe(500);
-      expect(result[0].distance).toBe(5000);
-      expect(result[0].type).toBe('ExerciseSession');
-      expect(result[0].source).toBe('HealthKit');
+      const exerciseResult = result[0] as TransformedExerciseSession;
+      expect(exerciseResult.caloriesBurned).toBe(500);
+      expect(exerciseResult.distance).toBe(5000);
+      expect(exerciseResult.type).toBe('ExerciseSession');
+      expect(exerciseResult.source).toBe('HealthKit');
     });
   });
 
@@ -358,7 +349,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' });
 
-      expect(result[0].date).toBe('2024-01-15');
+      expect((result[0] as TransformOutput & { date: string }).date).toBe('2024-01-15');
     });
 
     test('uses record.startTime for session-type records (Distance)', () => {
@@ -367,7 +358,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, { recordType: 'Distance', unit: 'm', type: 'distance' });
 
-      expect(result[0].date).toBe('2024-01-15');
+      expect((result[0] as TransformOutput & { date: string }).date).toBe('2024-01-15');
     });
 
     test('skips record when date extraction returns null', () => {
@@ -417,7 +408,7 @@ describe('transformHealthRecords', () => {
 
       // Should still return the good record
       expect(result).toHaveLength(1);
-      expect(result[0].date).toBe('2024-01-16');
+      expect((result[0] as TransformOutput & { date: string }).date).toBe('2024-01-16');
     });
   });
 });

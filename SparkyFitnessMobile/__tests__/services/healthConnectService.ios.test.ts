@@ -9,6 +9,9 @@ import {
   queryQuantitySamples,
 } from '@kingstinct/react-native-healthkit';
 
+import type { HealthMetricStates } from '../../src/types/healthRecords';
+import type { SyncDuration } from '../../src/services/healthkit/preferences';
+
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
@@ -25,18 +28,23 @@ jest.mock('../../src/constants/HealthMetrics', () => ({
   ],
 }));
 
-const api = require('../../src/services/api');
+const mockIsHealthDataAvailable = isHealthDataAvailable as jest.Mock;
+const mockQueryStatisticsForQuantity = queryStatisticsForQuantity as jest.Mock;
+const mockQueryQuantitySamples = queryQuantitySamples as jest.Mock;
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const api = require('../../src/services/api') as { syncHealthData: jest.Mock };
 
 describe('syncHealthData (iOS)', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     // Initialize HealthKit as available for most tests
-    isHealthDataAvailable.mockResolvedValue(true);
+    mockIsHealthDataAvailable.mockResolvedValue(true);
     await initHealthConnect();
   });
 
   test('returns success with no data when no metrics enabled', async () => {
-    const result = await syncHealthData('24h', {});
+    const result = await syncHealthData('24h' as SyncDuration, {} as HealthMetricStates);
 
     expect(result.success).toBe(true);
     expect(result.message).toBe('No new health data to sync.');
@@ -45,12 +53,12 @@ describe('syncHealthData (iOS)', () => {
 
   test('sends transformed data to API and returns response', async () => {
     // Mock Steps aggregation query
-    queryStatisticsForQuantity.mockResolvedValue({
+    mockQueryStatisticsForQuantity.mockResolvedValue({
       sumQuantity: { quantity: 5000 },
     });
     api.syncHealthData.mockResolvedValue({ processed: 1, success: true });
 
-    const result = await syncHealthData('today', { isStepsSyncEnabled: true });
+    const result = await syncHealthData('today' as SyncDuration, { isStepsSyncEnabled: true });
 
     expect(result.success).toBe(true);
     expect(result.apiResponse).toEqual({ processed: 1, success: true });
@@ -69,12 +77,12 @@ describe('syncHealthData (iOS)', () => {
   });
 
   test('returns error when API call fails', async () => {
-    queryStatisticsForQuantity.mockResolvedValue({
+    mockQueryStatisticsForQuantity.mockResolvedValue({
       sumQuantity: { quantity: 5000 },
     });
     api.syncHealthData.mockRejectedValue(new Error('Network error'));
 
-    const result = await syncHealthData('today', { isStepsSyncEnabled: true });
+    const result = await syncHealthData('today' as SyncDuration, { isStepsSyncEnabled: true });
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Network error');
@@ -82,15 +90,15 @@ describe('syncHealthData (iOS)', () => {
 
   test('continues processing when one metric returns no data', async () => {
     // Steps returns no data (this is the behavior when query fails - it returns empty)
-    queryStatisticsForQuantity.mockResolvedValue(null);
+    mockQueryStatisticsForQuantity.mockResolvedValue(null);
     // HeartRate succeeds
     const today = new Date().toISOString();
-    queryQuantitySamples.mockResolvedValue([
+    mockQueryQuantitySamples.mockResolvedValue([
       { startDate: today, quantity: 72 },
     ]);
     api.syncHealthData.mockResolvedValue({ success: true });
 
-    const result = await syncHealthData('today', {
+    const result = await syncHealthData('today' as SyncDuration, {
       isStepsSyncEnabled: true,
       isHeartRateSyncEnabled: true,
     });

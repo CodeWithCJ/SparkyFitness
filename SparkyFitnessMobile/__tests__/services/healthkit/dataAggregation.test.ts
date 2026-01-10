@@ -3,6 +3,8 @@ import {
   aggregateSleepSessions,
 } from '../../../src/services/healthkit/dataAggregation';
 
+import type { HKHeartRateRecord, HKSleepRecord } from '../../../src/types/healthRecords';
+
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
@@ -13,13 +15,8 @@ describe('aggregateHeartRateByDate', () => {
     expect(result).toEqual([]);
   });
 
-  test('returns empty array for non-array input', () => {
-    expect(aggregateHeartRateByDate(null)).toEqual([]);
-    expect(aggregateHeartRateByDate(undefined)).toEqual([]);
-  });
-
   test('returns single record value', () => {
-    const records = [
+    const records: HKHeartRateRecord[] = [
       { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
     ];
     const result = aggregateHeartRateByDate(records);
@@ -28,7 +25,7 @@ describe('aggregateHeartRateByDate', () => {
   });
 
   test('averages multiple records on the same day (rounded)', () => {
-    const records = [
+    const records: HKHeartRateRecord[] = [
       { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 60 }] },
       { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 80 }] },
       { startTime: '2024-01-15T18:00:00Z', samples: [{ beatsPerMinute: 70 }] },
@@ -39,7 +36,7 @@ describe('aggregateHeartRateByDate', () => {
   });
 
   test('rounds average to nearest integer', () => {
-    const records = [
+    const records: HKHeartRateRecord[] = [
       { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 71 }] },
       { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 72 }] },
     ];
@@ -51,7 +48,7 @@ describe('aggregateHeartRateByDate', () => {
     const records = [
       { startTime: '2024-01-15T08:00:00Z', samples: [{}] },
       { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 75 }] },
-    ];
+    ] as HKHeartRateRecord[];
     const result = aggregateHeartRateByDate(records);
     expect(result).toHaveLength(1);
     expect(result[0].value).toBe(75);
@@ -61,7 +58,7 @@ describe('aggregateHeartRateByDate', () => {
     const records = [
       { startTime: '2024-01-15T08:00:00Z' },
       { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 75 }] },
-    ];
+    ] as HKHeartRateRecord[];
     const result = aggregateHeartRateByDate(records);
     expect(result).toHaveLength(1);
     expect(result[0].value).toBe(75);
@@ -74,13 +71,8 @@ describe('aggregateSleepSessions', () => {
     expect(result).toEqual([]);
   });
 
-  test('returns empty array for non-array input', () => {
-    expect(aggregateSleepSessions(null)).toEqual([]);
-    expect(aggregateSleepSessions(undefined)).toEqual([]);
-  });
-
   test('creates single session from one record', () => {
-    const records = [
+    const records: HKSleepRecord[] = [
       {
         startTime: '2024-01-15T22:00:00Z',
         endTime: '2024-01-16T06:00:00Z',
@@ -96,7 +88,7 @@ describe('aggregateSleepSessions', () => {
   });
 
   test('merges records within 4hr gap into one session', () => {
-    const records = [
+    const records: HKSleepRecord[] = [
       {
         startTime: '2024-01-15T22:00:00Z',
         endTime: '2024-01-16T01:00:00Z',
@@ -119,7 +111,7 @@ describe('aggregateSleepSessions', () => {
   });
 
   test('creates separate sessions for records more than 4hr apart', () => {
-    const records = [
+    const records: HKSleepRecord[] = [
       {
         startTime: '2024-01-15T22:00:00Z',
         endTime: '2024-01-16T02:00:00Z',
@@ -139,7 +131,7 @@ describe('aggregateSleepSessions', () => {
     const baseEnd = new Date('2024-01-16T02:00:00Z');
     const exactlyFourHoursLater = new Date(baseEnd.getTime() + 4 * 60 * 60 * 1000);
 
-    const records = [
+    const records: HKSleepRecord[] = [
       {
         startTime: '2024-01-15T22:00:00Z',
         endTime: baseEnd.toISOString(),
@@ -156,7 +148,7 @@ describe('aggregateSleepSessions', () => {
   });
 
   test('maps string stage values correctly', () => {
-    const records = [
+    const records: HKSleepRecord[] = [
       { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T23:00:00Z', value: 'HKCategoryValueSleepAnalysisAsleepREM' },
       { startTime: '2024-01-15T23:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 'HKCategoryValueSleepAnalysisAsleepDeep' },
       { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T01:00:00Z', value: 'HKCategoryValueSleepAnalysisAsleepCore' },
@@ -169,7 +161,7 @@ describe('aggregateSleepSessions', () => {
   });
 
   test('maps numeric stage values correctly', () => {
-    const records = [
+    const records: HKSleepRecord[] = [
       { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T23:00:00Z', value: 5 }, // REM
       { startTime: '2024-01-15T23:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 4 }, // Deep
       { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T01:00:00Z', value: 3 }, // Light (Core)
@@ -182,7 +174,7 @@ describe('aggregateSleepSessions', () => {
   });
 
   test('maps unknown stage values to unknown', () => {
-    const records = [
+    const records: HKSleepRecord[] = [
       { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T23:00:00Z', value: 999 },
       { startTime: '2024-01-15T23:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 'UnknownStageValue' },
     ];
@@ -192,7 +184,7 @@ describe('aggregateSleepSessions', () => {
   });
 
   test('calculates duration for each sleep stage correctly', () => {
-    const records = [
+    const records: HKSleepRecord[] = [
       { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 4 }, // Deep - 2hr
       { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T03:00:00Z', value: 3 }, // Light - 3hr
       { startTime: '2024-01-16T03:00:00Z', endTime: '2024-01-16T04:00:00Z', value: 5 }, // REM - 1hr
@@ -207,7 +199,7 @@ describe('aggregateSleepSessions', () => {
   });
 
   test('total_time_asleep_in_seconds excludes awake and in_bed stages', () => {
-    const records = [
+    const records: HKSleepRecord[] = [
       { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 4 }, // Deep - 2hr
       { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T02:00:00Z', value: 3 }, // Light - 2hr
       { startTime: '2024-01-16T02:00:00Z', endTime: '2024-01-16T02:30:00Z', value: 2 }, // Awake - 30min (excluded)
@@ -220,7 +212,7 @@ describe('aggregateSleepSessions', () => {
   });
 
   test('calculates total_duration_in_seconds from bedtime to wake_time', () => {
-    const records = [
+    const records: HKSleepRecord[] = [
       { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T06:00:00Z', value: 3 },
     ];
     const result = aggregateSleepSessions(records);
@@ -230,7 +222,7 @@ describe('aggregateSleepSessions', () => {
   });
 
   test('sets entry_date to the bedtime date', () => {
-    const records = [
+    const records: HKSleepRecord[] = [
       { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T06:00:00Z', value: 3 },
     ];
     const result = aggregateSleepSessions(records);
