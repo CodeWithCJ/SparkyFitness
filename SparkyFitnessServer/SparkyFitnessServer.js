@@ -70,6 +70,10 @@ const withingsService = require("./integrations/withings/withingsService"); // I
 const garminConnectService = require("./integrations/garminconnect/garminConnectService"); // Import garminConnectService
 const garminService = require("./services/garminService"); // Import garminService
 const mealTypeRoutes = require("./routes/mealTypeRoutes");
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
+const redoc = require('redoc-express');
+const swaggerSpecs = require('./config/swagger');
 
 const app = express();
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
