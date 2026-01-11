@@ -17,6 +17,10 @@ export default defineConfig(({ mode }) => {
         changeOrigin: true,
         // No rewrite needed, as the backend expects /api/withings
       },
+      "/api-docs": {
+        target: "http://localhost:3010",
+        changeOrigin: true,
+      },
       "/api": {
         target: "http://localhost:3010",
         changeOrigin: true,

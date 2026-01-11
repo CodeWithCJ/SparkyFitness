@@ -63,6 +63,10 @@ const externalProviderRepository = require('./models/externalProviderRepository'
 const withingsService = require('./integrations/withings/withingsService'); // Import withingsService
 const garminConnectService = require('./integrations/garminconnect/garminConnectService'); // Import garminConnectService
 const garminService = require('./services/garminService'); // Import garminService
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
+const redoc = require('redoc-express');
+const swaggerSpecs = require('./config/swagger');
 
 
 const app = express();
@@ -338,6 +342,29 @@ app.use('/workout-plan-templates', require('./routes/workoutPlanTemplateRoutes')
 app.use('/review', reviewRoutes);
 app.use('/onboarding', onboardingRoutes); // Add onboarding routes
 app.use('/custom-nutrients', customNutrientRoutes); // Add custom nutrient routes
+
+// Serve Swagger UI
+app.use('/api-docs/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
+// Serve Redoc
+app.get(
+  '/api-docs/redoc',
+  redoc({
+    title: 'API Docs',
+    specUrl: '/api-docs/json',
+  })
+);
+
+// Serve the raw JSON spec
+app.get('/api-docs/json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpecs);
+});
+
+// Redirect /api-docs to /api-docs/swagger
+app.get('/api-docs', (req, res) => {
+  res.redirect('/api-docs/swagger');
+});
 
 // Temporary debug route to log incoming requests for meal plan templates
 app.use(
