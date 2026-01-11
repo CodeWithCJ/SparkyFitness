@@ -29,6 +29,8 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
 
   const transformedData: TransformOutput[] = [];
   const { recordType, unit, type } = metricConfig;
+  let successCount = 0;
+  let skipCount = 0;
 
   records.forEach((record: unknown, index: number) => {
     try {
@@ -752,11 +754,20 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
           unit: unit,
         };
         transformedData.push(transformedRecord);
+        successCount++;
+      } else {
+        skipCount++;
       }
     } catch (error) {
+      skipCount++;
       addLog(`[HealthConnectService] Error transforming ${recordType} record at index ${index}: ${(error as Error).message}`, 'warn', 'WARNING');
     }
   });
+
+  // Log transformation summary for debugging
+  if (skipCount > 0) {
+    addLog(`[HealthConnectService] ${recordType} transformation: ${successCount} succeeded, ${skipCount} skipped (of ${records.length} total)`, 'debug');
+  }
 
   return transformedData;
 };

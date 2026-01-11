@@ -217,6 +217,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
     if (newValue) {
       const allPermissions = HEALTH_METRICS.flatMap(metric => metric.permissions);
+      addLog(`[SettingsScreen] Requesting permissions for all ${HEALTH_METRICS.length} metrics`, 'debug');
 
       try {
         const granted = await requestHealthPermissions(allPermissions);
@@ -231,6 +232,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             newHealthMetricStates[metric.stateKey] = false;
           });
           addLog('[SettingsScreen] Not all permissions were granted. Reverting "Enable All".', 'warn', 'WARNING');
+        } else {
+          addLog(`[SettingsScreen] All ${HEALTH_METRICS.length} metric permissions granted`, 'info', 'SUCCESS');
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
@@ -241,11 +244,25 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         });
         addLog(`[SettingsScreen] Error requesting all permissions: ${errorMessage}`, 'error', 'ERROR');
       }
+    } else {
+      addLog(`[SettingsScreen] Disabling all ${HEALTH_METRICS.length} metrics`, 'debug');
     }
 
     setHealthMetricStates(newHealthMetricStates);
+
+    // Save preferences one by one and track any failures
+    const saveErrors: string[] = [];
     for (const metric of HEALTH_METRICS) {
-      await saveHealthPreference(metric.preferenceKey, newHealthMetricStates[metric.stateKey]);
+      try {
+        await saveHealthPreference(metric.preferenceKey, newHealthMetricStates[metric.stateKey]);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        saveErrors.push(`${metric.label}: ${errorMessage}`);
+      }
+    }
+
+    if (saveErrors.length > 0) {
+      addLog(`[SettingsScreen] Failed to save ${saveErrors.length}/${HEALTH_METRICS.length} metric preferences`, 'warn', 'WARNING', saveErrors);
     }
   };
 

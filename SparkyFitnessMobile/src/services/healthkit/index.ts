@@ -315,11 +315,14 @@ const getAggregatedDataByDate = async (
   config: AggregationConfig
 ): Promise<AggregatedHealthRecord[]> => {
   if (!isHealthKitAvailable) {
+    addLog(`[HealthKitService] HealthKit not available for ${config.logLabel} aggregation`, 'debug');
     return [];
   }
 
   const results: AggregatedHealthRecord[] = [];
   const currentDate = new Date(startDate);
+  let daysQueried = 0;
+  let daysWithData = 0;
 
   while (currentDate <= endDate) {
     const dayStart = new Date(currentDate);
@@ -334,6 +337,7 @@ const getAggregatedDataByDate = async (
       dayEnd.setTime(now.getTime());
     }
 
+    daysQueried++;
     try {
       const stats = await queryStatisticsForQuantity(
         config.identifier as Parameters<typeof queryStatisticsForQuantity>[0],
@@ -350,6 +354,7 @@ const getAggregatedDataByDate = async (
       );
 
       if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
+        daysWithData++;
         const dateStr = dayStart.toISOString().split('T')[0];
         results.push({
           date: dateStr,
@@ -363,6 +368,12 @@ const getAggregatedDataByDate = async (
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  if (daysWithData === 0) {
+    addLog(`[HealthKitService] No ${config.logLabel} data found for ${daysQueried} days queried`, 'debug');
+  } else {
+    addLog(`[HealthKitService] ${config.logLabel} aggregation: ${daysWithData}/${daysQueried} days with data`, 'debug');
   }
 
   return results;
@@ -379,11 +390,15 @@ export const getAggregatedTotalCaloriesByDate = async (
   endDate: Date
 ): Promise<AggregatedHealthRecord[]> => {
   if (!isHealthKitAvailable) {
+    addLog(`[HealthKitService] HealthKit not available for total calories aggregation`, 'debug');
     return [];
   }
 
   const results: AggregatedHealthRecord[] = [];
   const currentDate = new Date(startDate);
+  let daysQueried = 0;
+  let daysWithData = 0;
+  let errorCount = 0;
 
   while (currentDate <= endDate) {
     const dayStart = new Date(currentDate);
@@ -397,6 +412,7 @@ export const getAggregatedTotalCaloriesByDate = async (
       dayEnd.setTime(now.getTime());
     }
 
+    daysQueried++;
     try {
       // Query both basal and active with full precision, then sum
       const [basalStats, activeStats] = await Promise.all([
@@ -416,6 +432,7 @@ export const getAggregatedTotalCaloriesByDate = async (
       const active = activeStats?.sumQuantity?.quantity || 0;
 
       if (basal > 0 || active > 0) {
+        daysWithData++;
         const dateStr = dayStart.toISOString().split('T')[0];
         const total = Math.round(basal + active);
         results.push({
@@ -425,11 +442,18 @@ export const getAggregatedTotalCaloriesByDate = async (
         });
       }
     } catch (error) {
+      errorCount++;
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[HealthKitService] Failed to get aggregated total calories: ${message}`, 'error', 'ERROR');
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  if (daysWithData === 0) {
+    addLog(`[HealthKitService] No total calories data found for ${daysQueried} days queried${errorCount > 0 ? `, ${errorCount} errors` : ''}`, 'debug');
+  } else {
+    addLog(`[HealthKitService] Total calories aggregation: ${daysWithData}/${daysQueried} days with data${errorCount > 0 ? `, ${errorCount} errors` : ''}`, 'debug');
   }
 
   return results;

@@ -36,6 +36,8 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
 
   const transformedData: TransformOutput[] = [];
   const { recordType, unit, type } = metricConfig;
+  let successCount = 0;
+  let skipCount = 0;
 
   const getDateString = (date: unknown): string | null => {
     if (!date) return null;
@@ -267,11 +269,20 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
           unit: unit,
         };
         transformedData.push(transformedRecord);
+        successCount++;
+      } else {
+        skipCount++;
       }
     } catch (error) {
+      skipCount++;
       addLog(`[HealthKitService] Error transforming record: ${(error as Error).message}`, 'warn', 'WARNING');
     }
   });
+
+  // Log transformation summary for debugging
+  if (skipCount > 0) {
+    addLog(`[HealthKitService] ${recordType} transformation: ${successCount} succeeded, ${skipCount} skipped (of ${records.length} total)`, 'debug');
+  }
 
   return transformedData;
 };

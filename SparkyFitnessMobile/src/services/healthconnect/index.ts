@@ -106,10 +106,15 @@ export const getAggregatedStepsByDate = async (
     const records = rawRecords.records || [];
 
     if (records.length === 0) {
+      addLog(`[HealthConnectService] No step records found for date range`, 'debug');
       return [];
     }
 
+    addLog(`[HealthConnectService] Processing ${records.length} step records`, 'debug');
+
     // Aggregate by date
+    let processedCount = 0;
+    let errorCount = 0;
     const aggregatedData = records.reduce<Record<string, number>>((acc, record) => {
       try {
         const timeToUse = record.endTime || record.startTime;
@@ -120,7 +125,9 @@ export const getAggregatedStepsByDate = async (
           acc[date] = 0;
         }
         acc[date] += steps;
+        processedCount++;
       } catch (error) {
+        errorCount++;
         const message = error instanceof Error ? error.message : String(error);
         addLog(`[HealthConnectService] Error processing step record: ${message}`);
       }
@@ -132,6 +139,8 @@ export const getAggregatedStepsByDate = async (
       value: aggregatedData[date],
       type: 'step',
     }));
+
+    addLog(`[HealthConnectService] Steps aggregation: ${processedCount} records processed, ${results.length} days, ${errorCount} errors`, 'debug');
 
     return results;
   } catch (error) {
@@ -159,10 +168,15 @@ export const getAggregatedActiveCaloriesByDate = async (
     const records = rawRecords.records || [];
 
     if (records.length === 0) {
+      addLog(`[HealthConnectService] No active calorie records found for date range`, 'debug');
       return [];
     }
 
+    addLog(`[HealthConnectService] Processing ${records.length} active calorie records`, 'debug');
+
     // Aggregate by date
+    let processedCount = 0;
+    let errorCount = 0;
     const aggregatedData = records.reduce<Record<string, number>>((acc, record) => {
       try {
         const timeToUse = record.endTime || record.startTime;
@@ -173,7 +187,9 @@ export const getAggregatedActiveCaloriesByDate = async (
           acc[date] = 0;
         }
         acc[date] += calories;
+        processedCount++;
       } catch (error) {
+        errorCount++;
         const message = error instanceof Error ? error.message : String(error);
         addLog(`[HealthConnectService] Error processing calorie record: ${message}`);
       }
@@ -185,6 +201,8 @@ export const getAggregatedActiveCaloriesByDate = async (
       value: Math.round(aggregatedData[date]),
       type: 'active_calories',
     }));
+
+    addLog(`[HealthConnectService] Active calories aggregation: ${processedCount} records processed, ${results.length} days, ${errorCount} errors`, 'debug');
 
     return results;
   } catch (error) {
