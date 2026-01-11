@@ -1,52 +1,96 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const format = require('pg-format');
+const { getClient } = require("../db/poolManager");
+const { log } = require("../config/logging");
+const format = require("pg-format");
 
 async function createMealPlanTemplate(planData) {
-    const client = await getClient(planData.user_id); // User-specific operation
-    try {
-        log('info', 'createMealPlanTemplate - planData:', planData);
-        await client.query('BEGIN');
+  const client = await getClient(planData.user_id); // User-specific operation
+  try {
+    log("info", "createMealPlanTemplate - planData:", planData);
+    await client.query("BEGIN");
 
-        const insertTemplateQuery = `
+    const insertTemplateQuery = `
             INSERT INTO meal_plan_templates (user_id, plan_name, description, start_date, end_date, is_active)
             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
-        const templateValues = [
-            planData.user_id,
-            planData.plan_name ?? '',
-            planData.description ?? '',
-            planData.start_date ?? new Date(),
-            planData.end_date,
-            planData.is_active ?? false
-        ];
+    const templateValues = [
+      planData.user_id,
+      planData.plan_name ?? "",
+      planData.description ?? "",
+      planData.start_date ?? new Date(),
+      planData.end_date,
+      planData.is_active ?? false,
+    ];
 
-        log('info', 'createMealPlanTemplate - insertTemplateQuery:', insertTemplateQuery);
-        log('info', 'createMealPlanTemplate - templateValues:', templateValues);
+    log(
+      "info",
+      "createMealPlanTemplate - insertTemplateQuery:",
+      insertTemplateQuery
+    );
+    log("info", "createMealPlanTemplate - templateValues:", templateValues);
 
-        const templateResult = await client.query(insertTemplateQuery, templateValues);
-        const newTemplate = templateResult.rows[0];
+    const templateResult = await client.query(
+      insertTemplateQuery,
+      templateValues
+    );
+    const newTemplate = templateResult.rows[0];
 
-        if (planData.assignments && planData.assignments.length > 0) {
-            const assignmentValues = planData.assignments.map(a => {
-                if (a.item_type === 'meal') {
-                    return [newTemplate.id, a.day_of_week, a.meal_type, a.item_type, a.meal_id, null, null, a.quantity || 1.0, a.unit || 'serving'];
-                } else if (a.item_type === 'food') {
-                    return [newTemplate.id, a.day_of_week, a.meal_type, a.item_type, null, a.food_id, a.variant_id, a.quantity, a.unit];
-                }
-                return []; // Should not happen
-            });
-            const assignmentQuery = format(
-                `INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type, item_type, meal_id, food_id, variant_id, quantity, unit) VALUES %L`,
-                assignmentValues
-            );
-            log('info', 'createMealPlanTemplate - assignmentQuery:', assignmentQuery);
-            await client.query(assignmentQuery);
-            log('info', 'createMealPlanTemplate - Executed assignmentQuery');
+    if (planData.assignments && planData.assignments.length > 0) {
+      const mealTypesRes = await client.query(
+        "SELECT id, name FROM meal_types WHERE user_id = $1 OR user_id IS NULL",
+        [planData.user_id]
+      );
+      const mealTypeMap = new Map();
+      mealTypesRes.rows.forEach((r) =>
+        mealTypeMap.set(r.name.toLowerCase(), r.id)
+      );
+
+      const assignmentValues = planData.assignments.map((a) => {
+        let typeId = a.meal_type_id;
+        if (!typeId && a.meal_type_id) {
+          typeId = mealTypeMap.get(a.meal_type_id);
+        }
+        if (!typeId) {
+          throw new Error(`Invalid meal type: ${a.meal_type_id}`);
         }
 
-        await client.query('COMMIT');
-        log('info', 'createMealPlanTemplate - Committed transaction');
-        const finalQuery = `
+        if (a.item_type === "meal") {
+          return [
+            newTemplate.id,
+            a.day_of_week,
+            typeId,
+            a.item_type,
+            a.meal_id,
+            null,
+            null,
+            a.quantity || 1.0,
+            a.unit || "serving",
+          ];
+        } else if (a.item_type === "food") {
+          return [
+            newTemplate.id,
+            a.day_of_week,
+           typeId,
+            a.item_type,
+            null,
+            a.food_id,
+            a.variant_id,
+            a.quantity,
+            a.unit,
+          ];
+        }
+        return []; // Should not happen
+      });
+      const assignmentQuery = format(
+        `INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type_id, item_type, meal_id, food_id, variant_id, quantity, unit) VALUES %L`,
+        assignmentValues
+      );
+      log("info", "createMealPlanTemplate - assignmentQuery:", assignmentQuery);
+      await client.query(assignmentQuery);
+      log("info", "createMealPlanTemplate - Executed assignmentQuery");
+    }
+
+    await client.query("COMMIT");
+    log("info", "createMealPlanTemplate - Committed transaction");
+    const finalQuery = `
             SELECT
                 t.*,
                 COALESCE(
@@ -55,7 +99,8 @@ async function createMealPlanTemplate(planData) {
                             json_build_object(
                                 'id', a.id,
                                 'day_of_week', a.day_of_week,
-                                'meal_type', a.meal_type,
+                                'meal_type', mt.name,
+                                'meal_type_id', a.meal_type_id,
                                 'item_type', a.item_type,
                                 'meal_id', a.meal_id,
                                 'meal_name', m.name,
@@ -64,9 +109,10 @@ async function createMealPlanTemplate(planData) {
                                 'variant_id', a.variant_id,
                                 'quantity', a.quantity,
                                 'unit', a.unit
-                            )
+                            ) ORDER BY mt.sort_order ASC
                         )
                         FROM meal_plan_template_assignments a
+                        LEFT JOIN meal_types mt ON a.meal_type_id = mt.id
                         LEFT JOIN meals m ON a.meal_id = m.id
                         LEFT JOIN foods f ON a.food_id = f.id
                         WHERE a.template_id = t.id
@@ -76,42 +122,43 @@ async function createMealPlanTemplate(planData) {
             FROM meal_plan_templates t
             WHERE t.id = $1
         `;
-        const finalResult = await client.query(finalQuery, [newTemplate.id]);
-        return finalResult.rows[0];
-    } catch (error) {
-        await client.query('ROLLBACK');
-        log('error', `Error creating meal plan template: ${error.message}`, error);
-        throw error;
-    } finally {
-        client.release();
-    }
+    const finalResult = await client.query(finalQuery, [newTemplate.id]);
+    return finalResult.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    log("error", `Error creating meal plan template: ${error.message}`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function getMealPlanTemplatesByUserId(userId) {
-    const client = await getClient(userId); // User-specific operation
-    try {
-        const query = `
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const query = `
             SELECT
                 t.*
             FROM meal_plan_templates t
             WHERE t.user_id = $1
             ORDER BY t.start_date DESC
         `;
-        const result = await client.query(query, [userId]);
-        return result.rows;
-    } finally {
-        client.release();
-    }
+    const result = await client.query(query, [userId]);
+    return result.rows;
+  } finally {
+    client.release();
+  }
 }
 
 async function getMealPlanTemplateAssignments(templateId, userId) {
-    const client = await getClient(userId); // User-specific operation
-    try {
-        const query = `
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const query = `
             SELECT
                 a.id,
                 a.day_of_week,
-                a.meal_type,
+                mt.name as meal_type,
+                a.meal_type_id,
                 a.item_type,
                 a.meal_id,
                 m.name as meal_name,
@@ -121,57 +168,103 @@ async function getMealPlanTemplateAssignments(templateId, userId) {
                 a.quantity,
                 a.unit
             FROM meal_plan_template_assignments a
+            LEFT JOIN meal_types mt ON a.meal_type_id = mt.id
             LEFT JOIN meals m ON a.meal_id = m.id
             LEFT JOIN foods f ON a.food_id = f.id
             WHERE a.template_id = $1
+            ORDER BY a.day_of_week, mt.sort_order
         `;
-        const result = await client.query(query, [templateId]);
-        return result.rows;
-    } finally {
-        client.release();
-    }
+    const result = await client.query(query, [templateId]);
+    return result.rows;
+  } finally {
+    client.release();
+  }
 }
 
 async function updateMealPlanTemplate(planId, planData) {
-    const client = await getClient(planData.user_id); // User-specific operation
-    try {
-        await client.query('BEGIN');
+  const client = await getClient(planData.user_id); // User-specific operation
+  try {
+    await client.query("BEGIN");
 
-        const templateResult = await client.query(
-            `UPDATE meal_plan_templates SET
+    const templateResult = await client.query(
+      `UPDATE meal_plan_templates SET
                 plan_name = $1, description = $2, start_date = $3, end_date = $4, is_active = $5, updated_at = now()
              WHERE id = $6 RETURNING *`,
-            [
-                planData.plan_name ?? '',
-                planData.description ?? '',
-                planData.start_date ?? new Date(),
-                planData.end_date,
-                planData.is_active ?? false,
-                planId
-            ]
-        );
-        const updatedTemplate = templateResult.rows[0];
+      [
+        planData.plan_name ?? "",
+        planData.description ?? "",
+        planData.start_date ?? new Date(),
+        planData.end_date,
+        planData.is_active ?? false,
+        planId,
+      ]
+    );
+    const updatedTemplate = templateResult.rows[0];
 
-        await client.query('DELETE FROM meal_plan_template_assignments WHERE template_id = $1', [planId]);
+    await client.query(
+      "DELETE FROM meal_plan_template_assignments WHERE template_id = $1",
+      [planId]
+    );
 
-        if (planData.assignments && planData.assignments.length > 0) {
-            const assignmentValues = planData.assignments.map(a => {
-                if (a.item_type === 'meal') {
-                    return [planId, a.day_of_week, a.meal_type, a.item_type, a.meal_id, null, null, a.quantity || 1.0, a.unit || 'serving'];
-                } else if (a.item_type === 'food') {
-                    return [planId, a.day_of_week, a.meal_type, a.item_type, null, a.food_id, a.variant_id, a.quantity, a.unit];
-                }
-                return []; // Should not happen
-            });
-            const assignmentQuery = format(
-                `INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type, item_type, meal_id, food_id, variant_id, quantity, unit) VALUES %L`,
-                assignmentValues
+    if (planData.assignments && planData.assignments.length > 0) {
+
+        const mealTypesRes = await client.query(
+                "SELECT id, name FROM meal_types WHERE user_id = $1 OR user_id IS NULL",
+                [planData.user_id]
             );
-            await client.query(assignmentQuery);
-        }
+            const mealTypeMap = new Map();
+            mealTypesRes.rows.forEach(r => mealTypeMap.set(r.name.toLowerCase(), r.id));
 
-        await client.query('COMMIT');
-        const finalQuery = `
+
+
+      const assignmentValues = planData.assignments.map((a) => {
+
+         let typeId = a.meal_type_id;
+                if (!typeId && a.meal_type) {
+                    typeId = mealTypeMap.get(a.meal_type.toLowerCase());
+                }
+                if (!typeId) {
+                    throw new Error(`Invalid meal type: ${a.meal_type}`);
+                }
+
+
+
+        if (a.item_type === "meal") {
+          return [
+            planId,
+            a.day_of_week,
+            typeId,
+            a.item_type,
+            a.meal_id,
+            null,
+            null,
+            a.quantity || 1.0,
+            a.unit || "serving",
+          ];
+        } else if (a.item_type === "food") {
+          return [
+            planId,
+            a.day_of_week,
+            typeId,
+            a.item_type,
+            null,
+            a.food_id,
+            a.variant_id,
+            a.quantity,
+            a.unit,
+          ];
+        }
+        return []; // Should not happen
+      });
+      const assignmentQuery = format(
+        `INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type_id, item_type, meal_id, food_id, variant_id, quantity, unit) VALUES %L`,
+        assignmentValues
+      );
+      await client.query(assignmentQuery);
+    }
+
+    await client.query("COMMIT");
+    const finalQuery = `
             SELECT
                 t.*,
                 COALESCE(
@@ -180,7 +273,8 @@ async function updateMealPlanTemplate(planId, planData) {
                             json_build_object(
                                 'id', a.id,
                                 'day_of_week', a.day_of_week,
-                                'meal_type', a.meal_type,
+                                'meal_type', mt.name,
+                                'meal_type_id', a.meal_type_id,
                                 'item_type', a.item_type,
                                 'meal_id', a.meal_id,
                                 'meal_name', m.name,
@@ -192,6 +286,7 @@ async function updateMealPlanTemplate(planId, planData) {
                             )
                         )
                         FROM meal_plan_template_assignments a
+                        LEFT JOIN meal_types mt ON a.meal_type_id = mt.id
                         LEFT JOIN meals m ON a.meal_id = m.id
                         LEFT JOIN foods f ON a.food_id = f.id
                         WHERE a.template_id = t.id
@@ -201,64 +296,69 @@ async function updateMealPlanTemplate(planId, planData) {
             FROM meal_plan_templates t
             WHERE t.id = $1
         `;
-        const finalResult = await client.query(finalQuery, [planId]);
-        return finalResult.rows[0];
-    } catch (error) {
-        await client.query('ROLLBACK');
-        log('error', `Error updating meal plan template ${planId}: ${error.message}`, error);
-        throw error;
-    } finally {
-        client.release();
-    }
+    const finalResult = await client.query(finalQuery, [planId]);
+    return finalResult.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    log(
+      "error",
+      `Error updating meal plan template ${planId}: ${error.message}`,
+      error
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function deleteMealPlanTemplate(planId, userId) {
-    const client = await getClient(userId); // User-specific operation
-    try {
-        // The assignments table will be cascade deleted due to the foreign key constraint
-        const result = await client.query(
-            `DELETE FROM meal_plan_templates WHERE id = $1 RETURNING *`,
-            [planId]
-        );
-        return result.rows[0];
-    } catch (error) {
-        log('error', `Error deleting meal plan template ${planId}: ${error.message}`, error);
-        throw error;
-    } finally {
-        client.release();
-    }
+  const client = await getClient(userId); // User-specific operation
+  try {
+    // The assignments table will be cascade deleted due to the foreign key constraint
+    const result = await client.query(
+      `DELETE FROM meal_plan_templates WHERE id = $1 RETURNING *`,
+      [planId]
+    );
+    return result.rows[0];
+  } catch (error) {
+    log(
+      "error",
+      `Error deleting meal plan template ${planId}: ${error.message}`,
+      error
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function deactivateAllMealPlanTemplates(userId) {
-    const client = await getClient(userId); // User-specific operation
-    try {
-        await client.query(
-            `UPDATE meal_plan_templates SET is_active = FALSE`,
-            []
-        );
-        return true;
-    } finally {
-        client.release();
-    }
+  const client = await getClient(userId); // User-specific operation
+  try {
+    await client.query(`UPDATE meal_plan_templates SET is_active = FALSE`, []);
+    return true;
+  } finally {
+    client.release();
+  }
 }
 
 async function getMealPlanTemplateOwnerId(templateId) {
-    const client = await getClient(templateId); // User-specific operation (RLS will handle access)
-    try {
-        const result = await client.query(
-            `SELECT user_id FROM meal_plan_templates WHERE id = $1`,
-            [templateId]
-        );
-        return result.rows[0]?.user_id;
-    } finally {
-        client.release();
-    }
+  const client = await getClient(templateId); // User-specific operation (RLS will handle access)
+  try {
+    const result = await client.query(
+      `SELECT user_id FROM meal_plan_templates WHERE id = $1`,
+      [templateId]
+    );
+    return result.rows[0]?.user_id;
+  } finally {
+    client.release();
+  }
 }
 
 async function getActiveMealPlanForDate(userId, date) {
-    const client = await getClient(userId); // User-specific operation
-    try {
-        const query = `
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const query = `
             SELECT
                 t.*,
                 COALESCE(
@@ -267,7 +367,8 @@ async function getActiveMealPlanForDate(userId, date) {
                             json_build_object(
                                 'id', a.id,
                                 'day_of_week', a.day_of_week,
-                                'meal_type', a.meal_type,
+                                'meal_type', mt.name,
+                                'meal_type_id', a.meal_type_id,
                                 'item_type', a.item_type,
                                 'meal_id', a.meal_id,
                                 'meal_name', m.name,
@@ -279,6 +380,7 @@ async function getActiveMealPlanForDate(userId, date) {
                             )
                         )
                         FROM meal_plan_template_assignments a
+                        LEFT JOIN meal_types mt ON a.meal_type_id = mt.id
                         LEFT JOIN meals m ON a.meal_id = m.id
                         LEFT JOIN foods f ON a.food_id = f.id
                         WHERE a.template_id = t.id
@@ -292,17 +394,17 @@ async function getActiveMealPlanForDate(userId, date) {
             ORDER BY t.start_date DESC
             LIMIT 1
         `;
-        const result = await client.query(query, [date]);
-        return result.rows[0];
-    } finally {
-        client.release();
-    }
+    const result = await client.query(query, [date]);
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
 }
 
 async function getMealPlanTemplatesByMealId(mealId) {
-    const client = await getClient(mealId); // User-specific operation (RLS will handle access)
-    try {
-        const query = `
+  const client = await getClient(mealId); // User-specific operation (RLS will handle access)
+  try {
+    const query = `
             SELECT
                 t.*,
                 COALESCE(
@@ -311,7 +413,8 @@ async function getMealPlanTemplatesByMealId(mealId) {
                             json_build_object(
                                 'id', a.id,
                                 'day_of_week', a.day_of_week,
-                                'meal_type', a.meal_type,
+                                'meal_type', mt.name,
+                                'meal_type_id', a.meal_type_id,
                                 'item_type', a.item_type,
                                 'meal_id', a.meal_id,
                                 'meal_name', m.name,
@@ -323,6 +426,7 @@ async function getMealPlanTemplatesByMealId(mealId) {
                             )
                         )
                         FROM meal_plan_template_assignments a
+                        LEFT JOIN meal_types mt ON a.meal_type_id = mt.id
                         LEFT JOIN meals m ON a.meal_id = m.id
                         LEFT JOIN foods f ON a.food_id = f.id
                         WHERE a.template_id = t.id
@@ -334,21 +438,21 @@ async function getMealPlanTemplatesByMealId(mealId) {
             WHERE mpta.meal_id = $1
             GROUP BY t.id
         `;
-        const result = await client.query(query, [mealId]);
-        return result.rows;
-    } finally {
-        client.release();
-    }
+    const result = await client.query(query, [mealId]);
+    return result.rows;
+  } finally {
+    client.release();
+  }
 }
 
 module.exports = {
-    createMealPlanTemplate,
-    getMealPlanTemplatesByUserId,
-    updateMealPlanTemplate,
-    deleteMealPlanTemplate,
-    deactivateAllMealPlanTemplates,
-    getMealPlanTemplateOwnerId,
-    getActiveMealPlanForDate,
-    getMealPlanTemplatesByMealId,
-    getMealPlanTemplateAssignments,
+  createMealPlanTemplate,
+  getMealPlanTemplatesByUserId,
+  updateMealPlanTemplate,
+  deleteMealPlanTemplate,
+  deactivateAllMealPlanTemplates,
+  getMealPlanTemplateOwnerId,
+  getActiveMealPlanForDate,
+  getMealPlanTemplatesByMealId,
+  getMealPlanTemplateAssignments,
 };
