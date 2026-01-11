@@ -1338,49 +1338,56 @@ const EnhancedFoodSearch = ({
 
         {activeTab === "online" &&
           openFoodFactsResults.length > 0 &&
-          openFoodFactsResults.map((product) => (
-            <Card
-              key={product.code}
-              className="hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <h3 className="font-medium">{product.product_name}</h3>
-                      {product.brands && (
-                        <Badge variant="secondary" className="text-xs">
-                          {product.brands.split(",")[0]}
+          openFoodFactsResults.map((product) => {
+            // Calculate display values based on auto-scaling preference
+            const shouldScale = autoScaleOpenFoodFactsImports && product.serving_quantity && product.serving_quantity > 0;
+            const servingSize = shouldScale ? product.serving_quantity! : 100;
+            const scaleFactor = shouldScale ? servingSize / 100 : 1;
+            
+            return (
+              <Card
+                key={product.code}
+                className="hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <h3 className="font-medium">{product.product_name}</h3>
+                        {product.brands && (
+                          <Badge variant="secondary" className="text-xs">
+                            {product.brands.split(",")[0]}
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-xs">
+                          {t("enhancedFoodSearch.openFoodFacts", "OpenFoodFacts")}
                         </Badge>
-                      )}
-                      <Badge variant="outline" className="text-xs">
-                        {t("enhancedFoodSearch.openFoodFacts", "OpenFoodFacts")}
-                      </Badge>
+                      </div>
+                      <NutrientGrid food={{
+                        calories: Math.round((product.nutriments["energy-kcal_100g"] || 0) * scaleFactor),
+                        protein: Math.round((product.nutriments["proteins_100g"] || 0) * scaleFactor * 10) / 10,
+                        carbs: Math.round((product.nutriments["carbohydrates_100g"] || 0) * scaleFactor * 10) / 10,
+                        fat: Math.round((product.nutriments["fat_100g"] || 0) * scaleFactor * 10) / 10,
+                        dietary_fiber: Math.round((product.nutriments["fiber_100g"] || 0) * scaleFactor * 10) / 10,
+                        // For OpenFoodFacts, GI is not directly available in product.nutriments,
+                        // so we'll display "None" or handle it as a special case.
+                        glycemic_index: "None"
+                      }} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} customNutrients={customNutrients} />
+                      <p className="text-xs text-gray-500 mt-1">Per {servingSize}g</p>
                     </div>
-                    <NutrientGrid food={{
-                      calories: product.nutriments["energy-kcal_100g"] || 0,
-                      protein: product.nutriments["proteins_100g"] || 0,
-                      carbs: product.nutriments["carbohydrates_100g"] || 0,
-                      fat: product.nutriments["fat_100g"] || 0,
-                      dietary_fiber: product.nutriments["fiber_100g"] || 0,
-                      // For OpenFoodFacts, GI is not directly available in product.nutriments,
-                      // so we'll display "None" or handle it as a special case.
-                      glycemic_index: "None"
-                    }} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} customNutrients={customNutrients} />
-                    <p className="text-xs text-gray-500 mt-1">Per 100g</p>
+                    <Button
+                      size="sm"
+                      onClick={() => handleOpenFoodFactsEdit(product)}
+                      className="ml-2"
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      {t("enhancedFoodSearch.editAndAdd", "Edit & Add")}
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleOpenFoodFactsEdit(product)}
-                    className="ml-2"
-                  >
-                    <Edit className="w-4 h-4 mr-1" />
-                    {t("enhancedFoodSearch.editAndAdd", "Edit & Add")}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
 
         {activeTab === "online" &&
           nutritionixResults.length > 0 &&
