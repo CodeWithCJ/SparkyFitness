@@ -6,74 +6,68 @@ require("dotenv").config({ path: path.resolve(__dirname, "../.env") }); // Load 
 const { runPreflightChecks } = require("./utils/preflightChecks");
 runPreflightChecks();
 
-const express = require("express");
-const cors = require("cors"); // Added this line
-const cookieParser = require("cookie-parser");
-const rateLimit = require("express-rate-limit"); // Import rate-limit
-const { getRawOwnerPool } = require("./db/poolManager");
-const { log } = require("./config/logging");
-const { getDefaultModel } = require("./ai/config");
-const { authenticate } = require("./middleware/authMiddleware");
-const onBehalfOfMiddleware = require("./middleware/onBehalfOfMiddleware"); // Import the new middleware
-const foodRoutes = require("./routes/foodRoutes");
-const mealRoutes = require("./routes/mealRoutes");
-const foodEntryRoutes = require("./routes/foodEntryRoutes"); // Add this line
-const foodEntryMealRoutes = require("./routes/foodEntryMealRoutes"); // New: FoodEntryMeal routes
-const reportRoutes = require("./routes/reportRoutes");
-const preferenceRoutes = require("./routes/preferenceRoutes");
-const nutrientDisplayPreferenceRoutes = require("./routes/nutrientDisplayPreferenceRoutes");
-const chatRoutes = require("./routes/chatRoutes");
-const measurementRoutes = require("./routes/measurementRoutes");
-const goalRoutes = require("./routes/goalRoutes");
-const goalPresetRoutes = require("./routes/goalPresetRoutes");
-const weeklyGoalPlanRoutes = require("./routes/weeklyGoalPlanRoutes");
-const mealPlanTemplateRoutes = require("./routes/mealPlanTemplateRoutes");
-const exerciseRoutes = require("./routes/exerciseRoutes");
-const exerciseEntryRoutes = require("./routes/exerciseEntryRoutes");
-const exercisePresetEntryRoutes = require("./routes/exercisePresetEntryRoutes"); // New import
-const freeExerciseDBRoutes = require("./routes/freeExerciseDBRoutes"); // Import freeExerciseDB routes
-const healthDataRoutes = require("./integrations/healthData/healthDataRoutes");
-const sleepRoutes = require("./routes/sleepRoutes");
-const authRoutes = require("./routes/authRoutes");
-const healthRoutes = require("./routes/healthRoutes");
-const externalProviderRoutes = require("./routes/externalProviderRoutes"); // Renamed import
-const garminRoutes = require("./routes/garminRoutes"); // Import Garmin routes
-const withingsRoutes = require("./routes/withingsRoutes"); // Import Withings routes
-const withingsDataRoutes = require("./routes/withingsDataRoutes"); // Import Withings Data routes
-const moodRoutes = require("./routes/moodRoutes"); // Import Mood routes
-const fastingRoutes = require("./routes/fastingRoutes"); // Import Fasting routes
-const adminRoutes = require("./routes/adminRoutes"); // Import admin routes
-const adminAuthRoutes = require("./routes/adminAuthRoutes"); // Import new admin auth routes
-const {
-  router: openidRoutes,
-  initializeOidcClient,
-} = require("./openidRoutes");
-const oidcSettingsRoutes = require("./routes/oidcSettingsRoutes");
-const globalSettingsRoutes = require("./routes/globalSettingsRoutes");
-const versionRoutes = require("./routes/versionRoutes");
-const onboardingRoutes = require("./routes/onboardingRoutes"); // Import onboarding routes
-const customNutrientRoutes = require("./routes/customNutrientRoutes"); // Import custom nutrient routes
-const { applyMigrations } = require("./utils/dbMigrations");
-const { applyRlsPolicies } = require("./utils/applyRlsPolicies");
-const { grantPermissions } = require("./db/grantPermissions");
-const waterContainerRoutes = require("./routes/waterContainerRoutes");
-const backupRoutes = require("./routes/backupRoutes"); // Import backup routes
-const errorHandler = require("./middleware/errorHandler"); // Import the new error handler
-const reviewRoutes = require("./routes/reviewRoutes");
-const cron = require("node-cron"); // Import node-cron
-const {
-  performBackup,
-  applyRetentionPolicy,
-} = require("./services/backupService"); // Import backup service
-const externalProviderRepository = require("./models/externalProviderRepository"); // Import externalProviderRepository
-const withingsService = require("./integrations/withings/withingsService"); // Import withingsService
-const garminConnectService = require("./integrations/garminconnect/garminConnectService"); // Import garminConnectService
-const garminService = require("./services/garminService"); // Import garminService
-const mealTypeRoutes = require("./routes/mealTypeRoutes");
+const express = require('express');
+const cors = require('cors'); // Added this line
+const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit'); // Import rate-limit
+const { getRawOwnerPool } = require('./db/poolManager');
+const { log } = require('./config/logging');
+const { getDefaultModel } = require('./ai/config');
+const { authenticate } = require('./middleware/authMiddleware');
+const onBehalfOfMiddleware = require('./middleware/onBehalfOfMiddleware'); // Import the new middleware
+const foodRoutes = require('./routes/foodRoutes');
+const mealRoutes = require('./routes/mealRoutes');
+const foodEntryRoutes = require('./routes/foodEntryRoutes'); // Add this line
+const foodEntryMealRoutes = require('./routes/foodEntryMealRoutes'); // New: FoodEntryMeal routes
+const reportRoutes = require('./routes/reportRoutes');
+const preferenceRoutes = require('./routes/preferenceRoutes');
+const nutrientDisplayPreferenceRoutes = require('./routes/nutrientDisplayPreferenceRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const measurementRoutes = require('./routes/measurementRoutes');
+const goalRoutes = require('./routes/goalRoutes');
+const goalPresetRoutes = require('./routes/goalPresetRoutes');
+const weeklyGoalPlanRoutes = require('./routes/weeklyGoalPlanRoutes');
+const mealPlanTemplateRoutes = require('./routes/mealPlanTemplateRoutes');
+const exerciseRoutes = require('./routes/exerciseRoutes');
+const exerciseEntryRoutes = require('./routes/exerciseEntryRoutes');
+const exercisePresetEntryRoutes = require('./routes/exercisePresetEntryRoutes'); // New import
+const freeExerciseDBRoutes = require('./routes/freeExerciseDBRoutes'); // Import freeExerciseDB routes
+const healthDataRoutes = require('./integrations/healthData/healthDataRoutes');
+const sleepRoutes = require('./routes/sleepRoutes');
+const authRoutes = require('./routes/authRoutes');
+const healthRoutes = require('./routes/healthRoutes');
+const externalProviderRoutes = require('./routes/externalProviderRoutes'); // Renamed import
+const garminRoutes = require('./routes/garminRoutes'); // Import Garmin routes
+const withingsRoutes = require('./routes/withingsRoutes'); // Import Withings routes
+const withingsDataRoutes = require('./routes/withingsDataRoutes'); // Import Withings Data routes
+const moodRoutes = require('./routes/moodRoutes'); // Import Mood routes
+const fastingRoutes = require('./routes/fastingRoutes'); // Import Fasting routes
+const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
+const adminAuthRoutes = require('./routes/adminAuthRoutes'); // Import new admin auth routes
+const { router: openidRoutes, initializeOidcClient } = require('./openidRoutes');
+const oidcSettingsRoutes = require('./routes/oidcSettingsRoutes');
+const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
+const versionRoutes = require('./routes/versionRoutes');
+const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboarding routes
+const customNutrientRoutes = require('./routes/customNutrientRoutes'); // Import custom nutrient routes
+const { applyMigrations } = require('./utils/dbMigrations');
+const { applyRlsPolicies } = require('./utils/applyRlsPolicies');
+const { grantPermissions } = require('./db/grantPermissions');
+const waterContainerRoutes = require('./routes/waterContainerRoutes');
+const backupRoutes = require('./routes/backupRoutes'); // Import backup routes
+const errorHandler = require('./middleware/errorHandler'); // Import the new error handler
+const reviewRoutes = require('./routes/reviewRoutes');
+const cron = require('node-cron'); // Import node-cron
+const { performBackup, applyRetentionPolicy } = require('./services/backupService'); // Import backup service
+const externalProviderRepository = require('./models/externalProviderRepository'); // Import externalProviderRepository
+const withingsService = require('./integrations/withings/withingsService'); // Import withingsService
+const garminConnectService = require('./integrations/garminconnect/garminConnectService'); // Import garminConnectService
+const garminService = require('./services/garminService'); // Import garminService
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const redoc = require('redoc-express');
 const swaggerSpecs = require('./config/swagger');
+
 
 const app = express();
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
@@ -377,6 +371,29 @@ app.get('/api-docs', (req, res) => {
   res.redirect('/api-docs/swagger');
 });
 
+
+// Serve Swagger UI
+app.use('/api-docs/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
+// Serve Redoc
+app.get(
+  '/api-docs/redoc',
+  redoc({
+    title: 'API Docs',
+    specUrl: '/api-docs/json',
+  })
+);
+
+// Serve the raw JSON spec
+app.get('/api-docs/json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpecs);
+});
+
+// Redirect /api-docs to /api-docs/swagger
+app.get('/api-docs', (req, res) => {
+  res.redirect('/api-docs/swagger');
+});
 
 // Temporary debug route to log incoming requests for meal plan templates
 app.use(
