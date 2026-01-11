@@ -75,6 +75,7 @@ interface PreferencesContextType {
   itemDisplayLimit: number;
   calorieGoalAdjustmentMode: 'dynamic' | 'fixed'; // Add new preference
   energyUnit: EnergyUnit; // Add energy unit
+  autoScaleOpenFoodFactsImports: boolean; // Auto-scale nutrition from 100g to serving size
   nutrientDisplayPreferences: NutrientPreference[];
   water_display_unit: 'ml' | 'oz' | 'liter';
   language: string;
@@ -97,6 +98,7 @@ interface PreferencesContextType {
   setItemDisplayLimit: (limit: number) => void;
   setCalorieGoalAdjustmentMode: (mode: 'dynamic' | 'fixed') => void; // Add setter for calorie goal adjustment mode
   setEnergyUnit: (unit: EnergyUnit) => void; // Add setter for energy unit
+  setAutoScaleOpenFoodFactsImports: (enabled: boolean) => void; // Add boolean for auto-scale
   loadNutrientDisplayPreferences: () => Promise<void>;
   setWaterDisplayUnit: (unit: 'ml' | 'oz' | 'liter') => void;
   setLanguage: (language: string) => void;
@@ -144,6 +146,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10); // Add state for foodDisplayLimit
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentModeState] = useState<'dynamic' | 'fixed'>('dynamic'); // New state for calorie goal adjustment
   const [energyUnit, setEnergyUnitState] = useState<EnergyUnit>('kcal'); // Add state for energy unit
+  const [autoScaleOpenFoodFactsImports, setAutoScaleOpenFoodFactsImportsState] = useState<boolean>(false); // Auto-scale OpenFoodFacts imports
   const [nutrientDisplayPreferences, setNutrientDisplayPreferences] = useState<NutrientPreference[]>([]);
   const [waterDisplayUnit, setWaterDisplayUnitState] = useState<'ml' | 'oz' | 'liter'>('ml');
   const [language, setLanguageState] = useState<string>('en');
@@ -178,6 +181,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         const savedLanguage = localStorage.getItem('language');
         const savedCalorieGoalAdjustmentMode = localStorage.getItem('calorieGoalAdjustmentMode') as 'dynamic' | 'fixed';
         const savedEnergyUnit = localStorage.getItem('energyUnit') as EnergyUnit; // Load energy unit
+        const savedAutoScaleOpenFoodFactsImports = localStorage.getItem('autoScaleOpenFoodFactsImports'); // Load auto-scale preference
 
         if (savedWeightUnit) {
           setWeightUnitState(savedWeightUnit);
@@ -206,6 +210,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (savedEnergyUnit) { // Set energy unit state from localStorage
           setEnergyUnitState(savedEnergyUnit);
           debug(loggingLevel, "PreferencesProvider: Loaded energyUnit from localStorage:", savedEnergyUnit);
+        }
+        if (savedAutoScaleOpenFoodFactsImports !== null) { // Set auto-scale state from localStorage
+          setAutoScaleOpenFoodFactsImportsState(savedAutoScaleOpenFoodFactsImports === 'true');
+          debug(loggingLevel, "PreferencesProvider: Loaded autoScaleOpenFoodFactsImports from localStorage:", savedAutoScaleOpenFoodFactsImports);
         }
       }
     }
@@ -236,6 +244,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setLanguageState(data.language || 'en');
         setCalorieGoalAdjustmentModeState(data.calorie_goal_adjustment_mode || 'dynamic'); // Set calorie goal adjustment mode state
         setEnergyUnitState(data.energy_unit as EnergyUnit || 'kcal'); // Set energy unit state, default to kcal
+        setAutoScaleOpenFoodFactsImportsState(data.auto_scale_open_food_facts_imports ?? false); // Set auto-scale state, default to false
         setBmrAlgorithmState((data.bmr_algorithm as BmrAlgorithm) || BmrAlgorithm.MIFFLIN_ST_JEOR);
         setBodyFatAlgorithmState((data.body_fat_algorithm as BodyFatAlgorithm) || BodyFatAlgorithm.US_NAVY);
         setIncludeBmrInNetCaloriesState(data.include_bmr_in_net_calories ?? false);
@@ -293,6 +302,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         language: 'en',
         calorie_goal_adjustment_mode: 'dynamic', // Add default for new preference
         energy_unit: 'kcal', // Add default energy unit
+        auto_scale_open_food_facts_imports: false, // Add default auto-scale for OpenFoodFacts
         selected_diet: 'balanced', // Add default diet
       };
 
@@ -332,6 +342,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     language: string;
     calorie_goal_adjustment_mode: 'dynamic' | 'fixed';
     energy_unit: EnergyUnit;
+    auto_scale_open_food_facts_imports: boolean;
     bmr_algorithm: BmrAlgorithm;
     body_fat_algorithm: BodyFatAlgorithm;
     include_bmr_in_net_calories: boolean;
@@ -372,6 +383,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (updates.energy_unit) { // Save energy unit to localStorage
         localStorage.setItem('energyUnit', updates.energy_unit);
         debug(loggingLevel, "PreferencesProvider: Saved energyUnit to localStorage:", updates.energy_unit);
+      }
+      if (updates.auto_scale_open_food_facts_imports !== undefined) { // Save auto-scale to localStorage
+        localStorage.setItem('autoScaleOpenFoodFactsImports', String(updates.auto_scale_open_food_facts_imports));
+        debug(loggingLevel, "PreferencesProvider: Saved autoScaleOpenFoodFactsImports to localStorage:", updates.auto_scale_open_food_facts_imports);
       }
       // default_food_data_provider_id, logging_level and item_display_limit are not stored in localStorage
       // food_display_limit is also not stored in localStorage
@@ -590,6 +605,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     saveAllPreferences({ energyUnit: unit }); // Persist the change
   };
 
+  const setAutoScaleOpenFoodFactsImports = (enabled: boolean) => {
+    info(loggingLevel, "PreferencesProvider: Setting auto-scale OpenFoodFacts imports to:", enabled);
+    setAutoScaleOpenFoodFactsImportsState(enabled);
+    saveAllPreferences({ autoScaleOpenFoodFactsImports: enabled }); // Persist the change
+  };
+
   const saveAllPreferences = async (newPrefs?: Partial<PreferencesContextType>) => {
     info(loggingLevel, "PreferencesProvider: Saving all preferences to backend.");
 
@@ -608,6 +629,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       language: newPrefs?.language ?? language,
       calorie_goal_adjustment_mode: newPrefs?.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode, // Include new preference
       energy_unit: newPrefs?.energyUnit ?? energyUnit, // Include energy unit preference
+      auto_scale_open_food_facts_imports: newPrefs?.autoScaleOpenFoodFactsImports ?? autoScaleOpenFoodFactsImports, // Include auto-scale preference
       bmr_algorithm: newPrefs?.bmrAlgorithm ?? bmrAlgorithm,
       body_fat_algorithm: newPrefs?.bodyFatAlgorithm ?? bodyFatAlgorithm,
       include_bmr_in_net_calories: newPrefs?.includeBmrInNetCalories ?? includeBmrInNetCalories,
@@ -665,6 +687,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       foodDisplayLimit, // Expose foodDisplayLimit
       calorieGoalAdjustmentMode, // Expose new preference
       energyUnit, // Expose energyUnit
+      autoScaleOpenFoodFactsImports, // Expose auto-scale OpenFoodFacts imports
       nutrientDisplayPreferences,
       water_display_unit: waterDisplayUnit,
       language,
@@ -679,6 +702,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode, // Expose new setter
       setEnergyUnit, // Expose setEnergyUnit
+      setAutoScaleOpenFoodFactsImports, // Expose setAutoScaleOpenFoodFactsImports
       loadNutrientDisplayPreferences,
       setWaterDisplayUnit: setWaterDisplayUnitState,
       setLanguage: setLanguageState,
