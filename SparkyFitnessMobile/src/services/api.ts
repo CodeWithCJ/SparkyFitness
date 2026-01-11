@@ -60,14 +60,13 @@ export const checkServerConnection = async (): Promise<boolean> => {
   url = url.endsWith('/') ? url.slice(0, -1) : url; // Ensure no trailing slash
 
   try {
-    console.log(`[API Service] Attempting to check connection to: ${url}/auth/user`);
     const response = await fetch(`${url}/auth/user`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
       },
     });
-    console.log(`[API Service] Connection check response status: ${response.status}`);
+    // console.log(`[API Service] Connection check response status: ${response.status}`);
     // Check for successful response (2xx status code)
     if (response.ok) {
       return true;

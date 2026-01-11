@@ -61,7 +61,6 @@ export const syncHealthData = async (
   syncDuration: SyncDuration,
   healthMetricStates: HealthMetricStates = {}
 ): Promise<SyncResult> => {
-  addLog(`[HealthKitService] Starting health data sync for duration: ${syncDuration}`);
   const startDate = HealthKit.getSyncStartDate(syncDuration);
   const endDate = new Date();
 
@@ -69,8 +68,6 @@ export const syncHealthData = async (
   const healthDataTypesToSync = HEALTH_METRICS
     .filter(metric => enabledMetricStates[metric.stateKey])
     .map(metric => metric.recordType);
-
-  addLog(`[HealthKitService] Will sync ${healthDataTypesToSync.length} metric types: ${healthDataTypesToSync.join(', ')}`);
 
   const allTransformedData: HealthDataPayload = [];
   const syncErrors: { type: string; error: string }[] = [];
@@ -88,23 +85,17 @@ export const syncHealthData = async (
       // For cumulative metrics, use aggregation API directly (handles deduplication)
       if (type === 'Steps') {
         dataToTransform = await HealthKit.getAggregatedStepsByDate(startDate, endDate);
-        addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily step totals`);
       } else if (type === 'ActiveCaloriesBurned') {
         dataToTransform = await HealthKit.getAggregatedActiveCaloriesByDate(startDate, endDate);
-        addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily calorie totals`);
       } else if (type === 'Distance') {
         dataToTransform = await HealthKit.getAggregatedDistanceByDate(startDate, endDate);
-        addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily distance totals`);
       } else if (type === 'FloorsClimbed') {
         dataToTransform = await HealthKit.getAggregatedFloorsClimbedByDate(startDate, endDate);
-        addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily floors totals`);
       } else {
         // For other types, read raw records
-        addLog(`[HealthKitService] Reading ${type} records...`);
         const rawRecords = await HealthKit.readHealthRecords(type, startDate, endDate);
 
         if (!rawRecords || rawRecords.length === 0) {
-          addLog(`[HealthKitService] No ${type} records found`);
           continue;
         }
 
@@ -117,35 +108,28 @@ export const syncHealthData = async (
         } else if (type === 'TotalCaloriesBurned') {
           // Use deduplicated statistics query (matches Health app behavior)
           dataToTransform = await HealthKit.getAggregatedTotalCaloriesByDate(startDate, endDate);
-          addLog(`[HealthKitService] Got ${dataToTransform.length} deduplicated daily total calorie entries`);
         } else if (type === 'SleepSession') {
           dataToTransform = HealthKitAggregation.aggregateSleepSessions(
             rawRecords as Parameters<typeof HealthKitAggregation.aggregateSleepSessions>[0]
           );
-          addLog(`[HealthKitService] Aggregated SleepSession records.`);
         }
       }
 
       const transformed = HealthKitTransformation.transformHealthRecords(dataToTransform, metricConfig);
 
       if (transformed.length > 0) {
-        addLog(`[HealthKitService] Successfully transformed ${transformed.length} ${type} records`);
         allTransformedData.push(...(transformed as HealthDataPayload));
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const errorMsg = `Error reading or transforming ${type} records: ${message}`;
-      addLog(`[HealthKitService] ${errorMsg}`, 'error', 'ERROR');
+      addLog(`[HealthKitService] Error reading or transforming ${type} records: ${message}`, 'error', 'ERROR');
       syncErrors.push({ type, error: message });
     }
   }
 
-  addLog(`[HealthKitService] Total transformed data entries to sync: ${allTransformedData.length}`);
-
   if (allTransformedData.length > 0) {
     try {
       const apiResponse = await api.syncHealthData(allTransformedData);
-      addLog(`[HealthKitService] Server sync finished successfully.`);
       return { success: true, apiResponse, syncErrors };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -153,7 +137,6 @@ export const syncHealthData = async (
       return { success: false, error: message, syncErrors };
     }
   } else {
-    addLog(`[HealthKitService] No new health data to sync.`);
     return { success: true, message: "No new health data to sync.", syncErrors };
   }
 };

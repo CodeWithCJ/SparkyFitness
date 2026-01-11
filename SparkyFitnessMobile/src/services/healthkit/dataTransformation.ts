@@ -273,6 +273,5 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
     }
   });
 
-  addLog(`[HealthKitService] Successfully transformed ${transformedData.length} records for ${recordType}`);
   return transformedData;
 };

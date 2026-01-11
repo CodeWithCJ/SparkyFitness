@@ -24,14 +24,11 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
   }
 
   if (records.length === 0) {
-    addLog(`[HealthConnectService] No records to transform for ${metricConfig.recordType}`);
     return [];
   }
 
   const transformedData: TransformOutput[] = [];
   const { recordType, unit, type } = metricConfig;
-
-  addLog(`[HealthConnectService] Transforming ${records.length} ${recordType} records`);
 
   records.forEach((record: unknown, index: number) => {
     try {
@@ -743,6 +740,5 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
     }
   });
 
-  addLog(`[HealthConnectService] Successfully transformed ${transformedData.length} ${recordType} records`);
   return transformedData;
 };

@@ -18,7 +18,6 @@ const BACKGROUND_FETCH_TASK_ID = 'healthDataSync';
 
 const performBackgroundSync = async (taskId: string): Promise<void> => {
   console.log('[BackgroundFetch] taskId', taskId);
-  addLog(`[Background Sync] Background fetch triggered: ${taskId}`);
 
   try {
     const isStepsEnabled = await loadHealthPreference<boolean>('syncStepsEnabled');
@@ -53,7 +52,6 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
     }
 
     if (shouldSync) {
-      addLog(`[Background Sync] Performing health data sync.`);
       const endDate = new Date();
       endDate.setHours(23, 59, 59, 999);
 
@@ -73,13 +71,11 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
       if (isStepsEnabled) {
         const aggregatedStepsData = await getAggregatedStepsByDate(startDate, endDate);
         allAggregatedData.push(...aggregatedStepsData);
-        addLog(`[Background Sync] Got ${aggregatedStepsData.length} deduplicated step records`);
       }
 
       if (isActiveCaloriesEnabled) {
         const aggregatedActiveCaloriesData = await getAggregatedActiveCaloriesByDate(startDate, endDate);
         allAggregatedData.push(...aggregatedActiveCaloriesData);
-        addLog(`[Background Sync] Got ${aggregatedActiveCaloriesData.length} deduplicated calorie records`);
       }
 
       if (isSleepSessionEnabled) {
@@ -108,13 +104,8 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
 
       if (allAggregatedData.length > 0) {
         await syncHealthData(allAggregatedData);
-        addLog('[Background Sync] Health data synced successfully.', 'info', 'SUCCESS');
         await saveLastSyncedTime();
-      } else {
-        addLog('[Background Sync] No health data to sync.', 'info', 'INFO');
       }
-    } else {
-      addLog(`[Background Sync] Not time to sync yet. Current time: ${now.toLocaleTimeString()}, Sync frequency: ${syncDuration}`);
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -160,7 +151,6 @@ export const configureBackgroundSync = async (): Promise<void> => {
 export const startBackgroundSync = async (): Promise<void> => {
   try {
     await BackgroundFetch.start();
-    addLog('[Background Sync] Background fetch started successfully.');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[Background Sync] Background fetch failed to start: ${message}`, 'error', 'ERROR');
@@ -170,7 +160,6 @@ export const startBackgroundSync = async (): Promise<void> => {
 export const stopBackgroundSync = async (): Promise<void> => {
   try {
     await BackgroundFetch.stop(BACKGROUND_FETCH_TASK_ID);
-    addLog('[Background Sync] Background fetch stopped successfully.');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[Background Sync] Background fetch failed to stop: ${message}`, 'error', 'ERROR');

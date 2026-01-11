@@ -58,19 +58,14 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
   ];
 
   const initialize = useCallback(async (): Promise<void> => {
-    addLog('--- MainScreen: initialize function started ---');
-    addLog('Initializing Health Connect...');
     const initialized = await initHealthConnect();
-    if (initialized) {
-      addLog('Health Connect initialized successfully.', 'info', 'SUCCESS');
-    } else {
+    if (!initialized) {
       addLog('Health Connect initialization failed.', 'error', 'ERROR');
     }
     setIsHealthConnectInitialized(initialized);
 
     const loadedTimeRange = await loadTimeRange();
     const initialTimeRange: TimeRange = loadedTimeRange !== null ? loadedTimeRange : '3d';
-    addLog(`[MainScreen] Loaded selectedTimeRange from storage: ${initialTimeRange}`);
 
     const newHealthMetricStates: HealthMetricStates = {};
     for (const metric of HEALTH_METRICS) {
@@ -123,8 +118,6 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
 
     const newHealthData: HealthDataDisplayState = {};
 
-    addLog(`[MainScreen] Fetching health data for display from ${startDate.toISOString()} to ${endDate.toISOString()} for range: ${timeRange}`);
-
     for (const metric of HEALTH_METRICS) {
       if (currentHealthMetricStates[metric.stateKey]) {
         let records: unknown[] = [];
@@ -151,7 +144,6 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
             const aggregatedTotalCalories = await getAggregatedTotalCaloriesByDate(startDate, endDate);
             const totalCaloriesSum = aggregatedTotalCalories.reduce((sum, record) => sum + record.value, 0);
             displayValue = totalCaloriesSum.toLocaleString();
-            console.log(`[MainScreen] Fetched Total Calories: ${displayValue}`);
             newHealthData[metric.id] = displayValue;
             continue;
           }
@@ -175,7 +167,6 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
           records = await readHealthRecords(metric.recordType, startDate, endDate) as unknown[];
 
           if (records.length === 0) {
-            addLog(`[MainScreen] No ${metric.label} records found.`);
             newHealthData[metric.id] = '0';
             continue;
           }
@@ -199,15 +190,6 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             case 'BodyFat':
-              addLog(`[MainScreen] Processing ${records.length} BodyFat records`);
-              console.log('[BodyFat DEBUG] Raw records:', JSON.stringify(records, null, 2));
-
-              if (records.length > 0) {
-                console.log('[BodyFat DEBUG] First record keys:', Object.keys(records[0] as object));
-                console.log('[BodyFat DEBUG] First record:', records[0]);
-                addLog(`[MainScreen] First BodyFat record structure: ${JSON.stringify(Object.keys(records[0] as object))}`);
-              }
-
               const extractBodyFatValue = (record: unknown): number | null => {
                 const r = record as Record<string, unknown>;
                 const percentage = r.percentage as Record<string, unknown> | number | undefined;
@@ -243,52 +225,19 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
                 return null;
               };
 
-              const processedBodyFat = records.map((r, idx) => {
-                const date = getRecordDate(r);
-                const value = extractBodyFatValue(r);
-
-                console.log(`[BodyFat DEBUG] Record ${idx}:`, {
-                  hasDate: !!date,
-                  dateValue: date,
-                  hasValue: value !== null,
-                  extractedValue: value,
-                  originalRecord: r
-                });
-
-                return {
-                  date: date,
-                  value: value,
-                  original: r
-                };
-              });
-
-              const validBodyFat = processedBodyFat
-                .filter(r => {
-                  const isValid = r.date && r.value !== null && !isNaN(r.value);
-                  if (!isValid) {
-                    console.log('[BodyFat DEBUG] Filtered out invalid record:', r);
-                    addLog(`[MainScreen] Invalid BodyFat record filtered: date=${!!r.date}, value=${r.value}`);
-                  }
-                  return isValid;
-                })
+              const validBodyFat = records
+                .map(r => ({
+                  date: getRecordDate(r),
+                  value: extractBodyFatValue(r),
+                }))
+                .filter(r => r.date && r.value !== null && !isNaN(r.value))
                 .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
-
-              console.log('[BodyFat DEBUG] Valid records after filtering:', validBodyFat.length);
-              addLog(`[MainScreen] Valid BodyFat records after filtering: ${validBodyFat.length}`);
 
               if (validBodyFat.length > 0) {
                 const latestValue = validBodyFat[0].value!;
                 displayValue = `${latestValue.toFixed(1)}%`;
-                console.log('[BodyFat DEBUG] Final display value:', displayValue);
-                addLog(`[MainScreen] BodyFat display value set to: ${displayValue}`, 'info', 'SUCCESS');
               } else {
                 displayValue = '0%';
-                console.log('[BodyFat DEBUG] No valid records found, showing 0%');
-                addLog('[MainScreen] No valid BodyFat records found, showing 0%', 'warn', 'WARNING');
-
-                if (records.length > 0) {
-                  addLog(`[MainScreen] Had ${records.length} BodyFat records but none were valid. Check record structure.`, 'warn', 'WARNING');
-                }
               }
               break;
 
@@ -351,8 +300,6 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             case 'OxygenSaturation':
-              addLog(`[MainScreen] Processing ${records.length} OxygenSaturation records`);
-
               const extractO2Value = (record: unknown): number | null => {
                 const r = record as Record<string, unknown>;
                 const percentage = r.percentage as Record<string, unknown> | number | undefined;
@@ -384,27 +331,14 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
                 .map(r => ({
                   date: getO2Date(r),
                   value: extractO2Value(r),
-                  original: r
                 }))
-                .filter(r => {
-                  const isValid = r.date && r.value !== null && !isNaN(r.value) && r.value > 0 && r.value <= 100;
-                  if (!isValid && r.value !== null) {
-                    console.log('[OxygenSaturation DEBUG] Invalid record filtered:', r);
-                  }
-                  return isValid;
-                })
+                .filter(r => r.date && r.value !== null && !isNaN(r.value) && r.value > 0 && r.value <= 100)
                 .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
 
               if (validO2.length > 0) {
                 displayValue = `${validO2[0].value!.toFixed(1)}%`;
-                addLog(`[MainScreen] OxygenSaturation: ${displayValue}`, 'info', 'SUCCESS');
               } else {
                 displayValue = '0%';
-                if (records.length > 0) {
-                  addLog(`[MainScreen] OxygenSaturation: Had ${records.length} records but none were valid`, 'warn', 'WARNING');
-                } else {
-                  addLog(`[MainScreen] No OxygenSaturation records found`, 'warn', 'WARNING');
-                }
               }
               break;
 
@@ -415,77 +349,32 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             case 'Vo2Max':
-              addLog(`[MainScreen] Processing ${records.length} Vo2Max records`);
-
-              if (records.length > 0) {
-                addLog(`[MainScreen] First VO2Max record structure: ${JSON.stringify(Object.keys(records[0] as object))}`);
-                addLog(`[MainScreen] First VO2Max record full: ${JSON.stringify(records[0])}`);
-              }
-
               const extractVo2Value = (record: unknown): number | null => {
                 const r = record as Record<string, unknown>;
-                let value: number | null = null;
-
-                if (typeof r.vo2Max === 'number') {
-                  value = r.vo2Max;
-                  addLog(`[MainScreen] VO2 extracted from vo2Max: ${value}`, 'debug');
-                } else if (typeof r.vo2 === 'number') {
-                  value = r.vo2;
-                  addLog(`[MainScreen] VO2 extracted from vo2: ${value}`, 'debug');
-                } else if (typeof r.value === 'number') {
-                  value = r.value;
-                  addLog(`[MainScreen] VO2 extracted from value: ${value}`, 'debug');
-                } else if (typeof r.vo2MillilitersPerMinuteKilogram === 'number') {
-                  value = r.vo2MillilitersPerMinuteKilogram;
-                  addLog(`[MainScreen] VO2 extracted from vo2MillilitersPerMinuteKilogram: ${value}`, 'debug');
-                } else {
-                  addLog(`[MainScreen] VO2: Could not extract value. Record keys: ${Object.keys(r).join(', ')}`, 'warn', 'WARNING');
-                }
-
-                return value;
+                if (typeof r.vo2Max === 'number') return r.vo2Max;
+                if (typeof r.vo2 === 'number') return r.vo2;
+                if (typeof r.value === 'number') return r.value;
+                if (typeof r.vo2MillilitersPerMinuteKilogram === 'number') return r.vo2MillilitersPerMinuteKilogram;
+                return null;
               };
 
               const getVo2Date = (record: unknown): string | null => {
                 const r = record as Record<string, unknown>;
-                const date = (r.time || r.startTime || r.timestamp || r.date) as string | undefined;
-                if (!date) {
-                  addLog(`[MainScreen] VO2: No date found. Record keys: ${Object.keys(r).join(', ')}`, 'warn', 'WARNING');
-                }
-                return date || null;
+                return (r.time || r.startTime || r.timestamp || r.date) as string | null;
               };
 
               const validVo2 = records
-                .map((r, idx) => {
-                  const date = getVo2Date(r);
-                  const value = extractVo2Value(r);
-
-                  if (idx === 0) {
-                    addLog(`[MainScreen] VO2 Record 0: date=${date}, value=${value}`, 'debug');
-                  }
-
-                  return {
-                    date: date,
-                    value: value,
-                    original: r
-                  };
-                })
-                .filter(r => {
-                  const isValid = r.date && r.value !== null && !isNaN(r.value) && r.value > 0 && r.value < 100;
-                  if (!isValid) {
-                    addLog(`[MainScreen] VO2 filtered out: date=${!!r.date}, value=${r.value}, range check=${r.value !== null && r.value > 0 && r.value < 100}`, 'debug');
-                  }
-                  return isValid;
-                })
+                .map(r => ({
+                  date: getVo2Date(r),
+                  value: extractVo2Value(r),
+                }))
+                .filter(r => r.date && r.value !== null && !isNaN(r.value) && r.value > 0 && r.value < 100)
                 .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
-
-              addLog(`[MainScreen] Valid VO2Max records after filtering: ${validVo2.length}`);
 
               if (validVo2.length > 0) {
                 displayValue = `${validVo2[0].value!.toFixed(1)} ml/min/kg`;
-                addLog(`[MainScreen] Vo2Max: ${displayValue}`, 'info', 'SUCCESS');
               } else {
                 displayValue = '0 ml/min/kg';
-                addLog(`[MainScreen] No valid Vo2Max records found after filtering`, 'warn', 'WARNING');
               }
               break;
 
@@ -499,58 +388,29 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             case 'BasalMetabolicRate':
-              addLog(`[MainScreen] Processing ${records.length} BasalMetabolicRate records`);
-
-              if (records.length > 0) {
-                addLog(`[MainScreen] First BMR record structure: ${JSON.stringify(Object.keys(records[0] as object))}`);
-                addLog(`[MainScreen] First BMR record full: ${JSON.stringify(records[0])}`);
-              }
-
               const extractBMRValue = (record: unknown): number | null => {
                 const r = record as Record<string, unknown>;
-                let value: number | null = null;
-
                 const basalMetabolicRate = r.basalMetabolicRate as Record<string, unknown> | number | undefined;
 
                 if (basalMetabolicRate !== undefined) {
                   if (typeof basalMetabolicRate === 'number') {
-                    value = basalMetabolicRate;
-                    addLog(`[MainScreen] BMR extracted from basalMetabolicRate (direct): ${value}`, 'debug');
+                    return basalMetabolicRate;
                   } else if (typeof basalMetabolicRate === 'object' && basalMetabolicRate !== null) {
-                    if ('inKilocaloriesPerDay' in basalMetabolicRate) {
-                      value = basalMetabolicRate.inKilocaloriesPerDay as number;
-                      addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inKilocaloriesPerDay: ${value}`, 'debug');
-                    } else if ('inCalories' in basalMetabolicRate) {
-                      value = basalMetabolicRate.inCalories as number;
-                      addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inCalories: ${value}`, 'debug');
-                    } else if ('inKilocalories' in basalMetabolicRate) {
-                      value = basalMetabolicRate.inKilocalories as number;
-                      addLog(`[MainScreen] BMR extracted from basalMetabolicRate.inKilocalories: ${value}`, 'debug');
-                    } else if ('value' in basalMetabolicRate) {
-                      value = basalMetabolicRate.value as number;
-                      addLog(`[MainScreen] BMR extracted from basalMetabolicRate.value: ${value}`, 'debug');
-                    } else {
-                      addLog(`[MainScreen] BMR unknown structure: ${JSON.stringify(basalMetabolicRate)}`, 'warn', 'WARNING');
-                    }
+                    if ('inKilocaloriesPerDay' in basalMetabolicRate) return basalMetabolicRate.inKilocaloriesPerDay as number;
+                    if ('inCalories' in basalMetabolicRate) return basalMetabolicRate.inCalories as number;
+                    if ('inKilocalories' in basalMetabolicRate) return basalMetabolicRate.inKilocalories as number;
+                    if ('value' in basalMetabolicRate) return basalMetabolicRate.value as number;
                   }
                 } else {
                   const energy = r.energy as Record<string, unknown> | undefined;
-                  if (energy && 'inCalories' in energy) {
-                    value = energy.inCalories as number;
-                    addLog(`[MainScreen] BMR from energy.inCalories: ${value}`, 'debug');
-                  }
+                  if (energy && 'inCalories' in energy) return energy.inCalories as number;
                 }
-
-                return value;
+                return null;
               };
 
               const getBMRDate = (record: unknown): string | null => {
                 const r = record as Record<string, unknown>;
-                const date = (r.time || r.startTime || r.timestamp || r.date) as string | undefined;
-                if (!date) {
-                  addLog(`[MainScreen] BMR: No date found. Record keys: ${Object.keys(r).join(', ')}`, 'warn', 'WARNING');
-                }
-                return date || null;
+                return (r.time || r.startTime || r.timestamp || r.date) as string | null;
               };
 
               const dailyBMRs: Record<string, { sum: number; count: number }> = {};
@@ -572,10 +432,8 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               if (aggregatedBMR.length > 0) {
                 const avgBMR = totalAggregatedBMR / aggregatedBMR.length;
                 displayValue = `${Math.round(avgBMR)} kcal`;
-                addLog(`[MainScreen] BasalMetabolicRate: ${displayValue}`, 'info', 'SUCCESS');
               } else {
                 displayValue = '0 kcal';
-                addLog(`[MainScreen] No valid BasalMetabolicRate records found for aggregation`, 'warn', 'WARNING');
               }
               break;
 
@@ -632,13 +490,11 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
               break;
 
             default:
-              addLog(`[MainScreen] Unhandled metric type for display: ${metric.recordType}`);
               displayValue = 'N/A';
               break;
           }
 
           newHealthData[metric.id] = displayValue;
-          console.log(`[MainScreen] Fetched ${metric.label}: ${displayValue}`);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           addLog(`[MainScreen] Error fetching ${metric.label}: ${errorMessage}`, 'error', 'ERROR');
@@ -651,22 +507,16 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
 
     const connectionStatus = await api.checkServerConnection();
     setIsConnected(connectionStatus);
-    console.log(`[MainScreen] Displaying Health Connect data:`, newHealthData);
   };
 
   const handleSync = async (): Promise<void> => {
     if (isSyncing) return;
     setIsSyncing(true);
-    addLog('Sync button pressed.');
 
     try {
-      addLog(`[MainScreen] Sync duration setting: ${selectedTimeRange}`);
-      addLog(`[MainScreen] healthMetricStates before sync: ${JSON.stringify(healthMetricStates)}`);
       const result = await healthConnectSyncData(selectedTimeRange, healthMetricStates);
 
       if (result.success) {
-        addLog('Health data synced successfully.', 'info', 'SUCCESS');
-
         const newSyncedTime = await saveLastSyncedTime();
         setLastSyncedTime(newSyncedTime);
         Alert.alert('Success', 'Health data synced successfully.');
@@ -688,8 +538,6 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
       const activeConfig = await getActiveServerConfig();
 
       if (!activeConfig || !activeConfig.url) {
-        const errorMsg = 'No server configured. Please configure your server URL in Settings first.';
-        addLog(`[MainScreen] ${errorMsg}`, 'warn', 'WARNING');
         Alert.alert(
           'No Server Configured',
           'Please configure your server URL in Settings first.',
@@ -698,18 +546,14 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
             { text: 'Go to Settings', onPress: () => navigation.navigate('Settings') }
           ]
         );
-        throw new Error(errorMsg);
+        return;
       }
 
       const serverUrl = activeConfig.url.endsWith('/') ? activeConfig.url.slice(0, -1) : activeConfig.url;
-      addLog(`Opening web dashboard at: ${serverUrl}`);
 
       try {
         await WebBrowser.openBrowserAsync(serverUrl);
-        addLog('Web dashboard opened successfully with WebBrowser', 'info', 'SUCCESS');
       } catch (inAppError) {
-        const errorMessage = inAppError instanceof Error ? inAppError.message : String(inAppError);
-        addLog(`WebBrowser error: ${errorMessage}, using default browser`, 'warn', 'WARNING');
         await Linking.openURL(serverUrl);
       }
     } catch (error) {

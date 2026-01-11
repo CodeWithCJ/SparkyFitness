@@ -20,11 +20,8 @@ export const aggregateHeartRateByDate = (records: HCHeartRateRecord[]): Aggregat
   );
 
   if (validRecords.length === 0) {
-    addLog(`[HealthConnectService] No valid heart rate records to aggregate`);
     return [];
   }
-
-  addLog(`[HealthConnectService] Aggregating ${validRecords.length} heart rate records`);
 
   const aggregatedData = validRecords.reduce<HeartRateAccumulator>((acc, record) => {
     try {
@@ -50,7 +47,6 @@ export const aggregateHeartRateByDate = (records: HCHeartRateRecord[]): Aggregat
     type: 'heart_rate',
   }));
 
-  addLog(`[HealthConnectService] Aggregated heart rate data into ${result.length} daily entries`);
   return result;
 };
 
@@ -66,11 +62,8 @@ export const aggregateStepsByDate = (records: HCStepsRecord[]): AggregatedHealth
   );
 
   if (validRecords.length === 0) {
-    addLog(`[HealthConnectService] No valid step records to aggregate`);
     return [];
   }
-
-  addLog(`[HealthConnectService] Aggregating ${validRecords.length} step records`);
 
   const aggregatedData = validRecords.reduce<SumAccumulator>((acc, record) => {
     try {
@@ -97,7 +90,6 @@ export const aggregateStepsByDate = (records: HCStepsRecord[]): AggregatedHealth
     type: 'step',
   }));
 
-  addLog(`[HealthConnectService] Aggregated step data into ${result.length} daily entries`);
   return result;
 };
 
@@ -113,11 +105,8 @@ export const aggregateTotalCaloriesByDate = (records: HCEnergyRecord[]): Aggrega
   );
 
   if (validRecords.length === 0) {
-    addLog(`[HealthConnectService] No valid total calories records to aggregate`);
     return [];
   }
-
-  addLog(`[HealthConnectService] Aggregating ${validRecords.length} total calories records`);
 
   const aggregatedData = validRecords.reduce<SumAccumulator>((acc, record) => {
     try {
@@ -159,7 +148,6 @@ export const aggregateTotalCaloriesByDate = (records: HCEnergyRecord[]): Aggrega
     type: 'total_calories',
   }));
 
-  addLog(`[HealthConnectService] Aggregated total calories data into ${result.length} daily entries`);
   return result;
 };
 
@@ -176,11 +164,8 @@ export const aggregateActiveCaloriesByDate = (records: HCEnergyRecord[]): Aggreg
   );
 
   if (validRecords.length === 0) {
-    addLog(`[HealthConnectService] No valid active calories records to aggregate`);
     return [];
   }
-
-  addLog(`[HealthConnectService] Aggregating ${validRecords.length} active calories records`);
 
   const aggregatedData = validRecords.reduce<SumAccumulator>((acc, record) => {
     try {
@@ -224,6 +209,5 @@ export const aggregateActiveCaloriesByDate = (records: HCEnergyRecord[]): Aggreg
     type: 'Active Calories',
   }));
 
-  addLog(`[HealthConnectService] Aggregated active calories data into ${result.length} daily entries`);
   return result;
 };

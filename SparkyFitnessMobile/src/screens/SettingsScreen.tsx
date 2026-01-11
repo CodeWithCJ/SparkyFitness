@@ -48,7 +48,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     setServerConfigs(allConfigs);
 
     const activeConfig = await getActiveServerConfig();
-    addLog(`[SettingsScreen] Loaded activeConfig: ${JSON.stringify(activeConfig)}`);
     if (activeConfig) {
       setUrl(activeConfig.url);
       setApiKey(activeConfig.apiKey);
@@ -92,7 +91,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     await initHealthConnect();
 
     const connectionStatus = await checkServerConnection();
-    addLog(`[SettingsScreen] Server connection status: ${connectionStatus}`);
     setIsConnected(connectionStatus);
   };
 
@@ -220,7 +218,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       const allPermissions = HEALTH_METRICS.flatMap(metric => metric.permissions);
 
       try {
-        addLog('[SettingsScreen] Requesting all permissions...');
         const granted = await requestHealthPermissions(allPermissions);
 
         if (!granted) {
@@ -233,8 +230,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             newHealthMetricStates[metric.stateKey] = false;
           });
           addLog('[SettingsScreen] Not all permissions were granted. Reverting "Enable All".', 'warn', 'WARNING');
-        } else {
-          addLog('[SettingsScreen] All permissions granted successfully.', 'info', 'SUCCESS');
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
@@ -251,7 +246,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     for (const metric of HEALTH_METRICS) {
       await saveHealthPreference(metric.preferenceKey, newHealthMetricStates[metric.stateKey]);
     }
-    addLog(`[SettingsScreen] Toggled all metrics to ${newValue}. State updated for all.`, 'info');
   };
 
   return (

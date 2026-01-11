@@ -47,7 +47,7 @@ export const addLog = async (
       return; // Don't log if current level is lower than message level
     }
 
-    console.log(`[LogService] Attempting to add log: [${level.toUpperCase()}] ${message}`);
+    // console.log(`[LogService] Attempting to add log: [${level.toUpperCase()}] ${message}`);
     const existingLogs = await AsyncStorage.getItem(LOG_KEY);
     const logs: LogEntry[] = existingLogs ? (JSON.parse(existingLogs) as LogEntry[]) : [];
     const newLog: LogEntry = {
@@ -59,7 +59,7 @@ export const addLog = async (
     };
     logs.unshift(newLog); // Add to the beginning for descending order
     await AsyncStorage.setItem(LOG_KEY, JSON.stringify(logs));
-    console.log(`[LogService] Successfully added log: [${level.toUpperCase()}] ${message}`);
+    console.log(`[LogService] Logged: [${level.toUpperCase()}] ${message}`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[LogService] Failed to add log: ${errorMessage}`, error);

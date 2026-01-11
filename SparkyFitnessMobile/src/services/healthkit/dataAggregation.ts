@@ -25,7 +25,6 @@ export const aggregateHeartRateByDate = (records: HKHeartRateRecord[]): Aggregat
   }, {});
 
   const result: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({ date, value: Math.round(aggregatedData[date].total / aggregatedData[date].count), type: 'heart_rate' }));
-  addLog(`[HealthKitService] Aggregated heart rate data into ${result.length} daily entries`);
   return result;
 };
 
@@ -146,6 +145,5 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
     aggregatedSessions.push(finalizeSession(currentSession));
   }
 
-  addLog(`[HealthKitService] Aggregated sleep sessions into ${aggregatedSessions.length} entries`);
   return aggregatedSessions;
 };
