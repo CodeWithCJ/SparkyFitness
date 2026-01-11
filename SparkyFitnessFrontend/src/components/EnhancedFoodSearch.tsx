@@ -59,6 +59,7 @@ import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
 interface OpenFoodFactsProduct {
   product_name: string;
   brands?: string;
+  serving_quantity?: number;
   nutriments: {
     "energy-kcal_100g"?: number;
     proteins_100g?: number;
@@ -198,6 +199,7 @@ const EnhancedFoodSearch = ({
     energyUnit,
     convertEnergy,
     getEnergyUnitString,
+    autoScaleOpenFoodFactsImports, // Add auto-scale preference
   } = usePreferences(); // Get loggingLevel, itemDisplayLimit, and foodDisplayLimit
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
@@ -395,23 +397,29 @@ const EnhancedFoodSearch = ({
   };
 
   const convertOpenFoodFactsToFood = (product: OpenFoodFactsProduct): Food => {
+    // Calculate scaling factor based on serving_quantity (defaults to 100g if not provided)
+    // Only apply scaling if autoScaleOpenFoodFactsImports preference is enabled
+    const shouldScale = autoScaleOpenFoodFactsImports && product.serving_quantity && product.serving_quantity > 0;
+    const servingSize = shouldScale ? product.serving_quantity! : 100;
+    const scaleFactor = shouldScale ? servingSize / 100 : 1; // Scale from 100g to actual serving size, or 1 if disabled
+
     const defaultVariant: FoodVariant = {
       id: "default", // Assign a default ID for now
-      serving_size: 100,
+      serving_size: servingSize,
       serving_unit: "g",
-      calories: Math.round(product.nutriments["energy-kcal_100g"] || 0), // Assumed to be in kcal
-      protein: Math.round((product.nutriments["proteins_100g"] || 0) * 10) / 10,
+      calories: Math.round((product.nutriments["energy-kcal_100g"] || 0) * scaleFactor), // Assumed to be in kcal, and scaled from 100g to serving
+      protein: Math.round((product.nutriments["proteins_100g"] || 0) * scaleFactor * 10) / 10,
       carbs:
-        Math.round((product.nutriments["carbohydrates_100g"] || 0) * 10) / 10,
-      fat: Math.round((product.nutriments["fat_100g"] || 0) * 10) / 10,
+        Math.round((product.nutriments["carbohydrates_100g"] || 0) * scaleFactor * 10) / 10,
+      fat: Math.round((product.nutriments["fat_100g"] || 0) * scaleFactor * 10) / 10,
       saturated_fat:
-        Math.round((product.nutriments["saturated-fat_100g"] || 0) * 10) / 10,
+        Math.round((product.nutriments["saturated-fat_100g"] || 0) * scaleFactor * 10) / 10,
       sodium: product.nutriments["sodium_100g"]
-        ? Math.round(product.nutriments["sodium_100g"] * 1000)
+        ? Math.round(product.nutriments["sodium_100g"] * 1000 * scaleFactor)
         : 0,
       dietary_fiber:
-        Math.round((product.nutriments["fiber_100g"] || 0) * 10) / 10,
-      sugars: Math.round((product.nutriments["sugars_100g"] || 0) * 10) / 10,
+        Math.round((product.nutriments["fiber_100g"] || 0) * scaleFactor * 10) / 10,
+      sugars: Math.round((product.nutriments["sugars_100g"] || 0) * scaleFactor * 10) / 10,
       // Initialize other nutrients to 0 or appropriate defaults
       polyunsaturated_fat: 0,
       monounsaturated_fat: 0,
@@ -423,6 +431,7 @@ const EnhancedFoodSearch = ({
       calcium: 0,
       iron: 0,
       is_default: true,
+      is_locked: shouldScale, // Enable auto-scale only if preference is enabled and scaling was applied
       glycemic_index: "None", // Default GI for OpenFoodFacts
     };
 
@@ -1329,49 +1338,56 @@ const EnhancedFoodSearch = ({
 
         {activeTab === "online" &&
           openFoodFactsResults.length > 0 &&
-          openFoodFactsResults.map((product) => (
-            <Card
-              key={product.code}
-              className="hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <h3 className="font-medium">{product.product_name}</h3>
-                      {product.brands && (
-                        <Badge variant="secondary" className="text-xs">
-                          {product.brands.split(",")[0]}
+          openFoodFactsResults.map((product) => {
+            // Calculate display values based on auto-scaling preference
+            const shouldScale = autoScaleOpenFoodFactsImports && product.serving_quantity && product.serving_quantity > 0;
+            const servingSize = shouldScale ? product.serving_quantity! : 100;
+            const scaleFactor = shouldScale ? servingSize / 100 : 1;
+            
+            return (
+              <Card
+                key={product.code}
+                className="hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <h3 className="font-medium">{product.product_name}</h3>
+                        {product.brands && (
+                          <Badge variant="secondary" className="text-xs">
+                            {product.brands.split(",")[0]}
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-xs">
+                          {t("enhancedFoodSearch.openFoodFacts", "OpenFoodFacts")}
                         </Badge>
-                      )}
-                      <Badge variant="outline" className="text-xs">
-                        {t("enhancedFoodSearch.openFoodFacts", "OpenFoodFacts")}
-                      </Badge>
+                      </div>
+                      <NutrientGrid food={{
+                        calories: Math.round((product.nutriments["energy-kcal_100g"] || 0) * scaleFactor),
+                        protein: Math.round((product.nutriments["proteins_100g"] || 0) * scaleFactor * 10) / 10,
+                        carbs: Math.round((product.nutriments["carbohydrates_100g"] || 0) * scaleFactor * 10) / 10,
+                        fat: Math.round((product.nutriments["fat_100g"] || 0) * scaleFactor * 10) / 10,
+                        dietary_fiber: Math.round((product.nutriments["fiber_100g"] || 0) * scaleFactor * 10) / 10,
+                        // For OpenFoodFacts, GI is not directly available in product.nutriments,
+                        // so we'll display "None" or handle it as a special case.
+                        glycemic_index: "None"
+                      }} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} customNutrients={customNutrients} />
+                      <p className="text-xs text-gray-500 mt-1">Per {servingSize}g</p>
                     </div>
-                    <NutrientGrid food={{
-                      calories: product.nutriments["energy-kcal_100g"] || 0,
-                      protein: product.nutriments["proteins_100g"] || 0,
-                      carbs: product.nutriments["carbohydrates_100g"] || 0,
-                      fat: product.nutriments["fat_100g"] || 0,
-                      dietary_fiber: product.nutriments["fiber_100g"] || 0,
-                      // For OpenFoodFacts, GI is not directly available in product.nutriments,
-                      // so we'll display "None" or handle it as a special case.
-                      glycemic_index: "None"
-                    }} visibleNutrients={visibleNutrients} energyUnit={energyUnit} convertEnergy={convertEnergy} getEnergyUnitString={getEnergyUnitString} customNutrients={customNutrients} />
-                    <p className="text-xs text-gray-500 mt-1">Per 100g</p>
+                    <Button
+                      size="sm"
+                      onClick={() => handleOpenFoodFactsEdit(product)}
+                      className="ml-2"
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      {t("enhancedFoodSearch.editAndAdd", "Edit & Add")}
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleOpenFoodFactsEdit(product)}
-                    className="ml-2"
-                  >
-                    <Edit className="w-4 h-4 mr-1" />
-                    {t("enhancedFoodSearch.editAndAdd", "Edit & Add")}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
 
         {activeTab === "online" &&
           nutritionixResults.length > 0 &&

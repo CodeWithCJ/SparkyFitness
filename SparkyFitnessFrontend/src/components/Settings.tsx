@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Added import
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -89,6 +90,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     setLoggingLevel,
     itemDisplayLimit,
     setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
+	autoScaleOpenFoodFactsImports, setAutoScaleOpenFoodFactsImports, // Add auto-scale preference
     loadPreferences: loadUserPreferencesFromContext, // Rename to avoid conflict
     saveAllPreferences, // Add saveAllPreferences from context
     formatDate, // Destructure formatDate
@@ -942,6 +944,19 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="flex items-center justify-between col-span-2 py-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto-scale-openfoodfacts">{t('settings.preferences.autoScaleOpenFoodFacts', 'Auto-scale OpenFoodFacts Imports')}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t('settings.preferences.autoScaleOpenFoodFactsHint', 'When enabled, nutrition values from OpenFoodFacts will be automatically scaled from per-100g to the product\'s serving size.')}
+                  </p>
+                </div>
+                <Switch
+                  id="auto-scale-openfoodfacts"
+                  checked={autoScaleOpenFoodFactsImports}
+                  onCheckedChange={setAutoScaleOpenFoodFactsImports}
+                />
               </div>
             </div>
             <Button onClick={handlePreferencesUpdate} disabled={loading}>
