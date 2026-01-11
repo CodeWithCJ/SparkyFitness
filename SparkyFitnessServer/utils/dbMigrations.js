@@ -9,8 +9,8 @@ async function applyMigrations() {
   const client = await getSystemClient();
   try {
     // The preflightChecks.js script now ensures these variables are set.
-    const appUser = process.env.SPARKY_FITNESS_DB_USER;
-    const appPassword = process.env.SPARKY_FITNESS_DB_PASSWORD;
+    const appUser = process.env.SPARKY_FITNESS_APP_DB_USER;
+    const appPassword = process.env.SPARKY_FITNESS_APP_DB_PASSWORD;
 
     // Ensure the application role exists
     const roleExistsResult = await client.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [appUser]);
