@@ -354,6 +354,30 @@ app.use("/onboarding", onboardingRoutes); // Add onboarding routes
 app.use("/custom-nutrients", customNutrientRoutes); // Add custom nutrient routes
 app.use("/meal-types", mealTypeRoutes);
 
+// Serve Swagger UI
+app.use('/api-docs/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
+// Serve Redoc
+app.get(
+  '/api-docs/redoc',
+  redoc({
+    title: 'API Docs',
+    specUrl: '/api-docs/json',
+  })
+);
+
+// Serve the raw JSON spec
+app.get('/api-docs/json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpecs);
+});
+
+// Redirect /api-docs to /api-docs/swagger
+app.get('/api-docs', (req, res) => {
+  res.redirect('/api-docs/swagger');
+});
+
+
 // Temporary debug route to log incoming requests for meal plan templates
 app.use(
   "/meal-plan-templates",
