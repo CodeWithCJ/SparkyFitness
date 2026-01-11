@@ -24,7 +24,7 @@ export interface MobileHealthData {
 }
 
 export interface SleepStageEvent {
-  stage_type: 'awake' | 'rem' | 'light' | 'deep' | 'unknown';
+  stage_type: 'awake' | 'rem' | 'light' | 'deep' | 'in_bed' | 'unknown';
   start_time: string; // ISO 8601 format
   end_time: string; // ISO 8601 format
   duration_in_seconds: number;

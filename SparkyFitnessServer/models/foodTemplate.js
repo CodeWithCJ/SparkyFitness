@@ -1,8 +1,8 @@
 const { getClient } = require("../db/poolManager");
 const { log } = require("../config/logging");
-const format = require('pg-format');
-const foodEntryDb = require('./foodEntry');
-const foodEntryMealRepository = require('./foodEntryMealRepository');
+const format = require("pg-format");
+const foodEntryDb = require("./foodEntry");
+const foodEntryMealRepository = require("./foodEntryMealRepository");
 
 async function deleteFoodEntriesByMealPlanId(mealPlanId, userId) {
   const client = await getClient(userId); // User-specific operation
@@ -44,7 +44,7 @@ async function deleteFoodEntriesByTemplateId(
       WHERE meal_plan_template_id = $1 AND user_id = $2 AND entry_date >= CURRENT_DATE AND food_entry_meal_id IS NOT NULL
     `;
     const entryMealsResult = await client.query(entryMealsQuery, params);
-    const entryMealIds = entryMealsResult.rows.map(r => r.food_entry_meal_id);
+    const entryMealIds = entryMealsResult.rows.map((r) => r.food_entry_meal_id);
 
     // 2. Delete the food entries
     const result = await client.query(query, params);
@@ -55,7 +55,10 @@ async function deleteFoodEntriesByTemplateId(
         `DELETE FROM food_entry_meals WHERE id = ANY($1::uuid[])`,
         [entryMealIds]
       );
-      log("info", `Deleted ${entryMealIds.length} orphaned food_entry_meals for template ${templateId}`);
+      log(
+        "info",
+        `Deleted ${entryMealIds.length} orphaned food_entry_meals for template ${templateId}`
+      );
     }
 
     return result.rowCount;
@@ -93,7 +96,7 @@ async function createFoodEntriesFromTemplate(
                         SELECT json_agg(
                             json_build_object(
                                 'day_of_week', a.day_of_week,
-                                'meal_type', a.meal_type,
+                                'meal_type_id', a.meal_type_id,
                                 'item_type', a.item_type,
                                 'meal_id', a.meal_id,
                                 'food_id', a.food_id,
@@ -148,7 +151,7 @@ async function createFoodEntriesFromTemplate(
     const foodIds = new Set();
     const variantIds = new Set();
 
-    assignments.forEach(assignment => {
+    assignments.forEach((assignment) => {
       if (assignment.item_type === "meal") {
         mealIds.add(assignment.meal_id);
         foodIds.add(assignment.meal_id);
@@ -170,7 +173,7 @@ async function createFoodEntriesFromTemplate(
              WHERE mf.meal_id = ANY($1::uuid[])`,
         [Array.from(mealIds)]
       );
-      mealFoodsResult.rows.forEach(row => {
+      mealFoodsResult.rows.forEach((row) => {
         if (!mealFoodsMap.has(row.meal_id)) {
           mealFoodsMap.set(row.meal_id, []);
         }
@@ -184,93 +187,126 @@ async function createFoodEntriesFromTemplate(
 
     const foodsMap = new Map();
     if (foodIds.size > 0) {
-      const foodsResult = await client.query(`SELECT * FROM foods WHERE id = ANY($1::uuid[])`, [Array.from(foodIds)]);
-      foodsResult.rows.forEach(row => foodsMap.set(row.id, row));
+      const foodsResult = await client.query(
+        `SELECT * FROM foods WHERE id = ANY($1::uuid[])`,
+        [Array.from(foodIds)]
+      );
+      foodsResult.rows.forEach((row) => foodsMap.set(row.id, row));
     }
 
     const mealsMap = new Map();
     if (mealIds.size > 0) {
-      const mealsResult = await client.query(`SELECT * FROM meals WHERE id = ANY($1::uuid[])`, [Array.from(mealIds)]);
-      mealsResult.rows.forEach(row => mealsMap.set(row.id, row));
+      const mealsResult = await client.query(
+        `SELECT * FROM meals WHERE id = ANY($1::uuid[])`,
+        [Array.from(mealIds)]
+      );
+      mealsResult.rows.forEach((row) => mealsMap.set(row.id, row));
     }
 
     const variantsMap = new Map();
     if (variantIds.size > 0) {
-      const variantsResult = await client.query(`SELECT * FROM food_variants WHERE id = ANY($1::uuid[])`, [Array.from(variantIds)]);
-      variantsResult.rows.forEach(row => variantsMap.set(row.id, row));
+      const variantsResult = await client.query(
+        `SELECT * FROM food_variants WHERE id = ANY($1::uuid[])`,
+        [Array.from(variantIds)]
+      );
+      variantsResult.rows.forEach((row) => variantsMap.set(row.id, row));
     }
 
     const existingFoodEntries = new Set();
     const existingEntriesQuery = `
-        SELECT food_id, meal_id, meal_type, entry_date, variant_id
+        SELECT food_id, meal_id, meal_type_id, entry_date, variant_id
         FROM food_entries
         WHERE user_id = $1
           AND meal_plan_template_id = $2
           AND entry_date >= $3
           AND entry_date <= $4
     `;
-    const existingEntriesResult = await client.query(existingEntriesQuery, [userId, templateId, currentDate, lastDate]);
-    existingEntriesResult.rows.forEach(entry => {
-      const key = `${entry.food_id || entry.meal_id}-${entry.meal_type}-${entry.entry_date.toISOString().split('T')[0]}-${entry.variant_id}`;
+    const existingEntriesResult = await client.query(existingEntriesQuery, [
+      userId,
+      templateId,
+      currentDate,
+      lastDate,
+    ]);
+    existingEntriesResult.rows.forEach((entry) => {
+      const key = `${entry.food_id || entry.meal_id}-${entry.meal_type_id}-${
+        entry.entry_date.toISOString().split("T")[0]
+      }-${entry.variant_id}`;
       existingFoodEntries.add(key);
     });
 
     while (currentDate <= lastDate) {
       const dayOfWeek = currentDate.getDay();
-      const assignmentsForDay = assignments.filter(a => a.day_of_week === dayOfWeek);
+      const assignmentsForDay = assignments.filter(
+        (a) => a.day_of_week === dayOfWeek
+      );
 
       for (const assignment of assignmentsForDay) {
         if (assignment.item_type === "meal") {
           const mealFoods = mealFoodsMap.get(assignment.meal_id) || [];
           if (mealFoods.length === 0) continue;
 
-          const entryKey = `${assignment.meal_id}-${assignment.meal_type}-${currentDate.toISOString().split('T')[0]}-null`;
+          const entryKey = `${assignment.meal_id}-${assignment.meal_type_id}-${
+            currentDate.toISOString().split("T")[0]
+          }-null`;
           if (existingFoodEntries.has(entryKey)) continue;
 
           const meal = mealsMap.get(assignment.meal_id);
           if (!meal) continue;
 
           const mealQuantity = assignment.quantity || 1.0;
-          const mealUnit = assignment.unit || 'serving';
+          const mealUnit = assignment.unit || "serving";
 
-          log("info", `Creating food_entry_meal for meal ${meal.name} with quantity ${mealQuantity} ${mealUnit}`);
+          log(
+            "info",
+            `Creating food_entry_meal for meal ${meal.name} with quantity ${mealQuantity} ${mealUnit}`
+          );
 
           // Create food_entry_meals record
           const foodEntryMealData = {
             user_id: userId,
             meal_template_id: assignment.meal_id,
-            meal_type: assignment.meal_type.toLowerCase(),
-            entry_date: currentDate.toISOString().split('T')[0],
+            meal_type_id: assignment.meal_type_id,
+            entry_date: currentDate.toISOString().split("T")[0],
             name: meal.name,
-            description: meal.description || '',
+            description: meal.description || "",
             quantity: mealQuantity,
             unit: mealUnit,
             created_by_user_id: userId,
-            updated_by_user_id: userId
+            updated_by_user_id: userId,
           };
 
-          const newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal(
-            foodEntryMealData,
-            userId
-          );
+          const newFoodEntryMeal =
+            await foodEntryMealRepository.createFoodEntryMeal(
+              foodEntryMealData,
+              userId
+            );
 
-          log("info", `Created food_entry_meal ${newFoodEntryMeal.id} for meal ${meal.name}`);
+          log(
+            "info",
+            `Created food_entry_meal ${newFoodEntryMeal.id} for meal ${meal.name}`
+          );
 
           // Calculate multiplier for scaling component foods
           const mealServingSize = meal.serving_size || 1.0;
           let multiplier = 1.0;
-          if (mealUnit === 'serving' || mealUnit === meal.serving_unit) {
+          if (mealUnit === "serving" || mealUnit === meal.serving_unit) {
             multiplier = mealQuantity;
           } else {
             multiplier = mealQuantity / mealServingSize;
           }
 
-          log("info", `Multiplier for meal scaling: ${multiplier} (quantity: ${mealQuantity}, serving_size: ${mealServingSize})`);
+          log(
+            "info",
+            `Multiplier for meal scaling: ${multiplier} (quantity: ${mealQuantity}, serving_size: ${mealServingSize})`
+          );
 
           for (const foodItem of mealFoods) {
             const variant = variantsMap.get(foodItem.variant_id);
             if (!variant) {
-              log("warn", `Variant ${foodItem.variant_id} not found for food ${foodItem.food_id}`);
+              log(
+                "warn",
+                `Variant ${foodItem.variant_id} not found for food ${foodItem.food_id}`
+              );
               continue;
             }
 
@@ -279,10 +315,10 @@ async function createFoodEntriesFromTemplate(
             foodEntriesToInsert.push([
               userId,
               foodItem.food_id,
-              assignment.meal_type.toLowerCase(),
+              assignment.meal_type_id,
               scaledQuantity,
               foodItem.unit,
-              currentDate.toISOString().split('T')[0],
+              currentDate.toISOString().split("T")[0],
               foodItem.variant_id,
               templateId,
               foodItem.food_name,
@@ -309,28 +345,58 @@ async function createFoodEntriesFromTemplate(
               null,
               userId,
               newFoodEntryMeal.id,
-              variant.custom_nutrients || {}
+              variant.custom_nutrients || {},
             ]);
           }
-          log("info", `Created ${mealFoods.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}`);
+          log(
+            "info",
+            `Created ${mealFoods.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}`
+          );
           existingFoodEntries.add(entryKey);
-
         } else if (assignment.item_type === "food") {
           const food = foodsMap.get(assignment.food_id);
           const variant = variantsMap.get(assignment.variant_id);
           if (!food || !variant) continue;
 
-          const entryKey = `${assignment.food_id}-${assignment.meal_type}-${currentDate.toISOString().split('T')[0]}-${assignment.variant_id}`;
+          const entryKey = `${assignment.food_id}-${assignment.meal_type_id}-${
+            currentDate.toISOString().split("T")[0]
+          }-${assignment.variant_id}`;
           if (existingFoodEntries.has(entryKey)) continue;
 
           foodEntriesToInsert.push([
-            userId, assignment.food_id, assignment.meal_type.toLowerCase(), assignment.quantity, assignment.unit, currentDate.toISOString().split('T')[0], assignment.variant_id, templateId,
-            food.name, food.brand, variant.serving_size, variant.serving_unit,
-            variant.calories, variant.protein, variant.carbs, variant.fat,
-            variant.saturated_fat, variant.polyunsaturated_fat, variant.monounsaturated_fat, variant.trans_fat,
-            variant.cholesterol, variant.sodium, variant.potassium, variant.dietary_fiber, variant.sugars,
-            variant.vitamin_a, variant.vitamin_c, variant.calcium, variant.iron, null, userId, null,
-            variant.custom_nutrients || {}
+            userId,
+            assignment.food_id,
+            assignment.meal_type_id,
+            assignment.quantity,
+            assignment.unit,
+            currentDate.toISOString().split("T")[0],
+            assignment.variant_id,
+            templateId,
+            food.name,
+            food.brand,
+            variant.serving_size,
+            variant.serving_unit,
+            variant.calories,
+            variant.protein,
+            variant.carbs,
+            variant.fat,
+            variant.saturated_fat,
+            variant.polyunsaturated_fat,
+            variant.monounsaturated_fat,
+            variant.trans_fat,
+            variant.cholesterol,
+            variant.sodium,
+            variant.potassium,
+            variant.dietary_fiber,
+            variant.sugars,
+            variant.vitamin_a,
+            variant.vitamin_c,
+            variant.calcium,
+            variant.iron,
+            null,
+            userId,
+            null,
+            variant.custom_nutrients || {},
           ]);
           existingFoodEntries.add(entryKey);
         }
@@ -341,7 +407,7 @@ async function createFoodEntriesFromTemplate(
     if (foodEntriesToInsert.length > 0) {
       const insertQuery = format(
         `INSERT INTO food_entries (
-                user_id, food_id, meal_type, quantity, unit, entry_date, variant_id, meal_plan_template_id,
+                user_id, food_id, meal_type_id, quantity, unit, entry_date, variant_id, meal_plan_template_id,
                 food_name, brand_name, serving_size, serving_unit,
                 calories, protein, carbs, fat,
                 saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
@@ -351,7 +417,10 @@ async function createFoodEntriesFromTemplate(
         foodEntriesToInsert
       );
       await client.query(insertQuery);
-      log("info", `Inserted ${foodEntriesToInsert.length} food entries for template ${templateId}`);
+      log(
+        "info",
+        `Inserted ${foodEntriesToInsert.length} food entries for template ${templateId}`
+      );
     } else {
       log("info", `No new food entries to insert for template ${templateId}`);
     }

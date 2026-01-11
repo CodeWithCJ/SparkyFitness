@@ -1,16 +1,19 @@
 import { apiCall } from "./api";
-import { MealFood } from '@/types/meal'; // Import MealFood
-import { FoodEntryMeal } from '@/types/meal'; // New import
-import { FoodEntry } from '@/types/food'; // New import
+import { MealFood } from "@/types/meal"; // Import MealFood
+import { FoodEntryMeal } from "@/types/meal"; // New import
+import { FoodEntry } from "@/types/food"; // New import
 
 interface FoodEntryUpdateData {
   quantity?: number;
   unit?: string;
 }
 
-export const updateFoodEntry = async (id: string, data: FoodEntryUpdateData): Promise<any> => {
+export const updateFoodEntry = async (
+  id: string,
+  data: FoodEntryUpdateData
+): Promise<any> => {
   const response = await apiCall(`/food-entries/${id}`, {
-    method: 'PUT',
+    method: "PUT",
     body: data,
   });
   return response;
@@ -20,15 +23,18 @@ export interface FoodEntryCreateData {
   user_id: string;
   food_id: string;
   meal_type: string;
+  meal_type_id: string;
   quantity: number;
   unit: string;
   entry_date: string;
   variant_id?: string | null;
 }
 
-export const createFoodEntry = async (data: FoodEntryCreateData): Promise<any> => {
-  const response = await apiCall('/food-entries', {
-    method: 'POST',
+export const createFoodEntry = async (
+  data: FoodEntryCreateData
+): Promise<any> => {
+  const response = await apiCall("/food-entries", {
+    method: "POST",
     body: data,
   });
   return response;
@@ -36,21 +42,28 @@ export const createFoodEntry = async (data: FoodEntryCreateData): Promise<any> =
 
 export const removeFoodEntry = async (id: string): Promise<any> => {
   const response = await apiCall(`/food-entries/${id}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
   return response;
 };
 
-export const loadFoodEntries = async (userId: string, date: string): Promise<FoodEntry[]> => {
-  const response = await apiCall(`/food-entries/by-date/${date}?userId=${userId}`, {
-    method: 'GET',
-  });
+export const loadFoodEntries = async (
+  userId: string,
+  date: string
+): Promise<FoodEntry[]> => {
+  const response = await apiCall(
+    `/food-entries/by-date/${date}?userId=${userId}`,
+    {
+      method: "GET",
+    }
+  );
   return response;
 };
 
-export const loadGoals = async (userId: string, date: string): Promise<any> => { // Adjust return type as needed
+export const loadGoals = async (userId: string, date: string): Promise<any> => {
+  // Adjust return type as needed
   const response = await apiCall(`/goals/by-date/${date}?userId=${userId}`, {
-    method: 'GET',
+    method: "GET",
   });
   return response;
 };
@@ -59,18 +72,21 @@ export const copyFoodEntries = async (
   sourceDate: string,
   sourceMealType: string,
   targetDate: string,
-  targetMealType: string,
+  targetMealType: string
 ): Promise<any> => {
-  const response = await apiCall('/food-entries/copy', {
-    method: 'POST',
+  const response = await apiCall("/food-entries/copy", {
+    method: "POST",
     body: { sourceDate, sourceMealType, targetDate, targetMealType },
   });
   return response;
 };
 
-export const copyFoodEntriesFromYesterday = async (mealType: string, targetDate: string): Promise<any> => {
-  const response = await apiCall('/food-entries/copy-yesterday', {
-    method: 'POST',
+export const copyFoodEntriesFromYesterday = async (
+  mealType: string,
+  targetDate: string
+): Promise<any> => {
+  const response = await apiCall("/food-entries/copy-yesterday", {
+    method: "POST",
     body: { mealType, targetDate },
   });
   return response;
@@ -98,39 +114,58 @@ export interface FoodEntryMealUpdateData {
   foods: MealFood[]; // Foods must be provided for update
 }
 
-export const createFoodEntryMeal = async (data: FoodEntryMealCreateData): Promise<FoodEntryMeal> => {
-  const response = await apiCall('/food-entry-meals', {
-    method: 'POST',
+export const createFoodEntryMeal = async (
+  data: FoodEntryMealCreateData
+): Promise<FoodEntryMeal> => {
+  const response = await apiCall("/food-entry-meals", {
+    method: "POST",
     body: data,
   });
   return response;
 };
 
-export const updateFoodEntryMeal = async (foodEntryMealId: string, data: FoodEntryMealUpdateData): Promise<FoodEntryMeal> => {
+export const updateFoodEntryMeal = async (
+  foodEntryMealId: string,
+  data: FoodEntryMealUpdateData
+): Promise<FoodEntryMeal> => {
   const response = await apiCall(`/food-entry-meals/${foodEntryMealId}`, {
-    method: 'PUT',
+    method: "PUT",
     body: data,
   });
   return response;
 };
 
-export const getFoodEntryMealWithComponents = async (userId: string, foodEntryMealId: string): Promise<FoodEntryMeal> => {
-  const response = await apiCall(`/food-entry-meals/${foodEntryMealId}?userId=${userId}`, {
-    method: 'GET',
-  });
+export const getFoodEntryMealWithComponents = async (
+  userId: string,
+  foodEntryMealId: string
+): Promise<FoodEntryMeal> => {
+  const response = await apiCall(
+    `/food-entry-meals/${foodEntryMealId}?userId=${userId}`,
+    {
+      method: "GET",
+    }
+  );
   return response;
 };
 
-export const getFoodEntryMealsByDate = async (userId: string, date: string): Promise<FoodEntryMeal[]> => {
-  const response = await apiCall(`/food-entry-meals/by-date/${date}?userId=${userId}`, {
-    method: 'GET',
-  });
+export const getFoodEntryMealsByDate = async (
+  userId: string,
+  date: string
+): Promise<FoodEntryMeal[]> => {
+  const response = await apiCall(
+    `/food-entry-meals/by-date/${date}?userId=${userId}`,
+    {
+      method: "GET",
+    }
+  );
   return response;
 };
 
-export const deleteFoodEntryMeal = async (foodEntryMealId: string): Promise<any> => {
+export const deleteFoodEntryMeal = async (
+  foodEntryMealId: string
+): Promise<any> => {
   const response = await apiCall(`/food-entry-meals/${foodEntryMealId}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
   return response;
 };

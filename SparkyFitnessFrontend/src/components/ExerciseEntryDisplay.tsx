@@ -13,6 +13,7 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { ExerciseEntry } from "@/services/exerciseEntryService";
 import { Exercise } from "@/services/exerciseService";
+import { formatMinutesToHHMM } from "@/utils/timeFormatters"; // Import the new utility function
 
 interface ExerciseEntryDisplayProps {
   exerciseEntry: ExerciseEntry;
@@ -76,7 +77,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           <div className="text-xs text-gray-500 dark:text-gray-400">
             {exerciseEntry.exercise_snapshot?.name === "Active Calories"
               ? `${Math.round(convertEnergy(exerciseEntry.calories_burned || 0, 'kcal', energyUnit))} active ${getEnergyUnitString(energyUnit)}`
-              : `${String(exerciseEntry.duration_minutes || 0)} minutes • ${Math.round(convertEnergy(exerciseEntry.calories_burned || 0, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`}
+              : `${formatMinutesToHHMM(exerciseEntry.sets?.reduce((sum, set) => sum + (set.duration || 0), 0) || 0)} • ${Math.round(convertEnergy(exerciseEntry.calories_burned || 0, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`}
             {exerciseEntry.sets && Array.isArray(exerciseEntry.sets) && exerciseEntry.sets.length > 0 && (
               <>
                 {` • Sets: ${String(exerciseEntry.sets.length)}`}

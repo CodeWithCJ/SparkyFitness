@@ -9,6 +9,7 @@ import { GroupedExerciseEntry, ExerciseEntry } from "@/services/exerciseEntrySer
 import { Exercise } from "@/services/exerciseService";
 import ExerciseEntryDisplay from "./ExerciseEntryDisplay";
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
+import { formatMinutesToHHMM } from "@/utils/timeFormatters"; // Import the new utility function
 
 interface ExercisePresetEntryDisplayProps {
   presetEntry: GroupedExerciseEntry;
@@ -71,7 +72,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">
-                    {presetEntry.exercises.reduce((sum, ex) => sum + (ex.sets ? ex.sets.reduce((setSum, set) => setSum + (set.duration || 0), 0) : 0), 0).toFixed(0)}
+                    {formatMinutesToHHMM(presetEntry.exercises.reduce((sum, ex) => sum + (ex.sets ? ex.sets.reduce((setSum, set) => setSum + (set.duration || 0), 0) : 0), 0))}
                   </div>
                   <div className="text-xs text-gray-500">{t("common.minutesUnit", "Min")}</div>
                 </div>
