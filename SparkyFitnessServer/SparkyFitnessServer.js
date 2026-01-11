@@ -63,6 +63,7 @@ const externalProviderRepository = require('./models/externalProviderRepository'
 const withingsService = require('./integrations/withings/withingsService'); // Import withingsService
 const garminConnectService = require('./integrations/garminconnect/garminConnectService'); // Import garminConnectService
 const garminService = require('./services/garminService'); // Import garminService
+const mealTypeRoutes = require("./routes/mealTypeRoutes");
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const redoc = require('redoc-express');
