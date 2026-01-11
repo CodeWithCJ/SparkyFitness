@@ -14,10 +14,11 @@ import ServerConfigComponent from '../components/ServerConfig';
 import HealthDataSync from '../components/HealthDataSync';
 import SyncFrequency from '../components/SyncFrequency';
 import AppearanceSettings from '../components/AppearanceSettings';
+import DevTools from '../components/DevTools';
 import { useTheme } from '../contexts/ThemeContext';
 import * as Application from 'expo-application';
 import type { HealthMetricStates } from '../types/healthRecords';
-
+import Constants from 'expo-constants';
 interface SettingsScreenProps {
   navigation: { navigate: (screen: string) => void };
 }
@@ -288,6 +289,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             isAllMetricsEnabled={isAllMetricsEnabled}
             handleToggleAllMetrics={handleToggleAllMetrics}
           />
+
+          {__DEV__ && 
+            (Constants.expoConfig?.extra?.APP_VARIANT === 'development' || 
+             Constants.expoConfig?.extra?.APP_VARIANT === 'dev') && (
+            <DevTools />
+          )}
 
           <View style={styles.footer}>
             <Text style={{ color: colors.textMuted, zIndex: 100 }}>Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>

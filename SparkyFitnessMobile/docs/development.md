@@ -40,6 +40,14 @@ npx expo start
 
 Then launch the development build on your device or simulator.
 
+## Dev Tools
+
+Set the environment variable `APP_VARIANT` to `production` to disable the dev menu. As a fallback this menu is also only available in expo __development__ builds. 
+
+### Seed data
+
+Available for android only, you can seed Health Connect with test data.
+
 ## API Documentation
 
 See [API Documentation](api.md) for details on the server API as it relates to mobile app development.
