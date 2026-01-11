@@ -3,7 +3,7 @@ const { log } = require('../config/logging');
 
 async function grantPermissions() {
   const client = await getSystemClient();
-  const appUser = process.env.SPARKY_FITNESS_DB_USER;
+  const appUser = process.env.SPARKY_FITNESS_APP_DB_USER;
 
   try {
     log('info', `Ensuring permissions for role: ${appUser}`);
