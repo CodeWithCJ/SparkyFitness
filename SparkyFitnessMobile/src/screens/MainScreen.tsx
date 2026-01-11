@@ -42,6 +42,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
   const [healthData, setHealthData] = useState<HealthDataDisplayState>({});
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
+  const [lastSyncedTimeLoaded, setLastSyncedTimeLoaded] = useState<boolean>(false);
   const [isHealthConnectInitialized, setIsHealthConnectInitialized] = useState<boolean>(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('3d');
   const [openTimeRangePicker, setOpenTimeRangePicker] = useState<boolean>(false);
@@ -81,7 +82,9 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
     const connectionStatus = await api.checkServerConnection();
     setIsConnected(connectionStatus);
 
-    setLastSyncedTime(await loadLastSyncedTime());
+    const loadedSyncTime = await loadLastSyncedTime();
+    setLastSyncedTime(loadedSyncTime);
+    setLastSyncedTimeLoaded(true);
   }, []);
 
   useFocusEffect(
@@ -604,14 +607,14 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
           </Text>
         )}
 
-        {/* Last Synced Time */}
-        { lastSyncedTime ? (
-          <View>
-            <Text style={{ color: colors.textMuted, textAlign: 'center', marginBottom: 16 }}>
-              <Text>{formatRelativeTime(new Date(lastSyncedTime))}</Text>
-            </Text>
-          </View>
-        ) : null}
+        {/* Last Synced Time - always reserve space to prevent layout shift */}
+        <View>
+          <Text style={{ color: colors.textMuted, textAlign: 'center', marginBottom: 16 }}>
+            {lastSyncedTimeLoaded
+              ? formatRelativeTime(lastSyncedTime ? new Date(lastSyncedTime) : null)
+              : ' '}
+          </Text>
+        </View>
 
         {/* Time Range */}
         <View style={[styles.card, styles.timeRangeCard, { backgroundColor: colors.card }]}>
