@@ -437,6 +437,22 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
                 const activityTypeName = exerciseType ? (EXERCISE_MAP[exerciseType] || `Exercise Type ${exerciseType}`) : 'Exercise Session';
                 const title = (rec.title as string) || activityTypeName;
 
+                // Extract calories burned (default to 0 if missing/null)
+                const energy = rec.energy as Record<string, number> | undefined;
+                let caloriesBurned = 0;
+                if (energy?.inKilocalories != null && !isNaN(energy.inKilocalories)) {
+                  caloriesBurned = energy.inKilocalories;
+                } else if (energy?.inCalories != null && !isNaN(energy.inCalories)) {
+                  caloriesBurned = energy.inCalories / 1000; // Convert to kcal
+                }
+
+                // Extract distance in meters (default to 0 if missing/null)
+                const distanceObj = rec.distance as Record<string, number> | undefined;
+                let distance = 0;
+                if (distanceObj?.inMeters != null && !isNaN(distanceObj.inMeters)) {
+                  distance = distanceObj.inMeters;
+                }
+
                 const exerciseSession: TransformedExerciseSession = {
                   type: 'ExerciseSession',
                   source: 'Health Connect',
@@ -448,6 +464,8 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
                   duration: durationInSeconds,
                   activityType: activityTypeName,
                   title: title,
+                  caloriesBurned: parseFloat(caloriesBurned.toFixed(2)),
+                  distance: parseFloat(distance.toFixed(2)),
                   notes: rec.notes as string | undefined,
                   raw_data: record
                 };

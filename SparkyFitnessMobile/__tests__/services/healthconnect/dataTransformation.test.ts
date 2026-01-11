@@ -353,6 +353,215 @@ describe('transformHealthRecords', () => {
 
       expect(result).toHaveLength(0);
     });
+
+    test('extracts caloriesBurned from energy.inKilocalories', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+          energy: { inKilocalories: 350.5 },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].caloriesBurned).toBe(350.5);
+    });
+
+    test('extracts caloriesBurned from energy.inCalories and converts to kcal', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+          energy: { inCalories: 250000 }, // 250 kcal
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].caloriesBurned).toBe(250);
+    });
+
+    test('defaults caloriesBurned to 0 when energy is missing', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].caloriesBurned).toBe(0);
+    });
+
+    test('defaults caloriesBurned to 0 when energy values are null', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+          energy: { inKilocalories: null, inCalories: null },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].caloriesBurned).toBe(0);
+    });
+
+    test('defaults caloriesBurned to 0 when energy value is NaN', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+          energy: { inKilocalories: NaN },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].caloriesBurned).toBe(0);
+    });
+
+    test('extracts distance from distance.inMeters', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+          distance: { inMeters: 5000.75 },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].distance).toBe(5000.75);
+    });
+
+    test('defaults distance to 0 when distance is missing', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].distance).toBe(0);
+    });
+
+    test('defaults distance to 0 when distance.inMeters is null', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+          distance: { inMeters: null },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].distance).toBe(0);
+    });
+
+    test('defaults distance to 0 when distance.inMeters is NaN', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+          distance: { inMeters: NaN },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].distance).toBe(0);
+    });
+
+    test('rounds caloriesBurned and distance to 2 decimal places', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+          energy: { inKilocalories: 350.5678 },
+          distance: { inMeters: 5000.1234 },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].caloriesBurned).toBe(350.57);
+      expect(result[0].distance).toBe(5000.12);
+    });
+
+    test('extracts both caloriesBurned and distance from complete wearable record', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+          title: 'Morning Run',
+          energy: { inKilocalories: 450 },
+          distance: { inMeters: 7500 },
+          notes: 'Great pace today',
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        type: 'ExerciseSession',
+        activityType: 'Running',
+        title: 'Morning Run',
+        duration: 3600,
+        caloriesBurned: 450,
+        distance: 7500,
+        notes: 'Great pace today',
+      });
+    });
+
+    test('prefers inKilocalories over inCalories when both are present', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+          energy: { inKilocalories: 300, inCalories: 500000 },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].caloriesBurned).toBe(300);
+    });
+
+    test('passes through negative energy and distance values', () => {
+      // Documents current behavior: negative values are not rejected or clamped
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 8,
+          energy: { inKilocalories: -50 },
+          distance: { inMeters: -100 },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].caloriesBurned).toBe(-50);
+      expect(result[0].distance).toBe(-100);
+    });
   });
 
   describe('BasalMetabolicRate records (complex extraction)', () => {
