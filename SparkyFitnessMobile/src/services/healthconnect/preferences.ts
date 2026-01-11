@@ -12,7 +12,6 @@ const SYNC_DURATION_KEY = '@HealthConnect:syncDuration';
 export const saveHealthPreference = async <T>(key: string, value: T): Promise<void> => {
   try {
     await AsyncStorage.setItem(`@HealthConnect:${key}`, JSON.stringify(value));
-    addLog(`[HealthConnectService] Saved preference ${key}: ${JSON.stringify(value)}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[HealthConnectService] Failed to save preference ${key}: ${message}`, 'error', 'ERROR');
@@ -38,7 +37,6 @@ export const loadHealthPreference = async <T>(key: string): Promise<T | null> =>
 export const saveStringPreference = async (key: string, value: string): Promise<void> => {
   try {
     await AsyncStorage.setItem(`@HealthConnect:${key}`, value);
-    addLog(`[HealthConnectService] Saved string preference ${key}: ${value}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[HealthConnectService] Failed to save string preference ${key}: ${message}`, 'error', 'ERROR');
@@ -64,7 +62,6 @@ export const loadStringPreference = async (key: string): Promise<string | null> 
 export const saveSyncDuration = async (value: SyncDuration | SyncInterval): Promise<void> => {
   try {
     await AsyncStorage.setItem(SYNC_DURATION_KEY, value);
-    addLog(`[HealthConnectService] Saved sync duration: ${value}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[HealthConnectService] Failed to save sync duration: ${message}`, 'error', 'ERROR');

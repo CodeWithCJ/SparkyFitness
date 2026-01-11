@@ -18,7 +18,7 @@ const BACKGROUND_FETCH_TASK_ID = 'healthDataSync';
 
 const performBackgroundSync = async (taskId: string): Promise<void> => {
   console.log('[BackgroundFetch] taskId', taskId);
-  addLog(`[Background Sync] Background fetch triggered: ${taskId}`);
+  addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'info');
 
   try {
     const isStepsEnabled = await loadHealthPreference<boolean>('syncStepsEnabled');
@@ -36,24 +36,32 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
+    let syncReason = '';
 
     if (syncDuration === '1h') {
       shouldSync = true; // Sync every hour
+      syncReason = 'hourly sync enabled';
     } else if (syncDuration === '4h') {
       const [h, m] = fourHourSyncTime.split(':').map(Number);
       // Check if current time is within a reasonable window of the configured sync time
       if (currentHour % 4 === h && currentMinute >= m && currentMinute < m + 15) { // Sync within 15 mins of configured time
         shouldSync = true;
+        syncReason = `4-hour sync window (configured: ${fourHourSyncTime})`;
+      } else {
+        addLog(`[Background Sync] Skipping: outside 4-hour sync window (current: ${currentHour}:${currentMinute}, configured: ${fourHourSyncTime})`, 'debug');
       }
     } else if (syncDuration === '24h') {
       const [h, m] = dailySyncTime.split(':').map(Number);
       if (currentHour === h && currentMinute >= m && currentMinute < m + 15) { // Sync within 15 mins of configured time
         shouldSync = true;
+        syncReason = `daily sync window (configured: ${dailySyncTime})`;
+      } else {
+        addLog(`[Background Sync] Skipping: outside daily sync window (current: ${currentHour}:${currentMinute}, configured: ${dailySyncTime})`, 'debug');
       }
     }
 
     if (shouldSync) {
-      addLog(`[Background Sync] Performing health data sync.`);
+      addLog(`[Background Sync] Proceeding with sync: ${syncReason}`, 'debug');
       const endDate = new Date();
       endDate.setHours(23, 59, 59, 999);
 
@@ -69,52 +77,56 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
       }
 
       const allAggregatedData: HealthDataPayload = [];
+      const collectedCounts: string[] = [];
 
       if (isStepsEnabled) {
         const aggregatedStepsData = await getAggregatedStepsByDate(startDate, endDate);
         allAggregatedData.push(...aggregatedStepsData);
-        addLog(`[Background Sync] Got ${aggregatedStepsData.length} deduplicated step records`);
+        if (aggregatedStepsData.length > 0) collectedCounts.push(`steps: ${aggregatedStepsData.length}`);
       }
 
       if (isActiveCaloriesEnabled) {
         const aggregatedActiveCaloriesData = await getAggregatedActiveCaloriesByDate(startDate, endDate);
         allAggregatedData.push(...aggregatedActiveCaloriesData);
-        addLog(`[Background Sync] Got ${aggregatedActiveCaloriesData.length} deduplicated calorie records`);
+        if (aggregatedActiveCaloriesData.length > 0) collectedCounts.push(`calories: ${aggregatedActiveCaloriesData.length}`);
       }
 
       if (isSleepSessionEnabled) {
         const sleepRecords = await readSleepSessionRecords(startDate, endDate);
         // Sleep records are already aggregated by session, no further aggregation needed
         allAggregatedData.push(...(sleepRecords as HealthDataPayload));
+        if (sleepRecords.length > 0) collectedCounts.push(`sleep: ${sleepRecords.length}`);
       }
 
       if (isStressEnabled) {
         const stressRecords = await readStressRecords(startDate, endDate);
         // Stress records are individual measurements, no further aggregation needed
         allAggregatedData.push(...(stressRecords as HealthDataPayload));
+        if (stressRecords.length > 0) collectedCounts.push(`stress: ${stressRecords.length}`);
       }
 
       if (isExerciseSessionEnabled) {
         const exerciseRecords = await readExerciseSessionRecords(startDate, endDate);
         // Exercise records are individual sessions, no further aggregation needed
         allAggregatedData.push(...(exerciseRecords as HealthDataPayload));
+        if (exerciseRecords.length > 0) collectedCounts.push(`exercise: ${exerciseRecords.length}`);
       }
 
       if (isWorkoutEnabled) {
         const workoutRecords = await readWorkoutRecords(startDate, endDate);
         // Workout records are individual sessions, no further aggregation needed
         allAggregatedData.push(...(workoutRecords as HealthDataPayload));
+        if (workoutRecords.length > 0) collectedCounts.push(`workouts: ${workoutRecords.length}`);
       }
 
       if (allAggregatedData.length > 0) {
+        addLog(`[Background Sync] Collected ${allAggregatedData.length} records (${collectedCounts.join(', ')})`, 'debug');
         await syncHealthData(allAggregatedData);
-        addLog('[Background Sync] Health data synced successfully.', 'info', 'SUCCESS');
         await saveLastSyncedTime();
+        addLog(`[Background Sync] Sync completed successfully`, 'info', 'SUCCESS');
       } else {
-        addLog('[Background Sync] No health data to sync.', 'info', 'INFO');
+        addLog(`[Background Sync] No health data collected to sync`, 'debug');
       }
-    } else {
-      addLog(`[Background Sync] Not time to sync yet. Current time: ${now.toLocaleTimeString()}, Sync frequency: ${syncDuration}`);
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -160,7 +172,6 @@ export const configureBackgroundSync = async (): Promise<void> => {
 export const startBackgroundSync = async (): Promise<void> => {
   try {
     await BackgroundFetch.start();
-    addLog('[Background Sync] Background fetch started successfully.');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[Background Sync] Background fetch failed to start: ${message}`, 'error', 'ERROR');
@@ -170,7 +181,6 @@ export const startBackgroundSync = async (): Promise<void> => {
 export const stopBackgroundSync = async (): Promise<void> => {
   try {
     await BackgroundFetch.stop(BACKGROUND_FETCH_TASK_ID);
-    addLog('[Background Sync] Background fetch stopped successfully.');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[Background Sync] Background fetch failed to stop: ${message}`, 'error', 'ERROR');

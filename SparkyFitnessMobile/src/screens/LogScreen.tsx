@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -66,11 +67,13 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
     setCurrentLogLevel(level);
   };
 
-  useEffect(() => {
-    loadLogs();
-    loadSummary();
-    loadLogLevel();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadLogs();
+      loadSummary();
+      loadLogLevel();
+    }, [])
+  );
 
   const handleLoadMore = (): void => {
     if (hasMore) {

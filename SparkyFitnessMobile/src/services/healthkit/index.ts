@@ -149,9 +149,6 @@ const HEALTHKIT_TYPE_MAP: Record<string, string> = {
 export const initHealthConnect = async (): Promise<boolean> => {
   try {
     isHealthKitAvailable = await isHealthDataAvailable();
-    if (!isHealthKitAvailable) {
-      addLog('[HealthKitService] HealthKit is not available on this device.', 'warn', 'WARNING');
-    }
     return isHealthKitAvailable;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -165,7 +162,6 @@ export const requestHealthPermissions = async (
   permissionsToRequest: PermissionRequest[]
 ): Promise<boolean> => {
   if (!isHealthKitAvailable) {
-    addLog('[HealthKitService] Cannot request permissions; HealthKit not available.', 'warn', 'WARNING');
     Alert.alert(
       'Health App Not Available',
       'Please install the Apple Health app to sync your health data.'
@@ -175,12 +171,10 @@ export const requestHealthPermissions = async (
 
   const isSimulator = Platform.OS === 'ios' && (Platform.constants as { simulator?: boolean })?.simulator === true;
   if (isSimulator && !global?.FORCE_HEALTHKIT_ON_SIM) {
-    console.warn('[HealthKitService] Simulator detected - HealthKit authorization skipped.');
     return true;
   }
 
   if (!permissionsToRequest || permissionsToRequest.length === 0) {
-    addLog('[HealthKitService] No permissions requested.', 'info', 'INFO');
     return true;
   }
 
@@ -212,11 +206,7 @@ export const requestHealthPermissions = async (
         } else if (p.accessType === 'write') {
           writePermissionsSet.add(healthkitIdentifier);
         }
-      } else {
-        addLog(`[HealthKitService] Permission requested for unsupported type: ${p.recordType} (${healthkitIdentifier}). Skipping.`, 'warn', 'WARNING');
       }
-    } else {
-      addLog(`[HealthKitService] No HealthKit identifier found for record type: ${p.recordType}. Skipping.`, 'warn', 'WARNING');
     }
   });
 
@@ -224,31 +214,21 @@ export const requestHealthPermissions = async (
   const toShare = Array.from(writePermissionsSet);
 
   if (toRead.length === 0 && toShare.length === 0) {
-    addLog(`[HealthKitService] No valid and supported HealthKit permissions to request.`, 'warn', 'WARNING');
     return true;
   }
 
   try {
-    addLog(`[HealthKitService] Requesting authorization - Read: [${toRead.join(', ')}], Write: [${toShare.join(', ')}]`, 'info', 'INFO');
-
     // HealthKit library expects 'toRead' and 'toShare' arrays
-    const result = await requestAuthorization({
+    await requestAuthorization({
       toRead: toRead as Parameters<typeof requestAuthorization>[0]['toRead'],
       toShare: toShare as Parameters<typeof requestAuthorization>[0]['toShare'],
     });
-
-    if (result) {
-      addLog(`[HealthKitService] Authorization request completed successfully.`, 'info', 'SUCCESS');
-    } else {
-      addLog(`[HealthKitService] Authorization may not have been granted for all requested permissions.`, 'warn', 'WARNING');
-    }
 
     return true;
 
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[HealthKitService] Failed to request permissions: ${message}`, 'error', 'ERROR');
-    console.error('[HealthKitService] Permission request error', error);
     Alert.alert(
       'Permission Error',
       `An unexpected error occurred while trying to request Health permissions: ${message}`
@@ -292,79 +272,57 @@ export const getSyncStartDate = (duration: SyncDuration): Date => {
   return startDate;
 };
 
-// Get aggregated (deduplicated) data for cumulative types like Steps and ActiveCaloriesBurned
-// This uses HealthKit's statistics query which handles deduplication automatically
-export const getAggregatedStepsByDate = async (
-  startDate: Date,
-  endDate: Date
-): Promise<AggregatedHealthRecord[]> => {
-  if (!isHealthKitAvailable) {
-    addLog(`[HealthKitService] HealthKit not available for aggregated steps`, 'warn', 'WARNING');
-    return [];
-  }
+// Configuration for aggregated health metrics
+interface AggregationConfig {
+  identifier: string;
+  unit: string;
+  type: string;
+  logLabel: string;
+}
 
-  const results: AggregatedHealthRecord[] = [];
-  const currentDate = new Date(startDate);
-
-  while (currentDate <= endDate) {
-    const dayStart = new Date(currentDate);
-    dayStart.setHours(0, 0, 0, 0);
-
-    const dayEnd = new Date(currentDate);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    // Don't query future dates
-    const now = new Date();
-    if (dayEnd > now) {
-      dayEnd.setTime(now.getTime());
-    }
-
-    try {
-      const stats = await queryStatisticsForQuantity(
-        'HKQuantityTypeIdentifierStepCount',
-        ['cumulativeSum'],
-        {
-          filter: {
-            date: {
-              startDate: dayStart,
-              endDate: dayEnd,
-            },
-          },
-          unit: 'count',
-        }
-      );
-
-      const dateStr = dayStart.toISOString().split('T')[0];
-
-      if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
-        results.push({
-          date: dateStr,
-          value: Math.round(stats.sumQuantity.quantity),
-          type: 'step',
-        });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthKitService] Failed to get aggregated steps: ${message}`, 'error', 'ERROR');
-    }
-
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-
-  return results;
+const AGGREGATION_CONFIGS: Record<string, AggregationConfig> = {
+  steps: {
+    identifier: 'HKQuantityTypeIdentifierStepCount',
+    unit: 'count',
+    type: 'step',
+    logLabel: 'steps',
+  },
+  activeCalories: {
+    identifier: 'HKQuantityTypeIdentifierActiveEnergyBurned',
+    unit: 'kcal',
+    type: 'active_calories',
+    logLabel: 'calories',
+  },
+  distance: {
+    identifier: 'HKQuantityTypeIdentifierDistanceWalkingRunning',
+    unit: 'm',
+    type: 'distance',
+    logLabel: 'distance',
+  },
+  floorsClimbed: {
+    identifier: 'HKQuantityTypeIdentifierFlightsClimbed',
+    unit: 'count',
+    type: 'floors_climbed',
+    logLabel: 'floors',
+  },
 };
 
-export const getAggregatedActiveCaloriesByDate = async (
+// Generic aggregation function for cumulative HealthKit metrics
+// Uses HealthKit's statistics query which handles deduplication automatically
+const getAggregatedDataByDate = async (
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  config: AggregationConfig
 ): Promise<AggregatedHealthRecord[]> => {
   if (!isHealthKitAvailable) {
-    addLog(`[HealthKitService] HealthKit not available for aggregated calories`, 'warn', 'WARNING');
+    addLog(`[HealthKitService] HealthKit not available for ${config.logLabel} aggregation`, 'debug');
     return [];
   }
 
   const results: AggregatedHealthRecord[] = [];
   const currentDate = new Date(startDate);
+  let daysQueried = 0;
+  let daysWithData = 0;
 
   while (currentDate <= endDate) {
     const dayStart = new Date(currentDate);
@@ -379,9 +337,10 @@ export const getAggregatedActiveCaloriesByDate = async (
       dayEnd.setTime(now.getTime());
     }
 
+    daysQueried++;
     try {
       const stats = await queryStatisticsForQuantity(
-        'HKQuantityTypeIdentifierActiveEnergyBurned',
+        config.identifier as Parameters<typeof queryStatisticsForQuantity>[0],
         ['cumulativeSum'],
         {
           filter: {
@@ -390,41 +349,56 @@ export const getAggregatedActiveCaloriesByDate = async (
               endDate: dayEnd,
             },
           },
-          unit: 'kcal',
+          unit: config.unit,
         }
       );
 
-      if (stats && stats.sumQuantity) {
+      if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
+        daysWithData++;
         const dateStr = dayStart.toISOString().split('T')[0];
         results.push({
           date: dateStr,
           value: Math.round(stats.sumQuantity.quantity),
-          type: 'active_calories',
+          type: config.type,
         });
-        addLog(`[HealthKitService] Aggregated Active Calories for ${dateStr}: ${stats.sumQuantity.quantity}`);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthKitService] Failed to get aggregated calories: ${message}`, 'error', 'ERROR');
+      addLog(`[HealthKitService] Failed to get aggregated ${config.logLabel}: ${message}`, 'error', 'ERROR');
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
+  if (daysWithData === 0) {
+    addLog(`[HealthKitService] No ${config.logLabel} data found for ${daysQueried} days queried`, 'debug');
+  } else {
+    addLog(`[HealthKitService] ${config.logLabel} aggregation: ${daysWithData}/${daysQueried} days with data`, 'debug');
+  }
+
   return results;
 };
+
+export const getAggregatedStepsByDate = (startDate: Date, endDate: Date) =>
+  getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.steps);
+
+export const getAggregatedActiveCaloriesByDate = (startDate: Date, endDate: Date) =>
+  getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.activeCalories);
 
 export const getAggregatedTotalCaloriesByDate = async (
   startDate: Date,
   endDate: Date
 ): Promise<AggregatedHealthRecord[]> => {
   if (!isHealthKitAvailable) {
-    addLog(`[HealthKitService] HealthKit not available for aggregated total calories`, 'warn', 'WARNING');
+    addLog(`[HealthKitService] HealthKit not available for total calories aggregation`, 'debug');
     return [];
   }
 
   const results: AggregatedHealthRecord[] = [];
   const currentDate = new Date(startDate);
+  let daysQueried = 0;
+  let daysWithData = 0;
+  let errorCount = 0;
 
   while (currentDate <= endDate) {
     const dayStart = new Date(currentDate);
@@ -438,6 +412,7 @@ export const getAggregatedTotalCaloriesByDate = async (
       dayEnd.setTime(now.getTime());
     }
 
+    daysQueried++;
     try {
       // Query both basal and active with full precision, then sum
       const [basalStats, activeStats] = await Promise.all([
@@ -457,6 +432,7 @@ export const getAggregatedTotalCaloriesByDate = async (
       const active = activeStats?.sumQuantity?.quantity || 0;
 
       if (basal > 0 || active > 0) {
+        daysWithData++;
         const dateStr = dayStart.toISOString().split('T')[0];
         const total = Math.round(basal + active);
         results.push({
@@ -464,9 +440,9 @@ export const getAggregatedTotalCaloriesByDate = async (
           value: total,
           type: 'total_calories',
         });
-        addLog(`[HealthKitService] Aggregated Total Calories for ${dateStr}: ${total} (basal: ${basal.toFixed(2)}, active: ${active.toFixed(2)})`);
       }
     } catch (error) {
+      errorCount++;
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[HealthKitService] Failed to get aggregated total calories: ${message}`, 'error', 'ERROR');
     }
@@ -474,131 +450,20 @@ export const getAggregatedTotalCaloriesByDate = async (
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  addLog(`[HealthKitService] Got ${results.length} total calorie entries`);
-  return results;
-};
-
-// Get aggregated distance by date using HealthKit's statistics query (handles deduplication)
-export const getAggregatedDistanceByDate = async (
-  startDate: Date,
-  endDate: Date
-): Promise<AggregatedHealthRecord[]> => {
-  if (!isHealthKitAvailable) {
-    addLog(`[HealthKitService] HealthKit not available for aggregated distance`, 'warn', 'WARNING');
-    return [];
-  }
-
-  const results: AggregatedHealthRecord[] = [];
-  const currentDate = new Date(startDate);
-
-  while (currentDate <= endDate) {
-    const dayStart = new Date(currentDate);
-    dayStart.setHours(0, 0, 0, 0);
-
-    const dayEnd = new Date(currentDate);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    // Don't query future dates
-    const now = new Date();
-    if (dayEnd > now) {
-      dayEnd.setTime(now.getTime());
-    }
-
-    try {
-      const stats = await queryStatisticsForQuantity(
-        'HKQuantityTypeIdentifierDistanceWalkingRunning',
-        ['cumulativeSum'],
-        {
-          filter: {
-            date: {
-              startDate: dayStart,
-              endDate: dayEnd,
-            },
-          },
-          unit: 'm',
-        }
-      );
-
-      const dateStr = dayStart.toISOString().split('T')[0];
-
-      if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
-        results.push({
-          date: dateStr,
-          value: Math.round(stats.sumQuantity.quantity),
-          type: 'distance',
-        });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthKitService] Failed to get aggregated distance: ${message}`, 'error', 'ERROR');
-    }
-
-    currentDate.setDate(currentDate.getDate() + 1);
+  if (daysWithData === 0) {
+    addLog(`[HealthKitService] No total calories data found for ${daysQueried} days queried${errorCount > 0 ? `, ${errorCount} errors` : ''}`, 'debug');
+  } else {
+    addLog(`[HealthKitService] Total calories aggregation: ${daysWithData}/${daysQueried} days with data${errorCount > 0 ? `, ${errorCount} errors` : ''}`, 'debug');
   }
 
   return results;
 };
 
-// Get aggregated floors climbed by date using HealthKit's statistics query (handles deduplication)
-export const getAggregatedFloorsClimbedByDate = async (
-  startDate: Date,
-  endDate: Date
-): Promise<AggregatedHealthRecord[]> => {
-  if (!isHealthKitAvailable) {
-    addLog(`[HealthKitService] HealthKit not available for aggregated floors`, 'warn', 'WARNING');
-    return [];
-  }
+export const getAggregatedDistanceByDate = (startDate: Date, endDate: Date) =>
+  getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.distance);
 
-  const results: AggregatedHealthRecord[] = [];
-  const currentDate = new Date(startDate);
-
-  while (currentDate <= endDate) {
-    const dayStart = new Date(currentDate);
-    dayStart.setHours(0, 0, 0, 0);
-
-    const dayEnd = new Date(currentDate);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    // Don't query future dates
-    const now = new Date();
-    if (dayEnd > now) {
-      dayEnd.setTime(now.getTime());
-    }
-
-    try {
-      const stats = await queryStatisticsForQuantity(
-        'HKQuantityTypeIdentifierFlightsClimbed',
-        ['cumulativeSum'],
-        {
-          filter: {
-            date: {
-              startDate: dayStart,
-              endDate: dayEnd,
-            },
-          },
-          unit: 'count',
-        }
-      );
-
-      const dateStr = dayStart.toISOString().split('T')[0];
-
-      if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
-        results.push({
-          date: dateStr,
-          value: Math.round(stats.sumQuantity.quantity),
-          type: 'floors_climbed',
-        });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthKitService] Failed to get aggregated floors: ${message}`, 'error', 'ERROR');
-    }
-
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-
-  return results;
-};
+export const getAggregatedFloorsClimbedByDate = (startDate: Date, endDate: Date) =>
+  getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.floorsClimbed);
 
 // Read health records from HealthKit
 export const readHealthRecords = async (
@@ -607,40 +472,28 @@ export const readHealthRecords = async (
   endDate: Date
 ): Promise<unknown[]> => {
   if (!isHealthKitAvailable) {
-    addLog(`[HealthKitService] HealthKit not available, returning empty records for ${recordType}`, 'warn', 'WARNING');
     return [];
   }
 
   const queryLimit = 20000; // Define a reasonable limit for HealthKit queries
 
   try {
-    //addLog(`[HealthKitService] Reading ${recordType} records from ${startDate.toISOString()} to ${endDate.toISOString()} (requested range)`);
-
     const identifier = HEALTHKIT_TYPE_MAP[recordType];
     if (!identifier) {
-      addLog(`[HealthKitService] Unsupported record type: ${recordType}`, 'warn', 'WARNING');
       return [];
     }
 
     // Handle special cases first
     if (recordType === 'SleepSession') {
-      console.log(`[HealthKitService DEBUG] Calling queryCategorySamples for SleepSession with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
       const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
         ascending: false,
         limit: queryLimit,
       });
-      addLog(`[HealthKitService] Raw samples (Sleep) returned by native query: Count = ${samples.length}, First 5: ${JSON.stringify(samples.slice(0, 5))}`);
-      addLog(`[HealthKitService] Read ${samples.length} Sleep records`);
       const filteredSamples = samples.filter(s => {
         const recordStartDate = new Date(s.startDate);
         const recordEndDate = new Date(s.endDate);
-        const isWithinRange = recordStartDate >= startDate && recordEndDate <= endDate;
-        return isWithinRange;
+        return recordStartDate >= startDate && recordEndDate <= endDate;
       });
-
-      if (samples.length > filteredSamples.length) {
-        addLog(`[HealthKitService] Manual filter applied for SleepSession. Raw count: ${samples.length}, Filtered count: ${filteredSamples.length}.`, 'warn', 'WARNING');
-      }
 
       // Map to standard format expected by consumers (MainScreen, etc.)
       return filteredSamples.map(s => ({
@@ -654,7 +507,6 @@ export const readHealthRecords = async (
     }
 
     if (recordType === 'Stress') {
-      console.log(`[HealthKitService DEBUG] Calling queryCategorySamples for Stress (MindfulSession) with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
       const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
         ascending: false,
         limit: queryLimit,
@@ -672,8 +524,6 @@ export const readHealthRecords = async (
     }
 
     if (recordType === 'Workout' || recordType === 'ExerciseSession') {
-      console.log(`[HealthKitService DEBUG] Calling queryWorkoutSamples for ${recordType} with startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()} and limit: ${queryLimit}`);
-
       // Filter uses nested date object with Date objects (not ISO strings)
       const workouts = await queryWorkoutSamples({
         ascending: false,
@@ -686,11 +536,6 @@ export const readHealthRecords = async (
         const workoutEnd = new Date(w.endDate);
         return workoutStart >= startDate && workoutEnd <= endDate;
       });
-
-      if (filteredWorkouts.length > 0) {
-        console.log(`[HealthKitService DEBUG] First Workout Keys: ${JSON.stringify(Object.keys(filteredWorkouts[0]))}`);
-        console.log(`[HealthKitService DEBUG] First Workout: ${JSON.stringify(filteredWorkouts[0])}`);
-      }
 
       // Fetch statistics (calories, distance) for each workout
       const workoutsWithStats = await Promise.all(filteredWorkouts.map(async (w) => {
@@ -710,7 +555,6 @@ export const readHealthRecords = async (
 
         try {
           const stats = await w.getAllStatistics();
-          console.log(`[HealthKitService DEBUG] Workout stats keys: ${JSON.stringify(Object.keys(stats))}`);
 
           // Active energy burned (calories) - prefer stats if available
           const energyStats = stats['HKQuantityTypeIdentifierActiveEnergyBurned'];
@@ -733,10 +577,8 @@ export const readHealthRecords = async (
               break; // Use first available distance type
             }
           }
-        } catch (err) {
+        } catch {
           // Stats fetch failed - keep using direct properties from workout
-          const errMessage = err instanceof Error ? err.message : String(err);
-          console.log(`[HealthKitService DEBUG] Error fetching workout stats, using direct properties: ${errMessage}`);
         }
 
         return {
@@ -753,12 +595,10 @@ export const readHealthRecords = async (
     }
 
     if (recordType === 'BloodPressure') {
-      //console.log(`[HealthKitService DEBUG] Calling queryQuantitySamples for BloodPressureSystolic with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
       const systolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureSystolic', {
         ascending: false,
         limit: queryLimit,
       });
-      console.log(`[HealthKitService DEBUG] Calling queryQuantitySamples for BloodPressureDiastolic with from: ${startDate.toISOString()}, to: ${endDate.toISOString()} and limit: ${queryLimit}`);
       const diastolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureDiastolic', {
         ascending: false,
         limit: queryLimit,
@@ -793,13 +633,11 @@ export const readHealthRecords = async (
           time: r.time,
         }));
 
-      addLog(`[HealthKitService] Read and combined ${results.length} BloodPressure records`);
       return results;
     }
 
     // Handle all other standard quantity types
     if (!SUPPORTED_HK_TYPES.has(identifier)) {
-      addLog(`[HealthKitService] Unsupported quantity record type: ${recordType}`, 'warn', 'WARNING');
       return [];
     }
 
@@ -813,35 +651,19 @@ export const readHealthRecords = async (
       queryOptions.unit = unit;
     }
 
-    console.log(`[HealthKitService DEBUG] Calling queryQuantitySamples for ${recordType} with from: ${startDate.toISOString()}, to: ${endDate.toISOString()}, limit: ${queryLimit}, unit: ${unit || 'default'}`);
     const samples = await queryQuantitySamples(identifier as Parameters<typeof queryQuantitySamples>[0], queryOptions);
 
     // Defensive check: Ensure samples is an array before proceeding
     if (!Array.isArray(samples)) {
-      addLog(`[HealthKitService] queryQuantitySamples for ${recordType} returned non-array data: ${JSON.stringify(samples)}. Expected an array.`, 'warn', 'WARNING');
       return [];
     }
 
-    // Log the raw samples to understand what's being returned
-    //addLog(`[HealthKitService] Raw samples for ${recordType}: ${JSON.stringify(samples)}`);
-    //addLog(`[HealthKitService] Read ${samples.length} ${recordType} records, applying manual filter for iOS.`);
-
     // Manual filtering for iOS as a workaround for potential library issues where the native
     // query may not respect the date range, returning all historical data.
-    const filteredSamples = samples.filter((record, index) => {
+    const filteredSamples = samples.filter(record => {
       const recordDate = new Date(record.startDate);
-      const isWithinRange = recordDate >= startDate && recordDate <= endDate;
-      if (index < 10 || !isWithinRange) { // Log first 10 records and any out-of-range records
-        //addLog(`[HealthKitService] Filter check for ${recordType} - Record Date: ${recordDate.toISOString()}, Start Date: ${startDate.toISOString()}, End Date: ${endDate.toISOString()}, Within Range: ${isWithinRange}`);
-      }
-      return isWithinRange;
+      return recordDate >= startDate && recordDate <= endDate;
     });
-
-    if (samples.length > filteredSamples.length) {
-      addLog(`[HealthKitService] Manual filter was necessary. Raw count: ${samples.length}, Filtered count: ${filteredSamples.length} for ${recordType}.`, 'warn', 'WARNING');
-    } else {
-      addLog(`[HealthKitService] Found ${filteredSamples.length} ${recordType} records after manual filtering for iOS.`);
-    }
 
     // Transform samples to match expected format
     return filteredSamples.map(s => {

@@ -1,4 +1,5 @@
 import { getActiveServerConfig } from './storage';
+import { addLog } from './LogService';
 
 export interface HealthDataPayloadItem {
   type: string;
@@ -23,6 +24,8 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
   console.log(`[API Service] Attempting to sync to URL: ${url}/health-data`);
   console.log(`[API Service] Using API Key (first 5 chars): ${apiKey ? apiKey.substring(0, 5) + '...' : 'N/A'}`);
 
+  addLog(`[API] Starting sync of ${data.length} records to server`, 'debug');
+
   try {
     const response = await fetch(`${url}/health-data`, {
       method: 'POST',
@@ -36,11 +39,16 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
     if (!response.ok) {
       const errorText = await response.text(); // Read raw response text
       console.log('Server responded with non-OK status:', response.status, errorText); // Use console.log
+      addLog(`[API] Sync failed: server returned ${response.status}`, 'error', 'ERROR', [errorText]);
       throw new Error(`Server error: ${response.status} - ${errorText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    addLog(`[API] Sync successful: ${data.length} records sent to server`, 'info', 'SUCCESS');
+    return result;
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[API] Sync failed: ${message}`, 'error', 'ERROR');
     console.error('Failed to sync health data', error);
     throw error;
   }
@@ -60,24 +68,26 @@ export const checkServerConnection = async (): Promise<boolean> => {
   url = url.endsWith('/') ? url.slice(0, -1) : url; // Ensure no trailing slash
 
   try {
-    console.log(`[API Service] Attempting to check connection to: ${url}/auth/user`);
     const response = await fetch(`${url}/auth/user`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
       },
     });
-    console.log(`[API Service] Connection check response status: ${response.status}`);
     // Check for successful response (2xx status code)
     if (response.ok) {
+      // addLog(`[API] Server connection check successful`, 'debug');
       return true;
     } else {
       // For non-2xx responses, log the error and return false
       const errorText = await response.text();
+      addLog(`[API] Server connection check failed: status ${response.status}`, 'warn', 'WARNING', [errorText]);
       console.error(`[API Service] Connection check failed with status ${response.status}: ${errorText}`);
       return false;
     }
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[API] Server connection check failed: ${message}`, 'error', 'ERROR');
     console.error('[API Service] Failed to check server connection:', error);
     return false;
   }

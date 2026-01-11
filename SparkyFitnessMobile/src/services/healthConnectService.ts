@@ -36,7 +36,6 @@ export const readStressRecords = async (
   _startDate: Date,
   _endDate: Date
 ): Promise<unknown[]> => {
-  addLog('[HealthConnectService] Stress metric is iOS-only; skipping on Android.', 'info');
   return [];
 };
 
@@ -121,18 +120,13 @@ export const syncHealthData = async (
   syncDuration: SyncDuration,
   healthMetricStates: HealthMetricStates = {}
 ): Promise<SyncResult> => {
-  addLog(`[HealthConnectService] Starting health data sync for duration: ${syncDuration}`);
   const startDate = HealthConnect.getSyncStartDate(syncDuration);
-
   const endDate = new Date();
-  addLog(`[HealthConnectService] Syncing data from ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
   const enabledMetricStates = healthMetricStates && typeof healthMetricStates === 'object' ? healthMetricStates : {};
   const healthDataTypesToSync = HEALTH_METRICS
     .filter(metric => enabledMetricStates[metric.stateKey])
     .map(metric => metric.recordType);
-
-  addLog(`[HealthConnectService] Will sync ${healthDataTypesToSync.length} metric types: ${healthDataTypesToSync.join(', ')}`);
 
   const allTransformedData: HealthDataPayload = [];
   const syncErrors: { type: string; error: string }[] = [];
@@ -150,73 +144,51 @@ export const syncHealthData = async (
       // For Steps and ActiveCaloriesBurned, use aggregation API directly (handles deduplication)
       if (type === 'Steps') {
         dataToTransform = await HealthConnect.getAggregatedStepsByDate(startDate, endDate);
-        addLog(`[HealthConnectService] Got ${dataToTransform.length} deduplicated daily step totals`);
       } else if (type === 'ActiveCaloriesBurned') {
         dataToTransform = await HealthConnect.getAggregatedActiveCaloriesByDate(startDate, endDate);
-        addLog(`[HealthConnectService] Got ${dataToTransform.length} deduplicated daily calorie totals`);
       } else {
         // For other types, read raw records
-        addLog(`[HealthConnectService] Reading ${type} records...`);
         const rawRecords = await HealthConnect.readHealthRecords(type, startDate, endDate);
 
         if (rawRecords.length === 0) {
-          addLog(`[HealthConnectService] No ${type} records found`);
           continue;
         }
 
-        addLog(`[HealthConnectService] Found ${rawRecords.length} raw ${type} records`);
         dataToTransform = rawRecords;
 
         if (type === 'HeartRate') {
           dataToTransform = HealthConnectAggregation.aggregateHeartRateByDate(
             rawRecords as Parameters<typeof HealthConnectAggregation.aggregateHeartRateByDate>[0]
           );
-          addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw HeartRate records into ${dataToTransform.length} daily averages`);
         } else if (type === 'TotalCaloriesBurned') {
           dataToTransform = HealthConnectAggregation.aggregateTotalCaloriesByDate(
             rawRecords as Parameters<typeof HealthConnectAggregation.aggregateTotalCaloriesByDate>[0]
           );
-          addLog(`[HealthConnectService] Aggregated ${rawRecords.length} raw TotalCaloriesBurned records into ${dataToTransform.length} daily totals`);
-        } else if (type === 'SleepSession') {
-          addLog(`[HealthConnectService] Processing raw SleepSession records.`);
-        } else if (type === 'Stress') {
-          addLog(`[HealthConnectService] Processing raw Stress records.`);
-        } else if (type === 'ExerciseSession') {
-          addLog(`[HealthConnectService] Processing raw ExerciseSession records.`);
         }
       }
 
       const transformed = HealthConnectTransformation.transformHealthRecords(dataToTransform, metricConfig);
 
       if (transformed.length > 0) {
-        addLog(`[HealthConnectService] Successfully transformed ${transformed.length} ${type} records`);
         allTransformedData.push(...(transformed as HealthDataPayload));
-      } else {
-        addLog(`[HealthConnectService] No ${type} records were transformed (all may have been invalid)`, 'warn', 'WARNING');
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const errorMsg = `Error reading or transforming ${type} records: ${message}`;
-      addLog(`[HealthConnectService] ${errorMsg}`, 'error', 'ERROR');
-      console.error(`[HealthConnectService] ${errorMsg}`, error);
+      addLog(`[HealthConnectService] Error reading or transforming ${type} records: ${message}`, 'error', 'ERROR');
       syncErrors.push({ type, error: message });
     }
   }
 
-  addLog(`[HealthConnectService] Total transformed data entries: ${allTransformedData.length}`);
-
   if (allTransformedData.length > 0) {
     try {
       const apiResponse = await api.syncHealthData(allTransformedData);
-      addLog(`[HealthConnectService] Server sync response: ${JSON.stringify(apiResponse)}`);
       return { success: true, apiResponse, syncErrors };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthConnectService] Error sending data to server: ${message}`);
+      addLog(`[HealthConnectService] Error sending data to server: ${message}`, 'error', 'ERROR');
       return { success: false, error: message, syncErrors };
     }
   } else {
-    addLog(`[HealthConnectService] No health data to sync.`);
     return { success: true, message: "No health data to sync.", syncErrors };
   }
 };

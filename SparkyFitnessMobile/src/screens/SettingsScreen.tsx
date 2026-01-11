@@ -14,10 +14,11 @@ import ServerConfigComponent from '../components/ServerConfig';
 import HealthDataSync from '../components/HealthDataSync';
 import SyncFrequency from '../components/SyncFrequency';
 import AppearanceSettings from '../components/AppearanceSettings';
+import DevTools from '../components/DevTools';
 import { useTheme } from '../contexts/ThemeContext';
 import * as Application from 'expo-application';
 import type { HealthMetricStates } from '../types/healthRecords';
-
+import Constants from 'expo-constants';
 interface SettingsScreenProps {
   navigation: { navigate: (screen: string) => void };
 }
@@ -48,7 +49,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     setServerConfigs(allConfigs);
 
     const activeConfig = await getActiveServerConfig();
-    addLog(`[SettingsScreen] Loaded activeConfig: ${JSON.stringify(activeConfig)}`);
     if (activeConfig) {
       setUrl(activeConfig.url);
       setApiKey(activeConfig.apiKey);
@@ -92,7 +92,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     await initHealthConnect();
 
     const connectionStatus = await checkServerConnection();
-    addLog(`[SettingsScreen] Server connection status: ${connectionStatus}`);
     setIsConnected(connectionStatus);
   };
 
@@ -218,9 +217,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
     if (newValue) {
       const allPermissions = HEALTH_METRICS.flatMap(metric => metric.permissions);
+      addLog(`[SettingsScreen] Requesting permissions for all ${HEALTH_METRICS.length} metrics`, 'debug');
 
       try {
-        addLog('[SettingsScreen] Requesting all permissions...');
         const granted = await requestHealthPermissions(allPermissions);
 
         if (!granted) {
@@ -234,7 +233,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           });
           addLog('[SettingsScreen] Not all permissions were granted. Reverting "Enable All".', 'warn', 'WARNING');
         } else {
-          addLog('[SettingsScreen] All permissions granted successfully.', 'info', 'SUCCESS');
+          addLog(`[SettingsScreen] All ${HEALTH_METRICS.length} metric permissions granted`, 'info', 'SUCCESS');
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
@@ -245,13 +244,26 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         });
         addLog(`[SettingsScreen] Error requesting all permissions: ${errorMessage}`, 'error', 'ERROR');
       }
+    } else {
+      addLog(`[SettingsScreen] Disabling all ${HEALTH_METRICS.length} metrics`, 'debug');
     }
 
     setHealthMetricStates(newHealthMetricStates);
+
+    // Save preferences one by one and track any failures
+    const saveErrors: string[] = [];
     for (const metric of HEALTH_METRICS) {
-      await saveHealthPreference(metric.preferenceKey, newHealthMetricStates[metric.stateKey]);
+      try {
+        await saveHealthPreference(metric.preferenceKey, newHealthMetricStates[metric.stateKey]);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        saveErrors.push(`${metric.label}: ${errorMessage}`);
+      }
     }
-    addLog(`[SettingsScreen] Toggled all metrics to ${newValue}. State updated for all.`, 'info');
+
+    if (saveErrors.length > 0) {
+      addLog(`[SettingsScreen] Failed to save ${saveErrors.length}/${HEALTH_METRICS.length} metric preferences`, 'warn', 'WARNING', saveErrors);
+    }
   };
 
   return (
@@ -294,6 +306,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             isAllMetricsEnabled={isAllMetricsEnabled}
             handleToggleAllMetrics={handleToggleAllMetrics}
           />
+
+          {__DEV__ && 
+            (Constants.expoConfig?.extra?.APP_VARIANT === 'development' || 
+             Constants.expoConfig?.extra?.APP_VARIANT === 'dev') && (
+            <DevTools />
+          )}
 
           <View style={styles.footer}>
             <Text style={{ color: colors.textMuted, zIndex: 100 }}>Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>

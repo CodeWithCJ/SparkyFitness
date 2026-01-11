@@ -24,14 +24,13 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
   }
 
   if (records.length === 0) {
-    addLog(`[HealthConnectService] No records to transform for ${metricConfig.recordType}`);
     return [];
   }
 
   const transformedData: TransformOutput[] = [];
   const { recordType, unit, type } = metricConfig;
-
-  addLog(`[HealthConnectService] Transforming ${records.length} ${recordType} records`);
+  let successCount = 0;
+  let skipCount = 0;
 
   records.forEach((record: unknown, index: number) => {
     try {
@@ -440,6 +439,22 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
                 const activityTypeName = exerciseType ? (EXERCISE_MAP[exerciseType] || `Exercise Type ${exerciseType}`) : 'Exercise Session';
                 const title = (rec.title as string) || activityTypeName;
 
+                // Extract calories burned (default to 0 if missing/null)
+                const energy = rec.energy as Record<string, number> | undefined;
+                let caloriesBurned = 0;
+                if (energy?.inKilocalories != null && !isNaN(energy.inKilocalories)) {
+                  caloriesBurned = energy.inKilocalories;
+                } else if (energy?.inCalories != null && !isNaN(energy.inCalories)) {
+                  caloriesBurned = energy.inCalories / 1000; // Convert to kcal
+                }
+
+                // Extract distance in meters (default to 0 if missing/null)
+                const distanceObj = rec.distance as Record<string, number> | undefined;
+                let distance = 0;
+                if (distanceObj?.inMeters != null && !isNaN(distanceObj.inMeters)) {
+                  distance = distanceObj.inMeters;
+                }
+
                 const exerciseSession: TransformedExerciseSession = {
                   type: 'ExerciseSession',
                   source: 'Health Connect',
@@ -451,6 +466,8 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
                   duration: durationInSeconds,
                   activityType: activityTypeName,
                   title: title,
+                  caloriesBurned: parseFloat(caloriesBurned.toFixed(2)),
+                  distance: parseFloat(distance.toFixed(2)),
                   notes: rec.notes as string | undefined,
                   raw_data: record
                 };
@@ -737,12 +754,20 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
           unit: unit,
         };
         transformedData.push(transformedRecord);
+        successCount++;
+      } else {
+        skipCount++;
       }
     } catch (error) {
+      skipCount++;
       addLog(`[HealthConnectService] Error transforming ${recordType} record at index ${index}: ${(error as Error).message}`, 'warn', 'WARNING');
     }
   });
 
-  addLog(`[HealthConnectService] Successfully transformed ${transformedData.length} ${recordType} records`);
+  // Log transformation summary for debugging
+  if (skipCount > 0) {
+    addLog(`[HealthConnectService] ${recordType} transformation: ${successCount} succeeded, ${skipCount} skipped (of ${records.length} total)`, 'debug');
+  }
+
   return transformedData;
 };
