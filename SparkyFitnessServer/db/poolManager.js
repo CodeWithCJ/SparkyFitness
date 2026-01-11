@@ -26,10 +26,10 @@ function createOwnerPoolInstance() {
 
 function createAppPoolInstance() {
   const newPool = new Pool({
-    user: process.env.SPARKY_FITNESS_APP_DB_USER,
+    user: process.env.SPARKY_FITNESS_DB_USER,
     host: process.env.SPARKY_FITNESS_DB_HOST,
     database: process.env.SPARKY_FITNESS_DB_NAME,
-    password: process.env.SPARKY_FITNESS_APP_DB_PASSWORD,
+    password: process.env.SPARKY_FITNESS_DB_PASSWORD,
     port: process.env.SPARKY_FITNESS_DB_PORT,
   });
 
