@@ -50,6 +50,7 @@ import {
   QrCode,
   Mail,
   UtensilsCrossed,
+  BookOpen
 } from "lucide-react";
 import { apiCall } from "@/services/api"; // Assuming a common API utility
 import { useAuth } from "@/hooks/useAuth";
@@ -1396,7 +1397,37 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             </div>
           </AccordionContent>
         </AccordionItem>
-
+       <AccordionItem value="developer-resources" className="border rounded-lg mb-4">
+                <AccordionTrigger
+                  className="flex items-center gap-2 p-4 hover:no-underline"
+                  description={t('settings.developerResources.description', 'Access API documentation and resources')}
+                >
+                  <BookOpen className="h-5 w-5" />
+                  {t('settings.developerResources.title', 'Developer Resources')}
+                </AccordionTrigger>
+                <AccordionContent className="p-4 pt-0 space-y-4">
+                  <div className="grid gap-4">
+                    <div className="flex flex-col space-y-2">
+                      <h4 className="font-medium">API Documentation</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Explore the SparkyFitness API documentation to build integrations or understand the platform better.
+                      </p>
+                      <div className="flex gap-4 mt-2">
+                        <Button variant="outline" asChild>
+                          <a href="/api-docs/swagger" target="_blank" rel="noopener noreferrer">
+                            Swagger UI (Interactive)
+                          </a>
+                        </Button>
+                        <Button variant="outline" asChild>
+                          <a href="/api-docs/redoc" target="_blank" rel="noopener noreferrer">
+                            Redoc (Read-only)
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
         <AccordionItem
           value="account-security"
           className="border rounded-lg mb-4"
