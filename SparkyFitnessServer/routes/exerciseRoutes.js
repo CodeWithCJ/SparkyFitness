@@ -22,7 +22,73 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 
-// Endpoint to fetch exercises with search, filter, and pagination
+/**
+ * @swagger
+ * /exercises:
+ *   get:
+ *     summary: Retrieve a list of exercises with search, filter, and pagination
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: searchTerm
+ *         schema:
+ *           type: string
+ *         description: Search term for exercise names.
+ *       - in: query
+ *         name: categoryFilter
+ *         schema:
+ *           type: string
+ *         description: Filter by exercise category.
+ *       - in: query
+ *         name: ownershipFilter
+ *         schema:
+ *           type: string
+ *         description: Filter by exercise ownership (e.g., 'user', 'public').
+ *       - in: query
+ *         name: equipmentFilter
+ *         schema:
+ *           type: string
+ *         description: Comma-separated list of equipment to filter by.
+ *       - in: query
+ *         name: muscleGroupFilter
+ *         schema:
+ *           type: string
+ *         description: Comma-separated list of muscle groups to filter by.
+ *       - in: query
+ *         name: currentPage
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: The current page number for pagination.
+ *       - in: query
+ *         name: itemsPerPage
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: The number of items to return per page.
+ *     responses:
+ *       200:
+ *         description: A list of exercises and the total count.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 exercises:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Exercise'
+ *                 totalCount:
+ *                   type: integer
+ *                   description: Total number of exercises matching the criteria.
+ *       403:
+ *         description: Forbidden, if the user does not have access.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/', authenticate, async (req, res, next) => {
   const { searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, currentPage, itemsPerPage } = req.query;
   const equipmentFilterArray = equipmentFilter ? equipmentFilter.split(',') : [];
@@ -49,7 +115,36 @@ router.get('/', authenticate, async (req, res, next) => {
   }
 });
 
-// Endpoint to get suggested exercises
+/**
+ * @swagger
+ * /exercises/suggested:
+ *   get:
+ *     summary: Retrieve a list of suggested exercises
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 5
+ *         description: The maximum number of suggested exercises to return.
+ *     responses:
+ *       200:
+ *         description: A list of suggested exercises.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Exercise'
+ *       403:
+ *         description: Forbidden, if the user does not have access.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/suggested', authenticate, async (req, res, next) => {
   const { limit } = req.query;
   try {
@@ -63,7 +158,36 @@ router.get('/suggested', authenticate, async (req, res, next) => {
   }
 });
 
-// Endpoint to get recent exercises
+/**
+ * @swagger
+ * /exercises/recent:
+ *   get:
+ *     summary: Retrieve a list of recently performed exercises
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 5
+ *         description: The maximum number of recent exercises to return.
+ *     responses:
+ *       200:
+ *         description: A list of recent exercises.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Exercise'
+ *       403:
+ *         description: Forbidden, if the user does not have access.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/recent', authenticate, async (req, res, next) => {
   const { limit } = req.query;
   try {
@@ -77,7 +201,36 @@ router.get('/recent', authenticate, async (req, res, next) => {
   }
 });
 
-// Endpoint to get top exercises
+/**
+ * @swagger
+ * /exercises/top:
+ *   get:
+ *     summary: Retrieve a list of top exercises
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 5
+ *         description: The maximum number of top exercises to return.
+ *     responses:
+ *       200:
+ *         description: A list of top exercises.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Exercise'
+ *       403:
+ *         description: Forbidden, if the user does not have access.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/top', authenticate, async (req, res, next) => {
   const { limit } = req.query;
   try {
@@ -91,7 +244,45 @@ router.get('/top', authenticate, async (req, res, next) => {
   }
 });
 
-// Endpoint to search for exercises
+/**
+ * @swagger
+ * /exercises/search:
+ *   get:
+ *     summary: Search for exercises
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: searchTerm
+ *         schema:
+ *           type: string
+ *         description: Term to search for in exercise names.
+ *       - in: query
+ *         name: equipmentFilter
+ *         schema:
+ *           type: string
+ *         description: Comma-separated list of equipment to filter by.
+ *       - in: query
+ *         name: muscleGroupFilter
+ *         schema:
+ *           type: string
+ *         description: Comma-separated list of muscle groups to filter by.
+ *     responses:
+ *       200:
+ *         description: A list of exercises matching the search criteria.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Exercise'
+ *       403:
+ *         description: Forbidden, if the user does not have access.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/search', authenticate, async (req, res, next) => {
   const { searchTerm, equipmentFilter, muscleGroupFilter } = req.query;
   const equipmentFilterArray = equipmentFilter ? equipmentFilter.split(',') : [];
@@ -109,7 +300,57 @@ router.get('/search', authenticate, async (req, res, next) => {
   }
 });
 
-// Endpoint to search for exercises from Wger
+/**
+ * @swagger
+ * /exercises/search-external:
+ *   get:
+ *     summary: Search for exercises from external providers like Wger
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         description: Search term for external exercise names.
+ *       - in: query
+ *         name: providerId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the external provider (e.g., Wger).
+ *       - in: query
+ *         name: providerType
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The type of the external provider.
+ *       - in: query
+ *         name: equipmentFilter
+ *         schema:
+ *           type: string
+ *         description: Comma-separated list of equipment to filter by.
+ *       - in: query
+ *         name: muscleGroupFilter
+ *         schema:
+ *           type: string
+ *         description: Comma-separated list of muscle groups to filter by.
+ *     responses:
+ *       200:
+ *         description: A list of external exercises matching the search criteria.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Exercise'
+ *       400:
+ *         description: Bad request, if search query/filters or provider details are missing.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/search-external', authenticate, async (req, res, next) => {
   const { query, providerId, providerType, equipmentFilter, muscleGroupFilter } = req.query; // Get providerId and providerType from query
   const equipmentFilterArray = equipmentFilter && equipmentFilter.length > 0 ? equipmentFilter.split(',') : [];
@@ -132,6 +373,27 @@ router.get('/search-external', authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /exercises/equipment:
+ *   get:
+ *     summary: Retrieve a list of available exercise equipment types
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of equipment types.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: string
+ *       500:
+ *         description: Server error.
+ */
 router.get('/equipment', authenticate, async (req, res, next) => {
   try {
     const equipmentTypes = await exerciseService.getAvailableEquipment();
@@ -141,6 +403,27 @@ router.get('/equipment', authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /exercises/muscle-groups:
+ *   get:
+ *     summary: Retrieve a list of available exercise muscle groups
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of muscle groups.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: string
+ *       500:
+ *         description: Server error.
+ */
 router.get('/muscle-groups', authenticate, async (req, res, next) => {
   try {
     const muscleGroups = await exerciseService.getAvailableMuscleGroups();
@@ -150,6 +433,36 @@ router.get('/muscle-groups', authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /exercises/wger-filters:
+ *   get:
+ *     summary: Retrieve unique Wger muscle groups and equipment not present in local database
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: An object containing lists of unique muscle groups and equipment from Wger.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 uniqueMuscles:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: List of muscle groups from Wger not present locally.
+ *                 uniqueEquipment:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: List of equipment from Wger not present locally.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/wger-filters', authenticate, async (req, res, next) => {
   try {
     const wgerMuscles = await wgerService.getWgerMuscleIdMap();
@@ -167,6 +480,39 @@ router.get('/wger-filters', authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /exercises/names:
+ *   get:
+ *     summary: Retrieve exercise names based on muscle and equipment filters
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: muscle
+ *         schema:
+ *           type: string
+ *         description: Filter by muscle group.
+ *       - in: query
+ *         name: equipment
+ *         schema:
+ *           type: string
+ *         description: Filter by equipment type.
+ *     responses:
+ *       200:
+ *         description: A list of exercise names.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: string
+ *       500:
+ *         description: Server error.
+ */
+
 router.get('/names', authenticate, async (req, res, next) => {
   try {
     const { muscle, equipment } = req.query;
@@ -177,7 +523,39 @@ router.get('/names', authenticate, async (req, res, next) => {
   }
 });
 
-// Endpoint to add an external exercise to user's exercises
+/**
+ * @swagger
+ * /exercises/add-external:
+ *   post:
+ *     summary: Add an external exercise (e.g., from Wger) to the user's exercises
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - wgerExerciseId
+ *             properties:
+ *               wgerExerciseId:
+ *                 type: integer
+ *                 description: The ID of the external exercise from Wger.
+ *     responses:
+ *       201:
+ *         description: The newly created exercise.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Exercise'
+ *       400:
+ *         description: Bad request, if Wger exercise ID is missing.
+ *       500:
+ *         description: Server error.
+ */
 router.post('/add-external', authenticate, async (req, res, next) => {
   const { wgerExerciseId } = req.body;
   if (!wgerExerciseId) {
@@ -191,7 +569,42 @@ router.post('/add-external', authenticate, async (req, res, next) => {
   }
 });
 
-// Endpoint to add a Nutritionix exercise to user's exercises
+/**
+ * @swagger
+ * /exercises/add-nutritionix-exercise:
+ *   post:
+ *     summary: Add a Nutritionix exercise to the user's exercises
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             description: Nutritionix exercise data.
+ *             example:
+ *               name: "Dumbbell Bicep Curl"
+ *               category: "Strength"
+ *               equipment: ["Dumbbell"]
+ *               muscle_groups: ["Biceps"]
+ *               description: "Curl dumbbells to work biceps."
+ *               external_id: "nutritionix_12345"
+ *               external_provider: "Nutritionix"
+ *     responses:
+ *       201:
+ *         description: The newly created exercise.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Exercise'
+ *       400:
+ *         description: Bad request, if Nutritionix exercise data is missing.
+ *       500:
+ *         description: Server error.
+ */
 router.post('/add-nutritionix-exercise', authenticate, async (req, res, next) => {
   const nutritionixExerciseData = req.body;
   if (!nutritionixExerciseData) {
@@ -227,7 +640,44 @@ router.get('/:id', authenticate, async (req, res, next) => {
   }
 });
 
-// Endpoint to create a new exercise
+/**
+ * @swagger
+ * /exercises/:
+ *   post:
+ *     summary: Create a new exercise
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exerciseData:
+ *                 type: string
+ *                 description: JSON string of exercise data (name, category, equipment, muscle_groups, description, instructions, is_public).
+ *                 example: '{"name": "Push-up", "category": "Strength", "equipment": ["None"], "muscle_groups": ["Chest", "Triceps"], "description": "A classic bodyweight exercise.", "instructions": ["Start in a plank position.", "Lower your body until your chest nearly touches the floor.", "Push back up to the starting position."], "is_public": true}'
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 description: Array of image files for the exercise.
+ *     responses:
+ *       201:
+ *         description: The newly created exercise.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Exercise'
+ *       400:
+ *         description: Bad request, if exercise data is invalid.
+ *       500:
+ *         description: Server error.
+ */
 router.post('/', authenticate, upload.array('images', 10), async (req, res, next) => {
   try {
     const exerciseData = JSON.parse(req.body.exerciseData);
@@ -244,6 +694,45 @@ router.post('/', authenticate, upload.array('images', 10), async (req, res, next
   }
 });
 // Endpoint to import exercises from CSV (file upload)
+/**
+ * @swagger
+ * /exercises/import:
+ *   post:
+ *     summary: Import exercises from a CSV file
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: CSV file containing exercise data.
+ *     responses:
+ *       201:
+ *         description: Result of the import operation.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 importedCount:
+ *                   type: integer
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       500:
+ *         description: Server error.
+ */
 router.post('/import', authenticate, upload.single('file'), async (req, res, next) => {
   try {
     const result = await exerciseService.importExercisesFromCSV(req.userId, req.file.path);
@@ -253,7 +742,52 @@ router.post('/import', authenticate, upload.single('file'), async (req, res, nex
   }
 });
 
-// Endpoint to import exercises from JSON (from frontend table)
+/**
+ * @swagger
+ * /exercises/import-json:
+ *   post:
+ *     summary: Import exercises from a JSON array
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - exercises
+ *             properties:
+ *               exercises:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/Exercise'
+ *                 description: Array of exercise objects to import.
+ *     responses:
+ *       201:
+ *         description: Result of the import operation.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 importedCount:
+ *                   type: integer
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       400:
+ *         description: Bad request, if data format is invalid.
+ *       409:
+ *         description: Conflict, if there are duplicate exercises.
+ *       500:
+ *         description: Server error.
+ */
 router.post('/import-json', authenticate, async (req, res, next) => {
   try {
     const { exercises } = req.body;
@@ -271,6 +805,56 @@ router.post('/import-json', authenticate, async (req, res, next) => {
 });
 
 // Endpoint to update an exercise
+/**
+ * @swagger
+ * /exercises/{id}:
+ *   put:
+ *     summary: Update an existing exercise
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the exercise to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exerciseData:
+ *                 type: string
+ *                 description: JSON string of exercise data to update (name, category, equipment, muscle_groups, description, instructions, is_public, images - existing image URLs).
+ *                 example: '{"name": "Updated Push-up", "category": "Strength", "equipment": ["None"], "muscle_groups": ["Chest", "Triceps"], "description": "An updated classic bodyweight exercise.", "instructions": ["Start in a plank position.", "Lower your body until your chest nearly touches the floor.", "Push back up to the starting position."], "is_public": true, "images": ["http://example.com/old_image.jpg"]}'
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 description: New image files for the exercise.
+ *     responses:
+ *       200:
+ *         description: The updated exercise object.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Exercise'
+ *       400:
+ *         description: Bad request, if exercise ID is invalid or data is malformed.
+ *       403:
+ *         description: Forbidden, if the user does not have access to update the exercise.
+ *       404:
+ *         description: Exercise not found.
+ *       500:
+ *         description: Server error.
+ */
 router.put('/:id', authenticate, upload.array('images', 10), async (req, res, next) => {
   const { id } = req.params;
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -301,7 +885,49 @@ router.put('/:id', authenticate, upload.array('images', 10), async (req, res, ne
   }
 });
 
-// Endpoint to get deletion impact for an exercise
+/**
+ * @swagger
+ * /exercises/{id}/deletion-impact:
+ *   get:
+ *     summary: Get the impact of deleting an exercise
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the exercise to check deletion impact for.
+ *     responses:
+ *       200:
+ *         description: An object detailing the impact of deletion.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 canDelete:
+ *                   type: boolean
+ *                   description: Indicates if the exercise can be safely deleted.
+ *                 linkedEntries:
+ *                   type: integer
+ *                   description: Number of exercise entries linked to this exercise.
+ *                 message:
+ *                   type: string
+ *                   description: A message explaining the deletion impact.
+ *       400:
+ *         description: Bad request, if exercise ID is invalid.
+ *       403:
+ *         description: Forbidden, if the user does not have access.
+ *       404:
+ *         description: Exercise not found.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
     const { id } = req.params;
     const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -323,6 +949,48 @@ router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
 });
 
 // Endpoint to delete an exercise
+/**
+ * @swagger
+ * /exercises/{id}:
+ *   delete:
+ *     summary: Delete an exercise by its ID
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the exercise to delete.
+ *       - in: query
+ *         name: forceDelete
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: If true, forces deletion even if there are linked entries.
+ *     responses:
+ *       200:
+ *         description: Exercise deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Bad request, if exercise ID is invalid.
+ *       403:
+ *         description: Forbidden, if the user does not have access to delete the exercise.
+ *       404:
+ *         description: Exercise not found.
+ *       500:
+ *         description: Server error.
+ */
 router.delete('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const { forceDelete } = req.query; // Get forceDelete from query parameters
@@ -355,6 +1023,27 @@ router.delete('/:id', authenticate, async (req, res, next) => {
 });
 
 
+/**
+ * @swagger
+ * /exercises/needs-review:
+ *   get:
+ *     summary: Retrieve a list of exercises needing review
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of exercises that need review.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Exercise'
+ *       500:
+ *         description: Server error.
+ */
 router.get(
   "/needs-review",
   authenticate,
@@ -368,6 +1057,43 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /exercises/update-snapshot:
+ *   post:
+ *     summary: Update the snapshot of exercise entries for a given exercise
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - exerciseId
+ *             properties:
+ *               exerciseId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The ID of the exercise for which to update snapshots.
+ *     responses:
+ *       200:
+ *         description: Result of the snapshot update operation.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Bad request, if exercise ID is missing.
+ *       500:
+ *         description: Server error.
+ */
 router.post(
   "/update-snapshot",
   authenticate,
@@ -386,6 +1112,48 @@ router.post(
 );
 
 // Endpoint to get Garmin activity details by exercise entry ID
+/**
+ * @swagger
+ * /exercises/garmin-activity-details/{exerciseEntryId}:
+ *   get:
+ *     summary: Retrieve Garmin activity details by exercise entry ID
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: exerciseEntryId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the exercise entry to retrieve Garmin details for.
+ *     responses:
+ *       200:
+ *         description: Garmin activity details.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 garminActivityId:
+ *                   type: string
+ *                 activityType:
+ *                   type: string
+ *                 duration:
+ *                   type: number
+ *                 calories:
+ *                   type: number
+ *                 distance:
+ *                   type: number
+ *       400:
+ *         description: Bad request, if exercise entry ID is invalid.
+ *       404:
+ *         description: Garmin activity details not found for this exercise entry.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/garmin-activity-details/:exerciseEntryId', authenticate, async (req, res, next) => {
   const { exerciseEntryId } = req.params;
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -403,7 +1171,54 @@ router.get('/garmin-activity-details/:exerciseEntryId', authenticate, async (req
   }
 });
 
-// Endpoint to get activity details by exercise entry ID and provider
+/**
+ * @swagger
+ * /exercises/activity-details/{exerciseEntryId}/{providerName}:
+ *   get:
+ *     summary: Retrieve activity details by exercise entry ID and provider
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: exerciseEntryId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the exercise entry to retrieve activity details for.
+ *       - in: path
+ *         name: providerName
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The name of the external provider (e.g., 'Garmin').
+ *     responses:
+ *       200:
+ *         description: Activity details from the specified provider.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 activityId:
+ *                   type: string
+ *                 activityType:
+ *                   type: string
+ *                 duration:
+ *                   type: number
+ *                 calories:
+ *                   type: number
+ *                 distance:
+ *                   type: number
+ *       400:
+ *         description: Bad request, if exercise entry ID or provider name is invalid.
+ *       404:
+ *         description: Activity details not found for this exercise entry and provider.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/activity-details/:exerciseEntryId/:providerName', authenticate, async (req, res, next) => {
   const { exerciseEntryId, providerName } = req.params;
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
