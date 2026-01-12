@@ -2,6 +2,112 @@ const { getClient } = require("../db/poolManager");
 const { log } = require("../config/logging");
 const format = require("pg-format");
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     FoodEntry:
+ *       type: object
+ *       required:
+ *         - user_id
+ *         - meal_type_id
+ *         - quantity
+ *         - unit
+ *         - entry_date
+ *         - food_name
+ *         - calories
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *           description: The unique identifier for the food entry.
+ *         user_id:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the user who owns this food entry.
+ *         food_id:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the food, if this entry is linked to a food in the database.
+ *         meal_id:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the meal, if this entry is part of a meal.
+ *         meal_type_id:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the meal type (e.g., breakfast, lunch, dinner).
+ *         quantity:
+ *           type: number
+ *           description: The quantity of the food consumed.
+ *         unit:
+ *           type: string
+ *           description: The unit of measurement for the quantity (e.g., grams, oz, serving).
+ *         entry_date:
+ *           type: string
+ *           format: date
+ *           description: The date the food was consumed.
+ *         variant_id:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the food variant, if applicable.
+ *         food_entry_meal_id:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the food entry meal, if this entry is part of a larger meal entry.
+ *         food_name:
+ *           type: string
+ *           description: The name of the food.
+ *         brand_name:
+ *           type: string
+ *           description: The brand name of the food.
+ *         serving_size:
+ *           type: number
+ *           description: The size of a single serving.
+ *         serving_unit:
+ *           type: string
+ *           description: The unit for the serving size.
+ *         calories:
+ *           type: number
+ *           description: The number of calories.
+ *         protein:
+ *           type: number
+ *         carbs:
+ *           type: number
+ *         fat:
+ *           type: number
+ *         saturated_fat:
+ *           type: number
+ *         polyunsaturated_fat:
+ *           type: number
+ *         monounsaturated_fat:
+ *           type: number
+ *         trans_fat:
+ *           type: number
+ *         cholesterol:
+ *           type: number
+ *         sodium:
+ *           type: number
+ *         potassium:
+ *           type: number
+ *         dietary_fiber:
+ *           type: number
+ *         sugars:
+ *           type: number
+ *         vitamin_a:
+ *           type: number
+ *         vitamin_c:
+ *           type: number
+ *         calcium:
+ *           type: number
+ *         iron:
+ *           type: number
+ *         glycemic_index:
+ *           type: number
+ *         custom_nutrients:
+ *           type: object
+ *           description: A JSON object for storing custom nutrient data.
+ */
 async function createFoodEntry(entryData, createdByUserId) {
   log(
     "info",

@@ -10,6 +10,31 @@ router.use(express.json());
 // Apply diary permission check to all food entry routes
 router.use(checkPermissionMiddleware('diary'));
 
+/**
+ * @swagger
+ * /food-entries:
+ *   post:
+ *     summary: Create a new food entry
+ *     tags: [Food & Nutrition]
+ *     description: Adds a new food entry to the user's diary for a specific meal and date.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/FoodEntry'
+ *     responses:
+ *       201:
+ *         description: The food entry was created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FoodEntry'
+ *       400:
+ *         description: Invalid request body.
+ *       403:
+ *         description: User does not have permission to create a food entry.
+ */
 router.post(
   "/",
   authenticate,
@@ -28,6 +53,43 @@ router.post(
 );
 
 
+/**
+ * @swagger
+ * /food-entries/copy:
+ *   post:
+ *     summary: Copy food entries from one meal to another
+ *     tags: [Food & Nutrition]
+ *     description: Copies all food entries from a source meal on a specific date to a target meal on another date.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - sourceDate
+ *               - sourceMealType
+ *               - targetDate
+ *               - targetMealType
+ *             properties:
+ *               sourceDate:
+ *                 type: string
+ *                 format: date
+ *               sourceMealType:
+ *                 type: string
+ *               targetDate:
+ *                 type: string
+ *                 format: date
+ *               targetMealType:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: The food entries were copied successfully.
+ *       400:
+ *         description: Invalid request body.
+ *       403:
+ *         description: User does not have permission to copy food entries.
+ */
 router.post(
   "/copy",
   authenticate,
@@ -60,6 +122,36 @@ router.post(
   }
 );
 
+/**
+ * @swagger
+ * /food-entries/copy-yesterday:
+ *   post:
+ *     summary: Copy food entries from yesterday's meal
+ *     tags: [Food & Nutrition]
+ *     description: Copies all food entries from a specific meal on the previous day to the same meal on a target date.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - mealType
+ *               - targetDate
+ *             properties:
+ *               mealType:
+ *                 type: string
+ *               targetDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       201:
+ *         description: The food entries were copied successfully.
+ *       400:
+ *         description: Invalid request body.
+ *       403:
+ *         description: User does not have permission to copy food entries.
+ */
 router.post(
   "/copy-yesterday",
   authenticate,
@@ -88,6 +180,41 @@ router.post(
   }
 );
 
+/**
+ * @swagger
+ * /food-entries/{id}:
+ *   put:
+ *     summary: Update a food entry
+ *     tags: [Food & Nutrition]
+ *     description: Updates an existing food entry with new information.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the food entry to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/FoodEntry'
+ *     responses:
+ *       200:
+ *         description: The food entry was updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FoodEntry'
+ *       400:
+ *         description: Invalid request body or food entry ID.
+ *       403:
+ *         description: User does not have permission to update this food entry.
+ *       404:
+ *         description: Food entry not found.
+ */
 router.put(
   "/:id",
   authenticate,
@@ -119,6 +246,31 @@ router.put(
   }
 );
 
+/**
+ * @swagger
+ * /food-entries/{id}:
+ *   delete:
+ *     summary: Delete a food entry
+ *     tags: [Food & Nutrition]
+ *     description: Deletes a food entry from the user's diary.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the food entry to delete.
+ *     responses:
+ *       200:
+ *         description: The food entry was deleted successfully.
+ *       400:
+ *         description: Invalid food entry ID.
+ *       403:
+ *         description: User does not have permission to delete this food entry.
+ *       404:
+ *         description: Food entry not found.
+ */
 router.delete(
   "/:id",
   authenticate,
@@ -145,6 +297,35 @@ router.delete(
   }
 );
 
+/**
+ * @swagger
+ * /food-entries:
+ *   get:
+ *     summary: Get food entries by selected date
+ *     tags: [Food & Nutrition]
+ *     description: Retrieves a list of all food entries for a specific date, passed as a query parameter.
+ *     parameters:
+ *       - in: query
+ *         name: selectedDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: The date to retrieve food entries for (YYYY-MM-DD).
+ *     responses:
+ *       200:
+ *         description: A list of food entries for the specified date.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/FoodEntry'
+ *       400:
+ *         description: Selected date parameter is missing.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ */
 router.get(
   "/",
   authenticate,
@@ -170,6 +351,35 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-entries/by-date/{date}:
+ *   get:
+ *     summary: Get all food entries for a specific date
+ *     tags: [Food & Nutrition]
+ *     description: Retrieves a list of all food entries logged by the user for a given date.
+ *     parameters:
+ *       - in: path
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: The date to retrieve food entries for (YYYY-MM-DD).
+ *     responses:
+ *       200:
+ *         description: A list of food entries for the specified date.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/FoodEntry'
+ *       400:
+ *         description: Date parameter is missing.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ */
 router.get(
   "/by-date/:date",
   authenticate,
@@ -195,6 +405,42 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-entries/range/{startDate}/{endDate}:
+ *   get:
+ *     summary: Get food entries within a date range
+ *     tags: [Food & Nutrition]
+ *     description: Retrieves a list of all food entries logged by the user between a start and end date.
+ *     parameters:
+ *       - in: path
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: The start date of the range (YYYY-MM-DD).
+ *       - in: path
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: The end date of the range (YYYY-MM-DD).
+ *     responses:
+ *       200:
+ *         description: A list of food entries for the specified date range.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/FoodEntry'
+ *       400:
+ *         description: Start or end date parameters are missing.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ */
 router.get(
   "/range/:startDate/:endDate",
   authenticate,
@@ -223,6 +469,35 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-entries/nutrition/today:
+ *   get:
+ *     summary: Get daily nutrition summary
+ *     tags: [Food & Nutrition]
+ *     description: Retrieves a summary of the user's nutritional intake for a specific date.
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: The date to retrieve the nutrition summary for (YYYY-MM-DD).
+ *     responses:
+ *       200:
+ *         description: The daily nutrition summary.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/NutritionSummary'
+ *       400:
+ *         description: Date parameter is missing.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ *       404:
+ *         description: Nutrition summary not found for this date.
+ */
 router.get(
   "/nutrition/today",
   authenticate,

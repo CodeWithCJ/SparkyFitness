@@ -1,3 +1,45 @@
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     NutritionSummary:
+ *       type: object
+ *       properties:
+ *         total_calories:
+ *           type: number
+ *         total_protein:
+ *           type: number
+ *         total_carbs:
+ *           type: number
+ *         total_fat:
+ *           type: number
+ *         total_saturated_fat:
+ *           type: number
+ *         total_polyunsaturated_fat:
+ *           type: number
+ *         total_monounsaturated_fat:
+ *           type: number
+ *         total_trans_fat:
+ *           type: number
+ *         total_cholesterol:
+ *           type: number
+ *         total_sodium:
+ *           type: number
+ *         total_potassium:
+ *           type: number
+ *         total_dietary_fiber:
+ *           type: number
+ *         total_sugars:
+ *           type: number
+ *         total_vitamin_a:
+ *           type: number
+ *         total_vitamin_c:
+ *           type: number
+ *         total_calcium:
+ *           type: number
+ *         total_iron:
+ *           type: number
+ */
 const { getClient, getSystemClient } = require("../db/poolManager");
 const { log } = require("../config/logging");
 
