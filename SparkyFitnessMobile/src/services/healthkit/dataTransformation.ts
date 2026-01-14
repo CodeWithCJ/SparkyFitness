@@ -39,10 +39,16 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
   let successCount = 0;
   let skipCount = 0;
 
+  /**
+   * Converts a timestamp to a local date string (YYYY-MM-DD).
+   * This ensures dates are assigned based on the user's local timezone,
+   * not UTC (which would cause issues like data at 11pm being assigned to the next day).
+   */
   const getDateString = (date: unknown): string | null => {
     if (!date) return null;
     try {
-      return new Date(date as string | number | Date).toISOString().split('T')[0];
+      const localDate = new Date(date as string | number | Date);
+      return `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
     } catch (e) {
       addLog(`[HealthKitService] Could not convert date: ${date}. ${e}`, 'warn', 'WARNING');
       return null;
