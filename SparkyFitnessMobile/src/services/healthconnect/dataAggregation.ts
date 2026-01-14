@@ -8,6 +8,16 @@ import {
   AggregatedHealthRecord,
 } from '../../types/healthRecords';
 
+/**
+ * Converts a timestamp to a local date string (YYYY-MM-DD).
+ * This ensures dates are assigned based on the user's local timezone,
+ * not UTC (which would cause issues like steps at 11pm being assigned to the next day).
+ */
+export const toLocalDateString = (timestamp: string | Date): string => {
+  const localDate = new Date(timestamp);
+  return `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+};
+
 export const aggregateHeartRateByDate = (records: HCHeartRateRecord[]): AggregatedHealthRecord[] => {
   if (!Array.isArray(records)) {
     addLog(`[HealthConnectService] aggregateHeartRateByDate received non-array records: ${JSON.stringify(records)}`, 'warn', 'WARNING');
@@ -25,7 +35,7 @@ export const aggregateHeartRateByDate = (records: HCHeartRateRecord[]): Aggregat
 
   const aggregatedData = validRecords.reduce<HeartRateAccumulator>((acc, record) => {
     try {
-      const date = record.startTime.split('T')[0];
+      const date = toLocalDateString(record.startTime);
       const heartRate = record.samples.reduce((sum, sample) =>
         sum + (sample.beatsPerMinute || 0), 0) / record.samples.length;
 
@@ -70,7 +80,7 @@ export const aggregateStepsByDate = (records: HCStepsRecord[]): AggregatedHealth
       // Use endTime for steps to avoid previous day assignment
       // If endTime doesn't exist, fall back to startTime
       const timeToUse = record.endTime || record.startTime;
-      const date = timeToUse.split('T')[0];
+      const date = toLocalDateString(timeToUse);
       const steps = record.count;
 
       if (!acc[date]) {
@@ -113,7 +123,7 @@ export const aggregateTotalCaloriesByDate = (records: HCEnergyRecord[]): Aggrega
       // Use endTime for total calories to avoid previous day assignment (consistent with Steps)
       // If endTime doesn't exist, fall back to startTime
       const timeToUse = record.endTime || record.startTime;
-      const date = timeToUse.split('T')[0];
+      const date = toLocalDateString(timeToUse);
 
       let valInKcal = 0;
 
@@ -169,7 +179,7 @@ export const aggregateActiveCaloriesByDate = (records: HCEnergyRecord[]): Aggreg
 
   const aggregatedData = validRecords.reduce<SumAccumulator>((acc, record) => {
     try {
-      const date = record.startTime.split('T')[0];
+      const date = toLocalDateString(record.startTime);
 
       // Health Connect can return values in 'calories' (large number) or 'kilocalories' (small number).
       // We need to normalize to kilocalories.
