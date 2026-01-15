@@ -120,6 +120,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: '#FFFFFF',
       }
     },
-    extra: { APP_VARIANT: environment }, // expose to app at runtime
+    extra: {
+      ...config.extra,
+      APP_VARIANT: environment,
+      eas: {
+        projectId: "498a86c5-344f-4d2c-9033-dfd720e4a383",
+      },
+    }, // expose to app at runtime
   };
 };
