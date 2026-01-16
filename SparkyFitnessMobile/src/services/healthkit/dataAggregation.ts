@@ -10,11 +10,21 @@ import {
 } from '../../types/healthRecords';
 import { SleepStageEvent } from '../../types/mobileHealthData';
 
+/**
+ * Converts a timestamp to a local date string (YYYY-MM-DD).
+ * This ensures dates are assigned based on the user's local timezone,
+ * not UTC (which would cause issues like data at 11pm being assigned to the next day).
+ */
+const toLocalDateString = (timestamp: string | Date): string => {
+  const localDate = new Date(timestamp);
+  return `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+};
+
 export const aggregateHeartRateByDate = (records: HKHeartRateRecord[]): AggregatedHealthRecord[] => {
   if (!Array.isArray(records)) return [];
   const aggregatedData = records.reduce<HeartRateAccumulator>((acc, record) => {
     try {
-      const date = new Date(record.startTime).toISOString().split('T')[0];
+      const date = toLocalDateString(record.startTime);
       const heartRate = record.samples[0].beatsPerMinute;
       if (heartRate == null || Number.isNaN(heartRate)) return acc;
       if (!acc[date]) acc[date] = { total: 0, count: 0 };
@@ -24,7 +34,11 @@ export const aggregateHeartRateByDate = (records: HKHeartRateRecord[]): Aggregat
     return acc;
   }, {});
 
-  const result: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({ date, value: Math.round(aggregatedData[date].total / aggregatedData[date].count), type: 'heart_rate' }));
+  const result: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({
+    date,
+    value: Math.round(aggregatedData[date].total / aggregatedData[date].count),
+    type: 'heart_rate',
+  }));
   return result;
 };
 

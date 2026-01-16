@@ -10,6 +10,7 @@ import {
   aggregateHeartRateByDate,
   aggregateActiveCaloriesByDate,
   aggregateTotalCaloriesByDate,
+  toLocalDateString,
 } from './dataAggregation';
 import { transformHealthRecords } from './dataTransformation';
 import {
@@ -118,7 +119,7 @@ export const getAggregatedStepsByDate = async (
     const aggregatedData = records.reduce<Record<string, number>>((acc, record) => {
       try {
         const timeToUse = record.endTime || record.startTime;
-        const date = timeToUse.split('T')[0];
+        const date = toLocalDateString(timeToUse);
         const steps = record.count || 0;
 
         if (!acc[date]) {
@@ -180,7 +181,7 @@ export const getAggregatedActiveCaloriesByDate = async (
     const aggregatedData = records.reduce<Record<string, number>>((acc, record) => {
       try {
         const timeToUse = record.endTime || record.startTime;
-        const date = timeToUse.split('T')[0];
+        const date = toLocalDateString(timeToUse);
         const calories = record.energy?.inKilocalories || 0;
 
         if (!acc[date]) {
