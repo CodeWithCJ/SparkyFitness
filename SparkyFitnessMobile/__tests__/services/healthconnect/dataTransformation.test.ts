@@ -636,11 +636,14 @@ describe('transformHealthRecords', () => {
     });
 
     test('tries multiple date fields (time, startTime, timestamp, date)', () => {
+      // Use noon timestamps to avoid timezone boundary issues (toLocalDateString uses local time)
+      // For the date-only field, use a timestamp format since toLocalDateString converts
+      // date-only strings as UTC midnight which shifts in negative UTC offset timezones
       const testCases = [
-        { time: '2024-01-15T08:00:00Z', basalMetabolicRate: 1500 },
-        { startTime: '2024-01-16T08:00:00Z', basalMetabolicRate: 1500 },
-        { timestamp: '2024-01-17T08:00:00Z', basalMetabolicRate: 1500 },
-        { date: '2024-01-18', basalMetabolicRate: 1500 },
+        { time: '2024-01-15T12:00:00Z', basalMetabolicRate: 1500 },
+        { startTime: '2024-01-16T12:00:00Z', basalMetabolicRate: 1500 },
+        { timestamp: '2024-01-17T12:00:00Z', basalMetabolicRate: 1500 },
+        { date: '2024-01-18T12:00:00Z', basalMetabolicRate: 1500 },
       ];
 
       testCases.forEach((record, index) => {

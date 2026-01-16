@@ -143,6 +143,23 @@ describe('healthConnectService.ts (Android)', () => {
       expect(result.find(r => r.date === '2024-01-15')?.value).toBe(200);
       expect(result.find(r => r.date === '2024-01-16')?.value).toBe(400);
     });
+
+    test('skips records with missing timestamp', async () => {
+      mockReadRecords.mockResolvedValue({
+        records: [
+          { energy: { inKilocalories: 100 } }, // No startTime or time
+          { startTime: '2024-01-15T12:00:00Z', energy: { inKilocalories: 200 } },
+        ],
+      });
+
+      const result = await androidService.getAggregatedTotalCaloriesByDate(
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].value).toBe(200);
+    });
   });
 
   describe('getAggregatedDistanceByDate', () => {
@@ -193,6 +210,23 @@ describe('healthConnectService.ts (Android)', () => {
 
       expect(result[0].value).toBe(2000);
     });
+
+    test('skips records with missing timestamp', async () => {
+      mockReadRecords.mockResolvedValue({
+        records: [
+          { distance: { inMeters: 500 } }, // No startTime or time
+          { startTime: '2024-01-15T12:00:00Z', distance: { inMeters: 1000 } },
+        ],
+      });
+
+      const result = await androidService.getAggregatedDistanceByDate(
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].value).toBe(1000);
+    });
   });
 
   describe('getAggregatedFloorsClimbedByDate', () => {
@@ -242,6 +276,23 @@ describe('healthConnectService.ts (Android)', () => {
       );
 
       expect(result[0].value).toBe(3);
+    });
+
+    test('skips records with missing timestamp', async () => {
+      mockReadRecords.mockResolvedValue({
+        records: [
+          { floors: 2 }, // No startTime or time
+          { startTime: '2024-01-15T12:00:00Z', floors: 5 },
+        ],
+      });
+
+      const result = await androidService.getAggregatedFloorsClimbedByDate(
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].value).toBe(5);
     });
   });
 
