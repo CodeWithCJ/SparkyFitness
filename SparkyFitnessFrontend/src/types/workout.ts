@@ -32,7 +32,7 @@ export interface WorkoutPresetExercise extends ExerciseInPreset {
 }
 
 export interface WorkoutPreset {
-  id: string;
+  id: number | string;
   user_id: string;
   name: string;
   description?: string;

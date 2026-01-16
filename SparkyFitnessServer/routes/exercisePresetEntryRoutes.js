@@ -4,6 +4,7 @@ const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepo
 const workoutPresetRepository = require('../models/workoutPresetRepository');
 const exerciseEntryRepository = require('../models/exerciseEntry');
 const exerciseRepository = require('../models/exercise'); // Import exerciseRepository
+const exerciseService = require('../services/exerciseService'); // Import exerciseService
 const { log } = require('../config/logging');
 const { body, param, validationResult } = require('express-validator');
 
@@ -38,8 +39,7 @@ const isAuthenticated = (req, res, next) => {
  *           format: uuid
  *           description: The ID of the user who owns the entry.
  *         workout_preset_id:
- *           type: string
- *           format: uuid
+ *           type: integer
  *           description: The ID of the workout preset this entry originated from.
  *         name:
  *           type: string
@@ -92,8 +92,7 @@ const isAuthenticated = (req, res, next) => {
  *               - entry_date
  *             properties:
  *               workout_preset_id:
- *                 type: string
- *                 format: uuid
+ *                 type: integer
  *                 description: The ID of the workout preset to log.
  *               entry_date:
  *                 type: string
@@ -117,9 +116,21 @@ const isAuthenticated = (req, res, next) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/ExerciseEntry'
+ *               type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ExercisePresetEntry'
+ *                 - type: object
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       example: preset
+ *                     exercises:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/ExerciseEntry'
+ *                     total_duration_minutes:
+ *                       type: integer
+ *                       example: 45
  *       400:
  *         description: Invalid request body or validation errors.
  *       401:
@@ -133,7 +144,7 @@ router.post(
   '/',
   isAuthenticated,
   [
-    body('workout_preset_id').isUUID().withMessage('Workout preset ID must be a valid UUID.'),
+    body('workout_preset_id').isInt().withMessage('Workout preset ID must be an integer.'),
     body('entry_date').isISO8601().withMessage('Entry date must be a valid ISO 8601 date.'),
     body('name').optional().notEmpty().withMessage('Preset name cannot be empty.'),
     body('description').optional().isString().withMessage('Description must be a string.'),
@@ -149,66 +160,18 @@ router.post(
       const userId = req.userId;
       const createdByUserId = req.userId;
 
-      // 1. Fetch the workout preset details
-      const workoutPreset = await workoutPresetRepository.getWorkoutPresetById(workout_preset_id, userId);
-      if (!workoutPreset) {
-        return res.status(404).json({ message: 'Workout preset not found.' });
-      }
+      const groupedPresetEntry = await exerciseService.logWorkoutPresetGrouped(userId, createdByUserId, workout_preset_id, entry_date, {
+        name,
+        description,
+        notes,
+        source: source !== undefined ? source : 'manual',
+      });
 
-      // 2. Create the exercise_preset_entry
-      const newExercisePresetEntry = await exercisePresetEntryRepository.createExercisePresetEntry(
-        userId,
-        {
-          workout_preset_id: workout_preset_id,
-          name: name || workoutPreset.name, // Use provided name or preset name
-          description: description || workoutPreset.description, // Use provided description or preset description
-          entry_date: entry_date,
-          notes: notes,
-          source: source !== undefined ? source : 'manual',
-        },
-        createdByUserId
-      );
-
-      const createdExerciseEntries = []; // Array to store created exercise entries
-
-      // 3. Create individual exercise_entries for each exercise in the preset
-      if (workoutPreset.exercises && workoutPreset.exercises.length > 0) {
-        for (const exercise of workoutPreset.exercises) {
-          // Fetch the full exercise details to get calories_per_hour
-          const fullExercise = await exerciseRepository.getExerciseById(exercise.exercise_id, userId);
-          if (!fullExercise) {
-            log('warn', `Exercise with ID ${exercise.exercise_id} not found for preset. Skipping.`);
-            continue; // Skip this exercise if not found
-          }
-
-          // Determine duration_minutes, default to 30 if not specified in preset
-          const durationMinutes = exercise.duration_minutes || 30;
-          // Calculate calories burned
-          const caloriesBurned = Math.round((fullExercise.calories_per_hour / 60) * durationMinutes);
-
-          const exerciseEntryData = {
-            exercise_id: exercise.exercise_id,
-            entry_date: entry_date,
-            notes: exercise.notes, // Use notes from preset exercise if available
-            sets: exercise.sets, // Copy sets from preset exercise
-            duration_minutes: durationMinutes,
-            calories_burned: caloriesBurned,
-            avg_heart_rate: null, // Set to null as it's not available from preset definition
-            // max_heart_rate is not directly stored in ExerciseEntry, it's derived on frontend
-          };
-          const newEntry = await exerciseEntryRepository.createExerciseEntry(
-            userId,
-            exerciseEntryData,
-            createdByUserId,
-            'Workout Preset', // entrySource
-            newExercisePresetEntry.id // Link to the newly created exercise_preset_entry
-          );
-          createdExerciseEntries.push(newEntry); // Add the created entry to the array
-        }
-      }
-
-      res.status(201).json(createdExerciseEntries); // Return the array of created exercise entries
+      res.status(201).json(groupedPresetEntry);
     } catch (error) {
+      if (error.message === 'Workout preset not found.') {
+        return res.status(404).json({ message: error.message });
+      }
       log('error', `Error adding workout preset to diary:`, error);
       next(error);
     }

@@ -46,7 +46,7 @@ async function createExerciseEntriesFromTemplate(templateId, userId, currentClie
       log('info', `No assignments found for workout plan template ${templateId} or template not found.`);
       return;
     }
-    
+
     // Use the provided client date to ensure timezone consistency
     const clientDate = currentClientDate ? new Date(currentClientDate) : new Date();
     clientDate.setHours(0, 0, 0, 0); // Normalize to the beginning of the day in the client's timezone
@@ -55,7 +55,7 @@ async function createExerciseEntriesFromTemplate(templateId, userId, currentClie
     const clientTimezoneOffset = currentClientDate ? new Date(currentClientDate).getTimezoneOffset() : new Date().getTimezoneOffset();
     const serverTimezoneOffset = startDate.getTimezoneOffset();
     const timezoneDifference = (clientTimezoneOffset - serverTimezoneOffset) * 60 * 1000;
-    
+
     startDate.setTime(startDate.getTime() + timezoneDifference);
     // If end_date is not provided, default to one year from start_date
     const endDate = template.end_date ? new Date(template.end_date) : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
@@ -92,14 +92,11 @@ async function createExerciseEntriesFromTemplate(templateId, userId, currentClie
             const sets = setsResult.rows;
             await processExercise(assignment.exercise_id, sets, null);
           } else if (assignment.workout_preset_id) {
-            log('info', `createExerciseEntriesFromTemplate - Found workout_preset_id ${assignment.workout_preset_id} for date ${entryDate}.`);
-            const preset = await workoutPresetRepository.getWorkoutPresetById(assignment.workout_preset_id, userId);
-            if (preset && preset.exercises) {
-              for (const exercise of preset.exercises) {
-                log('info', `Adding exercise ${exercise.exercise_id} from preset ${preset.id} to entriesToInsert.`);
-                await processExercise(exercise.exercise_id, exercise.sets, exercise.notes);
-              }
-            }
+            log('info', `createExerciseEntriesFromTemplate - Found workout_preset_id ${assignment.workout_preset_id} for date ${entryDate}. Grouping in diary.`);
+            await exerciseService.logWorkoutPresetGrouped(userId, userId, assignment.workout_preset_id, entryDate, {
+              source: 'Workout Plan',
+              workoutPlanAssignmentId: assignment.id
+            });
           }
         }
       }

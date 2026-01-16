@@ -67,7 +67,7 @@ export interface GroupedExerciseEntry {
 
 export const fetchExerciseEntries = async (selectedDate: string): Promise<GroupedExerciseEntry[]> => {
   const response = await getDailyExerciseEntries(selectedDate);
-  
+
   const parsedEntries: GroupedExerciseEntry[] = response.map((entry: any) => {
     if (entry.type === 'preset') {
       return {
@@ -116,7 +116,7 @@ export const fetchExerciseEntries = async (selectedDate: string): Promise<Groupe
       };
     }
   });
- 
+
   console.log('DEBUG', 'fetchExerciseEntries: Parsed entries with activity details:', parsedEntries);
   return parsedEntries;
 };
@@ -138,7 +138,7 @@ export const createExerciseEntry = async (payload: {
   if (imageFile) {
     const formData = new FormData();
     formData.append('image', imageFile);
-    
+
     // Append other data from the payload to formData
     Object.keys(entryData).forEach(key => {
       const value = (entryData as any)[key];
@@ -173,7 +173,7 @@ export const createExerciseEntry = async (payload: {
   }
 };
 
-export const logWorkoutPreset = async (workoutPresetId: string, entryDate: string): Promise<ExerciseEntry[]> => {
+export const logWorkoutPreset = async (workoutPresetId: string | number, entryDate: string): Promise<GroupedExerciseEntry> => {
   return apiCall('/exercise-preset-entries', {
     method: 'POST',
     body: JSON.stringify({ workout_preset_id: workoutPresetId, entry_date: entryDate }),
@@ -206,11 +206,11 @@ export const updateExerciseEntry = async (entryId: string, payload: {
   const { imageFile, ...entryData } = payload;
   console.log('updateExerciseEntry payload:', payload);
   console.log('updateExerciseEntry entryData:', entryData);
-  
+
   if (imageFile) {
     const formData = new FormData();
     formData.append('image', imageFile);
-    
+
     Object.keys(entryData).forEach(key => {
       const value = (entryData as any)[key];
       if (value !== undefined && value !== null) {
