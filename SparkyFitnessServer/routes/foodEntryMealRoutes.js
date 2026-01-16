@@ -7,7 +7,29 @@ const { log } = require("../config/logging");
 // Middleware to protect routes
 router.use(authenticate); // Use the authenticate middleware function
 
-// POST /food-entry-meals - Create a new FoodEntryMeal
+/**
+ * @swagger
+ * /food-entry-meals:
+ *   post:
+ *     summary: Create a new FoodEntryMeal
+ *     tags: [Nutrition & Meals]
+ *     description: Creates a new food entry meal for the authenticated user.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/FoodEntryMeal'
+ *     responses:
+ *       201:
+ *         description: The FoodEntryMeal was created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FoodEntryMeal'
+ *       403:
+ *         description: User does not have permission to create a food entry meal.
+ */
 router.post("/", async (req, res, next) => {
   try {
     const {
@@ -46,7 +68,33 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-// GET /food-entry-meals/by-date/:date - Get FoodEntryMeals by date
+/**
+ * @swagger
+ * /food-entry-meals/by-date/{date}:
+ *   get:
+ *     summary: Get FoodEntryMeals by date
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves a list of all food entry meals for a specific date.
+ *     parameters:
+ *       - in: path
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: The date to retrieve food entry meals for (YYYY-MM-DD).
+ *     responses:
+ *       200:
+ *         description: A list of food entry meals for the specified date.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/FoodEntryMeal'
+ *       403:
+ *         description: User does not have permission to access this resource.
+ */
 router.get("/by-date/:date", async (req, res, next) => {
   try {
     const { date } = req.params;
@@ -63,7 +111,33 @@ router.get("/by-date/:date", async (req, res, next) => {
   }
 });
 
-// GET /food-entry-meals/:id - Get a specific FoodEntryMeal with its components
+/**
+ * @swagger
+ * /food-entry-meals/{id}:
+ *   get:
+ *     summary: Get a specific FoodEntryMeal with its components
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves a specific food entry meal by its ID, including its associated food components.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the food entry meal to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested FoodEntryMeal with components.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FoodEntryMeal'
+ *       403:
+ *         description: User does not have permission to access this resource.
+ *       404:
+ *         description: FoodEntryMeal not found.
+ */
 router.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -84,11 +158,43 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
-// PUT /food-entry-meals/:id - Update an existing FoodEntryMeal
+/**
+ * @swagger
+ * /food-entry-meals/{id}:
+ *   put:
+ *     summary: Update an existing FoodEntryMeal
+ *     tags: [Nutrition & Meals]
+ *     description: Updates an existing food entry meal with new information.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the food entry meal to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/FoodEntryMeal'
+ *     responses:
+ *       200:
+ *         description: The FoodEntryMeal was updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FoodEntryMeal'
+ *       403:
+ *         description: User does not have permission to update this food entry meal.
+ *       404:
+ *         description: FoodEntryMeal not found.
+ */
 router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, description, meal_type,meal_type_id, entry_date, foods, quantity, unit } =
+    const { name, description, meal_type, meal_type_id, entry_date, foods, quantity, unit } =
       req.body;
     log("info", `[DEBUG] PUT /food-entry-meals/${id} Body:`, {
       quantity,
@@ -101,7 +207,7 @@ router.put("/:id", async (req, res, next) => {
       userId, // authenticatedUserId
       userId, // actingUserId (assuming authenticated user is the acting user for updates)
       id, // foodEntryMealId
-      { name, description, meal_type, meal_type_id,entry_date, foods, quantity, unit } // updatedMealData
+      { name, description, meal_type, meal_type_id, entry_date, foods, quantity, unit } // updatedMealData
     );
     log("info", `User ${userId} updated FoodEntryMeal ${id}`);
     res.status(200).json(updatedFoodEntryMeal);
@@ -111,7 +217,29 @@ router.put("/:id", async (req, res, next) => {
   }
 });
 
-// DELETE /food-entry-meals/:id - Delete a FoodEntryMeal
+/**
+ * @swagger
+ * /food-entry-meals/{id}:
+ *   delete:
+ *     summary: Delete a FoodEntryMeal
+ *     tags: [Nutrition & Meals]
+ *     description: Deletes a specific food entry meal.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the food entry meal to delete.
+ *     responses:
+ *       204:
+ *         description: FoodEntryMeal deleted successfully.
+ *       403:
+ *         description: User does not have permission to delete this food entry meal.
+ *       404:
+ *         description: FoodEntryMeal not found.
+ */
 router.delete("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;

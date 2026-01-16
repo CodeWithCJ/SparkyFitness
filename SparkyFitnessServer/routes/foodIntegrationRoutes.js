@@ -170,7 +170,59 @@ router.use("/usda", authenticate, async (req, res, next) => {
     next(error);
   }
 });
- 
+
+/**
+ * @swagger
+ * /food-integration/fatsecret/search:
+ *   get:
+ *     summary: Search for foods on FatSecret
+ *     tags: [External Integrations]
+ *     description: Searches for foods using the FatSecret API.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The search query.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the FatSecret data provider.
+ *     responses:
+ *       200:
+ *         description: A list of foods from FatSecret.
+ *       400:
+ *         description: Missing search query or x-provider-id header.
+ */
+/**
+ * @swagger
+ * /food-integration/fatsecret/search:
+ *   get:
+ *     summary: Search for foods on FatSecret
+ *     tags: [External Integrations]
+ *     description: Searches for foods using the FatSecret API.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The search query.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the FatSecret data provider.
+ *     responses:
+ *       200:
+ *         description: A list of foods from FatSecret.
+ *       400:
+ *         description: Missing search query or x-provider-id header.
+ */
 router.get("/fatsecret/search", authenticate, async (req, res, next) => {
   const { query } = req.query;
   const { clientId, clientSecret } = req;
@@ -191,6 +243,32 @@ router.get("/fatsecret/search", authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /food-integration/fatsecret/nutrients:
+ *   get:
+ *     summary: Get nutrient information from FatSecret
+ *     tags: [External Integrations]
+ *     description: Retrieves nutrient information for a specific food from the FatSecret API.
+ *     parameters:
+ *       - in: query
+ *         name: foodId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the food to retrieve nutrient information for.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the FatSecret data provider.
+ *     responses:
+ *       200:
+ *         description: Nutrient information for the specified food.
+ *       400:
+ *         description: Missing foodId or x-provider-id header.
+ */
 router.get(
   "/fatsecret/nutrients",
   authenticate,
@@ -215,6 +293,26 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-integration/openfoodfacts/search:
+ *   get:
+ *     summary: Search for foods on Open Food Facts
+ *     tags: [External Integrations]
+ *     description: Searches for foods using the Open Food Facts API.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The search query.
+ *     responses:
+ *       200:
+ *         description: A list of foods from Open Food Facts.
+ *       400:
+ *         description: Missing search query.
+ */
 router.get(
   "/openfoodfacts/search",
   authenticate,
@@ -249,6 +347,32 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-integration/nutritionix/search:
+ *   get:
+ *     summary: Search for foods on Nutritionix
+ *     tags: [External Integrations]
+ *     description: Searches for foods using the Nutritionix API.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The search query.
+ *       - in: query
+ *         name: providerId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the Nutritionix data provider.
+ *     responses:
+ *       200:
+ *         description: A list of foods from Nutritionix.
+ *       400:
+ *         description: Missing search query or providerId.
+ */
 router.get("/nutritionix/search", authenticate, async (req, res, next) => {
   const { query, providerId } = req.query;
   if (!query || !providerId) {
@@ -264,6 +388,32 @@ router.get("/nutritionix/search", authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /food-integration/nutritionix/nutrients:
+ *   get:
+ *     summary: Get nutrient information from Nutritionix
+ *     tags: [External Integrations]
+ *     description: Retrieves nutrient information for a specific food from the Nutritionix API.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The search query.
+ *       - in: query
+ *         name: providerId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the Nutritionix data provider.
+ *     responses:
+ *       200:
+ *         description: Nutrient information for the specified food.
+ *       400:
+ *         description: Missing search query or providerId.
+ */
 router.get(
   "/nutritionix/nutrients",
   authenticate,
@@ -283,6 +433,32 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-integration/nutritionix/item:
+ *   get:
+ *     summary: Get branded food nutrient information from Nutritionix
+ *     tags: [External Integrations]
+ *     description: Retrieves nutrient information for a specific branded food item from the Nutritionix API.
+ *     parameters:
+ *       - in: query
+ *         name: nix_item_id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The Nutritionix item ID.
+ *       - in: query
+ *         name: providerId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the Nutritionix data provider.
+ *     responses:
+ *       200:
+ *         description: Nutrient information for the specified branded food item.
+ *       400:
+ *         description: Missing nix_item_id or providerId.
+ */
 router.get("/nutritionix/item", authenticate, async (req, res, next) => {
   const { nix_item_id, providerId } = req.query;
   if (!nix_item_id || !providerId) {
@@ -297,6 +473,32 @@ router.get("/nutritionix/item", authenticate, async (req, res, next) => {
 });
 
 // AI-dedicated food search route to handle /api/foods/search
+/**
+ * @swagger
+ * /food-integration/mealie/search:
+ *   get:
+ *     summary: Search for foods on Mealie
+ *     tags: [External Integrations]
+ *     description: Searches for foods using the Mealie API.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The search query.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the Mealie data provider.
+ *     responses:
+ *       200:
+ *         description: A list of foods from Mealie.
+ *       400:
+ *         description: Missing search query or x-provider-id header.
+ */
 router.get(
   "/mealie/search",
   authenticate,
@@ -322,6 +524,32 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-integration/mealie/details:
+ *   get:
+ *     summary: Get food details from Mealie
+ *     tags: [External Integrations]
+ *     description: Retrieves details for a specific food from the Mealie API.
+ *     parameters:
+ *       - in: query
+ *         name: slug
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The slug of the food to retrieve details for.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the Mealie data provider.
+ *     responses:
+ *       200:
+ *         description: Details for the specified food.
+ *       400:
+ *         description: Missing food slug or x-provider-id header.
+ */
 router.get(
   "/mealie/details",
   authenticate,
@@ -347,6 +575,32 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-integration/tandoor/search:
+ *   get:
+ *     summary: Search for foods on Tandoor
+ *     tags: [External Integrations]
+ *     description: Searches for foods using the Tandoor API.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The search query.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the Tandoor data provider.
+ *     responses:
+ *       200:
+ *         description: A list of foods from Tandoor.
+ *       400:
+ *         description: Missing search query or x-provider-id header.
+ */
 router.get(
   "/tandoor/search",
   authenticate,
@@ -373,6 +627,32 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-integration/tandoor/details:
+ *   get:
+ *     summary: Get food details from Tandoor
+ *     tags: [External Integrations]
+ *     description: Retrieves details for a specific food from the Tandoor API.
+ *     parameters:
+ *       - in: query
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the food to retrieve details for.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the Tandoor data provider.
+ *     responses:
+ *       200:
+ *         description: Details for the specified food.
+ *       400:
+ *         description: Missing food id or x-provider-id header.
+ */
 router.get(
   "/tandoor/details",
   authenticate,
@@ -399,6 +679,32 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-integration/usda/search:
+ *   get:
+ *     summary: Search for foods on USDA FoodData Central
+ *     tags: [External Integrations]
+ *     description: Searches for foods using the USDA FoodData Central API.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The search query.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the USDA data provider.
+ *     responses:
+ *       200:
+ *         description: A list of foods from USDA FoodData Central.
+ *       400:
+ *         description: Missing search query or x-provider-id header.
+ */
 router.get("/usda/search", authenticate, async (req, res, next) => {
   const { query } = req.query;
   const { usdaApiKey } = req;
@@ -415,6 +721,75 @@ router.get("/usda/search", authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: barcode
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The barcode to search for.
+ *     responses:
+ *       200:
+ *         description: Food details for the given barcode.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Missing barcode.
+ *       404:
+ *         description: Food not found.
+ *       500:
+ *         description: Server error.
+ */
+router.get(
+  "/openfoodfacts/barcode/:barcode",
+  authenticate,
+  async (req, res, next) => {
+    const { barcode } = req.params;
+    if (!barcode) {
+      return res.status(400).json({ error: "Missing barcode" });
+    }
+    try {
+      const data = await searchOpenFoodFactsByBarcode(barcode);
+      res.json(data);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /food-integration/usda/details:
+ *   get:
+ *     summary: Get food details from USDA FoodData Central
+ *     tags: [External Integrations]
+ *     description: Retrieves details for a specific food from the USDA FoodData Central API.
+ *     parameters:
+ *       - in: query
+ *         name: fdcId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The FoodData Central ID of the food to retrieve details for.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the USDA data provider.
+ *     responses:
+ *       200:
+ *         description: Details for the specified food.
+ *       400:
+ *         description: Missing FDC ID or x-provider-id header.
+ */
 router.get("/usda/details", authenticate, async (req, res, next) => {
   const { fdcId } = req.query;
   const { usdaApiKey } = req;
@@ -430,5 +805,5 @@ router.get("/usda/details", authenticate, async (req, res, next) => {
     next(error);
   }
 });
- 
+
 module.exports = router;

@@ -9,7 +9,7 @@ const { log } = require('../../config/logging');
  * /auth/users/accessible-users:
  *   get:
  *     summary: Get accessible users
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Retrieves a list of users that the current authenticated user has access to.
  *     responses:
  *       200:
@@ -31,7 +31,7 @@ router.get('/users/accessible-users', authenticate, async (req, res, next) => {
  * /auth/access/can-access-user-data:
  *   get:
  *     summary: Check if the current user can access another user's data
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Verifies if the authenticated user has permission to access specific data of another user.
  *     parameters:
  *       - in: query
@@ -71,7 +71,7 @@ router.get('/access/can-access-user-data', authenticate, async (req, res, next) 
  * /auth/access/check-family-access:
  *   get:
  *     summary: Check family access permissions
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Checks if the authenticated user has family access permissions to another user's data.
  *     parameters:
  *       - in: query
@@ -111,7 +111,7 @@ router.get('/access/check-family-access', authenticate, async (req, res, next) =
  * /auth/family-access:
  *   get:
  *     summary: Get family access entries
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Retrieves a list of family access entries where the authenticated user is either the owner or the family member.
  *     security:
  *       - cookieAuth: []
@@ -169,7 +169,7 @@ router.get('/family-access', authenticate, async (req, res, next) => {
  * /auth/family-access:
  *   post:
  *     summary: Create a new family access entry
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Creates a new family access entry, allowing another user to access the authenticated user's data.
  *     security:
  *       - cookieAuth: []
@@ -230,7 +230,7 @@ router.post('/family-access', authenticate, async (req, res, next) => {
  * /auth/family-access/{id}:
  *   put:
  *     summary: Update a family access entry
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Updates an existing family access entry.
  *     security:
  *       - cookieAuth: []
@@ -301,7 +301,7 @@ router.put('/family-access/:id', authenticate, async (req, res, next) => {
  * /auth/family-access/{id}:
  *   delete:
  *     summary: Delete a family access entry
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Deletes a specific family access entry.
  *     security:
  *       - cookieAuth: []

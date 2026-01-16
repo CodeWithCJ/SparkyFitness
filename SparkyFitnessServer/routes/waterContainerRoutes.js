@@ -3,7 +3,24 @@ const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const waterContainerService = require('../services/waterContainerService');
 
-// Create a new water container
+/**
+ * @swagger
+ * /water-containers:
+ *   post:
+ *     summary: Create a new water container
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/WaterContainer'
+ *     responses:
+ *       201:
+ *         description: Water container created successfully.
+ */
 router.post('/', authenticate, async (req, res, next) => {
     try {
         const container = await waterContainerService.createWaterContainer(req.userId, req.body);
@@ -13,7 +30,24 @@ router.post('/', authenticate, async (req, res, next) => {
     }
 });
 
-// Get all water containers for the logged-in user
+/**
+ * @swagger
+ * /water-containers:
+ *   get:
+ *     summary: Get all water containers for the user
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of water containers.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/WaterContainer'
+ */
 router.get('/', authenticate, async (req, res, next) => {
     try {
         const containers = await waterContainerService.getWaterContainersByUserId(req.userId);
@@ -23,7 +57,30 @@ router.get('/', authenticate, async (req, res, next) => {
     }
 });
 
-// Update a water container
+/**
+ * @swagger
+ * /water-containers/{id}:
+ *   put:
+ *     summary: Update a water container
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/WaterContainer'
+ *     responses:
+ *       200:
+ *         description: Water container updated successfully.
+ */
 router.put('/:id', authenticate, async (req, res, next) => {
     try {
         const container = await waterContainerService.updateWaterContainer(req.params.id, req.userId, req.body);
@@ -36,7 +93,25 @@ router.put('/:id', authenticate, async (req, res, next) => {
     }
 });
 
-// Delete a water container
+/**
+ * @swagger
+ * /water-containers/{id}:
+ *   delete:
+ *     summary: Delete a water container
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Deleted successfully.
+ */
 router.delete('/:id', authenticate, async (req, res, next) => {
     try {
         const result = await waterContainerService.deleteWaterContainer(req.params.id, req.userId);
@@ -49,7 +124,25 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     }
 });
 
-// Set a container as the primary one for quick logging
+/**
+ * @swagger
+ * /water-containers/{id}/set-primary:
+ *   put:
+ *     summary: Set a water container as primary
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Primary container set successfully.
+ */
 router.put('/:id/set-primary', authenticate, async (req, res, next) => {
     try {
         const container = await waterContainerService.setPrimaryWaterContainer(req.params.id, req.userId);
@@ -62,7 +155,18 @@ router.put('/:id/set-primary', authenticate, async (req, res, next) => {
     }
 });
 
-// Get the primary water container for the logged-in user
+/**
+ * @swagger
+ * /water-containers/primary:
+ *   get:
+ *     summary: Get the primary water container for the user
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: The primary water container.
+ */
 router.get('/primary', authenticate, async (req, res, next) => {
     try {
         const primaryContainer = await waterContainerService.getPrimaryWaterContainerByUserId(req.userId);
@@ -84,5 +188,5 @@ router.get('/primary', authenticate, async (req, res, next) => {
         next(error);
     }
 });
- 
+
 module.exports = router;

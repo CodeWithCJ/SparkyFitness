@@ -15,7 +15,7 @@ router.use(checkPermissionMiddleware('diary'));
  * /food-entries:
  *   post:
  *     summary: Create a new food entry
- *     tags: [Food & Nutrition]
+ *     tags: [Nutrition & Meals]
  *     description: Adds a new food entry to the user's diary for a specific meal and date.
  *     requestBody:
  *       required: true
@@ -58,7 +58,7 @@ router.post(
  * /food-entries/copy:
  *   post:
  *     summary: Copy food entries from one meal to another
- *     tags: [Food & Nutrition]
+ *     tags: [Nutrition & Meals]
  *     description: Copies all food entries from a source meal on a specific date to a target meal on another date.
  *     requestBody:
  *       required: true
@@ -127,7 +127,7 @@ router.post(
  * /food-entries/copy-yesterday:
  *   post:
  *     summary: Copy food entries from yesterday's meal
- *     tags: [Food & Nutrition]
+ *     tags: [Nutrition & Meals]
  *     description: Copies all food entries from a specific meal on the previous day to the same meal on a target date.
  *     requestBody:
  *       required: true
@@ -185,7 +185,7 @@ router.post(
  * /food-entries/{id}:
  *   put:
  *     summary: Update a food entry
- *     tags: [Food & Nutrition]
+ *     tags: [Nutrition & Meals]
  *     description: Updates an existing food entry with new information.
  *     parameters:
  *       - in: path
@@ -251,7 +251,7 @@ router.put(
  * /food-entries/{id}:
  *   delete:
  *     summary: Delete a food entry
- *     tags: [Food & Nutrition]
+ *     tags: [Nutrition & Meals]
  *     description: Deletes a food entry from the user's diary.
  *     parameters:
  *       - in: path
@@ -302,7 +302,7 @@ router.delete(
  * /food-entries:
  *   get:
  *     summary: Get food entries by selected date
- *     tags: [Food & Nutrition]
+ *     tags: [Nutrition & Meals]
  *     description: Retrieves a list of all food entries for a specific date, passed as a query parameter.
  *     parameters:
  *       - in: query
@@ -356,7 +356,7 @@ router.get(
  * /food-entries/by-date/{date}:
  *   get:
  *     summary: Get all food entries for a specific date
- *     tags: [Food & Nutrition]
+ *     tags: [Nutrition & Meals]
  *     description: Retrieves a list of all food entries logged by the user for a given date.
  *     parameters:
  *       - in: path
@@ -410,7 +410,7 @@ router.get(
  * /food-entries/range/{startDate}/{endDate}:
  *   get:
  *     summary: Get food entries within a date range
- *     tags: [Food & Nutrition]
+ *     tags: [Nutrition & Meals]
  *     description: Retrieves a list of all food entries logged by the user between a start and end date.
  *     parameters:
  *       - in: path
@@ -474,7 +474,7 @@ router.get(
  * /food-entries/nutrition/today:
  *   get:
  *     summary: Get daily nutrition summary
- *     tags: [Food & Nutrition]
+ *     tags: [Nutrition & Meals]
  *     description: Retrieves a summary of the user's nutritional intake for a specific date.
  *     parameters:
  *       - in: query

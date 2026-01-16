@@ -6,7 +6,46 @@ const measurementService = require('../services/measurementService');
 const sleepAnalyticsService = require('../services/sleepAnalyticsService'); // Import sleepAnalyticsService
 const { log } = require('../config/logging');
 
-// Endpoint for fetching sleep analytics
+/**
+ * @swagger
+ * /sleep/analytics:
+ *   get:
+ *     summary: Get sleep analytics
+ *     tags: [Wellness & Metrics]
+ *     description: Retrieves aggregated sleep analytics for a specific date range.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date (YYYY-MM-DD).
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date (YYYY-MM-DD).
+ *     responses:
+ *       200:
+ *         description: Sleep analytics data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/SleepAnalytics'
+ *       400:
+ *         description: Missing required query parameters.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
+ */
 router.get('/analytics', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
@@ -22,7 +61,46 @@ router.get('/analytics', authenticate, checkPermissionMiddleware('checkin'), asy
   }
 });
 
-// Endpoint for manual sleep entry from the frontend
+/**
+ * @swagger
+ * /sleep/manual_entry:
+ *   post:
+ *     summary: Create a manual sleep entry
+ *     tags: [Wellness & Metrics]
+ *     description: Allows the user to manually enter sleep data.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               entry_date:
+ *                 type: string
+ *                 format: date
+ *               bedtime:
+ *                 type: string
+ *                 format: date-time
+ *               wake_time:
+ *                 type: string
+ *                 format: date-time
+ *               duration_in_seconds:
+ *                 type: integer
+ *               stage_events:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *             required: [entry_date, bedtime, wake_time, duration_in_seconds]
+ *     responses:
+ *       200:
+ *         description: Sleep entry processed successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SleepEntry'
+ */
 router.post('/manual_entry', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
     const { entry_date, bedtime, wake_time, duration_in_seconds, stage_events } = req.body;
@@ -31,15 +109,14 @@ router.post('/manual_entry', authenticate, checkPermissionMiddleware('checkin'),
     }
 
     const sleepEntryData = {
-      entry_date: entry_date, // Use the entry_date provided by the frontend
+      entry_date: entry_date,
       bedtime: new Date(bedtime),
       wake_time: new Date(wake_time),
       duration_in_seconds: duration_in_seconds,
       source: 'manual',
-      stage_events: stage_events // Pass stage_events to the service
+      stage_events: stage_events
     };
 
-    // Use the processSleepEntry function from the measurementService
     const result = await measurementService.processSleepEntry(req.userId, req.userId, sleepEntryData);
     res.status(200).json(result);
   } catch (error) {
@@ -48,7 +125,37 @@ router.post('/manual_entry', authenticate, checkPermissionMiddleware('checkin'),
   }
 });
 
-// Endpoint for fetching sleep entries for the frontend
+/**
+ * @swagger
+ * /sleep:
+ *   get:
+ *     summary: Get sleep entries within a date range
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: A list of sleep entries.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/SleepEntry'
+ */
 router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
@@ -56,7 +163,6 @@ router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, 
       return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
     }
 
-    // Use the getSleepEntriesByUserIdAndDateRange function from the measurementService
     const sleepEntries = await measurementService.getSleepEntriesByUserIdAndDateRange(req.userId, startDate, endDate);
     res.status(200).json(sleepEntries);
   } catch (error) {
@@ -65,7 +171,32 @@ router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, 
   }
 });
 
-// Endpoint for fetching sleep entries details for the frontend
+/**
+ * @swagger
+ * /sleep/details:
+ *   get:
+ *     summary: Get sleep entries details within a date range
+ *     tags: [Wellness & Metrics]
+ *     description: This endpoint currently returns the same as the main GET /sleep endpoint.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Sleep entries details.
+ */
 router.get('/details', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
@@ -73,7 +204,6 @@ router.get('/details', authenticate, checkPermissionMiddleware('checkin'), async
       return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
     }
 
-    // Use the getSleepEntriesByUserIdAndDateRange function from the measurementService
     const sleepEntries = await measurementService.getSleepEntriesByUserIdAndDateRange(req.userId, startDate, endDate);
     res.status(200).json(sleepEntries);
   } catch (error) {
@@ -82,7 +212,43 @@ router.get('/details', authenticate, checkPermissionMiddleware('checkin'), async
   }
 });
 
-// Endpoint for updating an existing sleep entry
+/**
+ * @swagger
+ * /sleep/{id}:
+ *   put:
+ *     summary: Update an existing sleep entry
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               bedtime:
+ *                 type: string
+ *                 format: date-time
+ *               wake_time:
+ *                 type: string
+ *                 format: date-time
+ *               duration_in_seconds:
+ *                 type: integer
+ *               stage_events:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *     responses:
+ *       200:
+ *         description: Sleep entry updated successfully.
+ */
 router.put('/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -103,7 +269,25 @@ router.put('/:id', authenticate, checkPermissionMiddleware('checkin'), async (re
   }
 });
 
-// Endpoint for deleting a sleep entry
+/**
+ * @swagger
+ * /sleep/{id}:
+ *   delete:
+ *     summary: Delete a sleep entry
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Sleep entry deleted successfully.
+ */
 router.delete('/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
     const { id } = req.params;

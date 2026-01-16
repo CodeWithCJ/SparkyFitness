@@ -3,6 +3,49 @@ const router = express.Router();
 const { authenticate, authorize } = require('../middleware/authMiddleware');
 const chatService = require('../services/chatService');
 
+/**
+ * @swagger
+ * /chat:
+ *   post:
+ *     summary: Process a chat message or save AI service settings
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               messages:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     role:
+ *                       type: string
+ *                       enum: [user, assistant, system]
+ *                     content:
+ *                       type: string
+ *               service_config_id:
+ *                 type: string
+ *                 format: uuid
+ *               action:
+ *                 type: string
+ *                 enum: [save_ai_service_settings]
+ *               service_data:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Successful response from the AI service or confirmation of settings save.
+ *       400:
+ *         description: Bad request.
+ *       404:
+ *         description: Not found.
+ *       500:
+ *         description: Server error.
+ */
 router.post('/', authenticate, async (req, res, next) => {
   const { messages, service_config_id, action, service_data } = req.body;
 
@@ -36,6 +79,20 @@ router.post('/', authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /chat/clear-old-history:
+ *   post:
+ *     summary: Clear old chat history for the authenticated user
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Confirmation of successful clearing.
+ *       500:
+ *         description: Server error.
+ */
 router.post('/clear-old-history', authenticate, async (req, res, next) => {
   try {
     const result = await chatService.clearOldChatHistory(req.userId);
@@ -45,6 +102,22 @@ router.post('/clear-old-history', authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /chat/ai-service-settings:
+ *   get:
+ *     summary: Retrieve AI service settings for the authenticated user
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of AI service settings.
+ *       403:
+ *         description: Forbidden.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/ai-service-settings', authenticate, authorize('ai_service_settings'), async (req, res, next) => {
   try {
     const settings = await chatService.getAiServiceSettings(req.userId, req.userId);
@@ -57,6 +130,24 @@ router.get('/ai-service-settings', authenticate, authorize('ai_service_settings'
   }
 });
 
+/**
+ * @swagger
+ * /chat/ai-service-settings/active:
+ *   get:
+ *     summary: Retrieve the active AI service setting for the authenticated user
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Active AI service setting.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: Not found.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/ai-service-settings/active', authenticate, authorize('ai_service_settings'), async (req, res, next) => {
   try {
     const setting = await chatService.getActiveAiServiceSetting(req.userId, req.userId);
@@ -72,6 +163,33 @@ router.get('/ai-service-settings/active', authenticate, authorize('ai_service_se
   }
 });
 
+/**
+ * @swagger
+ * /chat/ai-service-settings/{id}:
+ *   delete:
+ *     summary: Delete an AI service setting
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Confirmation of successful deletion.
+ *       400:
+ *         description: Bad request.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: Not found.
+ *       500:
+ *         description: Server error.
+ */
 router.delete('/ai-service-settings/:id', authenticate, authorize('ai_service_settings'), async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
@@ -91,6 +209,22 @@ router.delete('/ai-service-settings/:id', authenticate, authorize('ai_service_se
   }
 });
 
+/**
+ * @swagger
+ * /chat/sparky-chat-history:
+ *   get:
+ *     summary: Retrieve Sparky chat history for the authenticated user
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Chat history.
+ *       403:
+ *         description: Forbidden.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/sparky-chat-history', authenticate, authorize('chat_history'), async (req, res, next) => {
   try {
     const history = await chatService.getSparkyChatHistory(req.userId, req.userId);
@@ -103,6 +237,33 @@ router.get('/sparky-chat-history', authenticate, authorize('chat_history'), asyn
   }
 });
 
+/**
+ * @swagger
+ * /chat/sparky-chat-history/entry/{id}:
+ *   get:
+ *     summary: Retrieve a single Sparky chat history entry
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Chat history entry.
+ *       400:
+ *         description: Bad request.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: Not found.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/sparky-chat-history/entry/:id', authenticate, authorize('chat_history'), async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
@@ -122,6 +283,39 @@ router.get('/sparky-chat-history/entry/:id', authenticate, authorize('chat_histo
   }
 });
 
+/**
+ * @swagger
+ * /chat/sparky-chat-history/{id}:
+ *   put:
+ *     summary: Update a Sparky chat history entry
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Updated chat history entry.
+ *       400:
+ *         description: Bad request.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: Not found.
+ *       500:
+ *         description: Server error.
+ */
 router.put('/sparky-chat-history/:id', authenticate, authorize('chat_history'), async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
@@ -142,6 +336,33 @@ router.put('/sparky-chat-history/:id', authenticate, authorize('chat_history'), 
   }
 });
 
+/**
+ * @swagger
+ * /chat/sparky-chat-history/{id}:
+ *   delete:
+ *     summary: Delete a Sparky chat history entry
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Confirmation of successful deletion.
+ *       400:
+ *         description: Bad request.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: Not found.
+ *       500:
+ *         description: Server error.
+ */
 router.delete('/sparky-chat-history/:id', authenticate, authorize('chat_history'), async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
@@ -161,6 +382,22 @@ router.delete('/sparky-chat-history/:id', authenticate, authorize('chat_history'
   }
 });
 
+/**
+ * @swagger
+ * /chat/clear-all-history:
+ *   post:
+ *     summary: Clear all Sparky chat history for the authenticated user
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Confirmation of successful clearing.
+ *       403:
+ *         description: Forbidden.
+ *       500:
+ *         description: Server error.
+ */
 router.post('/clear-all-history', authenticate, authorize('chat_history'), async (req, res, next) => {
   try {
     const result = await chatService.clearAllSparkyChatHistory(req.userId);
@@ -173,6 +410,37 @@ router.post('/clear-all-history', authenticate, authorize('chat_history'), async
   }
 });
 
+/**
+ * @swagger
+ * /chat/save-history:
+ *   post:
+ *     summary: Save a Sparky chat history entry
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               content:
+ *                 type: string
+ *               messageType:
+ *                 type: string
+ *               metadata:
+ *                 type: object
+ *     responses:
+ *       201:
+ *         description: Confirmation of successful saving.
+ *       400:
+ *         description: Bad request.
+ *       403:
+ *         description: Forbidden.
+ *       500:
+ *         description: Server error.
+ */
 router.post('/save-history', authenticate, authorize('chat_history'), async (req, res, next) => {
   const { content, messageType, metadata } = req.body;
   if (!content || !messageType) {
@@ -189,6 +457,38 @@ router.post('/save-history', authenticate, authorize('chat_history'), async (req
   }
 });
 
+/**
+ * @swagger
+ * /chat/food-options:
+ *   post:
+ *     summary: Generate food options for a given food name and unit
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               foodName:
+ *                 type: string
+ *               unit:
+ *                 type: string
+ *               service_config_id:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: List of food options generated by the AI service.
+ *       400:
+ *         description: Bad request.
+ *       404:
+ *         description: Not found.
+ *       500:
+ *         description: Server error.
+ */
 router.post('/food-options', authenticate, async (req, res, next) => {
   const { foodName, unit, service_config_id } = req.body;
   if (!service_config_id) {

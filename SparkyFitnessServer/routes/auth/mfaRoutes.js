@@ -12,7 +12,7 @@ const authService = require('../../services/authService');
  * /auth/mfa/status:
  *   get:
  *     summary: Get MFA status
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Retrieves the Multi-Factor Authentication (MFA) status for the authenticated user.
  *     security:
  *       - cookieAuth: []
@@ -52,7 +52,7 @@ router.get('/mfa/status', authenticate, async (req, res, next) => {
  * /auth/mfa/setup/totp:
  *   post:
  *     summary: Setup TOTP MFA
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Initiates the setup process for Time-based One-Time Password (TOTP) MFA, returning a secret and OTPAuth URL.
  *     security:
  *       - cookieAuth: []
@@ -90,7 +90,7 @@ router.post('/mfa/setup/totp', authenticate, async (req, res, next) => {
  * /auth/mfa/verify/totp:
  *   post:
  *     summary: Verify TOTP code
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Verifies a TOTP code provided by the user. If successful, issues a new JWT token.
  *     security:
  *       - cookieAuth: []
@@ -150,7 +150,7 @@ router.post('/mfa/verify/totp', authenticate, mfaValidation, async (req, res, ne
  * /auth/mfa/enable/totp:
  *   post:
  *     summary: Enable TOTP MFA
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Enables TOTP MFA for the authenticated user after successful verification of a TOTP code.
  *     security:
  *       - cookieAuth: []
@@ -200,7 +200,7 @@ router.post('/mfa/enable/totp', authenticate, mfaValidation, async (req, res, ne
  * /auth/mfa/disable/totp:
  *   post:
  *     summary: Disable TOTP MFA
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Disables TOTP MFA for the authenticated user.
  *     security:
  *       - cookieAuth: []
@@ -226,7 +226,7 @@ router.post('/mfa/disable/totp', authenticate, async (req, res, next) => {
  * /auth/mfa/enable/email:
  *   post:
  *     summary: Enable Email MFA
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Enables Email MFA for the authenticated user.
  *     security:
  *       - cookieAuth: []
@@ -252,7 +252,7 @@ router.post('/mfa/enable/email', authenticate, async (req, res, next) => {
  * /auth/mfa/disable/email:
  *   post:
  *     summary: Disable Email MFA
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Disables Email MFA for the authenticated user.
  *     security:
  *       - cookieAuth: []
@@ -278,7 +278,7 @@ router.post('/mfa/disable/email', authenticate, async (req, res, next) => {
  * /auth/mfa/request-email-code:
  *   post:
  *     summary: Request Email MFA code
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Requests an Email MFA code to be sent to the authenticated user's email address.
  *     security:
  *       - cookieAuth: []
@@ -311,7 +311,7 @@ router.post('/mfa/request-email-code', authenticate, async (req, res, next) => {
  * /auth/mfa/verify-email-code:
  *   post:
  *     summary: Verify Email MFA code
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Verifies an Email MFA code provided by the user. If successful, issues a new JWT token.
  *     security:
  *       - cookieAuth: []
@@ -367,7 +367,7 @@ router.post('/mfa/verify-email-code', authenticate, mfaValidation, async (req, r
  * /auth/mfa/recovery-codes:
  *   post:
  *     summary: Generate MFA recovery codes
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Generates a new set of MFA recovery codes for the authenticated user.
  *     security:
  *       - cookieAuth: []
@@ -403,7 +403,7 @@ router.post('/mfa/recovery-codes', authenticate, async (req, res, next) => {
  * /auth/mfa/verify-recovery-code:
  *   post:
  *     summary: Verify MFA recovery code
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Verifies an MFA recovery code. If successful, issues a new JWT token.
  *     requestBody:
  *       required: true

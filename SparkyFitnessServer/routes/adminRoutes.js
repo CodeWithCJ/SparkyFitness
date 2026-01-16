@@ -11,6 +11,48 @@ const { logAdminAction } = require('../services/authService'); // Import logAdmi
 router.use(authenticate);
 router.use(isAdmin);
 
+/**
+ * @swagger
+ * /admin/users:
+ *   get:
+ *     summary: Get all users with pagination and search
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: The maximum number of users to return.
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: The number of users to skip before starting to return results.
+ *       - in: query
+ *         name: searchTerm
+ *         schema:
+ *           type: string
+ *         description: Search term for user names or emails.
+ *     responses:
+ *       200:
+ *         description: A list of users.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User' # Assuming a User schema exists
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/users', async (req, res, next) => {
   try {
     const { limit = 10, offset = 0, searchTerm = '' } = req.query;
@@ -22,7 +64,41 @@ router.get('/users', async (req, res, next) => {
   }
 });
 
-
+/**
+ * @swagger
+ * /admin/users/{userId}:
+ *   delete:
+ *     summary: Delete a user
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the user to delete.
+ *     responses:
+ *       200:
+ *         description: User deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden (e.g., cannot delete primary admin).
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Server error.
+ */
 router.delete('/users/:userId', async (req, res, next) => {
   try {
     const { userId } = req.params;
@@ -49,7 +125,54 @@ router.delete('/users/:userId', async (req, res, next) => {
   }
 });
 
-
+/**
+ * @swagger
+ * /admin/users/{userId}/status:
+ *   put:
+ *     summary: Update user status (active/inactive)
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the user to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isActive:
+ *                 type: boolean
+ *             required:
+ *               - isActive
+ *     responses:
+ *       200:
+ *         description: User status updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Invalid request body.
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden (e.g., cannot change primary admin status).
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Server error.
+ */
 router.put('/users/:userId/status', async (req, res, next) => {
   try {
     const { userId } = req.params;
@@ -81,7 +204,55 @@ router.put('/users/:userId/status', async (req, res, next) => {
   }
 });
 
-
+/**
+ * @swagger
+ * /admin/users/{userId}/role:
+ *   put:
+ *     summary: Update user role (user/admin)
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the user to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [user, admin]
+ *             required:
+ *               - role
+ *     responses:
+ *       200:
+ *         description: User role updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Invalid request body.
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden (e.g., cannot change primary admin role).
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Server error.
+ */
 router.put('/users/:userId/role', async (req, res, next) => {
   try {
     const { userId } = req.params;
@@ -113,8 +284,54 @@ router.put('/users/:userId/role', async (req, res, next) => {
   }
 });
 
-
-
+/**
+ * @swagger
+ * /admin/users/{userId}/full-name:
+ *   put:
+ *     summary: Update user's full name
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the user to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *             required:
+ *               - fullName
+ *     responses:
+ *       200:
+ *         description: User full name updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Invalid request body.
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Server error.
+ */
 router.put('/users/:userId/full-name', async (req, res, next) => {
   try {
     const { userId } = req.params;
@@ -137,6 +354,41 @@ router.put('/users/:userId/full-name', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /admin/users/{userId}/reset-password:
+ *   post:
+ *     summary: Initiate a password reset for a user
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the user to reset the password for.
+ *     responses:
+ *       200:
+ *         description: Password reset email sent successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Server error.
+ */
 router.post('/users/:userId/reset-password', async (req, res, next) => {
   try {
     const { userId } = req.params;

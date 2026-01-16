@@ -27,7 +27,38 @@ async function ensureTempUploadDirectory() {
 }
 ensureTempUploadDirectory(); // Call once on startup
 
-// Endpoint to trigger a manual backup
+/**
+ * @swagger
+ * tags:
+ *   name: System & Admin
+ *   description: System configuration, administrative tasks, backups, and audits.
+ */
+
+/**
+ * @swagger
+ * /backup/manual:
+ *   post:
+ *     summary: Trigger a manual backup
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Backup completed successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 path:
+ *                   type: string
+ *                 fileName:
+ *                   type: string
+ *       500:
+ *         description: Server error during backup.
+ */
 router.post('/manual', authenticate, isAdmin, async (req, res) => {
   log('info', 'Manual backup initiated by admin.');
   try {
@@ -45,7 +76,40 @@ router.post('/manual', authenticate, isAdmin, async (req, res) => {
   }
 });
 
-// Endpoint to upload and restore a backup
+/**
+ * @swagger
+ * /backup/restore:
+ *   post:
+ *     summary: Upload and restore a backup
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               backupFile:
+ *                 type: string
+ *                 format: binary
+ *                 description: The backup file to upload.
+ *     responses:
+ *       200:
+ *         description: Restore completed successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: No backup file uploaded.
+ *       500:
+ *         description: Server error during restore.
+ */
 router.post('/restore', authenticate, isAdmin, upload.single('backupFile'), async (req, res) => {
   log('info', 'Restore initiated by admin.');
   if (!req.file) {
@@ -84,7 +148,50 @@ router.post('/restore', authenticate, isAdmin, upload.single('backupFile'), asyn
   }
 });
 
-// Endpoint to get backup settings (placeholder for now)
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     BackupSettings:
+ *       type: object
+ *       properties:
+ *         backupEnabled:
+ *           type: boolean
+ *         backupDays:
+ *           type: array
+ *           items:
+ *             type: string
+ *         backupTime:
+ *           type: string
+ *         retentionDays:
+ *           type: integer
+ *         lastBackupStatus:
+ *           type: string
+ *         lastBackupTimestamp:
+ *           type: string
+ *           format: date-time
+ *         backupLocation:
+ *           type: string
+ */
+
+/**
+ * @swagger
+ * /backup/settings:
+ *   get:
+ *     summary: Get backup settings
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Backup settings retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BackupSettings'
+ *       500:
+ *         description: Server error.
+ */
 router.get('/settings', authenticate, isAdmin, async (req, res) => {
   try {
     const backupSettings = await backupSettingsRepository.getBackupSettings();
@@ -104,6 +211,46 @@ router.get('/settings', authenticate, isAdmin, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /backup/settings:
+ *   post:
+ *     summary: Update backup settings
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               backupEnabled:
+ *                 type: boolean
+ *               backupDays:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               backupTime:
+ *                 type: string
+ *               retentionDays:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Backup settings saved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 settings:
+ *                   $ref: '#/components/schemas/BackupSettings'
+ *       500:
+ *         description: Server error.
+ */
 router.post('/settings', authenticate, isAdmin, async (req, res) => {
   try {
     const { backupEnabled, backupDays, backupTime, retentionDays } = req.body;

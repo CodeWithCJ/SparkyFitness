@@ -62,7 +62,28 @@ function validateDateRange(startDate, endDate) {
     return { valid: true };
 }
 
-// Endpoint for Garmin direct login
+/**
+ * @swagger
+ * /integrations/garmin/login:
+ *   post:
+ *     summary: Garmin direct login
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: 'string' }
+ *               password: { type: 'string' }
+ *             required: [email, password]
+ *     responses:
+ *       200:
+ *         description: Login result.
+ */
 router.post('/login', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
@@ -84,7 +105,28 @@ router.post('/login', authenticate, async (req, res, next) => {
     }
 });
 
-// Endpoint to resume Garmin login (e.g., after MFA)
+/**
+ * @swagger
+ * /integrations/garmin/resume_login:
+ *   post:
+ *     summary: Resume Garmin login (e.g., after MFA)
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               client_state: { type: 'string' }
+ *               mfa_code: { type: 'string' }
+ *             required: [client_state, mfa_code]
+ *     responses:
+ *       200:
+ *         description: Login result.
+ */
 router.post('/resume_login', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
@@ -105,7 +147,29 @@ router.post('/resume_login', authenticate, async (req, res, next) => {
 });
 
 
-// Endpoint to manually sync health and wellness data from Garmin
+/**
+ * @swagger
+ * /integrations/garmin/sync/health_and_wellness:
+ *   post:
+ *     summary: Manually sync health and wellness data from Garmin
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               startDate: { type: 'string', format: 'date' }
+ *               endDate: { type: 'string', format: 'date' }
+ *               metricTypes: { type: 'array', items: { type: 'string' } }
+ *             required: [startDate, endDate]
+ *     responses:
+ *       200:
+ *         description: Sync completed successfully.
+ */
 router.post('/sync/health_and_wellness', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
@@ -204,7 +268,29 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
     }
 });
 
-// Endpoint to manually sync activities and workouts data from Garmin
+/**
+ * @swagger
+ * /integrations/garmin/sync/activities_and_workouts:
+ *   post:
+ *     summary: Manually sync activities and workouts data from Garmin
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               startDate: { type: 'string', format: 'date' }
+ *               endDate: { type: 'string', format: 'date' }
+ *               activityType: { type: 'string' }
+ *             required: [startDate, endDate]
+ *     responses:
+ *       200:
+ *         description: Sync result.
+ */
 router.post('/sync/activities_and_workouts', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
@@ -227,7 +313,18 @@ router.post('/sync/activities_and_workouts', authenticate, async (req, res, next
     }
 });
 
-// New simplified sync endpoint
+/**
+ * @swagger
+ * /integrations/garmin/sync:
+ *   post:
+ *     summary: Manual full sync for Garmin data
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Full sync result.
+ */
 router.post('/sync', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
@@ -247,7 +344,22 @@ router.post('/sync', authenticate, async (req, res, next) => {
 });
 
 
-// Endpoint to get Garmin connection status and token info
+/**
+ * @swagger
+ * /integrations/garmin/status:
+ *   get:
+ *     summary: Get Garmin connection status
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Connection status.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GarminStatus'
+ */
 router.get('/status', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
@@ -277,7 +389,18 @@ router.get('/status', authenticate, async (req, res, next) => {
     }
 });
 
-// Endpoint to unlink Garmin account
+/**
+ * @swagger
+ * /integrations/garmin/unlink:
+ *   post:
+ *     summary: Unlink Garmin account
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Unlinked successfully.
+ */
 router.post('/unlink', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
@@ -294,6 +417,29 @@ router.post('/unlink', authenticate, async (req, res, next) => {
     }
 });
 
+/**
+ * @swagger
+ * /integrations/garmin/sleep_data:
+ *   post:
+ *     summary: Process sleep data from Garmin
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               sleepData: { type: 'array', items: { type: 'object' } }
+ *               startDate: { type: 'string', format: 'date' }
+ *               endDate: { type: 'string', format: 'date' }
+ *             required: [sleepData, startDate, endDate]
+ *     responses:
+ *       200:
+ *         description: Sleep data processed successfully.
+ */
 router.post('/sleep_data', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;

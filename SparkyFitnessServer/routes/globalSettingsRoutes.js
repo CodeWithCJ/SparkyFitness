@@ -4,7 +4,22 @@ const globalSettingsRepository = require('../models/globalSettingsRepository');
 const { log } = require('../config/logging');
 const { isAdmin } = require('../middleware/authMiddleware');
 
-// GET Global Authentication Settings (Admin Only)
+/**
+ * @swagger
+ * /global-settings:
+ *   get:
+ *     summary: GET Global Authentication Settings (Admin Only)
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Global settings.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GlobalSettings'
+ */
 router.get('/', isAdmin, async (req, res) => {
     try {
         const settings = await globalSettingsRepository.getGlobalSettings();
@@ -15,7 +30,24 @@ router.get('/', isAdmin, async (req, res) => {
     }
 });
 
-// PUT/Update Global Authentication Settings (Admin Only)
+/**
+ * @swagger
+ * /global-settings:
+ *   put:
+ *     summary: Update Global Authentication Settings (Admin Only)
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/GlobalSettings'
+ *     responses:
+ *       200:
+ *         description: Settings updated successfully.
+ */
 router.put('/', isAdmin, async (req, res) => {
     try {
         const settingsData = req.body;

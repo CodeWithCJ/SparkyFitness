@@ -24,6 +24,13 @@ const upload = multer({ storage: storage });
 
 /**
  * @swagger
+ * tags:
+ *   name: Fitness & Workouts
+ *   description: Exercise database, workout presets, and activity logging.
+ */
+
+/**
+ * @swagger
  * /exercises:
  *   get:
  *     summary: Retrieve a list of exercises with search, filter, and pagination
@@ -93,7 +100,7 @@ router.get('/', authenticate, async (req, res, next) => {
   const { searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, currentPage, itemsPerPage } = req.query;
   const equipmentFilterArray = equipmentFilter ? equipmentFilter.split(',') : [];
   const muscleGroupFilterArray = muscleGroupFilter ? muscleGroupFilter.split(',') : [];
- 
+
   try {
     const { exercises, totalCount } = await exerciseService.getExercisesWithPagination(
       req.userId,
@@ -467,7 +474,7 @@ router.get('/wger-filters', authenticate, async (req, res, next) => {
   try {
     const wgerMuscles = await wgerService.getWgerMuscleIdMap();
     const wgerEquipment = await wgerService.getWgerEquipmentIdMap();
-    
+
     const ourMuscles = await exerciseService.getAvailableMuscleGroups();
     const ourEquipment = await exerciseService.getAvailableEquipment();
 
@@ -620,6 +627,39 @@ router.post('/add-nutritionix-exercise', authenticate, async (req, res, next) =>
 
 
 // Endpoint to fetch an exercise by ID
+/**
+ * @swagger
+ * /exercises/{id}:
+ *   get:
+ *     summary: Retrieve an exercise by ID
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the exercise to retrieve.
+ *     responses:
+ *       200:
+ *         description: The exercise object.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Exercise'
+ *       400:
+ *         description: Bad request, if exercise ID is invalid.
+ *       403:
+ *         description: Forbidden, if the user does not have access.
+ *       404:
+ *         description: Exercise not found.
+ *       500:
+ *         description: Server error.
+ */
 router.get('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -865,13 +905,13 @@ router.put('/:id', authenticate, upload.array('images', 10), async (req, res, ne
   try {
     const exerciseData = JSON.parse(req.body.exerciseData);
     const newImagePaths = req.files ? req.files.map(file => `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`) : [];
-    
+
     // Combine existing images with new images
     const allImages = [...(exerciseData.images || []), ...newImagePaths];
 
     const updatedExercise = await exerciseService.updateExercise(req.userId, id, {
       ...exerciseData,
-      ...((allImages.length > 0 || !!exerciseData.images) ? { images: allImages } : { }),
+      ...((allImages.length > 0 || !!exerciseData.images) ? { images: allImages } : {}),
     });
     res.status(200).json(updatedExercise);
   } catch (error) {
@@ -929,23 +969,23 @@ router.put('/:id', authenticate, upload.array('images', 10), async (req, res, ne
  *         description: Server error.
  */
 router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
-    const { id } = req.params;
-    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (!id || !uuidRegex.test(id)) {
-        return res.status(400).json({ error: 'Exercise ID is required and must be a valid UUID.' });
+  const { id } = req.params;
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  if (!id || !uuidRegex.test(id)) {
+    return res.status(400).json({ error: 'Exercise ID is required and must be a valid UUID.' });
+  }
+  try {
+    const impact = await exerciseService.getExerciseDeletionImpact(req.userId, id);
+    res.status(200).json(impact);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
     }
-    try {
-        const impact = await exerciseService.getExerciseDeletionImpact(req.userId, id);
-        res.status(200).json(impact);
-    } catch (error) {
-        if (error.message.startsWith('Forbidden')) {
-            return res.status(403).json({ error: error.message });
-        }
-        if (error.message === 'Exercise not found.') {
-            return res.status(404).json({ error: error.message });
-        }
-        next(error);
+    if (error.message === 'Exercise not found.') {
+      return res.status(404).json({ error: error.message });
     }
+    next(error);
+  }
 });
 
 // Endpoint to delete an exercise
@@ -1151,6 +1191,37 @@ router.post(
  *         description: Bad request, if exercise entry ID is invalid.
  *       404:
  *         description: Garmin activity details not found for this exercise entry.
+ *       500:
+ *         description: Server error.
+ */
+/**
+ * @swagger
+ * /exercises/garmin-activity-details/{exerciseEntryId}:
+ *   get:
+ *     summary: Retrieve detailed Garmin activity data for an exercise entry
+ *     tags:
+ *       - Exercise & Workouts
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: exerciseEntryId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the exercise entry associated with the Garmin activity.
+ *     responses:
+ *       200:
+ *         description: Detailed activity data from Garmin.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Invalid exercise entry ID.
+ *       404:
+ *         description: Garmin activity details not found.
  *       500:
  *         description: Server error.
  */
