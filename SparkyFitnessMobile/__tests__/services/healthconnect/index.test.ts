@@ -350,10 +350,11 @@ describe('getAggregatedStepsByDate', () => {
   });
 
   test('uses endTime for date assignment', async () => {
+    // Use noon timestamps to avoid timezone boundary issues (toLocalDateString uses local time)
     mockReadRecords.mockResolvedValue({
       records: [
-        // Steps spanning midnight - should be assigned to Jan 15 (endTime date)
-        { startTime: '2024-01-14T23:00:00Z', endTime: '2024-01-15T00:30:00Z', count: 500 },
+        // Steps spanning time - should be assigned to Jan 15 (endTime date)
+        { startTime: '2024-01-14T12:00:00Z', endTime: '2024-01-15T12:00:00Z', count: 500 },
       ],
     });
 

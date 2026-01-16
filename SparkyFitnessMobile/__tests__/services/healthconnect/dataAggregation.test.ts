@@ -207,8 +207,9 @@ describe('aggregateStepsByDate', () => {
 
   describe('date extraction', () => {
     test('uses endTime for date extraction when available', () => {
+      // Use noon timestamps to avoid timezone boundary issues (toLocalDateString uses local time)
       const records: HCStepsRecord[] = [
-        { startTime: '2024-01-14T23:00:00Z', endTime: '2024-01-15T00:30:00Z', count: 500 },
+        { startTime: '2024-01-14T12:00:00Z', endTime: '2024-01-15T12:00:00Z', count: 500 },
       ];
       const result = aggregateStepsByDate(records);
       expect(result).toHaveLength(1);
@@ -381,8 +382,9 @@ describe('aggregateTotalCaloriesByDate', () => {
 
   describe('date extraction', () => {
     test('uses endTime for date extraction when available', async () => {
+      // Use noon timestamps to avoid timezone boundary issues (toLocalDateString uses local time)
       const records: HCEnergyRecord[] = [
-        { startTime: '2024-01-14T23:00:00Z', endTime: '2024-01-15T00:30:00Z', energy: { inKilocalories: 50 } },
+        { startTime: '2024-01-14T12:00:00Z', endTime: '2024-01-15T12:00:00Z', energy: { inKilocalories: 50 } },
       ];
       const result = await aggregateTotalCaloriesByDate(records);
       expect(result).toHaveLength(1);
