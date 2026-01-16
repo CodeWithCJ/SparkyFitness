@@ -5,10 +5,56 @@ const FreeExerciseDBService = require('../integrations/freeexercisedb/FreeExerci
 const exerciseService = require('../services/exerciseService'); // Import exerciseService
 
 /**
- * @route GET /api/freeexercisedb/search
- * @description Search for exercises from the free-exercise-db.
- * @param {string} query - The search query (optional).
- * @returns {Array<object>} A list of matching exercises.
+ * @swagger
+ * tags:
+ *   name: Fitness & Workouts
+ *   description: Exercise database, workout presets, and activity logging.
+ */
+
+/**
+ * @swagger
+ * /freeexercisedb/search:
+ *   get:
+ *     summary: Search for exercises from the free-exercise-db
+ *     tags: [Fitness & Workouts]
+ *     description: Searches for exercises from an external free exercise database based on a query.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         description: The search query (optional).
+ *     responses:
+ *       200:
+ *         description: A list of matching exercises.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     description: The ID of the exercise in the free database.
+ *                   name:
+ *                     type: string
+ *                     description: The name of the exercise.
+ *                   category:
+ *                     type: string
+ *                     description: The category of the exercise.
+ *                   equipment:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: Equipment needed for the exercise.
+ *                   muscle_groups:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: Muscle groups targeted.
+ *       500:
+ *         description: Error searching free-exercise-db.
  */
 router.get('/search', async (req, res) => {
     try {
@@ -30,10 +76,39 @@ router.get('/search', async (req, res) => {
 });
 
 /**
- * @route POST /api/freeexercisedb/add
- * @description Adds a selected free-exercise-db exercise to the user's local exercises.
- * @param {string} exerciseId - The ID of the free-exercise-db exercise to add.
- * @returns {object} The newly created exercise in the user's database.
+ * @swagger
+ * /freeexercisedb/add:
+ *   post:
+ *     summary: Add a free-exercise-db exercise to user's local exercises
+ *     tags: [Fitness & Workouts]
+ *     description: Adds a selected exercise from the free exercise database to the authenticated user's personal exercise list.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - exerciseId
+ *             properties:
+ *               exerciseId:
+ *                 type: string
+ *                 description: The ID of the free-exercise-db exercise to add.
+ *     responses:
+ *       201:
+ *         description: The newly created exercise in the user's database.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Exercise'
+ *       400:
+ *         description: Exercise ID is required.
+ *       401:
+ *         description: Unauthorized, authentication token is missing or invalid.
+ *       500:
+ *         description: Error adding free-exercise-db exercise.
  */
 router.post('/add', authenticate, async (req, res, next) => {
     try {

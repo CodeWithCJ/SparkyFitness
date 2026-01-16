@@ -14,7 +14,7 @@ const { log } = require('../../config/logging');
  * /auth/login:
  *   post:
  *     summary: Logs in a user
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Authenticates a user with an email and password.
  *     requestBody:
  *       required: true
@@ -84,7 +84,7 @@ router.post('/login', loginValidation, async (req, res, next) => {
  * /auth/settings:
  *   get:
  *     summary: Get login settings
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Retrieves the current login settings, including enabled authentication methods (email/password, OIDC) and active OIDC providers.
  *     responses:
  *       200:
@@ -167,7 +167,7 @@ router.get('/settings', async (req, res, next) => {
  * /auth/logout:
  *   post:
  *     summary: Logs out a user
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Clears the user's session and authentication cookies.
  *     responses:
  *       200:
@@ -212,7 +212,7 @@ router.post('/logout', async (req, res, next) => {
  * /auth/register:
  *   post:
  *     summary: Registers a new user
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Creates a new user account.
  *     requestBody:
  *       required: true
@@ -275,7 +275,7 @@ router.post('/register', registerValidation, async (req, res, next) => {
  * /auth/forgot-password:
  *   post:
  *     summary: Request password reset
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Sends a password reset email to the user if an account with the provided email exists.
  *     requestBody:
  *       required: true
@@ -319,7 +319,7 @@ router.post('/forgot-password', forgotPasswordValidation, async (req, res, next)
  * /auth/reset-password:
  *   post:
  *     summary: Reset password
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Resets the user's password using a valid reset token.
  *     requestBody:
  *       required: true
@@ -370,7 +370,7 @@ router.post('/reset-password', resetPasswordValidation, async (req, res, next) =
  * /auth/request-magic-link:
  *   post:
  *     summary: Request a magic link for login
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Sends a magic link to the user's email for passwordless login.
  *     requestBody:
  *       required: true
@@ -416,7 +416,7 @@ router.post('/request-magic-link', magicLinkRequestValidation, async (req, res, 
  * /auth/magic-link-login:
  *   get:
  *     summary: Log in using a magic link
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Verifies a magic link token and logs in the user.
  *     parameters:
  *       - in: query

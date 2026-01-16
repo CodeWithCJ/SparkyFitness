@@ -7,7 +7,36 @@ const { authenticate } = require('../middleware/authMiddleware');
 // Apply authentication middleware to all routes
 router.use(authenticate);
 
+/**
+ * @swagger
+ * tags:
+ *   name: Wellness & Metrics
+ *   description: Health metrics, weight tracking, measurements, sleep, mood, and fasting.
+ */
+
 // Get current active fast
+/**
+ * @swagger
+ * /fasting/current:
+ *   get:
+ *     summary: Get current active fast
+ *     tags: [Wellness & Metrics]
+ *     description: Retrieves the currently active fast for the authenticated user.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: The active fast or null if none.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FastingLog'
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
+ */
+
 router.get('/current', async (req, res) => {
     const userId = req.userId;
     log('debug', `GET /current: Fetching fast for userId: ${userId}`);
@@ -21,6 +50,51 @@ router.get('/current', async (req, res) => {
 });
 
 // Start a new fast
+/**
+ * @swagger
+ * /fasting/start:
+ *   post:
+ *     summary: Start a new fast
+ *     tags: [Wellness & Metrics]
+ *     description: Starts a new fasting period for the authenticated user.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - start_time
+ *               - fasting_type
+ *             properties:
+ *               start_time:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The start time of the fast.
+ *               target_end_time:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The target end time of the fast.
+ *               fasting_type:
+ *                 type: string
+ *                 description: The type of fast (e.g., "Intermittent Fasting").
+ *     responses:
+ *       201:
+ *         description: Success starting fast.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FastingLog'
+ *       400:
+ *         description: Validation error or active fast already exists.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
+ */
+
 router.post('/start', async (req, res) => {
     const userId = req.userId;
     const { start_time, target_end_time, fasting_type } = req.body;
@@ -43,7 +117,62 @@ router.post('/start', async (req, res) => {
         res.status(500).json({ error: 'Failed to start fast' });
     }
 });
+/**
+ * @swagger
+ * /fasting/end:
+ *   post:
+ *     summary: End an active fast
+ *     tags: [Wellness & Metrics]
+ *     description: Ends an active fasting period, calculates duration, and optionally logs mood.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *               - end_time
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The ID of the fast to end.
+ *               start_time:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Optional start time to override.
+ *               end_time:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The end time of the fast.
+ *               mood:
+ *                 type: object
+ *                 properties:
+ *                   value:
+ *                     type: integer
+ *                   notes:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Success ending fast.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FastingLog'
+ *       400:
+ *         description: Validation error.
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: Fast not found.
+ *       500:
+ *         description: Internal server error.
+ */
 // End an active fast
+
 router.post('/end', async (req, res) => {
     const userId = req.userId;
     const { id, start_time, end_time, weight, mood } = req.body; // mood: { value, notes }
@@ -95,6 +224,44 @@ router.post('/end', async (req, res) => {
 });
 
 // Update a fast (edit start/end times, etc)
+/**
+ * @swagger
+ * /fasting/{id}:
+ *   put:
+ *     summary: Update an existing fast
+ *     tags: [Wellness & Metrics]
+ *     description: Updates the details of an existing fasting log.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the fast to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/FastingLog'
+ *     responses:
+ *       200:
+ *         description: Success updating fast.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FastingLog'
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: Fast not found.
+ *       500:
+ *         description: Internal server error.
+ */
+
 router.put('/:id', async (req, res) => {
     const userId = req.userId;
     const { id } = req.params;
@@ -112,6 +279,43 @@ router.put('/:id', async (req, res) => {
 });
 
 // Get Fasting History
+/**
+ * @swagger
+ * /fasting/history:
+ *   get:
+ *     summary: Get fasting history
+ *     tags: [Wellness & Metrics]
+ *     description: Retrieves a paginated history of fasting logs for the authenticated user.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Maximum number of records to return.
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of records to skip.
+ *     responses:
+ *       200:
+ *         description: A list of fasting logs.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/FastingLog'
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
+ */
+
 router.get('/history', async (req, res) => {
     const userId = req.userId;
     log('debug', `GET /history: Fetching history for userId: ${userId} with params:`, req.query);
@@ -126,6 +330,35 @@ router.get('/history', async (req, res) => {
 });
 
 // Get Stats
+/**
+ * @swagger
+ * /fasting/stats:
+ *   get:
+ *     summary: Get fasting statistics
+ *     tags: [Wellness & Metrics]
+ *     description: Retrieves summary statistics for the user's fasting history.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Fasting statistics.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total_completed_fasts:
+ *                   type: integer
+ *                 total_minutes_fasted:
+ *                   type: integer
+ *                 average_duration_minutes:
+ *                   type: number
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
+ */
+
 router.get('/stats', async (req, res) => {
     const userId = req.userId;
     log('debug', `GET /stats: Fetching stats for userId: ${userId}`);
@@ -139,6 +372,45 @@ router.get('/stats', async (req, res) => {
 });
 
 // Get fasting logs within a date range
+/**
+ * @swagger
+ * /fasting/history/range/{startDate}/{endDate}:
+ *   get:
+ *     summary: Get fasting logs by date range
+ *     tags: [Wellness & Metrics]
+ *     description: Retrieves completed fasting logs within a specified date range.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date (YYYY-MM-DD).
+ *       - in: path
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date (YYYY-MM-DD).
+ *     responses:
+ *       200:
+ *         description: A list of fasting logs within the range.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/FastingLog'
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
+ */
+
 router.get('/history/range/:startDate/:endDate', async (req, res) => {
     const userId = req.userId;
     const { startDate, endDate } = req.params;

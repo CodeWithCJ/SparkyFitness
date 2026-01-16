@@ -211,15 +211,10 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
     await client.query('BEGIN');
 
     // Check for existing entry
-    // Add exercise_preset_entry_id to the uniqueness check if it exists,
-    // otherwise, treat entries without a preset ID as unique if their exercise_id, entry_date, and source match.
+    // treat entries without a preset ID as unique if their exercise_id, entry_date, and source match.
+    // For entries within a preset, we always allow duplicates (no uniqueness check).
     let existingEntryResult;
-    if (exercisePresetEntryId) {
-      existingEntryResult = await client.query(
-        'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id = $5',
-        [userId, entryData.exercise_id, entryData.entry_date, entrySource, exercisePresetEntryId]
-      );
-    } else {
+    if (!exercisePresetEntryId) {
       existingEntryResult = await client.query(
         'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id IS NULL',
         [userId, entryData.exercise_id, entryData.entry_date, entrySource]
@@ -227,7 +222,7 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
     }
 
     let newEntryId;
-    if (existingEntryResult.rows.length > 0) {
+    if (existingEntryResult && existingEntryResult.rows.length > 0) {
       // Entry exists, update it
       const existingEntryId = existingEntryResult.rows[0].id;
       log('info', `Existing exercise entry found for user ${userId}, exercise ${entryData.exercise_id}, date ${entryData.entry_date}, source ${entrySource}. Updating entry ${existingEntryId}.`);
@@ -256,33 +251,33 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
            equipment, primary_muscles, secondary_muscles, instructions, images,
            distance, avg_heart_rate, exercise_preset_entry_id
          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) RETURNING id`,
-         [
-           userId,
-           entryData.exercise_id,
-           entryData.duration_minutes || 0, // Ensure duration_minutes is not null
-           entryData.calories_burned,
-           entryData.entry_date,
-           entryData.notes,
-           entryData.workout_plan_assignment_id || null,
-           entryData.image_url || null,
-           createdByUserId,
-           snapshot.name, // exercise_name
-           snapshot.calories_per_hour,
-           snapshot.category,
-           entrySource, // Use entrySource for the entry's source
-           snapshot.source_id, // source_id still comes from the exercise definition
-           snapshot.force,
-           snapshot.level,
-           snapshot.mechanic,
-           snapshot.equipment,
-           snapshot.primary_muscles,
-           snapshot.secondary_muscles,
-           snapshot.instructions,
-           snapshot.images,
-           entryData.distance || null, // Ensure distance is not undefined
-           entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
-           exercisePresetEntryId, // New parameter
-         ]
+        [
+          userId,
+          entryData.exercise_id,
+          entryData.duration_minutes || 0, // Ensure duration_minutes is not null
+          entryData.calories_burned,
+          entryData.entry_date,
+          entryData.notes,
+          entryData.workout_plan_assignment_id || null,
+          entryData.image_url || null,
+          createdByUserId,
+          snapshot.name, // exercise_name
+          snapshot.calories_per_hour,
+          snapshot.category,
+          entrySource, // Use entrySource for the entry's source
+          snapshot.source_id, // source_id still comes from the exercise definition
+          snapshot.force,
+          snapshot.level,
+          snapshot.mechanic,
+          snapshot.equipment,
+          snapshot.primary_muscles,
+          snapshot.secondary_muscles,
+          snapshot.instructions,
+          snapshot.images,
+          entryData.distance || null, // Ensure distance is not undefined
+          entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
+          exercisePresetEntryId, // New parameter
+        ]
       );
       newEntryId = entryResult.rows[0].id;
 
@@ -442,8 +437,8 @@ async function updateExerciseEntry(id, userId, updateData) {
       }
     }
 
-  await client.query('COMMIT');
-  return getExerciseEntryById(id, userId); // Refetch to get full data
+    await client.query('COMMIT');
+    return getExerciseEntryById(id, userId); // Refetch to get full data
   } finally {
     client.release();
   }
@@ -467,7 +462,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
   try {
     // 1. Fetch all exercise preset entries for the given date and user
     const presetEntriesResult = await client.query(
-      `SELECT id, workout_preset_id, name, description, notes
+      `SELECT id, workout_preset_id, name, description, notes, created_at, source
        FROM exercise_preset_entries
        WHERE user_id = $1 AND entry_date = $2
        ORDER BY created_at ASC`,
@@ -513,6 +508,8 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
         name: preset.name,
         description: preset.description,
         notes: preset.notes,
+        created_at: preset.created_at,
+        source: preset.source,
         exercises: [], // This will hold the individual exercise entries
         total_duration_minutes: 0, // Initialize total duration for the preset
       });
@@ -622,7 +619,7 @@ async function getExerciseProgressData(userId, exerciseId, startDate, endDate) {
     client.release();
   }
 }
- 
+
 async function getExerciseHistory(userId, exerciseId, limit = 5) {
   const client = await getClient(userId);
   try {

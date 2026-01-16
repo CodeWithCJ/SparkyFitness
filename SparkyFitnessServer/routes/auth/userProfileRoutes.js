@@ -45,7 +45,7 @@ const upload = multer({
  * /auth/user:
  *   get:
  *     summary: Get current user's information
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Retrieves the profile information for the currently authenticated user.
  *     responses:
  *       200:
@@ -75,7 +75,7 @@ router.get('/user', authenticate, async (req, res, next) => {
  * /auth/users/find-by-email:
  *   get:
  *     summary: Find a user by email
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Retrieves the user ID for a given email address.
  *     parameters:
  *       - in: query
@@ -118,7 +118,7 @@ router.get('/users/find-by-email', authenticate, async (req, res, next) => {
  * /auth/profiles:
  *   get:
  *     summary: Get the current user's profile
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Retrieves the profile for the currently authenticated user.
  *     responses:
  *       200:
@@ -146,7 +146,7 @@ router.get('/profiles', authenticate, async (req, res, next) => {
  * /auth/profiles:
  *   put:
  *     summary: Update the current user's profile
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Updates the profile for the currently authenticated user.
  *     requestBody:
  *       required: true
@@ -202,7 +202,7 @@ router.put('/profiles', authenticate, async (req, res, next) => {
  * /auth/update-password:
  *   post:
  *     summary: Update user password
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Allows an authenticated user to update their password.
  *     security:
  *       - cookieAuth: []
@@ -254,7 +254,7 @@ router.post('/update-password', authenticate, async (req, res, next) => {
  * /auth/update-email:
  *   post:
  *     summary: Update user email
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Allows an authenticated user to update their email address. A verification process will be initiated for the new email.
  *     security:
  *       - cookieAuth: []
@@ -306,7 +306,47 @@ router.post('/update-email', authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /auth/profiles/avatar:
+ *   post:
+ *     summary: Upload user avatar
+ *     tags: [Identity & Security]
+ *     description: Uploads a new avatar image for the authenticated user.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *                 description: The image file to upload (jpeg, jpg, png, gif).
+ *     responses:
+ *       200:
+ *         description: Avatar uploaded successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 avatar_url:
+ *                   type: string
+ *       400:
+ *         description: No file uploaded or invalid file type.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
+ */
 router.post('/profiles/avatar', authenticate, upload.single('avatar'), async (req, res, next) => {
+
   try {
     if (!req.file) {
       console.error('Multer did not provide a file for upload.');
@@ -323,7 +363,37 @@ router.post('/profiles/avatar', authenticate, upload.single('avatar'), async (re
   }
 });
 
+/**
+ * @swagger
+ * /auth/profiles/avatar/{filename}:
+ *   get:
+ *     summary: Get user avatar image
+ *     tags: [Identity & Security]
+ *     description: Retrieves the avatar image file by its filename.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: filename
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The filename of the avatar image.
+ *     responses:
+ *       200:
+ *         description: The avatar image file.
+ *         content:
+ *           image/*:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Avatar not found.
+ *       500:
+ *         description: Internal server error.
+ */
 router.get('/profiles/avatar/:filename', authenticate, async (req, res, next) => {
+
   try {
     const { filename } = req.params;
     const userId = req.userId;

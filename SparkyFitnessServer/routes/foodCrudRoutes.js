@@ -11,6 +11,47 @@ router.use(express.json());
 router.use(checkPermissionMiddleware('diary'));
 
 // AI-dedicated food search route to handle /api/foods/search
+/**
+ * @swagger
+ * /food-crud/search:
+ *   get:
+ *     summary: Search for foods (AI-dedicated)
+ *     tags: [Nutrition & Meals]
+ *     description: Searches for foods based on a name query. This endpoint is dedicated for AI-powered searches.
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The name of the food to search for.
+ *       - in: query
+ *         name: exactMatch
+ *         schema:
+ *           type: boolean
+ *         description: If true, performs an exact match search.
+ *       - in: query
+ *         name: broadMatch
+ *         schema:
+ *           type: boolean
+ *         description: If true, performs a broad match search.
+ *       - in: query
+ *         name: checkCustom
+ *         schema:
+ *           type: boolean
+ *         description: If true, includes custom foods in the search.
+ *     responses:
+ *       200:
+ *         description: A list of foods matching the search criteria.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Food'
+ *       400:
+ *         description: Invalid request parameters.
+ */
 router.get(
   "/search",
   authenticate,
@@ -44,6 +85,56 @@ router.get(
 );
 
 // General food search route (should come before specific ID routes)
+/**
+ * @swagger
+ * /food-crud:
+ *   get:
+ *     summary: Search for foods
+ *     tags: [Nutrition & Meals]
+ *     description: Searches for foods based on various criteria.
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: The name of the food to search for.
+ *       - in: query
+ *         name: exactMatch
+ *         schema:
+ *           type: boolean
+ *         description: If true, performs an exact match search.
+ *       - in: query
+ *         name: broadMatch
+ *         schema:
+ *           type: boolean
+ *         description: If true, performs a broad match search.
+ *       - in: query
+ *         name: checkCustom
+ *         schema:
+ *           type: boolean
+ *         description: If true, includes custom foods in the search.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: The maximum number of results to return.
+ *       - in: query
+ *         name: mealType
+ *         schema:
+ *           type: string
+ *         description: The type of meal to filter by.
+ *     responses:
+ *       200:
+ *         description: A list of foods matching the search criteria.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Food'
+ *       400:
+ *         description: Invalid request parameters.
+ */
 router.get(
   "/",
   authenticate,
@@ -74,6 +165,29 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud:
+ *   post:
+ *     summary: Create a new food
+ *     tags: [Nutrition & Meals]
+ *     description: Creates a new food item.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Food'
+ *     responses:
+ *       201:
+ *         description: The food was created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Food'
+ *       403:
+ *         description: User does not have permission to create a food.
+ */
 router.post(
   "/",
   authenticate,
@@ -91,6 +205,54 @@ router.post(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/foods-paginated:
+ *   get:
+ *     summary: Get foods with pagination
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves a paginated list of foods.
+ *     parameters:
+ *       - in: query
+ *         name: searchTerm
+ *         schema:
+ *           type: string
+ *         description: The term to search for.
+ *       - in: query
+ *         name: foodFilter
+ *         schema:
+ *           type: string
+ *         description: The filter to apply to the food list.
+ *       - in: query
+ *         name: currentPage
+ *         schema:
+ *           type: integer
+ *         description: The current page number.
+ *       - in: query
+ *         name: itemsPerPage
+ *         schema:
+ *           type: integer
+ *         description: The number of items to return per page.
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *         description: The field to sort by.
+ *     responses:
+ *       200:
+ *         description: A paginated list of foods.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 foods:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Food'
+ *                 totalCount:
+ *                   type: integer
+ */
 router.get("/foods-paginated", authenticate, async (req, res, next) => {
   const { searchTerm, foodFilter, currentPage, itemsPerPage, sortBy } =
     req.query;
@@ -109,6 +271,31 @@ router.get("/foods-paginated", authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /food-crud/food-variants:
+ *   post:
+ *     summary: Create a new food variant
+ *     tags: [Nutrition & Meals]
+ *     description: Creates a new variant for a food item.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/FoodVariant'
+ *     responses:
+ *       201:
+ *         description: The food variant was created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FoodVariant'
+ *       403:
+ *         description: User does not have permission to create a food variant.
+ *       404:
+ *         description: Food not found.
+ */
 router.post(
   "/food-variants",
   authenticate,
@@ -131,6 +318,33 @@ router.post(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/food-variants:
+ *   get:
+ *     summary: Get food variants by food ID
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves all variants for a specific food item.
+ *     parameters:
+ *       - in: query
+ *         name: food_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food to retrieve variants for.
+ *     responses:
+ *       200:
+ *         description: A list of food variants.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/FoodVariant'
+ *       400:
+ *         description: Food ID is required.
+ */
 router.get(
   "/food-variants",
   authenticate,
@@ -152,6 +366,33 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/food-variants/bulk:
+ *   post:
+ *     summary: Bulk create food variants
+ *     tags: [Nutrition & Meals]
+ *     description: Creates multiple food variants in a single request.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             items:
+ *               $ref: '#/components/schemas/FoodVariant'
+ *     responses:
+ *       201:
+ *         description: The food variants were created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/FoodVariant'
+ *       403:
+ *         description: User does not have permission to create food variants.
+ */
 router.post(
   "/food-variants/bulk",
   authenticate,
@@ -172,6 +413,35 @@ router.post(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/food-variants/{id}:
+ *   get:
+ *     summary: Get a food variant by ID
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves a specific food variant by its ID.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food variant to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested food variant.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FoodVariant'
+ *       400:
+ *         description: Food Variant ID is required.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ *       404:
+ *         description: Food variant not found.
+ */
 router.get(
   "/food-variants/:id",
   authenticate,
@@ -198,6 +468,41 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/food-variants/{id}:
+ *   put:
+ *     summary: Update a food variant
+ *     tags: [Nutrition & Meals]
+ *     description: Updates an existing food variant.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food variant to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/FoodVariant'
+ *     responses:
+ *       200:
+ *         description: The updated food variant.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FoodVariant'
+ *       400:
+ *         description: Food Variant ID and Food ID are required.
+ *       403:
+ *         description: User does not have permission to update this food variant.
+ *       404:
+ *         description: Food variant not found.
+ */
 router.put(
   "/food-variants/:id",
   authenticate,
@@ -231,6 +536,31 @@ router.put(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/food-variants/{id}:
+ *   delete:
+ *     summary: Delete a food variant
+ *     tags: [Nutrition & Meals]
+ *     description: Deletes a specific food variant.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food variant to delete.
+ *     responses:
+ *       200:
+ *         description: Food variant deleted successfully.
+ *       400:
+ *         description: Food Variant ID is required.
+ *       403:
+ *         description: User does not have permission to delete this food variant.
+ *       404:
+ *         description: Food variant not found.
+ */
 router.delete(
   "/food-variants/:id",
   authenticate,
@@ -257,6 +587,36 @@ router.delete(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/create-or-get:
+ *   post:
+ *     summary: Create or get a food
+ *     tags: [Nutrition & Meals]
+ *     description: Creates a new food if it doesn't exist, or retrieves an existing one.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               foodSuggestion:
+ *                 $ref: '#/components/schemas/Food'
+ *     responses:
+ *       200:
+ *         description: The ID of the created or retrieved food.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 foodId:
+ *                   type: string
+ *                   format: uuid
+ *       403:
+ *         description: User does not have permission to perform this action.
+ */
 router.post(
   "/create-or-get",
   authenticate,
@@ -277,6 +637,35 @@ router.post(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/{foodId}:
+ *   get:
+ *     summary: Get a food by ID
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves a specific food item by its ID.
+ *     parameters:
+ *       - in: path
+ *         name: foodId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested food item.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Food'
+ *       400:
+ *         description: Food ID is required.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ *       404:
+ *         description: Food not found.
+ */
 router.get(
   "/:foodId",
   authenticate,
@@ -300,6 +689,41 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/{id}:
+ *   put:
+ *     summary: Update a food
+ *     tags: [Nutrition & Meals]
+ *     description: Updates an existing food item.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Food'
+ *     responses:
+ *       200:
+ *         description: The updated food item.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Food'
+ *       400:
+ *         description: Food ID is required.
+ *       403:
+ *         description: User does not have permission to update this food.
+ *       404:
+ *         description: Food not found or not authorized to update.
+ */
 router.put(
   "/:id",
   authenticate,
@@ -327,6 +751,31 @@ router.put(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/{id}/deletion-impact:
+ *   get:
+ *     summary: Get food deletion impact
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves the impact of deleting a specific food item.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food to check.
+ *     responses:
+ *       200:
+ *         description: The deletion impact report.
+ *       400:
+ *         description: Food ID is required.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ *       404:
+ *         description: Food not found.
+ */
 router.get(
   "/:id/deletion-impact",
   authenticate,
@@ -350,6 +799,36 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/{id}:
+ *   delete:
+ *     summary: Delete a food
+ *     tags: [Nutrition & Meals]
+ *     description: Deletes a specific food item.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food to delete.
+ *       - in: query
+ *         name: forceDelete
+ *         schema:
+ *           type: boolean
+ *         description: If true, forces deletion even if there are dependencies.
+ *     responses:
+ *       200:
+ *         description: Food deleted successfully.
+ *       400:
+ *         description: Food ID is required.
+ *       403:
+ *         description: User does not have permission to delete this food.
+ *       404:
+ *         description: Food not found.
+ */
 router.delete(
   "/:id",
   authenticate,
@@ -384,6 +863,30 @@ router.delete(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/import-from-csv:
+ *   post:
+ *     summary: Import foods from CSV
+ *     tags: [Nutrition & Meals]
+ *     description: Imports a list of foods from a CSV file.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               foods:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/Food'
+ *     responses:
+ *       200:
+ *         description: Food data imported successfully.
+ *       400:
+ *         description: Food data is required.
+ */
 router.post(
   "/import-from-csv",
   authenticate,
@@ -401,6 +904,23 @@ router.post(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/needs-review:
+ *   get:
+ *     summary: Get foods needing review
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves a list of foods that need to be reviewed.
+ *     responses:
+ *       200:
+ *         description: A list of foods needing review.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Food'
+ */
 router.get(
   "/needs-review",
   authenticate,
@@ -414,6 +934,32 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-crud/update-snapshot:
+ *   post:
+ *     summary: Update food entries snapshot
+ *     tags: [Nutrition & Meals]
+ *     description: Updates the snapshot of food entries.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               foodId:
+ *                 type: string
+ *                 format: uuid
+ *               variantId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: The result of the snapshot update.
+ *       400:
+ *         description: foodId and variantId are required.
+ */
 router.post(
   "/update-snapshot",
   authenticate,
@@ -430,5 +976,5 @@ router.post(
     }
   }
 );
- 
+
 module.exports = router;

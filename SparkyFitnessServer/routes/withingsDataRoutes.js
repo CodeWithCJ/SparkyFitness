@@ -7,7 +7,31 @@ const { authenticate } = require('../middleware/authMiddleware');
 const measurementRepository = require('../models/measurementRepository');
 const externalProviderRepository = require('../models/externalProviderRepository');
 
-// Route to get aggregated Withings data for display
+/**
+ * @swagger
+ * /integrations/withings/data:
+ *   get:
+ *     summary: Get aggregated Withings data for display
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Aggregated Withings data.
+ */
 router.get('/withings/data', authenticate, async (req, res) => {
     try {
         const userId = req.user.id;
@@ -37,7 +61,7 @@ router.get('/withings/data', authenticate, async (req, res) => {
             // This is a simplified check; a more robust solution might involve tagging categories by source
             if (category.name.includes('Blood Pressure') || category.name.includes('Heart Rate') || category.name.includes('Sleep')) {
                 const entries = await measurementRepository.getCustomMeasurementsByDateRange(userId, category.id, startDate, endDate, 'withings');
-                
+
                 if (category.name.includes('Blood Pressure')) {
                     withingsData.bloodPressure.push(...entries);
                 } else if (category.name.includes('Heart Rate')) {

@@ -8,7 +8,7 @@ const authService = require('../../services/authService');
  * /auth/user/generate-api-key:
  *   post:
  *     summary: Generate an API key for the current user
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Creates a new API key for the currently authenticated user.
  *     requestBody:
  *       required: true
@@ -48,7 +48,7 @@ router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
  * /auth/user/api-key/{apiKeyId}:
  *   delete:
  *     summary: Delete an API key
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Deletes a specific API key for the currently authenticated user.
  *     parameters:
  *       - in: path
@@ -87,7 +87,7 @@ router.delete('/user/api-key/:apiKeyId', authenticate, async (req, res, next) =>
  * /auth/user-api-keys:
  *   get:
  *     summary: Get the current user's API keys
- *     tags: [Authentication & Users]
+ *     tags: [Identity & Security]
  *     description: Retrieves a list of API keys for the currently authenticated user.
  *     responses:
  *       200:

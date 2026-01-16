@@ -6,7 +6,24 @@ const { isAdmin } = require('../middleware/authMiddleware');
 const { initializeOidcClient, clearOidcClientCache } = require('../openidRoutes');
 const oidcLogoUpload = require('../middleware/oidcLogoUpload');
 
-// GET all OIDC Providers (Admin Only)
+/**
+ * @swagger
+ * /oidc-settings:
+ *   get:
+ *     summary: Get all OIDC Providers (Admin Only)
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of OIDC providers.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/OidcProvider'
+ */
 router.get('/', isAdmin, async (req, res) => {
     try {
         const providers = await oidcProviderRepository.getOidcProviders();
@@ -17,7 +34,29 @@ router.get('/', isAdmin, async (req, res) => {
     }
 });
 
-// GET a single OIDC Provider by ID (Admin Only)
+/**
+ * @swagger
+ * /oidc-settings/{id}:
+ *   get:
+ *     summary: Get a single OIDC Provider by ID (Admin Only)
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: The OIDC provider.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/OidcProvider'
+ */
 router.get('/:id', isAdmin, async (req, res) => {
     try {
         const provider = await oidcProviderRepository.getOidcProviderById(req.params.id);
@@ -35,7 +74,24 @@ router.get('/:id', isAdmin, async (req, res) => {
     }
 });
 
-// POST a new OIDC Provider (Admin Only)
+/**
+ * @swagger
+ * /oidc-settings:
+ *   post:
+ *     summary: Create a new OIDC Provider (Admin Only)
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/OidcProvider'
+ *     responses:
+ *       201:
+ *         description: Created successfully.
+ */
 router.post('/', isAdmin, async (req, res) => {
     try {
         const providerData = req.body;
@@ -46,7 +102,7 @@ router.post('/', isAdmin, async (req, res) => {
 
         const newProvider = await oidcProviderRepository.createOidcProvider(providerData);
         log('info', `OIDC provider created successfully with ID: ${newProvider.id}.`);
-        
+
         // No need to initialize client here, it will be done on demand
         res.status(201).json({ message: 'OIDC provider created successfully', id: newProvider.id });
     } catch (error) {
@@ -55,7 +111,30 @@ router.post('/', isAdmin, async (req, res) => {
     }
 });
 
-// PUT/Update an OIDC Provider (Admin Only)
+/**
+ * @swagger
+ * /oidc-settings/{id}:
+ *   put:
+ *     summary: Update an OIDC Provider (Admin Only)
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/OidcProvider'
+ *     responses:
+ *       200:
+ *         description: Updated successfully.
+ */
 router.put('/:id', isAdmin, async (req, res) => {
     try {
         const providerData = req.body;
@@ -68,7 +147,7 @@ router.put('/:id', isAdmin, async (req, res) => {
 
         const updatedProvider = await oidcProviderRepository.updateOidcProvider(id, providerData);
         log('info', `OIDC provider ${id} updated successfully. Clearing OIDC client cache.`);
-        
+
         // Clear the specific client from cache so it's re-initialized on next use
         clearOidcClientCache(id);
 
@@ -79,13 +158,31 @@ router.put('/:id', isAdmin, async (req, res) => {
     }
 });
 
-// DELETE an OIDC Provider (Admin Only)
+/**
+ * @swagger
+ * /oidc-settings/{id}:
+ *   delete:
+ *     summary: DELETE an OIDC Provider (Admin Only)
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Deleted successfully.
+ */
 router.delete('/:id', isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         await oidcProviderRepository.deleteOidcProvider(id);
         log('info', `OIDC provider ${id} deleted successfully. Clearing OIDC client cache.`);
-        
+
         // Clear the client from cache
         clearOidcClientCache(id);
 
@@ -96,7 +193,33 @@ router.delete('/:id', isAdmin, async (req, res) => {
     }
 });
 
-// POST a logo for an OIDC Provider (Admin Only)
+/**
+ * @swagger
+ * /oidc-settings/{id}/logo:
+ *   post:
+ *     summary: POST a logo for an OIDC Provider (Admin Only)
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               logo: { type: 'string', format: 'binary' }
+ *     responses:
+ *       200:
+ *         description: Logo uploaded successfully.
+ */
 router.post('/:id/logo', isAdmin, oidcLogoUpload.single('logo'), async (req, res) => {
     const { id } = req.params;
     if (!req.file) {
