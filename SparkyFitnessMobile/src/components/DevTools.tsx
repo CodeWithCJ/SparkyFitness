@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import styles from '../screens/SettingsScreenStyles';
 import { useTheme } from '../contexts/ThemeContext';
 import { seedHealthData } from '../services/seedHealthData';
@@ -9,14 +9,6 @@ const DevTools: React.FC = () => {
   const [isSeeding, setIsSeeding] = useState(false);
 
   const handleSeedData = async (days: number) => {
-    if (Platform.OS === 'ios') {
-      Alert.alert(
-        'Not Available',
-        'Seeding is only available on Android. On iOS, use the Health app to add test data manually.'
-      );
-      return;
-    }
-
     setIsSeeding(true);
     try {
       const result = await seedHealthData(days);
@@ -43,9 +35,9 @@ const DevTools: React.FC = () => {
         These tools are only visible in development builds.
       </Text>
 
-      <Text style={[styles.label, { color: colors.text }]}>Seed Health Connect Data</Text>
+      <Text style={[styles.label, { color: colors.text }]}>Seed Health Data</Text>
       <Text style={{ color: colors.textMuted, marginBottom: 12, fontSize: 13 }}>
-        Insert sample health data into Health Connect for testing.
+        Insert sample health data for testing.
       </Text>
 
       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
