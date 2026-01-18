@@ -954,349 +954,349 @@ const EnhancedCustomFoodForm = ({
 
                       {/* Main Macros: Responsive Grid (1 col on mobile, 2 on sm, 3 on md, 4 on lg) */}
                       {(["calories", "protein", "carbs", "fat"].some(nutrient => visibleNutrients.includes(nutrient))) && (
-                      <div className="mt-4">
-                        <h5 className="text-sm font-medium text-gray-700 mb-3">
-                          Main Nutrients
-                        </h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {visibleNutrients.includes("calories") && (
-                            <div>
-                              <Label>Calories ({getEnergyUnitString(energyUnit)})</Label>
-                              <Input
-                                type="number"
-                                value={variant.calories === "" ? "" : Math.round(convertEnergy(variant.calories, 'kcal', energyUnit))}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "calories",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("protein") && (
-                            <div>
-                              <Label>Protein (g)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.protein}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "protein",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("carbs") && (
-                            <div>
-                              <Label>Carbs (g)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.carbs}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "carbs",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("fat") && (
-                            <div>
-                              <Label>Fat (g)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.fat}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "fat",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
+                        <div className="mt-4">
+                          <h5 className="text-sm font-medium text-gray-700 mb-3">
+                            Main Nutrients
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {visibleNutrients.includes("calories") && (
+                              <div>
+                                <Label>Calories ({getEnergyUnitString(energyUnit)})</Label>
+                                <Input
+                                  type="number"
+                                  value={variant.calories === "" ? "" : Math.round(convertEnergy(variant.calories, 'kcal', energyUnit))}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "calories",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("protein") && (
+                              <div>
+                                <Label>Protein (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.protein}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "protein",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("carbs") && (
+                              <div>
+                                <Label>Carbs (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.carbs}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "carbs",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("fat") && (
+                              <div>
+                                <Label>Fat (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.fat}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "fat",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
                       )}
 
                       {/* Detailed Fat Information: Responsive Grid */}
                       {(["saturated_fat", "polyunsaturated_fat", "monounsaturated_fat", "trans_fat"].some(nutrient => visibleNutrients.includes(nutrient))) && (
-                      <div>
-                        <h5 className="text-sm font-medium text-gray-700 mb-3">
-                          Fat Breakdown
-                        </h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {visibleNutrients.includes("saturated_fat") && (
-                            <div>
-                              <Label>Saturated Fat (g)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.saturated_fat}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "saturated_fat",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("polyunsaturated_fat") && (
-                            <div>
-                              <Label>Polyunsaturated Fat (g)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.polyunsaturated_fat}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "polyunsaturated_fat",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("monounsaturated_fat") && (
-                            <div>
-                              <Label>Monounsaturated Fat (g)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.monounsaturated_fat}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "monounsaturated_fat",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("trans_fat") && (
-                            <div>
-                              <Label>Trans Fat (g)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.trans_fat}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "trans_fat",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
+                        <div>
+                          <h5 className="text-sm font-medium text-gray-700 mb-3">
+                            Fat Breakdown
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {visibleNutrients.includes("saturated_fat") && (
+                              <div>
+                                <Label>Saturated Fat (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.saturated_fat}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "saturated_fat",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("polyunsaturated_fat") && (
+                              <div>
+                                <Label>Polyunsaturated Fat (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.polyunsaturated_fat}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "polyunsaturated_fat",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("monounsaturated_fat") && (
+                              <div>
+                                <Label>Monounsaturated Fat (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.monounsaturated_fat}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "monounsaturated_fat",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("trans_fat") && (
+                              <div>
+                                <Label>Trans Fat (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.trans_fat}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "trans_fat",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
                       )}
 
                       {/* Minerals and Other Nutrients: Responsive Grid */}
                       {(["cholesterol", "sodium", "potassium", "dietary_fiber"].some(nutrient => visibleNutrients.includes(nutrient))) && (
-                      <div>
-                        <h5 className="text-sm font-medium text-gray-700 mb-3">
-                          Minerals & Other
-                        </h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {visibleNutrients.includes("cholesterol") && (
-                            <div>
-                              <Label>Cholesterol (mg)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.cholesterol}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "cholesterol",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("sodium") && (
-                            <div>
-                              <Label>Sodium (mg)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.sodium}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "sodium",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("potassium") && (
-                            <div>
-                              <Label>Potassium (mg)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.potassium}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "potassium",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("dietary_fiber") && (
-                            <div>
-                              <Label>Dietary Fiber (g)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.dietary_fiber}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "dietary_fiber",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
+                        <div>
+                          <h5 className="text-sm font-medium text-gray-700 mb-3">
+                            Minerals & Other
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {visibleNutrients.includes("cholesterol") && (
+                              <div>
+                                <Label>Cholesterol (mg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.cholesterol}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "cholesterol",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("sodium") && (
+                              <div>
+                                <Label>Sodium (mg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.sodium}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "sodium",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("potassium") && (
+                              <div>
+                                <Label>Potassium (mg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.potassium}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "potassium",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("dietary_fiber") && (
+                              <div>
+                                <Label>Dietary Fiber (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.dietary_fiber}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "dietary_fiber",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
                       )}
 
                       {/* Sugars and Vitamins: Responsive Grid */}
                       {(["sugars", "vitamin_a", "vitamin_c", "calcium"].some(nutrient => visibleNutrients.includes(nutrient))) && (
-                      <div>
-                        <h5 className="text-sm font-medium text-gray-700 mb-3">
-                          Sugars & Vitamins
-                        </h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {visibleNutrients.includes("sugars") && (
-                            <div>
-                              <Label>Sugars (g)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.sugars}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "sugars",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("vitamin_a") && (
-                            <div>
-                              <Label>Vitamin A (μg)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.vitamin_a}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "vitamin_a",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("vitamin_c") && (
-                            <div>
-                              <Label>Vitamin C (mg)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.vitamin_c}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "vitamin_c",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
-                          {visibleNutrients.includes("calcium") && (
-                            <div>
-                              <Label>Calcium (mg)</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.calcium}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "calcium",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          )}
+                        <div>
+                          <h5 className="text-sm font-medium text-gray-700 mb-3">
+                            Sugars & Vitamins
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {visibleNutrients.includes("sugars") && (
+                              <div>
+                                <Label>Sugars (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.sugars}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "sugars",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("vitamin_a") && (
+                              <div>
+                                <Label>Vitamin A (μg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.vitamin_a}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "vitamin_a",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("vitamin_c") && (
+                              <div>
+                                <Label>Vitamin C (mg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.vitamin_c}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "vitamin_c",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes("calcium") && (
+                              <div>
+                                <Label>Calcium (mg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.calcium}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      "calcium",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
                       )}
 
                       {/* Last row of nutrients: Responsive Grid */}
