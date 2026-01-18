@@ -701,7 +701,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
                 transformedData.push({
                   value: 1,
                   type: outputType,
-                  date: new Date(d).toISOString().split('T')[0],
+                  date: toLocalDateString(d),
                   unit: unit,
                 });
               }

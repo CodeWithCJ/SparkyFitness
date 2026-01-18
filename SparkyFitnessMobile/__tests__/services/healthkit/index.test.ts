@@ -14,6 +14,8 @@ import {
   queryCategorySamples,
 } from '@kingstinct/react-native-healthkit';
 
+import { toLocalDateString } from '../../../src/services/healthkit/dataAggregation';
+
 import type { SyncDuration } from '../../../src/services/healthkit/preferences';
 
 jest.mock('../../../src/services/LogService', () => ({
@@ -27,8 +29,9 @@ const mockQueryWorkoutSamples = queryWorkoutSamples as jest.Mock;
 const mockQueryCategorySamples = queryCategorySamples as jest.Mock;
 
 describe('getSyncStartDate', () => {
-  test('all known durations return midnight (00:00:00.000)', () => {
-    const durations: SyncDuration[] = ['today', '24h', '3d', '7d', '30d', '90d'];
+  test('day-based durations return midnight (00:00:00.000)', () => {
+    // 24h is excluded - it's a true rolling window, not snapped to midnight
+    const durations: SyncDuration[] = ['today', '3d', '7d', '30d', '90d'];
     durations.forEach(duration => {
       const result = getSyncStartDate(duration);
       expect(result.getHours()).toBe(0);
@@ -38,11 +41,22 @@ describe('getSyncStartDate', () => {
     });
   });
 
+  test("'24h' returns exactly 24 hours ago (rolling window)", () => {
+    const before = new Date();
+    const result = getSyncStartDate('24h');
+    const after = new Date();
+
+    // Should be approximately 24 hours ago (within a few ms of test execution)
+    const expectedTime = before.getTime() - 24 * 60 * 60 * 1000;
+    expect(result.getTime()).toBeGreaterThanOrEqual(expectedTime - 100);
+    expect(result.getTime()).toBeLessThanOrEqual(after.getTime() - 24 * 60 * 60 * 1000 + 100);
+  });
+
   test("'today' returns today's date at midnight", () => {
     const result = getSyncStartDate('today');
     const expected = new Date();
     expected.setHours(0, 0, 0, 0);
-    expect(result.toISOString().split('T')[0]).toBe(expected.toISOString().split('T')[0]);
+    expect(toLocalDateString(result)).toBe(toLocalDateString(expected));
   });
 
   test("'7d' returns 6 days ago at midnight", () => {
@@ -50,7 +64,7 @@ describe('getSyncStartDate', () => {
     const expected = new Date();
     expected.setDate(expected.getDate() - 6);
     expected.setHours(0, 0, 0, 0);
-    expect(result.toISOString().split('T')[0]).toBe(expected.toISOString().split('T')[0]);
+    expect(toLocalDateString(result)).toBe(toLocalDateString(expected));
   });
 
   test("'3d' returns 2 days ago at midnight", () => {
@@ -58,7 +72,7 @@ describe('getSyncStartDate', () => {
     const expected = new Date();
     expected.setDate(expected.getDate() - 2);
     expected.setHours(0, 0, 0, 0);
-    expect(result.toISOString().split('T')[0]).toBe(expected.toISOString().split('T')[0]);
+    expect(toLocalDateString(result)).toBe(toLocalDateString(expected));
   });
 
   test("'30d' returns 29 days ago at midnight", () => {
@@ -66,7 +80,7 @@ describe('getSyncStartDate', () => {
     const expected = new Date();
     expected.setDate(expected.getDate() - 29);
     expected.setHours(0, 0, 0, 0);
-    expect(result.toISOString().split('T')[0]).toBe(expected.toISOString().split('T')[0]);
+    expect(toLocalDateString(result)).toBe(toLocalDateString(expected));
   });
 
   test("'90d' returns 89 days ago at midnight", () => {
@@ -74,7 +88,7 @@ describe('getSyncStartDate', () => {
     const expected = new Date();
     expected.setDate(expected.getDate() - 89);
     expected.setHours(0, 0, 0, 0);
-    expect(result.toISOString().split('T')[0]).toBe(expected.toISOString().split('T')[0]);
+    expect(toLocalDateString(result)).toBe(toLocalDateString(expected));
   });
 });
 
@@ -142,7 +156,7 @@ describe('getAggregatedStepsByDate', () => {
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    const expectedDateStr = startDate.toISOString().split('T')[0];
+    const expectedDateStr = toLocalDateString(startDate);
 
     const result = await getAggregatedStepsByDate(startDate, endDate);
 
@@ -219,6 +233,55 @@ describe('getAggregatedStepsByDate', () => {
     expect(result).toHaveLength(1);
     expect(result[0].value).toBe(6000);
   });
+
+  test('respects actual start time on first day for rolling 24h window', async () => {
+    // This test verifies the fix for the rolling 24h window bug where
+    // aggregations were always bucketing by full calendar days, ignoring
+    // the actual start time passed in.
+    await initHealthConnect();
+
+    mockQueryStatisticsForQuantity
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 3000 } }) // First day (partial)
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 5000 } }); // Second day (full)
+
+    // Simulate a rolling 24h window starting at 2pm yesterday
+    const startDate = new Date('2024-01-15T14:00:00.000Z'); // 2pm, not midnight
+    const endDate = new Date('2024-01-16T14:00:00.000Z');   // 2pm today
+
+    await getAggregatedStepsByDate(startDate, endDate);
+
+    // Verify the first query uses the actual start time (2pm), not midnight
+    expect(mockQueryStatisticsForQuantity).toHaveBeenCalledTimes(2);
+
+    const firstCallOptions = mockQueryStatisticsForQuantity.mock.calls[0][2];
+    const firstDayStart = firstCallOptions.filter.date.startDate;
+
+    // First day should start at 2pm (14:00), not midnight (00:00)
+    expect(firstDayStart.getUTCHours()).toBe(14);
+    expect(firstDayStart.getUTCMinutes()).toBe(0);
+  });
+
+  test('uses midnight for subsequent days in multi-day range', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsForQuantity
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 3000 } })
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 5000 } });
+
+    // Start at 2pm on day 1, but day 2 should start at midnight
+    const startDate = new Date('2024-01-15T14:00:00.000Z');
+    const endDate = new Date('2024-01-16T14:00:00.000Z');
+
+    await getAggregatedStepsByDate(startDate, endDate);
+
+    // Verify the second query uses midnight
+    const secondCallOptions = mockQueryStatisticsForQuantity.mock.calls[1][2];
+    const secondDayStart = secondCallOptions.filter.date.startDate;
+
+    // Second day should start at midnight (00:00)
+    expect(secondDayStart.getHours()).toBe(0);
+    expect(secondDayStart.getMinutes()).toBe(0);
+  });
 });
 
 describe('getAggregatedTotalCaloriesByDate', () => {
@@ -252,7 +315,7 @@ describe('getAggregatedTotalCaloriesByDate', () => {
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    const expectedDateStr = startDate.toISOString().split('T')[0];
+    const expectedDateStr = toLocalDateString(startDate);
 
     const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
 
@@ -315,6 +378,34 @@ describe('getAggregatedTotalCaloriesByDate', () => {
     const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
 
     expect(result).toHaveLength(0);
+  });
+
+  test('respects actual start time on first day for rolling 24h window', async () => {
+    // This test verifies the fix for the rolling 24h window bug where
+    // aggregations were always bucketing by full calendar days, ignoring
+    // the actual start time passed in.
+    await initHealthConnect();
+
+    // Mock responses for 2 days (basal + active for each day = 4 calls)
+    mockQueryStatisticsForQuantity
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 800 } })  // Day 1 basal
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 200 } })  // Day 1 active
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 1200 } }) // Day 2 basal
+      .mockResolvedValueOnce({ sumQuantity: { quantity: 400 } }); // Day 2 active
+
+    // Simulate a rolling 24h window starting at 2pm yesterday
+    const startDate = new Date('2024-01-15T14:00:00.000Z'); // 2pm, not midnight
+    const endDate = new Date('2024-01-16T14:00:00.000Z');   // 2pm today
+
+    await getAggregatedTotalCaloriesByDate(startDate, endDate);
+
+    // First call is for basal on day 1 - verify it uses the actual start time
+    const firstCallOptions = mockQueryStatisticsForQuantity.mock.calls[0][2];
+    const firstDayStart = firstCallOptions.filter.date.startDate;
+
+    // First day should start at 2pm (14:00), not midnight (00:00)
+    expect(firstDayStart.getUTCHours()).toBe(14);
+    expect(firstDayStart.getUTCMinutes()).toBe(0);
   });
 });
 
@@ -574,6 +665,66 @@ describe('readHealthRecords', () => {
       expect((result[0] as { totalDistance: number }).totalDistance).toBe(15000);
     });
 
+    test('includes workouts that overlap with date range (boundary spanning)', async () => {
+      await initHealthConnect();
+
+      const mockGetAllStatistics = jest.fn().mockResolvedValue({});
+      mockQueryWorkoutSamples.mockResolvedValue([
+        // Workout crossing midnight from previous day - INCLUDED (overlaps)
+        {
+          startDate: '2024-01-14T23:30:00Z',
+          endDate: '2024-01-15T00:30:00Z',
+          workoutActivityType: 37,
+          duration: 3600,
+          getAllStatistics: mockGetAllStatistics,
+        },
+        // Fully within range - INCLUDED
+        {
+          startDate: '2024-01-15T08:00:00Z',
+          endDate: '2024-01-15T09:00:00Z',
+          workoutActivityType: 37,
+          duration: 3600,
+          getAllStatistics: mockGetAllStatistics,
+        },
+        // Workout crossing midnight to next day - INCLUDED (overlaps)
+        {
+          startDate: '2024-01-15T23:30:00Z',
+          endDate: '2024-01-16T00:30:00Z',
+          workoutActivityType: 37,
+          duration: 3600,
+          getAllStatistics: mockGetAllStatistics,
+        },
+        // Completely outside range (before) - EXCLUDED
+        {
+          startDate: '2024-01-13T08:00:00Z',
+          endDate: '2024-01-13T09:00:00Z',
+          workoutActivityType: 37,
+          duration: 3600,
+          getAllStatistics: mockGetAllStatistics,
+        },
+        // Completely outside range (after) - EXCLUDED
+        {
+          startDate: '2024-01-16T08:00:00Z',
+          endDate: '2024-01-16T09:00:00Z',
+          workoutActivityType: 37,
+          duration: 3600,
+          getAllStatistics: mockGetAllStatistics,
+        },
+      ]);
+
+      const result = await readHealthRecords(
+        'Workout',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      // All overlapping workouts should be included
+      expect(result).toHaveLength(3);
+      expect((result[0] as { startTime: string }).startTime).toBe('2024-01-14T23:30:00Z');
+      expect((result[1] as { startTime: string }).startTime).toBe('2024-01-15T08:00:00Z');
+      expect((result[2] as { startTime: string }).startTime).toBe('2024-01-15T23:30:00Z');
+    });
+
     test('returns empty array for empty workouts response', async () => {
       await initHealthConnect();
 
@@ -626,41 +777,55 @@ describe('readHealthRecords', () => {
       });
     });
 
-    test('filters out records outside requested date range', async () => {
+    test('includes sessions that overlap with date range (boundary spanning)', async () => {
       await initHealthConnect();
 
       const startDate = new Date('2024-01-15T00:00:00Z');
       const endDate = new Date('2024-01-15T23:59:59Z');
 
       mockQueryCategorySamples.mockResolvedValue([
-        // Before range (start before requested start)
+        // Overnight sleep starting before range, ending within - INCLUDED (overlaps)
         {
           startDate: '2024-01-14T22:00:00Z',
           endDate: '2024-01-15T06:00:00Z',
           value: 'ASLEEP',
         },
-        // Within range
+        // Fully within range - INCLUDED
         {
           startDate: '2024-01-15T22:00:00Z',
           endDate: '2024-01-15T23:30:00Z',
           value: 'ASLEEP',
         },
-        // After range (end after requested end)
+        // Starting within range, ending after - INCLUDED (overlaps)
         {
           startDate: '2024-01-15T23:00:00Z',
           endDate: '2024-01-16T06:00:00Z',
+          value: 'ASLEEP',
+        },
+        // Completely outside range (before) - EXCLUDED
+        {
+          startDate: '2024-01-13T22:00:00Z',
+          endDate: '2024-01-13T23:59:59Z',
+          value: 'ASLEEP',
+        },
+        // Completely outside range (after) - EXCLUDED
+        {
+          startDate: '2024-01-16T22:00:00Z',
+          endDate: '2024-01-17T06:00:00Z',
           value: 'ASLEEP',
         },
       ]);
 
       const result = await readHealthRecords('SleepSession', startDate, endDate);
 
-      // Only the record fully within range should be included
-      expect(result).toHaveLength(1);
-      expect((result[0] as { startTime: string }).startTime).toBe('2024-01-15T22:00:00Z');
+      // All overlapping sessions should be included
+      expect(result).toHaveLength(3);
+      expect((result[0] as { startTime: string }).startTime).toBe('2024-01-14T22:00:00Z');
+      expect((result[1] as { startTime: string }).startTime).toBe('2024-01-15T22:00:00Z');
+      expect((result[2] as { startTime: string }).startTime).toBe('2024-01-15T23:00:00Z');
     });
 
-    test('includes sleep sessions spanning midnight when fully within range', async () => {
+    test('includes sleep sessions spanning midnight when overlapping', async () => {
       await initHealthConnect();
 
       // Request a 2-day range

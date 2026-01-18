@@ -1,4 +1,5 @@
 import { transformHealthRecords } from '../../../src/services/healthconnect/dataTransformation';
+import { toLocalDateString } from '../../../src/services/healthconnect/dataAggregation';
 import type {
   TransformedRecord,
   AggregatedSleepSession,
@@ -874,32 +875,40 @@ describe('transformHealthRecords', () => {
 
   describe('MenstruationPeriod records (period expansion)', () => {
     test('expands single record to multiple days', () => {
+      // Use local dates to ensure consistent behavior across timezones
+      const startDate = new Date(2024, 0, 15, 12, 0, 0); // Jan 15, noon local
+      const endDate = new Date(2024, 0, 17, 12, 0, 0);   // Jan 17, noon local
+
       const records = [
         {
-          startTime: '2024-01-15T00:00:00Z',
-          endTime: '2024-01-17T00:00:00Z', // 3-day period
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
         },
       ];
       const result = transformHealthRecords(records, { recordType: 'MenstruationPeriod', unit: '', type: 'menstruation' }) as TransformedRecord[];
 
       expect(result).toHaveLength(3);
-      expect(result[0].date).toBe('2024-01-15');
-      expect(result[1].date).toBe('2024-01-16');
-      expect(result[2].date).toBe('2024-01-17');
+      expect(result[0].date).toBe(toLocalDateString(startDate));
+      expect(result[1].date).toBe(toLocalDateString(new Date(2024, 0, 16, 12, 0, 0)));
+      expect(result[2].date).toBe(toLocalDateString(endDate));
       expect(result.every(r => r.value === 1)).toBe(true);
     });
 
     test('creates single record for same-day period', () => {
+      // Use local dates
+      const startDate = new Date(2024, 0, 15, 8, 0, 0);  // Jan 15, 8am local
+      const endDate = new Date(2024, 0, 15, 23, 59, 59); // Jan 15, 11:59pm local
+
       const records = [
         {
-          startTime: '2024-01-15T00:00:00Z',
-          endTime: '2024-01-15T23:59:59Z',
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
         },
       ];
       const result = transformHealthRecords(records, { recordType: 'MenstruationPeriod', unit: '', type: 'menstruation' }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
-      expect(result[0].date).toBe('2024-01-15');
+      expect(result[0].date).toBe(toLocalDateString(startDate));
     });
   });
 

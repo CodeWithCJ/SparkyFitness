@@ -3,10 +3,25 @@ import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-na
 import styles from '../screens/SettingsScreenStyles';
 import { useTheme } from '../contexts/ThemeContext';
 import { seedHealthData } from '../services/seedHealthData';
+import { triggerManualSync } from '../services/backgroundSyncService';
 
 const DevTools: React.FC = () => {
   const { colors } = useTheme();
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleTriggerSync = async () => {
+    setIsSyncing(true);
+    try {
+      await triggerManualSync();
+      Alert.alert('Success', 'Background sync completed. Check Logs for details.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Alert.alert('Error', `Sync failed: ${message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleSeedData = async (days: number) => {
     setIsSeeding(true);
@@ -76,6 +91,27 @@ const DevTools: React.FC = () => {
           disabled={isSeeding}
         >
           <Text style={styles.addConfigButtonText}>30 Days</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ marginTop: 20 }}>
+        <Text style={[styles.label, { color: colors.text }]}>Background Sync</Text>
+        <Text style={{ color: colors.textMuted, marginBottom: 12, fontSize: 13 }}>
+          Manually trigger the background sync process.
+        </Text>
+        <TouchableOpacity
+          style={[
+            styles.addConfigButton,
+            { opacity: isSyncing ? 0.6 : 1, minWidth: 120 },
+          ]}
+          onPress={handleTriggerSync}
+          disabled={isSyncing}
+        >
+          {isSyncing ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.addConfigButtonText}>Trigger Sync</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>

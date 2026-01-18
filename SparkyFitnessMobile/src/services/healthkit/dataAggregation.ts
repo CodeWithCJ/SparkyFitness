@@ -15,7 +15,7 @@ import { SleepStageEvent } from '../../types/mobileHealthData';
  * This ensures dates are assigned based on the user's local timezone,
  * not UTC (which would cause issues like data at 11pm being assigned to the next day).
  */
-const toLocalDateString = (timestamp: string | Date): string => {
+export const toLocalDateString = (timestamp: string | Date): string => {
   const localDate = new Date(timestamp);
   return `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
 };
@@ -69,7 +69,7 @@ const finalizeSession = (session: SleepSessionAccumulator): AggregatedSleepSessi
     type: 'SleepSession',
     source: 'HealthKit',
     timestamp: session.bedtime.toISOString(),
-    entry_date: session.bedtime.toISOString().split('T')[0],
+    entry_date: toLocalDateString(session.bedtime),
     bedtime: session.bedtime.toISOString(),
     wake_time: session.wake_time.toISOString(),
     duration_in_seconds: totalDuration,

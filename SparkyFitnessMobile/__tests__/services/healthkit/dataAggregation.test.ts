@@ -1,6 +1,7 @@
 import {
   aggregateHeartRateByDate,
   aggregateSleepSessions,
+  toLocalDateString,
 } from '../../../src/services/healthkit/dataAggregation';
 
 import type { HKHeartRateRecord, HKSleepRecord } from '../../../src/types/healthRecords';
@@ -8,6 +9,38 @@ import type { HKHeartRateRecord, HKSleepRecord } from '../../../src/types/health
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
+
+describe('toLocalDateString', () => {
+  test('returns YYYY-MM-DD format', () => {
+    const result = toLocalDateString('2024-01-15T12:00:00Z');
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  test('handles Date objects', () => {
+    // Create a date at local noon on Jan 15, 2024
+    const date = new Date(2024, 0, 15, 12, 0, 0); // Month is 0-indexed
+    const result = toLocalDateString(date);
+    expect(result).toBe('2024-01-15');
+  });
+
+  test('uses local timezone components', () => {
+    // Create a date at local midnight
+    const localMidnight = new Date();
+    localMidnight.setHours(0, 0, 0, 0);
+
+    const result = toLocalDateString(localMidnight);
+    const expected = `${localMidnight.getFullYear()}-${String(localMidnight.getMonth() + 1).padStart(2, '0')}-${String(localMidnight.getDate()).padStart(2, '0')}`;
+
+    expect(result).toBe(expected);
+  });
+
+  test('pads single-digit months and days with zeros', () => {
+    // January 5th
+    const date = new Date(2024, 0, 5, 12, 0, 0);
+    const result = toLocalDateString(date);
+    expect(result).toBe('2024-01-05');
+  });
+});
 
 describe('aggregateHeartRateByDate', () => {
   test('returns empty array for empty input', () => {
@@ -221,11 +254,19 @@ describe('aggregateSleepSessions', () => {
     expect(result[0].duration_in_seconds).toBe(8 * 60 * 60);
   });
 
-  test('sets entry_date to the bedtime date', () => {
+  test('sets entry_date to the local bedtime date', () => {
+    // Use a local time by creating a Date at 10pm local time
+    const bedtime = new Date();
+    bedtime.setHours(22, 0, 0, 0);
+    const wakeTime = new Date(bedtime.getTime() + 8 * 60 * 60 * 1000); // 8 hours later
+
     const records: HKSleepRecord[] = [
-      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T06:00:00Z', value: 3 },
+      { startTime: bedtime.toISOString(), endTime: wakeTime.toISOString(), value: 3 },
     ];
     const result = aggregateSleepSessions(records);
-    expect(result[0].entry_date).toBe('2024-01-15');
+
+    // entry_date should match the local date of bedtime
+    const expectedDate = toLocalDateString(bedtime);
+    expect(result[0].entry_date).toBe(expectedDate);
   });
 });

@@ -3,6 +3,7 @@ import { syncHealthData, HealthDataPayload } from './api';
 import { addLog } from './LogService';
 import {
   loadHealthPreference,
+  loadStringPreference,
   loadSyncDuration,
   getAggregatedStepsByDate,
   getAggregatedActiveCaloriesByDate,
@@ -16,7 +17,36 @@ import { SyncInterval } from './healthconnect/preferences';
 
 const BACKGROUND_FETCH_TASK_ID = 'healthDataSync';
 
-const performBackgroundSync = async (taskId: string): Promise<void> => {
+/**
+ * Calculates the date range for background sync based on the sync duration.
+ *
+ * @param now - The current time to base calculations on
+ * @param syncDuration - The sync duration ('1h', '4h', or '24h')
+ * @returns Object containing startDate and endDate for the sync query
+ */
+export const calculateSyncDateRange = (
+  now: Date,
+  syncDuration: '1h' | '4h' | '24h'
+): { startDate: Date; endDate: Date } => {
+  const startDate = new Date(now);
+  const endDate = new Date(now);
+
+  if (syncDuration === '1h') {
+    // True rolling 1h window - exactly 1 hour ago to now
+    startDate.setTime(now.getTime() - (1 * 60 * 60 * 1000));
+  } else if (syncDuration === '4h') {
+    // True rolling 4h window - exactly 4 hours ago to now
+    startDate.setTime(now.getTime() - (4 * 60 * 60 * 1000));
+  } else if (syncDuration === '24h') {
+    // True rolling 24h window - exactly 24 hours ago to now
+    // This matches the foreground sync behavior for consistency
+    startDate.setTime(now.getTime() - (24 * 60 * 60 * 1000));
+  }
+
+  return { startDate, endDate };
+};
+
+const performBackgroundSync = async (taskId: string, bypassTimeCheck = false): Promise<void> => {
   console.log('[BackgroundFetch] taskId', taskId);
   addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'info');
 
@@ -29,28 +59,29 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
     const isWorkoutEnabled = await loadHealthPreference<boolean>('isWorkoutSyncEnabled');
 
     const syncDuration = await loadSyncDuration() as SyncInterval; // Background sync uses SyncInterval ('1h', '4h', '24h')
-    const fourHourSyncTime = await loadHealthPreference<string>('fourHourSyncTime') ?? '00:00';
-    const dailySyncTime = await loadHealthPreference<string>('dailySyncTime') ?? '00:00';
+    const fourHourSyncTime = await loadStringPreference('fourHourSyncTime') ?? '00:00';
+    const dailySyncTime = await loadStringPreference('dailySyncTime') ?? '00:00';
 
-    let shouldSync = false;
+    let shouldSync = bypassTimeCheck;
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
-    let syncReason = '';
+    let syncReason = bypassTimeCheck ? 'manual sync' : '';
 
-    if (syncDuration === '1h') {
+    if (!bypassTimeCheck && syncDuration === '1h') {
       shouldSync = true; // Sync every hour
       syncReason = 'hourly sync enabled';
-    } else if (syncDuration === '4h') {
+    } else if (!bypassTimeCheck && syncDuration === '4h') {
       const [h, m] = fourHourSyncTime.split(':').map(Number);
-      // Check if current time is within a reasonable window of the configured sync time
-      if (currentHour % 4 === h && currentMinute >= m && currentMinute < m + 15) { // Sync within 15 mins of configured time
+      // Check if current hour is on a 4-hour interval from the configured start hour
+      // e.g., if configured to 05:00, syncs at 5, 9, 13, 17, 21, 1
+      if ((currentHour - h + 24) % 4 === 0 && currentMinute >= m && currentMinute < m + 15) {
         shouldSync = true;
         syncReason = `4-hour sync window (configured: ${fourHourSyncTime})`;
       } else {
         addLog(`[Background Sync] Skipping: outside 4-hour sync window (current: ${currentHour}:${currentMinute}, configured: ${fourHourSyncTime})`, 'debug');
       }
-    } else if (syncDuration === '24h') {
+    } else if (!bypassTimeCheck && syncDuration === '24h') {
       const [h, m] = dailySyncTime.split(':').map(Number);
       if (currentHour === h && currentMinute >= m && currentMinute < m + 15) { // Sync within 15 mins of configured time
         shouldSync = true;
@@ -62,19 +93,7 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
 
     if (shouldSync) {
       addLog(`[Background Sync] Proceeding with sync: ${syncReason}`, 'debug');
-      const endDate = new Date();
-      endDate.setHours(23, 59, 59, 999);
-
-      const startDate = new Date(endDate);
-      // Adjust startDate based on syncDuration
-      if (syncDuration === '1h') {
-        startDate.setHours(endDate.getHours() - 1, 0, 0, 0);
-      } else if (syncDuration === '4h') {
-        startDate.setHours(endDate.getHours() - 4, 0, 0, 0);
-      } else if (syncDuration === '24h') {
-        startDate.setDate(endDate.getDate() - 1);
-        startDate.setHours(0, 0, 0, 0);
-      }
+      const { startDate, endDate } = calculateSyncDateRange(now, syncDuration);
 
       const allAggregatedData: HealthDataPayload = [];
       const collectedCounts: string[] = [];
@@ -185,4 +204,8 @@ export const stopBackgroundSync = async (): Promise<void> => {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[Background Sync] Background fetch failed to stop: ${message}`, 'error', 'ERROR');
   }
+};
+
+export const triggerManualSync = async (): Promise<void> => {
+  await performBackgroundSync('manual-sync', true);
 };

@@ -219,28 +219,32 @@ export const getSyncStartDate = (duration: SyncDuration): Date => {
 
   switch (duration) {
     case 'today':
-      // Already set to midnight
+      startDate.setHours(0, 0, 0, 0);
       break;
     case '24h':
+      // True rolling 24h window - exactly 24 hours ago
       startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;
     case '3d':
       startDate.setDate(now.getDate() - 2);
+      startDate.setHours(0, 0, 0, 0);
       break;
     case '7d':
       startDate.setDate(now.getDate() - 6);
+      startDate.setHours(0, 0, 0, 0);
       break;
     case '30d':
       startDate.setDate(now.getDate() - 29);
+      startDate.setHours(0, 0, 0, 0);
       break;
     case '90d':
       startDate.setDate(now.getDate() - 89);
+      startDate.setHours(0, 0, 0, 0);
       break;
     default:
       startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;
   }
-  startDate.setHours(0, 0, 0, 0);
   return startDate;
 };
 

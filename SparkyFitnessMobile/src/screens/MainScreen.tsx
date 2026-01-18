@@ -114,8 +114,8 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
     currentHealthMetricStates: HealthMetricStates,
     timeRange: TimeRange
   ): Promise<void> => {
+    // Use current time as endDate for accurate rolling windows
     const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
 
     const startDate = getSyncStartDate(timeRange);
 

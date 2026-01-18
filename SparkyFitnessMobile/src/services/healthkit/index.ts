@@ -13,6 +13,7 @@ import {
   PermissionRequest,
 } from '../../types/healthRecords';
 import { SyncDuration } from './preferences';
+import { toLocalDateString } from './dataAggregation';
 
 // Track if HealthKit is available on this device
 let isHealthKitAvailable = false;
@@ -246,8 +247,8 @@ export const getSyncStartDate = (duration: SyncDuration): Date => {
       startDate.setHours(0, 0, 0, 0);
       break;
     case '24h':
-      startDate.setDate(now.getDate() - 1);
-      startDate.setHours(0, 0, 0, 0);
+      // True rolling 24h window - exactly 24 hours ago
+      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;
     case '3d':
       startDate.setDate(now.getDate() - 2);
@@ -323,10 +324,18 @@ const getAggregatedDataByDate = async (
   const currentDate = new Date(startDate);
   let daysQueried = 0;
   let daysWithData = 0;
+  let isFirstDay = true;
 
   while (currentDate <= endDate) {
+    // On the first day, use the actual startDate time to respect rolling windows (e.g., 24h)
+    // On subsequent days, use midnight as the start
     const dayStart = new Date(currentDate);
-    dayStart.setHours(0, 0, 0, 0);
+    if (isFirstDay) {
+      // Keep the original time from startDate
+      dayStart.setTime(startDate.getTime());
+    } else {
+      dayStart.setHours(0, 0, 0, 0);
+    }
 
     const dayEnd = new Date(currentDate);
     dayEnd.setHours(23, 59, 59, 999);
@@ -355,7 +364,10 @@ const getAggregatedDataByDate = async (
 
       if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
         daysWithData++;
-        const dateStr = dayStart.toISOString().split('T')[0];
+        // Use dayStart's date for the date string (normalized to midnight for consistent keys)
+        const dateForKey = new Date(dayStart);
+        dateForKey.setHours(0, 0, 0, 0);
+        const dateStr = toLocalDateString(dateForKey);
         results.push({
           date: dateStr,
           value: Math.round(stats.sumQuantity.quantity),
@@ -368,6 +380,7 @@ const getAggregatedDataByDate = async (
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
+    isFirstDay = false;
   }
 
   if (daysWithData === 0) {
@@ -399,10 +412,18 @@ export const getAggregatedTotalCaloriesByDate = async (
   let daysQueried = 0;
   let daysWithData = 0;
   let errorCount = 0;
+  let isFirstDay = true;
 
   while (currentDate <= endDate) {
+    // On the first day, use the actual startDate time to respect rolling windows (e.g., 24h)
+    // On subsequent days, use midnight as the start
     const dayStart = new Date(currentDate);
-    dayStart.setHours(0, 0, 0, 0);
+    if (isFirstDay) {
+      // Keep the original time from startDate
+      dayStart.setTime(startDate.getTime());
+    } else {
+      dayStart.setHours(0, 0, 0, 0);
+    }
 
     const dayEnd = new Date(currentDate);
     dayEnd.setHours(23, 59, 59, 999);
@@ -433,7 +454,10 @@ export const getAggregatedTotalCaloriesByDate = async (
 
       if (basal > 0 || active > 0) {
         daysWithData++;
-        const dateStr = dayStart.toISOString().split('T')[0];
+        // Use dayStart's date for the date string (normalized to midnight for consistent keys)
+        const dateForKey = new Date(dayStart);
+        dateForKey.setHours(0, 0, 0, 0);
+        const dateStr = toLocalDateString(dateForKey);
         const total = Math.round(basal + active);
         results.push({
           date: dateStr,
@@ -448,6 +472,7 @@ export const getAggregatedTotalCaloriesByDate = async (
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
+    isFirstDay = false;
   }
 
   if (daysWithData === 0) {
@@ -489,10 +514,13 @@ export const readHealthRecords = async (
         ascending: false,
         limit: queryLimit,
       });
+      // Use overlap check to include sessions that span range boundaries
+      // (e.g., overnight sleep starting before midnight, ending after)
       const filteredSamples = samples.filter(s => {
         const recordStartDate = new Date(s.startDate);
         const recordEndDate = new Date(s.endDate);
-        return recordStartDate >= startDate && recordEndDate <= endDate;
+        // Include if any part of the session overlaps with the range
+        return recordStartDate < endDate && recordEndDate > startDate;
       });
 
       // Map to standard format expected by consumers (MainScreen, etc.)
@@ -549,11 +577,13 @@ export const readHealthRecords = async (
         limit: queryLimit,
       });
 
-      // Filter workouts by date range manually
+      // Use overlap check to include workouts that span range boundaries
+      // (e.g., workouts crossing midnight)
       const filteredWorkouts = workouts.filter(w => {
         const workoutStart = new Date(w.startDate);
         const workoutEnd = new Date(w.endDate);
-        return workoutStart >= startDate && workoutEnd <= endDate;
+        // Include if any part of the workout overlaps with the range
+        return workoutStart < endDate && workoutEnd > startDate;
       });
 
       // Fetch statistics (calories, distance) for each workout
