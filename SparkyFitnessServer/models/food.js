@@ -51,6 +51,29 @@ function sanitizeGlycemicIndex(gi) {
   return gi;
 }
 
+function sanitizeNumeric(value) {
+  if (value === null || value === undefined || value === '' || value === 'NULL') {
+    return null;
+  }
+  // Strip quotes if they exist (common in CSV issues)
+  let sanitizedValue = value;
+  if (typeof value === 'string') {
+    sanitizedValue = value.replace(/^["']|["']$/g, '');
+  }
+  const num = parseFloat(sanitizedValue);
+  return isNaN(num) ? null : num;
+}
+
+function sanitizeBoolean(value) {
+  if (value === true || value === 'TRUE' || value === 't' || value === '1' || value === 1) {
+    return true;
+  }
+  if (value === false || value === 'FALSE' || value === 'f' || value === '0' || value === 0) {
+    return false;
+  }
+  return null;
+}
+
 async function searchFoods(name, userId, exactMatch, broadMatch, checkCustom, limit = 10) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -122,14 +145,14 @@ async function createFood(foodData) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food`,
       [
         foodData.name,
-        foodData.is_custom,
+        sanitizeBoolean(foodData.is_custom) ?? true,
         foodData.user_id,
         foodData.brand,
         foodData.barcode,
         foodData.provider_external_id,
-        foodData.shared_with_public,
+        sanitizeBoolean(foodData.shared_with_public) ?? false,
         foodData.provider_type,
-        foodData.is_quick_food || false,
+        sanitizeBoolean(foodData.is_quick_food) ?? false,
       ]
     );
     const newFood = foodResult.rows[0];
@@ -144,25 +167,25 @@ async function createFood(foodData) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, TRUE, $21, $22, now(), now()) RETURNING id`,
       [
         newFood.id,
-        foodData.serving_size,
+        sanitizeNumeric(foodData.serving_size),
         foodData.serving_unit,
-        foodData.calories,
-        foodData.protein,
-        foodData.carbs,
-        foodData.fat,
-        foodData.saturated_fat,
-        foodData.polyunsaturated_fat,
-        foodData.monounsaturated_fat,
-        foodData.trans_fat,
-        foodData.cholesterol,
-        foodData.sodium,
-        foodData.potassium,
-        foodData.dietary_fiber,
-        foodData.sugars,
-        foodData.vitamin_a,
-        foodData.vitamin_c,
-        foodData.calcium,
-        foodData.iron,
+        sanitizeNumeric(foodData.calories),
+        sanitizeNumeric(foodData.protein),
+        sanitizeNumeric(foodData.carbs),
+        sanitizeNumeric(foodData.fat),
+        sanitizeNumeric(foodData.saturated_fat),
+        sanitizeNumeric(foodData.polyunsaturated_fat),
+        sanitizeNumeric(foodData.monounsaturated_fat),
+        sanitizeNumeric(foodData.trans_fat),
+        sanitizeNumeric(foodData.cholesterol),
+        sanitizeNumeric(foodData.sodium),
+        sanitizeNumeric(foodData.potassium),
+        sanitizeNumeric(foodData.dietary_fiber),
+        sanitizeNumeric(foodData.sugars),
+        sanitizeNumeric(foodData.vitamin_a),
+        sanitizeNumeric(foodData.vitamin_c),
+        sanitizeNumeric(foodData.calcium),
+        sanitizeNumeric(foodData.iron),
         sanitizeGlycemicIndex(foodData.glycemic_index),
         foodData.custom_nutrients || {},
       ]
@@ -334,7 +357,7 @@ async function getFoodsWithPagination(
     // RLS will handle ownership filtering
 
     let query = `
-      SELECT
+      SELECT DISTINCT ON (f.id, f.name, f.brand)
         f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public,
         json_build_object(
           'id', fv.id,
@@ -366,7 +389,7 @@ async function getFoodsWithPagination(
       WHERE ${whereClauses.join(" AND ")}
     `;
 
-    let orderByClause = "name ASC";
+    let orderByClause = "f.id, f.name ASC"; // DISTINCT ON requires f.id to be the first sort field
     if (sortBy) {
       const [sortField, sortOrder] = sortBy.split(":");
       const allowedSortFields = ["name", "calories", "protein", "carbs", "fat"];
@@ -376,7 +399,7 @@ async function getFoodsWithPagination(
         allowedSortFields.includes(sortField) &&
         allowedSortOrders.includes(sortOrder)
       ) {
-        orderByClause = `${sortField} ${sortOrder.toUpperCase()}`;
+        orderByClause = `f.id, ${sortField} ${sortOrder.toUpperCase()}`;
       } else {
         log(
           "warn",
@@ -696,15 +719,15 @@ async function createFoodsInBulk(userId, foodDataArray) {
     for (const food of foodsToCreate) {
       const foodResult = await client.query(
         `INSERT INTO foods (name, brand, is_custom, user_id, shared_with_public, is_quick_food,barcode,provider_external_id,provider_type, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
-         RETURNING id`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
+           RETURNING id`,
         [
           food.name,
           food.brand,
-          food.is_custom,
+          sanitizeBoolean(food.is_custom) ?? true,
           food.user_id,
-          food.shared_with_public,
-          food.is_quick_food,
+          sanitizeBoolean(food.shared_with_public) ?? false,
+          sanitizeBoolean(food.is_quick_food) ?? false,
           food.barcode || null,
           food.provider_external_id || null,
           food.provider_type || null,
@@ -716,36 +739,36 @@ async function createFoodsInBulk(userId, foodDataArray) {
       for (const variant of food.variants) {
         await client.query(
           `INSERT INTO food_variants (
-            food_id, serving_size, serving_unit, is_default, calories, protein, carbs, fat,
-            saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
-            cholesterol, sodium, potassium, dietary_fiber, sugars,
-            vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, created_at, updated_at
-          ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-            $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, now(), now()
-          )`,
+              food_id, serving_size, serving_unit, is_default, calories, protein, carbs, fat,
+              saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
+              cholesterol, sodium, potassium, dietary_fiber, sugars,
+              vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, created_at, updated_at
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+              $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, now(), now()
+            )`,
           [
             newFoodId,
-            variant.serving_size,
+            sanitizeNumeric(variant.serving_size),
             variant.serving_unit,
-            variant.is_default || true,
-            variant.calories || 0,
-            variant.protein || 0,
-            variant.carbs || 0,
-            variant.fat || 0,
-            variant.saturated_fat || 0,
-            variant.polyunsaturated_fat || 0,
-            variant.monounsaturated_fat || 0,
-            variant.trans_fat || 0,
-            variant.cholesterol || 0,
-            variant.sodium || 0,
-            variant.potassium || 0,
-            variant.dietary_fiber || 0,
-            variant.sugars || 0,
-            variant.vitamin_a || 0,
-            variant.vitamin_c || 0,
-            variant.calcium || 0,
-            variant.iron || 0,
+            sanitizeBoolean(variant.is_default) ?? true,
+            sanitizeNumeric(variant.calories),
+            sanitizeNumeric(variant.protein),
+            sanitizeNumeric(variant.carbs),
+            sanitizeNumeric(variant.fat),
+            sanitizeNumeric(variant.saturated_fat),
+            sanitizeNumeric(variant.polyunsaturated_fat),
+            sanitizeNumeric(variant.monounsaturated_fat),
+            sanitizeNumeric(variant.trans_fat),
+            sanitizeNumeric(variant.cholesterol),
+            sanitizeNumeric(variant.sodium),
+            sanitizeNumeric(variant.potassium),
+            sanitizeNumeric(variant.dietary_fiber),
+            sanitizeNumeric(variant.sugars),
+            sanitizeNumeric(variant.vitamin_a),
+            sanitizeNumeric(variant.vitamin_c),
+            sanitizeNumeric(variant.calcium),
+            sanitizeNumeric(variant.iron),
             sanitizeGlycemicIndex(variant.glycemic_index),
             variant.custom_nutrients || {},
           ]
@@ -835,26 +858,26 @@ async function updateFoodEntriesSnapshot(userId, foodId, newSnapshotData) {
        RETURNING id`,
       [
         newSnapshotData.food_name,
-        newSnapshotData.serving_size,
+        sanitizeNumeric(newSnapshotData.serving_size),
         newSnapshotData.serving_unit,
-        newSnapshotData.calories,
-        newSnapshotData.protein,
-        newSnapshotData.carbs,
-        newSnapshotData.fat,
-        newSnapshotData.saturated_fat,
-        newSnapshotData.polyunsaturated_fat,
-        newSnapshotData.monounsaturated_fat,
-        newSnapshotData.trans_fat,
-        newSnapshotData.cholesterol,
-        newSnapshotData.sodium,
-        newSnapshotData.potassium,
-        newSnapshotData.dietary_fiber,
-        newSnapshotData.sugars,
-        newSnapshotData.vitamin_a,
-        newSnapshotData.vitamin_c,
-        newSnapshotData.calcium,
-        newSnapshotData.iron,
-        newSnapshotData.glycemic_index,
+        sanitizeNumeric(newSnapshotData.calories),
+        sanitizeNumeric(newSnapshotData.protein),
+        sanitizeNumeric(newSnapshotData.carbs),
+        sanitizeNumeric(newSnapshotData.fat),
+        sanitizeNumeric(newSnapshotData.saturated_fat),
+        sanitizeNumeric(newSnapshotData.polyunsaturated_fat),
+        sanitizeNumeric(newSnapshotData.monounsaturated_fat),
+        sanitizeNumeric(newSnapshotData.trans_fat),
+        sanitizeNumeric(newSnapshotData.cholesterol),
+        sanitizeNumeric(newSnapshotData.sodium),
+        sanitizeNumeric(newSnapshotData.potassium),
+        sanitizeNumeric(newSnapshotData.dietary_fiber),
+        sanitizeNumeric(newSnapshotData.sugars),
+        sanitizeNumeric(newSnapshotData.vitamin_a),
+        sanitizeNumeric(newSnapshotData.vitamin_c),
+        sanitizeNumeric(newSnapshotData.calcium),
+        sanitizeNumeric(newSnapshotData.iron),
+        sanitizeGlycemicIndex(newSnapshotData.glycemic_index),
         newSnapshotData.custom_nutrients || {},
         userId,
         foodId,
@@ -881,6 +904,8 @@ async function clearUserIgnoredUpdate(userId, variantId) {
 }
 module.exports = {
   sanitizeGlycemicIndex,
+  sanitizeNumeric,
+  sanitizeBoolean,
   searchFoods,
   createFood,
   getFoodById,
