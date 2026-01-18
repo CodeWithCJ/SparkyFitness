@@ -22,7 +22,7 @@ import { getActiveAiServiceSetting, AIService } from '@/services/aiServiceSettin
 
 
 const SparkyChatInterface = () => {
-  const { formatDateInUserTimezone } = usePreferences(); // Get timezone and formatter from context
+  const { formatDateInUserTimezone, energyUnit, convertEnergy, getEnergyUnitString } = usePreferences(); // Get timezone and formatter from context
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -35,7 +35,7 @@ const SparkyChatInterface = () => {
 
   // Load user preferences and chat history when userId is ready
   useEffect(() => {
-    
+
     loadUserPreferencesAndHistory();
     loadActiveAIServiceSetting(); // Load active AI service setting
   }, []);
@@ -85,7 +85,7 @@ const SparkyChatInterface = () => {
           });
         } catch (error) {
           console.error('SparkyChatInterface: Error clearing chat history:', error);
-           toast({
+          toast({
             title: "Error",
             description: "Failed to clear chat history.",
             variant: "destructive",
@@ -116,7 +116,7 @@ const SparkyChatInterface = () => {
 
     const historyData = await loadChatHistory(autoClearHistory);
     setMessages(historyData);
-    
+
     // Mark as initialized after loading history and preferences
     setIsInitialized(true);
   };
@@ -146,7 +146,7 @@ const SparkyChatInterface = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       const nutritionData = await getTodaysNutrition(today);
-      
+
       if (messages.length === 0) {
         if (nutritionData && nutritionData.analysis) {
           const welcomeMessage: Message = {
@@ -206,11 +206,11 @@ const SparkyChatInterface = () => {
 
     setMessages(prev => [...prev, userMessage]);
     await saveMessageToHistory(userMessage.content, 'user');
-    
+
     const currentInput = inputValue.trim();
     setInputValue('');
     setIsLoading(true);
-    
+
     // Generate a unique transaction ID for this message processing
     const transactionId = `txn-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     info(userPreferences?.logging_level || 'INFO', `[${transactionId}] Starting message processing for:`, currentInput);
@@ -224,7 +224,7 @@ const SparkyChatInterface = () => {
 
     try {
       let response;
-      
+
       // If an image is selected, send both text and image
       if (selectedImage) {
         // Create a temporary user message to show the image preview in the chat
@@ -236,7 +236,7 @@ const SparkyChatInterface = () => {
           metadata: { imageUrl: URL.createObjectURL(selectedImage) } // Store image URL for preview
         };
         setMessages(prev => [...prev, userMessageWithImage]);
-        
+
         response = await processUserInput(
           inputValue.trim(),
           selectedImage,
@@ -249,17 +249,17 @@ const SparkyChatInterface = () => {
           userDate // Pass user's date
         );
         setSelectedImage(null); // Clear the selected image after sending
-        
+
       } else {
         // Check if it's a numbered response (for food options)
         const numberMatch = currentInput.match(/^(\d+)$/);
-        
+
         if (numberMatch) {
           info(userPreferences?.logging_level || 'INFO', `[${transactionId}] Numbered input detected:`, numberMatch[1]);
           // Handle numbered responses for food options
           const lastBotMessage = messages.slice().reverse().find(msg => !msg.isUser && msg.metadata);
           info(userPreferences?.logging_level || 'INFO', `[${transactionId}] Last bot message with metadata:`, lastBotMessage);
-          
+
           if (lastBotMessage?.metadata?.foodOptions) {
             const optionIndex = parseInt(numberMatch[1]) - 1;
             info(userPreferences?.logging_level || 'INFO', `[${transactionId}] Processing food option selection:`, optionIndex, lastBotMessage.metadata);
@@ -303,18 +303,17 @@ const SparkyChatInterface = () => {
           );
         }
       }
-      
+
       info(userPreferences?.logging_level || 'INFO', `[${transactionId}] Received response from coach:`, response);
-      
+
       // Handle different response scenarios based on action type
       let botMessageContent = '';
       let messageMetadata = response?.metadata; // Preserve metadata
-      
+
       if (response) {
         switch (response.action) {
           case 'food_added':
           case 'exercise_added':
-          case 'measurement_added':
           case 'log_water':
           case 'water_added':
             botMessageContent = response.response || 'Entry logged successfully!';
@@ -370,8 +369,8 @@ const SparkyChatInterface = () => {
         warn(userPreferences?.logging_level || 'INFO', `[${transactionId}] Received null or undefined response from coach`);
         botMessageContent = 'Sorry, I did not receive a valid response.';
       }
-      
-      
+
+
       const botMessage: Message = {
         id: `msg-${Date.now()}-bot-${Math.random().toString(36).substring(2, 9)}`,
         content: botMessageContent,
@@ -379,12 +378,12 @@ const SparkyChatInterface = () => {
         timestamp: new Date(),
         metadata: messageMetadata // Use the potentially updated metadata
       };
-      
+
       // Always add the bot message after processing, regardless of whether an image was sent
       setMessages(prev => [...prev, botMessage]);
       await saveMessageToHistory(botMessage.content, 'assistant', botMessage.metadata);
-      
-      
+
+
     } catch (err) {
       error(userPreferences?.logging_level || 'INFO', `[${transactionId}] Error processing message:`, err);
       const errorMessage: Message = {
@@ -394,7 +393,7 @@ const SparkyChatInterface = () => {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
-      
+
       toast({
         title: "Error",
         description: "Failed to process your message. Please check your AI service settings.",
@@ -447,8 +446,11 @@ const SparkyChatInterface = () => {
         ref={coachRef}
         userLoggingLevel={userPreferences?.logging_level || 'ERROR'} // Pass logging level, default to ERROR
         formatDateInUserTimezone={formatDateInUserTimezone} // Pass formatter
+        energyUnit={energyUnit}
+        convertEnergy={convertEnergy}
+        getEnergyUnitString={getEnergyUnitString}
       />
-      
+
       <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((message) => (
@@ -457,11 +459,10 @@ const SparkyChatInterface = () => {
               className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] rounded-lg p-3 ${
-                  message.isUser
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
-                }`}
+                className={`max-w-[80%] rounded-lg p-3 ${message.isUser
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+                  }`}
               >
                 <div
                   dangerouslySetInnerHTML={{
@@ -484,7 +485,7 @@ const SparkyChatInterface = () => {
           )}
         </div>
       </ScrollArea>
-      
+
       <div className="p-4 border-t">
         {/* Image Preview */}
         {selectedImage && (

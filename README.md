@@ -130,13 +130,11 @@ For complete installation guides, development setup, and usage instructions, vis
 
 ### Quick Links
 
-- **[🚀 Getting Started](https://codewithcj.github.io/SparkyFitness/developer/getting-started)** - Complete setup guide for development and production
-- **[🐳 Docker Guide](https://codewithcj.github.io/SparkyFitness/developer/docker)** - Docker deployment and configuration
-- **[🔧 Development Workflow](https://codewithcj.github.io/SparkyFitness/developer/workflow)** - Developer guide and contribution process  
-- **[📊 Features Overview](https://codewithcj.github.io/SparkyFitness/features/)** - Complete feature documentation
-- **[🏗️ Architecture](https://codewithcj.github.io/SparkyFitness/app-overview)** - Technical architecture and design
-- Refer WIiki for sample env setup and Mobile App configuration.
+- **[🐳 Installation Guide](https://codewithcj.github.io/SparkyFitness/install/docker-compose)** - Deployment and configurations
+- **[📊 Features Overview](https://codewithcj.github.io/SparkyFitness/features)** - Complete feature documentation
+- **[🔧 Development Workflow](https://codewithcj.github.io/SparkyFitness/developer/getting-started)** - Developer guide and contribution process  
 
+- **[🔧 Translations](https://hosted.weblate.org/engage/sparkyfitness)** - Weblate translations
 
 ## Star History
 
@@ -170,11 +168,11 @@ For complete installation guides, development setup, and usage instructions, vis
 The following features are currently in beta and may not have been thoroughly tested. Expect potential bugs or incomplete functionality:
 
 *   AI Chatbot
-*   Multi-user support
 *   Family & Friends access
-*   Apple Health Data integration
+*   API documentation
 
-This application is under heavy development. Things may not work as expected due to the Supabase to PostgreSQL migration. BREAKING CHANGES might be introduced until the application is stable.
+
+This application is under heavy development. BREAKING CHANGES might be introduced though so far we never broke any.
 You might need to change Docker/environment variables for new releases. Therefore, auto-upgrades using Watchtower or similar apps are not recommended. Read release notes for any BREAKING CHANGES.
 
 
