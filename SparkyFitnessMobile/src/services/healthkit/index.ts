@@ -12,8 +12,11 @@ import {
   AggregatedHealthRecord,
   PermissionRequest,
 } from '../../types/healthRecords';
-import { SyncDuration } from './preferences';
+import { getSyncStartDate } from '../../utils/syncUtils';
 import { toLocalDateString } from './dataAggregation';
+
+// Re-export for backward compatibility with callers importing from this module
+export { getSyncStartDate };
 
 // Track if HealthKit is available on this device
 let isHealthKitAvailable = false;
@@ -238,40 +241,11 @@ export const requestHealthPermissions = async (
   }
 };
 
-export const getSyncStartDate = (duration: SyncDuration): Date => {
-  const now = new Date();
-  let startDate = new Date(now);
-
-  switch (duration) {
-    case 'today':
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    case '24h':
-      // True rolling 24h window - exactly 24 hours ago
-      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      break;
-    case '3d':
-      startDate.setDate(now.getDate() - 2);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    case '7d':
-      startDate.setDate(now.getDate() - 6);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    case '30d':
-      startDate.setDate(now.getDate() - 29);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    case '90d':
-      startDate.setDate(now.getDate() - 89);
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    default:
-      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      break;
-  }
-  return startDate;
-};
+// Result from a custom query function for aggregation
+interface AggregationQueryResult {
+  value: number;
+  hasData: boolean;
+}
 
 // Configuration for aggregated health metrics
 interface AggregationConfig {
@@ -279,7 +253,43 @@ interface AggregationConfig {
   unit: string;
   type: string;
   logLabel: string;
+  // Optional custom query function for metrics that need special handling (e.g., multi-query metrics)
+  // If provided, this is used instead of the default single-query approach
+  queryFn?: (dayStart: Date, dayEnd: Date) => Promise<AggregationQueryResult | null>;
 }
+
+// Query function for total calories (basal + active)
+const queryTotalCalories = async (
+  dayStart: Date,
+  dayEnd: Date
+): Promise<AggregationQueryResult | null> => {
+  try {
+    const [basalStats, activeStats] = await Promise.all([
+      queryStatisticsForQuantity(
+        'HKQuantityTypeIdentifierBasalEnergyBurned',
+        ['cumulativeSum'],
+        { filter: { date: { startDate: dayStart, endDate: dayEnd } }, unit: 'kcal' }
+      ),
+      queryStatisticsForQuantity(
+        'HKQuantityTypeIdentifierActiveEnergyBurned',
+        ['cumulativeSum'],
+        { filter: { date: { startDate: dayStart, endDate: dayEnd } }, unit: 'kcal' }
+      ),
+    ]);
+
+    const basal = basalStats?.sumQuantity?.quantity || 0;
+    const active = activeStats?.sumQuantity?.quantity || 0;
+
+    if (basal > 0 || active > 0) {
+      return { value: Math.round(basal + active), hasData: true };
+    }
+    return { value: 0, hasData: false };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[HealthKitService] Failed to query total calories: ${message}`, 'error', 'ERROR');
+    return null;
+  }
+};
 
 const AGGREGATION_CONFIGS: Record<string, AggregationConfig> = {
   steps: {
@@ -306,10 +316,45 @@ const AGGREGATION_CONFIGS: Record<string, AggregationConfig> = {
     type: 'floors_climbed',
     logLabel: 'floors',
   },
+  totalCalories: {
+    identifier: '', // Not used - custom queryFn handles both metrics
+    unit: 'kcal',
+    type: 'total_calories',
+    logLabel: 'total calories',
+    queryFn: queryTotalCalories,
+  },
+};
+
+// Default query function for single-metric aggregation using HealthKit statistics
+const defaultAggregationQuery = async (
+  dayStart: Date,
+  dayEnd: Date,
+  identifier: string,
+  unit: string
+): Promise<AggregationQueryResult | null> => {
+  const stats = await queryStatisticsForQuantity(
+    identifier as Parameters<typeof queryStatisticsForQuantity>[0],
+    ['cumulativeSum'],
+    {
+      filter: {
+        date: {
+          startDate: dayStart,
+          endDate: dayEnd,
+        },
+      },
+      unit,
+    }
+  );
+
+  if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
+    return { value: Math.round(stats.sumQuantity.quantity), hasData: true };
+  }
+  return { value: 0, hasData: false };
 };
 
 // Generic aggregation function for cumulative HealthKit metrics
 // Uses HealthKit's statistics query which handles deduplication automatically
+// Supports custom query functions for metrics that need special handling (e.g., total calories)
 const getAggregatedDataByDate = async (
   startDate: Date,
   endDate: Date,
@@ -317,93 +362,6 @@ const getAggregatedDataByDate = async (
 ): Promise<AggregatedHealthRecord[]> => {
   if (!isHealthKitAvailable) {
     addLog(`[HealthKitService] HealthKit not available for ${config.logLabel} aggregation`, 'debug');
-    return [];
-  }
-
-  const results: AggregatedHealthRecord[] = [];
-  const currentDate = new Date(startDate);
-  let daysQueried = 0;
-  let daysWithData = 0;
-  let isFirstDay = true;
-
-  while (currentDate <= endDate) {
-    // On the first day, use the actual startDate time to respect rolling windows (e.g., 24h)
-    // On subsequent days, use midnight as the start
-    const dayStart = new Date(currentDate);
-    if (isFirstDay) {
-      // Keep the original time from startDate
-      dayStart.setTime(startDate.getTime());
-    } else {
-      dayStart.setHours(0, 0, 0, 0);
-    }
-
-    const dayEnd = new Date(currentDate);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    // Don't query future dates
-    const now = new Date();
-    if (dayEnd > now) {
-      dayEnd.setTime(now.getTime());
-    }
-
-    daysQueried++;
-    try {
-      const stats = await queryStatisticsForQuantity(
-        config.identifier as Parameters<typeof queryStatisticsForQuantity>[0],
-        ['cumulativeSum'],
-        {
-          filter: {
-            date: {
-              startDate: dayStart,
-              endDate: dayEnd,
-            },
-          },
-          unit: config.unit,
-        }
-      );
-
-      if (stats && stats.sumQuantity && stats.sumQuantity.quantity > 0) {
-        daysWithData++;
-        // Use dayStart's date for the date string (normalized to midnight for consistent keys)
-        const dateForKey = new Date(dayStart);
-        dateForKey.setHours(0, 0, 0, 0);
-        const dateStr = toLocalDateString(dateForKey);
-        results.push({
-          date: dateStr,
-          value: Math.round(stats.sumQuantity.quantity),
-          type: config.type,
-        });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthKitService] Failed to get aggregated ${config.logLabel}: ${message}`, 'error', 'ERROR');
-    }
-
-    currentDate.setDate(currentDate.getDate() + 1);
-    isFirstDay = false;
-  }
-
-  if (daysWithData === 0) {
-    addLog(`[HealthKitService] No ${config.logLabel} data found for ${daysQueried} days queried`, 'debug');
-  } else {
-    addLog(`[HealthKitService] ${config.logLabel} aggregation: ${daysWithData}/${daysQueried} days with data`, 'debug');
-  }
-
-  return results;
-};
-
-export const getAggregatedStepsByDate = (startDate: Date, endDate: Date) =>
-  getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.steps);
-
-export const getAggregatedActiveCaloriesByDate = (startDate: Date, endDate: Date) =>
-  getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.activeCalories);
-
-export const getAggregatedTotalCaloriesByDate = async (
-  startDate: Date,
-  endDate: Date
-): Promise<AggregatedHealthRecord[]> => {
-  if (!isHealthKitAvailable) {
-    addLog(`[HealthKitService] HealthKit not available for total calories aggregation`, 'debug');
     return [];
   }
 
@@ -428,6 +386,7 @@ export const getAggregatedTotalCaloriesByDate = async (
     const dayEnd = new Date(currentDate);
     dayEnd.setHours(23, 59, 59, 999);
 
+    // Don't query future dates
     const now = new Date();
     if (dayEnd > now) {
       dayEnd.setTime(now.getTime());
@@ -435,60 +394,331 @@ export const getAggregatedTotalCaloriesByDate = async (
 
     daysQueried++;
     try {
-      // Query both basal and active with full precision, then sum
-      const [basalStats, activeStats] = await Promise.all([
-        queryStatisticsForQuantity(
-          'HKQuantityTypeIdentifierBasalEnergyBurned',
-          ['cumulativeSum'],
-          { filter: { date: { startDate: dayStart, endDate: dayEnd } }, unit: 'kcal' }
-        ),
-        queryStatisticsForQuantity(
-          'HKQuantityTypeIdentifierActiveEnergyBurned',
-          ['cumulativeSum'],
-          { filter: { date: { startDate: dayStart, endDate: dayEnd } }, unit: 'kcal' }
-        ),
-      ]);
+      // Use custom query function if provided, otherwise use default single-metric query
+      const queryResult = config.queryFn
+        ? await config.queryFn(dayStart, dayEnd)
+        : await defaultAggregationQuery(dayStart, dayEnd, config.identifier, config.unit);
 
-      const basal = basalStats?.sumQuantity?.quantity || 0;
-      const active = activeStats?.sumQuantity?.quantity || 0;
-
-      if (basal > 0 || active > 0) {
+      if (queryResult === null) {
+        // null indicates an error occurred in the custom query
+        errorCount++;
+      } else if (queryResult.hasData) {
         daysWithData++;
         // Use dayStart's date for the date string (normalized to midnight for consistent keys)
         const dateForKey = new Date(dayStart);
         dateForKey.setHours(0, 0, 0, 0);
         const dateStr = toLocalDateString(dateForKey);
-        const total = Math.round(basal + active);
         results.push({
           date: dateStr,
-          value: total,
-          type: 'total_calories',
+          value: queryResult.value,
+          type: config.type,
         });
       }
     } catch (error) {
       errorCount++;
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthKitService] Failed to get aggregated total calories: ${message}`, 'error', 'ERROR');
+      addLog(`[HealthKitService] Failed to get aggregated ${config.logLabel}: ${message}`, 'error', 'ERROR');
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
     isFirstDay = false;
   }
 
+  const errorSuffix = errorCount > 0 ? `, ${errorCount} errors` : '';
   if (daysWithData === 0) {
-    addLog(`[HealthKitService] No total calories data found for ${daysQueried} days queried${errorCount > 0 ? `, ${errorCount} errors` : ''}`, 'debug');
+    addLog(`[HealthKitService] No ${config.logLabel} data found for ${daysQueried} days queried${errorSuffix}`, 'debug');
   } else {
-    addLog(`[HealthKitService] Total calories aggregation: ${daysWithData}/${daysQueried} days with data${errorCount > 0 ? `, ${errorCount} errors` : ''}`, 'debug');
+    addLog(`[HealthKitService] ${config.logLabel} aggregation: ${daysWithData}/${daysQueried} days with data${errorSuffix}`, 'debug');
   }
 
   return results;
 };
+
+export const getAggregatedStepsByDate = (startDate: Date, endDate: Date) =>
+  getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.steps);
+
+export const getAggregatedActiveCaloriesByDate = (startDate: Date, endDate: Date) =>
+  getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.activeCalories);
+
+export const getAggregatedTotalCaloriesByDate = (startDate: Date, endDate: Date) =>
+  getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.totalCalories);
 
 export const getAggregatedDistanceByDate = (startDate: Date, endDate: Date) =>
   getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.distance);
 
 export const getAggregatedFloorsClimbedByDate = (startDate: Date, endDate: Date) =>
   getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.floorsClimbed);
+
+// ============================================================================
+// Record Handlers - modular handlers for different HealthKit record types
+// ============================================================================
+
+const QUERY_LIMIT = 20000;
+
+// Handler function signature for reading health records
+type RecordHandler = (
+  identifier: string,
+  startDate: Date,
+  endDate: Date
+) => Promise<unknown[]>;
+
+// Filter helpers for date range checking
+const isInDateRange = (recordDate: Date, startDate: Date, endDate: Date): boolean =>
+  recordDate >= startDate && recordDate <= endDate;
+
+const overlapsDateRange = (recordStart: Date, recordEnd: Date, rangeStart: Date, rangeEnd: Date): boolean =>
+  recordStart < rangeEnd && recordEnd > rangeStart;
+
+// Handler for SleepSession records
+const handleSleepSession: RecordHandler = async (identifier, startDate, endDate) => {
+  const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
+    ascending: false,
+    limit: QUERY_LIMIT,
+  });
+
+  // Use overlap check to include sessions that span range boundaries
+  // (e.g., overnight sleep starting before midnight, ending after)
+  const filteredSamples = samples.filter(s => {
+    const recordStartDate = new Date(s.startDate);
+    const recordEndDate = new Date(s.endDate);
+    return overlapsDateRange(recordStartDate, recordEndDate, startDate, endDate);
+  });
+
+  return filteredSamples.map(s => ({
+    startTime: s.startDate,
+    endTime: s.endDate,
+    value: s.value,
+    metadata: (s as unknown as { metadata?: unknown }).metadata,
+    sourceName: (s as unknown as { sourceName?: string }).sourceName,
+    sourceId: (s as unknown as { sourceId?: string }).sourceId,
+  }));
+};
+
+// Handler for Stress (MindfulSession) records
+const handleStress: RecordHandler = async (identifier, startDate, endDate) => {
+  const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
+    ascending: false,
+    limit: QUERY_LIMIT,
+  });
+
+  const filteredSamples = samples.filter(s => {
+    const recordStartDate = new Date(s.startDate);
+    return isInDateRange(recordStartDate, startDate, endDate);
+  });
+
+  return filteredSamples.map(s => ({
+    startTime: s.startDate,
+    endTime: s.endDate,
+    value: 1, // MindfulSession doesn't have a direct stress level, so we record its presence
+  }));
+};
+
+// Handler for reproductive health category types
+const handleReproductiveHealth: RecordHandler = async (identifier, startDate, endDate) => {
+  const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
+    ascending: false,
+    limit: QUERY_LIMIT,
+  });
+
+  const filteredSamples = samples.filter(s => {
+    const recordStartDate = new Date(s.startDate);
+    return isInDateRange(recordStartDate, startDate, endDate);
+  });
+
+  return filteredSamples.map(s => ({
+    startTime: s.startDate,
+    endTime: s.endDate,
+    value: s.value, // Category value (enum integer)
+  }));
+};
+
+// Handler for Workout/ExerciseSession records
+const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => {
+  const workouts = await queryWorkoutSamples({
+    ascending: false,
+    limit: QUERY_LIMIT,
+  });
+
+  // Use overlap check to include workouts that span range boundaries
+  const filteredWorkouts = workouts.filter(w => {
+    const workoutStart = new Date(w.startDate);
+    const workoutEnd = new Date(w.endDate);
+    return overlapsDateRange(workoutStart, workoutEnd, startDate, endDate);
+  });
+
+  // Fetch statistics (calories, distance) for each workout
+  const workoutsWithStats = await Promise.all(filteredWorkouts.map(async (w) => {
+    const workoutAny = w as unknown as {
+      totalEnergyBurned?: number | { inKilocalories?: number };
+      totalDistance?: number | { inMeters?: number };
+    };
+
+    // Start with direct properties from workout sample (fallback for older workouts)
+    let totalEnergyBurned = typeof workoutAny.totalEnergyBurned === 'object'
+      ? (workoutAny.totalEnergyBurned?.inKilocalories ?? 0)
+      : (workoutAny.totalEnergyBurned ?? 0);
+    let totalDistance = typeof workoutAny.totalDistance === 'object'
+      ? (workoutAny.totalDistance?.inMeters ?? 0)
+      : (workoutAny.totalDistance ?? 0);
+
+    try {
+      const stats = await w.getAllStatistics();
+
+      // Active energy burned (calories) - prefer stats if available
+      const energyStats = stats['HKQuantityTypeIdentifierActiveEnergyBurned'];
+      if (energyStats?.sumQuantity?.quantity) {
+        totalEnergyBurned = energyStats.sumQuantity.quantity;
+      }
+
+      // Distance - check multiple types based on workout activity
+      const distanceTypes = [
+        'HKQuantityTypeIdentifierDistanceWalkingRunning',
+        'HKQuantityTypeIdentifierDistanceCycling',
+        'HKQuantityTypeIdentifierDistanceSwimming',
+        'HKQuantityTypeIdentifierDistanceWheelchair',
+        'HKQuantityTypeIdentifierDistanceDownhillSnowSports',
+      ];
+      for (const distanceType of distanceTypes) {
+        const distanceStats = stats[distanceType];
+        if (distanceStats?.sumQuantity?.quantity) {
+          totalDistance = distanceStats.sumQuantity.quantity;
+          break;
+        }
+      }
+    } catch {
+      // Stats fetch failed - keep using direct properties from workout
+    }
+
+    return {
+      startTime: w.startDate,
+      endTime: w.endDate,
+      activityType: w.workoutActivityType,
+      duration: w.duration,
+      totalEnergyBurned,
+      totalDistance,
+    };
+  }));
+
+  return workoutsWithStats;
+};
+
+// Handler for BloodPressure records (requires merging systolic and diastolic samples)
+const handleBloodPressure: RecordHandler = async (_identifier, startDate, endDate) => {
+  const [systolicSamples, diastolicSamples] = await Promise.all([
+    queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureSystolic', {
+      ascending: false,
+      limit: QUERY_LIMIT,
+    }),
+    queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureDiastolic', {
+      ascending: false,
+      limit: QUERY_LIMIT,
+    }),
+  ]);
+
+  const filteredSystolic = systolicSamples.filter(s => {
+    const sampleDate = new Date(s.startDate);
+    return isInDateRange(sampleDate, startDate, endDate);
+  });
+  const filteredDiastolic = diastolicSamples.filter(s => {
+    const sampleDate = new Date(s.startDate);
+    return isInDateRange(sampleDate, startDate, endDate);
+  });
+
+  // Merge systolic and diastolic readings by timestamp
+  const bpMap = new Map<string, { systolic?: number; diastolic?: number; time: string }>();
+  filteredSystolic.forEach(s => {
+    const timeStr = typeof s.startDate === 'string' ? s.startDate : new Date(s.startDate).toISOString();
+    bpMap.set(timeStr, { systolic: s.quantity, time: timeStr });
+  });
+  filteredDiastolic.forEach(s => {
+    const timeStr = typeof s.startDate === 'string' ? s.startDate : new Date(s.startDate).toISOString();
+    const existing = bpMap.get(timeStr);
+    if (existing) existing.diastolic = s.quantity;
+  });
+
+  return Array.from(bpMap.values())
+    .filter(r => r.systolic && r.diastolic)
+    .map(r => ({
+      systolic: { inMillimetersOfMercury: r.systolic },
+      diastolic: { inMillimetersOfMercury: r.diastolic },
+      time: r.time,
+    }));
+};
+
+// Transform map for standard quantity types - maps recordType to output structure
+const QUANTITY_TRANSFORMS: Record<string, (baseRecord: Record<string, unknown>, quantity: number) => Record<string, unknown>> = {
+  'Steps': (base) => base,
+  'ActiveCaloriesBurned': (base, q) => ({ ...base, energy: { inCalories: q } }),
+  'TotalCaloriesBurned': (base, q) => ({ ...base, energy: { inCalories: q } }),
+  'HeartRate': (base, q) => ({ ...base, samples: [{ beatsPerMinute: q }] }),
+  'Weight': (base, q) => ({ ...base, weight: { inKilograms: q } }),
+  'Height': (base, q) => ({ ...base, height: { inMeters: q } }),
+  'BodyFat': (base, q) => ({ ...base, percentage: { inPercent: q * 100 } }),
+  'BodyTemperature': (base, q) => ({ ...base, temperature: { inCelsius: q } }),
+  'BloodGlucose': (base, q) => ({ ...base, level: { inMilligramsPerDeciliter: q } }),
+  'OxygenSaturation': (base, q) => ({ ...base, percentage: { inPercent: q * 100 } }),
+  'Vo2Max': (base, q) => ({ ...base, vo2Max: q }),
+  'RestingHeartRate': (base, q) => ({ ...base, beatsPerMinute: q }),
+  'RespiratoryRate': (base, q) => ({ ...base, rate: q }),
+  'Distance': (base, q) => ({ ...base, distance: { inMeters: q } }),
+  'FloorsClimbed': (base, q) => ({ ...base, floors: q }),
+  'Hydration': (base, q) => ({ ...base, volume: { inLiters: q } }),
+  'LeanBodyMass': (base, q) => ({ ...base, mass: { inKilograms: q } }),
+};
+
+// Handler for standard quantity types (most common metrics)
+const createQuantityHandler = (recordType: string): RecordHandler => {
+  return async (identifier, startDate, endDate) => {
+    if (!SUPPORTED_HK_TYPES.has(identifier)) {
+      return [];
+    }
+
+    const unit = HEALTHKIT_UNIT_MAP[recordType];
+    const queryOptions: { ascending: boolean; limit: number; unit?: string } = {
+      ascending: false,
+      limit: QUERY_LIMIT,
+    };
+    if (unit) {
+      queryOptions.unit = unit;
+    }
+
+    const samples = await queryQuantitySamples(identifier as Parameters<typeof queryQuantitySamples>[0], queryOptions);
+
+    if (!Array.isArray(samples)) {
+      return [];
+    }
+
+    const filteredSamples = samples.filter(record => {
+      const recordDate = new Date(record.startDate);
+      return isInDateRange(recordDate, startDate, endDate);
+    });
+
+    const transform = QUANTITY_TRANSFORMS[recordType] || ((base: Record<string, unknown>) => base);
+
+    return filteredSamples.map(s => {
+      const baseRecord = {
+        startTime: s.startDate,
+        endTime: s.endDate,
+        time: s.startDate,
+        value: s.quantity,
+      };
+      return transform(baseRecord, s.quantity);
+    });
+  };
+};
+
+// Registry mapping record types to their handlers
+const RECORD_HANDLERS: Record<string, RecordHandler> = {
+  'SleepSession': handleSleepSession,
+  'Stress': handleStress,
+  'IntermenstrualBleeding': handleReproductiveHealth,
+  'MenstruationFlow': handleReproductiveHealth,
+  'OvulationTest': handleReproductiveHealth,
+  'CervicalMucus': handleReproductiveHealth,
+  'Workout': handleWorkout,
+  'ExerciseSession': handleWorkout,
+  'BloodPressure': handleBloodPressure,
+};
 
 // Read health records from HealthKit
 export const readHealthRecords = async (
@@ -500,249 +730,15 @@ export const readHealthRecords = async (
     return [];
   }
 
-  const queryLimit = 20000; // Define a reasonable limit for HealthKit queries
-
   try {
     const identifier = HEALTHKIT_TYPE_MAP[recordType];
     if (!identifier) {
       return [];
     }
 
-    // Handle special cases first
-    if (recordType === 'SleepSession') {
-      const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
-        ascending: false,
-        limit: queryLimit,
-      });
-      // Use overlap check to include sessions that span range boundaries
-      // (e.g., overnight sleep starting before midnight, ending after)
-      const filteredSamples = samples.filter(s => {
-        const recordStartDate = new Date(s.startDate);
-        const recordEndDate = new Date(s.endDate);
-        // Include if any part of the session overlaps with the range
-        return recordStartDate < endDate && recordEndDate > startDate;
-      });
-
-      // Map to standard format expected by consumers (MainScreen, etc.)
-      return filteredSamples.map(s => ({
-        startTime: s.startDate,
-        endTime: s.endDate,
-        value: s.value, // 'ASLEEP', 'INBED', etc. value is often an enum in HK
-        metadata: (s as unknown as { metadata?: unknown }).metadata,
-        sourceName: (s as unknown as { sourceName?: string }).sourceName,
-        sourceId: (s as unknown as { sourceId?: string }).sourceId,
-      }));
-    }
-
-    if (recordType === 'Stress') {
-      const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
-        ascending: false,
-        limit: queryLimit,
-      });
-      // Filter samples manually by date range
-      const filteredSamples = samples.filter(s => {
-        const recordStartDate = new Date(s.startDate);
-        return recordStartDate >= startDate && recordStartDate <= endDate;
-      });
-      return filteredSamples.map(s => ({
-        startTime: s.startDate,
-        endTime: s.endDate,
-        value: 1, // MindfulSession doesn't have a direct stress level, so we'll just record its presence
-      }));
-    }
-
-    // Handle reproductive health category types
-    if (recordType === 'IntermenstrualBleeding' || recordType === 'MenstruationFlow' ||
-        recordType === 'OvulationTest' || recordType === 'CervicalMucus') {
-      const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
-        ascending: false,
-        limit: queryLimit,
-      });
-      // Filter samples manually by date range
-      const filteredSamples = samples.filter(s => {
-        const recordStartDate = new Date(s.startDate);
-        return recordStartDate >= startDate && recordStartDate <= endDate;
-      });
-      return filteredSamples.map(s => ({
-        startTime: s.startDate,
-        endTime: s.endDate,
-        value: s.value, // Category value (enum integer)
-      }));
-    }
-
-    if (recordType === 'Workout' || recordType === 'ExerciseSession') {
-      // Filter uses nested date object with Date objects (not ISO strings)
-      const workouts = await queryWorkoutSamples({
-        ascending: false,
-        limit: queryLimit,
-      });
-
-      // Use overlap check to include workouts that span range boundaries
-      // (e.g., workouts crossing midnight)
-      const filteredWorkouts = workouts.filter(w => {
-        const workoutStart = new Date(w.startDate);
-        const workoutEnd = new Date(w.endDate);
-        // Include if any part of the workout overlaps with the range
-        return workoutStart < endDate && workoutEnd > startDate;
-      });
-
-      // Fetch statistics (calories, distance) for each workout
-      const workoutsWithStats = await Promise.all(filteredWorkouts.map(async (w) => {
-        // Cast workout to access potential direct properties (may exist on older workouts)
-        const workoutAny = w as unknown as {
-          totalEnergyBurned?: number | { inKilocalories?: number };
-          totalDistance?: number | { inMeters?: number };
-        };
-
-        // Start with direct properties from workout sample (fallback for older workouts)
-        let totalEnergyBurned = typeof workoutAny.totalEnergyBurned === 'object'
-          ? (workoutAny.totalEnergyBurned?.inKilocalories ?? 0)
-          : (workoutAny.totalEnergyBurned ?? 0);
-        let totalDistance = typeof workoutAny.totalDistance === 'object'
-          ? (workoutAny.totalDistance?.inMeters ?? 0)
-          : (workoutAny.totalDistance ?? 0);
-
-        try {
-          const stats = await w.getAllStatistics();
-
-          // Active energy burned (calories) - prefer stats if available
-          const energyStats = stats['HKQuantityTypeIdentifierActiveEnergyBurned'];
-          if (energyStats?.sumQuantity?.quantity) {
-            totalEnergyBurned = energyStats.sumQuantity.quantity;
-          }
-
-          // Distance - check multiple types based on workout activity
-          const distanceTypes = [
-            'HKQuantityTypeIdentifierDistanceWalkingRunning',
-            'HKQuantityTypeIdentifierDistanceCycling',
-            'HKQuantityTypeIdentifierDistanceSwimming',
-            'HKQuantityTypeIdentifierDistanceWheelchair',
-            'HKQuantityTypeIdentifierDistanceDownhillSnowSports',
-          ];
-          for (const distanceType of distanceTypes) {
-            const distanceStats = stats[distanceType];
-            if (distanceStats?.sumQuantity?.quantity) {
-              totalDistance = distanceStats.sumQuantity.quantity;
-              break; // Use first available distance type
-            }
-          }
-        } catch {
-          // Stats fetch failed - keep using direct properties from workout
-        }
-
-        return {
-          startTime: w.startDate,
-          endTime: w.endDate,
-          activityType: w.workoutActivityType,
-          duration: w.duration,
-          totalEnergyBurned,
-          totalDistance,
-        };
-      }));
-
-      return workoutsWithStats;
-    }
-
-    if (recordType === 'BloodPressure') {
-      const systolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureSystolic', {
-        ascending: false,
-        limit: queryLimit,
-      });
-      const diastolicSamples = await queryQuantitySamples('HKQuantityTypeIdentifierBloodPressureDiastolic', {
-        ascending: false,
-        limit: queryLimit,
-      });
-
-      // Filter by date range manually
-      const filteredSystolic = systolicSamples.filter(s => {
-        const sampleDate = new Date(s.startDate);
-        return sampleDate >= startDate && sampleDate <= endDate;
-      });
-      const filteredDiastolic = diastolicSamples.filter(s => {
-        const sampleDate = new Date(s.startDate);
-        return sampleDate >= startDate && sampleDate <= endDate;
-      });
-
-      const bpMap = new Map<string, { systolic?: number; diastolic?: number; time: string }>();
-      filteredSystolic.forEach(s => {
-        const timeStr = typeof s.startDate === 'string' ? s.startDate : new Date(s.startDate).toISOString();
-        bpMap.set(timeStr, { systolic: s.quantity, time: timeStr });
-      });
-      filteredDiastolic.forEach(s => {
-        const timeStr = typeof s.startDate === 'string' ? s.startDate : new Date(s.startDate).toISOString();
-        const existing = bpMap.get(timeStr);
-        if (existing) existing.diastolic = s.quantity;
-      });
-
-      const results = Array.from(bpMap.values())
-        .filter(r => r.systolic && r.diastolic) // Ensure both values exist
-        .map(r => ({
-          systolic: { inMillimetersOfMercury: r.systolic },
-          diastolic: { inMillimetersOfMercury: r.diastolic },
-          time: r.time,
-        }));
-
-      return results;
-    }
-
-    // Handle all other standard quantity types
-    if (!SUPPORTED_HK_TYPES.has(identifier)) {
-      return [];
-    }
-
-    // Get the expected unit for this record type (if any)
-    const unit = HEALTHKIT_UNIT_MAP[recordType];
-    const queryOptions: { ascending: boolean; limit: number; unit?: string } = {
-      ascending: false,
-      limit: queryLimit,
-    };
-    if (unit) {
-      queryOptions.unit = unit;
-    }
-
-    const samples = await queryQuantitySamples(identifier as Parameters<typeof queryQuantitySamples>[0], queryOptions);
-
-    // Defensive check: Ensure samples is an array before proceeding
-    if (!Array.isArray(samples)) {
-      return [];
-    }
-
-    // Manual filtering for iOS as a workaround for potential library issues where the native
-    // query may not respect the date range, returning all historical data.
-    const filteredSamples = samples.filter(record => {
-      const recordDate = new Date(record.startDate);
-      return recordDate >= startDate && recordDate <= endDate;
-    });
-
-    // Transform samples to match expected format
-    return filteredSamples.map(s => {
-      const baseRecord = {
-        startTime: s.startDate,
-        endTime: s.endDate,
-        time: s.startDate,
-        value: s.quantity,
-      };
-      switch (recordType) {
-        case 'Steps': return { ...baseRecord };
-        case 'ActiveCaloriesBurned':
-        case 'TotalCaloriesBurned': return { ...baseRecord, energy: { inCalories: s.quantity } };
-        case 'HeartRate': return { ...baseRecord, samples: [{ beatsPerMinute: s.quantity }] };
-        case 'Weight': return { ...baseRecord, weight: { inKilograms: s.quantity } };
-        case 'Height': return { ...baseRecord, height: { inMeters: s.quantity } };
-        case 'BodyFat': return { ...baseRecord, percentage: { inPercent: s.quantity * 100 } };
-        case 'BodyTemperature': return { ...baseRecord, temperature: { inCelsius: s.quantity } };
-        case 'BloodGlucose': return { ...baseRecord, level: { inMilligramsPerDeciliter: s.quantity } };
-        case 'OxygenSaturation': return { ...baseRecord, percentage: { inPercent: s.quantity * 100 } };
-        case 'Vo2Max': return { ...baseRecord, vo2Max: s.quantity };
-        case 'RestingHeartRate': return { ...baseRecord, beatsPerMinute: s.quantity };
-        case 'RespiratoryRate': return { ...baseRecord, rate: s.quantity };
-        case 'Distance': return { ...baseRecord, distance: { inMeters: s.quantity } };
-        case 'FloorsClimbed': return { ...baseRecord, floors: s.quantity };
-        case 'Hydration': return { ...baseRecord, volume: { inLiters: s.quantity } };
-        case 'LeanBodyMass': return { ...baseRecord, mass: { inKilograms: s.quantity } };
-        default: return baseRecord;
-      }
-    });
+    // Use registered handler if available, otherwise create a quantity handler
+    const handler = RECORD_HANDLERS[recordType] || createQuantityHandler(recordType);
+    return await handler(identifier, startDate, endDate);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[HealthKitService] Error reading ${recordType}: ${message}`, 'error', 'ERROR');

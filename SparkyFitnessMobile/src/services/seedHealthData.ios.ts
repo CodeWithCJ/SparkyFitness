@@ -136,19 +136,22 @@ const seedQuantitySamples = async (
   for (const date of dates) {
     try {
       const startTime = new Date(date);
-      startTime.setHours(8, 0, 0, 0);
       const endTime = new Date(date);
-      endTime.setHours(20, 0, 0, 0);
 
-      // For today, don't set future end times
       if (isToday(date)) {
+        // For today, use midnight to current time
         const now = new Date();
-        if (endTime > now) {
-          endTime.setTime(now.getTime() - 60000);
-        }
-        if (startTime > now) {
+        startTime.setHours(0, 0, 0, 0);
+        endTime.setTime(now.getTime() - 60000); // 1 minute ago
+
+        // Need at least 1 minute between start and end
+        if (endTime <= startTime) {
           continue;
         }
+      } else {
+        // For past days, use 8 AM to 8 PM
+        startTime.setHours(8, 0, 0, 0);
+        endTime.setHours(20, 0, 0, 0);
       }
 
       const value = randomInt(config.range[0], config.range[1]);
@@ -183,7 +186,12 @@ const seedHeartRate = async (dates: Date[]): Promise<number> => {
 
   for (const date of dates) {
     // 3 heart rate samples per day: morning, afternoon, evening
-    const sampleHours = isToday(date) ? [8] : [8, 14, 20];
+    // For today, filter to hours that have already passed
+    const allHours = [6, 8, 14, 20];
+    const currentHour = new Date().getHours();
+    const sampleHours = isToday(date)
+      ? allHours.filter(h => h < currentHour)
+      : allHours.slice(1); // Skip 6 AM for past days
 
     for (const hour of sampleHours) {
       try {
@@ -234,11 +242,13 @@ const seedWeight = async (dates: Date[]): Promise<number> => {
     const date = dates[i];
     try {
       const sampleTime = new Date(date);
-      sampleTime.setHours(7, 15, 0, 0);
 
-      // For today, skip if time hasn't passed yet
-      if (isToday(date) && sampleTime > new Date()) {
-        continue;
+      if (isToday(date)) {
+        // For today, use 1 minute ago to ensure sample is in the past
+        const now = new Date();
+        sampleTime.setTime(now.getTime() - 60000);
+      } else {
+        sampleTime.setHours(7, 15, 0, 0);
       }
 
       const endTime = new Date(sampleTime);
@@ -408,28 +418,31 @@ const seedWorkouts = async (dates: Date[]): Promise<number> => {
 
     try {
       const workout = WORKOUT_TYPES[randomInt(0, WORKOUT_TYPES.length - 1)];
-      const durationMinutes = isToday(date)
-        ? Math.min(20, workout.durationMin)
-        : randomInt(workout.durationMin, workout.durationMax);
+      const now = new Date();
 
-      const startHour = isToday(date) ? 7 : randomInt(6, 18);
-      const startTime = new Date(date);
-      startTime.setHours(startHour, randomInt(0, 30), 0, 0);
+      let startTime: Date;
+      let endTime: Date;
+      let durationMinutes: number;
 
-      // For today, skip if the start time is in the future
-      if (isToday(date) && startTime > new Date()) {
-        continue;
-      }
-
-      const endTime = new Date(startTime);
-      endTime.setMinutes(endTime.getMinutes() + durationMinutes);
-
-      // For today, don't let end time be in the future
       if (isToday(date)) {
-        const now = new Date();
-        if (endTime > now) {
-          endTime.setTime(now.getTime() - 60000);
+        // For today, place workout ending 2 minutes ago
+        durationMinutes = Math.min(20, workout.durationMin);
+        endTime = new Date(now.getTime() - 120000); // 2 minutes ago
+        startTime = new Date(endTime.getTime() - durationMinutes * 60000);
+
+        // Skip if we don't have enough time since midnight
+        const midnight = new Date(date);
+        midnight.setHours(0, 0, 0, 0);
+        if (startTime < midnight) {
+          continue;
         }
+      } else {
+        durationMinutes = randomInt(workout.durationMin, workout.durationMax);
+        const startHour = randomInt(6, 18);
+        startTime = new Date(date);
+        startTime.setHours(startHour, randomInt(0, 30), 0, 0);
+        endTime = new Date(startTime);
+        endTime.setMinutes(endTime.getMinutes() + durationMinutes);
       }
 
       // Estimated calories based on workout type and duration
