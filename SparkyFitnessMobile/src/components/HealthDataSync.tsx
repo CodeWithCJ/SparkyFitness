@@ -28,8 +28,14 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Health Data to Sync</Text>
       <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={[styles.settingLabel, { fontWeight: 'bold', color: colors.text }]}>Enable All Health Metrics</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+          <Text
+            style={[styles.settingLabel, { fontWeight: 'bold', color: colors.text, flex: 1 }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            Enable All Health Metrics
+          </Text>
         </View>
         <Switch
           onValueChange={handleToggleAllMetrics}
@@ -38,9 +44,15 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
       </View>
       {HEALTH_METRICS.map((metric) => (
         <View key={metric.id} style={[styles.settingItem, { borderBottomColor: colors.border }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
             <Image source={metric.icon} style={styles.icon} />
-            <Text style={[styles.settingLabel, { marginLeft: 8, color: colors.text }]}>{metric.label}</Text>
+            <Text
+              style={[styles.settingLabel, { marginLeft: 8, color: colors.text, flex: 1 }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {metric.label}
+            </Text>
           </View>
           <Switch
             onValueChange={(newValue) => handleToggleHealthMetric(metric, newValue)}

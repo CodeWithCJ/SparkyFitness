@@ -20,7 +20,10 @@ import {
   SyncResult,
   HealthMetricStates,
 } from '../../types/healthRecords';
-import { SyncDuration } from './preferences';
+import { SyncDuration, getSyncStartDate } from '../../utils/syncUtils';
+
+// Re-export for backward compatibility with callers importing from this module
+export { getSyncStartDate };
 
 export const initHealthConnect = async (): Promise<boolean> => {
   try {
@@ -211,37 +214,6 @@ export const getAggregatedActiveCaloriesByDate = async (
     addLog(`[HealthConnectService] Error in getAggregatedActiveCaloriesByDate: ${message}`, 'error', 'ERROR');
     return [];
   }
-};
-
-export const getSyncStartDate = (duration: SyncDuration): Date => {
-  const now = new Date();
-  let startDate = new Date(now);
-
-  switch (duration) {
-    case 'today':
-      // Already set to midnight
-      break;
-    case '24h':
-      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      break;
-    case '3d':
-      startDate.setDate(now.getDate() - 2);
-      break;
-    case '7d':
-      startDate.setDate(now.getDate() - 6);
-      break;
-    case '30d':
-      startDate.setDate(now.getDate() - 29);
-      break;
-    case '90d':
-      startDate.setDate(now.getDate() - 89);
-      break;
-    default:
-      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      break;
-  }
-  startDate.setHours(0, 0, 0, 0);
-  return startDate;
 };
 
 export const syncHealthData = async (

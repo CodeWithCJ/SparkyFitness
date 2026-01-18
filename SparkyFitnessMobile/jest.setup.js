@@ -32,11 +32,14 @@ jest.mock('react-native-nitro-modules', () => ({
 
 // Mock @kingstinct/react-native-healthkit
 jest.mock('@kingstinct/react-native-healthkit', () => ({
-  requestAuthorization: jest.fn(),
+  requestAuthorization: jest.fn().mockResolvedValue(true),
   queryQuantitySamples: jest.fn(),
   queryCategorySamples: jest.fn(),
   queryStatisticsForQuantity: jest.fn(),
   queryWorkoutSamples: jest.fn(),
+  saveQuantitySample: jest.fn().mockResolvedValue(true),
+  saveCategorySample: jest.fn().mockResolvedValue(true),
+  saveWorkoutSample: jest.fn().mockResolvedValue({}),
   HKQuantityTypeIdentifier: {
     stepCount: 'HKQuantityTypeIdentifierStepCount',
     activeEnergyBurned: 'HKQuantityTypeIdentifierActiveEnergyBurned',

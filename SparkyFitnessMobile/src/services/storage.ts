@@ -47,7 +47,7 @@ export const getActiveServerConfig = async (): Promise<ServerConfig | null> => {
       console.log('[storage.js] No active config ID found.');
       return null;
     }
-    console.log(`[storage.js] Active config ID: ${activeId}`);
+    // console.log(`[storage.js] Active config ID: ${activeId}`);
 
     const configs = await getAllServerConfigs();
     return configs.find(config => config.id === activeId) || null;

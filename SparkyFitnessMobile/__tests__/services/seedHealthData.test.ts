@@ -164,8 +164,8 @@ describe('seedHealthData.ts (Android)', () => {
   });
 });
 
-describe('seedHealthData.ios.ts (iOS stub)', () => {
-  test('returns expected stub response', async () => {
+describe('seedHealthData.ios.ts', () => {
+  test('seeds health data successfully when permissions are granted', async () => {
     // Import iOS file directly using require to bypass Jest's platform resolution
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const iosService = require('../../src/services/seedHealthData.ios.ts') as {
@@ -174,8 +174,9 @@ describe('seedHealthData.ios.ts (iOS stub)', () => {
 
     const result = await iosService.seedHealthData(7);
 
-    expect(result.success).toBe(false);
-    expect(result.recordsInserted).toBe(0);
-    expect(result.error).toMatch(/android/i);
+    // With mocked HealthKit, seeding should succeed
+    expect(result.success).toBe(true);
+    expect(result.recordsInserted).toBeGreaterThanOrEqual(0);
+    expect(result.error).toBeUndefined();
   });
 });

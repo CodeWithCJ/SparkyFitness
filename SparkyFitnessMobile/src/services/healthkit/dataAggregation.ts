@@ -9,16 +9,10 @@ import {
   AggregatedSleepSession,
 } from '../../types/healthRecords';
 import { SleepStageEvent } from '../../types/mobileHealthData';
+import { toLocalDateString } from '../../utils/dateUtils';
 
-/**
- * Converts a timestamp to a local date string (YYYY-MM-DD).
- * This ensures dates are assigned based on the user's local timezone,
- * not UTC (which would cause issues like data at 11pm being assigned to the next day).
- */
-const toLocalDateString = (timestamp: string | Date): string => {
-  const localDate = new Date(timestamp);
-  return `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
-};
+// Re-export for backward compatibility
+export { toLocalDateString };
 
 export const aggregateHeartRateByDate = (records: HKHeartRateRecord[]): AggregatedHealthRecord[] => {
   if (!Array.isArray(records)) return [];
@@ -69,7 +63,7 @@ const finalizeSession = (session: SleepSessionAccumulator): AggregatedSleepSessi
     type: 'SleepSession',
     source: 'HealthKit',
     timestamp: session.bedtime.toISOString(),
-    entry_date: session.bedtime.toISOString().split('T')[0],
+    entry_date: toLocalDateString(session.bedtime),
     bedtime: session.bedtime.toISOString(),
     wake_time: session.wake_time.toISOString(),
     duration_in_seconds: totalDuration,

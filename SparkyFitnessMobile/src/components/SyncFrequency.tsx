@@ -1,17 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
+import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import styles from '../screens/SettingsScreenStyles';
 import { saveSyncDuration, saveStringPreference } from '../services/healthConnectService';
-// Import type directly from preferences module (type is identical in both platform variants)
 import type { SyncInterval } from '../services/healthconnect/preferences';
 
 import { useTheme } from '../contexts/ThemeContext';
-
-interface SyncDurationItem {
-  label: string;
-  value: SyncInterval;
-}
 
 interface SyncFrequencyProps {
   syncDuration: SyncInterval;
@@ -22,6 +17,9 @@ interface SyncFrequencyProps {
   setDailySyncTime: React.Dispatch<React.SetStateAction<string>>;
 }
 
+const SYNC_INTERVAL_VALUES: SyncInterval[] = ['1h', '4h', '24h'];
+const SYNC_INTERVAL_LABELS = ['Hourly', '4 Hours', 'Daily'];
+
 const SyncFrequency: React.FC<SyncFrequencyProps> = ({
   syncDuration,
   setSyncDuration,
@@ -30,16 +28,9 @@ const SyncFrequency: React.FC<SyncFrequencyProps> = ({
   dailySyncTime,
   setDailySyncTime,
 }) => {
-  const [syncDurationOpen, setSyncDurationOpen] = useState<boolean>(false);
   const [fourHourTimeOpen, setFourHourTimeOpen] = useState<boolean>(false);
   const [dailyTimeOpen, setDailyTimeOpen] = useState<boolean>(false);
   const { colors, isDarkMode } = useTheme();
-
-  const syncDurationItems: SyncDurationItem[] = [
-    { label: 'Hourly', value: '1h' },
-    { label: 'Every 4 Hours', value: '4h' },
-    { label: 'Daily', value: '24h' },
-  ];
 
   const fourHourTimeItems = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'].map(time => ({ label: time, value: time }));
 
@@ -48,25 +39,24 @@ const SyncFrequency: React.FC<SyncFrequencyProps> = ({
     return { label: `${hour}:00`, value: `${hour}:00` };
   });
 
-  const onSyncDurationOpen = (open: boolean) => {
-    if (open) {
-      setFourHourTimeOpen(false);
-      setDailyTimeOpen(false);
-    }
-  };
-
   const onFourHourTimeOpen = (open: boolean) => {
     if (open) {
-      setSyncDurationOpen(false);
       setDailyTimeOpen(false);
     }
   };
 
   const onDailyTimeOpen = (open: boolean) => {
     if (open) {
-      setSyncDurationOpen(false);
       setFourHourTimeOpen(false);
     }
+  };
+
+  const selectedSyncIndex = SYNC_INTERVAL_VALUES.indexOf(syncDuration);
+
+  const handleSyncIntervalChange = (index: number) => {
+    const newValue = SYNC_INTERVAL_VALUES[index];
+    setSyncDuration(newValue);
+    saveSyncDuration(newValue);
   };
 
   const dropdownProps = {
@@ -81,18 +71,16 @@ const SyncFrequency: React.FC<SyncFrequencyProps> = ({
     <View style={[styles.card, { backgroundColor: colors.card, zIndex: 2000 }]}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Background Sync Frequency</Text>
 
-      <View style={[styles.inputGroup, { zIndex: 3000 }]}>
+      <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.textSecondary }]}>Sync Interval</Text>
-        <DropDownPicker
-          open={syncDurationOpen}
-          value={syncDuration}
-          items={syncDurationItems}
-          setOpen={setSyncDurationOpen}
-          onOpen={() => onSyncDurationOpen(true)}
-          setValue={setSyncDuration}
-          onSelectItem={(item) => saveSyncDuration(item.value as SyncInterval)}
-          placeholder="Select sync frequency"
-          {...dropdownProps}
+        <SegmentedControl
+          values={SYNC_INTERVAL_LABELS}
+          selectedIndex={selectedSyncIndex}
+          onChange={(event) => handleSyncIntervalChange(event.nativeEvent.selectedSegmentIndex)}
+          backgroundColor={colors.inputBackground}
+          tintColor={colors.primary}
+          fontStyle={{ color: colors.textSecondary }}
+          activeFontStyle={{ color: '#FFFFFF' }}
         />
       </View>
 

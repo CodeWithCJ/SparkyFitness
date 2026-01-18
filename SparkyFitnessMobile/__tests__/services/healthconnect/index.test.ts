@@ -148,27 +148,26 @@ describe('getSyncStartDate', () => {
       const expected = new Date();
       expected.setHours(0, 0, 0, 0);
 
-      expect(result.toISOString().split('T')[0]).toBe(expected.toISOString().split('T')[0]);
       expect(result.getHours()).toBe(0);
       expect(result.getMinutes()).toBe(0);
       expect(result.getSeconds()).toBe(0);
       expect(result.getMilliseconds()).toBe(0);
     });
 
-    test("'24h' sets to midnight AFTER subtracting (different from other durations)", () => {
-      // Note: The implementation sets midnight AFTER the date calculation
-      // So '24h' first subtracts 24 hours, then sets to midnight
+    test("'24h' returns exactly 24 hours ago (rolling window, not snapped to midnight)", () => {
+      const before = new Date();
       const result = getSyncStartDate('24h');
+      const after = new Date();
 
-      // Verify midnight is set
-      expect(result.getHours()).toBe(0);
-      expect(result.getMinutes()).toBe(0);
-      expect(result.getSeconds()).toBe(0);
-      expect(result.getMilliseconds()).toBe(0);
+      // Should be approximately 24 hours ago (within a few ms of test execution)
+      const expectedTime = before.getTime() - 24 * 60 * 60 * 1000;
+      expect(result.getTime()).toBeGreaterThanOrEqual(expectedTime - 100);
+      expect(result.getTime()).toBeLessThanOrEqual(after.getTime() - 24 * 60 * 60 * 1000 + 100);
     });
 
-    test('all known durations return midnight (00:00:00.000)', () => {
-      const durations: SyncDuration[] = ['today', '24h', '3d', '7d', '30d', '90d'];
+    test('day-based durations return midnight (00:00:00.000)', () => {
+      // 24h is excluded - it's a true rolling window, not snapped to midnight
+      const durations: SyncDuration[] = ['today', '3d', '7d', '30d', '90d'];
       durations.forEach(duration => {
         const result = getSyncStartDate(duration);
         expect(result.getHours()).toBe(0);
@@ -186,7 +185,8 @@ describe('getSyncStartDate', () => {
       expected.setDate(expected.getDate() - 2);
       expected.setHours(0, 0, 0, 0);
 
-      expect(result.toISOString().split('T')[0]).toBe(expected.toISOString().split('T')[0]);
+      expect(result.getDate()).toBe(expected.getDate());
+      expect(result.getMonth()).toBe(expected.getMonth());
     });
 
     test("'7d' returns 6 days ago at midnight", () => {
@@ -195,7 +195,8 @@ describe('getSyncStartDate', () => {
       expected.setDate(expected.getDate() - 6);
       expected.setHours(0, 0, 0, 0);
 
-      expect(result.toISOString().split('T')[0]).toBe(expected.toISOString().split('T')[0]);
+      expect(result.getDate()).toBe(expected.getDate());
+      expect(result.getMonth()).toBe(expected.getMonth());
     });
 
     test("'30d' returns 29 days ago at midnight", () => {
@@ -204,7 +205,8 @@ describe('getSyncStartDate', () => {
       expected.setDate(expected.getDate() - 29);
       expected.setHours(0, 0, 0, 0);
 
-      expect(result.toISOString().split('T')[0]).toBe(expected.toISOString().split('T')[0]);
+      expect(result.getDate()).toBe(expected.getDate());
+      expect(result.getMonth()).toBe(expected.getMonth());
     });
 
     test("'90d' returns 89 days ago at midnight", () => {
@@ -213,7 +215,8 @@ describe('getSyncStartDate', () => {
       expected.setDate(expected.getDate() - 89);
       expected.setHours(0, 0, 0, 0);
 
-      expect(result.toISOString().split('T')[0]).toBe(expected.toISOString().split('T')[0]);
+      expect(result.getDate()).toBe(expected.getDate());
+      expect(result.getMonth()).toBe(expected.getMonth());
     });
   });
 

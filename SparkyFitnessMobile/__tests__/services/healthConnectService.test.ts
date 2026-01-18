@@ -363,6 +363,7 @@ describe('healthConnectService.ts (Android)', () => {
       await androidService.syncHealthData('24h', healthMetricStates);
 
       const payload = mockApiSyncHealthData.mock.calls[0][0];
+      // Type is preserved from the aggregation function output ('active_calories' from getAggregatedActiveCaloriesByDate)
       const calorieRecords = payload.filter((r: { type: string }) => r.type === 'active_calories');
 
       expect(calorieRecords).toHaveLength(1);
