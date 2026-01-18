@@ -135,7 +135,14 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
           }
           case 'BloodGlucose': {
             const level = rec.level as Record<string, number> | undefined;
-            value = level?.inMillimolesPerLiter ?? null;
+            // Handle both mmol/L and mg/dL (convert mg/dL to mmol/L by dividing by 18.018)
+            if (level?.inMillimolesPerLiter != null) {
+              value = level.inMillimolesPerLiter;
+            } else if (level?.inMilligramsPerDeciliter != null) {
+              value = level.inMilligramsPerDeciliter / 18.018;
+            } else {
+              value = null;
+            }
             recordDate = getDateString(rec.time);
             break;
           }

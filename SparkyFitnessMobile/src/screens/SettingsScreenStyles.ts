@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   serverConfigItem: {
-    paddingVertical: 8,
+    paddingVertical: 2,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -173,6 +173,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    marginVertical: 4,
     alignItems: 'center',
     alignSelf: 'center',
   },

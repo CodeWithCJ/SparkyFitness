@@ -82,7 +82,7 @@ const HEALTHKIT_UNIT_MAP: Record<string, string> = {
   'Hydration': 'L',
   'BodyTemperature': 'degC',
   'BasalBodyTemperature': 'degC',
-  'BloodGlucose': 'mmol/L',
+  'BloodGlucose': 'mg/dL',
   // Add other metrics that need explicit units as needed
 };
 
@@ -523,6 +523,25 @@ export const readHealthRecords = async (
       }));
     }
 
+    // Handle reproductive health category types
+    if (recordType === 'IntermenstrualBleeding' || recordType === 'MenstruationFlow' ||
+        recordType === 'OvulationTest' || recordType === 'CervicalMucus') {
+      const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
+        ascending: false,
+        limit: queryLimit,
+      });
+      // Filter samples manually by date range
+      const filteredSamples = samples.filter(s => {
+        const recordStartDate = new Date(s.startDate);
+        return recordStartDate >= startDate && recordStartDate <= endDate;
+      });
+      return filteredSamples.map(s => ({
+        startTime: s.startDate,
+        endTime: s.endDate,
+        value: s.value, // Category value (enum integer)
+      }));
+    }
+
     if (recordType === 'Workout' || recordType === 'ExerciseSession') {
       // Filter uses nested date object with Date objects (not ISO strings)
       const workouts = await queryWorkoutSamples({
@@ -682,7 +701,7 @@ export const readHealthRecords = async (
         case 'Height': return { ...baseRecord, height: { inMeters: s.quantity } };
         case 'BodyFat': return { ...baseRecord, percentage: { inPercent: s.quantity * 100 } };
         case 'BodyTemperature': return { ...baseRecord, temperature: { inCelsius: s.quantity } };
-        case 'BloodGlucose': return { ...baseRecord, level: { inMillimolesPerLiter: s.quantity } };
+        case 'BloodGlucose': return { ...baseRecord, level: { inMilligramsPerDeciliter: s.quantity } };
         case 'OxygenSaturation': return { ...baseRecord, percentage: { inPercent: s.quantity * 100 } };
         case 'Vo2Max': return { ...baseRecord, vo2Max: s.quantity };
         case 'RestingHeartRate': return { ...baseRecord, beatsPerMinute: s.quantity };
