@@ -79,6 +79,9 @@ const styles = StyleSheet.create({
   pickerItem: {
     color: '#333', // Ensure text is visible for individual items
   },
+  segmented: {
+    marginVertical: 8
+  },
   saveButton: {
     backgroundColor: '#007bff',
     borderRadius: 12,

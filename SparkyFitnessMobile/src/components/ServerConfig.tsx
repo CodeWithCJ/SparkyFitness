@@ -57,7 +57,28 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
     <View>
       {/* Server Configuration */}
       <View style={[styles.card, { backgroundColor: colors.card }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Server Configuration</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Server Setup</Text>
+          {activeConfigId && (
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center' }}
+              onPress={checkServerConnection}
+              accessibilityLabel={isConnected ? 'Connected to server. Tap to refresh.' : 'Connection failed. Tap to retry.'}
+              accessibilityRole="button"
+            >
+              <View style={[styles.dot, { backgroundColor: isConnected ? colors.success : colors.danger }]} />
+              <Text style={[styles.statusText, { color: isConnected ? colors.success : colors.danger }]}>
+                {isConnected ? 'Connected' : 'Connection failed'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {!activeConfigId && (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.dot, { backgroundColor: colors.warning }]} />
+              <Text style={[styles.statusText, { color: colors.warningText }]}>Configuration required</Text>
+            </View>
+          )}
+        </View>
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Server URL</Text>
           <View style={[styles.inputWithIcon, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
@@ -120,27 +141,6 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
         <TouchableOpacity style={styles.addConfigButton} onPress={handleSaveConfig}>
           <Text style={styles.addConfigButtonText}>Save Current Config</Text>
         </TouchableOpacity>
-
-        {/* Connection status indicator */}
-        {activeConfigId && (
-          <TouchableOpacity
-            style={[styles.statusRow]}
-            onPress={checkServerConnection}
-            accessibilityLabel={isConnected ? 'Connected to server. Tap to refresh.' : 'Connection failed. Tap to retry.'}
-            accessibilityRole="button"
-          >
-            <View style={[styles.dot, { backgroundColor: isConnected ? colors.success : colors.danger }]} />
-            <Text style={[styles.statusText, { color: isConnected ? colors.success : colors.danger }]}>
-              {isConnected ? 'Connected to server' : 'Connection failed'}
-            </Text>
-          </TouchableOpacity>
-        )}
-        {!activeConfigId && (
-          <View style={[styles.statusRow, { backgroundColor: colors.warningBackground }]}>
-            <View style={[styles.dot, { backgroundColor: colors.warning }]} />
-            <Text style={[styles.statusText, { color: colors.warningText }]}>Configuration required</Text>
-          </View>
-        )}
       </View>
 
       {/* Display existing configurations */}

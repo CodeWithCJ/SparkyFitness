@@ -58,6 +58,7 @@ const SyncFrequency: React.FC<SyncFrequencyProps> = ({
           tintColor={colors.primary}
           fontStyle={{ color: colors.textSecondary }}
           activeFontStyle={{ color: '#FFFFFF' }}
+          style={[styles.segmented]}
         />
       </View>
 
