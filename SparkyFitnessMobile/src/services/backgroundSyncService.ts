@@ -48,7 +48,7 @@ export const calculateSyncDateRange = (
 
 const performBackgroundSync = async (taskId: string, bypassTimeCheck = false): Promise<void> => {
   console.log('[BackgroundFetch] taskId', taskId);
-  addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'info');
+  addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'INFO');
 
   try {
     const isStepsEnabled = await loadHealthPreference<boolean>('syncStepsEnabled');
@@ -79,7 +79,7 @@ const performBackgroundSync = async (taskId: string, bypassTimeCheck = false): P
         shouldSync = true;
         syncReason = `4-hour sync window (configured: ${fourHourSyncTime})`;
       } else {
-        addLog(`[Background Sync] Skipping: outside 4-hour sync window (current: ${currentHour}:${currentMinute}, configured: ${fourHourSyncTime})`, 'debug');
+        addLog(`[Background Sync] Skipping: outside 4-hour sync window (current: ${currentHour}:${currentMinute}, configured: ${fourHourSyncTime})`, 'DEBUG');
       }
     } else if (!bypassTimeCheck && syncDuration === '24h') {
       const [h, m] = dailySyncTime.split(':').map(Number);
@@ -87,12 +87,12 @@ const performBackgroundSync = async (taskId: string, bypassTimeCheck = false): P
         shouldSync = true;
         syncReason = `daily sync window (configured: ${dailySyncTime})`;
       } else {
-        addLog(`[Background Sync] Skipping: outside daily sync window (current: ${currentHour}:${currentMinute}, configured: ${dailySyncTime})`, 'debug');
+        addLog(`[Background Sync] Skipping: outside daily sync window (current: ${currentHour}:${currentMinute}, configured: ${dailySyncTime})`, 'DEBUG');
       }
     }
 
     if (shouldSync) {
-      addLog(`[Background Sync] Proceeding with sync: ${syncReason}`, 'debug');
+      addLog(`[Background Sync] Proceeding with sync: ${syncReason}`, 'DEBUG');
       const { startDate, endDate } = calculateSyncDateRange(now, syncDuration);
 
       const allAggregatedData: HealthDataPayload = [];
@@ -139,17 +139,17 @@ const performBackgroundSync = async (taskId: string, bypassTimeCheck = false): P
       }
 
       if (allAggregatedData.length > 0) {
-        addLog(`[Background Sync] Collected ${allAggregatedData.length} records (${collectedCounts.join(', ')})`, 'debug');
+        addLog(`[Background Sync] Collected ${allAggregatedData.length} records (${collectedCounts.join(', ')})`, 'DEBUG');
         await syncHealthData(allAggregatedData);
         await saveLastSyncedTime();
-        addLog(`[Background Sync] Sync completed successfully`, 'info', 'SUCCESS');
+        addLog(`[Background Sync] Sync completed successfully`, 'SUCCESS');
       } else {
-        addLog(`[Background Sync] No health data collected to sync`, 'debug');
+        addLog(`[Background Sync] No health data collected to sync`, 'DEBUG');
       }
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[Background Sync] Sync Error: ${message}`, 'error', 'ERROR');
+    addLog(`[Background Sync] Sync Error: ${message}`, 'ERROR');
   }
 
   BackgroundFetch.finish(taskId);
@@ -183,7 +183,7 @@ export const configureBackgroundSync = async (): Promise<void> => {
     await performBackgroundSync(taskId);
   }, (taskId: string) => {
     // This callback is called on timeout - taskId is passed, not an error
-    addLog(`[Background Sync] Background fetch timeout for task: ${taskId}`, 'error', 'ERROR');
+    addLog(`[Background Sync] Background fetch timeout for task: ${taskId}`, 'ERROR');
     BackgroundFetch.finish(taskId);
   });
 };
@@ -193,7 +193,7 @@ export const startBackgroundSync = async (): Promise<void> => {
     await BackgroundFetch.start();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[Background Sync] Background fetch failed to start: ${message}`, 'error', 'ERROR');
+    addLog(`[Background Sync] Background fetch failed to start: ${message}`, 'ERROR');
   }
 };
 
@@ -202,7 +202,7 @@ export const stopBackgroundSync = async (): Promise<void> => {
     await BackgroundFetch.stop(BACKGROUND_FETCH_TASK_ID);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[Background Sync] Background fetch failed to stop: ${message}`, 'error', 'ERROR');
+    addLog(`[Background Sync] Background fetch failed to stop: ${message}`, 'ERROR');
   }
 };
 

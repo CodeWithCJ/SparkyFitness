@@ -156,7 +156,7 @@ export const initHealthConnect = async (): Promise<boolean> => {
     return isHealthKitAvailable;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthKitService] Failed to check HealthKit availability: ${message}`, 'error', 'ERROR');
+    addLog(`[HealthKitService] Failed to check HealthKit availability: ${message}`, 'ERROR');
     isHealthKitAvailable = false;
     return false;
   }
@@ -232,7 +232,7 @@ export const requestHealthPermissions = async (
 
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthKitService] Failed to request permissions: ${message}`, 'error', 'ERROR');
+    addLog(`[HealthKitService] Failed to request permissions: ${message}`, 'ERROR');
     Alert.alert(
       'Permission Error',
       `An unexpected error occurred while trying to request Health permissions: ${message}`
@@ -286,7 +286,7 @@ const queryTotalCalories = async (
     return { value: 0, hasData: false };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthKitService] Failed to query total calories: ${message}`, 'error', 'ERROR');
+    addLog(`[HealthKitService] Failed to query total calories: ${message}`, 'ERROR');
     return null;
   }
 };
@@ -361,7 +361,7 @@ const getAggregatedDataByDate = async (
   config: AggregationConfig
 ): Promise<AggregatedHealthRecord[]> => {
   if (!isHealthKitAvailable) {
-    addLog(`[HealthKitService] HealthKit not available for ${config.logLabel} aggregation`, 'debug');
+    addLog(`[HealthKitService] HealthKit not available for ${config.logLabel} aggregation`, 'DEBUG');
     return [];
   }
 
@@ -417,7 +417,7 @@ const getAggregatedDataByDate = async (
     } catch (error) {
       errorCount++;
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthKitService] Failed to get aggregated ${config.logLabel}: ${message}`, 'error', 'ERROR');
+      addLog(`[HealthKitService] Failed to get aggregated ${config.logLabel}: ${message}`, 'ERROR');
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
@@ -426,9 +426,9 @@ const getAggregatedDataByDate = async (
 
   const errorSuffix = errorCount > 0 ? `, ${errorCount} errors` : '';
   if (daysWithData === 0) {
-    addLog(`[HealthKitService] No ${config.logLabel} data found for ${daysQueried} days queried${errorSuffix}`, 'debug');
+    addLog(`[HealthKitService] No ${config.logLabel} data found for ${daysQueried} days queried${errorSuffix}`, 'DEBUG');
   } else {
-    addLog(`[HealthKitService] ${config.logLabel} aggregation: ${daysWithData}/${daysQueried} days with data${errorSuffix}`, 'debug');
+    addLog(`[HealthKitService] ${config.logLabel} aggregation: ${daysWithData}/${daysQueried} days with data${errorSuffix}`, 'DEBUG');
   }
 
   return results;
@@ -741,7 +741,7 @@ export const readHealthRecords = async (
     return await handler(identifier, startDate, endDate);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthKitService] Error reading ${recordType}: ${message}`, 'error', 'ERROR');
+    addLog(`[HealthKitService] Error reading ${recordType}: ${message}`, 'ERROR');
     return [];
   }
 };

@@ -10,39 +10,37 @@ import {
   Alert,
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import DropDownPicker from 'react-native-dropdown-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BottomSheetPicker from '../components/BottomSheetPicker';
 import {
   getLogs,
   clearLogs,
   getLogSummary,
-  getLogLevel,
-  setLogLevel,
+  getLogFilter,
+  setLogFilter,
+  LOG_FILTER_OPTIONS,
 } from '../services/LogService';
-import type { LogEntry, LogSummary, LogLevel } from '../services/LogService';
+import type { LogEntry, LogSummary, LogFilter } from '../services/LogService';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface LogScreenProps {
   navigation: { navigate: (screen: string) => void };
 }
 
-const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
+const LogScreen: React.FC<LogScreenProps> = () => {
   const insets = useSafeAreaInsets();
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [offset, setOffset] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [logSummary, setLogSummary] = useState<LogSummary>({
+    DEBUG: 0,
+    INFO: 0,
     SUCCESS: 0,
     WARNING: 0,
     ERROR: 0,
-    info: 0,
-    warn: 0,
-    error: 0,
-    debug: 0,
   });
-  const [currentLogLevel, setCurrentLogLevel] = useState<LogLevel>('info');
-  const [logLevelOpen, setLogLevelOpen] = useState<boolean>(false);
+  const [currentFilter, setCurrentFilter] = useState<LogFilter>('no_debug');
 
   const LOG_LIMIT = 30;
 
@@ -62,16 +60,16 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
     setLogSummary(summary);
   };
 
-  const loadLogLevel = async (): Promise<void> => {
-    const level = await getLogLevel();
-    setCurrentLogLevel(level);
+  const loadFilter = async (): Promise<void> => {
+    const filter = await getLogFilter();
+    setCurrentFilter(filter);
   };
 
   useFocusEffect(
     useCallback(() => {
       loadLogs();
       loadSummary();
-      loadLogLevel();
+      loadFilter();
     }, [])
   );
 
@@ -98,13 +96,11 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
             setOffset(0);
             setHasMore(true);
             setLogSummary({
+              DEBUG: 0,
+              INFO: 0,
               SUCCESS: 0,
               WARNING: 0,
               ERROR: 0,
-              info: 0,
-              warn: 0,
-              error: 0,
-              debug: 0,
             });
           },
         },
@@ -113,21 +109,16 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
     );
   };
 
-  const handleLogLevelChange = async (
-    valOrFunc: LogLevel | ((prev: LogLevel) => LogLevel)
-  ): Promise<void> => {
-    const level =
-      typeof valOrFunc === 'function' ? valOrFunc(currentLogLevel) : valOrFunc;
-
-    if (level && level !== currentLogLevel) {
+  const handleFilterChange = async (filter: LogFilter): Promise<void> => {
+    if (filter && filter !== currentFilter) {
       try {
-        await setLogLevel(level);
-        setCurrentLogLevel(level);
+        await setLogFilter(filter);
+        setCurrentFilter(filter);
         loadLogs(0, false);
         loadSummary();
       } catch (error) {
-        Alert.alert('Error', 'Failed to save log level settings.');
-        console.error('Failed to save log level settings:', error);
+        Alert.alert('Error', 'Failed to save log filter settings.');
+        console.error('Failed to save log filter settings:', error);
       }
     }
   };
@@ -174,7 +165,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
               <Text
                 style={[styles.summaryLabel, { color: colors.textSecondary }]}
               >
-                Successful
+                Success
               </Text>
             </View>
             <View style={styles.summaryItem}>
@@ -184,7 +175,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
               <Text
                 style={[styles.summaryLabel, { color: colors.textSecondary }]}
               >
-                Warnings
+                Warning
               </Text>
             </View>
             <View style={styles.summaryItem}>
@@ -194,12 +185,12 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
               <Text
                 style={[styles.summaryLabel, { color: colors.textSecondary }]}
               >
-                Errors
+                Error
               </Text>
             </View>
             <View style={styles.summaryItem}>
               <Text style={[styles.summaryCount, { color: '#007bff' }]}>
-                {logSummary.info}
+                {logSummary.INFO}
               </Text>
               <Text
                 style={[styles.summaryLabel, { color: colors.textSecondary }]}
@@ -208,8 +199,8 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
               </Text>
             </View>
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#800080' }]}>
-                {logSummary.debug}
+              <Text style={[styles.summaryCount, { color: '#6c757d' }]}>
+                {logSummary.DEBUG}
               </Text>
               <Text
                 style={[styles.summaryLabel, { color: colors.textSecondary }]}
@@ -220,58 +211,26 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Log Level Settings */}
-        <View
-          style={[styles.card, { zIndex: 3000, backgroundColor: colors.card }]}
-        >
+        {/* Log Filter Settings */}
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Log Level
+            Log Filter
           </Text>
           <View style={styles.logLevelContent}>
-          <DropDownPicker
-            open={logLevelOpen}
-            value={currentLogLevel}
-            items={[
-              { label: 'Silent', value: 'silent' as LogLevel },
-              { label: 'Error', value: 'error' as LogLevel },
-              { label: 'Warning', value: 'warn' as LogLevel },
-              { label: 'Info', value: 'info' as LogLevel },
-              { label: 'Debug', value: 'debug' as LogLevel },
-            ]}
-            setOpen={setLogLevelOpen}
-            setValue={handleLogLevelChange}
-            listMode="SCROLLVIEW"
-            containerStyle={styles.dropdownContainer}
-            style={[
-              styles.dropdownStyle,
-              {
-                backgroundColor: colors.inputBackground,
-                borderColor: colors.border,
-              },
-            ]}
-            textStyle={{ color: colors.text }}
-            dropDownContainerStyle={[
-              styles.dropdownListContainerStyle,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-            labelStyle={[styles.dropdownLabelStyle, { color: colors.text }]}
-            placeholderStyle={[
-              styles.dropdownPlaceholderStyle,
-              { color: colors.textMuted },
-            ]}
-            selectedItemLabelStyle={styles.selectedItemLabelStyle}
-            maxHeight={200}
-            zIndex={3000}
-            zIndexInverse={1000}
-            theme={isDarkMode ? 'DARK' : 'LIGHT'}
-          />
-          {/* Clear Logs Button */}
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={handleClearLogs}
-          >
-            <Text style={styles.clearButtonText}>Clear All Logs</Text>
-          </TouchableOpacity>
+            <BottomSheetPicker
+              value={currentFilter}
+              options={LOG_FILTER_OPTIONS}
+              onSelect={handleFilterChange}
+              title="Log Filter"
+              containerStyle={styles.dropdownContainer}
+            />
+            {/* Clear Logs Button */}
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={handleClearLogs}
+            >
+              <Text style={styles.clearButtonText}>Clear All Logs</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -295,6 +254,8 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
                       ? '#ffc107'
                       : item.status === 'INFO'
                       ? '#007bff'
+                      : item.status === 'DEBUG'
+                      ? '#6c757d'
                       : '#dc3545',
                 },
               ]}
@@ -305,6 +266,8 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
                     ? require('../../assets/icons/success.png')
                     : item.status === 'WARNING'
                     ? require('../../assets/icons/warning.png')
+                    : item.status === 'INFO'
+                    ? require('../../assets/icons/info.png')
                     : require('../../assets/icons/error.png')
                 }
                 style={styles.logIcon}
@@ -322,6 +285,8 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
                       ? '#ffc107'
                       : item.status === 'INFO'
                       ? '#007bff'
+                      : item.status === 'DEBUG'
+                      ? '#6c757d'
                       : '#dc3545',
                   },
                 ]}
@@ -384,13 +349,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    overflow: 'visible',
-    zIndex: 3500,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    elevation: 1,
   },
   sectionTitle: {
     fontSize: 18,
@@ -399,34 +359,13 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   dropdownContainer: {
-    height: 50,
-    zIndex: 4000,
-    width: '50%'
+    flex: 1,
+    maxWidth: '50%',
   },
   logLevelContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  dropdownStyle: {
-    backgroundColor: '#fafafa',
-    borderColor: '#ddd',
-  },
-  dropdownItemStyle: {
-    justifyContent: 'flex-start',
-  },
-  dropdownLabelStyle: {
-    fontSize: 16,
-    color: '#333',
-  },
-  dropdownListContainerStyle: {
-    borderColor: '#ddd',
-  },
-  dropdownPlaceholderStyle: {
-    color: '#999',
-  },
-  selectedItemLabelStyle: {
-    fontWeight: 'bold',
   },
   summaryContainer: {
     flexDirection: 'row',
@@ -449,11 +388,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 1, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
+    elevation: 1,
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',

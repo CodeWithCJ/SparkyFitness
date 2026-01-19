@@ -4,10 +4,10 @@ import {
   getLogs,
   clearLogs,
   pruneLogs,
-  setLogLevel,
-  getLogLevel,
+  setLogFilter,
+  getLogFilter,
   getLogSummary,
-  LogLevel,
+  LogFilter,
 } from '../../src/services/LogService';
 
 describe('LogService', () => {
@@ -28,23 +28,21 @@ describe('LogService', () => {
     test('creates retrievable log entry with default values', async () => {
       await addLog('Test message');
 
-      const logs = await getLogs();
+      const logs = await getLogs(0, 30, 'all');
 
       expect(logs).toHaveLength(1);
       expect(logs[0].message).toBe('Test message');
-      expect(logs[0].level).toBe('info');
       expect(logs[0].status).toBe('INFO');
       expect(logs[0].details).toEqual([]);
     });
 
     test('creates log entry with all specified values', async () => {
-      await addLog('Error occurred', 'error', 'ERROR', ['detail1', 'detail2']);
+      await addLog('Error occurred', 'ERROR', ['detail1', 'detail2']);
 
-      const logs = await getLogs();
+      const logs = await getLogs(0, 30, 'all');
 
       expect(logs).toHaveLength(1);
       expect(logs[0].message).toBe('Error occurred');
-      expect(logs[0].level).toBe('error');
       expect(logs[0].status).toBe('ERROR');
       expect(logs[0].details).toEqual(['detail1', 'detail2']);
     });
@@ -54,7 +52,7 @@ describe('LogService', () => {
       await addLog('Second');
       await addLog('Third');
 
-      const logs = await getLogs();
+      const logs = await getLogs(0, 30, 'all');
 
       expect(logs).toHaveLength(3);
       expect(logs[0].message).toBe('Third');
@@ -62,38 +60,37 @@ describe('LogService', () => {
       expect(logs[2].message).toBe('First');
     });
 
-    test('addLog respects current log level threshold', async () => {
-      await setLogLevel('warn');
+    test('addLog respects current filter threshold', async () => {
+      await setLogFilter('warnings_errors');
 
-      await addLog('Debug message', 'debug');
-      await addLog('Info message', 'info');
+      await addLog('Debug message', 'DEBUG');
+      await addLog('Info message', 'INFO');
 
-      // Use 'debug' filterLevel to see all logs that were actually stored
-      const logs = await getLogs(0, 30, 'debug');
+      // Use 'all' filter to see all logs that were actually stored
+      const logs = await getLogs(0, 30, 'all');
 
       expect(logs).toHaveLength(0);
     });
 
-    test('addLog stores logs at or below current level', async () => {
-      await setLogLevel('warn');
+    test('addLog stores logs at or below current filter threshold', async () => {
+      await setLogFilter('warnings_errors');
 
-      await addLog('Error message', 'error');
-      await addLog('Warning message', 'warn');
+      await addLog('Error message', 'ERROR');
+      await addLog('Warning message', 'WARNING');
 
-      const logs = await getLogs(0, 30, 'debug');
+      const logs = await getLogs(0, 30, 'all');
 
       expect(logs).toHaveLength(2);
-      expect(logs.map(l => l.level)).toEqual(['warn', 'error']);
+      expect(logs.map(l => l.status)).toEqual(['WARNING', 'ERROR']);
     });
 
     test('log entries have correct structure', async () => {
-      await addLog('Test', 'info', 'SUCCESS', ['detail']);
+      await addLog('Test', 'SUCCESS', ['detail']);
 
-      const logs = await getLogs();
+      const logs = await getLogs(0, 30, 'all');
 
       expect(logs[0]).toMatchObject({
         message: 'Test',
-        level: 'info',
         status: 'SUCCESS',
         details: ['detail'],
       });
@@ -108,38 +105,39 @@ describe('LogService', () => {
       expect(logs).toEqual([]);
     });
 
-    test('when filterLevel is null, uses stored log level', async () => {
-      // Default level is 'info', so debug logs should be filtered out
-      await addLog('Error log', 'error');
-      await addLog('Info log', 'info');
+    test('when filter is null, uses stored filter', async () => {
+      // Default filter is 'no_debug', so debug logs should be filtered out
+      await setLogFilter('all');
+      await addLog('Error log', 'ERROR');
+      await addLog('Info log', 'INFO');
 
-      // First, verify logs were stored by checking with 'debug' level
-      const allLogs = await getLogs(0, 30, 'debug');
+      // First, verify logs were stored by checking with 'all' filter
+      const allLogs = await getLogs(0, 30, 'all');
       expect(allLogs).toHaveLength(2);
 
-      // Now check that default filtering (null = stored level = 'info') works
+      // Now check that default filtering (null = stored filter = 'all') works
       const filteredLogs = await getLogs(0, 30, null);
       expect(filteredLogs).toHaveLength(2);
 
-      // Change level to 'error' and verify filtering
-      await setLogLevel('error');
+      // Change filter to 'errors_only' and verify filtering
+      await setLogFilter('errors_only');
       const errorOnlyLogs = await getLogs(0, 30, null);
       expect(errorOnlyLogs).toHaveLength(1);
-      expect(errorOnlyLogs[0].level).toBe('error');
+      expect(errorOnlyLogs[0].status).toBe('ERROR');
     });
 
-    test('respects filterLevel parameter over stored level', async () => {
-      // First store logs with permissive level so they all get saved
-      await setLogLevel('debug');
-      await addLog('Error log', 'error');
-      await addLog('Warning log', 'warn');
-      await addLog('Info log', 'info');
+    test('respects filter parameter over stored filter', async () => {
+      // First store logs with permissive filter so they all get saved
+      await setLogFilter('all');
+      await addLog('Error log', 'ERROR');
+      await addLog('Warning log', 'WARNING');
+      await addLog('Info log', 'INFO');
 
-      // Change stored level to 'error' - normally getLogs would only show error
-      await setLogLevel('error');
+      // Change stored filter to 'errors_only' - normally getLogs would only show error
+      await setLogFilter('errors_only');
 
-      // But with filterLevel='debug', we override and see all logs
-      const logs = await getLogs(0, 30, 'debug');
+      // But with filter='all', we override and see all logs
+      const logs = await getLogs(0, 30, 'all');
 
       expect(logs).toHaveLength(3);
     });
@@ -196,7 +194,7 @@ describe('LogService', () => {
       await addLog('New log');
       await pruneLogs(3);
 
-      const logs = await getLogs(0, 30, 'debug');
+      const logs = await getLogs(0, 30, 'all');
 
       expect(logs).toHaveLength(1);
       expect(logs[0].message).toBe('New log');
@@ -213,7 +211,7 @@ describe('LogService', () => {
 
       await pruneLogs(3);
 
-      const logs = await getLogs(0, 30, 'debug');
+      const logs = await getLogs(0, 30, 'all');
 
       expect(logs).toHaveLength(1);
       expect(logs[0].message).toBe('Recent log');
@@ -230,7 +228,7 @@ describe('LogService', () => {
 
       await pruneLogs(); // No parameter = default 3 days
 
-      const logs = await getLogs(0, 30, 'debug');
+      const logs = await getLogs(0, 30, 'all');
 
       expect(logs).toHaveLength(0);
     });
@@ -248,19 +246,19 @@ describe('LogService', () => {
 
       await clearLogs();
 
-      const logs = await getLogs(0, 30, 'debug');
+      const logs = await getLogs(0, 30, 'all');
 
       expect(logs).toEqual([]);
     });
 
-    test('does not affect log level setting', async () => {
-      await setLogLevel('error');
-      await addLog('Some log', 'error');
+    test('does not affect log filter setting', async () => {
+      await setLogFilter('errors_only');
+      await addLog('Some log', 'ERROR');
 
       await clearLogs();
 
-      const level = await getLogLevel();
-      expect(level).toBe('error');
+      const filter = await getLogFilter();
+      expect(filter).toBe('errors_only');
     });
 
     test('succeeds when no logs exist', async () => {
@@ -268,39 +266,39 @@ describe('LogService', () => {
     });
   });
 
-  describe('setLogLevel / getLogLevel', () => {
-    test('persists log level setting', async () => {
-      await setLogLevel('debug');
+  describe('setLogFilter / getLogFilter', () => {
+    test('persists log filter setting', async () => {
+      await setLogFilter('all');
 
-      const level = await getLogLevel();
+      const filter = await getLogFilter();
 
-      expect(level).toBe('debug');
+      expect(filter).toBe('all');
     });
 
-    test('returns info as default when no level set', async () => {
-      const level = await getLogLevel();
+    test('returns no_debug as default when no filter set', async () => {
+      const filter = await getLogFilter();
 
-      expect(level).toBe('info');
+      expect(filter).toBe('no_debug');
     });
 
-    test('accepts all valid log levels', async () => {
-      const levels: LogLevel[] = ['silent', 'error', 'warn', 'info', 'debug'];
+    test('accepts all valid log filters', async () => {
+      const filters: LogFilter[] = ['all', 'no_debug', 'warnings_errors', 'errors_only'];
 
-      for (const lvl of levels) {
-        await setLogLevel(lvl);
-        const result = await getLogLevel();
-        expect(result).toBe(lvl);
+      for (const f of filters) {
+        await setLogFilter(f);
+        const result = await getLogFilter();
+        expect(result).toBe(f);
       }
     });
 
-    test('invalid log level preserves previous valid level', async () => {
-      await setLogLevel('warn');
+    test('invalid log filter preserves previous valid filter', async () => {
+      await setLogFilter('warnings_errors');
 
       // Cast to bypass TypeScript, simulating runtime invalid input
-      await setLogLevel('invalid' as LogLevel);
+      await setLogFilter('invalid' as LogFilter);
 
-      const level = await getLogLevel();
-      expect(level).toBe('warn');
+      const filter = await getLogFilter();
+      expect(filter).toBe('warnings_errors');
     });
   });
 
@@ -309,13 +307,11 @@ describe('LogService', () => {
       const summary = await getLogSummary();
 
       expect(summary).toEqual({
+        DEBUG: 0,
+        INFO: 0,
         SUCCESS: 0,
         WARNING: 0,
         ERROR: 0,
-        info: 0,
-        warn: 0,
-        error: 0,
-        debug: 0,
       });
     });
 
@@ -323,58 +319,111 @@ describe('LogService', () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2024-06-15T10:00:00.000Z'));
 
-      await addLog('Yesterday log', 'info', 'SUCCESS');
+      await addLog('Yesterday log', 'SUCCESS');
 
       // Move to next day
       jest.setSystemTime(new Date('2024-06-16T10:00:00.000Z'));
 
-      await addLog('Today log', 'info', 'SUCCESS');
+      await addLog('Today log', 'SUCCESS');
 
       const summary = await getLogSummary();
 
       expect(summary.SUCCESS).toBe(1);
     });
 
-    test('counts SUCCESS, WARNING, ERROR statuses', async () => {
+    test('counts all statuses to match list display', async () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2024-06-15T10:00:00.000Z'));
 
-      await addLog('Success 1', 'info', 'SUCCESS');
-      await addLog('Success 2', 'info', 'SUCCESS');
-      await addLog('Warning', 'warn', 'WARNING');
-      await addLog('Error 1', 'error', 'ERROR');
-      await addLog('Error 2', 'error', 'ERROR');
-      await addLog('Error 3', 'error', 'ERROR');
-      await addLog('Info status', 'info', 'INFO'); // INFO status not counted
+      await setLogFilter('all');
+      await addLog('Success 1', 'SUCCESS');
+      await addLog('Success 2', 'SUCCESS');
+      await addLog('Warning', 'WARNING');
+      await addLog('Error 1', 'ERROR');
+      await addLog('Error 2', 'ERROR');
+      await addLog('Error 3', 'ERROR');
+      await addLog('Info status', 'INFO');
+      await addLog('Debug status', 'DEBUG');
 
       const summary = await getLogSummary();
 
       expect(summary.SUCCESS).toBe(2);
       expect(summary.WARNING).toBe(1);
       expect(summary.ERROR).toBe(3);
+      expect(summary.INFO).toBe(1);
+      expect(summary.DEBUG).toBe(1);
     });
 
-    test('counts logs by level', async () => {
+    test('filters by current filter to match getLogs display', async () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2024-06-15T10:00:00.000Z'));
 
-      // Set to debug to allow all levels to be stored
-      await setLogLevel('debug');
+      // Set to all to store all statuses
+      await setLogFilter('all');
 
-      await addLog('Info 1', 'info', 'INFO');
-      await addLog('Info 2', 'info', 'INFO');
-      await addLog('Warn', 'warn', 'WARNING');
-      await addLog('Error', 'error', 'ERROR');
-      await addLog('Debug 1', 'debug', 'INFO');
-      await addLog('Debug 2', 'debug', 'INFO');
-      await addLog('Debug 3', 'debug', 'INFO');
+      await addLog('Info log', 'SUCCESS');
+      await addLog('Warn log', 'WARNING');
+      await addLog('Error log', 'ERROR');
+      await addLog('Debug log', 'DEBUG');
 
-      const summary = await getLogSummary();
+      // With 'all' filter, all logs should be counted
+      let summary = await getLogSummary();
+      expect(summary.SUCCESS).toBe(1);
+      expect(summary.WARNING).toBe(1);
+      expect(summary.ERROR).toBe(1);
+      expect(summary.DEBUG).toBe(1);
 
-      expect(summary.info).toBe(2);
-      expect(summary.warn).toBe(1);
-      expect(summary.error).toBe(1);
-      expect(summary.debug).toBe(3);
+      // Change to 'errors_only' filter - only error logs should be counted
+      await setLogFilter('errors_only');
+      summary = await getLogSummary();
+      expect(summary.SUCCESS).toBe(0);
+      expect(summary.WARNING).toBe(0);
+      expect(summary.ERROR).toBe(1);
+      expect(summary.DEBUG).toBe(0);
+    });
+  });
+
+  describe('Migration', () => {
+    test('migrates old log entries with level field to new format', async () => {
+      // Simulate old format log entries directly in storage
+      const oldLogs = [
+        { timestamp: new Date().toISOString(), message: 'Debug log', level: 'debug', status: 'INFO', details: [] },
+        { timestamp: new Date().toISOString(), message: 'Success log', level: 'info', status: 'SUCCESS', details: [] },
+        { timestamp: new Date().toISOString(), message: 'Error log', level: 'error', status: 'ERROR', details: [] },
+      ];
+      await AsyncStorage.setItem('app_logs', JSON.stringify(oldLogs));
+
+      // getLogs should migrate on read
+      const logs = await getLogs(0, 30, 'all');
+
+      expect(logs).toHaveLength(3);
+      // Old debug level should become DEBUG status (first in array)
+      expect(logs[0].status).toBe('DEBUG');
+      // Old info level with SUCCESS status should keep SUCCESS (second in array)
+      expect(logs[1].status).toBe('SUCCESS');
+      // Old error level should keep ERROR status (third in array)
+      expect(logs[2].status).toBe('ERROR');
+    });
+
+    test('migrates old log level preference to new filter format', async () => {
+      // Simulate old format log level preference
+      await AsyncStorage.setItem('log_level', 'debug');
+
+      const filter = await getLogFilter();
+
+      // 'debug' should migrate to 'all'
+      expect(filter).toBe('all');
+    });
+
+    test('cleans up old log level key after migration', async () => {
+      // Simulate old format log level preference
+      await AsyncStorage.setItem('log_level', 'warn');
+
+      await getLogFilter();
+
+      // Old key should be removed
+      const oldValue = await AsyncStorage.getItem('log_level');
+      expect(oldValue).toBeNull();
     });
   });
 });

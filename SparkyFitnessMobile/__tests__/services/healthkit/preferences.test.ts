@@ -71,7 +71,6 @@ describe('preferences', () => {
       expect(result).toBeUndefined();
       expect(mockAddLog).toHaveBeenCalledWith(
         '[HealthKitService] Failed to save preference testKey: Storage full',
-        'error',
         'ERROR'
       );
     });
@@ -84,7 +83,6 @@ describe('preferences', () => {
       expect(result).toBeNull();
       expect(mockAddLog).toHaveBeenCalledWith(
         '[HealthKitService] Failed to load preference testKey: Storage error',
-        'error',
         'ERROR'
       );
     });
@@ -113,7 +111,6 @@ describe('preferences', () => {
       expect(result).toBeUndefined();
       expect(mockAddLog).toHaveBeenCalledWith(
         '[HealthKitService] Failed to save string preference serverUrl: Storage full',
-        'error',
         'ERROR'
       );
     });
@@ -126,7 +123,6 @@ describe('preferences', () => {
       expect(result).toBeNull();
       expect(mockAddLog).toHaveBeenCalledWith(
         '[HealthKitService] Failed to load string preference serverUrl: Storage error',
-        'error',
         'ERROR'
       );
     });
@@ -155,7 +151,6 @@ describe('preferences', () => {
       expect(result).toBe('24h');
       expect(mockAddLog).toHaveBeenCalledWith(
         '[HealthKitService] Failed to load sync duration: Storage error',
-        'error',
         'ERROR'
       );
     });
@@ -168,7 +163,6 @@ describe('preferences', () => {
       expect(result).toBeUndefined();
       expect(mockAddLog).toHaveBeenCalledWith(
         '[HealthKitService] Failed to save sync duration: Storage full',
-        'error',
         'ERROR'
       );
     });

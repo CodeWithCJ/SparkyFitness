@@ -33,7 +33,7 @@ export const createPreferenceFunctions = (
       await AsyncStorage.setItem(`${storagePrefix}:${key}`, JSON.stringify(value));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`${logTag} Failed to save preference ${key}: ${message}`, 'error', 'ERROR');
+      addLog(`${logTag} Failed to save preference ${key}: ${message}`, 'ERROR');
     }
   };
 
@@ -46,7 +46,7 @@ export const createPreferenceFunctions = (
       return null;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`${logTag} Failed to load preference ${key}: ${message}`, 'error', 'ERROR');
+      addLog(`${logTag} Failed to load preference ${key}: ${message}`, 'ERROR');
       return null;
     }
   };
@@ -56,7 +56,7 @@ export const createPreferenceFunctions = (
       await AsyncStorage.setItem(`${storagePrefix}:${key}`, value);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`${logTag} Failed to save string preference ${key}: ${message}`, 'error', 'ERROR');
+      addLog(`${logTag} Failed to save string preference ${key}: ${message}`, 'ERROR');
     }
   };
 
@@ -69,7 +69,7 @@ export const createPreferenceFunctions = (
       return null;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`${logTag} Failed to load string preference ${key}: ${message}`, 'error', 'ERROR');
+      addLog(`${logTag} Failed to load string preference ${key}: ${message}`, 'ERROR');
       return null;
     }
   };
@@ -79,7 +79,7 @@ export const createPreferenceFunctions = (
       await AsyncStorage.setItem(syncDurationKey, value);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`${logTag} Failed to save sync duration: ${message}`, 'error', 'ERROR');
+      addLog(`${logTag} Failed to save sync duration: ${message}`, 'ERROR');
     }
   };
 
@@ -89,7 +89,7 @@ export const createPreferenceFunctions = (
       return (value as SyncDuration) ?? '24h';
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`${logTag} Failed to load sync duration: ${message}`, 'error', 'ERROR');
+      addLog(`${logTag} Failed to load sync duration: ${message}`, 'ERROR');
       return '24h';
     }
   };

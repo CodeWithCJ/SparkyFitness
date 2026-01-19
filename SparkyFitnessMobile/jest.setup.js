@@ -135,3 +135,23 @@ jest.mock('@react-native-clipboard/clipboard', () => ({
   setString: jest.fn(),
   getString: jest.fn().mockResolvedValue(''),
 }));
+
+// Mock @gorhom/bottom-sheet
+jest.mock('@gorhom/bottom-sheet', () => {
+  const React = require('react');
+  const { View, ScrollView } = require('react-native');
+  return {
+    BottomSheetModal: React.forwardRef(({ children }, ref) => {
+      React.useImperativeHandle(ref, () => ({
+        present: jest.fn(),
+        dismiss: jest.fn(),
+      }));
+      return React.createElement(View, null, children);
+    }),
+    BottomSheetModalProvider: ({ children }) => React.createElement(View, null, children),
+    BottomSheetView: ({ children, style }) => React.createElement(View, { style }, children),
+    BottomSheetScrollView: ({ children, contentContainerStyle }) =>
+      React.createElement(ScrollView, { contentContainerStyle }, children),
+    BottomSheetBackdrop: () => null,
+  };
+});

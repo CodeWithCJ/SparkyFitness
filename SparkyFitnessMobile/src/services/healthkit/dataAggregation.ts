@@ -24,7 +24,7 @@ export const aggregateHeartRateByDate = (records: HKHeartRateRecord[]): Aggregat
       if (!acc[date]) acc[date] = { total: 0, count: 0 };
       acc[date].total += heartRate;
       acc[date].count++;
-    } catch (e) { addLog(`[HealthKitService] Error processing heart rate record: ${(e as Error).message}`, 'warn', 'WARNING'); }
+    } catch (e) { addLog(`[HealthKitService] Error processing heart rate record: ${(e as Error).message}`, 'WARNING'); }
     return acc;
   }, {});
 
@@ -52,7 +52,7 @@ const mapHealthKitSleepStage = (hkStage: string | number): SleepStageType => {
     case 4: return 'deep';   // HKCategoryValueSleepAnalysisAsleepDeep
     case 5: return 'rem';    // HKCategoryValueSleepAnalysisAsleepREM
     default:
-      addLog(`[HealthKitService] Unknown sleep stage value: ${hkStage}`, 'warn');
+      addLog(`[HealthKitService] Unknown sleep stage value: ${hkStage}`, 'WARNING');
       return 'unknown';
   }
 };

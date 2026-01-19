@@ -593,7 +593,7 @@ const requestWritePermissions = async (): Promise<boolean> => {
     return allGranted;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[SeedHealthData] Failed to request write permissions: ${message}`, 'error', 'ERROR');
+    addLog(`[SeedHealthData] Failed to request write permissions: ${message}`, 'ERROR');
     return false;
   }
 };
@@ -603,7 +603,7 @@ const requestWritePermissions = async (): Promise<boolean> => {
 // ============================================================================
 
 export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
-  addLog(`[SeedHealthData] Starting to seed ${days} days of health data...`, 'info', 'INFO');
+  addLog(`[SeedHealthData] Starting to seed ${days} days of health data...`, 'INFO');
 
   try {
     const permissionsGranted = await requestWritePermissions();
@@ -637,14 +637,14 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
         }
 
         totalRecords += count;
-        addLog(`[SeedHealthData] Seeded ${config.recordType}`, 'info', 'SUCCESS');
+        addLog(`[SeedHealthData] Seeded ${config.recordType}`, 'SUCCESS');
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        addLog(`[SeedHealthData] Failed to seed ${config.recordType}: ${message}`, 'warn', 'WARNING');
+        addLog(`[SeedHealthData] Failed to seed ${config.recordType}: ${message}`, 'WARNING');
       }
     }
 
-    addLog(`[SeedHealthData] Successfully seeded ${totalRecords} records`, 'info', 'SUCCESS');
+    addLog(`[SeedHealthData] Successfully seeded ${totalRecords} records`, 'SUCCESS');
 
     return {
       success: true,
@@ -652,7 +652,7 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[SeedHealthData] Error seeding health data: ${message}`, 'error', 'ERROR');
+    addLog(`[SeedHealthData] Error seeding health data: ${message}`, 'ERROR');
     return {
       success: false,
       recordsInserted: 0,

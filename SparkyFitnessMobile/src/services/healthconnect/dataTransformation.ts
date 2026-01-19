@@ -18,7 +18,7 @@ const getDateString = (date: unknown): string | null => {
   try {
     return toLocalDateString(new Date(date as string | number | Date));
   } catch (e) {
-    addLog(`[HealthConnectService] Could not convert date: ${date}. ${e}`, 'warn', 'WARNING');
+    addLog(`[HealthConnectService] Could not convert date: ${date}. ${e}`, 'WARNING');
     return null;
   }
 };
@@ -87,7 +87,7 @@ const createRobustTransformer = (config: RobustExtractorConfig): ValueTransforme
   return (rec, _metricConfig, index) => {
     // Log sample record for debugging on first record
     if (index === 0) {
-      addLog(`[Transform] ${config.logLabel} sample keys: ${Object.keys(rec).join(', ')}`, 'debug');
+      addLog(`[Transform] ${config.logLabel} sample keys: ${Object.keys(rec).join(', ')}`, 'DEBUG');
     }
 
     // Try value extraction strategies in order
@@ -106,7 +106,7 @@ const createRobustTransformer = (config: RobustExtractorConfig): ValueTransforme
 
     if (isValidValue && isValidDate) {
       if (index === 0) {
-        addLog(`[Transform] ${config.logLabel} SUCCESS: ${value} on ${date}`, 'info', 'SUCCESS');
+        addLog(`[Transform] ${config.logLabel} SUCCESS: ${value} on ${date}`, 'SUCCESS');
       }
       return { value: value!, date };
     }
@@ -115,7 +115,7 @@ const createRobustTransformer = (config: RobustExtractorConfig): ValueTransforme
       const issues: string[] = [];
       if (!isValidValue) issues.push(`invalid value (${value})`);
       if (!isValidDate) issues.push(`invalid date (${date})`);
-      addLog(`[Transform] ${config.logLabel} FAILED: ${issues.join(', ')}`, 'warn', 'WARNING');
+      addLog(`[Transform] ${config.logLabel} FAILED: ${issues.join(', ')}`, 'WARNING');
     }
     return null;
   };
@@ -521,7 +521,7 @@ const createCalorieTransformer = (aggregatedType: string, logLabel: string): Val
       const value = rec.value as number;
       const recordDate = rec.date as string;
       if (index === 0) {
-        addLog(`[Transform] ${logLabel} (aggregated as ${rec.type}): ${value} kcal on ${recordDate}`, 'debug');
+        addLog(`[Transform] ${logLabel} (aggregated as ${rec.type}): ${value} kcal on ${recordDate}`, 'DEBUG');
       }
       // Preserve the original type from aggregated records
       return { value, date: recordDate, type: rec.type as string };
@@ -541,13 +541,13 @@ const createCalorieTransformer = (aggregatedType: string, logLabel: string): Val
 
     if (value !== null && date) {
       if (index === 0) {
-        addLog(`[Transform] ${logLabel} (raw): ${value} kcal on ${date}`, 'debug');
+        addLog(`[Transform] ${logLabel} (raw): ${value} kcal on ${date}`, 'DEBUG');
       }
       return { value, date };
     }
 
     if (index === 0) {
-      addLog(`[Transform] ${logLabel} FAILED: value=${value}, date=${date}`, 'warn', 'WARNING');
+      addLog(`[Transform] ${logLabel} FAILED: value=${value}, date=${date}`, 'WARNING');
     }
     return null;
   };
@@ -568,7 +568,7 @@ const SKIP_TYPES = new Set(['CervicalMucus', 'MenstruationFlow', 'OvulationTest'
 
 export const transformHealthRecords = (records: unknown[], metricConfig: MetricConfig): TransformOutput[] => {
   if (!Array.isArray(records)) {
-    addLog(`[HealthConnectService] transformHealthRecords received non-array records for ${metricConfig.recordType}: ${JSON.stringify(records)}`, 'warn', 'WARNING');
+    addLog(`[HealthConnectService] transformHealthRecords received non-array records for ${metricConfig.recordType}: ${JSON.stringify(records)}`, 'WARNING');
     return [];
   }
 
@@ -668,18 +668,18 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
 
       // Unhandled record type
       if (index === 0) {
-        addLog(`[HealthConnectService] No transformer found for record type: ${recordType}`, 'warn', 'WARNING');
+        addLog(`[HealthConnectService] No transformer found for record type: ${recordType}`, 'WARNING');
       }
       skipCount++;
     } catch (error) {
       skipCount++;
-      addLog(`[HealthConnectService] Error transforming ${recordType} record at index ${index}: ${(error as Error).message}`, 'warn', 'WARNING');
+      addLog(`[HealthConnectService] Error transforming ${recordType} record at index ${index}: ${(error as Error).message}`, 'WARNING');
     }
   });
 
   // Log transformation summary for debugging
   if (skipCount > 0) {
-    addLog(`[HealthConnectService] ${recordType} transformation: ${successCount} succeeded, ${skipCount} skipped (of ${records.length} total)`, 'debug');
+    addLog(`[HealthConnectService] ${recordType} transformation: ${successCount} succeeded, ${skipCount} skipped (of ${records.length} total)`, 'DEBUG');
   }
 
   return transformedData;

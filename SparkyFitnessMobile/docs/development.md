@@ -7,19 +7,31 @@
 - If the dependency contains native code, you will need to run `npx expo prebuild` to rebuild the ios and android folders.
 - Seriously, always use `npx expo install`
 
+### Keep These Required Peer Dependencies
+
+| Package | Dependency For |
+|---------|----------------|
+| `react-native-bottom-tabs` | `@bottom-tabs/react-navigation` |
+| `react-native-worklets` | `react-native-reanimated` |
+| `expo-font` | `@expo/vector-icons` |
+| `react-native-nitro-modules` | `@kingstinct/react-native-healthkit` |
+| `expo-asset` | expo |
+
+`expo-health-connect` contains only an expo config module that enables the use of `react-native-health-connect` in expo projects. The actual native module is in `react-native-health-connect`. Both must be installed.
+
 ### Troubleshooting
 
 - You can run `npx expo install --check` to check for incompatible dependencies in your project. You can run it with `--fix` to automatically fix any issues found.
 - Use `npx expo-doctor` to diagnose and fix common issues in your Expo project.
 - Prebuild after changing anything in `app.json`
-- Delete node_modules and run `npm expo install` again to reinstall all dependencies. Follow up with `npx expo-doctor`
+- Delete node_modules and run `npm install` again to reinstall all dependencies. Follow up with `npx expo-doctor`
 - Clear metro cache with `npx expo start -c` if you encounter strange issues.
 
 ## Prebuild
 
 This app uses expo development builds so any changes made to ios and android folders will be overwritten when running `npx expo prebuild`. Changes should instead be made in `app.json` using config plugins.
 
-Running `npx expo prebuild -c` will delete the folders before generating them again.
+Running `npx expo prebuild --clean` will delete the folders before generating them again.
 
 ## Running
 
@@ -46,7 +58,7 @@ Set the environment variable `APP_VARIANT` to `production` to disable the dev me
 
 ### Seed data
 
-Available for android only, you can seed Health Connect with test data.
+At the bottom of settings screen is a button to seed the app with test Health Connect or HealthKit data for testing.
 
 ## API Documentation
 

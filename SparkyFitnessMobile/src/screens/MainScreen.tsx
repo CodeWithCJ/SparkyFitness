@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity, Image, ScrollView, Linking, Platform } from 'react-native';
-import DropDownPicker from 'react-native-dropdown-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BottomSheetPicker from '../components/BottomSheetPicker';
+import ConnectionStatus from '../components/ConnectionStatus';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   initHealthConnect,
@@ -37,7 +38,7 @@ interface TimeRangeOption {
 
 const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [healthData, setHealthData] = useState<HealthDataDisplayState>({});
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -45,7 +46,6 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
   const [lastSyncedTimeLoaded, setLastSyncedTimeLoaded] = useState<boolean>(false);
   const [isHealthConnectInitialized, setIsHealthConnectInitialized] = useState<boolean>(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('3d');
-  const [openTimeRangePicker, setOpenTimeRangePicker] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const isAndroid = Platform.OS === 'android';
 
@@ -61,7 +61,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
   const initialize = useCallback(async (): Promise<void> => {
     const initialized = await initHealthConnect();
     if (!initialized) {
-      addLog('Health Connect initialization failed.', 'error', 'ERROR');
+      addLog('Health Connect initialization failed.', 'ERROR');
     }
     setIsHealthConnectInitialized(initialized);
 
@@ -500,7 +500,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
           newHealthData[metric.id] = displayValue;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          addLog(`[MainScreen] Error fetching ${metric.label}: ${errorMessage}`, 'error', 'ERROR');
+          addLog(`[MainScreen] Error fetching ${metric.label}: ${errorMessage}`, 'ERROR');
           newHealthData[metric.id] = 'Error';
         }
       }
@@ -524,12 +524,12 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
         setLastSyncedTime(newSyncedTime);
         Alert.alert('Success', 'Health data synced successfully.');
       } else {
-        addLog(`Sync Error: ${result.error}`, 'error', 'ERROR');
+        addLog(`Sync Error: ${result.error}`, 'ERROR');
         Alert.alert('Sync Error', result.error || 'Unknown error');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog(`Sync Error: ${errorMessage}`, 'error', 'ERROR');
+      addLog(`Sync Error: ${errorMessage}`, 'ERROR');
       Alert.alert('Sync Error', errorMessage);
     } finally {
       setIsSyncing(false);
@@ -557,11 +557,12 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
       try {
         await WebBrowser.openBrowserAsync(serverUrl);
       } catch (inAppError) {
+        addLog(`In-app browser failed, falling back to Linking: ${inAppError}`, 'ERROR');
         await Linking.openURL(serverUrl);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog(`Error opening web dashboard: ${errorMessage}`, 'error', 'ERROR');
+      addLog(`Error opening web dashboard: ${errorMessage}`, 'ERROR');
       Alert.alert('Error', `Could not open web dashboard: ${errorMessage}`);
     }
   };
@@ -571,12 +572,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
       {/* Header Bar */}
       <View style={[styles.headerBar, { borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>SparkyFitness</Text>
-        {isConnected && (
-          <View style={styles.headerStatusContainer}>
-            <View style={styles.headerDot} />
-            <Text style={styles.headerStatusText}>Connected</Text>
-          </View>
-        )}
+        <ConnectionStatus isConnected={isConnected} variant="header" />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
@@ -590,7 +586,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
 
         {/* Sync Now Button */}
-        <TouchableOpacity style={styles.syncButtonContainer} onPress={handleSync} disabled={isSyncing || !isHealthConnectInitialized}>
+        <TouchableOpacity style={[styles.syncButtonContainer, { backgroundColor: colors.primary }]} onPress={handleSync} disabled={isSyncing || !isHealthConnectInitialized}>
           <Image source={require('../../assets/icons/sync_now_alt.png')} style={styles.syncButtonIconImage} tintColor="#fff" />
           <View style={styles.buttonTextContainer}>
             <Text style={styles.syncButtonText}>{isSyncing ? "Syncing..." : "Sync Now"}</Text>
@@ -619,28 +615,16 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
         {/* Time Range */}
         <View style={[styles.card, styles.timeRangeCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.timeRangeLabel, { color: colors.text }]}>Time Range</Text>
-          <DropDownPicker
-            open={openTimeRangePicker}
+          <BottomSheetPicker
             value={selectedTimeRange}
-            items={timeRangeOptions.map(option => ({ label: option.label, value: option.value }))}
-            setOpen={setOpenTimeRangePicker}
-            setValue={setSelectedTimeRange as (callback: TimeRange | ((prevState: TimeRange) => TimeRange)) => void}
-            onSelectItem={async (item) => {
-              await saveTimeRange(item.value as TimeRange);
-              fetchHealthData(healthMetricStates, item.value as TimeRange);
+            options={timeRangeOptions}
+            onSelect={async (value) => {
+              setSelectedTimeRange(value);
+              await saveTimeRange(value);
+              fetchHealthData(healthMetricStates, value);
             }}
+            title="Select Time Range"
             containerStyle={styles.timeRangeDropdownContainer}
-            style={[styles.dropdownStyle, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}
-            textStyle={{ color: colors.text }}
-            dropDownContainerStyle={[styles.dropdownListContainerStyle, { backgroundColor: colors.card, borderColor: colors.border }]}
-            labelStyle={[styles.dropdownLabelStyle, { color: colors.text }]}
-            placeholderStyle={[styles.dropdownPlaceholderStyle, { color: colors.textMuted }]}
-            selectedItemLabelStyle={styles.selectedItemLabelStyle}
-            maxHeight={200}
-            zIndex={5000}
-            zIndexInverse={1000}
-            listMode="SCROLLVIEW"
-            theme={isDarkMode ? "DARK" : "LIGHT"}
           />
         </View>
 
@@ -685,26 +669,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
   },
-  headerStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e6ffe6',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  headerDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#28a745',
-    marginRight: 6,
-  },
-  headerStatusText: {
-    color: '#28a745',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   scrollViewContent: {
     padding: 16,
     paddingBottom: 80,
@@ -714,20 +678,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    overflow: 'visible',
-    zIndex: 3500,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    elevation: 1,
   },
   timeRangeCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 12,
-    zIndex: 4500,
   },
   timeRangeLabel: {
     fontSize: 16,
@@ -744,32 +702,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#333',
   },
-  dropdownContainer: {
-    height: 50,
-    marginBottom: 15,
-    zIndex: 4000,
-  },
-  dropdownStyle: {
-    backgroundColor: '#fafafa',
-    borderColor: '#ddd',
-  },
-  dropdownItemStyle: {
-    justifyContent: 'flex-start',
-  },
-  dropdownLabelStyle: {
-    fontSize: 16,
-    color: '#333',
-  },
-  dropdownListContainerStyle: {
-    borderColor: '#ddd',
-  },
-  dropdownPlaceholderStyle: {
-    color: '#999',
-  },
-  selectedItemLabelStyle: {
-    fontWeight: 'bold',
-  },
-
   healthMetricsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -802,7 +734,7 @@ const styles = StyleSheet.create({
 
   },
   syncButtonContainer: {
-    backgroundColor: '#007bff',
+    // backgroundColor: '#007bff',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -849,27 +781,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
     marginTop: 2,
-  },
-  connectedStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#e6ffe6',
-    alignSelf: 'center',
-    marginBottom: 8
-  },
-  connectedStatusText: {
-    color: '#28a745',
-    marginLeft: 8,
-    fontWeight: 'bold',
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#28a745',
   },
   errorText: {
     color: 'red',

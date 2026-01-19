@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CATEGORY_ORDER } from '../constants/HealthMetrics';
 
 export interface ServerConfig {
   id: string;
@@ -146,4 +147,27 @@ export const saveLastSyncedTime = async (): Promise<string | null> => {
     console.error('Failed to save sync time.', error);
     return null;
   }
+};
+
+const COLLAPSED_CATEGORIES_KEY = '@HealthMetrics:collapsedCategories';
+
+export const saveCollapsedCategories = async (categories: string[]): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(COLLAPSED_CATEGORIES_KEY, JSON.stringify(categories));
+  } catch (error) {
+    console.error('Failed to save collapsed categories:', error);
+  }
+};
+
+export const loadCollapsedCategories = async (): Promise<string[]> => {
+  try {
+    const value = await AsyncStorage.getItem(COLLAPSED_CATEGORIES_KEY);
+    if (value) {
+      return JSON.parse(value);
+    }
+  } catch (error) {
+    console.error('Failed to load collapsed categories:', error);
+  }
+  // Default: all categories except Common are collapsed
+  return CATEGORY_ORDER.filter(c => c !== 'Common');
 };
