@@ -7,7 +7,7 @@ async function canAccessUserData(targetUserId, permissionType, authenticatedUser
   }
 
   // Check if authenticated user has family access with the required permission
-  const client = await getClient(familyUserId); // User-specific operation
+  const client = await getClient(authenticatedUserId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT 1

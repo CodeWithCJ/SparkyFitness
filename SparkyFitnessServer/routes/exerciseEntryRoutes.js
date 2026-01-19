@@ -167,7 +167,15 @@ router.get('/by-date', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Selected date is required.' });
   }
   try {
-    const entries = await exerciseService.getExerciseEntriesByDate(req.userId, req.userId, selectedDate);
+    const { userId } = req.query; // Check for userId param
+    const targetUserId = userId || req.userId;
+
+    if (targetUserId !== req.userId) {
+      const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId); // Permission check
+      if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const entries = await exerciseService.getExerciseEntriesByDate(req.userId, targetUserId, selectedDate);
     res.status(200).json(entries);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -283,7 +291,14 @@ router.post('/', authenticate, upload.single('image'), async (req, res, next) =>
       imageUrl = `/uploads/exercise_entries/${today}/${req.file.filename}`;
     }
 
-    const newEntry = await exerciseService.createExerciseEntry(req.userId, req.originalUserId || req.userId, {
+    let targetUserId = req.body.user_id || req.userId;
+    // Check permission if creating for another user
+    if (targetUserId !== req.userId) {
+      const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId); // Permission check
+      if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const newEntry = await exerciseService.createExerciseEntry(targetUserId, req.originalUserId || req.userId, {
       exercise_id,
       duration_minutes,
       calories_burned,

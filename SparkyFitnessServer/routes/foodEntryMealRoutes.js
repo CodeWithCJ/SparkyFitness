@@ -45,10 +45,19 @@ router.post("/", async (req, res, next) => {
     } = req.body;
     const userId = req.userId; // From authMiddleware
 
+    // Determine target user
+    const targetUserId = req.body.user_id || userId;
+
+    if (targetUserId !== userId) {
+      const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', userId);
+      if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const newFoodEntryMeal = await foodEntryService.createFoodEntryMeal(
-      userId, // authenticatedUserId
-      userId, // actingUserId (assuming the authenticated user is the acting user for updates)
+      targetUserId, // Use targetUserId
+      userId, // actingUserId is the authenticated user
       {
+        user_id: targetUserId, // Ensure this is passed
         meal_template_id,
         meal_type,
         meal_type_id,
@@ -98,10 +107,21 @@ router.post("/", async (req, res, next) => {
 router.get("/by-date/:date", async (req, res, next) => {
   try {
     const { date } = req.params;
-    const userId = req.userId; // From authMiddleware
+    const { userId } = req.query; // Check query param
+
+    // Determine target user
+    const targetUserId = userId || req.userId;
+
+    // We rely on getFoodEntryMealsByDate to potentially filter or just fetch. 
+    // Ideally we check permission here too.
+    if (targetUserId !== req.userId) {
+      const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId);
+      if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const foodEntryMeals = await foodEntryService.getFoodEntryMealsByDate(
-      userId,
-      userId,
+      req.userId,
+      targetUserId,
       date
     ); // Corrected arguments
     res.status(200).json(foodEntryMeals);
@@ -203,9 +223,34 @@ router.put("/:id", async (req, res, next) => {
     }); // DEBUG LOG
     const userId = req.userId; // From authMiddleware
 
+    // We need to find the owner of this meal to update it properly
+    // Use the service to get the meal (it might return null if no access, or we check access after)
+    // Actually, simple update: The repository likely filters by owner_id = $ownerId.
+    // If we pass userId (User A) as owner, it won't find User B's meal.
+    // So we MUST know the owner.
+    // Let's rely on the frontend passing 'user_id' in the body if it knows it? Or fetch it.
+    // Frontend likely doesn't pass user_id in PUT body.
+
+    // Correct approach: Fetch the meal first using a system/admin or shared scope if possible, OR
+    // if we added `getFoodEntryMealById` that doesn't check owner yet?
+    // Let's assume we can fetch it via `getFoodEntryMealWithComponents(userId, id)` because we likely have read access.
+
+    const existingMeal = await foodEntryService.getFoodEntryMealWithComponents(userId, id);
+    if (!existingMeal) {
+      return res.status(404).json({ message: "FoodEntryMeal not found or permission denied." });
+    }
+
+    const targetUserId = existingMeal.user_id;
+
+    // Check write permission if target is not self
+    if (targetUserId !== userId) {
+      const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', userId);
+      if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const updatedFoodEntryMeal = await foodEntryService.updateFoodEntryMeal(
-      userId, // authenticatedUserId
-      userId, // actingUserId (assuming authenticated user is the acting user for updates)
+      targetUserId, // owner ID
+      userId, // actingUserId
       id, // foodEntryMealId
       { name, description, meal_type, meal_type_id, entry_date, foods, quantity, unit } // updatedMealData
     );

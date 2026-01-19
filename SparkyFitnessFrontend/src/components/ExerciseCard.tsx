@@ -155,7 +155,7 @@ const ExerciseCard = ({
     debug(loggingLevel, "Fetching exercise entries for date:", selectedDate);
     setLoading(true);
     try {
-      const data: GroupedExerciseEntry[] = await fetchExerciseEntries(selectedDate); // Use imported fetchExerciseEntries
+      const data: GroupedExerciseEntry[] = await fetchExerciseEntries(selectedDate, currentUserId); // Use imported fetchExerciseEntries
       info(loggingLevel, "Exercise entries fetched successfully:", data);
       setExerciseEntries(data || []);
       debug(loggingLevel, "ExerciseCard: exerciseEntries state updated to:", data);
@@ -586,10 +586,10 @@ const ExerciseCard = ({
   }, { sum: 0, count: 0 });
 
   const averageHeartRate = totalHeartRates.count > 0 ? totalHeartRates.sum / totalHeartRates.count : 0;
- 
-   return (
-     <Card>
-       <CardHeader>
+
+  return (
+    <Card>
+      <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="dark:text-slate-300">{t("exerciseCard.title", "Exercise")}</CardTitle>
           <TooltipProvider>
