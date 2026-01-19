@@ -3,6 +3,7 @@ import { getWaterContainers, setPrimaryWaterContainer, WaterContainer } from '..
 import { useToast } from '../hooks/use-toast';
 import { usePreferences } from './PreferencesContext';
 import { useAuth } from '../hooks/useAuth';
+import { useActiveUser } from './ActiveUserContext'; // Import useActiveUser
 
 interface WaterContainerContextType {
   activeContainer: WaterContainer | null;
@@ -16,10 +17,14 @@ export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({ chil
   const { toast } = useToast();
   const { water_display_unit } = usePreferences();
   const { user, loading } = useAuth();
+  const { activeUserId } = useActiveUser(); // Get activeUserId
+
+  const currentUserId = activeUserId || user?.id;
 
   const fetchAndSetActiveContainer = async () => {
     try {
-      const fetchedContainers = await getWaterContainers();
+      if (!currentUserId) return;
+      const fetchedContainers = await getWaterContainers(currentUserId);
 
       let primary = fetchedContainers.find(c => c.is_primary);
       if (!primary && fetchedContainers.length > 0) {
@@ -28,7 +33,7 @@ export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({ chil
         // Update this in the backend as well
         await setPrimaryWaterContainer(primary.id);
         // Re-fetch to get the updated primary status
-        const updatedContainers = await getWaterContainers();
+        const updatedContainers = await getWaterContainers(currentUserId);
         primary = updatedContainers.find(c => c.id === primary.id); // Get the updated primary
       }
 
@@ -53,13 +58,13 @@ export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({ chil
   };
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && currentUserId) {
       fetchAndSetActiveContainer();
-    } else if (!loading && !user) {
+    } else if (!loading && !currentUserId) {
       // If user logs out, clear the active container
       setActiveContainer(null);
     }
-  }, [water_display_unit, user, loading]);
+  }, [water_display_unit, currentUserId, loading]);
 
   const refreshContainers = () => {
     fetchAndSetActiveContainer();

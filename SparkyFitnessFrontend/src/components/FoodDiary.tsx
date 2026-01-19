@@ -76,6 +76,7 @@ interface MealTotals {
   iron: number;
   calcium: number;
   custom_nutrients?: Record<string, number>; // Add custom_nutrients support
+  [key: string]: any; // Allow custom nutrients
 }
 
 interface FoodDiaryProps {
@@ -330,7 +331,6 @@ const FoodDiary = ({
     try {
       // Fetch standalone food entries
       const fetchedFoodEntries = await loadFoodEntries(
-        currentUserId,
         selectedDate
       );
       const processedFoodEntries = (fetchedFoodEntries || []).map((entry) => ({
@@ -350,7 +350,6 @@ const FoodDiary = ({
 
       // Fetch logged meal entries with components
       const fetchedFoodEntryMeals = await getFoodEntryMealsByDate(
-        currentUserId,
         selectedDate
       );
       setFoodEntryMeals(fetchedFoodEntryMeals || []);
@@ -375,7 +374,7 @@ const FoodDiary = ({
   const _loadGoals = useCallback(async () => {
     debug(loggingLevel, "Loading goals for date:", selectedDate);
     try {
-      const goalData = await loadGoals(currentUserId, selectedDate);
+      const goalData = await loadGoals(selectedDate);
       info(loggingLevel, "Goals loaded successfully:", goalData);
       setGoals(goalData);
     } catch (err) {
@@ -745,7 +744,7 @@ const FoodDiary = ({
           user_id: currentUserId,
           food_id: food.id,
           meal_type: selectedMealType,
-          meal_type_id: selectedMealTypeId, 
+          meal_type_id: selectedMealTypeId,
           quantity: quantity,
           unit: unit,
           variant_id: selectedVariant.id,
@@ -978,32 +977,32 @@ const FoodDiary = ({
           />
 
 
-<div className="space-y-6">
+          <div className="space-y-6">
             {availableMealTypes.length === 0 && (
-                 <div className="text-center p-4 text-muted-foreground">Loading meal types...</div>
+              <div className="text-center p-4 text-muted-foreground">Loading meal types...</div>
             )}
-            
+
             {availableMealTypes.map((mealTypeObj) => (
-                <MealCard
-                  key={`meal-${mealTypeObj.id}-${externalRefreshTrigger}`}
-                  // Pass the name for display and data retrieval, internally we handle the ID via handleFoodSelect
-                  meal={{ ...getMealData(mealTypeObj.name), selectedDate: selectedDate }}
-                  totals={getMealTotals(mealTypeObj.name)}
-                  onFoodSelect={handleFoodSelect}
-                  onEditEntry={handleEditEntry}
-                  onEditFood={handleEditFood}
-                  onRemoveEntry={(itemId, itemType) =>
-                    handleRemoveEntry(itemId, itemType)
-                  }
-                  getEntryNutrition={getEntryNutrition}
-                  onMealAdded={handleDataChange}
-                  onCopyClick={handleCopyClick}
-                  onCopyFromYesterday={handleCopyFromYesterday}
-                  onConvertToMealClick={handleConvertToMealClick}
-                  energyUnit={energyUnit}
-                  convertEnergy={convertEnergy}
-                  customNutrients={customNutrients}
-                />
+              <MealCard
+                key={`meal-${mealTypeObj.id}-${externalRefreshTrigger}`}
+                // Pass the name for display and data retrieval, internally we handle the ID via handleFoodSelect
+                meal={{ ...getMealData(mealTypeObj.name), selectedDate: selectedDate }}
+                totals={getMealTotals(mealTypeObj.name)}
+                onFoodSelect={handleFoodSelect}
+                onEditEntry={handleEditEntry}
+                onEditFood={handleEditFood}
+                onRemoveEntry={(itemId, itemType) =>
+                  handleRemoveEntry(itemId, itemType)
+                }
+                getEntryNutrition={getEntryNutrition}
+                onMealAdded={handleDataChange}
+                onCopyClick={handleCopyClick}
+                onCopyFromYesterday={handleCopyFromYesterday}
+                onConvertToMealClick={handleConvertToMealClick}
+                energyUnit={energyUnit}
+                convertEnergy={convertEnergy}
+                customNutrients={customNutrients}
+              />
             ))}
 
             {/* Exercise Section */}
@@ -1096,14 +1095,14 @@ const FoodDiary = ({
             />
 
             // {/* Exercise Section */}
-            {/* <ExerciseCard
+          {/* <ExerciseCard
               selectedDate={selectedDate}
               onExerciseChange={handleDataChange}
               initialExercisesToLog={initialExercisesToLog}
               onExercisesLogged={onExercisesLogged}
               key={`exercise-${externalRefreshTrigger}`}
             />
-          </div> */} 
+          </div> */}
         </>
       )}
 

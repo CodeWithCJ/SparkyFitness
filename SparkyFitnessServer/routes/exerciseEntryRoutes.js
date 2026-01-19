@@ -170,8 +170,8 @@ router.get('/by-date', authenticate, async (req, res, next) => {
     const { userId } = req.query; // Check for userId param
     const targetUserId = userId || req.userId;
 
-    if (targetUserId !== req.userId) {
-      const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId); // Permission check
+    if (userId && userId !== req.userId) {
+      const hasPermission = await require('../utils/permissionUtils').canAccessUserData(userId, 'diary', req.userId); // Permission check
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
 
@@ -292,9 +292,9 @@ router.post('/', authenticate, upload.single('image'), async (req, res, next) =>
     }
 
     let targetUserId = req.body.user_id || req.userId;
-    // Check permission if creating for another user
-    if (targetUserId !== req.userId) {
-      const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId); // Permission check
+    // Check permission if explicitly creating for another user
+    if (req.body.user_id && req.body.user_id !== req.userId) {
+      const hasPermission = await require('../utils/permissionUtils').canAccessUserData(req.body.user_id, 'diary', req.userId); // Permission check
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
 

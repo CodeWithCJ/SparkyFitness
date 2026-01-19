@@ -145,7 +145,7 @@ const DailyProgress = ({
 
       // Use the database function to get goals for the selected date
       debug(loggingLevel, "DailyProgress: Fetching goals...");
-      const goalsData = await getGoalsForDate(selectedDate);
+      const goalsData = await getGoalsForDate(selectedDate, currentUserId);
       info(
         loggingLevel,
         "DailyProgress: Goals loaded successfully:",
@@ -165,7 +165,7 @@ const DailyProgress = ({
         "DailyProgress: Fetching food entries for intake calculation...",
       );
       try {
-        const entriesData = await getFoodEntriesForDate(selectedDate);
+        const entriesData = await getFoodEntriesForDate(selectedDate, currentUserId);
         info(
           loggingLevel,
           `DailyProgress: Fetched ${entriesData.length} food entries for intake.`,
@@ -202,7 +202,7 @@ const DailyProgress = ({
       // Load exercise calories burned
       debug(loggingLevel, "DailyProgress: Fetching exercise entries...");
       try {
-        const exerciseData: GroupedExerciseEntry[] = await getExerciseEntriesForDate(selectedDate); // Update type
+        const exerciseData: GroupedExerciseEntry[] = await getExerciseEntriesForDate(selectedDate, currentUserId); // Update type
         info(
           loggingLevel,
           `DailyProgress: Fetched ${exerciseData.length} exercise entries.`,
@@ -255,7 +255,7 @@ const DailyProgress = ({
       // Load daily steps from body measurements
       debug(loggingLevel, "DailyProgress: Fetching daily steps...");
       try {
-        const stepsData = await getCheckInMeasurementsForDate(selectedDate);
+        const stepsData = await getCheckInMeasurementsForDate(selectedDate, currentUserId);
         if (stepsData && stepsData.steps) {
           info(
             loggingLevel,
@@ -451,7 +451,7 @@ const DailyProgress = ({
     netCalories = Math.round(dailyIntake.calories); // Only eaten calories count towards net
     caloriesRemaining = dailyGoals.calories - dailyIntake.calories;
   }
-  
+
   const calorieProgress = Math.max(
     0,
     (netCalories / dailyGoals.calories) * 100,

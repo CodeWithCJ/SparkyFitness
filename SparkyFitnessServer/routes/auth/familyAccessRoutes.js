@@ -19,7 +19,7 @@ const { log } = require('../../config/logging');
  */
 router.get('/users/accessible-users', authenticate, async (req, res, next) => {
   try {
-    const accessibleUsers = await authService.getAccessibleUsers(req.userId);
+    const accessibleUsers = await authService.getAccessibleUsers(req.authenticatedUserId || req.userId);
     res.status(200).json(accessibleUsers);
   } catch (error) {
     next(error);

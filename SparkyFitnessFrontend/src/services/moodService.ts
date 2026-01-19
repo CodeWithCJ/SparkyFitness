@@ -17,12 +17,14 @@ export const saveMoodEntry = async (moodValue: number, notes: string, entryDate:
   }
 };
 
-export const getMoodEntries = async (userId: string, startDate: string, endDate: string): Promise<MoodEntry[]> => {
+export const getMoodEntries = async (startDate: string, endDate: string, userId?: string): Promise<MoodEntry[]> => {
   try {
     const userLoggingLevel = getUserLoggingLevel();
     debug(userLoggingLevel, "Fetching mood entries:", { userId, startDate, endDate });
+    const params: any = { startDate, endDate };
+    if (userId) params.userId = userId;
     const response = await api.get('/mood', {
-      params: { userId, startDate, endDate },
+      params,
     });
     // Log the actual response data from the backend
     debug(userLoggingLevel, 'moodService: Received response from /mood API:', response);

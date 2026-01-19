@@ -330,6 +330,26 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /food-integration/openfoodfacts/barcode/{barcode}:
+ *   get:
+ *     summary: Search for food by barcode on Open Food Facts
+ *     tags: [External Integrations]
+ *     description: Retrieves food details by barcode using the Open Food Facts API.
+ *     parameters:
+ *       - in: path
+ *         name: barcode
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The barcode to search for.
+ *     responses:
+ *       200:
+ *         description: Food details for the given barcode.
+ *       400:
+ *         description: Missing barcode.
+ */
 router.get(
   "/openfoodfacts/barcode/:barcode",
   authenticate,
@@ -721,48 +741,6 @@ router.get("/usda/search", authenticate, async (req, res, next) => {
   }
 });
 
-/**
- * @swagger
- *     tags: [External Integrations]
- *     security:
- *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: barcode
- *         schema:
- *           type: string
- *         required: true
- *         description: The barcode to search for.
- *     responses:
- *       200:
- *         description: Food details for the given barcode.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *       400:
- *         description: Missing barcode.
- *       404:
- *         description: Food not found.
- *       500:
- *         description: Server error.
- */
-router.get(
-  "/openfoodfacts/barcode/:barcode",
-  authenticate,
-  async (req, res, next) => {
-    const { barcode } = req.params;
-    if (!barcode) {
-      return res.status(400).json({ error: "Missing barcode" });
-    }
-    try {
-      const data = await searchOpenFoodFactsByBarcode(barcode);
-      res.json(data);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
 
 /**
  * @swagger

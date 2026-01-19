@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
+const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
 const goalService = require('../services/goalService');
 
 /**
@@ -26,7 +27,7 @@ const goalService = require('../services/goalService');
  *             schema:
  *               $ref: '#/components/schemas/UserGoal'
  */
-router.get('/by-date/:date', authenticate, async (req, res, next) => {
+router.get('/by-date/:date', authenticate, checkPermissionMiddleware('diary'), async (req, res, next) => {
   const { date } = req.params;
 
   if (!date) {
@@ -67,15 +68,18 @@ router.get('/by-date/:date', authenticate, async (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/UserGoal'
  */
-router.get('/for-date', authenticate, async (req, res, next) => {
-  const { date } = req.query;
+router.get('/for-date', authenticate, checkPermissionMiddleware('diary'), async (req, res, next) => {
+  const { date, userId } = req.query; // Check for userId in query (for backward compatibility if needed, but middleware handles it)
 
   if (!date) {
     return res.status(400).json({ error: 'Date is required.' });
   }
 
+  // Determine target user
+  const targetUserId = userId || req.userId;
+
   try {
-    const goals = await goalService.getUserGoals(req.userId, date);
+    const goals = await goalService.getUserGoals(targetUserId, date);
     res.status(200).json(goals);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {

@@ -133,7 +133,7 @@ const MiniNutritionTrends = ({ selectedDate, refreshTrigger, customNutrients = [
           )}
         </span>
       </div>
-      <div className="h-6 w-full bg-gray-100 dark:bg-gray-800 rounded min-w-0 overflow-hidden">
+      <div className="h-6 w-full bg-gray-100 dark:bg-gray-800 rounded min-w-0">
         <ResponsiveContainer
           width="100%"
           height={24}
@@ -144,7 +144,7 @@ const MiniNutritionTrends = ({ selectedDate, refreshTrigger, customNutrients = [
           <LineChart data={data}>
             <XAxis dataKey="date" hide />
             <YAxis hide />
-            <Tooltip content={<CustomTooltip energyUnit={energyUnit} convertEnergy={convertEnergy} />} />
+            <Tooltip allowEscapeViewBox={{ x: true, y: true }} content={<CustomTooltip energyUnit={energyUnit} convertEnergy={convertEnergy} />} />
             <Line
               type="monotone"
               dataKey={nutrient}

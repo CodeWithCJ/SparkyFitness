@@ -20,10 +20,10 @@ export const updateFoodEntry = async (
 };
 
 export interface FoodEntryCreateData {
-  user_id: string;
+  user_id?: string;
   food_id: string;
   meal_type: string;
-  meal_type_id: string;
+  meal_type_id?: string;
   quantity: number;
   unit: string;
   entry_date: string;
@@ -48,11 +48,10 @@ export const removeFoodEntry = async (id: string): Promise<any> => {
 };
 
 export const loadFoodEntries = async (
-  userId: string,
   date: string
 ): Promise<FoodEntry[]> => {
   const response = await apiCall(
-    `/food-entries/by-date/${date}?userId=${userId}`,
+    `/food-entries/by-date/${date}`,
     {
       method: "GET",
     }
@@ -60,9 +59,9 @@ export const loadFoodEntries = async (
   return response;
 };
 
-export const loadGoals = async (userId: string, date: string): Promise<any> => {
+export const loadGoals = async (date: string): Promise<any> => {
   // Adjust return type as needed
-  const response = await apiCall(`/goals/by-date/${date}?userId=${userId}`, {
+  const response = await apiCall(`/goals/by-date/${date}`, {
     method: "GET",
   });
   return response;
@@ -136,11 +135,10 @@ export const updateFoodEntryMeal = async (
 };
 
 export const getFoodEntryMealWithComponents = async (
-  userId: string,
   foodEntryMealId: string
 ): Promise<FoodEntryMeal> => {
   const response = await apiCall(
-    `/food-entry-meals/${foodEntryMealId}?userId=${userId}`,
+    `/food-entry-meals/${foodEntryMealId}`,
     {
       method: "GET",
     }
@@ -149,11 +147,10 @@ export const getFoodEntryMealWithComponents = async (
 };
 
 export const getFoodEntryMealsByDate = async (
-  userId: string,
   date: string
 ): Promise<FoodEntryMeal[]> => {
   const response = await apiCall(
-    `/food-entry-meals/by-date/${date}?userId=${userId}`,
+    `/food-entry-meals/by-date/${date}`,
     {
       method: "GET",
     }

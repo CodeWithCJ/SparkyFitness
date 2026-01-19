@@ -23,7 +23,7 @@ interface ActiveUserContextType {
   activeUserName: string | null;
   isActingOnBehalf: boolean;
   accessibleUsers: AccessibleUser[];
-  switchToUser: (userId: string | null) => void;
+  switchToUser: (userId: string | null) => Promise<void>;
   loadAccessibleUsers: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
   hasWritePermission: (permission: string) => boolean;
@@ -42,7 +42,7 @@ export const useActiveUser = () => {
 import { NavigateFunction } from 'react-router-dom';
 
 export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth(); // Get loading state from useAuth
+  const { user, loading, refreshUser, switchContext } = useAuth(); // Add refreshUser and switchContext from useAuth
   const { loggingLevel } = usePreferences();
   debug(loggingLevel, "ActiveUserProvider: Initializing ActiveUserProvider.");
 
@@ -53,16 +53,16 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     if (!loading) { // Only proceed after authentication loading is complete
       if (user) {
-        const storedActiveUserId = localStorage.getItem('activeUserId');
-        const initialActiveUserId = storedActiveUserId && storedActiveUserId !== user.id ? storedActiveUserId : user.id;
+        const currentActiveUserId = user.activeUserId || user.id;
 
-        info(loggingLevel, "ActiveUserProvider: User logged in, setting active user and loading accessible users.");
-        setActiveUserId(initialActiveUserId);
-        setActiveUserName(user.email || 'You'); // This will be updated after accessible users are loaded
-        loadAccessibleUsers(initialActiveUserId); // Pass initialActiveUserId to load permissions
+        info(loggingLevel, "ActiveUserProvider: User logged in, setting active user context.");
+        setActiveUserId(currentActiveUserId);
+
+        // Initial name set, will be refined once accessibleUsers load
+        setActiveUserName(user.fullName || user.email || 'You');
+        loadAccessibleUsers(currentActiveUserId);
       } else {
         info(loggingLevel, "ActiveUserProvider: User logged out, clearing active user and accessible users.");
-        localStorage.removeItem('activeUserId');
         setActiveUserId(null);
         setActiveUserName(null);
         setAccessibleUsers([]);
@@ -85,6 +85,10 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       info(loggingLevel, 'ActiveUserProvider: Accessible users data received:', data);
 
+      if (!data || data.length === 0) {
+        info(loggingLevel, 'ActiveUserProvider: No accessible users found.');
+      }
+
       // Transform the data to ensure proper typing
       const transformedData: AccessibleUser[] = (data || []).map((item: any) => ({
         user_id: item.user_id,
@@ -92,15 +96,17 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         email: item.email,
         permissions: typeof item.permissions === 'object' ? {
           // If the backend returns 'calorie', use it, otherwise fall back to can_manage_diary
-          diary: item.permissions.diary || item.permissions.can_manage_diary || false,
+          diary: item.permissions.diary || item.permissions.calorie || item.permissions.can_manage_diary || false,
           checkin: item.permissions.checkin || item.permissions.can_manage_checkin || false,
           reports: item.permissions.reports || item.permissions.can_view_reports || false,
-          food_list: item.permissions.food_list || item.permissions.can_view_food_library || false
+          food_list: item.permissions.food_list || item.permissions.can_view_food_library || false,
+          calorie: item.permissions.calorie || false
         } : {
           diary: false,
           checkin: false,
           reports: false,
-          food_list: false
+          food_list: false,
+          calorie: false
         },
         access_end_date: item.access_end_date
       }));
@@ -113,13 +119,13 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (activeUser) {
           setActiveUserName(activeUser.full_name || activeUser.email || 'Family Member');
         } else {
-          // Fallback if the stored active user is no longer accessible
-          localStorage.removeItem('activeUserId');
+          // Fallback if the contextual active user is no longer accessible
           setActiveUserId(user.id);
-          setActiveUserName(user.email || 'You');
+          setActiveUserName(user.fullName || user.email || 'You');
         }
       } else {
-        setActiveUserName(user.email || 'You');
+        // Acting on own behalf
+        setActiveUserName(user.fullName || user.email || 'You');
       }
     } catch (err) {
       error(loggingLevel, 'ActiveUserProvider: Unexpected error loading accessible users:', err);
@@ -133,7 +139,7 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [user, loading]); // Remove loadAccessibleUsers from dependency array
 
-  const switchToUser = (userId: string | null) => {
+  const switchToUser = async (userId: string | null) => {
     if (!user) {
       warn(loggingLevel, "ActiveUserProvider: Attempted to switch user without a logged-in user.");
       return;
@@ -142,23 +148,11 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const targetUserId = userId || user.id; // Default to own user ID if null is passed
 
-    if (targetUserId === user.id) {
-      // Switch back to own profile
-      info(loggingLevel, "ActiveUserProvider: Switching to own profile.");
-      localStorage.removeItem('activeUserId'); // Clear activeUserId from local storage
-      setActiveUserId(user.id);
-      setActiveUserName(user.email || 'You');
-    } else {
-      // Switch to family member's profile
-      const accessibleUser = accessibleUsers.find(u => u.user_id === targetUserId);
-      if (accessibleUser) {
-        info(loggingLevel, "ActiveUserProvider: Switching to family member profile:", accessibleUser.full_name || accessibleUser.email);
-        localStorage.setItem('activeUserId', targetUserId); // Store activeUserId in local storage
-        setActiveUserId(targetUserId);
-        setActiveUserName(accessibleUser.full_name || accessibleUser.email || 'Family Member');
-      } else {
-        warn(loggingLevel, "ActiveUserProvider: Attempted to switch to an inaccessible user ID:", targetUserId);
-      }
+    try {
+      await switchContext(targetUserId);
+      info(loggingLevel, "ActiveUserProvider: Profile switch successful.");
+    } catch (err) {
+      error(loggingLevel, "ActiveUserProvider: Failed to switch profile context:", err);
     }
   };
 

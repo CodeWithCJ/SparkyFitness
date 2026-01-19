@@ -41,10 +41,10 @@ router.post(
   checkPermissionMiddleware('diary'), // Add permission check
   async (req, res, next) => {
     try {
-      // Check if creating for another user
+      // Check if creating for another user (explicitly requested)
       const targetUserId = req.body.user_id || req.userId;
-      if (targetUserId !== req.userId) {
-        const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId);
+      if (req.body.user_id && req.body.user_id !== req.userId) {
+        const hasPermission = await require('../utils/permissionUtils').canAccessUserData(req.body.user_id, 'diary', req.userId);
         if (!hasPermission) {
           return res.status(403).json({ error: 'Forbidden: You do not have permission to manage diary for this user.' });
         }
@@ -348,9 +348,9 @@ router.get(
     const targetUserId = userId || req.userId;
 
     try {
-      // Permission check if accessing another user's data
-      if (targetUserId !== req.userId) {
-        const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId);
+      // Permission check if explicit userId is provided that differs from req.userId
+      if (userId && userId !== req.userId) {
+        const hasPermission = await require('../utils/permissionUtils').canAccessUserData(userId, 'diary', req.userId);
         if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
       }
 

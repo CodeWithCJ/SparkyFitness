@@ -118,8 +118,7 @@ const Auth = () => {
               title: "Success",
               description: "Logged in successfully via magic link!",
             });
-            signIn(data.userId, data.email, data.role, 'magic_link');
-            window.location.replace('/'); // Force a full page reload
+            signIn(data.userId, data.userId, data.email || email, data.role || 'user', 'magic_link', true, data.fullName);
           }
         } catch (err: any) {
           error(loggingLevel, "Auth: Magic link login failed:", err);
@@ -178,7 +177,7 @@ const Auth = () => {
         title: "Success",
         description: "Account created successfully!",
       });
-      signIn(data.userId, email, data.role, 'password'); // Pass role and authType to signIn
+      signIn(data.userId, data.userId, email, data.role || 'user', 'password', true, fullName);
     } catch (err: any) {
       error(loggingLevel, "Auth: Sign up failed:", err);
       toast({
@@ -250,7 +249,7 @@ const Auth = () => {
         title: "Success",
         description: "Logged in successfully!",
       });
-      signIn(data.userId, email, data.role, 'password'); // Assuming password auth for initial login
+      signIn(data.userId, data.userId, email, data.role || 'user', 'password', true, data.fullName);
     } catch (err: any) {
       error(loggingLevel, "Auth: Sign in failed:", err);
       toast({

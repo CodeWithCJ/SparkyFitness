@@ -76,8 +76,8 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
         errorData = { message: await response.text() };
       }
       const errorMessage = (errorData.error ? String(errorData.error) : '') ||
-                           (errorData.message ? String(errorData.message) : '') ||
-                           `API call failed with status ${response.status}`;
+        (errorData.message ? String(errorData.message) : '') ||
+        `API call failed with status ${response.status}`;
       logging.error(userLoggingLevel, `API Call: Error response from ${url}:`, { status: response.status, errorData });
 
       // Special handling for 400 errors on recent/top endpoints

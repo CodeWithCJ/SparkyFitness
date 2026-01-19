@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { apiCall } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
@@ -8,9 +8,15 @@ const OidcCallback: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signIn } = useAuth();
+  const processingRef = useRef(false);
 
   useEffect(() => {
     const processOidcCallback = async () => {
+      // Prevent duplicate processing if already in progress
+      if (processingRef.current) {
+        return;
+      }
+      processingRef.current = true;
       const params = new URLSearchParams(location.search);
       const code = params.get('code');
       const state = params.get('state');
@@ -23,7 +29,7 @@ const OidcCallback: React.FC = () => {
       try {
         const response = await apiCall('/openid/callback', {
           method: 'POST',
-          body: { code, state },
+          body: { code, state, search: location.search },
         });
 
         if (response.success && response.redirectUrl) {
@@ -42,9 +48,17 @@ const OidcCallback: React.FC = () => {
           // Fetch user info from the backend after successful OIDC login
           const userInfo = await apiCall('/openid/api/me');
           if (userInfo && userInfo.userId && userInfo.email) {
-            // Assuming the backend's /openid/api/me returns user details including userId, email, and role
-signIn(userInfo.userId, userInfo.email, userInfo.role || 'user', 'oidc');
-            navigate(response.redirectUrl); // Navigate to the intended redirect URL (e.g., '/')
+            // Correctly map parameters to signIn: userId, activeUserId, email, role, authType, navigateOnSuccess, fullName
+            signIn(
+              userInfo.userId,
+              userInfo.activeUserId || userInfo.userId,
+              userInfo.email,
+              userInfo.role || 'user',
+              'oidc',
+              true,
+              userInfo.fullName || userInfo.full_name
+            );
+            navigate('/');
           } else {
             setError('Failed to retrieve user information after OIDC login.');
           }

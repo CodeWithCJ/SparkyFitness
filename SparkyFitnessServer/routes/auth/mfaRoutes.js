@@ -136,7 +136,14 @@ router.post('/mfa/verify/totp', authenticate, mfaValidation, async (req, res, ne
         sameSite: 'strict',
         maxAge: 30 * 24 * 60 * 60 * 1000
       });
-      res.status(200).json({ message: 'TOTP verified and login successful.', userId: user.id, email: user.email, role: user.role, token });
+      res.status(200).json({
+        message: 'TOTP verified and login successful.',
+        userId: user.id,
+        email: user.email,
+        fullName: user.full_name,
+        role: user.role,
+        token
+      });
     } else {
       res.status(401).json({ error: 'Invalid TOTP code.' });
     }
@@ -353,7 +360,14 @@ router.post('/mfa/verify-email-code', authenticate, mfaValidation, async (req, r
         sameSite: 'strict',
         maxAge: 30 * 24 * 60 * 60 * 1000
       });
-      res.status(200).json({ message: 'Email MFA code verified. Login successful.', userId: user.id, email: user.email, role: user.role, token });
+      res.status(200).json({
+        message: 'Email MFA code verified. Login successful.',
+        userId: user.id,
+        email: user.email,
+        fullName: user.full_name,
+        role: user.role,
+        token
+      });
     } else {
       res.status(401).json({ error: 'Invalid or expired email MFA code.' });
     }
@@ -456,7 +470,14 @@ router.post('/mfa/verify-recovery-code', verifyRecoveryCodeValidation, async (re
         sameSite: 'strict',
         maxAge: 30 * 24 * 60 * 60 * 1000
       });
-      res.status(200).json({ message: 'Recovery code verified. Login successful.', userId: targetUserId, role: user.role, token });
+      res.status(200).json({
+        message: 'Recovery code verified. Login successful.',
+        userId: targetUserId,
+        email: user.email,
+        fullName: user.full_name,
+        role: user.role,
+        token
+      });
     } else {
       res.status(401).json({ error: 'Invalid recovery code.' });
     }

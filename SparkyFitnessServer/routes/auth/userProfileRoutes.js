@@ -8,7 +8,8 @@ const path = require('path');
 const fs = require('fs');
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads/avatars');
-console.log('UserProfileRoutes UPLOADS_DIR:', UPLOADS_DIR);
+const { log } = require('../../config/logging');
+log('info', 'UserProfileRoutes UPLOADS_DIR:', UPLOADS_DIR);
 
 // Ensure the uploads directory exists
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -55,10 +56,12 @@ const upload = multer({
  */
 router.get('/user', authenticate, async (req, res, next) => {
   try {
-    const user = await authService.getUser(req.userId);
+    const user = await authService.getUser(req.authenticatedUserId || req.userId);
     res.status(200).json({
       userId: user.id,
+      activeUserId: req.activeUserId || user.id,
       email: user.email,
+      fullName: user.full_name, // Map database column to camelCase
       role: user.role,
       created_at: user.created_at
     });
@@ -69,6 +72,66 @@ router.get('/user', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+
+/**
+ * @swagger
+ * /auth/switch-context:
+ *   post:
+ *     summary: Switch active user context
+ *     tags: [Identity & Security]
+ *     description: Switches the active user identity for the current session.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - targetUserId
+ *             properties:
+ *               targetUserId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: Context switched successfully.
+ *       403:
+ *         description: Forbidden.
+ *       500:
+ *         description: Internal server error.
+ */
+router.post('/switch-context', authenticate, async (req, res, next) => {
+  const { targetUserId } = req.body;
+  if (!targetUserId) {
+    return res.status(400).json({ error: 'targetUserId is required.' });
+  }
+
+  try {
+    const { token, activeUserId } = await authService.switchUserContext(req.authenticatedUserId, targetUserId);
+
+    // Synchronize session for OIDC users if it exists
+    if (req.session && req.session.user) {
+      req.session.user.activeUserId = activeUserId;
+      log('info', `Synchronized OIDC session activeUserId to: ${activeUserId}`);
+    }
+
+    // Set the new token in the cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+
+    res.status(200).json({ message: 'Context switched successfully.', activeUserId });
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
 
 /**
  * @swagger

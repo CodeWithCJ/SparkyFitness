@@ -137,11 +137,21 @@ router.post('/health-data', express.text({ type: '*/*' }), async (req, res, next
  */
 router.get('/water-intake/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { date } = req.params;
+  const { userId } = req.query;
+  const targetUserId = userId || req.userId;
+
   if (!date) {
     return res.status(400).json({ error: 'Date is required.' });
   }
+
+  // Permission check if explicit userId is provided
+  if (userId && userId !== req.userId) {
+    const hasPermission = await require('../utils/permissionUtils').canAccessUserData(userId, 'diary', req.authenticatedUserId || req.userId); // Assuming diary permission covers water log
+    if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+  }
+
   try {
-    const waterData = await measurementService.getWaterIntake(req.userId, req.userId, date);
+    const waterData = await measurementService.getWaterIntake(req.userId, targetUserId, date);
     res.status(200).json(waterData);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -180,13 +190,21 @@ router.get('/water-intake/:date', authenticate, checkPermissionMiddleware('check
  *         description: Water intake upserted successfully.
  */
 router.post('/water-intake', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { entry_date, change_drinks, container_id } = req.body;
+  const { entry_date, change_drinks, container_id, user_id } = req.body;
   if (!entry_date || change_drinks === undefined || container_id === undefined) {
     return res.status(400).json({ error: 'Entry date, change_drinks, and container_id are required.' });
   }
 
+  const targetUserId = user_id || req.userId;
+
+  // Check permission if explicitly management for another user
+  if (user_id && user_id !== req.userId) {
+    const hasPermission = await canAccessUserData(user_id, 'checkin', req.authenticatedUserId || req.userId); // Corrected to 'checkin'
+    if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+  }
+
   try {
-    const result = await measurementService.upsertWaterIntake(req.userId, req.originalUserId || req.userId, entry_date, change_drinks, container_id);
+    const result = await measurementService.upsertWaterIntake(targetUserId, req.originalUserId || req.userId, entry_date, change_drinks, container_id);
     res.status(200).json(result);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -388,7 +406,7 @@ router.get('/check-in/latest-on-or-before-date', authenticate, checkPermissionMi
     return res.status(400).json({ error: 'Date is required.' });
   }
   try {
-    const measurement = await measurementService.getLatestCheckInMeasurementsOnOrBeforeDate(req.userId, req.userId, date);
+    const measurement = await measurementService.getLatestCheckInMeasurementsOnOrBeforeDate(req.originalUserId || req.userId, req.userId, date);
     res.status(200).json(measurement);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -402,8 +420,8 @@ router.get('/check-in/latest-on-or-before-date', authenticate, checkPermissionMi
  * @swagger
  * /measurements/check-in/{date}:
  *   get:
- *     summary: Get check-in measurements for a date
- *     tags: [Wellness & Metrics]
+ *     summary: Get check-in measurements for a specific date
+ *     tags: [Nutrition & Meals]
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -413,21 +431,35 @@ router.get('/check-in/latest-on-or-before-date', authenticate, checkPermissionMi
  *         schema:
  *           type: string
  *           format: date
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
  *     responses:
  *       200:
- *         description: Check-in measurements data.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/CheckInMeasurement'
+ *         description: Check-in measurements for the date.
+ *       500:
+ *         description: Internal server error.
  */
 router.get('/check-in/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { date } = req.params;
+  const { userId } = req.query; // Check query param
+
   if (!date) {
     return res.status(400).json({ error: 'Date is required.' });
   }
+
+  const targetUserId = userId || req.userId;
+
+  // Permission check if explicit userId is provided
+  if (userId && userId !== req.userId) {
+    const hasPermission = await canAccessUserData(userId, 'checkin', req.authenticatedUserId || req.userId); // Corrected to 'checkin'
+    if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+  }
+
   try {
-    const measurement = await measurementService.getCheckInMeasurements(req.userId, req.userId, date);
+    const measurement = await measurementService.getCheckInMeasurements(req.originalUserId || req.userId, targetUserId, date);
     res.status(200).json(measurement);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {

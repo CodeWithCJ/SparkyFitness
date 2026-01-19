@@ -33,10 +33,6 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
   }, [activeUserId, startDate, endDate]);
 
   const fetchSleepData = async () => {
-    if (!activeUserId) {
-      warn(loggingLevel, "SleepReport: fetchSleepData called with no active user ID.");
-      return;
-    }
     setLoading(true);
     try {
       const response = await api.get(`/sleep?startDate=${startDate}&endDate=${endDate}`);
