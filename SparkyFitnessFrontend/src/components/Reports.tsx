@@ -94,6 +94,11 @@ const Reports = () => {
   const [endDate, setEndDate] = useState<string | null>(null);
   const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("charts");
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
 
   const handleDrilldown = (date: string) => {
@@ -301,7 +306,7 @@ const Reports = () => {
       const calculateFoodDayTotal = (entries: DailyFoodEntry[]) => {
         return entries.reduce((total, entry) => {
           const calculatedNutrition = calculateFoodEntryNutrition(entry as any); // Cast to any for now
-          
+
           const customNutrientTotals = customNutrients.reduce((acc, nutrient) => {
             acc[nutrient.name] = (acc[nutrient.name] || 0) + (calculatedNutrition.custom_nutrients?.[nutrient.name] || 0);
             return acc;
@@ -414,7 +419,7 @@ const Reports = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `food - diary - ${ startDate } -to - ${ endDate }.csv`;
+      a.download = `food - diary - ${startDate} -to - ${endDate}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -477,7 +482,7 @@ const Reports = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `exercise - entries - ${ startDate } -to - ${ endDate }.csv`;
+      a.download = `exercise - entries - ${startDate} -to - ${endDate}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -515,16 +520,16 @@ const Reports = () => {
         return;
       }
 
-      info(loggingLevel, `Reports: Fetched ${ measurements.length } body measurement entries for export.`);
+      info(loggingLevel, `Reports: Fetched ${measurements.length} body measurement entries for export.`);
 
       const csvHeaders = [
         t('reports.bodyMeasurementsExportHeaders.date', 'Date'),
-        t('reports.bodyMeasurementsExportHeaders.weight', `Weight(${ defaultWeightUnit })`),
-        t('reports.bodyMeasurementsExportHeaders.neck', `Neck(${ defaultMeasurementUnit })`),
-        t('reports.bodyMeasurementsExportHeaders.waist', `Waist(${ defaultMeasurementUnit })`),
-        t('reports.bodyMeasurementsExportHeaders.hips', `Hips(${ defaultMeasurementUnit })`),
+        t('reports.bodyMeasurementsExportHeaders.weight', `Weight(${defaultWeightUnit})`),
+        t('reports.bodyMeasurementsExportHeaders.neck', `Neck(${defaultMeasurementUnit})`),
+        t('reports.bodyMeasurementsExportHeaders.waist', `Waist(${defaultMeasurementUnit})`),
+        t('reports.bodyMeasurementsExportHeaders.hips', `Hips(${defaultMeasurementUnit})`),
         t('reports.bodyMeasurementsExportHeaders.steps', 'Steps'),
-        t('reports.bodyMeasurementsExportHeaders.height', `Height(${ defaultMeasurementUnit })`),
+        t('reports.bodyMeasurementsExportHeaders.height', `Height(${defaultMeasurementUnit})`),
         t('reports.bodyMeasurementsExportHeaders.bodyFatPercentage', 'Body Fat %')
       ];
 
@@ -557,7 +562,7 @@ const Reports = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `body - measurements - ${ startDate } -to - ${ endDate }.csv`;
+      a.download = `body - measurements - ${startDate} -to - ${endDate}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -579,20 +584,20 @@ const Reports = () => {
   };
 
   const exportCustomMeasurements = async (category: CustomCategory) => {
-    info(loggingLevel, `Reports: Attempting to export custom measurements for category: ${ category.name } (${ category.id })`);
+    info(loggingLevel, `Reports: Attempting to export custom measurements for category: ${category.name} (${category.id})`);
     try {
       const measurements = customMeasurementsData[category.id];
       if (!measurements || measurements.length === 0) {
-        warn(loggingLevel, `Reports: No custom measurement data to export for category: ${ category.name }.`);
+        warn(loggingLevel, `Reports: No custom measurement data to export for category: ${category.name}.`);
         toast({
           title: t('reports.noData', "No Data"),
-          description: t('reports.noCustomMeasurementDataToExport', `No ${ category.display_name || category.name } data to export `, { categoryName: category.display_name || category.name }),
+          description: t('reports.noCustomMeasurementDataToExport', `No ${category.display_name || category.name} data to export `, { categoryName: category.display_name || category.name }),
           variant: "destructive",
         });
         return;
       }
 
-      info(loggingLevel, `Reports: Found ${ measurements.length } custom measurement entries for category: ${ category.name }.`);
+      info(loggingLevel, `Reports: Found ${measurements.length} custom measurement entries for category: ${category.name}.`);
 
       // Sort by timestamp descending
       const sortedMeasurements = [...measurements].sort((a, b) =>
@@ -608,7 +613,7 @@ const Reports = () => {
         const timestamp = new Date(measurement.timestamp);
         const hour = timestamp.getHours();
         const minutes = timestamp.getMinutes();
-        const formattedHour = `${ hour.toString().padStart(2, '0') }:${ minutes.toString().padStart(2, '0') } `;
+        const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} `;
 
         return [
           measurement.entry_date && !isNaN(parseISO(measurement.entry_date).getTime()) ? formatDateInUserTimezone(parseISO(measurement.entry_date), 'MMM dd, yyyy') : '', // Format date for display
@@ -625,19 +630,19 @@ const Reports = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${ (category.display_name || category.name).toLowerCase().replace(/\s+/g, '-') } -${ startDate } -to - ${ endDate }.csv`;
+      a.download = `${(category.display_name || category.name).toLowerCase().replace(/\s+/g, '-')} -${startDate} -to - ${endDate}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      info(loggingLevel, `Reports: Custom measurements exported successfully for category: ${ category.name }.`);
+      info(loggingLevel, `Reports: Custom measurements exported successfully for category: ${category.name}.`);
       toast({
         title: t('reports.customMeasurementsExportSuccess', "Success"),
-        description: t('reports.customMeasurementsExportSuccess', `${ category.display_name || category.name } data exported successfully`, { categoryName: category.display_name || category.name }),
+        description: t('reports.customMeasurementsExportSuccess', `${category.display_name || category.name} data exported successfully`, { categoryName: category.display_name || category.name }),
       });
     } catch (err) {
-      error(loggingLevel, `Reports: Error exporting custom measurements for category ${ category.name }: `, err);
+      error(loggingLevel, `Reports: Error exporting custom measurements for category ${category.name}: `, err);
       toast({
         title: t('reports.errorToastTitle', "Error"),
         description: t('reports.customMeasurementsExportError', "Failed to export data"),
@@ -647,31 +652,31 @@ const Reports = () => {
   };
 
   const formatCustomChartData = (category: CustomCategory, data: CustomMeasurementData[]) => {
-    debug(loggingLevel, `Reports: Formatting custom chart data for category: ${ category.name } (${ category.frequency })`);
+    debug(loggingLevel, `Reports: Formatting custom chart data for category: ${category.name} (${category.frequency})`);
     const isConvertibleMeasurement = ['kg', 'lbs', 'cm', 'inches'].includes(category.measurement_type.toLowerCase());
 
     const convertValue = (value: string | number) => {
       const numericValue = typeof value === 'string' ? parseFloat(value) : value;
       if (isNaN(numericValue)) {
-        debug(loggingLevel, `Reports: convertValue received non - numeric value: ${ value }. Returning null.`);
+        debug(loggingLevel, `Reports: convertValue received non - numeric value: ${value}. Returning null.`);
         return null;
       }
       if (isConvertibleMeasurement) {
         // Assuming custom measurements are stored in 'cm' if they are convertible
         const converted = convertMeasurement(numericValue, 'cm', defaultMeasurementUnit);
-        debug(loggingLevel, `Reports: Converted value from ${ numericValue } to ${ converted } for category.`);
+        debug(loggingLevel, `Reports: Converted value from ${numericValue} to ${converted} for category.`);
         return converted;
       }
-      debug(loggingLevel, `Reports: Returning original value ${ numericValue } for non - convertible category.`);
+      debug(loggingLevel, `Reports: Returning original value ${numericValue} for non - convertible category.`);
       return numericValue;
     };
 
     if (category.frequency === 'Hourly' || category.frequency === 'All') {
       return data.map(d => {
         const convertedValue = convertValue(d.value);
-        debug(loggingLevel, `Reports: Mapping data point - original value: ${ d.value }, converted value: ${ convertedValue } `);
+        debug(loggingLevel, `Reports: Mapping data point - original value: ${d.value}, converted value: ${convertedValue} `);
         return {
-          date: `${ d.entry_date } ${ d.hour !== null ? String(d.hour).padStart(2, '0') + ':00' : '' } `,
+          date: `${d.entry_date} ${d.hour !== null ? String(d.hour).padStart(2, '0') + ':00' : ''} `,
           value: convertedValue,
           notes: d.notes
         };
@@ -687,7 +692,7 @@ const Reports = () => {
 
       return Object.values(grouped).map(d => {
         const convertedValue = convertValue(d.value);
-        debug(loggingLevel, `Reports: Mapping grouped data point - original value: ${ d.value }, converted value: ${ convertedValue } `);
+        debug(loggingLevel, `Reports: Mapping grouped data point - original value: ${d.value}, converted value: ${convertedValue} `);
         return {
           date: d.entry_date,
           value: convertedValue,
@@ -806,53 +811,59 @@ const Reports = () => {
                             <CardTitle className="flex items-center">
                               <Activity className="w-5 h-5 mr-2" />
                               {category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
-                                ? `${ category.display_name || category.name } (${ defaultMeasurementUnit })`
-                                : `${ category.display_name || category.name } (${ category.measurement_type })`}
+                                ? `${category.display_name || category.name} (${defaultMeasurementUnit})`
+                                : `${category.display_name || category.name} (${category.measurement_type})`}
                             </CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="h-80">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={chartData}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey="date" />
-                                  <YAxis
-                                    type="number"
-                                    domain={getCustomYAxisDomain(chartData) || undefined}
-                                    tickFormatter={(value) => {
-                                      if (category.measurement_type.toLowerCase() === 'waist') {
-                                        return value.toFixed(1);
-                                      }
-                                      return value.toFixed(2);
-                                    }}
-                                  />
-                                  <Tooltip
-                                    content={({ active, payload, label }) => {
-                                      if (active && payload && payload.length) {
-                                        const data = payload[0].payload;
-                                        const unit = category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
-                                          ? (defaultMeasurementUnit)
-                                          : category.measurement_type;
-                                        const numericValue = Number(data.value);
+                            <div className="h-80 min-w-0">
+                              {isMounted ? (
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+                                  <LineChart data={chartData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis
+                                      type="number"
+                                      domain={getCustomYAxisDomain(chartData) || undefined}
+                                      tickFormatter={(value) => {
+                                        if (category.measurement_type.toLowerCase() === 'waist') {
+                                          return value.toFixed(1);
+                                        }
+                                        return value.toFixed(2);
+                                      }}
+                                    />
+                                    <Tooltip
+                                      content={({ active, payload, label }) => {
+                                        if (active && payload && payload.length) {
+                                          const data = payload[0].payload;
+                                          const unit = category.measurement_type.toLowerCase() === 'length' || category.measurement_type.toLowerCase() === 'distance'
+                                            ? (defaultMeasurementUnit)
+                                            : category.measurement_type;
+                                          const numericValue = Number(data.value);
 
-                                        return (
-                                          <div className="p-2 bg-background border rounded-md shadow-md">
-                                            <p className="label">{`${ label } `}</p>
-                                            {!isNaN(numericValue) ? (
-                                              <p className="intro">{`${ numericValue.toFixed(1) } ${ unit } `}</p>
-                                            ) : (
-                                              <p className="intro">{t('reports.notApplicable', 'N/A')}</p>
-                                            )}
-                                            {data.notes && <p className="desc" style={{ marginTop: '5px' }}>{t('reports.notes', 'Notes: ') + data.notes}</p>}
-                                          </div>
-                                        );
-                                      }
-                                      return null;
-                                    }}
-                                  />
-                                  <Line type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} />
-                                </LineChart>
-                              </ResponsiveContainer>
+                                          return (
+                                            <div className="p-2 bg-background border rounded-md shadow-md">
+                                              <p className="label">{`${label} `}</p>
+                                              {!isNaN(numericValue) ? (
+                                                <p className="intro">{`${numericValue.toFixed(1)} ${unit} `}</p>
+                                              ) : (
+                                                <p className="intro">{t('reports.notApplicable', 'N/A')}</p>
+                                              )}
+                                              {data.notes && <p className="desc" style={{ marginTop: '5px' }}>{t('reports.notes', 'Notes: ') + data.notes}</p>}
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                      }}
+                                    />
+                                    <Line type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} isAnimationActive={false} />
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              ) : (
+                                <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                                  <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading...')}</span>
+                                </div>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
@@ -893,12 +904,10 @@ const Reports = () => {
 
             {moodData?.length > 0 ? (
               <ZoomableChart title={t('reports.moodChartTitle', "Daily Mood")}>
-                <ZoomableChart title={t('reports.moodChartTitle', "Daily Mood")}>
-                  <MoodChart
-                    title={t('reports.moodChartTitle', "Daily Mood")}
-                    data={moodData}
-                  />
-                </ZoomableChart>
+                <MoodChart
+                  title={t('reports.moodChartTitle', "Daily Mood")}
+                  data={moodData}
+                />
               </ZoomableChart>
             ) : (
               <p>{t('reports.noMoodData', "No daily mood data available.")}</p>

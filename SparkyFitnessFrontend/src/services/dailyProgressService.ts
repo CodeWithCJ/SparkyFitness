@@ -41,8 +41,11 @@ export interface CheckInMeasurement {
   body_fat_percentage?: number;
 }
 
-export const getGoalsForDate = async (date: string): Promise<Goals> => {
+export const getGoalsForDate = async (date: string, userId?: string): Promise<Goals> => {
   const params = new URLSearchParams({ date });
+  if (userId) {
+    params.append('userId', userId);
+  }
   const data = await apiCall(`/goals/for-date?${params.toString()}`, {
     method: 'GET',
     suppress404Toast: true, // Suppress toast for 404
@@ -65,8 +68,11 @@ export const getFoodEntriesForDate = async (date: string): Promise<FoodEntry[]> 
   return data || []; // Return empty array if 404 (no food entries found)
 };
 
-export const getExerciseEntriesForDate = async (date: string): Promise<GroupedExerciseEntry[]> => {
+export const getExerciseEntriesForDate = async (date: string, userId?: string): Promise<GroupedExerciseEntry[]> => {
   const params = new URLSearchParams({ selectedDate: date });
+  if (userId) {
+    params.append('userId', userId);
+  }
   const data = await apiCall(`/exercise-entries/by-date?${params.toString()}`, {
     method: 'GET',
     suppress404Toast: true, // Suppress toast for 404

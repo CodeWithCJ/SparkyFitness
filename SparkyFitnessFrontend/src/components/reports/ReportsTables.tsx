@@ -12,59 +12,10 @@ import { parseISO } from "date-fns";
 import { formatNutrientValue, getNutrientUnit } from '@/lib/utils';
 import { formatWeight } from '@/utils/numberFormatting';
 import { UserCustomNutrient } from "@/types/customNutrient"; // Import UserCustomNutrient
+import { DailyFoodEntry as BaseDailyFoodEntry } from '@/services/reportsService';
 
-interface DailyFoodEntry {
-  entry_date: string;
-  meal_type: string;
-  quantity: number;
-  unit: string;
-  foods?: { // Make foods optional
-    name: string;
-    brand?: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    glycemic_index?: string;
-    saturated_fat?: number;
-    polyunsaturated_fat?: number;
-    monounsaturated_fat?: number;
-    trans_fat?: number;
-    cholesterol?: number;
-    sodium?: number;
-    potassium?: number;
-    dietary_fiber?: number;
-    sugars?: number;
-    vitamin_a?: number;
-    vitamin_c?: number;
-    calcium?: number;
-    iron?: number;
-    serving_size: number;
-  };
-  // Ensure these fields are always present as they are now pre-calculated from backend
-  food_name: string;
-  brand_name?: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  serving_size: number; // This will be NULL for meal totals, but will be handled
-  glycemic_index?: string;
-  saturated_fat: number;
-  polyunsaturated_fat: number;
-  monounsaturated_fat: number;
-  trans_fat: number;
-  cholesterol: number;
-  sodium: number;
-  potassium: number;
-  dietary_fiber: number;
-  sugars: number;
-  vitamin_a: number;
-  vitamin_c: number;
-  calcium: number;
-  iron: number;
-  custom_nutrients?: Record<string, number>; // Add custom_nutrients
-  [key: string]: any; // Add index signature to allow for custom nutrient properties
+interface DailyFoodEntry extends BaseDailyFoodEntry {
+  isTotal?: boolean;
 }
 
 interface DailyExerciseEntry {

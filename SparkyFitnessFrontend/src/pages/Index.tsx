@@ -204,7 +204,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
         { value: "settings", label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
-      if (hasWritePermission("calorie")) {
+      if (hasWritePermission("diary")) {
         mobileTabs.push({ value: "home", label: t('nav.diary'), icon: Home });
       }
       if (hasWritePermission("checkin")) {
@@ -222,7 +222,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
         });
       }
     }
-    if (user?.role === "admin") {
+    if (user?.role === "admin" && !isActingOnBehalf) {
       mobileTabs.push({ value: "admin", label: t('nav.admin'), icon: Shield });
     }
     return mobileTabs;
@@ -253,7 +253,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
         { value: "settings", label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
-      if (hasWritePermission("calorie")) {
+      if (hasWritePermission("diary")) {
         tabs.push({ value: "home", label: t('nav.diary'), icon: Home });
       }
       if (hasWritePermission("checkin")) {
@@ -263,7 +263,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
         tabs.push({ value: "reports", label: t('nav.reports'), icon: BarChart3 });
       }
     }
-    if (user?.role === "admin") {
+    if (user?.role === "admin" && !isActingOnBehalf) {
       tabs.push({ value: "admin", label: t('nav.admin'), icon: Shield });
     }
     return tabs;

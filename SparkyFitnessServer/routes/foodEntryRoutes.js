@@ -41,7 +41,15 @@ router.post(
   checkPermissionMiddleware('diary'), // Add permission check
   async (req, res, next) => {
     try {
-      const newEntry = await foodEntryService.createFoodEntry(req.userId, req.originalUserId || req.userId, req.body);
+      // Check if creating for another user
+      const targetUserId = req.body.user_id || req.userId;
+      if (targetUserId !== req.userId) {
+        const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId);
+        if (!hasPermission) {
+          return res.status(403).json({ error: 'Forbidden: You do not have permission to manage diary for this user.' });
+        }
+      }
+      const newEntry = await foodEntryService.createFoodEntry(targetUserId, req.originalUserId || req.userId, req.body);
       res.status(201).json(newEntry);
     } catch (error) {
       if (error.message.startsWith("Forbidden")) {
@@ -331,14 +339,24 @@ router.get(
   authenticate,
   checkPermissionMiddleware('diary'), // Add permission check
   async (req, res, next) => {
-    const { selectedDate } = req.query;
+    let { selectedDate, userId } = req.query; // accepted userId from query
     if (!selectedDate) {
       return res.status(400).json({ error: "Selected date is required." });
     }
+
+    // Determine target user
+    const targetUserId = userId || req.userId;
+
     try {
+      // Permission check if accessing another user's data
+      if (targetUserId !== req.userId) {
+        const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId);
+        if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+      }
+
       const entries = await foodEntryService.getFoodEntriesByDate(
         req.userId,
-        req.userId,
+        targetUserId,
         selectedDate
       );
       res.status(200).json(entries);
@@ -386,13 +404,24 @@ router.get(
   checkPermissionMiddleware('diary'), // Add permission check
   async (req, res, next) => {
     const { date } = req.params;
+    const { userId } = req.query; // check query param
     if (!date) {
       return res.status(400).json({ error: "Date is required." });
     }
+
+    // Determine target user
+    const targetUserId = userId || req.userId;
+
     try {
+      // Permission check if accessing another user's data
+      if (targetUserId !== req.userId) {
+        const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId);
+        if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+      }
+
       const entries = await foodEntryService.getFoodEntriesByDate(
         req.userId,
-        req.userId,
+        targetUserId,
         date
       );
       res.status(200).json(entries);

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Maximize2, Minimize2, ZoomIn, ZoomOut } from "lucide-react";
@@ -25,9 +25,17 @@ const ZoomableChart = ({ children, title }: ZoomableChartProps) => {
     setZoomLevel(1);
   };
 
+  const renderedChildren = useMemo(() => {
+    return typeof children === 'function' ? children(false, zoomLevel) : children;
+  }, [children, zoomLevel]);
+
+  const maximizedChildren = useMemo(() => {
+    return typeof children === 'function' ? children(true, zoomLevel) : children;
+  }, [children, zoomLevel]);
+
   return (
     <>
-      <div className="relative group">
+      <div className="relative group min-w-0">
         <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
           <Button
             variant="outline"
@@ -56,8 +64,8 @@ const ZoomableChart = ({ children, title }: ZoomableChartProps) => {
             <Maximize2 className="h-3 w-3" />
           </Button>
         </div>
-        <div className="w-full h-full">
-          {typeof children === 'function' ? children(false, zoomLevel) : children}
+        <div className="w-full h-full min-h-[200px]">
+          {renderedChildren}
         </div>
       </div>
 
@@ -104,7 +112,7 @@ const ZoomableChart = ({ children, title }: ZoomableChartProps) => {
             </div>
           </div>
           <div className="w-full h-[calc(100%-110px)] overflow-auto">
-            {typeof children === 'function' ? children(true, zoomLevel) : children}
+            {maximizedChildren}
           </div>
         </DialogContent>
       </Dialog>

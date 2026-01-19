@@ -31,6 +31,11 @@ const getHRStatus = (value: number): { statusKey: string; statusDefault: string;
 const SleepHeartRateCard: React.FC<SleepHeartRateCardProps> = ({ data }) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Process data
   const { chartData, stats, latestValue } = useMemo(() => {
@@ -63,6 +68,24 @@ const SleepHeartRateCard: React.FC<SleepHeartRateCardProps> = ({ data }) => {
 
   if (chartData.length === 0 || !stats || latestValue === null) {
     return null;
+  }
+
+  if (!isMounted) {
+    return (
+      <Card className="w-full h-full">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center text-lg">
+            <Heart className="w-5 h-5 mr-2" />
+            {t('sleepHealth.restingHeartRate', 'Resting Heart Rate')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-32 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+            <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading...')}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   const { statusKey, statusDefault, color } = getHRStatus(latestValue);
@@ -105,7 +128,7 @@ const SleepHeartRateCard: React.FC<SleepHeartRateCardProps> = ({ data }) => {
 
         {/* Chart */}
         <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
             <ComposedChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis
@@ -139,6 +162,7 @@ const SleepHeartRateCard: React.FC<SleepHeartRateCardProps> = ({ data }) => {
                 strokeWidth={2}
                 dot={{ fill: '#ef4444', strokeWidth: 2, r: 3 }}
                 connectNulls
+                isAnimationActive={false}
               />
             </ComposedChart>
           </ResponsiveContainer>

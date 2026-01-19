@@ -36,6 +36,11 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
   const { t } = useTranslation();
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
   const { resolvedTheme } = useTheme();
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   if (!sleepChartData || !sleepChartData.segments || sleepChartData.segments.length === 0) {
     return (
@@ -45,6 +50,21 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
         </CardHeader>
         <CardContent>
           <p>{t("sleepReport.noSleepStageDataAvailable", "No sleep stage data available for this entry.")}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!isMounted) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("sleepReport.sleepHypnogram", "Sleep Hypnogram")} - {formatDateInUserTimezone(sleepChartData.date, dateFormat)}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-48 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+            <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading...')}</span>
+          </div>
         </CardContent>
       </Card>
     );
@@ -243,19 +263,19 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
                 );
               })}
             </div>
-            <div className={isMaximized ? "h-[calc(95vh-200px)]" : "h-48"}>
-              <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height="100%">
-                <svg
-                  viewBox={`0 0 ${SVG_BASE_WIDTH} ${CHART_HEIGHT + 30}`}
-                  preserveAspectRatio="xMidYMid meet"
-                  style={{ overflow: 'visible' }}
-                >
-                  <rect x="0" y="0" width={SVG_BASE_WIDTH} height={CHART_HEIGHT + 30} fill={resolvedTheme === 'dark' ? 'black' : 'white'} />
-                  {renderGridAndLabels()}
-                  {renderConnectingLines()}
-                  {renderSegments()}
-                </svg>
-              </ResponsiveContainer>
+            <div className={(isMaximized ? "h-[calc(95vh-200px)]" : "h-48") + " w-full"}>
+              <svg
+                width="100%"
+                height="100%"
+                viewBox={`-60 0 ${SVG_BASE_WIDTH + 80} ${CHART_HEIGHT + 40}`}
+                preserveAspectRatio="xMidYMid meet"
+                style={{ overflow: 'visible' }}
+              >
+                <rect x="-60" y="0" width={SVG_BASE_WIDTH + 80} height={CHART_HEIGHT + 40} fill={resolvedTheme === 'dark' ? 'black' : 'white'} />
+                {renderGridAndLabels()}
+                {renderConnectingLines()}
+                {renderSegments()}
+              </svg>
             </div>
           </CardContent>
         </Card>

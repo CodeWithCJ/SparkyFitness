@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ExpandedGoals } from "@/types/goals";
-import MealPercentageManager from "./MealPercentageManager";
+import MealPercentageManager, { MealPercentages } from "./MealPercentageManager";
 import { Separator } from "@/components/ui/separator";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -393,6 +393,23 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
       setSaving(false);
     }
   };
+
+  const handleMealPercentagesChange = React.useCallback((newPercentages: MealPercentages) => {
+    setGoals((prevGoals) => ({
+      ...prevGoals,
+      breakfast_percentage: newPercentages.breakfast,
+      lunch_percentage: newPercentages.lunch,
+      dinner_percentage: newPercentages.dinner,
+      snacks_percentage: newPercentages.snacks,
+    }));
+  }, []);
+
+  const memoizedMealPercentages = React.useMemo(() => ({
+    breakfast: goals.breakfast_percentage,
+    lunch: goals.lunch_percentage,
+    dinner: goals.dinner_percentage,
+    snacks: goals.snacks_percentage,
+  }), [goals.breakfast_percentage, goals.lunch_percentage, goals.dinner_percentage, goals.snacks_percentage]);
 
   if (!user) {
     return null;
@@ -977,22 +994,9 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
               Meal Calorie Distribution
             </h3>
             <MealPercentageManager
-              initialPercentages={{
-                breakfast: goals.breakfast_percentage,
-                lunch: goals.lunch_percentage,
-                dinner: goals.dinner_percentage,
-                snacks: goals.snacks_percentage,
-              }}
+              initialPercentages={memoizedMealPercentages}
               totalCalories={goals.calories}
-              onPercentagesChange={(newPercentages) => {
-                setGoals((prevGoals) => ({
-                  ...prevGoals,
-                  breakfast_percentage: newPercentages.breakfast,
-                  lunch_percentage: newPercentages.lunch,
-                  dinner_percentage: newPercentages.dinner,
-                  snacks_percentage: newPercentages.snacks,
-                }));
-              }}
+              onPercentagesChange={handleMealPercentagesChange}
             />
 
             <Button

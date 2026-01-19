@@ -33,7 +33,7 @@ const AppContent: React.FC<AppContentProps> = ({ onShowAboutDialog }) => {
 
   if (loading) {
     return (
-      <ThemeProvider loggingLevel={loggingLevel}>
+      <ThemeProvider>
         <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
           Loading authentication...
         </div>
@@ -42,7 +42,7 @@ const AppContent: React.FC<AppContentProps> = ({ onShowAboutDialog }) => {
   }
 
   return (
-    <ThemeProvider loggingLevel={loggingLevel}>
+    <ThemeProvider>
       <TooltipProvider>
         <Toaster />
         <Routes>

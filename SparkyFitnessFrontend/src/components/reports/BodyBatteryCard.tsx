@@ -36,6 +36,11 @@ interface BodyBatteryDay {
 const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({ categories, measurementsData }) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Get Body Battery categories
   const bodyBatteryCategories = useMemo(() => {
@@ -132,52 +137,58 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({ categories, measureme
           {/* Right side: Trend chart */}
           <div className="h-64">
             <p className="text-sm font-medium mb-2">{t('reports.trend', 'Trend')}</p>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={transformedData} barGap={0} barCategoryGap="20%">
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="displayDate"
-                  fontSize={11}
-                  tickLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px'
-                  }}
-                  formatter={(value: number, name: string) => {
-                    const labels: Record<string, string> = {
-                      highest: t('reports.highest', 'Highest'),
-                      at_wake: t('reports.atWake', 'At Wake'),
-                      lowest: t('reports.lowest', 'Lowest')
-                    };
-                    return [Math.round(value), labels[name] || name];
-                  }}
-                />
-                <Legend
-                  formatter={(value) => {
-                    const labels: Record<string, string> = {
-                      highest: t('reports.highest', 'Highest'),
-                      at_wake: t('reports.atWake', 'At Wake'),
-                      lowest: t('reports.lowest', 'Lowest')
-                    };
-                    return labels[value] || value;
-                  }}
-                />
-                <Bar dataKey="highest" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="at_wake" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="lowest" fill="#6b7280" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {isMounted ? (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+                <BarChart data={transformedData} barGap={0} barCategoryGap="20%">
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="displayDate"
+                    fontSize={11}
+                    tickLine={false}
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                    formatter={(value: number, name: string) => {
+                      const labels: Record<string, string> = {
+                        highest: t('reports.highest', 'Highest'),
+                        at_wake: t('reports.atWake', 'At Wake'),
+                        lowest: t('reports.lowest', 'Lowest')
+                      };
+                      return [Math.round(value), labels[name] || name];
+                    }}
+                  />
+                  <Legend
+                    formatter={(value) => {
+                      const labels: Record<string, string> = {
+                        highest: t('reports.highest', 'Highest'),
+                        at_wake: t('reports.atWake', 'At Wake'),
+                        lowest: t('reports.lowest', 'Lowest')
+                      };
+                      return labels[value] || value;
+                    }}
+                  />
+                  <Bar dataKey="highest" fill="#3b82f6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="at_wake" fill="#06b6d4" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="lowest" fill="#6b7280" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading charts...')}</span>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

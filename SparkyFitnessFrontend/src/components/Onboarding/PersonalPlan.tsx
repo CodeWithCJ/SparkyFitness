@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, Utensils, Lock, Unlock, AlertTriangle, Settings } from "lucide-react";
@@ -110,6 +110,28 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
     handleSubmit,
     isSubmitting,
 }) => {
+    const memoizedInitialPercentages = useMemo(() => ({
+        breakfast: editedPlan?.breakfast_percentage || 25,
+        lunch: editedPlan?.lunch_percentage || 25,
+        dinner: editedPlan?.dinner_percentage || 25,
+        snacks: editedPlan?.snacks_percentage || 25,
+    }), [editedPlan?.breakfast_percentage, editedPlan?.lunch_percentage, editedPlan?.dinner_percentage, editedPlan?.snacks_percentage]);
+
+    const handlePercentagesChange = useCallback((newPercentages: {
+        breakfast: number;
+        lunch: number;
+        dinner: number;
+        snacks: number;
+    }) => {
+        setEditedPlan(prev => prev ? ({
+            ...prev,
+            breakfast_percentage: newPercentages.breakfast,
+            lunch_percentage: newPercentages.lunch,
+            dinner_percentage: newPercentages.dinner,
+            snacks_percentage: newPercentages.snacks,
+        }) : null);
+    }, [setEditedPlan]);
+
     const [showDietApproach, setShowDietApproach] = useState(false);
     const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
     const [showMealDistribution, setShowMealDistribution] = useState(true);
@@ -794,22 +816,9 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                     </div>
                     <div className="p-4 text-white dark">
                         <MealPercentageManager
-                            initialPercentages={{
-                                breakfast: editedPlan?.breakfast_percentage || 25,
-                                lunch: editedPlan?.lunch_percentage || 25,
-                                dinner: editedPlan?.dinner_percentage || 25,
-                                snacks: editedPlan?.snacks_percentage || 25,
-                            }}
+                            initialPercentages={memoizedInitialPercentages}
                             totalCalories={editedPlan?.calories || 2000}
-                            onPercentagesChange={(newPercentages) => {
-                                setEditedPlan(prev => prev ? ({
-                                    ...prev,
-                                    breakfast_percentage: newPercentages.breakfast,
-                                    lunch_percentage: newPercentages.lunch,
-                                    dinner_percentage: newPercentages.dinner,
-                                    snacks_percentage: newPercentages.snacks,
-                                }) : null);
-                            }}
+                            onPercentagesChange={handlePercentagesChange}
                         />
                     </div>
                 </div>
