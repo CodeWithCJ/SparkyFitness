@@ -987,8 +987,47 @@ const options = {
           },
           required: ['rating']
         },
-
-
+        User: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'The unique identifier for the user.',
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'The user\'s email address.',
+            },
+            role: {
+              type: 'string',
+              enum: ['user', 'admin'],
+              description: 'The user\'s role in the system.',
+            },
+            is_active: {
+              type: 'boolean',
+              description: 'Indicates if the user account is active.',
+            },
+            full_name: {
+              type: 'string',
+              nullable: true,
+              description: 'The user\'s full name.',
+            },
+            created_at: {
+              type: 'string',
+              format: 'date-time',
+              description: 'The date and time when the user account was created.',
+            },
+            last_login_at: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              description: 'The date and time of the user\'s last login.',
+            },
+          },
+          required: ['id', 'email', 'role', 'is_active'],
+        },
       },
       '/admin/auth/settings/mfa-mandatory': {
         get: {

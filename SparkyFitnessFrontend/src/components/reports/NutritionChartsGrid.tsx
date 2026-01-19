@@ -1,3 +1,4 @@
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -41,7 +42,7 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const reportChartPreferences = nutrientDisplayPreferences.find(p => p.view_group === 'report_chart' && p.platform === platform);
-  
+
   info(loggingLevel, 'NutritionChartsGrid: Rendering component.');
 
   const formatDateForChart = (dateStr: string) => {
@@ -102,12 +103,37 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
     ? allNutritionCharts.filter(chart => reportChartPreferences.visible_nutrients.includes(chart.key))
     : allNutritionCharts;
 
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-0">
+        {visibleCharts.map((chart) => (
+          <Card key={chart.key}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">{chart.label} ({chart.unit})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-48 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading...')}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-0">
       {visibleCharts.map((chart) => {
         const chartData = prepareChartData(nutritionData, chart.key);
         const yAxisDomain = getYAxisDomain(nutritionData, chart.key);
-        
+
         return (
           <ZoomableChart key={chart.key} title={`${chart.label} (${chart.unit})`}>
             {(isMaximized, zoomLevel) => (
@@ -116,8 +142,14 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
                   <CardTitle className="text-sm">{chart.label} ({chart.unit})</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
-                    <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height={isMaximized ? `${100 * zoomLevel}%` : "100%"}>
+                  <div className={(isMaximized ? "h-[calc(95vh-150px)]" : "h-48") + " min-w-0"}>
+                    <ResponsiveContainer
+                      width={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                      height={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                      minWidth={0}
+                      minHeight={0}
+                      debounce={100}
+                    >
                       <LineChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis
@@ -143,50 +175,51 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
                             }
                           }}
                         />
-                      <Tooltip
-                        labelFormatter={(value) => formatDateForChart(value as string)} // Apply formatter
-                        formatter={(value: number | string | null | undefined) => {
-                          if (value === null || value === undefined) {
-                            return ['N/A'];
-                          }
-                          let numValue: number;
-                          if (typeof value === 'string') {
-                            numValue = parseFloat(value); // Parse string to number
-                          } else if (typeof value === 'number') {
-                            numValue = value;
-                          } else {
-                            return ['N/A']; // Should not happen if types are correct
-                          }
+                        <Tooltip
+                          labelFormatter={(value) => formatDateForChart(value as string)} // Apply formatter
+                          formatter={(value: number | string | null | undefined) => {
+                            if (value === null || value === undefined) {
+                              return ['N/A'];
+                            }
+                            let numValue: number;
+                            if (typeof value === 'string') {
+                              numValue = parseFloat(value); // Parse string to number
+                            } else if (typeof value === 'number') {
+                              numValue = value;
+                            } else {
+                              return ['N/A']; // Should not happen if types are correct
+                            }
 
-                          let formattedValue: string;
-                          if (chart.key === 'calories') { // Use chart.key === 'calories' to specifically target calories
-                            formattedValue = Math.round(convertEnergy(numValue, 'kcal', energyUnit)).toString();
-                          } else if (chart.unit === 'g') {
-                            formattedValue = numValue.toFixed(1);
-                          } else if (chart.unit === 'mg') {
-                            formattedValue = numValue.toFixed(2);
-                          } else if (chart.unit === 'μg') {
-                            formattedValue = Math.round(numValue).toString();
-                          }
-                          else {
-                            formattedValue = Math.round(numValue).toString();
-                          }
-                          return [`${formattedValue} ${chart.unit}`];
-                        }}
-                        contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey={chart.key}
-                        stroke={chart.color}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+                            let formattedValue: string;
+                            if (chart.key === 'calories') { // Use chart.key === 'calories' to specifically target calories
+                              formattedValue = Math.round(convertEnergy(numValue, 'kcal', energyUnit)).toString();
+                            } else if (chart.unit === 'g') {
+                              formattedValue = numValue.toFixed(1);
+                            } else if (chart.unit === 'mg') {
+                              formattedValue = numValue.toFixed(2);
+                            } else if (chart.unit === 'μg') {
+                              formattedValue = Math.round(numValue).toString();
+                            }
+                            else {
+                              formattedValue = Math.round(numValue).toString();
+                            }
+                            return [`${formattedValue} ${chart.unit}`];
+                          }}
+                          contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey={chart.key}
+                          stroke={chart.color}
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </ZoomableChart>
         );

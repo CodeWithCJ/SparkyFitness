@@ -53,6 +53,11 @@ const getRespirationStatusInfo = (value: number): { status: string; color: strin
 const RespirationCard: React.FC<RespirationCardProps> = ({ categories, measurementsData }) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Get Respiration categories
   const respirationCategories = useMemo(() => {
@@ -204,90 +209,99 @@ const RespirationCard: React.FC<RespirationCardProps> = ({ categories, measureme
           {/* Right side: Trend chart */}
           <div className="h-64">
             <p className="text-sm font-medium mb-2">{t('reports.trend', 'Trend')}</p>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={transformedData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="displayDate"
-                  fontSize={11}
-                  tickLine={false}
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                />
-                <YAxis
-                  domain={[8, 24]}
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  tickFormatter={(value) => `${value}`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                    color: 'hsl(var(--foreground))'
-                  }}
-                  formatter={(value: number, name: string) => {
-                    const labels: Record<string, string> = {
-                      sleepAvg: t('reports.sleepAvg', 'Sleep Avg'),
-                      awakeAvg: t('reports.awakeAvg', 'Awake Avg'),
-                      average: t('reports.average', 'Average')
-                    };
-                    return [`${value?.toFixed(1)} brpm`, labels[name] || name];
-                  }}
-                  labelFormatter={(label) => label}
-                />
-                <Legend
-                  formatter={(value) => {
-                    const labels: Record<string, string> = {
-                      sleepAvg: t('reports.sleepAvg', 'Sleep Avg'),
-                      awakeAvg: t('reports.awakeAvg', 'Awake Avg'),
-                      average: t('reports.average', 'Average')
-                    };
-                    return labels[value] || value;
-                  }}
-                />
-                {/* Sleep Avg line (blue) */}
-                {hasSleepAwakeData && (
-                  <Line
-                    type="monotone"
-                    dataKey="sleepAvg"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, fill: '#3b82f6' }}
-                    connectNulls
+            {isMounted ? (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+                <LineChart data={transformedData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="displayDate"
+                    fontSize={11}
+                    tickLine={false}
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
-                )}
-                {/* Awake Avg line (cyan) */}
-                {hasSleepAwakeData && (
-                  <Line
-                    type="monotone"
-                    dataKey="awakeAvg"
-                    stroke="#06b6d4"
-                    strokeWidth={2}
-                    dot={{ fill: '#06b6d4', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, fill: '#06b6d4' }}
-                    connectNulls
+                  <YAxis
+                    domain={[8, 24]}
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(value) => `${value}`}
                   />
-                )}
-                {/* Fallback: Average line if no sleep/awake data */}
-                {!hasSleepAwakeData && (
-                  <Line
-                    type="monotone"
-                    dataKey="average"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, fill: '#3b82f6' }}
-                    connectNulls
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                      color: 'hsl(var(--foreground))'
+                    }}
+                    formatter={(value: number, name: string) => {
+                      const labels: Record<string, string> = {
+                        sleepAvg: t('reports.sleepAvg', 'Sleep Avg'),
+                        awakeAvg: t('reports.awakeAvg', 'Awake Avg'),
+                        average: t('reports.average', 'Average')
+                      };
+                      return [`${value?.toFixed(1)} brpm`, labels[name] || name];
+                    }}
+                    labelFormatter={(label) => label}
                   />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
+                  <Legend
+                    formatter={(value) => {
+                      const labels: Record<string, string> = {
+                        sleepAvg: t('reports.sleepAvg', 'Sleep Avg'),
+                        awakeAvg: t('reports.awakeAvg', 'Awake Avg'),
+                        average: t('reports.average', 'Average')
+                      };
+                      return labels[value] || value;
+                    }}
+                  />
+                  {/* Sleep Avg line (blue) */}
+                  {hasSleepAwakeData && (
+                    <Line
+                      type="monotone"
+                      dataKey="sleepAvg"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, fill: '#3b82f6' }}
+                      connectNulls
+                      isAnimationActive={false}
+                    />
+                  )}
+                  {/* Awake Avg line (cyan) */}
+                  {hasSleepAwakeData && (
+                    <Line
+                      type="monotone"
+                      dataKey="awakeAvg"
+                      stroke="#06b6d4"
+                      strokeWidth={2}
+                      dot={{ fill: '#06b6d4', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, fill: '#06b6d4' }}
+                      connectNulls
+                      isAnimationActive={false}
+                    />
+                  )}
+                  {/* Fallback: Average line if no sleep/awake data */}
+                  {!hasSleepAwakeData && (
+                    <Line
+                      type="monotone"
+                      dataKey="average"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, fill: '#3b82f6' }}
+                      connectNulls
+                      isAnimationActive={false}
+                    />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading charts...')}</span>
+              </div>
+            )}
           </div>
         </div>
 

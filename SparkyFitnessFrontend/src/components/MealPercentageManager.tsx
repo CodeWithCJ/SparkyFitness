@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Lock, Unlock } from 'lucide-react';
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 
-interface MealPercentages {
+export interface MealPercentages {
   breakfast: number;
   lunch: number;
   dinner: number;
@@ -46,14 +46,27 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalC
     return Math.round(convertEnergy(caloriesInKcal, 'kcal', energyUnit)); // Return converted value for display
   };
 
+  // Sync internal state with external changes (e.g. presets matching)
+  useEffect(() => {
+    // Only update if any value actually changed to avoid unnecessary re-renders
+    if (
+      initialPercentages.breakfast !== percentages.breakfast ||
+      initialPercentages.lunch !== percentages.lunch ||
+      initialPercentages.dinner !== percentages.dinner ||
+      initialPercentages.snacks !== percentages.snacks
+    ) {
+      setPercentages(initialPercentages);
+    }
+  }, [initialPercentages]);
+
   useEffect(() => {
     const matchingTemplate = distributionTemplates.find(t =>
       JSON.stringify(t.values) === JSON.stringify(percentages)
     );
     if (matchingTemplate) {
-        setSelectedTemplateName(matchingTemplate.name);
+      setSelectedTemplateName(matchingTemplate.name);
     } else {
-        setSelectedTemplateName('Custom');
+      setSelectedTemplateName('Custom');
     }
   }, [percentages]);
 
@@ -61,34 +74,40 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalC
     onPercentagesChange(percentages);
   }, [percentages, onPercentagesChange]);
 
-  const handleTemplateChange = (templateName: string) => {
+  const handleTemplateChange = useCallback((templateName: string) => {
     if (templateName === 'Custom') return;
     const template = distributionTemplates.find(t => t.name === templateName);
     if (template) {
       setPercentages(template.values);
       setLocks({ breakfast: false, lunch: false, dinner: false, snacks: false });
     }
-  };
+  }, []);
 
-  const handleSliderChange = (meal: keyof MealPercentages, value: number) => {
-    const newPercentages = { ...percentages, [meal]: value };
-    autoBalance(newPercentages, meal);
-  };
+  const handleSliderChange = useCallback((meal: keyof MealPercentages, value: number) => {
+    setPercentages(prev => {
+      const newPercentages = { ...prev, [meal]: value };
+      return autoBalance(newPercentages, meal, locks, selectedTemplateName);
+    });
+  }, [locks, selectedTemplateName]);
 
-  const handleLockToggle = (meal: keyof MealPercentages) => {
+  const handleLockToggle = useCallback((meal: keyof MealPercentages) => {
     setLocks(prevLocks => ({ ...prevLocks, [meal]: !prevLocks[meal] }));
-  };
+  }, []);
 
-  const autoBalance = (currentPercentages: MealPercentages, changedMeal: keyof MealPercentages) => {
-    if (selectedTemplateName === 'Custom') {
-      setPercentages(currentPercentages);
-      return;
+  const autoBalance = (
+    currentPercentages: MealPercentages,
+    changedMeal: keyof MealPercentages,
+    currentLocks: typeof locks,
+    currentTemplate: string
+  ): MealPercentages => {
+    if (currentTemplate === 'Custom') {
+      return currentPercentages;
     }
-    const lockedTotal = Object.keys(locks).reduce((acc, key) => {
-      return locks[key as keyof MealPercentages] && key !== changedMeal ? acc + currentPercentages[key as keyof MealPercentages] : acc;
+    const lockedTotal = Object.keys(currentLocks).reduce((acc, key) => {
+      return currentLocks[key as keyof MealPercentages] && key !== changedMeal ? acc + currentPercentages[key as keyof MealPercentages] : acc;
     }, 0);
 
-    const unlockedMeals = Object.keys(locks).filter(key => !locks[key as keyof MealPercentages] && key !== changedMeal) as (keyof MealPercentages)[];
+    const unlockedMeals = Object.keys(currentLocks).filter(key => !currentLocks[key as keyof MealPercentages] && key !== changedMeal) as (keyof MealPercentages)[];
     const changedValue = currentPercentages[changedMeal];
     const remainingToDistribute = 100 - lockedTotal - changedValue;
 
@@ -98,59 +117,63 @@ const MealPercentageManager = ({ initialPercentages, onPercentagesChange, totalC
         currentPercentages[m] = perMealShare;
       });
     }
-    setPercentages(normalizePercentages(currentPercentages, changedMeal));
+    return normalizePercentages(currentPercentages, changedMeal, currentLocks);
   };
-  
-  const distributeRemaining = () => {
+
+  const distributeRemaining = useCallback(() => {
     const lockedTotal = Object.keys(locks).reduce((acc, key) => {
-        return locks[key as keyof MealPercentages] ? acc + percentages[key as keyof MealPercentages] : acc;
+      return locks[key as keyof MealPercentages] ? acc + percentages[key as keyof MealPercentages] : acc;
     }, 0);
 
     const unlockedMeals = Object.keys(locks).filter(key => !locks[key as keyof MealPercentages]) as (keyof MealPercentages)[];
     const remainingToDistribute = 100 - lockedTotal;
 
     if (unlockedMeals.length > 0) {
-        const perMealShare = remainingToDistribute / unlockedMeals.length;
-        const newPercentages = { ...percentages };
-        unlockedMeals.forEach(m => {
-            newPercentages[m] = perMealShare;
-        });
-        setPercentages(normalizePercentages(newPercentages));
+      const perMealShare = remainingToDistribute / unlockedMeals.length;
+      const newPercentages = { ...percentages };
+      unlockedMeals.forEach(m => {
+        newPercentages[m] = perMealShare;
+      });
+      setPercentages(normalizePercentages(newPercentages, undefined, locks));
     }
-  };
+  }, [percentages, locks]);
 
-  const normalizePercentages = (currentPercentages: MealPercentages, changedMeal?: keyof MealPercentages) => {
+  const normalizePercentages = (
+    currentPercentages: MealPercentages,
+    changedMeal: keyof MealPercentages | undefined,
+    currentLocks: typeof locks
+  ): MealPercentages => {
     const total = Object.values(currentPercentages).reduce((sum, p) => sum + p, 0);
     if (Math.round(total) !== 100) {
-        const diff = 100 - total;
-        const unlockedMeals = Object.keys(locks).filter(key => !locks[key as keyof MealPercentages] && key !== changedMeal) as (keyof MealPercentages)[];
-        if (unlockedMeals.length > 0) {
-            const adjustment = diff / unlockedMeals.length;
-            unlockedMeals.forEach(m => {
-                currentPercentages[m] += adjustment;
-            });
-        }
+      const diff = 100 - total;
+      const unlockedMeals = Object.keys(currentLocks).filter(key => !currentLocks[key as keyof MealPercentages] && key !== changedMeal) as (keyof MealPercentages)[];
+      if (unlockedMeals.length > 0) {
+        const adjustment = diff / unlockedMeals.length;
+        unlockedMeals.forEach(m => {
+          currentPercentages[m] += adjustment;
+        });
+      }
     }
     // Round to nearest integer and ensure sum is exactly 100
     let roundedTotal = 0;
     const finalPercentages = { ...currentPercentages };
     (Object.keys(finalPercentages) as (keyof MealPercentages)[]).forEach(m => {
-        finalPercentages[m] = Math.round(finalPercentages[m]);
-        roundedTotal += finalPercentages[m];
+      finalPercentages[m] = Math.round(finalPercentages[m]);
+      roundedTotal += finalPercentages[m];
     });
 
     // Adjust for rounding errors
     let roundingDiff = 100 - roundedTotal;
-    const unlockedMeals = Object.keys(locks).filter(key => !locks[key as keyof MealPercentages] && key !== changedMeal) as (keyof MealPercentages)[];
-    if(unlockedMeals.length > 0) {
-        let i = 0;
-        while(roundingDiff !== 0) {
-            const mealToAdjust = unlockedMeals[i % unlockedMeals.length];
-            const adjustment = Math.sign(roundingDiff);
-            finalPercentages[mealToAdjust] += adjustment;
-            roundingDiff -= adjustment;
-            i++;
-        }
+    const unlockedMeals = Object.keys(currentLocks).filter(key => !currentLocks[key as keyof MealPercentages] && key !== changedMeal) as (keyof MealPercentages)[];
+    if (unlockedMeals.length > 0) {
+      let i = 0;
+      while (roundingDiff !== 0) {
+        const mealToAdjust = unlockedMeals[i % unlockedMeals.length];
+        const adjustment = Math.sign(roundingDiff);
+        finalPercentages[mealToAdjust] += adjustment;
+        roundingDiff -= adjustment;
+        i++;
+      }
     }
 
     return finalPercentages;

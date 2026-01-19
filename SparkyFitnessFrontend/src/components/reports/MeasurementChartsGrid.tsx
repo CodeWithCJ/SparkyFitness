@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Scale, Activity } from "lucide-react";
@@ -48,10 +49,47 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
     });
   };
 
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Loading...</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-48 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                  <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading...')}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Loading Steps...</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+              <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading...')}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Body Measurements Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
         {/* Weight Chart */}
         <ZoomableChart title={`${t('reports.weight', 'Weight')} (${showWeightInKg ? t('reports.kg', 'kg') : t('reports.lbs', 'lbs')})`}>
           {(isMaximized, zoomLevel) => (
@@ -63,8 +101,14 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
-                  <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height={isMaximized ? `${100 * zoomLevel}%` : "100%"}>
+                <div className={(isMaximized ? "h-[calc(95vh-150px)]" : "h-48") + " min-w-0"}>
+                  <ResponsiveContainer
+                    width={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                    height={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                    minWidth={0}
+                    minHeight={0}
+                    debounce={100}
+                  >
                     <LineChart data={measurementData.filter(d => d.weight)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
@@ -83,7 +127,7 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                         formatter={(value: number) => [`${value.toFixed(1)} ${showWeightInKg ? t('reports.kg', 'kg') : t('reports.lbs', 'lbs')}`]}
                         contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                       />
-                      <Line type="monotone" dataKey="weight" stroke="#e74c3c" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="weight" stroke="#e74c3c" strokeWidth={2} dot={false} isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -100,8 +144,14 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                 <CardTitle className="text-sm">{t('reports.neck', 'Neck')} ({showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={isMaximized ? "h-[calc(80vh-150px)]" : "h-48"}>
-                  <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height={isMaximized ? `${100 * zoomLevel}%` : "100%"}>
+                <div className={(isMaximized ? "h-[calc(80vh-150px)]" : "h-48") + " min-w-0"}>
+                  <ResponsiveContainer
+                    width={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                    height={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                    minWidth={0}
+                    minHeight={0}
+                    debounce={100}
+                  >
                     <LineChart data={measurementData.filter(d => d.neck)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
@@ -119,7 +169,7 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                         formatter={(value: number) => [`${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`]}
                         contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                       />
-                      <Line type="monotone" dataKey="neck" stroke="#3498db" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="neck" stroke="#3498db" strokeWidth={2} dot={false} isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -136,8 +186,14 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                 <CardTitle className="text-sm">{t('reports.waist', 'Waist')} ({showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
-                  <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height={isMaximized ? `${100 * zoomLevel}%` : "100%"}>
+                <div className={(isMaximized ? "h-[calc(95vh-150px)]" : "h-48") + " min-w-0"}>
+                  <ResponsiveContainer
+                    width={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                    height={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                    minWidth={0}
+                    minHeight={0}
+                    debounce={100}
+                  >
                     <LineChart data={measurementData.filter(d => d.waist)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
@@ -156,7 +212,7 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                         formatter={(value: number) => [`${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`]}
                         contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                       />
-                      <Line type="monotone" dataKey="waist" stroke="#e74c3c" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="waist" stroke="#e74c3c" strokeWidth={2} dot={false} isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -173,8 +229,14 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                 <CardTitle className="text-sm">{t('reports.hips', 'Hips')} ({showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
-                  <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height={isMaximized ? `${100 * zoomLevel}%` : "100%"}>
+                <div className={(isMaximized ? "h-[calc(95vh-150px)]" : "h-48") + " min-w-0"}>
+                  <ResponsiveContainer
+                    width={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                    height={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                    minWidth={0}
+                    minHeight={0}
+                    debounce={100}
+                  >
                     <LineChart data={measurementData.filter(d => d.hips)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
@@ -192,7 +254,7 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                         formatter={(value: number) => [`${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`]}
                         contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                       />
-                      <Line type="monotone" dataKey="hips" stroke="#f39c12" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="hips" stroke="#f39c12" strokeWidth={2} dot={false} isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -213,8 +275,14 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-80"}>
-                <ResponsiveContainer width={isMaximized ? `${100 * zoomLevel}%` : "100%"} height={isMaximized ? `${100 * zoomLevel}%` : "100%"}>
+              <div className={(isMaximized ? "h-[calc(95vh-150px)]" : "h-80") + " min-w-0"}>
+                <ResponsiveContainer
+                  width={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                  height={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                  minWidth={0}
+                  minHeight={0}
+                  debounce={100}
+                >
                   <BarChart data={measurementData.filter(d => d.steps)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
@@ -230,7 +298,7 @@ const MeasurementChartsGrid = ({ measurementData, showWeightInKg, showMeasuremen
                       labelFormatter={(value) => formatDateForChart(value as string)}
                       contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                     />
-                    <Bar dataKey="steps" fill="#2ecc71" />
+                    <Bar dataKey="steps" fill="#2ecc71" isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

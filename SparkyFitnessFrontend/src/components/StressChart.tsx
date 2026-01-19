@@ -14,6 +14,12 @@ interface StressChartProps {
 }
 
 const StressChart: React.FC<StressChartProps> = ({ data, title }) => {
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Filter out data points where 'data' is -1 or -2 (Garmin's way of indicating no data)
   const filteredData = data.filter(point => point.stress_level >= 0);
 
@@ -23,6 +29,21 @@ const StressChart: React.FC<StressChartProps> = ({ data, title }) => {
     Stress: point.stress_level,
   }));
 
+  if (!isMounted) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+            <span className="text-xs text-muted-foreground">Loading stress data...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -30,13 +51,13 @@ const StressChart: React.FC<StressChartProps> = ({ data, title }) => {
       </CardHeader>
       <CardContent>
         {formattedData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0} debounce={100}>
             <BarChart data={formattedData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="Stress" fill="#FC8A15" />
+              <Bar dataKey="Stress" fill="#FC8A15" isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
