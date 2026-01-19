@@ -138,7 +138,7 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
             onPress={handleAddNewConfig}
             accessibilityLabel="Add new configuration"
             accessibilityRole="button"
-            style={{ padding: 4 }}
+            style={styles.menuButton}
           >
             <Ionicons name="add-circle-outline" size={28} color={colors.primary} />
           </TouchableOpacity>

@@ -15,10 +15,7 @@ export interface LogSummary {
   SUCCESS: number;
   WARNING: number;
   ERROR: number;
-  info: number;
-  warn: number;
-  error: number;
-  debug: number;
+  INFO: number;
 }
 
 const LOG_KEY = 'app_logs';
@@ -167,7 +164,9 @@ export const getLogLevel = async (): Promise<LogLevel> => {
 };
 
 /**
- * Retrieves a summary of log entries (successful, warnings, errors).
+ * Retrieves a summary of log entries by status.
+ * Counts match what's displayed in the log list.
+ * Filters by current log level to match what getLogs() displays.
  */
 export const getLogSummary = async (): Promise<LogSummary> => {
   try {
@@ -178,39 +177,35 @@ export const getLogSummary = async (): Promise<LogSummary> => {
       SUCCESS: 0,
       WARNING: 0,
       ERROR: 0,
-      info: 0,
-      warn: 0,
-      error: 0,
-      debug: 0,
+      INFO: 0,
     };
+
+    // Get current log level for filtering (same as getLogs)
+    const currentLogLevel = await getLogLevel();
+    const currentLevelValue = LOG_LEVELS[currentLogLevel];
 
     // Filter logs for today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     logs.forEach(log => {
+      // Filter by log level (same logic as getLogs)
+      const logLevelValue = LOG_LEVELS[log.level] ?? LOG_LEVELS['info'];
+      if (logLevelValue > currentLevelValue) {
+        return; // Skip logs above current level threshold
+      }
+
       const logDate = new Date(log.timestamp);
       logDate.setHours(0, 0, 0, 0);
 
       if (logDate.getTime() === today.getTime()) {
-        // Count by status
-        if (log.status === 'SUCCESS') {
-          summary.SUCCESS++;
-        } else if (log.status === 'WARNING') {
-          summary.WARNING++;
-        } else if (log.status === 'ERROR') {
-          summary.ERROR++;
-        }
-
-        // Count by level (silent is not counted)
-        if (log.level !== 'silent' && log.level in summary) {
-          summary[log.level as keyof Pick<LogSummary, 'info' | 'warn' | 'error' | 'debug'>]++;
-        }
+        // Count by status (matches what's displayed in the log list)
+        summary[log.status]++;
       }
     });
     return summary;
   } catch (error) {
     console.error('Failed to get log summary', error);
-    return { SUCCESS: 0, WARNING: 0, ERROR: 0, info: 0, warn: 0, error: 0, debug: 0 };
+    return { SUCCESS: 0, WARNING: 0, ERROR: 0, INFO: 0 };
   }
 };

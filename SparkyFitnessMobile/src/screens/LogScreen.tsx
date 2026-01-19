@@ -36,10 +36,7 @@ const LogScreen: React.FC<LogScreenProps> = () => {
     SUCCESS: 0,
     WARNING: 0,
     ERROR: 0,
-    info: 0,
-    warn: 0,
-    error: 0,
-    debug: 0,
+    INFO: 0,
   });
   const [currentLogLevel, setCurrentLogLevel] = useState<LogLevel>('info');
 
@@ -100,10 +97,7 @@ const LogScreen: React.FC<LogScreenProps> = () => {
               SUCCESS: 0,
               WARNING: 0,
               ERROR: 0,
-              info: 0,
-              warn: 0,
-              error: 0,
-              debug: 0,
+              INFO: 0,
             });
           },
         },
@@ -193,22 +187,12 @@ const LogScreen: React.FC<LogScreenProps> = () => {
             </View>
             <View style={styles.summaryItem}>
               <Text style={[styles.summaryCount, { color: '#007bff' }]}>
-                {logSummary.info}
+                {logSummary.INFO}
               </Text>
               <Text
                 style={[styles.summaryLabel, { color: colors.textSecondary }]}
               >
                 Info
-              </Text>
-            </View>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#800080' }]}>
-                {logSummary.debug}
-              </Text>
-              <Text
-                style={[styles.summaryLabel, { color: colors.textSecondary }]}
-              >
-                Debug
               </Text>
             </View>
           </View>

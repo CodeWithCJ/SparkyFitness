@@ -312,10 +312,7 @@ describe('LogService', () => {
         SUCCESS: 0,
         WARNING: 0,
         ERROR: 0,
-        info: 0,
-        warn: 0,
-        error: 0,
-        debug: 0,
+        INFO: 0,
       });
     });
 
@@ -335,7 +332,7 @@ describe('LogService', () => {
       expect(summary.SUCCESS).toBe(1);
     });
 
-    test('counts SUCCESS, WARNING, ERROR statuses', async () => {
+    test('counts all statuses to match list display', async () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2024-06-15T10:00:00.000Z'));
 
@@ -345,36 +342,66 @@ describe('LogService', () => {
       await addLog('Error 1', 'error', 'ERROR');
       await addLog('Error 2', 'error', 'ERROR');
       await addLog('Error 3', 'error', 'ERROR');
-      await addLog('Info status', 'info', 'INFO'); // INFO status not counted
+      await addLog('Info status', 'info', 'INFO');
 
       const summary = await getLogSummary();
 
       expect(summary.SUCCESS).toBe(2);
       expect(summary.WARNING).toBe(1);
       expect(summary.ERROR).toBe(3);
+      expect(summary.INFO).toBe(1);
     });
 
-    test('counts logs by level', async () => {
+    test('counts by status regardless of log level', async () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2024-06-15T10:00:00.000Z'));
 
       // Set to debug to allow all levels to be stored
       await setLogLevel('debug');
 
-      await addLog('Info 1', 'info', 'INFO');
-      await addLog('Info 2', 'info', 'INFO');
+      // These all have INFO status but different levels
+      await addLog('Info level', 'info', 'INFO');
+      await addLog('Debug level', 'debug', 'INFO');
+      // These have non-INFO status
       await addLog('Warn', 'warn', 'WARNING');
       await addLog('Error', 'error', 'ERROR');
-      await addLog('Debug 1', 'debug', 'INFO');
-      await addLog('Debug 2', 'debug', 'INFO');
-      await addLog('Debug 3', 'debug', 'INFO');
+      await addLog('Success', 'info', 'SUCCESS');
 
       const summary = await getLogSummary();
 
-      expect(summary.info).toBe(2);
-      expect(summary.warn).toBe(1);
-      expect(summary.error).toBe(1);
-      expect(summary.debug).toBe(3);
+      // All counts are by STATUS, not level
+      expect(summary.INFO).toBe(2);
+      expect(summary.WARNING).toBe(1);
+      expect(summary.ERROR).toBe(1);
+      expect(summary.SUCCESS).toBe(1);
+    });
+
+    test('filters by current log level to match getLogs display', async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2024-06-15T10:00:00.000Z'));
+
+      // Set to debug to store all log levels
+      await setLogLevel('debug');
+
+      await addLog('Info log', 'info', 'SUCCESS');
+      await addLog('Warn log', 'warn', 'WARNING');
+      await addLog('Error log', 'error', 'ERROR');
+      await addLog('Debug log', 'debug', 'INFO');
+
+      // With debug level, all logs should be counted
+      let summary = await getLogSummary();
+      expect(summary.SUCCESS).toBe(1);
+      expect(summary.WARNING).toBe(1);
+      expect(summary.ERROR).toBe(1);
+      expect(summary.INFO).toBe(1);
+
+      // Change to 'error' level - only error-level logs should be counted
+      await setLogLevel('error');
+      summary = await getLogSummary();
+      expect(summary.SUCCESS).toBe(0);
+      expect(summary.WARNING).toBe(0);
+      expect(summary.ERROR).toBe(1);
+      expect(summary.INFO).toBe(0);
     });
   });
 });
