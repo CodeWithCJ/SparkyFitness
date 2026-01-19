@@ -40,6 +40,8 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
         <Switch
           onValueChange={handleToggleAllMetrics}
           value={isAllMetricsEnabled}
+          trackColor={{ false: colors.inputBackground, true: colors.primary }}
+          thumbColor="#FFFFFF"
         />
       </View>
       {HEALTH_METRICS.map((metric) => (
@@ -57,6 +59,8 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           <Switch
             onValueChange={(newValue) => handleToggleHealthMetric(metric, newValue)}
             value={healthMetricStates[metric.stateKey]}
+            trackColor={{ false: colors.inputBackground, true: colors.primary }}
+            thumbColor="#FFFFFF"
           />
         </View>
       ))}

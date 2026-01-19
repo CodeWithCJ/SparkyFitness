@@ -10,8 +10,8 @@ import {
   Alert,
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import DropDownPicker from 'react-native-dropdown-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BottomSheetPicker from '../components/BottomSheetPicker';
 import {
   getLogs,
   clearLogs,
@@ -26,9 +26,9 @@ interface LogScreenProps {
   navigation: { navigate: (screen: string) => void };
 }
 
-const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
+const LogScreen: React.FC<LogScreenProps> = () => {
   const insets = useSafeAreaInsets();
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [offset, setOffset] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
@@ -42,7 +42,6 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
     debug: 0,
   });
   const [currentLogLevel, setCurrentLogLevel] = useState<LogLevel>('info');
-  const [logLevelOpen, setLogLevelOpen] = useState<boolean>(false);
 
   const LOG_LIMIT = 30;
 
@@ -113,12 +112,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
     );
   };
 
-  const handleLogLevelChange = async (
-    valOrFunc: LogLevel | ((prev: LogLevel) => LogLevel)
-  ): Promise<void> => {
-    const level =
-      typeof valOrFunc === 'function' ? valOrFunc(currentLogLevel) : valOrFunc;
-
+  const handleLogLevelChange = async (level: LogLevel): Promise<void> => {
     if (level && level !== currentLogLevel) {
       try {
         await setLogLevel(level);
@@ -221,57 +215,31 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
         </View>
 
         {/* Log Level Settings */}
-        <View
-          style={[styles.card, { zIndex: 3000, backgroundColor: colors.card }]}
-        >
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Log Level
           </Text>
           <View style={styles.logLevelContent}>
-          <DropDownPicker
-            open={logLevelOpen}
-            value={currentLogLevel}
-            items={[
-              { label: 'Silent', value: 'silent' as LogLevel },
-              { label: 'Error', value: 'error' as LogLevel },
-              { label: 'Warning', value: 'warn' as LogLevel },
-              { label: 'Info', value: 'info' as LogLevel },
-              { label: 'Debug', value: 'debug' as LogLevel },
-            ]}
-            setOpen={setLogLevelOpen}
-            setValue={handleLogLevelChange}
-            listMode="SCROLLVIEW"
-            containerStyle={styles.dropdownContainer}
-            style={[
-              styles.dropdownStyle,
-              {
-                backgroundColor: colors.inputBackground,
-                borderColor: colors.border,
-              },
-            ]}
-            textStyle={{ color: colors.text }}
-            dropDownContainerStyle={[
-              styles.dropdownListContainerStyle,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-            labelStyle={[styles.dropdownLabelStyle, { color: colors.text }]}
-            placeholderStyle={[
-              styles.dropdownPlaceholderStyle,
-              { color: colors.textMuted },
-            ]}
-            selectedItemLabelStyle={styles.selectedItemLabelStyle}
-            maxHeight={200}
-            zIndex={3000}
-            zIndexInverse={1000}
-            theme={isDarkMode ? 'DARK' : 'LIGHT'}
-          />
-          {/* Clear Logs Button */}
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={handleClearLogs}
-          >
-            <Text style={styles.clearButtonText}>Clear All Logs</Text>
-          </TouchableOpacity>
+            <BottomSheetPicker
+              value={currentLogLevel}
+              options={[
+                { label: 'Silent', value: 'silent' as LogLevel },
+                { label: 'Error', value: 'error' as LogLevel },
+                { label: 'Warning', value: 'warn' as LogLevel },
+                { label: 'Info', value: 'info' as LogLevel },
+                { label: 'Debug', value: 'debug' as LogLevel },
+              ]}
+              onSelect={handleLogLevelChange}
+              title="Log Level"
+              containerStyle={styles.dropdownContainer}
+            />
+            {/* Clear Logs Button */}
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={handleClearLogs}
+            >
+              <Text style={styles.clearButtonText}>Clear All Logs</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -389,8 +357,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    overflow: 'visible',
-    zIndex: 3500,
   },
   sectionTitle: {
     fontSize: 18,
@@ -399,34 +365,13 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   dropdownContainer: {
-    height: 50,
-    zIndex: 4000,
-    width: '50%'
+    flex: 1,
+    maxWidth: '50%',
   },
   logLevelContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  dropdownStyle: {
-    backgroundColor: '#fafafa',
-    borderColor: '#ddd',
-  },
-  dropdownItemStyle: {
-    justifyContent: 'flex-start',
-  },
-  dropdownLabelStyle: {
-    fontSize: 16,
-    color: '#333',
-  },
-  dropdownListContainerStyle: {
-    borderColor: '#ddd',
-  },
-  dropdownPlaceholderStyle: {
-    color: '#999',
-  },
-  selectedItemLabelStyle: {
-    fontWeight: 'bold',
   },
   summaryContainer: {
     flexDirection: 'row',

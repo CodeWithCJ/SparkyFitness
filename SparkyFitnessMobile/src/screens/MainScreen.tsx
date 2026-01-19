@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity, Image, ScrollView, Linking, Platform } from 'react-native';
-import DropDownPicker from 'react-native-dropdown-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BottomSheetPicker from '../components/BottomSheetPicker';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   initHealthConnect,
@@ -37,7 +37,7 @@ interface TimeRangeOption {
 
 const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [healthData, setHealthData] = useState<HealthDataDisplayState>({});
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -45,7 +45,6 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
   const [lastSyncedTimeLoaded, setLastSyncedTimeLoaded] = useState<boolean>(false);
   const [isHealthConnectInitialized, setIsHealthConnectInitialized] = useState<boolean>(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('3d');
-  const [openTimeRangePicker, setOpenTimeRangePicker] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const isAndroid = Platform.OS === 'android';
 
@@ -619,28 +618,16 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
         {/* Time Range */}
         <View style={[styles.card, styles.timeRangeCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.timeRangeLabel, { color: colors.text }]}>Time Range</Text>
-          <DropDownPicker
-            open={openTimeRangePicker}
+          <BottomSheetPicker
             value={selectedTimeRange}
-            items={timeRangeOptions.map(option => ({ label: option.label, value: option.value }))}
-            setOpen={setOpenTimeRangePicker}
-            setValue={setSelectedTimeRange as (callback: TimeRange | ((prevState: TimeRange) => TimeRange)) => void}
-            onSelectItem={async (item) => {
-              await saveTimeRange(item.value as TimeRange);
-              fetchHealthData(healthMetricStates, item.value as TimeRange);
+            options={timeRangeOptions}
+            onSelect={async (value) => {
+              setSelectedTimeRange(value);
+              await saveTimeRange(value);
+              fetchHealthData(healthMetricStates, value);
             }}
+            title="Select Time Range"
             containerStyle={styles.timeRangeDropdownContainer}
-            style={[styles.dropdownStyle, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}
-            textStyle={{ color: colors.text }}
-            dropDownContainerStyle={[styles.dropdownListContainerStyle, { backgroundColor: colors.card, borderColor: colors.border }]}
-            labelStyle={[styles.dropdownLabelStyle, { color: colors.text }]}
-            placeholderStyle={[styles.dropdownPlaceholderStyle, { color: colors.textMuted }]}
-            selectedItemLabelStyle={styles.selectedItemLabelStyle}
-            maxHeight={200}
-            zIndex={5000}
-            zIndexInverse={1000}
-            listMode="SCROLLVIEW"
-            theme={isDarkMode ? "DARK" : "LIGHT"}
           />
         </View>
 
@@ -719,15 +706,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    overflow: 'visible',
-    zIndex: 3500,
   },
   timeRangeCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 12,
-    zIndex: 4500,
   },
   timeRangeLabel: {
     fontSize: 16,
@@ -744,32 +728,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#333',
   },
-  dropdownContainer: {
-    height: 50,
-    marginBottom: 15,
-    zIndex: 4000,
-  },
-  dropdownStyle: {
-    backgroundColor: '#fafafa',
-    borderColor: '#ddd',
-  },
-  dropdownItemStyle: {
-    justifyContent: 'flex-start',
-  },
-  dropdownLabelStyle: {
-    fontSize: 16,
-    color: '#333',
-  },
-  dropdownListContainerStyle: {
-    borderColor: '#ddd',
-  },
-  dropdownPlaceholderStyle: {
-    color: '#999',
-  },
-  selectedItemLabelStyle: {
-    fontWeight: 'bold',
-  },
-
   healthMetricsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',

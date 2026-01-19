@@ -6,6 +6,8 @@ import {
   DefaultTheme,
   DarkTheme,
 } from '@react-navigation/native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -113,9 +115,13 @@ function AppContent() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <BottomSheetModalProvider>
+          <AppContent />
+        </BottomSheetModalProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 
