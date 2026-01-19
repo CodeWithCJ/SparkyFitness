@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import styles from '../screens/SettingsScreenStyles';
 import { saveSyncDuration, saveStringPreference } from '../services/healthConnectService';
@@ -54,7 +54,7 @@ const SyncFrequency: React.FC<SyncFrequencyProps> = ({
           values={SYNC_INTERVAL_LABELS}
           selectedIndex={selectedSyncIndex}
           onChange={(event) => handleSyncIntervalChange(event.nativeEvent.selectedSegmentIndex)}
-          backgroundColor={colors.inputBackground}
+          backgroundColor={Platform.OS === 'ios' ? colors.inputBackground : colors.tagBackground}
           tintColor={colors.primary}
           fontStyle={{ color: colors.textSecondary }}
           activeFontStyle={{ color: '#FFFFFF' }}

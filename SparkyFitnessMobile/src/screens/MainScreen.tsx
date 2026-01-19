@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity, Image, ScrollView, Linking, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomSheetPicker from '../components/BottomSheetPicker';
+import ConnectionStatus from '../components/ConnectionStatus';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   initHealthConnect,
@@ -556,6 +557,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
       try {
         await WebBrowser.openBrowserAsync(serverUrl);
       } catch (inAppError) {
+        addLog(`In-app browser failed, falling back to Linking: ${inAppError}`, 'error', 'ERROR');
         await Linking.openURL(serverUrl);
       }
     } catch (error) {
@@ -570,12 +572,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
       {/* Header Bar */}
       <View style={[styles.headerBar, { borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>SparkyFitness</Text>
-        {isConnected && (
-          <View style={styles.headerStatusContainer}>
-            <View style={styles.headerDot} />
-            <Text style={styles.headerStatusText}>Connected</Text>
-          </View>
-        )}
+        <ConnectionStatus isConnected={isConnected} variant="header" />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
@@ -589,7 +586,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
 
         {/* Sync Now Button */}
-        <TouchableOpacity style={styles.syncButtonContainer} onPress={handleSync} disabled={isSyncing || !isHealthConnectInitialized}>
+        <TouchableOpacity style={[styles.syncButtonContainer, { backgroundColor: colors.primary }]} onPress={handleSync} disabled={isSyncing || !isHealthConnectInitialized}>
           <Image source={require('../../assets/icons/sync_now_alt.png')} style={styles.syncButtonIconImage} tintColor="#fff" />
           <View style={styles.buttonTextContainer}>
             <Text style={styles.syncButtonText}>{isSyncing ? "Syncing..." : "Sync Now"}</Text>
@@ -672,26 +669,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
   },
-  headerStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e6ffe6',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  headerDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#28a745',
-    marginRight: 6,
-  },
-  headerStatusText: {
-    color: '#28a745',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   scrollViewContent: {
     padding: 16,
     paddingBottom: 80,
@@ -701,11 +678,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    elevation: 1,
   },
   timeRangeCard: {
     flexDirection: 'row',
@@ -760,7 +734,7 @@ const styles = StyleSheet.create({
 
   },
   syncButtonContainer: {
-    backgroundColor: '#007bff',
+    // backgroundColor: '#007bff',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -807,27 +781,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
     marginTop: 2,
-  },
-  connectedStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#e6ffe6',
-    alignSelf: 'center',
-    marginBottom: 8
-  },
-  connectedStatusText: {
-    color: '#28a745',
-    marginLeft: 8,
-    fontWeight: 'bold',
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#28a745',
   },
   errorText: {
     color: 'red',

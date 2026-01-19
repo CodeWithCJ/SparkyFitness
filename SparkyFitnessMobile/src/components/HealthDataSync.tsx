@@ -27,7 +27,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   return (
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Health Data to Sync</Text>
-      <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
+      <View style={[styles.settingItem]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
           <Text
             style={[styles.settingLabel, { fontWeight: 'bold', color: colors.text, flex: 1 }]}

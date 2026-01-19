@@ -5,6 +5,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import styles from '../screens/SettingsScreenStyles';
 import { useTheme } from '../contexts/ThemeContext';
 import { ServerConfig as ServerConfigType } from '../services/storage';
+import ConnectionStatus from './ConnectionStatus';
 
 interface ServerConfigProps {
   url: string;
@@ -59,25 +60,11 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
       <View style={[styles.card, { backgroundColor: colors.card }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Server Setup</Text>
-          {activeConfigId && (
-            <TouchableOpacity
-              style={{ flexDirection: 'row', alignItems: 'center' }}
-              onPress={checkServerConnection}
-              accessibilityLabel={isConnected ? 'Connected to server. Tap to refresh.' : 'Connection failed. Tap to retry.'}
-              accessibilityRole="button"
-            >
-              <View style={[styles.dot, { backgroundColor: isConnected ? colors.success : colors.danger }]} />
-              <Text style={[styles.statusText, { color: isConnected ? colors.success : colors.danger }]}>
-                {isConnected ? 'Connected' : 'Connection failed'}
-              </Text>
-            </TouchableOpacity>
-          )}
-          {!activeConfigId && (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={[styles.dot, { backgroundColor: colors.warning }]} />
-              <Text style={[styles.statusText, { color: colors.warningText }]}>Configuration required</Text>
-            </View>
-          )}
+          <ConnectionStatus
+            isConnected={isConnected}
+            hasConfig={!!activeConfigId}
+            onRefresh={checkServerConnection}
+          />
         </View>
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Server URL</Text>
@@ -138,14 +125,24 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-        <TouchableOpacity style={styles.addConfigButton} onPress={handleSaveConfig}>
+        <TouchableOpacity style={[styles.addConfigButton, { backgroundColor: colors.primary }]} onPress={handleSaveConfig}>
           <Text style={styles.addConfigButtonText}>Save Current Config</Text>
         </TouchableOpacity>
       </View>
 
       {/* Display existing configurations */}
       <View style={[styles.card, { backgroundColor: colors.card }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Manage Configurations</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Manage Configurations</Text>
+          <TouchableOpacity
+            onPress={handleAddNewConfig}
+            accessibilityLabel="Add new configuration"
+            accessibilityRole="button"
+            style={{ padding: 4 }}
+          >
+            <Ionicons name="add-circle-outline" size={28} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
         {serverConfigs.map((item) => (
           <View key={item.id} style={[styles.serverConfigItem, { borderBottomColor: colors.border }]}>
             <View style={styles.serverConfigInfo}>
@@ -172,9 +169,6 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
             </TouchableOpacity>
           </View>
         ))}
-        <TouchableOpacity style={styles.addConfigButton} onPress={handleAddNewConfig}>
-          <Text style={styles.addConfigButtonText}>Add New Configuration</Text>
-        </TouchableOpacity>
       </View>
 
     </View>
