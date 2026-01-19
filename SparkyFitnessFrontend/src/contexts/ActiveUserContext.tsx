@@ -10,10 +10,10 @@ interface AccessibleUser {
   full_name: string | null;
   email: string | null;
   permissions: {
-    calorie: boolean;
-    checkin: boolean;
-    reports: boolean;
-    food_list: boolean;
+    diary: boolean; // Mapped from can_manage_diary
+    checkin: boolean; // Mapped from can_manage_checkin
+    reports: boolean; // Mapped from can_view_reports
+    food_list: boolean; // Mapped from can_view_food_library
   };
   access_end_date: string | null;
 }
@@ -84,26 +84,27 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const data = await apiCall(`/auth/users/accessible-users`);
 
       info(loggingLevel, 'ActiveUserProvider: Accessible users data received:', data);
-      
+
       // Transform the data to ensure proper typing
       const transformedData: AccessibleUser[] = (data || []).map((item: any) => ({
         user_id: item.user_id,
         full_name: item.full_name,
         email: item.email,
         permissions: typeof item.permissions === 'object' ? {
-          calorie: item.permissions.calorie || false,
-          checkin: item.permissions.checkin || false,
-          reports: item.permissions.reports || false,
-          food_list: item.permissions.food_list || false
+          // If the backend returns 'calorie', use it, otherwise fall back to can_manage_diary
+          diary: item.permissions.diary || item.permissions.can_manage_diary || false,
+          checkin: item.permissions.checkin || item.permissions.can_manage_checkin || false,
+          reports: item.permissions.reports || item.permissions.can_view_reports || false,
+          food_list: item.permissions.food_list || item.permissions.can_view_food_library || false
         } : {
-          calorie: false,
+          diary: false,
           checkin: false,
           reports: false,
           food_list: false
         },
         access_end_date: item.access_end_date
       }));
-      
+
       setAccessibleUsers(transformedData);
 
       // Set active user name based on the loaded accessible users or the current user
@@ -167,13 +168,13 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       debug(loggingLevel, "ActiveUserProvider: No user or activeUserId, returning false for permission:", permission);
       return false;
     }
-    
+
     // If acting on own behalf, have all permissions
     if (activeUserId === user.id) {
       debug(loggingLevel, "ActiveUserProvider: User is acting on own behalf, granting permission:", permission);
       return true;
     }
-    
+
     // If acting on behalf of someone else, check permissions with inheritance
     const accessibleUser = accessibleUsers.find(u => u.user_id === activeUserId);
     if (!accessibleUser) {
@@ -190,7 +191,7 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     // Inheritance logic: reports permission grants read-only access to calorie and checkin
     if (accessibleUser.permissions.reports) {
-      if (permission === 'calorie' || permission === 'checkin') {
+      if (permission === 'diary' || permission === 'checkin') {
         debug(loggingLevel, "ActiveUserProvider: Read-only access inherited from reports for:", permission);
         return true; // Read-only access inherited from reports
       }
@@ -205,13 +206,13 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       debug(loggingLevel, "ActiveUserProvider: No user or activeUserId, returning false for write permission:", permission);
       return false;
     }
-    
+
     // If acting on own behalf, have all write permissions
     if (activeUserId === user.id) {
       debug(loggingLevel, "ActiveUserProvider: User is acting on own behalf, granting write permission:", permission);
       return true;
     }
-    
+
     // If acting on behalf of someone else, only direct permissions grant write access
     const accessibleUser = accessibleUsers.find(u => u.user_id === activeUserId);
     const granted = accessibleUser?.permissions[permission as keyof typeof accessibleUser.permissions] || false;

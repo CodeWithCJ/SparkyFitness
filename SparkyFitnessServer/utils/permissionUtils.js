@@ -17,13 +17,30 @@ async function canAccessUserData(targetUserId, permissionType, authenticatedUser
          AND fa.is_active = TRUE
          AND (fa.access_end_date IS NULL OR fa.access_end_date > NOW())
          AND (
-           (fa.access_permissions->>$3)::boolean = TRUE
+             (fa.access_permissions->>$3)::boolean = TRUE
+           OR
+           -- Handle mapping for 'diary' permission to 'can_manage_diary' key in JSON
+           ($3 = 'diary' AND (fa.access_permissions->>'can_manage_diary')::boolean = TRUE)
+           OR
+           -- Handle mapping for 'checkin' permission to 'can_manage_checkin' key
+           ($3 = 'checkin' AND (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE)
+           OR
+            -- Handle mapping for 'reports' permission to 'can_view_reports' key
+           ($3 = 'reports' AND (fa.access_permissions->>'can_view_reports')::boolean = TRUE)
            OR
            -- Inheritance: reports permission grants read access to calorie, checkin, and mood
-           ($3 IN ('calorie', 'checkin', 'mood') AND (fa.access_permissions->>'reports')::boolean = TRUE)
+           ($3 IN ('diary', 'checkin', 'mood') AND (
+              (fa.access_permissions->>'reports')::boolean = TRUE 
+              OR 
+              (fa.access_permissions->>'can_view_reports')::boolean = TRUE
+            ))
            OR
            -- Inheritance: food_list permission grants read access to calorie data (foods table)
-           ($3 = 'calorie' AND (fa.access_permissions->>'food_list')::boolean = TRUE)
+           ($3 = 'diary' AND (
+              (fa.access_permissions->>'food_list')::boolean = TRUE
+              OR
+              (fa.access_permissions->>'can_view_food_library')::boolean = TRUE
+            ))
          )`,
       [authenticatedUserId, targetUserId, permissionType]
     );
