@@ -65,8 +65,8 @@ export interface GroupedExerciseEntry {
 }
 
 
-export const fetchExerciseEntries = async (selectedDate: string): Promise<GroupedExerciseEntry[]> => {
-  const response = await getDailyExerciseEntries(selectedDate);
+export const fetchExerciseEntries = async (selectedDate: string, userId?: string): Promise<GroupedExerciseEntry[]> => {
+  const response = await getDailyExerciseEntries(selectedDate, userId);
 
   const parsedEntries: GroupedExerciseEntry[] = response.map((entry: any) => {
     if (entry.type === 'preset') {

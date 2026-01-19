@@ -18,6 +18,11 @@ const COLORS = ['#6366f1', '#06b6d4', '#f59e0b', '#ef4444'];
 export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => {
     const { t } = useTranslation();
     const { formatDateInUserTimezone } = usePreferences();
+    const [isMounted, setIsMounted] = useState(false);
+
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     // Compute summary statistics
     const summary = useMemo(() => {
@@ -128,26 +133,32 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
                         <Card>
                             <CardContent>
                                 <div className="h-72">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={dailyData}>
-                                            <XAxis dataKey="date" />
-                                            <YAxis
-                                                domain={dailyDomain}
-                                                label={{ value: t('reports.fasting.hours', 'Hours'), angle: -90, position: 'insideLeft' }}
-                                                tickFormatter={(val) => {
-                                                    if (val === null || val === undefined) return '';
-                                                    const num = Number(val as any);
-                                                    return Number.isNaN(num) ? String(val) : num.toFixed(2);
-                                                }}
-                                            />
-                                            <Tooltip formatter={(value: any) => {
-                                                if (value === null || value === undefined) return '';
-                                                const num = Number(value);
-                                                return Number.isNaN(num) ? String(value) : num.toFixed(2);
-                                            }} />
-                                            <Bar dataKey="hours" fill="#6366f1" />
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                    {isMounted ? (
+                                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+                                            <BarChart data={dailyData}>
+                                                <XAxis dataKey="date" />
+                                                <YAxis
+                                                    domain={dailyDomain}
+                                                    label={{ value: t('reports.fasting.hours', 'Hours'), angle: -90, position: 'insideLeft' }}
+                                                    tickFormatter={(val) => {
+                                                        if (val === null || val === undefined) return '';
+                                                        const num = Number(val as any);
+                                                        return Number.isNaN(num) ? String(val) : num.toFixed(2);
+                                                    }}
+                                                />
+                                                <Tooltip formatter={(value: any) => {
+                                                    if (value === null || value === undefined) return '';
+                                                    const num = Number(value);
+                                                    return Number.isNaN(num) ? String(value) : num.toFixed(2);
+                                                }} />
+                                                <Bar dataKey="hours" fill="#6366f1" isAnimationActive={false} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                                            <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading charts...')}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -161,15 +172,30 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
                     <CardTitle>{t('reports.fasting.zoneDistribution', 'Fasting Zones')}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie data={zoneData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                                {zoneData.map((_, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Pie>
-                        </PieChart>
-                    </ResponsiveContainer>
+                    {isMounted ? (
+                        <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0} debounce={100}>
+                            <PieChart>
+                                <Pie
+                                    data={zoneData}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={100}
+                                    label
+                                    isAnimationActive={false}
+                                >
+                                    {zoneData.map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="h-[300px] flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                            <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading charts...')}</span>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -202,27 +228,33 @@ export const FastingReport: React.FC<FastingReportProps> = ({ fastingData }) => 
                         <Card>
                             <CardContent>
                                 <div className="h-72">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={trendData}>
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis dataKey="date" />
-                                            <YAxis
-                                                domain={trendDomain}
-                                                label={{ value: t('reports.fasting.avgHours', 'Avg Hours'), angle: -90, position: 'insideLeft' }}
-                                                tickFormatter={(val) => {
-                                                    if (val === null || val === undefined) return '';
-                                                    const num = Number(val as any);
-                                                    return Number.isNaN(num) ? String(val) : num.toFixed(2);
-                                                }}
-                                            />
-                                            <Tooltip formatter={(value: any) => {
-                                                if (value === null || value === undefined) return '';
-                                                const num = Number(value);
-                                                return Number.isNaN(num) ? String(value) : num.toFixed(2);
-                                            }} />
-                                            <Line type="monotone" dataKey="avg" stroke="#06b6d4" />
-                                        </LineChart>
-                                    </ResponsiveContainer>
+                                    {isMounted ? (
+                                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+                                            <LineChart data={trendData}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="date" />
+                                                <YAxis
+                                                    domain={trendDomain}
+                                                    label={{ value: t('reports.fasting.avgHours', 'Avg Hours'), angle: -90, position: 'insideLeft' }}
+                                                    tickFormatter={(val) => {
+                                                        if (val === null || val === undefined) return '';
+                                                        const num = Number(val as any);
+                                                        return Number.isNaN(num) ? String(val) : num.toFixed(2);
+                                                    }}
+                                                />
+                                                <Tooltip formatter={(value: any) => {
+                                                    if (value === null || value === undefined) return '';
+                                                    const num = Number(value);
+                                                    return Number.isNaN(num) ? String(value) : num.toFixed(2);
+                                                }} />
+                                                <Line type="monotone" dataKey="avg" stroke="#06b6d4" isAnimationActive={false} />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                                            <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading charts...')}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>

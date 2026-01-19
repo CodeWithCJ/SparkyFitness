@@ -123,7 +123,7 @@ const FamilyAccessManager = () => {
     }
 
     try {
-      
+
       const foundUserId = await findUserByEmail(formData.family_email);
 
       if (!editingAccess && foundUserId) {
@@ -165,7 +165,7 @@ const FamilyAccessManager = () => {
       if (editingAccess) {
         // Update existing access
         await updateFamilyAccess(editingAccess.id, accessData);
-        
+
         toast({
           title: "Success",
           description: "Family access updated successfully",
@@ -173,11 +173,11 @@ const FamilyAccessManager = () => {
       } else {
         // Create new access
         await createFamilyAccess(accessData);
-        
-        const statusMessage = foundUserId 
-          ? "Family access granted successfully" 
+
+        const statusMessage = foundUserId
+          ? "Family access granted successfully"
           : `Access invitation sent to ${formData.family_email}. They'll have access once they create a SparkyFitness account.`;
-        
+
         toast({
           title: "Success",
           description: statusMessage,
@@ -200,12 +200,12 @@ const FamilyAccessManager = () => {
   const handleToggleActive = async (access: FamilyAccess) => {
     try {
       await toggleFamilyAccessActiveStatus(access.id, !access.is_active);
-      
+
       toast({
         title: "Success",
         description: `Family access ${!access.is_active ? 'activated' : 'deactivated'}`,
       });
-      
+
       fetchFamilyAccess(); // Call the function directly
     } catch (error) {
       console.error('Error toggling family access:', error);
@@ -220,12 +220,12 @@ const FamilyAccessManager = () => {
   const handleDelete = async (accessId: string) => {
     try {
       await deleteFamilyAccess(accessId);
-      
+
       toast({
         title: "Success",
         description: "Family access removed successfully",
       });
-      
+
       fetchFamilyAccess(); // Call the function directly
     } catch (error) {
       console.error('Error deleting family access:', error);
@@ -241,7 +241,7 @@ const FamilyAccessManager = () => {
     if (!isActive) {
       return <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">Inactive</span>;
     }
-    
+
     switch (status) {
       case 'active':
         return <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Active</span>;

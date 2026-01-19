@@ -85,11 +85,97 @@ export const getRawStressData = async (userId: string): Promise<StressDataPoint[
   customMeasurements.forEach(measurement => {
     try {
       if (typeof measurement.value === 'string') {
-        const parsedValue: StressDataPoint[] = JSON.parse(measurement.value);
-        allStressDataPoints = allStressDataPoints.concat(parsedValue);
+        let cleanedValue = measurement.value.trim();
+
+        // Handle specific malformation: wrapper braces around a stringified object/array
+        // e.g., '{"{...}"}' which causes "Expected ':'" errors in JSON.parse
+        if (cleanedValue.startsWith('{"{') && cleanedValue.endsWith('}"}')) {
+          cleanedValue = cleanedValue.substring(1, cleanedValue.length - 1);
+        }
+
+        // New logic to handle multiple JSON objects concatenated together
+        // or a JSON object wrapped in quotes but with extra characters
+        const parseRobustly = (str: string): any => {
+          try {
+            return JSON.parse(str);
+          } catch (e: any) {
+            // Check if error is "unexpected character after JSON"
+            // This happens if multiple JSON objects are joined together like {"a":1}{"b":2}
+            if (e.message?.includes('Unexpected non-whitespace character') || e.message?.includes('after JSON')) {
+              // Try to find if it's a sequence of objects
+              // This is a naive but often effective way for simple objects
+              const points: any[] = [];
+              let remaining = str;
+              while (remaining.length > 0) {
+                try {
+                  // This is tricky in JS, but we can try to find the matching brace
+                  // or just try prefixes of decreasing length
+                  let success = false;
+                  for (let i = remaining.length; i > 0; i--) {
+                    try {
+                      const chunk = remaining.substring(0, i);
+                      const parsed = JSON.parse(chunk);
+                      points.push(parsed);
+                      remaining = remaining.substring(i).trim();
+                      success = true;
+                      break;
+                    } catch (inner) {
+                      continue;
+                    }
+                  }
+                  if (!success) break; // Cannot parse any more
+                } catch (err) {
+                  break;
+                }
+              }
+              if (points.length > 0) return points;
+            }
+            throw e;
+          }
+        };
+
+        let parsedValue;
+        try {
+          parsedValue = parseRobustly(cleanedValue);
+        } catch (initialError) {
+          // If it's still failing, try removing JUST the outer braces if they seem like extraneous wrappers
+          if (cleanedValue.startsWith('{') && cleanedValue.endsWith('}') && !cleanedValue.includes(':')) {
+            const alternativeValue = cleanedValue.substring(1, cleanedValue.length - 1);
+            parsedValue = parseRobustly(alternativeValue);
+          } else {
+            throw initialError;
+          }
+        }
+
+        // Handle double-encoded JSON strings
+        if (typeof parsedValue === 'string') {
+          try {
+            parsedValue = JSON.parse(parsedValue);
+          } catch (e) {
+            // Not a JSON string, keep as is
+          }
+        }
+
+        if (Array.isArray(parsedValue)) {
+          // Flatten if we got an array of arrays from the robust parser
+          parsedValue.forEach(val => {
+            if (Array.isArray(val)) {
+              allStressDataPoints = allStressDataPoints.concat(val);
+            } else {
+              allStressDataPoints.push(val as StressDataPoint);
+            }
+          });
+        } else if (typeof parsedValue === 'object' && parsedValue !== null) {
+          // If it's a single data point instead of an array
+          allStressDataPoints.push(parsedValue as StressDataPoint);
+        }
       }
     } catch (error) {
-      console.error('Error parsing stress data point:', error);
+      console.error('Error parsing stress data point JSON:', {
+        error: error instanceof Error ? error.message : error,
+        value: measurement.value,
+        id: measurement.id
+      });
     }
   });
 

@@ -44,8 +44,8 @@ async function createFoodEntry(authenticatedUserId, actingUserId, entryData) {
   try {
     const entryWithUser = {
       ...entryData,
-      user_id: authenticatedUserId,
-      created_by_user_id: actingUserId,
+      user_id: entryData.user_id || authenticatedUserId, // Use provided user_id (target) or default to authenticated
+      created_by_user_id: actingUserId, // The user performing the action
     };
     log(
       "info",
@@ -564,7 +564,7 @@ async function createFoodEntryMeal(
     // 1. Create the parent food_entry_meals record with quantity and unit
     const newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal(
       {
-        user_id: authenticatedUserId,
+        user_id: mealData.user_id || authenticatedUserId, // Use target user ID
         meal_template_id: mealData.meal_template_id || null,
         meal_type: mealData.meal_type,
         entry_date: mealData.entry_date,
@@ -599,8 +599,7 @@ async function createFoodEntryMeal(
         mealServingSize = mealTemplate.serving_size || 1.0; // Get the meal's serving size
         log(
           "info",
-          `Meal template serving size: ${mealServingSize} ${
-            mealTemplate.serving_unit || "serving"
+          `Meal template serving size: ${mealServingSize} ${mealTemplate.serving_unit || "serving"
           }`
         );
       } else {
@@ -681,7 +680,7 @@ async function createFoodEntryMeal(
       const scaledQuantity = foodItem.quantity * multiplier;
 
       entriesToCreate.push({
-        user_id: authenticatedUserId,
+        user_id: newFoodEntryMeal.user_id, // Use the user_id from the created meal (target user)
         created_by_user_id: actingUserId,
         food_id: foodItem.food_id,
         meal_type_id: resolvedMealTypeId,

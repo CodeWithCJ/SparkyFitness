@@ -90,6 +90,11 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
   const [selectedExercise, setSelectedExercise] = useState<string>('All');
   const [aggregationLevel, setAggregationLevel] = useState<string>('daily'); // New state for aggregation level
   const [comparisonPeriod, setComparisonPeriod] = useState<string | null>(null); // New state for comparison period
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Default layout for widgets
   const defaultLayout = [
@@ -332,22 +337,22 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-                <Select
-                  value={selectedExercise || 'All'}
-                  onValueChange={(value) => setSelectedExercise(value)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={t('exerciseReportsDashboard.selectExercises', 'Select exercises')}>
-                      {selectedExercise === 'All' ? t('exerciseReportsDashboard.allExercises', 'All Exercises') : availableExercises.find(ex => ex.id === selectedExercise)?.name || t('exerciseReportsDashboard.selectExercises', 'Select exercises')}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">{t('exerciseReportsDashboard.allExercises', 'All Exercises')}</SelectItem>
-                    {availableExercises.map(exercise => (
-                      <SelectItem key={exercise.id} value={exercise.id}>{exercise.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <Select
+                value={selectedExercise || 'All'}
+                onValueChange={(value) => setSelectedExercise(value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t('exerciseReportsDashboard.selectExercises', 'Select exercises')}>
+                    {selectedExercise === 'All' ? t('exerciseReportsDashboard.allExercises', 'All Exercises') : availableExercises.find(ex => ex.id === selectedExercise)?.name || t('exerciseReportsDashboard.selectExercises', 'Select exercises')}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">{t('exerciseReportsDashboard.allExercises', 'All Exercises')}</SelectItem>
+                  {availableExercises.map(exercise => (
+                    <SelectItem key={exercise.id} value={exercise.id}>{exercise.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
             </CardContent>
           </Card>
@@ -378,21 +383,21 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
       case "volumeTrend":
         const volumeTrendData = selectedExercisesForChart.length > 0
           ? Object.values(exerciseProgressData).flat().reduce((acc, entry) => {
-              const date = formatDateInUserTimezone(parseISO(entry.entry_date), 'MMM dd, yyyy');
-              let existingEntry = acc.find(item => item.date === date);
-              if (!existingEntry) {
-                existingEntry = { date, volume: 0, comparisonVolume: 0 };
-                acc.push(existingEntry);
-              }
-              existingEntry.volume += parseFloat(formatWeight(entry.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0)));
-              // For comparison, we need to find the corresponding entry in comparisonExerciseProgressData
-              // This assumes a 1:1 date mapping for simplicity, might need more complex logic for real-world scenarios
-              const comparisonEntry = Object.values(comparisonExerciseProgressData).flat().find(compEntry => compEntry.entry_date === entry.entry_date);
-              if (comparisonEntry) {
-                existingEntry.comparisonVolume += parseFloat(formatWeight(comparisonEntry.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0)));
-              }
-              return acc;
-            }, [] as { date: string; volume: number; comparisonVolume: number }[]).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            const date = formatDateInUserTimezone(parseISO(entry.entry_date), 'MMM dd, yyyy');
+            let existingEntry = acc.find(item => item.date === date);
+            if (!existingEntry) {
+              existingEntry = { date, volume: 0, comparisonVolume: 0 };
+              acc.push(existingEntry);
+            }
+            existingEntry.volume += parseFloat(formatWeight(entry.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0)));
+            // For comparison, we need to find the corresponding entry in comparisonExerciseProgressData
+            // This assumes a 1:1 date mapping for simplicity, might need more complex logic for real-world scenarios
+            const comparisonEntry = Object.values(comparisonExerciseProgressData).flat().find(compEntry => compEntry.entry_date === entry.entry_date);
+            if (comparisonEntry) {
+              existingEntry.comparisonVolume += parseFloat(formatWeight(comparisonEntry.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0)));
+            }
+            return acc;
+          }, [] as { date: string; volume: number; comparisonVolume: number }[]).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
           : [];
         return volumeTrendData.length > 0 && volumeTrendData.some(d => d.volume > 0) ? (
           <Card key="volumeTrend">
@@ -401,30 +406,38 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             </CardHeader>
             <CardContent>
               <ZoomableChart title={t('exerciseReportsDashboard.volumeTrend', 'Volume Trend')}>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
-                    data={volumeTrendData}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis tickFormatter={(value) => formatWeight(value)} label={{ value: t('exerciseReportsDashboard.volumeCurrent', `Volume (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
-                    <Tooltip formatter={(value: number) => `${formatWeight(value)} ${weightUnit}`} contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                    <Legend />
-                    <Bar
-                      dataKey="volume"
-                      fill="#8884d8"
-                      name={t('exerciseReportsDashboard.volumeCurrent', 'Volume (Current)')}
-                    />
-                    {comparisonPeriod && (
+                {isMounted ? (
+                  <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0} debounce={100}>
+                    <BarChart onClick={(e: any) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
+                      data={volumeTrendData}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis tickFormatter={(value) => formatWeight(value)} label={{ value: t('exerciseReportsDashboard.volumeCurrent', `Volume (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
+                      <Tooltip formatter={(value: number) => `${formatWeight(value)} ${weightUnit}`} contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                      <Legend />
                       <Bar
-                        dataKey="comparisonVolume"
+                        dataKey="volume"
                         fill="#8884d8"
-                        opacity={0.6}
-                        name={t('exerciseReportsDashboard.volumeComparison', 'Volume (Comparison)')}
+                        name={t('exerciseReportsDashboard.volumeCurrent', 'Volume (Current)')}
+                        isAnimationActive={false}
                       />
-                    )}
-                  </BarChart>
-                </ResponsiveContainer>
+                      {comparisonPeriod && (
+                        <Bar
+                          dataKey="comparisonVolume"
+                          fill="#8884d8"
+                          opacity={0.6}
+                          name={t('exerciseReportsDashboard.volumeComparison', 'Volume (Comparison)')}
+                          isAnimationActive={false}
+                        />
+                      )}
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                    <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                  </div>
+                )}
               </ZoomableChart>
             </CardContent>
           </Card>
@@ -432,19 +445,19 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
       case "maxWeightTrend":
         const maxWeightTrendData = selectedExercisesForChart.length > 0
           ? Object.values(exerciseProgressData).flat().reduce((acc, entry) => {
-              const date = formatDateInUserTimezone(parseISO(entry.entry_date), 'MMM dd, yyyy');
-              let existingEntry = acc.find(item => item.date === date);
-              if (!existingEntry) {
-                existingEntry = { date, maxWeight: 0, comparisonMaxWeight: 0 };
-                acc.push(existingEntry);
-              }
-              existingEntry.maxWeight = Math.max(existingEntry.maxWeight, ...entry.sets.map(set => set.weight));
-              const comparisonEntry = Object.values(comparisonExerciseProgressData).flat().find(compEntry => compEntry.entry_date === entry.entry_date);
-              if (comparisonEntry) {
-                existingEntry.comparisonMaxWeight = Math.max(existingEntry.comparisonMaxWeight, ...comparisonEntry.sets.map(set => set.weight));
-              }
-              return acc;
-            }, [] as { date: string; maxWeight: number; comparisonMaxWeight: number }[]).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            const date = formatDateInUserTimezone(parseISO(entry.entry_date), 'MMM dd, yyyy');
+            let existingEntry = acc.find(item => item.date === date);
+            if (!existingEntry) {
+              existingEntry = { date, maxWeight: 0, comparisonMaxWeight: 0 };
+              acc.push(existingEntry);
+            }
+            existingEntry.maxWeight = Math.max(existingEntry.maxWeight, ...entry.sets.map(set => set.weight));
+            const comparisonEntry = Object.values(comparisonExerciseProgressData).flat().find(compEntry => compEntry.entry_date === entry.entry_date);
+            if (comparisonEntry) {
+              existingEntry.comparisonMaxWeight = Math.max(existingEntry.comparisonMaxWeight, ...comparisonEntry.sets.map(set => set.weight));
+            }
+            return acc;
+          }, [] as { date: string; maxWeight: number; comparisonMaxWeight: number }[]).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
           : [];
         return maxWeightTrendData.length > 0 && maxWeightTrendData.some(d => d.maxWeight > 0) ? (
           <Card key="maxWeightTrend">
@@ -453,30 +466,38 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             </CardHeader>
             <CardContent>
               <ZoomableChart title={t('exerciseReportsDashboard.maxWeightTrend', 'Max Weight Trend')}>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
-                    data={maxWeightTrendData}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis label={{ value: t('exerciseReportsDashboard.maxWeightCurrent', `Max Weight (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                    <Legend />
-                    <Bar
-                      dataKey="maxWeight"
-                      fill="#82ca9d"
-                      name={t('exerciseReportsDashboard.maxWeightCurrent', 'Max Weight (Current)')}
-                    />
-                    {comparisonPeriod && (
+                {isMounted ? (
+                  <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0} debounce={100}>
+                    <BarChart onClick={(e: any) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
+                      data={maxWeightTrendData}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis label={{ value: t('exerciseReportsDashboard.maxWeightCurrent', `Max Weight (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
+                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                      <Legend />
                       <Bar
-                        dataKey="comparisonMaxWeight"
+                        dataKey="maxWeight"
                         fill="#82ca9d"
-                        opacity={0.6}
-                        name={t('exerciseReportsDashboard.maxWeightComparison', 'Max Weight (Comparison)')}
+                        name={t('exerciseReportsDashboard.maxWeightCurrent', 'Max Weight (Current)')}
+                        isAnimationActive={false}
                       />
-                    )}
-                  </BarChart>
-                </ResponsiveContainer>
+                      {comparisonPeriod && (
+                        <Bar
+                          dataKey="comparisonMaxWeight"
+                          fill="#82ca9d"
+                          opacity={0.6}
+                          name={t('exerciseReportsDashboard.maxWeightComparison', 'Max Weight (Comparison)')}
+                          isAnimationActive={false}
+                        />
+                      )}
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                    <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                  </div>
+                )}
               </ZoomableChart>
             </CardContent>
           </Card>
@@ -484,19 +505,19 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
       case "estimated1RMTrend":
         const estimated1RMTrendData = selectedExercisesForChart.length > 0
           ? Object.values(exerciseProgressData).flat().reduce((acc, entry) => {
-              const date = formatDateInUserTimezone(parseISO(entry.entry_date), 'MMM dd, yyyy');
-              let existingEntry = acc.find(item => item.date === date);
-              if (!existingEntry) {
-                existingEntry = { date, estimated1RM: 0, comparisonEstimated1RM: 0 };
-                acc.push(existingEntry);
-              }
-              existingEntry.estimated1RM = Math.round(Math.max(existingEntry.estimated1RM, ...entry.sets.map(set => set.weight * (1 + (set.reps / 30)))));
-              const comparisonEntry = Object.values(comparisonExerciseProgressData).flat().find(compEntry => compEntry.entry_date === entry.entry_date);
-              if (comparisonEntry) {
-                existingEntry.comparisonEstimated1RM = Math.round(Math.max(existingEntry.comparisonEstimated1RM, ...comparisonEntry.sets.map(set => set.weight * (1 + (set.reps / 30)))));
-              }
-              return acc;
-            }, [] as { date: string; estimated1RM: number; comparisonEstimated1RM: number }[]).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            const date = formatDateInUserTimezone(parseISO(entry.entry_date), 'MMM dd, yyyy');
+            let existingEntry = acc.find(item => item.date === date);
+            if (!existingEntry) {
+              existingEntry = { date, estimated1RM: 0, comparisonEstimated1RM: 0 };
+              acc.push(existingEntry);
+            }
+            existingEntry.estimated1RM = Math.round(Math.max(existingEntry.estimated1RM, ...entry.sets.map(set => set.weight * (1 + (set.reps / 30)))));
+            const comparisonEntry = Object.values(comparisonExerciseProgressData).flat().find(compEntry => compEntry.entry_date === entry.entry_date);
+            if (comparisonEntry) {
+              existingEntry.comparisonEstimated1RM = Math.round(Math.max(existingEntry.comparisonEstimated1RM, ...comparisonEntry.sets.map(set => set.weight * (1 + (set.reps / 30)))));
+            }
+            return acc;
+          }, [] as { date: string; estimated1RM: number; comparisonEstimated1RM: number }[]).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
           : [];
         return estimated1RMTrendData.length > 0 && estimated1RMTrendData.some(d => d.estimated1RM > 0) ? (
           <Card key="estimated1RMTrend">
@@ -505,30 +526,38 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             </CardHeader>
             <CardContent>
               <ZoomableChart title={t('exerciseReportsDashboard.estimated1RMTrend', 'Estimated 1RM Trend')}>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
-                    data={estimated1RMTrendData}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis label={{ value: t('exerciseReportsDashboard.estimated1RMCurrent', `Estimated 1RM (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                    <Legend />
-                    <Bar
-                      dataKey="estimated1RM"
-                      fill="#ffc658"
-                      name={t('exerciseReportsDashboard.estimated1RMCurrent', 'Estimated 1RM (Current)')}
-                    />
-                    {comparisonPeriod && (
+                {isMounted ? (
+                  <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0} debounce={100}>
+                    <BarChart onClick={(e: any) => e && e.activePayload && e.activePayload.length > 0 && onDrilldown(e.activePayload[0].payload.entry_date)}
+                      data={estimated1RMTrendData}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis label={{ value: t('exerciseReportsDashboard.estimated1RMCurrent', `Estimated 1RM (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
+                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                      <Legend />
                       <Bar
-                        dataKey="comparisonEstimated1RM"
+                        dataKey="estimated1RM"
                         fill="#ffc658"
-                        opacity={0.6}
-                        name={t('exerciseReportsDashboard.estimated1RMComparison', 'Estimated 1RM (Comparison)')}
+                        name={t('exerciseReportsDashboard.estimated1RMCurrent', 'Estimated 1RM (Current)')}
+                        isAnimationActive={false}
                       />
-                    )}
-                  </BarChart>
-                </ResponsiveContainer>
+                      {comparisonPeriod && (
+                        <Bar
+                          dataKey="comparisonEstimated1RM"
+                          fill="#ffc658"
+                          opacity={0.6}
+                          name={t('exerciseReportsDashboard.estimated1RMComparison', 'Estimated 1RM (Comparison)')}
+                          isAnimationActive={false}
+                        />
+                      )}
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                    <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                  </div>
+                )}
               </ZoomableChart>
             </CardContent>
           </Card>
@@ -539,9 +568,9 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             {selectedExercisesForChart.map(exerciseId => {
               const bestSetRepRangeData = exerciseDashboardData.bestSetRepRange[exerciseId]
                 ? Object.entries(exerciseDashboardData.bestSetRepRange[exerciseId] || {}).map(([range, data]) => ({
-                    range,
-                    weight: data.weight,
-                  }))
+                  range,
+                  weight: data.weight,
+                }))
                 : [];
               const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise');
               return bestSetRepRangeData.length > 0 && bestSetRepRangeData.some(d => d.weight > 0) ? (
@@ -551,19 +580,26 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                   </CardHeader>
                   <CardContent>
                     <ZoomableChart title={t('exerciseReportsDashboard.bestSetByRepRangeTitle', 'Best Set by Rep Range')}>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={bestSetRepRangeData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="range" />
-                          <YAxis label={{ value: t('exerciseReportsDashboard.maxWeight', `Weight (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
-                          <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                          <Legend />
-                          <Bar
-                            dataKey="weight"
-                            fill="#8884d8"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
+                      {isMounted ? (
+                        <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0} debounce={100}>
+                          <BarChart data={bestSetRepRangeData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="range" />
+                            <YAxis label={{ value: t('exerciseReportsDashboard.maxWeight', `Weight (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
+                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                            <Legend />
+                            <Bar
+                              dataKey="weight"
+                              fill="#8884d8"
+                              isAnimationActive={false}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                          <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                        </div>
+                      )}
                     </ZoomableChart>
                   </CardContent>
                 </Card>
@@ -574,9 +610,9 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
       case "trainingVolumeByMuscleGroup":
         const trainingVolumeByMuscleGroupData = exerciseDashboardData.muscleGroupVolume && Object.keys(exerciseDashboardData.muscleGroupVolume).length > 0
           ? Object.entries(exerciseDashboardData.muscleGroupVolume).map(([muscle, volume]) => ({
-              muscle,
-              volume,
-            }))
+            muscle,
+            volume,
+          }))
           : [];
         return trainingVolumeByMuscleGroupData.length > 0 && trainingVolumeByMuscleGroupData.some(d => d.volume > 0) ? (
           <Card key="trainingVolumeByMuscleGroup">
@@ -584,16 +620,24 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               <CardTitle>{t('exerciseReportsDashboard.trainingVolumeByMuscleGroup', 'Training Volume by Muscle Group')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={trainingVolumeByMuscleGroupData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="muscle" />
-                  <YAxis label={{ value: t('exerciseReportsDashboard.volumeCurrent', `Volume (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
-                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                  <Legend />
-                  <Bar dataKey="volume" fill="#ff7300" />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="h-[300px] w-full">
+                {isMounted ? (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+                    <BarChart data={trainingVolumeByMuscleGroupData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="muscle" />
+                      <YAxis label={{ value: t('exerciseReportsDashboard.volumeCurrent', `Volume (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
+                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                      <Legend />
+                      <Bar dataKey="volume" fill="#ff7300" isAnimationActive={false} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                    <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         ) : null;
@@ -626,22 +670,29 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               </CardHeader>
               <CardContent>
                 <ZoomableChart title={t('exerciseReportsDashboard.repsVsWeight', 'Reps vs Weight', { exerciseName: '' })}>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-                      data={repsVsWeightScatterData}
-                    >
-                      <CartesianGrid />
-                      <XAxis dataKey="reps" name={t('exerciseReportsDashboard.reps', 'Reps')} />
-                      <YAxis label={{ value: t('exerciseReportsDashboard.averageWeight', `Average Weight (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
-                      <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                      <Legend />
-                      <Bar
-                        dataKey="averageWeight"
-                        name={exerciseName}
-                        fill="#a4de6c"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {isMounted ? (
+                    <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0} debounce={100}>
+                      <BarChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                        data={repsVsWeightScatterData}
+                      >
+                        <CartesianGrid />
+                        <XAxis dataKey="reps" name={t('exerciseReportsDashboard.reps', 'Reps')} />
+                        <YAxis label={{ value: t('exerciseReportsDashboard.averageWeight', `Average Weight (${weightUnit})`, { weightUnit }), angle: -90, position: 'insideLeft', offset: 10 }} />
+                        <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                        <Legend />
+                        <Bar
+                          dataKey="averageWeight"
+                          name={exerciseName}
+                          fill="#a4de6c"
+                          isAnimationActive={false}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                      <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                    </div>
+                  )}
                 </ZoomableChart>
               </CardContent>
             </Card>
@@ -662,22 +713,29 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
               </CardHeader>
               <CardContent>
                 <ZoomableChart title={t('exerciseReportsDashboard.timeUnderTensionTrendTitle', 'Time Under Tension Trend')}>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart
-                      data={timeUnderTensionData}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis label={{ value: t('exerciseReportsDashboard.timeUnderTensionMin', 'Time Under Tension (min)'), angle: -90, position: 'insideLeft', offset: 10 }} />
-                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
-                      <Legend />
-                      <Bar
-                        dataKey="timeUnderTension"
-                        fill="#d0ed57"
-                        name={exerciseName}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {isMounted ? (
+                    <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0} debounce={100}>
+                      <BarChart
+                        data={timeUnderTensionData}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis label={{ value: t('exerciseReportsDashboard.timeUnderTensionMin', 'Time Under Tension (min)'), angle: -90, position: 'insideLeft', offset: 10 }} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))' }} />
+                        <Legend />
+                        <Bar
+                          dataKey="timeUnderTension"
+                          fill="#d0ed57"
+                          name={exerciseName}
+                          isAnimationActive={false}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                      <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                    </div>
+                  )}
                 </ZoomableChart>
               </CardContent>
             </Card>
@@ -734,10 +792,10 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         return selectedExercisesForChart.map(exerciseId => {
           const setPerformanceData = exerciseDashboardData.setPerformanceData[exerciseId]
             ? Object.entries(exerciseDashboardData.setPerformanceData[exerciseId]).map(([setName, data]) => ({
-                setName: setName.replace('Set', ' Set'),
-                avgWeight: data.avgWeight,
-                avgReps: data.avgReps,
-              }))
+              setName: setName.replace('Set', ' Set'),
+              avgWeight: data.avgWeight,
+              avgReps: data.avgReps,
+            }))
             : [];
           const exerciseName = availableExercises.find(ex => ex.id === exerciseId)?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise');
           return setPerformanceData.length > 0 && setPerformanceData.some(d => d.avgWeight > 0 || d.avgReps > 0) ? (
@@ -783,7 +841,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
         {errorMessage && <p className="text-red-500">{errorMessage}</p>}
         {!loading && !errorMessage && widgetLayout.map(widgetId => renderWidget(widgetId))}
       </div>
-  
+
       {!loading && !errorMessage && selectedExercisesForChart.length > 0 && Object.keys(exerciseProgressData).length === 0 && (
         <p className="text-center text-muted-foreground">
           {t('exerciseReportsDashboard.noProgressDataAvailable', 'No progress data available for the selected exercises in the chosen date range.')}

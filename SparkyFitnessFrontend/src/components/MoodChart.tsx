@@ -14,6 +14,12 @@ interface MoodChartProps {
 const MoodChart: React.FC<MoodChartProps> = ({ data, title }) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Add logging to check the data prop
   console.log('MoodChart: Received data prop:', data);
 
@@ -39,6 +45,21 @@ const MoodChart: React.FC<MoodChartProps> = ({ data, title }) => {
     return null;
   };
 
+  if (!isMounted) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[500px] flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+            <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading charts...')}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -46,7 +67,7 @@ const MoodChart: React.FC<MoodChartProps> = ({ data, title }) => {
       </CardHeader>
       <CardContent>
         {formattedData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={500}> {/* Increased height */}
+          <ResponsiveContainer width="100%" height={500} minWidth={0} minHeight={0} debounce={100}>
             <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
               <CartesianGrid />
               <XAxis

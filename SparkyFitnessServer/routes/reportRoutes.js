@@ -36,6 +36,14 @@ router.get('/', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Target User ID, start date, and end date are required.' });
   }
 
+  // Permission check
+  if (targetUserId !== req.userId) {
+    const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'reports', req.userId);
+    if (!hasPermission) {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to view reports for this user.' });
+    }
+  }
+
   try {
     const reportData = await reportService.getReportsData(req.userId, targetUserId, startDate, endDate);
     res.status(200).json(reportData);
@@ -79,6 +87,14 @@ router.get('/mini-nutrition-trends', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Target User ID, start date, and end date are required.' });
   }
 
+  // Permission check
+  if (targetUserId !== req.userId) {
+    const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'reports', req.userId);
+    if (!hasPermission) {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to view reports for this user.' });
+    }
+  }
+
   try {
     const formattedResults = await reportService.getMiniNutritionTrends(req.userId, targetUserId, startDate, endDate);
     res.status(200).json(formattedResults);
@@ -120,6 +136,14 @@ router.get('/nutrition-trends-with-goals', authenticate, async (req, res, next) 
 
   if (!targetUserId || !startDate || !endDate) {
     return res.status(400).json({ error: 'Target User ID, start date, and end date are required.' });
+  }
+
+  // Permission check
+  if (targetUserId !== req.userId) {
+    const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'reports', req.userId);
+    if (!hasPermission) {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to view reports for this user.' });
+    }
   }
 
   try {
@@ -172,6 +196,14 @@ router.get('/exercise-dashboard', authenticate, async (req, res, next) => {
 
   if (!targetUserId || !startDate || !endDate) {
     return res.status(400).json({ error: 'Target User ID, start date, and end date are required.' });
+  }
+
+  // Permission check
+  if (targetUserId !== req.userId) {
+    const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'reports', req.userId);
+    if (!hasPermission) {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to view reports for this user.' });
+    }
   }
 
   try {

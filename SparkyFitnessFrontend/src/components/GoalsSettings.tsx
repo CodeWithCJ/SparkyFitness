@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,6 +77,50 @@ const GoalsSettings = () => {
   const [isWeeklyPlanDialogOpen, setIsWeeklyPlanDialogOpen] = useState(false);
   const [currentWeeklyPlan, setCurrentWeeklyPlan] = useState<WeeklyGoalPlan | null>(null);
   const [weeklyPlanSaving, setWeeklyPlanSaving] = useState(false);
+
+  const memoizedGoalsPercentages = useMemo(() => ({
+    breakfast: goals.breakfast_percentage,
+    lunch: goals.lunch_percentage,
+    dinner: goals.dinner_percentage,
+    snacks: goals.snacks_percentage,
+  }), [goals.breakfast_percentage, goals.lunch_percentage, goals.dinner_percentage, goals.snacks_percentage]);
+
+  const handleGoalsPercentagesChange = useCallback((newPercentages: {
+    breakfast: number;
+    lunch: number;
+    dinner: number;
+    snacks: number;
+  }) => {
+    setGoals(prevGoals => ({
+      ...prevGoals,
+      breakfast_percentage: newPercentages.breakfast,
+      lunch_percentage: newPercentages.lunch,
+      dinner_percentage: newPercentages.dinner,
+      snacks_percentage: newPercentages.snacks,
+    }));
+  }, []);
+
+  const memoizedPresetPercentages = useMemo(() => ({
+    breakfast: currentPreset?.breakfast_percentage || 25,
+    lunch: currentPreset?.lunch_percentage || 25,
+    dinner: currentPreset?.dinner_percentage || 25,
+    snacks: currentPreset?.snacks_percentage || 25,
+  }), [currentPreset?.breakfast_percentage, currentPreset?.lunch_percentage, currentPreset?.dinner_percentage, currentPreset?.snacks_percentage]);
+
+  const handlePresetPercentagesChange = useCallback((newPercentages: {
+    breakfast: number;
+    lunch: number;
+    dinner: number;
+    snacks: number;
+  }) => {
+    setCurrentPreset(prevPreset => prevPreset ? ({
+      ...prevPreset,
+      breakfast_percentage: newPercentages.breakfast,
+      lunch_percentage: newPercentages.lunch,
+      dinner_percentage: newPercentages.dinner,
+      snacks_percentage: newPercentages.snacks,
+    }) : null);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -622,22 +666,9 @@ const GoalsSettings = () => {
 
           <h3 className="text-lg font-semibold mb-4">{t('goals.goalsSettings.mealCalorieDistribution', 'Meal Calorie Distribution')}</h3>
           <MealPercentageManager
-            initialPercentages={{
-              breakfast: goals.breakfast_percentage,
-              lunch: goals.lunch_percentage,
-              dinner: goals.dinner_percentage,
-              snacks: goals.snacks_percentage,
-            }}
+            initialPercentages={memoizedGoalsPercentages}
             totalCalories={goals.calories}
-            onPercentagesChange={(newPercentages) => {
-              setGoals(prevGoals => ({
-                ...prevGoals,
-                breakfast_percentage: newPercentages.breakfast,
-                lunch_percentage: newPercentages.lunch,
-                dinner_percentage: newPercentages.dinner,
-                snacks_percentage: newPercentages.snacks,
-              }));
-            }}
+            onPercentagesChange={handleGoalsPercentagesChange}
           />
 
           <div className="mt-6">
@@ -919,22 +950,9 @@ const GoalsSettings = () => {
               <Separator className="my-6" />
               <h3 className="text-lg font-semibold col-span-full mt-4">{t('goals.goalsSettings.mealCalorieDistribution', 'Meal Calorie Distribution')}</h3>
               <MealPercentageManager
-                initialPercentages={{
-                  breakfast: currentPreset.breakfast_percentage,
-                  lunch: currentPreset.lunch_percentage,
-                  dinner: currentPreset.dinner_percentage,
-                  snacks: currentPreset.snacks_percentage,
-                }}
-                totalCalories={currentPreset.calories} // Add this line
-                onPercentagesChange={(newPercentages) => {
-                  setCurrentPreset(prevPreset => prevPreset ? ({
-                    ...prevPreset,
-                    breakfast_percentage: newPercentages.breakfast,
-                    lunch_percentage: newPercentages.lunch,
-                    dinner_percentage: newPercentages.dinner,
-                    snacks_percentage: newPercentages.snacks,
-                  }) : null);
-                }}
+                initialPercentages={memoizedPresetPercentages}
+                totalCalories={currentPreset.calories}
+                onPercentagesChange={handlePresetPercentagesChange}
               />
               <DialogFooter>
                 <Button onClick={handleSavePreset} disabled={presetSaving || (currentPreset.breakfast_percentage + currentPreset.lunch_percentage + currentPreset.dinner_percentage + currentPreset.snacks_percentage) !== 100}>
@@ -947,7 +965,7 @@ const GoalsSettings = () => {
       </Dialog>
 
       {/* Weekly Goal Plans Section */}
-      <Card>
+      < Card >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-2xl font-bold">{t('goals.goalsSettings.weeklyGoalPlans', 'Weekly Goal Plans (WIP)')}</CardTitle>
           <Button size="sm" onClick={handleCreateWeeklyPlanClick}>
@@ -980,10 +998,10 @@ const GoalsSettings = () => {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card >
 
       {/* Weekly Goal Plan Dialog */}
-      <Dialog open={isWeeklyPlanDialogOpen} onOpenChange={setIsWeeklyPlanDialogOpen}>
+      < Dialog open={isWeeklyPlanDialogOpen} onOpenChange={setIsWeeklyPlanDialogOpen} >
         <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{currentWeeklyPlan?.id ? t('goals.goalsSettings.editWeeklyGoalPlan', 'Edit Weekly Goal Plan') : t('goals.goalsSettings.createNewWeeklyGoalPlan', 'Create New Weekly Goal Plan')}</DialogTitle>
@@ -1107,10 +1125,10 @@ const GoalsSettings = () => {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
 
-    </div>
+    </div >
   );
 };
 

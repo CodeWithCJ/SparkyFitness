@@ -39,7 +39,7 @@ export interface DailyFoodEntry {
   meal_type: string;
   quantity: number;
   unit: string;
-  foods: {
+  foods?: {
     name: string;
     brand?: string;
     calories: number;
@@ -60,6 +60,7 @@ export interface DailyFoodEntry {
     calcium?: number;
     iron?: number;
     serving_size: number;
+    glycemic_index?: string;
   };
   food_variants?: {
     id: string;
