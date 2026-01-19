@@ -34,37 +34,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      try {
-        let userAuthenticated = false;
+      const authType = localStorage.getItem('authType');
+      let userAuthenticated = false;
 
-        // Attempt to check OIDC session first
-        try {
-          const oidcResponse = await fetch('/openid/api/me', { credentials: 'include' });
-          if (oidcResponse.ok) {
-            const userData = await oidcResponse.json();
-            if (userData && userData.userId && userData.email) {
-              const role = userData.role || 'user';
-              setUser({
-                id: userData.userId,
-                activeUserId: userData.activeUserId || userData.userId,
-                email: userData.email,
-                fullName: userData.fullName || userData.full_name || null,
-                role: role
-              });
-              userAuthenticated = true;
+      try {
+        // Optimization: Check the last used auth method first to avoid 401 noise
+
+        // 1. If we know it's OIDC (or we don't know), try OIDC
+        if (!authType || authType === 'oidc') {
+          try {
+            const oidcResponse = await fetch('/openid/api/me', { credentials: 'include' });
+            if (oidcResponse.ok) {
+              const userData = await oidcResponse.json();
+              if (userData && userData.userId && userData.email) {
+                const role = userData.role || 'user';
+                setUser({
+                  id: userData.userId,
+                  activeUserId: userData.activeUserId || userData.userId,
+                  email: userData.email,
+                  fullName: userData.fullName || userData.full_name || null,
+                  role: role
+                });
+                userAuthenticated = true;
+                // Ensure persistence if it was missing
+                if (!authType) localStorage.setItem('authType', 'oidc');
+                console.log('Session restored via OIDC');
+              }
+            } else if (oidcResponse.status >= 500) {
+              console.error('OIDC session check server error:', oidcResponse.status, oidcResponse.statusText);
             }
-          } else if (oidcResponse.status >= 500) {
-            // Log server errors - these are real problems
-            console.error('OIDC session check server error:', oidcResponse.status, oidcResponse.statusText);
+          } catch (oidcError) {
+            console.error('OIDC session check network error:', oidcError);
           }
-          // Silently ignore 401/403 - they're expected when no session exists
-        } catch (oidcError) {
-          // Network errors (DNS, timeout, CORS) - these are real problems
-          console.error('OIDC session check network error:', oidcError);
         }
 
-        // If not authenticated via OIDC, attempt to check password session
-        if (!userAuthenticated) {
+        // 2. If we know it's Password (or OIDC failed and we didn't have a preference OR we have a preference for password), try Password
+        // Note: If authType is 'oidc' and OIDC failed, we strictly might NOT want to check Password to avoid noise,
+        // BUT if the session expired, we might want to? The user requested stricter logic.
+        // "if we logged in using user name password, then oidc shouldnt be checked"
+        // So:
+        // if authType == 'password': Check Password. Skip OIDC.
+        // if authType == 'oidc': Check OIDC. Skip Password (unless we want fallback? User implies no fallback for noise).
+        // if !authType: Check Both (Default behavior).
+
+        if (!userAuthenticated && (!authType || authType === 'password')) {
+          // If we previously tried OIDC (because !authType) and failed, we fall through here.
+          // If authType === 'password', we jumped straight here.
           try {
             const passwordResponse = await fetch('/api/auth/user', { credentials: 'include' });
             if (passwordResponse.ok) {
@@ -79,20 +94,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   role: role
                 });
                 userAuthenticated = true;
+                if (!authType) localStorage.setItem('authType', 'password');
+                console.log('Session restored via Password');
               }
             } else if (passwordResponse.status >= 500) {
-              // Log server errors - these are real problems
               console.error('Password session check server error:', passwordResponse.status, passwordResponse.statusText);
             }
-            // Silently ignore 401/403 - they're expected when no session exists
           } catch (passwordError) {
-            // Network errors (DNS, timeout, CORS) - these are real problems
             console.error('Password session check network error:', passwordError);
           }
         }
 
         if (!userAuthenticated) {
           setUser(null);
+          // If we had an authType but failed to auth, should we clear it?
+          // Maybe not, maybe session just timed out but they still want to use that method next.
         }
       } catch (error) {
         console.error('Error during session check:', error);
@@ -107,43 +123,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const refreshUser = async () => {
     setLoading(true);
-    // Re-check session to update activeUserId from latest JWT/Session
+    // Refresh logic should ideally follow the same pattern or just try the known one.
+    // Simplifying to just check the valid one based on state or localStorage.
+    const authType = localStorage.getItem('authType');
+
     try {
       let userAuthenticated = false;
 
-      // Attempt to check OIDC session first
-      try {
-        const oidcResponse = await fetch('/openid/api/me', { credentials: 'include' });
-        if (oidcResponse.ok) {
-          const userData = await oidcResponse.json();
-          if (userData && userData.userId && userData.email) {
-            const role = userData.role || 'user';
-            setUser({
-              id: userData.userId,
-              activeUserId: userData.activeUserId || userData.userId,
-              email: userData.email,
-              fullName: userData.fullName || userData.full_name || null,
-              role: role
-            });
-            userAuthenticated = true;
-          }
-        } else if (oidcResponse.status >= 500) {
-          // Log server errors - these are real problems
-          console.error('OIDC session refresh server error:', oidcResponse.status, oidcResponse.statusText);
-        }
-        // Silently ignore 401/403 - they're expected when no session exists
-      } catch (oidcError) {
-        // Network errors (DNS, timeout, CORS) - these are real problems
-        console.error('OIDC session refresh network error:', oidcError);
-      }
-
-      // If not authenticated via OIDC, attempt to check password session
-      if (!userAuthenticated) {
+      if (!authType || authType === 'oidc') {
         try {
-          const passwordResponse = await fetch('/api/auth/user', { credentials: 'include' });
-          if (passwordResponse.ok) {
-            const userData = await passwordResponse.json();
-            if (userData && userData.userId && userData.email) {
+          const oidcResponse = await fetch('/openid/api/me', { credentials: 'include' });
+          if (oidcResponse.ok) {
+            const userData = await oidcResponse.json();
+            // ... update user ...
+            if (userData && userData.userId) {
               const role = userData.role || 'user';
               setUser({
                 id: userData.userId,
@@ -154,20 +147,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               });
               userAuthenticated = true;
             }
-          } else if (passwordResponse.status >= 500) {
-            // Log server errors - these are real problems
-            console.error('Password session refresh server error:', passwordResponse.status, passwordResponse.statusText);
           }
-          // Silently ignore 401/403 - they're expected when no session exists
-        } catch (passwordError) {
-          // Network errors (DNS, timeout, CORS) - these are real problems
-          console.error('Password session refresh network error:', passwordError);
+        } catch (e) {
+          console.error('OIDC refresh error', e);
         }
       }
 
-      if (!userAuthenticated) {
-        setUser(null);
+      if (!userAuthenticated && (!authType || authType === 'password')) {
+        try {
+          const passwordResponse = await fetch('/api/auth/user', { credentials: 'include' });
+          if (passwordResponse.ok) {
+            const userData = await passwordResponse.json();
+            if (userData && userData.userId) {
+              const role = userData.role || 'user';
+              setUser({
+                id: userData.userId,
+                activeUserId: userData.activeUserId || userData.userId,
+                email: userData.email,
+                fullName: userData.fullName || userData.full_name || null,
+                role: role
+              });
+              userAuthenticated = true;
+            }
+          }
+        } catch (e) {
+          console.error('Password refresh error', e);
+        }
       }
+
+      if (!userAuthenticated) setUser(null);
+
     } catch (error) {
       console.error('Error during session refresh:', error);
       setUser(null);
@@ -190,33 +199,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (response.ok) {
         const responseData = await response.json();
-        // Clear client-side user state. Server-side logout handles cookie invalidation.
+        // Clear client-side user state & preference
         setUser(null);
+        localStorage.removeItem('authType');
 
         if (responseData.redirectUrl) {
-          // If a redirectUrl is provided, it means an OIDC logout is required
           window.location.href = responseData.redirectUrl;
         } else {
-          // For local logins or if OIDC redirect is not needed, redirect to home or login
-          window.location.href = '/'; // Or your desired post-logout landing page
+          window.location.href = '/';
         }
       } else {
         const errorData = await response.json();
         console.error('Logout failed on server:', errorData);
-        // Even if server logout fails, clear client-side state to avoid inconsistent state
         setUser(null);
-        window.location.href = '/'; // Redirect even on server-side error to ensure clean state
+        localStorage.removeItem('authType');
+        window.location.href = '/';
       }
     } catch (error) {
       console.error('Network error during logout:', error);
-      // On network error, still attempt to clear local state and redirect
       setUser(null);
+      localStorage.removeItem('authType');
       window.location.href = '/';
     }
   };
 
   const signIn = (userId: string, activeUserId: string, userEmail: string, userRole: string, authType: 'oidc' | 'password' | 'magic_link', navigateOnSuccess = true, userFullName?: string) => {
-    // authType is no longer stored in localStorage; session is managed by httpOnly cookies.
+    // Save the auth preference
+    localStorage.setItem('authType', authType === 'magic_link' ? 'password' : authType); // magic_link behaves like password session usually
+
     setUser({ id: userId, activeUserId: activeUserId || userId, email: userEmail, role: userRole, fullName: userFullName || null });
     if (navigateOnSuccess) {
       navigate('/');

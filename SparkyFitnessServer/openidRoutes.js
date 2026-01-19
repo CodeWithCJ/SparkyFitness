@@ -38,8 +38,43 @@ async function getOidcClient(providerId) {
     const clientSecret = provider.client_secret;
 
     log('info', `Attempting OIDC discovery for: ${server.href}`);
-    const config = await client.discovery(server, clientId, clientSecret);
-    log('info', 'OIDC Issuer discovered successfully using v6 API.');
+
+    // Determine the authentication method from provider config or default to 'client_secret_post'
+    const authMethod = provider.token_endpoint_auth_method || 'client_secret_post';
+    let clientAuth;
+
+    try {
+      if (authMethod === 'client_secret_basic') {
+        clientAuth = client.ClientSecretBasic(clientSecret);
+      } else if (authMethod === 'client_secret_post') {
+        clientAuth = client.ClientSecretPost(clientSecret);
+      } else if (authMethod === 'client_secret_jwt') {
+        clientAuth = client.ClientSecretJwt(clientSecret);
+      } else if (authMethod === 'none') {
+        clientAuth = client.None();
+      } else {
+        // Default to ClientSecretPost if unknown/unsupported (or handle specific errors)
+        log('warn', `Unknown or unimplemented auth method '${authMethod}' for provider ${providerId}. Defaulting to client_secret_post.`);
+        clientAuth = client.ClientSecretPost(clientSecret);
+      }
+    } catch (authError) {
+      log('error', `Failed to initialize client authentication for method ${authMethod}:`, authError);
+      return null;
+    }
+
+    const clientMetadata = {
+      client_id: clientId,
+      client_secret: clientSecret,
+      token_endpoint_auth_method: authMethod,
+    };
+
+    if (provider.signing_algorithm) {
+      clientMetadata.id_token_signed_response_alg = provider.signing_algorithm;
+    }
+
+    // discovery(server, clientId, metadata, clientAuthentication)
+    const config = await client.discovery(server, clientId, clientMetadata, clientAuth);
+    log('info', `OIDC Issuer discovered successfully using v6 API with auth method: ${authMethod}`);
 
     const clientWrapper = { config, provider };
     oidcClientCache.set(providerId, clientWrapper);
