@@ -18,7 +18,7 @@ const getDateString = (date: unknown): string | null => {
   try {
     return toLocalDateString(new Date(date as string | number | Date));
   } catch (e) {
-    addLog(`[HealthKitService] Could not convert date: ${date}. ${e}`, 'warn', 'WARNING');
+    addLog(`[HealthKitService] Could not convert date: ${date}. ${e}`, 'WARNING');
     return null;
   }
 };
@@ -203,7 +203,7 @@ const QUALITATIVE_TYPES = ['CervicalMucus', 'MenstruationFlow', 'OvulationTest',
 
 QUALITATIVE_TYPES.forEach(type => {
   VALUE_TRANSFORMERS[type] = (rec, metricConfig) => {
-    addLog(`[HealthKitService] Qualitative record type '${metricConfig.recordType}' is not fully transformed. Passing raw value.`, 'warn', 'WARNING');
+    addLog(`[HealthKitService] Qualitative record type '${metricConfig.recordType}' is not fully transformed. Passing raw value.`, 'WARNING');
     const value = rec.value as number;
     const date = getDateString(rec.startTime);
     return value !== undefined && date ? { value, date } : null;
@@ -412,13 +412,13 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
       }
     } catch (error) {
       skipCount++;
-      addLog(`[HealthKitService] Error transforming record: ${(error as Error).message}`, 'warn', 'WARNING');
+      addLog(`[HealthKitService] Error transforming record: ${(error as Error).message}`, 'WARNING');
     }
   });
 
   // Log transformation summary for debugging
   if (skipCount > 0) {
-    addLog(`[HealthKitService] ${recordType} transformation: ${successCount} succeeded, ${skipCount} skipped (of ${records.length} total)`, 'debug');
+    addLog(`[HealthKitService] ${recordType} transformation: ${successCount} succeeded, ${skipCount} skipped (of ${records.length} total)`, 'DEBUG');
   }
 
   return transformedData;

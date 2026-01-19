@@ -101,13 +101,13 @@ const requestWritePermissions = async (): Promise<boolean> => {
       toRead: [],
     });
     if (!granted) {
-      addLog(`[SeedHealthData] Write permissions were denied by user`, 'warn', 'WARNING');
+      addLog(`[SeedHealthData] Write permissions were denied by user`, 'WARNING');
       return false;
     }
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[SeedHealthData] Failed to request write permissions: ${message}`, 'error', 'ERROR');
+    addLog(`[SeedHealthData] Failed to request write permissions: ${message}`, 'ERROR');
     return false;
   }
 };
@@ -170,7 +170,7 @@ const seedQuantitySamples = async (
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'warn', 'WARNING');
+      addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'WARNING');
     }
   }
 
@@ -222,7 +222,7 @@ const seedHeartRate = async (dates: Date[]): Promise<number> => {
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        addLog(`[SeedHealthData] Failed to seed heart rate: ${message}`, 'warn', 'WARNING');
+        addLog(`[SeedHealthData] Failed to seed heart rate: ${message}`, 'WARNING');
       }
     }
   }
@@ -273,7 +273,7 @@ const seedWeight = async (dates: Date[]): Promise<number> => {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed weight: ${message}`, 'warn', 'WARNING');
+      addLog(`[SeedHealthData] Failed to seed weight: ${message}`, 'WARNING');
     }
   }
 
@@ -307,7 +307,7 @@ const seedHeight = async (): Promise<number> => {
     return success ? 1 : 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[SeedHealthData] Failed to seed height: ${message}`, 'warn', 'WARNING');
+    addLog(`[SeedHealthData] Failed to seed height: ${message}`, 'WARNING');
     return 0;
   }
 };
@@ -387,7 +387,7 @@ const seedSleep = async (dates: Date[]): Promise<number> => {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed sleep: ${message}`, 'warn', 'WARNING');
+      addLog(`[SeedHealthData] Failed to seed sleep: ${message}`, 'WARNING');
     }
   }
 
@@ -479,7 +479,7 @@ const seedWorkouts = async (dates: Date[]): Promise<number> => {
       count++;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed workout: ${message}`, 'warn', 'WARNING');
+      addLog(`[SeedHealthData] Failed to seed workout: ${message}`, 'WARNING');
     }
   }
 
@@ -491,7 +491,7 @@ const seedWorkouts = async (dates: Date[]): Promise<number> => {
 // ============================================================================
 
 export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
-  addLog(`[SeedHealthData] Starting to seed ${days} days of health data for iOS...`, 'info', 'INFO');
+  addLog(`[SeedHealthData] Starting to seed ${days} days of health data for iOS...`, 'INFO');
 
   try {
     const permissionsGranted = await requestWritePermissions();
@@ -513,10 +513,10 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
         const count = await seedQuantitySamples(config, dates);
         totalRecords += count;
         results.push({ type: config.identifier.split('Identifier')[1], count });
-        addLog(`[SeedHealthData] Seeded ${config.identifier.split('Identifier')[1]}: ${count} records`, 'info', 'SUCCESS');
+        addLog(`[SeedHealthData] Seeded ${config.identifier.split('Identifier')[1]}: ${count} records`, 'SUCCESS');
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'warn', 'WARNING');
+        addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'WARNING');
       }
     }
 
@@ -525,10 +525,10 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
       const count = await seedHeartRate(dates);
       totalRecords += count;
       results.push({ type: 'HeartRate', count });
-      addLog(`[SeedHealthData] Seeded HeartRate: ${count} records`, 'info', 'SUCCESS');
+      addLog(`[SeedHealthData] Seeded HeartRate: ${count} records`, 'SUCCESS');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed HeartRate: ${message}`, 'warn', 'WARNING');
+      addLog(`[SeedHealthData] Failed to seed HeartRate: ${message}`, 'WARNING');
     }
 
     // Seed weight
@@ -536,10 +536,10 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
       const count = await seedWeight(dates);
       totalRecords += count;
       results.push({ type: 'Weight', count });
-      addLog(`[SeedHealthData] Seeded Weight: ${count} records`, 'info', 'SUCCESS');
+      addLog(`[SeedHealthData] Seeded Weight: ${count} records`, 'SUCCESS');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed Weight: ${message}`, 'warn', 'WARNING');
+      addLog(`[SeedHealthData] Failed to seed Weight: ${message}`, 'WARNING');
     }
 
     // Seed height (single record)
@@ -547,10 +547,10 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
       const count = await seedHeight();
       totalRecords += count;
       results.push({ type: 'Height', count });
-      addLog(`[SeedHealthData] Seeded Height: ${count} records`, 'info', 'SUCCESS');
+      addLog(`[SeedHealthData] Seeded Height: ${count} records`, 'SUCCESS');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed Height: ${message}`, 'warn', 'WARNING');
+      addLog(`[SeedHealthData] Failed to seed Height: ${message}`, 'WARNING');
     }
 
     // Seed sleep
@@ -558,10 +558,10 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
       const count = await seedSleep(dates);
       totalRecords += count;
       results.push({ type: 'Sleep', count });
-      addLog(`[SeedHealthData] Seeded Sleep: ${count} records`, 'info', 'SUCCESS');
+      addLog(`[SeedHealthData] Seeded Sleep: ${count} records`, 'SUCCESS');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed Sleep: ${message}`, 'warn', 'WARNING');
+      addLog(`[SeedHealthData] Failed to seed Sleep: ${message}`, 'WARNING');
     }
 
     // Seed workouts
@@ -569,16 +569,16 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
       const count = await seedWorkouts(dates);
       totalRecords += count;
       results.push({ type: 'Workout', count });
-      addLog(`[SeedHealthData] Seeded Workout: ${count} records`, 'info', 'SUCCESS');
+      addLog(`[SeedHealthData] Seeded Workout: ${count} records`, 'SUCCESS');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed Workout: ${message}`, 'warn', 'WARNING');
+      addLog(`[SeedHealthData] Failed to seed Workout: ${message}`, 'WARNING');
     }
 
     const successTypes = results.filter(r => r.count > 0).length;
     const totalTypes = results.length;
 
-    addLog(`[SeedHealthData] Successfully seeded ${totalRecords} records (${successTypes}/${totalTypes} types)`, 'info', 'SUCCESS');
+    addLog(`[SeedHealthData] Successfully seeded ${totalRecords} records (${successTypes}/${totalTypes} types)`, 'SUCCESS');
 
     return {
       success: true,
@@ -586,7 +586,7 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[SeedHealthData] Error seeding health data: ${message}`, 'error', 'ERROR');
+    addLog(`[SeedHealthData] Error seeding health data: ${message}`, 'ERROR');
     return {
       success: false,
       recordsInserted: 0,

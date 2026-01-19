@@ -141,7 +141,7 @@ export const syncHealthData = async (
     try {
       const metricConfig = HEALTH_METRICS.find(m => m.recordType === type);
       if (!metricConfig) {
-        addLog(`[HealthConnectService] No metric configuration found for record type: ${type}. Skipping.`, 'warn', 'WARNING');
+        addLog(`[HealthConnectService] No metric configuration found for record type: ${type}. Skipping.`, 'WARNING');
         continue;
       }
 
@@ -180,7 +180,7 @@ export const syncHealthData = async (
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthConnectService] Error reading or transforming ${type} records: ${message}`, 'error', 'ERROR');
+      addLog(`[HealthConnectService] Error reading or transforming ${type} records: ${message}`, 'ERROR');
       syncErrors.push({ type, error: message });
     }
   }
@@ -191,7 +191,7 @@ export const syncHealthData = async (
       return { success: true, apiResponse, syncErrors };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthConnectService] Error sending data to server: ${message}`, 'error', 'ERROR');
+      addLog(`[HealthConnectService] Error sending data to server: ${message}`, 'ERROR');
       return { success: false, error: message, syncErrors };
     }
   } else {

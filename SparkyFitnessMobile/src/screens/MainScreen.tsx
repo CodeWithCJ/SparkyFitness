@@ -61,7 +61,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
   const initialize = useCallback(async (): Promise<void> => {
     const initialized = await initHealthConnect();
     if (!initialized) {
-      addLog('Health Connect initialization failed.', 'error', 'ERROR');
+      addLog('Health Connect initialization failed.', 'ERROR');
     }
     setIsHealthConnectInitialized(initialized);
 
@@ -500,7 +500,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
           newHealthData[metric.id] = displayValue;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          addLog(`[MainScreen] Error fetching ${metric.label}: ${errorMessage}`, 'error', 'ERROR');
+          addLog(`[MainScreen] Error fetching ${metric.label}: ${errorMessage}`, 'ERROR');
           newHealthData[metric.id] = 'Error';
         }
       }
@@ -524,12 +524,12 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
         setLastSyncedTime(newSyncedTime);
         Alert.alert('Success', 'Health data synced successfully.');
       } else {
-        addLog(`Sync Error: ${result.error}`, 'error', 'ERROR');
+        addLog(`Sync Error: ${result.error}`, 'ERROR');
         Alert.alert('Sync Error', result.error || 'Unknown error');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog(`Sync Error: ${errorMessage}`, 'error', 'ERROR');
+      addLog(`Sync Error: ${errorMessage}`, 'ERROR');
       Alert.alert('Sync Error', errorMessage);
     } finally {
       setIsSyncing(false);
@@ -557,12 +557,12 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
       try {
         await WebBrowser.openBrowserAsync(serverUrl);
       } catch (inAppError) {
-        addLog(`In-app browser failed, falling back to Linking: ${inAppError}`, 'error', 'ERROR');
+        addLog(`In-app browser failed, falling back to Linking: ${inAppError}`, 'ERROR');
         await Linking.openURL(serverUrl);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog(`Error opening web dashboard: ${errorMessage}`, 'error', 'ERROR');
+      addLog(`Error opening web dashboard: ${errorMessage}`, 'ERROR');
       Alert.alert('Error', `Could not open web dashboard: ${errorMessage}`);
     }
   };

@@ -16,10 +16,11 @@ import {
   getLogs,
   clearLogs,
   getLogSummary,
-  getLogLevel,
-  setLogLevel,
+  getLogFilter,
+  setLogFilter,
+  LOG_FILTER_OPTIONS,
 } from '../services/LogService';
-import type { LogEntry, LogSummary, LogLevel } from '../services/LogService';
+import type { LogEntry, LogSummary, LogFilter } from '../services/LogService';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface LogScreenProps {
@@ -33,12 +34,13 @@ const LogScreen: React.FC<LogScreenProps> = () => {
   const [offset, setOffset] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [logSummary, setLogSummary] = useState<LogSummary>({
+    DEBUG: 0,
+    INFO: 0,
     SUCCESS: 0,
     WARNING: 0,
     ERROR: 0,
-    INFO: 0,
   });
-  const [currentLogLevel, setCurrentLogLevel] = useState<LogLevel>('info');
+  const [currentFilter, setCurrentFilter] = useState<LogFilter>('no_debug');
 
   const LOG_LIMIT = 30;
 
@@ -58,16 +60,16 @@ const LogScreen: React.FC<LogScreenProps> = () => {
     setLogSummary(summary);
   };
 
-  const loadLogLevel = async (): Promise<void> => {
-    const level = await getLogLevel();
-    setCurrentLogLevel(level);
+  const loadFilter = async (): Promise<void> => {
+    const filter = await getLogFilter();
+    setCurrentFilter(filter);
   };
 
   useFocusEffect(
     useCallback(() => {
       loadLogs();
       loadSummary();
-      loadLogLevel();
+      loadFilter();
     }, [])
   );
 
@@ -94,10 +96,11 @@ const LogScreen: React.FC<LogScreenProps> = () => {
             setOffset(0);
             setHasMore(true);
             setLogSummary({
+              DEBUG: 0,
+              INFO: 0,
               SUCCESS: 0,
               WARNING: 0,
               ERROR: 0,
-              INFO: 0,
             });
           },
         },
@@ -106,16 +109,16 @@ const LogScreen: React.FC<LogScreenProps> = () => {
     );
   };
 
-  const handleLogLevelChange = async (level: LogLevel): Promise<void> => {
-    if (level && level !== currentLogLevel) {
+  const handleFilterChange = async (filter: LogFilter): Promise<void> => {
+    if (filter && filter !== currentFilter) {
       try {
-        await setLogLevel(level);
-        setCurrentLogLevel(level);
+        await setLogFilter(filter);
+        setCurrentFilter(filter);
         loadLogs(0, false);
         loadSummary();
       } catch (error) {
-        Alert.alert('Error', 'Failed to save log level settings.');
-        console.error('Failed to save log level settings:', error);
+        Alert.alert('Error', 'Failed to save log filter settings.');
+        console.error('Failed to save log filter settings:', error);
       }
     }
   };
@@ -162,7 +165,7 @@ const LogScreen: React.FC<LogScreenProps> = () => {
               <Text
                 style={[styles.summaryLabel, { color: colors.textSecondary }]}
               >
-                Successful
+                Success
               </Text>
             </View>
             <View style={styles.summaryItem}>
@@ -172,7 +175,7 @@ const LogScreen: React.FC<LogScreenProps> = () => {
               <Text
                 style={[styles.summaryLabel, { color: colors.textSecondary }]}
               >
-                Warnings
+                Warning
               </Text>
             </View>
             <View style={styles.summaryItem}>
@@ -182,7 +185,7 @@ const LogScreen: React.FC<LogScreenProps> = () => {
               <Text
                 style={[styles.summaryLabel, { color: colors.textSecondary }]}
               >
-                Errors
+                Error
               </Text>
             </View>
             <View style={styles.summaryItem}>
@@ -195,26 +198,30 @@ const LogScreen: React.FC<LogScreenProps> = () => {
                 Info
               </Text>
             </View>
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryCount, { color: '#6c757d' }]}>
+                {logSummary.DEBUG}
+              </Text>
+              <Text
+                style={[styles.summaryLabel, { color: colors.textSecondary }]}
+              >
+                Debug
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Log Level Settings */}
+        {/* Log Filter Settings */}
         <View style={[styles.card, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Log Level
+            Log Filter
           </Text>
           <View style={styles.logLevelContent}>
             <BottomSheetPicker
-              value={currentLogLevel}
-              options={[
-                { label: 'Silent', value: 'silent' as LogLevel },
-                { label: 'Error', value: 'error' as LogLevel },
-                { label: 'Warning', value: 'warn' as LogLevel },
-                { label: 'Info', value: 'info' as LogLevel },
-                { label: 'Debug', value: 'debug' as LogLevel },
-              ]}
-              onSelect={handleLogLevelChange}
-              title="Log Level"
+              value={currentFilter}
+              options={LOG_FILTER_OPTIONS}
+              onSelect={handleFilterChange}
+              title="Log Filter"
               containerStyle={styles.dropdownContainer}
             />
             {/* Clear Logs Button */}
@@ -247,6 +254,8 @@ const LogScreen: React.FC<LogScreenProps> = () => {
                       ? '#ffc107'
                       : item.status === 'INFO'
                       ? '#007bff'
+                      : item.status === 'DEBUG'
+                      ? '#6c757d'
                       : '#dc3545',
                 },
               ]}
@@ -257,6 +266,8 @@ const LogScreen: React.FC<LogScreenProps> = () => {
                     ? require('../../assets/icons/success.png')
                     : item.status === 'WARNING'
                     ? require('../../assets/icons/warning.png')
+                    : item.status === 'INFO'
+                    ? require('../../assets/icons/info.png')
                     : require('../../assets/icons/error.png')
                 }
                 style={styles.logIcon}
@@ -274,6 +285,8 @@ const LogScreen: React.FC<LogScreenProps> = () => {
                       ? '#ffc107'
                       : item.status === 'INFO'
                       ? '#007bff'
+                      : item.status === 'DEBUG'
+                      ? '#6c757d'
                       : '#dc3545',
                   },
                 ]}

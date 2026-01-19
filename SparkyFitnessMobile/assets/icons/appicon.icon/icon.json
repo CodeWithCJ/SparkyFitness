@@ -1,0 +1,86 @@
+{
+  "fill" : "automatic",
+  "groups" : [
+    {
+      "blur-material" : null,
+      "layers" : [
+        {
+          "image-name" : "Layer_5.png",
+          "name" : "Layer_5",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              147.15625,
+              -29.296875
+            ]
+          }
+        },
+        {
+          "hidden" : false,
+          "image-name" : "Layer_6.png",
+          "name" : "Layer_6",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -34,
+              129.0625
+            ]
+          }
+        }
+      ],
+      "lighting" : "individual",
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "blur-material" : null,
+      "layers" : [
+        {
+          "image-name" : "Layer_2.png",
+          "name" : "Layer_2",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -64.3203125,
+              331.4921875
+            ]
+          }
+        },
+        {
+          "glass" : true,
+          "image-name" : "Layer_3.png",
+          "name" : "Layer_3"
+        }
+      ],
+      "lighting" : "individual",
+      "position" : {
+        "scale" : 1,
+        "translation-in-points" : [
+          0,
+          -50.25
+        ]
+      },
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.5
+      },
+      "specular" : false,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : [
+      "iOS"
+    ]
+  }
+}

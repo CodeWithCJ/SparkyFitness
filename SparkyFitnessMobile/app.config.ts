@@ -107,7 +107,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       buildNumber: VERSION_CODE.toString(),
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
-      }
+      },
+      icon: './assets/icons/appicon.icon'
     },
     android: {
       package: isDev
@@ -116,7 +117,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       permissions: androidPermissions,
       versionCode: VERSION_CODE,
       adaptiveIcon: {
-        foregroundImage: './assets/icons/appstore.png',
+        foregroundImage: './assets/icons/adaptiveicon.png',
         backgroundColor: '#FFFFFF',
       }
     },

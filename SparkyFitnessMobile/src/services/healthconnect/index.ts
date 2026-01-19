@@ -86,7 +86,7 @@ export const readHealthRecords = async (
     return result.records || [];
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] Failed to read ${recordType} records: ${message}. Full error: ${JSON.stringify(error)}`, 'error', 'ERROR');
+    addLog(`[HealthConnectService] Failed to read ${recordType} records: ${message}. Full error: ${JSON.stringify(error)}`, 'ERROR');
     console.error(`Failed to read ${recordType} records`, error);
     return [];
   }
@@ -110,11 +110,11 @@ export const getAggregatedStepsByDate = async (
     const records = rawRecords.records || [];
 
     if (records.length === 0) {
-      addLog(`[HealthConnectService] No step records found for date range`, 'debug');
+      addLog(`[HealthConnectService] No step records found for date range`, 'DEBUG');
       return [];
     }
 
-    addLog(`[HealthConnectService] Processing ${records.length} step records`, 'debug');
+    addLog(`[HealthConnectService] Processing ${records.length} step records`, 'DEBUG');
 
     // Aggregate by date
     let processedCount = 0;
@@ -144,12 +144,12 @@ export const getAggregatedStepsByDate = async (
       type: 'step',
     }));
 
-    addLog(`[HealthConnectService] Steps aggregation: ${processedCount} records processed, ${results.length} days, ${errorCount} errors`, 'debug');
+    addLog(`[HealthConnectService] Steps aggregation: ${processedCount} records processed, ${results.length} days, ${errorCount} errors`, 'DEBUG');
 
     return results;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] Error in getAggregatedStepsByDate: ${message}`, 'error', 'ERROR');
+    addLog(`[HealthConnectService] Error in getAggregatedStepsByDate: ${message}`, 'ERROR');
     return [];
   }
 };
@@ -172,11 +172,11 @@ export const getAggregatedActiveCaloriesByDate = async (
     const records = rawRecords.records || [];
 
     if (records.length === 0) {
-      addLog(`[HealthConnectService] No active calorie records found for date range`, 'debug');
+      addLog(`[HealthConnectService] No active calorie records found for date range`, 'DEBUG');
       return [];
     }
 
-    addLog(`[HealthConnectService] Processing ${records.length} active calorie records`, 'debug');
+    addLog(`[HealthConnectService] Processing ${records.length} active calorie records`, 'DEBUG');
 
     // Aggregate by date
     let processedCount = 0;
@@ -206,12 +206,12 @@ export const getAggregatedActiveCaloriesByDate = async (
       type: 'active_calories',
     }));
 
-    addLog(`[HealthConnectService] Active calories aggregation: ${processedCount} records processed, ${results.length} days, ${errorCount} errors`, 'debug');
+    addLog(`[HealthConnectService] Active calories aggregation: ${processedCount} records processed, ${results.length} days, ${errorCount} errors`, 'DEBUG');
 
     return results;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] Error in getAggregatedActiveCaloriesByDate: ${message}`, 'error', 'ERROR');
+    addLog(`[HealthConnectService] Error in getAggregatedActiveCaloriesByDate: ${message}`, 'ERROR');
     return [];
   }
 };
@@ -242,7 +242,7 @@ export const syncHealthData = async (
 
       const metricConfig = HEALTH_METRICS.find(m => m.recordType === type);
       if (!metricConfig) {
-        addLog(`[HealthConnectService] No metric configuration found for record type: ${type}. Skipping.`, 'warn', 'WARNING');
+        addLog(`[HealthConnectService] No metric configuration found for record type: ${type}. Skipping.`, 'WARNING');
         continue;
       }
 
@@ -263,12 +263,12 @@ export const syncHealthData = async (
       if (transformed.length > 0) {
         allTransformedData = allTransformedData.concat(transformed);
       } else {
-        addLog(`[HealthConnectService] No ${type} records were transformed (all may have been invalid)`, 'warn', 'WARNING');
+        addLog(`[HealthConnectService] No ${type} records were transformed (all may have been invalid)`, 'WARNING');
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const errorMsg = `Error reading or transforming ${type} records: ${message}`;
-      addLog(`[HealthConnectService] ${errorMsg}`, 'error', 'ERROR');
+      addLog(`[HealthConnectService] ${errorMsg}`, 'ERROR');
       console.error(`[HealthConnectService] ${errorMsg}`, error);
       syncErrors.push({ type, error: message });
     }

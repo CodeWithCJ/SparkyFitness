@@ -115,12 +115,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
       await loadConfig();
       Alert.alert('Success', 'Settings saved successfully.');
-      addLog('Settings saved successfully.', 'info', 'SUCCESS');
+      addLog('Settings saved successfully.', 'SUCCESS');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to save settings:', error);
       Alert.alert('Error', `Failed to save settings: ${errorMessage}`);
-      addLog(`Failed to save settings: ${errorMessage}`, 'error', 'ERROR');
+      addLog(`Failed to save settings: ${errorMessage}`, 'ERROR');
     }
   };
 
@@ -129,11 +129,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       await setActiveServerConfig(configId);
       await loadConfig();
       Alert.alert('Success', 'Active server configuration changed.');
-      addLog('Active server configuration changed.', 'info', 'SUCCESS');
+      addLog('Active server configuration changed.', 'SUCCESS');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to set active server configuration:', error);
-      addLog(`Failed to set active server configuration: ${errorMessage}`, 'error', 'ERROR');
+      addLog(`Failed to set active server configuration: ${errorMessage}`, 'ERROR');
       Alert.alert('Error', `Failed to set active server configuration: ${errorMessage}`);
     }
   };
@@ -149,12 +149,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         setCurrentConfigId(null);
       }
       Alert.alert('Success', 'Server configuration deleted.');
-      addLog('Server configuration deleted.', 'info', 'SUCCESS');
+      addLog('Server configuration deleted.', 'SUCCESS');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to delete server configuration:', error);
       Alert.alert('Error', `Failed to delete server configuration: ${errorMessage}`);
-      addLog(`Failed to delete server configuration: ${errorMessage}`, 'error', 'ERROR');
+      addLog(`Failed to delete server configuration: ${errorMessage}`, 'ERROR');
     }
   };
 
@@ -189,9 +189,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             [metric.stateKey]: false,
           }));
           await saveHealthPreference(metric.preferenceKey, false);
-          addLog(`Permission Denied: ${metric.label} permission not granted.`, 'warn', 'WARNING');
+          addLog(`Permission Denied: ${metric.label} permission not granted.`, 'WARNING');
         } else {
-          addLog(`${metric.label} sync enabled and permissions granted.`, 'info', 'SUCCESS');
+          addLog(`${metric.label} sync enabled and permissions granted.`, 'SUCCESS');
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
@@ -201,7 +201,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           [metric.stateKey]: false,
         }));
         await saveHealthPreference(metric.preferenceKey, false);
-        addLog(`Permission Request Error for ${metric.label}: ${errorMessage}`, 'error', 'ERROR');
+        addLog(`Permission Request Error for ${metric.label}: ${errorMessage}`, 'ERROR');
       }
     }
   };
@@ -217,7 +217,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
     if (newValue) {
       const allPermissions = HEALTH_METRICS.flatMap(metric => metric.permissions);
-      addLog(`[SettingsScreen] Requesting permissions for all ${HEALTH_METRICS.length} metrics`, 'debug');
+      addLog(`[SettingsScreen] Requesting permissions for all ${HEALTH_METRICS.length} metrics`, 'DEBUG');
 
       try {
         const granted = await requestHealthPermissions(allPermissions);
@@ -231,9 +231,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           HEALTH_METRICS.forEach(metric => {
             newHealthMetricStates[metric.stateKey] = false;
           });
-          addLog('[SettingsScreen] Not all permissions were granted. Reverting "Enable All".', 'warn', 'WARNING');
+          addLog('[SettingsScreen] Not all permissions were granted. Reverting "Enable All".', 'WARNING');
         } else {
-          addLog(`[SettingsScreen] All ${HEALTH_METRICS.length} metric permissions granted`, 'info', 'SUCCESS');
+          addLog(`[SettingsScreen] All ${HEALTH_METRICS.length} metric permissions granted`, 'SUCCESS');
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
@@ -242,10 +242,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         HEALTH_METRICS.forEach(metric => {
           newHealthMetricStates[metric.stateKey] = false;
         });
-        addLog(`[SettingsScreen] Error requesting all permissions: ${errorMessage}`, 'error', 'ERROR');
+        addLog(`[SettingsScreen] Error requesting all permissions: ${errorMessage}`, 'ERROR');
       }
     } else {
-      addLog(`[SettingsScreen] Disabling all ${HEALTH_METRICS.length} metrics`, 'debug');
+      addLog(`[SettingsScreen] Disabling all ${HEALTH_METRICS.length} metrics`, 'DEBUG');
     }
 
     setHealthMetricStates(newHealthMetricStates);
@@ -262,7 +262,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     }
 
     if (saveErrors.length > 0) {
-      addLog(`[SettingsScreen] Failed to save ${saveErrors.length}/${HEALTH_METRICS.length} metric preferences`, 'warn', 'WARNING', saveErrors);
+      addLog(`[SettingsScreen] Failed to save ${saveErrors.length}/${HEALTH_METRICS.length} metric preferences`, 'WARNING', saveErrors);
     }
   };
 
