@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const moodRepository = require('../models/moodRepository');
 const { authenticate } = require('../middleware/authMiddleware');
+const { canAccessUserData } = require('../utils/permissionUtils');
 
 /**
  * @swagger
@@ -110,11 +111,21 @@ router.post('/', authenticate, async (req, res, next) => {
 router.get('/', authenticate, async (req, res, next) => {
   try {
     const { userId, startDate, endDate } = req.query;
-    if (!userId || !startDate || !endDate) {
-      return res.status(400).json({ message: 'User ID, start date, and end date are required.' });
+    const targetUserId = userId || req.userId;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Start date and end date are required.' });
     }
 
-    const moodEntries = await moodRepository.getMoodEntriesByUserId(userId, startDate, endDate);
+    // Check permission if accessing another user's data
+    if (userId && userId !== req.userId) {
+      const hasPermission = await canAccessUserData(userId, 'diary', req.authenticatedUserId || req.userId);
+      if (!hasPermission) {
+        return res.status(403).json({ error: 'Forbidden: You do not have permission to access this user\'s mood data.' });
+      }
+    }
+
+    const moodEntries = await moodRepository.getMoodEntriesByUserId(targetUserId, startDate, endDate);
     res.json(moodEntries);
   } catch (error) {
     next(error);
@@ -181,7 +192,18 @@ router.get('/:id', authenticate, async (req, res, next) => {
 router.get('/date/:entryDate', authenticate, async (req, res, next) => {
   try {
     const { entryDate } = req.params;
-    const moodEntry = await moodRepository.getMoodEntryByDate(req.userId, entryDate);
+    const { userId } = req.query;
+    const targetUserId = userId || req.userId;
+
+    // Check permission if accessing another user's data
+    if (userId && userId !== req.userId) {
+      const hasPermission = await canAccessUserData(userId, 'diary', req.authenticatedUserId || req.userId);
+      if (!hasPermission) {
+        return res.status(403).json({ error: 'Forbidden: You do not have permission to access this user\'s mood data.' });
+      }
+    }
+
+    const moodEntry = await moodRepository.getMoodEntryByDate(targetUserId, entryDate);
     if (!moodEntry) {
       return res.status(200).json({});
     }

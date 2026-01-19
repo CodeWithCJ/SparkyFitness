@@ -4,8 +4,8 @@ const fastingRepository = require('../models/fastingRepository');
 const moodRepository = require('../models/moodRepository');
 const { log } = require('../config/logging');
 const { authenticate } = require('../middleware/authMiddleware');
-// Apply authentication middleware to all routes
-router.use(authenticate);
+const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
+const { canAccessUserData } = require('../utils/permissionUtils');
 
 /**
  * @swagger
@@ -13,6 +13,9 @@ router.use(authenticate);
  *   name: Wellness & Metrics
  *   description: Health metrics, weight tracking, measurements, sleep, mood, and fasting.
  */
+
+// Apply reports permission check to most fasting routes by default, or specialize
+router.use(authenticate);
 
 // Get current active fast
 /**
@@ -37,11 +40,12 @@ router.use(authenticate);
  *         description: Internal server error.
  */
 
-router.get('/current', async (req, res) => {
-    const userId = req.userId;
-    log('debug', `GET /current: Fetching fast for userId: ${userId}`);
+router.get('/current', checkPermissionMiddleware('reports'), async (req, res) => {
+    const { userId } = req.query;
+    const targetUserId = userId || req.userId;
+    log('debug', `GET /current: Fetching fast for userId: ${targetUserId}`);
     try {
-        const currentFast = await fastingRepository.getCurrentFast(userId);
+        const currentFast = await fastingRepository.getCurrentFast(targetUserId);
         res.json(currentFast || null);
     } catch (error) {
         log('error', `Error fetching current fast: ${error.message}`, error);
@@ -182,7 +186,7 @@ router.post('/end', async (req, res) => {
     }
 
     try {
-        // 1. Fetch the fast by id to validate ownership and get existing start_time if not provided
+        // 1. Fetch the fast by id to validate ownership and get existing start_time
         const fast = await fastingRepository.getFastingById(id, userId);
         if (!fast) return res.status(404).json({ error: 'Fast not found' });
 
@@ -412,9 +416,11 @@ router.get('/stats', async (req, res) => {
  */
 
 router.get('/history/range/:startDate/:endDate', async (req, res) => {
-    const userId = req.userId;
     const { startDate, endDate } = req.params;
-    log('debug', `GET /history/range: start=${startDate}, end=${endDate}`);
+    const userId = req.userId;
+
+    log('debug', `GET /history/range: start=${startDate}, end=${endDate}, userId=${userId}`);
+
     try {
         const logs = await fastingRepository.getFastingLogsByDateRange(userId, startDate, endDate);
         res.json(logs);

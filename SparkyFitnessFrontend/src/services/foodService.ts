@@ -42,19 +42,18 @@ interface FoodPayload {
 }
 
 export const searchFoods = async (
-  userId: string,
   name: string = '', // Make name optional with a default empty string
-  targetUserId: string,
-  exactMatch: boolean,
-  broadMatch: boolean,
-  checkCustom: boolean,
+  targetUserId?: string,
+  exactMatch: boolean = false,
+  broadMatch: boolean = false,
+  checkCustom: boolean = false,
   limit?: number, // Make limit optional
   mealType?: string
 ): Promise<FoodSearchResult> => {
   const params = new URLSearchParams();
   if (name) {
     params.append('name', name);
-    params.append('targetUserId', targetUserId);
+    if (targetUserId) params.append('targetUserId', targetUserId);
     params.append('exactMatch', exactMatch.toString());
     params.append('broadMatch', broadMatch.toString());
     params.append('checkCustom', checkCustom.toString());
@@ -72,7 +71,7 @@ export const searchFoods = async (
   return response as FoodSearchResult; // Cast the response to FoodSearchResult
 };
 
-export const getFoodVariantsByFoodId = async (userId: string, foodId: string): Promise<FoodVariant[]> => {
+export const getFoodVariantsByFoodId = async (foodId: string): Promise<FoodVariant[]> => {
   const response = await apiCall(`/foods/food-variants?food_id=${foodId}`, {
     method: 'GET',
   });
@@ -84,8 +83,8 @@ export const loadFoods = async (
   foodFilter: FoodFilter,
   currentPage: number,
   itemsPerPage: number,
-  userId: string,
-  sortBy: string = 'name:asc' // Default sort by name ascending
+  sortBy: string = 'name:asc', // Default sort by name ascending
+  userId?: string
 ): Promise<{ foods: Food[]; totalCount: number }> => {
   const params = new URLSearchParams();
   if (searchTerm) { // Only add searchTerm if it's not empty
@@ -94,7 +93,7 @@ export const loadFoods = async (
   params.append('foodFilter', foodFilter);
   params.append('currentPage', currentPage.toString());
   params.append('itemsPerPage', itemsPerPage.toString());
-  params.append('userId', userId);
+  if (userId) params.append('userId', userId);
   params.append('sortBy', sortBy); // Add sortBy parameter
   const response = await apiCall(`/foods/foods-paginated?${params.toString()}`, {
     method: 'GET',
@@ -109,9 +108,9 @@ export const togglePublicSharing = async (foodId: string, currentState: boolean)
   });
 };
 
-export const deleteFood = async (foodId: string, userId: string, forceDelete: boolean = false): Promise<{ message: string; status: string }> => {
+export const deleteFood = async (foodId: string, forceDelete: boolean = false, userId?: string): Promise<{ message: string; status: string }> => {
   const params = new URLSearchParams();
-  params.append('userId', userId);
+  if (userId) params.append('userId', userId);
   if (forceDelete) {
     params.append('forceDelete', 'true');
   }
@@ -147,9 +146,9 @@ export const getFoodById = async (foodId: string): Promise<Food> => {
   });
 };
 
-export const getFoodDataProviders = async (userId: string): Promise<ExternalDataProvider[]> => {
-  console.log('Calling getFoodDataProviders for userId:', userId); // Added log
-  const response = await apiCall(`/external-providers/user/${userId}`, {
+export const getFoodDataProviders = async (userId?: string): Promise<ExternalDataProvider[]> => {
+  const url = userId ? `/external-providers/user/${userId}` : '/external-providers/current-user'; // Use a context-aware endpoint if available, but fallback to userId
+  const response = await apiCall(url, {
     method: 'GET',
   });
   console.log('Response from getFoodDataProviders:', response); // Added log

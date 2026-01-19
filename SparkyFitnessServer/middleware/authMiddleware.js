@@ -3,6 +3,7 @@ const { log } = require("../config/logging");
 const { JWT_SECRET } = require("../security/encryption");
 const userRepository = require("../models/userRepository"); // Import userRepository
 const { getClient, getSystemClient } = require("../db/poolManager"); // Import getClient and getSystemClient
+const { canAccessUserData } = require("../utils/permissionUtils");
 
 const tryAuthenticateWithApiKey = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -49,7 +50,7 @@ const authenticate = async (req, res, next) => {
     log("debug", "authenticate middleware: Path matches MFA challenge route.");
     // Access headers in a case-insensitive way to handle potential variations
     const mfaToken = req.headers['x-mfa-token'] || req.headers['X-MFA-Token'];
-    
+
     if (mfaToken) {
       try {
         const decoded = jwt.verify(mfaToken, JWT_SECRET);
@@ -71,19 +72,53 @@ const authenticate = async (req, res, next) => {
 
   if (token) {
     try {
-      const user = jwt.verify(token, JWT_SECRET);
-      req.userId = user.userId; // Attach userId from JWT payload to request
-      log("debug", `Authentication: JWT token valid. User ID: ${req.userId}`);
+      const payload = jwt.verify(token, JWT_SECRET);
+      req.authenticatedUserId = payload.userId;
+      req.activeUserId = payload.activeUserId || payload.userId;
+      req.originalUserId = req.authenticatedUserId;
+      req.userId = req.activeUserId; // RLS context
+
+      if (req.activeUserId !== req.authenticatedUserId) {
+        // Broad check: Do they have AT LEAST one of the major permissions for this user?
+        const [hasReports, hasDiary, hasCheckin] = await Promise.all([
+          canAccessUserData(req.activeUserId, 'reports', req.authenticatedUserId),
+          canAccessUserData(req.activeUserId, 'diary', req.authenticatedUserId),
+          canAccessUserData(req.activeUserId, 'checkin', req.authenticatedUserId)
+        ]);
+
+        if (!hasReports && !hasDiary && !hasCheckin) {
+          log("warn", `Authentication: Context access revoked for User ${req.authenticatedUserId} -> ${req.activeUserId}`);
+          return res.status(403).json({ error: "Access to the active user context has been revoked or is insufficient." });
+        }
+      }
+
+      log("debug", `Authentication: JWT token valid. User ID: ${req.userId} (Original: ${req.originalUserId})`);
       return next();
     } catch (err) {
       log("warn", "Authentication: JWT token invalid or expired.", err.message);
-      // Do not return here, try other authentication methods
     }
   }
 
   // 2. Check for session-based authentication (for OIDC)
   if (req.session && req.session.user && req.session.user.userId) {
-    req.userId = req.session.user.userId;
+    req.authenticatedUserId = req.session.user.userId;
+    req.activeUserId = req.session.user.activeUserId || req.session.user.userId;
+    req.originalUserId = req.authenticatedUserId;
+    req.userId = req.activeUserId;
+
+    if (req.activeUserId !== req.authenticatedUserId) {
+      const [hasReports, hasDiary, hasCheckin] = await Promise.all([
+        canAccessUserData(req.activeUserId, 'reports', req.authenticatedUserId),
+        canAccessUserData(req.activeUserId, 'diary', req.authenticatedUserId),
+        canAccessUserData(req.activeUserId, 'checkin', req.authenticatedUserId)
+      ]);
+
+      if (!hasReports && !hasDiary && !hasCheckin) {
+        log("warn", `Authentication: Session context access revoked for User ${req.authenticatedUserId} -> ${req.activeUserId}`);
+        return res.status(403).json({ error: "Access to the active user context has been revoked or is insufficient." });
+      }
+    }
+
     log("debug", `Authentication: Session valid. User ID: ${req.userId}`);
     return next();
   }
@@ -91,6 +126,9 @@ const authenticate = async (req, res, next) => {
   // 3. Try to authenticate with API Key
   const userIdFromApiKey = await tryAuthenticateWithApiKey(req, res, next);
   if (userIdFromApiKey) {
+    req.authenticatedUserId = userIdFromApiKey;
+    req.activeUserId = userIdFromApiKey;
+    req.originalUserId = userIdFromApiKey;
     req.userId = userIdFromApiKey;
     return next();
   }

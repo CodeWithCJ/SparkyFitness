@@ -9,7 +9,8 @@ import { apiCall } from "@/services/api";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { convertMlToSelectedUnit } from "@/utils/nutritionCalculations";
 import { debug } from "@/utils/logging";
-import { useWaterContainer } from "@/contexts/WaterContainerContext"; // Import useWaterContainer
+import { useWaterContainer } from "@/contexts/WaterContainerContext";
+import { useActiveUser } from "@/contexts/ActiveUserContext"; // Import useActiveUser
 
 interface WaterIntakeProps {
   selectedDate: string;
@@ -18,6 +19,7 @@ interface WaterIntakeProps {
 const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { activeUserId } = useActiveUser(); // Get activeUserId
   const [waterMl, setWaterMl] = useState(0);
   const [waterGoalMl, setWaterGoalMl] = useState(1920);
   const [loading, setLoading] = useState(false);
@@ -40,11 +42,14 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       window.removeEventListener("measurementsRefresh", handleRefresh);
       window.removeEventListener("foodDiaryRefresh", handleRefresh);
     };
-  }, [user, selectedDate]);
+  }, [user, activeUserId, selectedDate]); // Add activeUserId dependency
 
   const loadWaterData = async () => {
     try {
-      const goalData = await apiCall(`/goals/for-date?date=${selectedDate}`);
+      const currentUserId = activeUserId || user?.id;
+      if (!currentUserId) return;
+
+      const goalData = await apiCall(`/goals/for-date?date=${selectedDate}&userId=${currentUserId}`);
       debug(loggingLevel, "WaterIntake: goalData received:", goalData);
       if (
         goalData &&
@@ -61,7 +66,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       }
 
       const waterData = await apiCall(
-        `/measurements/water-intake/${selectedDate}`,
+        `/measurements/water-intake/${selectedDate}?userId=${currentUserId}`,
       );
       if (Array.isArray(waterData) && waterData.length > 0) {
         const totalWaterMl = waterData.reduce(
@@ -92,7 +97,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       await apiCall("/measurements/water-intake", {
         method: "POST",
         body: {
-          user_id: user.id,
+          user_id: activeUserId || user.id, // Use activeUserId or authenticated user.id
           entry_date: selectedDate,
           change_drinks: changeDrinks, // Send the change in drinks
           container_id: containerId, // Send the active container ID
@@ -222,22 +227,22 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
         <div className="text-center text-gray-500 text-xs mt-2">
           {activeContainer
             ? t("foodDiary.waterIntake.perDrink", {
-                volume: convertMlToSelectedUnit(
-                  activeContainer.volume /
-                    activeContainer.servings_per_container,
-                  activeContainer.unit,
-                ).toFixed(activeContainer.unit === "ml" ? 0 : 2),
-                unit: activeContainer.unit,
-                defaultValue: `${convertMlToSelectedUnit(activeContainer.volume / activeContainer.servings_per_container, activeContainer.unit).toFixed(activeContainer.unit === "ml" ? 0 : 2)} ${activeContainer.unit} per drink`,
-              })
+              volume: convertMlToSelectedUnit(
+                activeContainer.volume /
+                activeContainer.servings_per_container,
+                activeContainer.unit,
+              ).toFixed(activeContainer.unit === "ml" ? 0 : 2),
+              unit: activeContainer.unit,
+              defaultValue: `${convertMlToSelectedUnit(activeContainer.volume / activeContainer.servings_per_container, activeContainer.unit).toFixed(activeContainer.unit === "ml" ? 0 : 2)} ${activeContainer.unit} per drink`,
+            })
             : t("foodDiary.waterIntake.defaultPerDrink", {
-                volume: convertMlToSelectedUnit(
-                  250,
-                  water_display_unit,
-                ).toFixed(water_display_unit === "ml" ? 0 : 2),
-                unit: water_display_unit,
-                defaultValue: `${convertMlToSelectedUnit(250, water_display_unit).toFixed(water_display_unit === "ml" ? 0 : 2)} ${water_display_unit} per drink (default)`,
-              })}
+              volume: convertMlToSelectedUnit(
+                250,
+                water_display_unit,
+              ).toFixed(water_display_unit === "ml" ? 0 : 2),
+              unit: water_display_unit,
+              defaultValue: `${convertMlToSelectedUnit(250, water_display_unit).toFixed(water_display_unit === "ml" ? 0 : 2)} ${water_display_unit} per drink (default)`,
+            })}
         </div>
       </CardContent>
     </Card>

@@ -50,7 +50,15 @@ router.post('/', authenticate, async (req, res, next) => {
  */
 router.get('/', authenticate, async (req, res, next) => {
     try {
-        const containers = await waterContainerService.getWaterContainersByUserId(req.userId);
+        const { userId } = req.query;
+        const targetUserId = userId || req.userId;
+
+        if (targetUserId !== req.userId) {
+            const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId); // Assuming diary permission allows viewing containers
+            if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        const containers = await waterContainerService.getWaterContainersByUserId(targetUserId);
         res.status(200).json(containers);
     } catch (error) {
         next(error);
@@ -169,14 +177,22 @@ router.put('/:id/set-primary', authenticate, async (req, res, next) => {
  */
 router.get('/primary', authenticate, async (req, res, next) => {
     try {
-        const primaryContainer = await waterContainerService.getPrimaryWaterContainerByUserId(req.userId);
+        const { userId } = req.query;
+        const targetUserId = userId || req.userId;
+
+        if (targetUserId !== req.userId) {
+            const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId);
+            if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        const primaryContainer = await waterContainerService.getPrimaryWaterContainerByUserId(targetUserId);
         if (primaryContainer) {
             res.status(200).json(primaryContainer);
         } else {
             // Return a default container if no primary is found
             res.status(200).json({
                 id: null, // Indicate no actual container ID
-                user_id: req.userId,
+                user_id: targetUserId,
                 name: 'Default Container',
                 volume: 2000, // Default to 2000ml
                 unit: 'ml',

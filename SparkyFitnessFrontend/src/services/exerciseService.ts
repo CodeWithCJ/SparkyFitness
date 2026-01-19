@@ -54,7 +54,7 @@ export interface Exercise extends ExerciseInterface {
 }
 
 export interface ExerciseDeletionImpact {
-    exerciseEntriesCount: number;
+  exerciseEntriesCount: number;
   // server returns counts; normalize to a boolean for backward compatible UI use
   isUsedByOthers: boolean;
   otherUserReferences?: number;
@@ -82,7 +82,6 @@ interface ExercisePayload {
 export type ExerciseOwnershipFilter = 'all' | 'own' | 'family' | 'public' | 'needs-review';
 
 export const loadExercises = async (
-  userId: string,
   searchTerm: string = '',
   categoryFilter: string = 'all',
   ownershipFilter: ExerciseOwnershipFilter = 'all',
@@ -90,7 +89,6 @@ export const loadExercises = async (
   itemsPerPage: number = 10
 ): Promise<{ exercises: Exercise[]; totalCount: number }> => {
   const queryParams = new URLSearchParams({
-    userId,
     searchTerm,
     categoryFilter,
     ownershipFilter,
@@ -147,9 +145,8 @@ export const updateExercise = async (id: string, payload: Partial<ExercisePayloa
   }
 };
 
-export const deleteExercise = async (id: string, userId: string, forceDelete: boolean = false): Promise<{ message?: string; status?: string } | void> => {
+export const deleteExercise = async (id: string, forceDelete: boolean = false): Promise<{ message?: string; status?: string } | void> => {
   const params = new URLSearchParams();
-  params.append('userId', userId);
   if (forceDelete) {
     params.append('forceDelete', 'true');
   }
@@ -159,8 +156,8 @@ export const deleteExercise = async (id: string, userId: string, forceDelete: bo
 };
 
 export const updateExerciseShareStatus = async (id: string, sharedWithPublic: boolean): Promise<Exercise> => {
-    const payload = new FormData();
-    payload.append('exerciseData', JSON.stringify({ shared_with_public: sharedWithPublic }));
+  const payload = new FormData();
+  payload.append('exerciseData', JSON.stringify({ shared_with_public: sharedWithPublic }));
   return apiCall(`/exercises/${id}`, {
     method: 'PUT',
     body: payload,

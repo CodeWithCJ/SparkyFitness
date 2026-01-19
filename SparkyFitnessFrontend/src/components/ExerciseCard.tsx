@@ -47,6 +47,7 @@ import {
   createExercise,
   updateExercise, // Import updateExercise
   Exercise,
+  ExerciseOwnershipFilter,
 } from "@/services/exerciseService";
 import { WorkoutPresetSet, WorkoutPreset, PresetExercise } from "@/types/workout"; // Import PresetExercise
 import { getExerciseById } from "@/services/exerciseService"; // Import getExerciseById
@@ -123,7 +124,7 @@ const ExerciseCard = ({
   const [editingEntry, setEditingEntry] = useState<ExerciseEntry | null>(null); // Use ExerciseEntry from service
   const [searchTerm, setSearchTerm] = useState(""); // Keep for internal search
   const [searchLoading, setSearchLoading] = useState(false); // Keep for internal search
-  const [filterType, setFilterType] = useState<string>("all"); // Keep for internal search
+  const [filterType, setFilterType] = useState<ExerciseOwnershipFilter>("all"); // Keep for internal search
   const [searchMode, setSearchMode] = useState<
     "internal" | "external" | "custom"
   >("internal"); // New state for search mode
@@ -155,7 +156,7 @@ const ExerciseCard = ({
     debug(loggingLevel, "Fetching exercise entries for date:", selectedDate);
     setLoading(true);
     try {
-      const data: GroupedExerciseEntry[] = await fetchExerciseEntries(selectedDate, currentUserId); // Use imported fetchExerciseEntries
+      const data: GroupedExerciseEntry[] = await fetchExerciseEntries(selectedDate); // Use imported fetchExerciseEntries
       info(loggingLevel, "Exercise entries fetched successfully:", data);
       setExerciseEntries(data || []);
       debug(loggingLevel, "ExerciseCard: exerciseEntries state updated to:", data);
@@ -230,8 +231,8 @@ const ExerciseCard = ({
       setSearchLoading(true);
       try {
         const { exercises } = await loadExercises(
-          currentUserId,
           searchTerm,
+          "all", // categoryFilter
           filterType,
         );
         setSearchResults(exercises);

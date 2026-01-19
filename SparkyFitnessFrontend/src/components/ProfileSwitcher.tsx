@@ -8,28 +8,31 @@ import { Users, User } from 'lucide-react';
 
 const ProfileSwitcher = () => {
   const { user } = useAuth();
-  const { 
-    activeUserId, 
-    isActingOnBehalf, 
-    accessibleUsers, 
-    switchToUser 
+  const {
+    activeUserId,
+    isActingOnBehalf,
+    accessibleUsers,
+    switchToUser
   } = useActiveUser();
 
-  if (!user || accessibleUsers.length === 0) return null;
+  if (!user) return null;
+  // If not acting on behalf and no accessible users, hide the switcher
+  if (!isActingOnBehalf && accessibleUsers.length === 0) return null;
 
   // Filter out users where only food_list permission is granted
   const switchableUsers = accessibleUsers.filter(accessibleUser => {
     const permissions = accessibleUser.permissions;
     if (!permissions || typeof permissions !== 'object') return true;
-    
-    const hasOnlyFoodList = permissions.food_list && 
-      !permissions.calorie && 
-      !permissions.checkin && 
-      !permissions.reports;
+
+    const hasOnlyFoodList = permissions.food_list &&
+      !permissions.calorie &&
+      !permissions.checkin &&
+      !permissions.reports &&
+      !permissions.diary;
     return !hasOnlyFoodList;
   });
 
-  if (switchableUsers.length === 0) return null;
+  if (!isActingOnBehalf && switchableUsers.length === 0) return null;
 
   return (
     <Select value={activeUserId || user.id} onValueChange={switchToUser}>

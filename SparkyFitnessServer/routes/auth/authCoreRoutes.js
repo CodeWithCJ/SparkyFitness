@@ -70,7 +70,7 @@ router.post('/login', loginValidation, async (req, res, next) => {
       sameSite: 'strict',
       maxAge: 30 * 24 * 60 * 60 * 1000
     });
-    res.status(200).json({ message: 'Login successful', userId: authResult.userId, role: authResult.role });
+    res.status(200).json({ message: 'Login successful', userId: authResult.userId, role: authResult.role, fullName: authResult.fullName });
   } catch (error) {
     if (error.message === 'Invalid credentials.' || error.message === 'Email/Password login is disabled.') {
       return res.status(401).json({ error: error.message });
@@ -175,6 +175,7 @@ router.get('/settings', async (req, res, next) => {
  */
 router.post('/logout', async (req, res, next) => {
   const providerId = req.session?.providerId;
+  const idTokenHint = req.session?.idToken;
 
   req.session.destroy(async (err) => {
     if (err) {
@@ -190,7 +191,10 @@ router.post('/logout', async (req, res, next) => {
 
         if (provider && provider.end_session_endpoint) {
           const frontendUrl = process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:3000';
-          const endSessionUrl = `${provider.end_session_endpoint}?post_logout_redirect_uri=${frontendUrl}/`;
+          let endSessionUrl = `${provider.end_session_endpoint}?post_logout_redirect_uri=${encodeURIComponent(frontendUrl + '/')}`;
+          if (idTokenHint) {
+            endSessionUrl += `&id_token_hint=${idTokenHint}`;
+          }
           return res.status(200).json({
             message: 'Logout successful.',
             redirectUrl: endSessionUrl
@@ -261,7 +265,7 @@ router.post('/register', registerValidation, async (req, res, next) => {
       sameSite: 'strict',
       maxAge: 30 * 24 * 60 * 60 * 1000
     });
-    res.status(201).json({ message: 'User registered successfully', userId, role: 'user' });
+    res.status(201).json({ message: 'User registered successfully', userId, role: 'user', fullName: full_name });
   } catch (error) {
     if (error.code === '23505') {
       return res.status(409).json({ error: 'User with this email already exists.' });
@@ -469,6 +473,7 @@ router.get('/magic-link-login', async (req, res, next) => {
       token: authResult.token,
       userId: authResult.userId,
       role: authResult.role,
+      fullName: authResult.fullName,
     });
   } catch (error) {
     log('error', 'Error in magic-link-login route:', error);

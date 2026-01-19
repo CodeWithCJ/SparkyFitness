@@ -174,7 +174,6 @@ const FoodDatabaseManager: React.FC = () => {
           foodFilter,
           currentPage,
           itemsPerPage,
-          activeUserId,
           sortOrder, // Pass the new sortOrder
         );
       setFoods(fetchedFoods || []);
@@ -224,7 +223,7 @@ const FoodDatabaseManager: React.FC = () => {
     if (!foodToDelete || !activeUserId) return;
     info(loggingLevel, `confirmDelete called with force: ${force}`);
     try {
-      const result = await deleteFoodService(foodToDelete.id, activeUserId, force);
+      const result = await deleteFoodService(foodToDelete.id, force);
       toast({
         title: t("common.success", "Success"),
         description: result.message, // Use the message from the backend
@@ -281,7 +280,6 @@ const FoodDatabaseManager: React.FC = () => {
 
     try {
       await createFoodEntry({
-        user_id: activeUserId,
         food_id: food.id!,
         meal_type: "breakfast", // Default to breakfast for now, or make dynamic
         quantity: quantity,

@@ -82,7 +82,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
   const [exerciseToDelete, setExerciseToDelete] = useState<ExerciseInterface | null>(null);
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [syncExerciseId, setSyncExerciseId] = useState<string | null>(null);
- 
+
   useEffect(() => {
     if (user?.id) {
       loadExercisesData();
@@ -93,7 +93,6 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
     if (!user?.id) return;
     try {
       const response = await loadExercises(
-        user.id,
         searchTerm,
         categoryFilter,
         ownershipFilter,
@@ -195,7 +194,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
     try {
       // Decide whether to force delete based on deletionImpact
       const shouldForce = deletionImpact && !deletionImpact.isUsedByOthers && deletionImpact.exerciseEntriesCount > 0;
-      const response = await deleteExercise(exerciseToDelete.id, user.id, shouldForce);
+      const response = await deleteExercise(exerciseToDelete.id, shouldForce);
       // Interpret server response status for user feedback
       if (response && response.status) {
         if (response.status === 'deleted' || response.status === 'force_deleted') {
@@ -260,7 +259,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
     setShowSyncConfirmation(false);
     loadExercisesData();
   };
- 
+
   const getExerciseSourceBadge = (exercise: ExerciseInterface, currentUserId: string | undefined) => {
     if (!exercise.user_id) {
       return (
@@ -346,7 +345,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
               </Button>
             </div>
           </div>
-          
+
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">{t('exercise.databaseManager.allExercisesCount', { totalExercisesCount, defaultValue: `All Exercises (${totalExercisesCount})` })}</h3>
             <div className="flex items-center space-x-2">
@@ -372,11 +371,11 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-medium">{exercise.name}</h4>
                     {exercise.tags && exercise.tags.map(tag => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                            {tag === 'public' && <Share2 className="h-3 w-3 mr-1" />}
-                            {tag === 'family' && <Users className="h-3 w-3 mr-1" />}
-                            {tag.charAt(0).toUpperCase() + tag.slice(1)}
-                        </Badge>
+                      <Badge key={tag} variant="outline" className="text-xs">
+                        {tag === 'public' && <Share2 className="h-3 w-3 mr-1" />}
+                        {tag === 'family' && <Users className="h-3 w-3 mr-1" />}
+                        {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                      </Badge>
                     ))}
                   </div>
                   <div className="text-sm text-gray-600 mb-1">
@@ -513,7 +512,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                       className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     />
                   </PaginationItem>
-                  
+
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNumber;
                     if (totalPages <= 5) {
@@ -525,7 +524,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                     } else {
                       pageNumber = currentPage - 2 + i;
                     }
-                    
+
                     return (
                       <PaginationItem key={pageNumber}>
                         <PaginationLink
@@ -538,7 +537,7 @@ const ExerciseDatabaseManager: React.FC<ExerciseDatabaseManagerProps> = ({ onPre
                       </PaginationItem>
                     );
                   })}
-                  
+
                   <PaginationItem>
                     <PaginationNext
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}

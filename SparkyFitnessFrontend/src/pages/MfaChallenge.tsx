@@ -62,7 +62,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
                 headers: mfaToken ? { 'X-MFA-Token': mfaToken } : {},
             });
             if (response.token && response.userId && response.role) {
-                signIn(response.userId, email || '', response.role, 'password');
+                signIn(response.userId, response.userId, response.email || email, response.role, 'password', true, response.fullName);
                 onMfaSuccess();
             } else {
                 toast({
@@ -117,7 +117,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
                 headers: mfaToken ? { 'X-MFA-Token': mfaToken } : {},
             });
             if (response.token && response.userId && response.role) {
-                signIn(response.userId, email || '', response.role, 'password');
+                signIn(response.userId, response.userId, response.email || email, response.role, 'password', true, response.fullName);
                 onMfaSuccess();
             } else {
                 toast({
@@ -147,7 +147,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
                 headers: mfaToken ? { 'X-MFA-Token': mfaToken } : {},
             });
             if (response.token && response.userId && response.role) {
-                signIn(response.userId, email || '', response.role, 'password');
+                signIn(response.userId, response.userId, response.email || email, response.role, 'password', true, response.fullName);
                 onMfaSuccess();
             } else {
                 toast({

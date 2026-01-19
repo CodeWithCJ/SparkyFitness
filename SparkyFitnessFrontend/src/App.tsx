@@ -64,49 +64,49 @@ const App = () => {
         <LanguageHandler />
         <ThemeProvider>
           <ChatbotVisibilityProvider>
-            <WaterContainerProvider> {/* Wrap with WaterContainerProvider */}
-              <ActiveUserProvider> {/* Wrap with ActiveUserProvider */}
-                  <AppSetup
-                    setLatestRelease={setLatestRelease}
-                    setShowNewReleaseDialog={setShowNewReleaseDialog}
+            <ActiveUserProvider> {/* Wrap with ActiveUserProvider */}
+              <WaterContainerProvider> {/* Wrap with WaterContainerProvider */}
+                <AppSetup
+                  setLatestRelease={setLatestRelease}
+                  setShowNewReleaseDialog={setShowNewReleaseDialog}
+                />
+                <Routes>
+                  <Route
+                    path="/"
+                    element={
+                      authLoading ? (
+                        <div className="min-h-screen flex items-center justify-center">Loading...</div>
+                      ) : user ? (
+                        <Index onShowAboutDialog={() => setShowAboutDialog(true)} />
+                      ) : (
+                        <Auth />
+                      )
+                    }
                   />
-                  <Routes>
-                    <Route
-                      path="/"
-                      element={
-                        authLoading ? (
-                          <div className="min-h-screen flex items-center justify-center">Loading...</div>
-                        ) : user ? (
-                          <Index onShowAboutDialog={() => setShowAboutDialog(true)} />
-                        ) : (
-                          <Auth />
-                        )
-                      }
-                    />
-                    <Route path="/fasting" element={<FastingProvider><FastingPage /></FastingProvider>} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/login/magic-link" element={<Auth />} /> {/* New route for Magic Link Login */}
-                    <Route path="/withings/callback" element={<WithingsCallback />} /> {/* New route for Withings callback */}
-                    <Route path="/settings/integrations" element={<ExternalProviderSettings />} /> {/* Route for integrations settings */}
-                    <Route path="*" element={<AppContent onShowAboutDialog={() => setShowAboutDialog(true)} />} />
-                  </Routes>
-                  <DraggableChatbotButton />
-                  <AboutDialog isOpen={showAboutDialog} onClose={() => setShowAboutDialog(false)} version={appVersion} />
-                  <NewReleaseDialog
-                    isOpen={showNewReleaseDialog}
-                    onClose={() => setShowNewReleaseDialog(false)}
-                    releaseInfo={latestRelease}
-                    onDismissForVersion={handleDismissRelease}
-                  />
-                  <Toaster /> {/* Render the Toaster component */}
-              </ActiveUserProvider>
-            </WaterContainerProvider>
+                  <Route path="/fasting" element={<FastingProvider><FastingPage /></FastingProvider>} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/login/magic-link" element={<Auth />} /> {/* New route for Magic Link Login */}
+                  <Route path="/withings/callback" element={<WithingsCallback />} /> {/* New route for Withings callback */}
+                  <Route path="/settings/integrations" element={<ExternalProviderSettings />} /> {/* Route for integrations settings */}
+                  <Route path="*" element={<AppContent onShowAboutDialog={() => setShowAboutDialog(true)} />} />
+                </Routes>
+                <DraggableChatbotButton />
+                <AboutDialog isOpen={showAboutDialog} onClose={() => setShowAboutDialog(false)} version={appVersion} />
+                <NewReleaseDialog
+                  isOpen={showNewReleaseDialog}
+                  onClose={() => setShowNewReleaseDialog(false)}
+                  releaseInfo={latestRelease}
+                  onDismissForVersion={handleDismissRelease}
+                />
+                <Toaster /> {/* Render the Toaster component */}
+              </WaterContainerProvider>
+            </ActiveUserProvider>
           </ChatbotVisibilityProvider>
         </ThemeProvider>
       </PreferencesProvider>
     </QueryClientProvider>
   );
 };
-                 
+
 export default App;

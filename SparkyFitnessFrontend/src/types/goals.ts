@@ -26,4 +26,5 @@ export interface ExpandedGoals {
   lunch_percentage: number;
   dinner_percentage: number;
   snacks_percentage: number;
+  [key: string]: any; // Allow custom nutrients
 }

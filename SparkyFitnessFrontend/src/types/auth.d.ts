@@ -1,6 +1,7 @@
 export interface AuthResponse {
   userId: string;
   email?: string; // Add email property
+  fullName?: string; // Add fullName property
   token?: string; // Token is optional, as it won't be present if MFA is required
   role?: string; // Role is optional, as it won't be present if MFA is required
   message?: string; // Make message optional as it might not always be present with MFA_REQUIRED

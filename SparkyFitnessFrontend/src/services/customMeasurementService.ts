@@ -31,20 +31,23 @@ export interface StressDataPoint {
   stress_level: number;
 }
 
-export const getCustomCategories = async (userId: string): Promise<CustomCategory[]> => {
-  return apiCall(`/measurements/custom-categories?userId=${userId}`, {
+export const getCustomCategories = async (userId?: string): Promise<CustomCategory[]> => {
+  const url = userId ? `/measurements/custom-categories?userId=${userId}` : '/measurements/custom-categories';
+  return apiCall(url, {
     method: 'GET',
   });
 };
 
-export const getCustomMeasurements = async (userId: string): Promise<CustomMeasurement[]> => {
-  return apiCall(`/measurements/custom-entries?userId=${userId}`, {
+export const getCustomMeasurements = async (userId?: string): Promise<CustomMeasurement[]> => {
+  const url = userId ? `/measurements/custom-entries?userId=${userId}` : '/measurements/custom-entries';
+  return apiCall(url, {
     method: 'GET',
   });
 };
 
-export const getCustomMeasurementsForDate = async (userId: string, date: string): Promise<CustomMeasurement[]> => {
-  return apiCall(`/measurements/custom-entries/${userId}/${date}`, {
+export const getCustomMeasurementsForDate = async (date: string, userId?: string): Promise<CustomMeasurement[]> => {
+  const url = userId ? `/measurements/custom-entries/${userId}/${date}` : `/measurements/custom-entries/${date}`;
+  return apiCall(url, {
     method: 'GET',
   });
 };
@@ -62,7 +65,7 @@ export const deleteCustomMeasurement = async (measurementId: string): Promise<vo
   });
 };
 
-export const getRawStressData = async (userId: string): Promise<StressDataPoint[]> => {
+export const getRawStressData = async (userId?: string): Promise<StressDataPoint[]> => {
   const categories = await getCustomCategories(userId);
   const rawStressCategory = categories.find(cat => cat.name === 'Raw Stress Data');
 
@@ -72,8 +75,11 @@ export const getRawStressData = async (userId: string): Promise<StressDataPoint[
   }
   console.log('Identified rawStressCategory:', rawStressCategory);
 
+  const params = new URLSearchParams({ category_id: rawStressCategory.id });
+  if (userId) params.append('userId', userId);
+
   const customMeasurements: CustomMeasurement[] = await apiCall(
-    `/measurements/custom-entries?userId=${userId}&category_id=${rawStressCategory.id}`,
+    `/measurements/custom-entries?${params.toString()}`,
     {
       method: 'GET',
     }

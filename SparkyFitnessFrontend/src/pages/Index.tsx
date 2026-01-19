@@ -148,18 +148,12 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
 
       setIsCheckingStatus(true);
       try {
-        const profile = await apiCall(`/auth/profiles`, {
-          suppress404Toast: true,
-        });
-        setDisplayName(profile?.full_name || user.email || "");
-
         const { onboardingComplete } = await getOnboardingStatus();
-
         setNeedsOnboarding(!onboardingComplete);
       } catch (err) {
         error(
           loggingLevel,
-          "Index: Error fetching profile or onboarding status:",
+          "Index: Error fetching onboarding status:",
           err
         );
         setNeedsOnboarding(false);
@@ -357,7 +351,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
           <div className="flex items-center gap-2">
             <ProfileSwitcher />
             <span className="text-sm text-muted-foreground hidden sm:inline">
-              Welcome {isActingOnBehalf ? activeUserName : displayName}
+              Welcome {activeUserName}
             </span>
 
             <GlobalNotificationIcon />

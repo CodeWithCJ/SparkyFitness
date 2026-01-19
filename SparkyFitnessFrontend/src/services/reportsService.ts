@@ -147,9 +147,9 @@ export interface CustomMeasurementData {
 }
 
 export const loadReportsData = async (
-  userId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  userId?: string
 ): Promise<{
   nutritionData: NutritionData[];
   tabularData: DailyFoodEntry[];
@@ -160,10 +160,10 @@ export const loadReportsData = async (
   sleepAnalyticsData: SleepAnalyticsData[];
 }> => {
   const params = new URLSearchParams({
-    userId,
     startDate,
     endDate,
   });
+  if (userId) params.append('userId', userId);
   const response = await apiCall(`/reports?${params.toString()}`, {
     method: 'GET',
   });
@@ -236,18 +236,18 @@ export interface ExerciseDashboardData {
 }
 
 export const getExerciseDashboardData = async (
-  userId: string,
   startDate: string,
   endDate: string,
-  equipment: string | null,
-  muscle: string | null,
-  exercise: string | null
+  userId?: string,
+  equipment: string | null = null,
+  muscle: string | null = null,
+  exercise: string | null = null
 ): Promise<ExerciseDashboardData> => {
   const params = new URLSearchParams({
-    userId,
     startDate,
     endDate,
   });
+  if (userId) params.append('userId', userId);
   if (equipment) params.append('equipment', equipment);
   if (muscle) params.append('muscle', muscle);
   if (exercise) params.append('exercise', exercise);
@@ -258,15 +258,15 @@ export const getExerciseDashboardData = async (
 };
 
 export const getSleepAnalyticsData = async (
-  userId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  userId?: string
 ): Promise<SleepAnalyticsData[]> => {
   const params = new URLSearchParams({
-    userId,
     startDate,
     endDate,
   });
+  if (userId) params.append('userId', userId);
   const response = await apiCall(`/sleep/analytics?${params.toString()}`, {
     method: 'GET',
   });

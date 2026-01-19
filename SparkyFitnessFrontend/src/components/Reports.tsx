@@ -164,10 +164,10 @@ const Reports = () => {
       setLoading(true);
 
       const results = await Promise.allSettled([
-        loadReportsData(activeUserId, startDate, endDate),
-        getExerciseDashboardData(activeUserId, startDate, endDate, null, null, null),
-        getRawStressData(activeUserId),
-        getMoodEntries(activeUserId, startDate, endDate),
+        loadReportsData(startDate, endDate),
+        getExerciseDashboardData(startDate, endDate),
+        getRawStressData(),
+        getMoodEntries(startDate, endDate),
         getFastingDataRange(startDate, endDate),
         customNutrientService.getCustomNutrients(),
       ]);

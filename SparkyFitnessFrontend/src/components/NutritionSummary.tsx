@@ -55,7 +55,7 @@ const NutritionSummary = ({ dayTotals, goals, selectedDate }: NutritionSummaryPr
 
   useEffect(() => {
     const baseNutrientDetails: { [key: string]: { color: string, label: string, unit: string } } = {
-      calories: { color: 'bg-green-500', label: getEnergyUnitString(energyUnit), unit: '' },
+      calories: { color: 'bg-green-500', label: t('common.calories', 'calories'), unit: '' },
       protein: { color: 'bg-blue-500', label: 'protein', unit: 'g' },
       carbs: { color: 'bg-orange-500', label: 'carbs', unit: 'g' },
       fat: { color: 'bg-yellow-500', label: 'fat', unit: 'g' },

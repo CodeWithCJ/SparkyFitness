@@ -38,7 +38,11 @@ async function findUserByEmail(email) {
   const client = await getSystemClient(); // System client for finding user by email (authentication)
   try {
     const result = await client.query(
-      'SELECT id, email, password_hash, role, is_active, mfa_secret, mfa_totp_enabled, mfa_email_enabled, mfa_recovery_codes, mfa_enforced, magic_link_token, magic_link_expires FROM auth.users WHERE LOWER(email) = LOWER($1)',
+      `SELECT au.id, au.email, au.password_hash, au.role, au.is_active, au.mfa_secret, au.mfa_totp_enabled, au.mfa_email_enabled, au.mfa_recovery_codes, au.mfa_enforced, au.magic_link_token, au.magic_link_expires, p.full_name
+       FROM auth.users au
+       LEFT JOIN profiles p ON au.id = p.id
+       WHERE LOWER(au.email) = LOWER($1)
+       ORDER BY p.full_name IS NOT NULL DESC, au.created_at DESC`,
       [email]
     );
     return result.rows[0];
@@ -51,7 +55,10 @@ async function findUserById(userId) {
   const client = await getSystemClient(); // System client for finding user by ID (authentication/admin)
   try {
     const result = await client.query(
-      'SELECT id, email, role, created_at, mfa_secret, mfa_totp_enabled, mfa_email_enabled, mfa_recovery_codes, mfa_enforced, magic_link_token, magic_link_expires, email_mfa_code, email_mfa_expires_at FROM auth.users WHERE id = $1',
+      `SELECT au.id, au.email, au.role, au.created_at, au.mfa_secret, au.mfa_totp_enabled, au.mfa_email_enabled, au.mfa_recovery_codes, au.mfa_enforced, au.magic_link_token, au.magic_link_expires, au.email_mfa_code, au.email_mfa_expires_at, p.full_name
+       FROM auth.users au
+       LEFT JOIN profiles p ON au.id = p.id
+       WHERE au.id = $1`,
       [userId]
     );
     return result.rows[0];
@@ -225,98 +232,98 @@ async function updateUserRole(userId, role) {
 }
 
 async function createOidcUser(userId, email, fullName, providerId, oidcSub) {
-    const client = await getSystemClient(); // System client for OIDC user creation
-    try {
-        await client.query('BEGIN');
+  const client = await getSystemClient(); // System client for OIDC user creation
+  try {
+    await client.query('BEGIN');
 
-        // Insert into auth.users for OIDC
-        const userResult = await client.query(
-            `INSERT INTO auth.users (id, email, password_hash, created_at, updated_at)
+    // Insert into auth.users for OIDC
+    const userResult = await client.query(
+      `INSERT INTO auth.users (id, email, password_hash, created_at, updated_at)
              VALUES ($1, $2, '', now(), now()) RETURNING id`,
-            [userId, email]
-        );
-        const newUserId = userResult.rows[0].id;
+      [userId, email]
+    );
+    const newUserId = userResult.rows[0].id;
 
-        // Insert into profiles
-        await client.query(
-            'INSERT INTO profiles (id, full_name, created_at, updated_at) VALUES ($1, $2, now(), now())',
-            [newUserId, fullName]
-        );
+    // Insert into profiles
+    await client.query(
+      'INSERT INTO profiles (id, full_name, created_at, updated_at) VALUES ($1, $2, now(), now())',
+      [newUserId, fullName]
+    );
 
-        // Insert into user_goals
-        await client.query(
-            'INSERT INTO user_goals (user_id, created_at, updated_at) VALUES ($1, now(), now())',
-            [newUserId]
-        );
+    // Insert into user_goals
+    await client.query(
+      'INSERT INTO user_goals (user_id, created_at, updated_at) VALUES ($1, now(), now())',
+      [newUserId]
+    );
 
-        // Link the new user to the OIDC provider
-        await client.query(
-            'INSERT INTO user_oidc_links (user_id, oidc_provider_id, oidc_sub) VALUES ($1, $2, $3)',
-            [newUserId, providerId, oidcSub]
-        );
+    // Link the new user to the OIDC provider
+    await client.query(
+      'INSERT INTO user_oidc_links (user_id, oidc_provider_id, oidc_sub) VALUES ($1, $2, $3)',
+      [newUserId, providerId, oidcSub]
+    );
 
-        await client.query('COMMIT');
-        return newUserId;
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+    await client.query('COMMIT');
+    return newUserId;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function findUserOidcLink(userId, providerId) {
-    const client = await getSystemClient(); // System client for finding OIDC link (authentication)
-    try {
-        const result = await client.query(
-            'SELECT * FROM user_oidc_links WHERE user_id = $1 AND oidc_provider_id = $2',
-            [userId, providerId]
-        );
-        return result.rows[0];
-    } finally {
-        client.release();
-    }
+  const client = await getSystemClient(); // System client for finding OIDC link (authentication)
+  try {
+    const result = await client.query(
+      'SELECT * FROM user_oidc_links WHERE user_id = $1 AND oidc_provider_id = $2',
+      [userId, providerId]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
 }
 
 
 async function createUserOidcLink(userId, providerId, oidcSub) {
-    const client = await getSystemClient(); // System client for creating OIDC link
-    try {
-        await client.query(
-            'INSERT INTO user_oidc_links (user_id, oidc_provider_id, oidc_sub) VALUES ($1, $2, $3)',
-            [userId, providerId, oidcSub]
-        );
-    } finally {
-        client.release();
-    }
+  const client = await getSystemClient(); // System client for creating OIDC link
+  try {
+    await client.query(
+      'INSERT INTO user_oidc_links (user_id, oidc_provider_id, oidc_sub) VALUES ($1, $2, $3)',
+      [userId, providerId, oidcSub]
+    );
+  } finally {
+    client.release();
+  }
 }
 
 async function findUserByOidcSub(oidcSub, providerId) {
-    const client = await getSystemClient(); // System client for finding user by OIDC sub (authentication)
-    try {
-        const result = await client.query(
-            `SELECT u.id, u.email, u.role, u.is_active
+  const client = await getSystemClient(); // System client for finding user by OIDC sub (authentication)
+  try {
+    const result = await client.query(
+      `SELECT u.id, u.email, u.role, u.is_active
              FROM auth.users u
              JOIN user_oidc_links oidc ON u.id = oidc.user_id
              WHERE oidc.oidc_sub = $1 AND oidc.oidc_provider_id = $2`,
-            [oidcSub, providerId]
-        );
-        return result.rows[0];
-    } finally {
-        client.release();
-    }
+      [oidcSub, providerId]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
 }
 
 async function updateUserOidcLink(linkId, newOidcSub) {
-    const client = await getSystemClient(); // System client for updating OIDC link
-    try {
-        await client.query(
-            'UPDATE user_oidc_links SET oidc_sub = $1, updated_at = NOW() WHERE id = $2',
-            [newOidcSub, linkId]
-        );
-    } finally {
-        client.release();
-    }
+  const client = await getSystemClient(); // System client for updating OIDC link
+  try {
+    await client.query(
+      'UPDATE user_oidc_links SET oidc_sub = $1, updated_at = NOW() WHERE id = $2',
+      [newOidcSub, linkId]
+    );
+  } finally {
+    client.release();
+  }
 }
 
 async function updatePasswordResetToken(userId, token, expires) {

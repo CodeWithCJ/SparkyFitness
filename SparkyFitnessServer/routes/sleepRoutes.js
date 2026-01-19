@@ -46,14 +46,16 @@ const { log } = require('../config/logging');
  *       500:
  *         description: Internal server error.
  */
-router.get('/analytics', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
+router.get('/analytics', authenticate, checkPermissionMiddleware('reports'), async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, userId } = req.query;
     if (!startDate || !endDate) {
       return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
     }
 
-    const analyticsData = await sleepAnalyticsService.getSleepAnalytics(req.userId, startDate, endDate);
+    const targetUserId = userId || req.userId;
+
+    const analyticsData = await sleepAnalyticsService.getSleepAnalytics(targetUserId, startDate, endDate);
     res.status(200).json(analyticsData);
   } catch (error) {
     log('error', "Error fetching sleep analytics:", error);
@@ -158,12 +160,22 @@ router.post('/manual_entry', authenticate, checkPermissionMiddleware('checkin'),
  */
 router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, userId } = req.query;
     if (!startDate || !endDate) {
       return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
     }
 
-    const sleepEntries = await measurementService.getSleepEntriesByUserIdAndDateRange(req.userId, startDate, endDate);
+    const targetUserId = userId || req.userId;
+
+    if (userId && userId !== req.userId) {
+      const permissionUtils = require('../utils/permissionUtils');
+      const hasPermission = await permissionUtils.canAccessUserData(userId, 'reports', req.userId);
+      if (!hasPermission) {
+        return res.status(403).json({ error: 'Forbidden: You do not have permission to access this user\'s sleep data' });
+      }
+    }
+
+    const sleepEntries = await measurementService.getSleepEntriesByUserIdAndDateRange(targetUserId, startDate, endDate);
     res.status(200).json(sleepEntries);
   } catch (error) {
     log('error', "Error fetching sleep entries:", error);
@@ -199,12 +211,22 @@ router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, 
  */
 router.get('/details', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, userId } = req.query;
     if (!startDate || !endDate) {
       return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
     }
 
-    const sleepEntries = await measurementService.getSleepEntriesByUserIdAndDateRange(req.userId, startDate, endDate);
+    const targetUserId = userId || req.userId;
+
+    if (userId && userId !== req.userId) {
+      const permissionUtils = require('../utils/permissionUtils');
+      const hasPermission = await permissionUtils.canAccessUserData(userId, 'reports', req.userId);
+      if (!hasPermission) {
+        return res.status(403).json({ error: 'Forbidden: You do not have permission to access this user\'s sleep data' });
+      }
+    }
+
+    const sleepEntries = await measurementService.getSleepEntriesByUserIdAndDateRange(targetUserId, startDate, endDate);
     res.status(200).json(sleepEntries);
   } catch (error) {
     log('error', "Error fetching sleep entries details:", error);

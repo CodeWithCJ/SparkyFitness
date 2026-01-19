@@ -13,6 +13,7 @@ const { getClient, getSystemClient } = require('../db/poolManager');
 const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
 const { log } = require('../config/logging'); // Import log explicitly
 const emailService = require('./emailService');
+const { canAccessUserData } = require('../utils/permissionUtils');
 
 async function registerUser(email, password, full_name) {
   try {
@@ -29,7 +30,7 @@ async function registerUser(email, password, full_name) {
     const token = jwt.sign({ userId: userId }, JWT_SECRET, {
       expiresIn: "30d",
     });
-    return { userId, token };
+    return { userId, token, fullName: full_name };
   } catch (error) {
     log("error", "Error during user registration in authService:", error);
     throw error;
@@ -45,6 +46,7 @@ async function loginUser(email, password, loginSettings) {
     const user = await userRepository.findUserByEmail(email);
     log('debug', `User object after findUserByEmail in loginUser:`, user);
 
+    // Verify password
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       throw new Error("Invalid credentials.");
     }
@@ -53,13 +55,27 @@ async function loginUser(email, password, loginSettings) {
       throw new Error("Account is disabled. Please contact an administrator.");
     }
 
+    // Defensive Coding: If full_name is missing, try fetching by ID (since refresh works, ID lookup might work better)
+    if (!user.full_name) {
+      try {
+        log('warn', `Login: full_name missing for ${email}, attempting fallback fetch by ID ${user.id}`);
+        const userProfile = await userRepository.findUserById(user.id);
+        if (userProfile && userProfile.full_name) {
+          user.full_name = userProfile.full_name;
+          log('info', `Login: Successfully recovered full_name via ID lookup: ${user.full_name}`);
+        }
+      } catch (fallbackError) {
+        log('warn', 'Login: Fallback profile fetch failed', fallbackError);
+      }
+    }
+
     // Update last login time
     await userRepository.updateUserLastLogin(user.id);
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
       expiresIn: "30d",
     });
-    return { userId: user.id, token, role: user.role };
+    return { userId: user.id, token, role: user.role, fullName: user.full_name };
   } catch (error) {
     log("error", "Error during user login in authService:", error);
     throw error;
@@ -207,6 +223,33 @@ async function getUserApiKeys(authenticatedUserId, targetUserId) {
   }
 }
 
+async function switchUserContext(authenticatedUserId, targetUserId) {
+  try {
+    log('info', `Attempting context switch: User ${authenticatedUserId} -> User ${targetUserId}`);
+
+    // Verify access
+    const hasAccess = await canAccessUserData(targetUserId, 'reports', authenticatedUserId);
+    if (!hasAccess) {
+      throw new Error("Forbidden: You do not have permission to switch to this user context.");
+    }
+
+    // Issue new token with context
+    const payload = { userId: authenticatedUserId };
+    if (targetUserId !== authenticatedUserId) {
+      payload.activeUserId = targetUserId;
+    }
+
+    const token = jwt.sign(payload, JWT_SECRET, {
+      expiresIn: "30d",
+    });
+
+    return { token, activeUserId: targetUserId };
+  } catch (error) {
+    log("error", `Error switching context for user ${authenticatedUserId} to ${targetUserId} in authService:`, error);
+    throw error;
+  }
+}
+
 async function updateUserPassword(authenticatedUserId, newPassword) {
   try {
     const saltRounds = 10;
@@ -253,28 +296,7 @@ async function updateUserEmail(authenticatedUserId, newEmail) {
   }
 }
 
-async function canAccessUserData(
-  targetUserId,
-  permissionType,
-  authenticatedUserId
-) {
-  try {
-    const client = await getClient(authenticatedUserId); // User-specific operation
-    const result = await client.query(
-      `SELECT public.can_access_user_data($1, $2, $3) AS can_access`,
-      [targetUserId, permissionType, authenticatedUserId]
-    );
-    client.release();
-    return result.rows[0].can_access;
-  } catch (error) {
-    log(
-      "error",
-      `Error checking access for user ${targetUserId} by ${authenticatedUserId} with permission ${permissionType} in authService:`,
-      error
-    );
-    throw error;
-  }
-}
+
 
 async function checkFamilyAccess(authenticatedUserId, ownerUserId, permission) {
   try {
@@ -376,32 +398,32 @@ async function deleteFamilyAccessEntry(authenticatedUserId, id) {
 }
 
 async function getLoginSettings() {
-    try {
-        const globalSettings = await globalSettingsRepository.getGlobalSettings();
-        const forceEmailLogin = process.env.SPARKY_FITNESS_FORCE_EMAIL_LOGIN === 'true';
+  try {
+    const globalSettings = await globalSettingsRepository.getGlobalSettings();
+    const forceEmailLogin = process.env.SPARKY_FITNESS_FORCE_EMAIL_LOGIN === 'true';
 
-        let emailEnabled = globalSettings ? globalSettings.enable_email_password_login : true;
-        if (forceEmailLogin) {
-            log('warn', 'SPARKY_FITNESS_FORCE_EMAIL_LOGIN is set, forcing email/password login to be enabled.');
-            emailEnabled = true;
-        }
-
-        return {
-            oidc: {
-                enabled: globalSettings ? globalSettings.is_oidc_active : false,
-            },
-            email: {
-                enabled: emailEnabled,
-            },
-        };
-    } catch (error) {
-        log('error', 'Error fetching login settings:', error);
-        // In case of error, default to enabling email login as a safe fallback.
-        return {
-            oidc: { enabled: false },
-            email: { enabled: true },
-        };
+    let emailEnabled = globalSettings ? globalSettings.enable_email_password_login : true;
+    if (forceEmailLogin) {
+      log('warn', 'SPARKY_FITNESS_FORCE_EMAIL_LOGIN is set, forcing email/password login to be enabled.');
+      emailEnabled = true;
     }
+
+    return {
+      oidc: {
+        enabled: globalSettings ? globalSettings.is_oidc_active : false,
+      },
+      email: {
+        enabled: emailEnabled,
+      },
+    };
+  } catch (error) {
+    log('error', 'Error fetching login settings:', error);
+    // In case of error, default to enabling email login as a safe fallback.
+    return {
+      oidc: { enabled: false },
+      email: { enabled: true },
+    };
+  }
 }
 
 module.exports = {
@@ -417,6 +439,7 @@ module.exports = {
   getUserProfile,
   updateUserProfile,
   getUserApiKeys,
+  switchUserContext,
   updateUserPassword,
   updateUserEmail,
   canAccessUserData,
@@ -443,21 +466,21 @@ module.exports = {
   resetUserMfa,
   requestMagicLink,
   verifyMagicLink,
-  getMfaStatus, // Add this line
-  updateUserMfaSettings, // Add this line
+  getMfaStatus,
+  updateUserMfaSettings,
 };
 
 async function registerOidcUser(email, fullName, providerId, oidcSub) {
-    try {
-        log('info', `Registering OIDC user: ${email} for provider ${providerId}`);
-        const userId = uuidv4();
-        const newUserId = await userRepository.createOidcUser(userId, email, fullName, providerId, oidcSub);
-        await nutrientDisplayPreferenceService.createDefaultNutrientPreferencesForUser(newUserId);
-        return newUserId;
-    } catch (error) {
-        log('error', 'Error during OIDC user registration in authService:', error);
-        throw error;
-    }
+  try {
+    log('info', `Registering OIDC user: ${email} for provider ${providerId}`);
+    const userId = uuidv4();
+    const newUserId = await userRepository.createOidcUser(userId, email, fullName, providerId, oidcSub);
+    await nutrientDisplayPreferenceService.createDefaultNutrientPreferencesForUser(newUserId);
+    return newUserId;
+  } catch (error) {
+    log('error', 'Error during OIDC user registration in authService:', error);
+    throw error;
+  }
 }
 
 async function forgotPassword(email) {
@@ -920,7 +943,7 @@ async function getMfaStatus(userId) {
     log('error', `Error fetching MFA status for user ${userId}:`, error);
     throw error;
   }
-  
+
 }
 
 async function updateUserMfaSettings(

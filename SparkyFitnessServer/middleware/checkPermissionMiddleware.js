@@ -1,4 +1,4 @@
-const familyAccessRepository = require('../models/familyAccessRepository');
+const { canAccessUserData } = require('../utils/permissionUtils');
 const { log } = require('../config/logging');
 
 const checkPermissionMiddleware = (permissionType) => {
@@ -9,7 +9,9 @@ const checkPermissionMiddleware = (permissionType) => {
     }
 
     try {
-      const hasPermission = await familyAccessRepository.checkFamilyAccessPermission(req.originalUserId, req.userId, permissionType);
+      log('debug', `checkPermissionMiddleware: User ${req.originalUserId} acting as ${req.userId}. Checking '${permissionType}' permission.`);
+
+      const hasPermission = await canAccessUserData(req.userId, permissionType, req.originalUserId);
 
       if (hasPermission) {
         next();
