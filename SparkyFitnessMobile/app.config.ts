@@ -3,10 +3,12 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 const VERSION_CODE = 4;
 const APP_NAME = 'SparkyFitnessMobile';
 const APP_SLUG = 'sparkyfitnessmobile';
-const PROD_BUNDLE_IDENTIFIER = 'org.SparkyApps.SparkyFitnessMobile';
+const ANDROID_PROD_BUNDLE_IDENTIFIER = 'org.SparkyApps.SparkyFitnessMobile';
+const IOS_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
 const DEV_BUNDLE_IDENTIFIER = 'org.SparkyApps.SparkyFitnessMobile.dev';
+
 const DEV_PACKAGE = DEV_BUNDLE_IDENTIFIER;
-const PROD_PACKAGE = PROD_BUNDLE_IDENTIFIER;
+const PROD_PACKAGE = ANDROID_PROD_BUNDLE_IDENTIFIER;
 
 const androidPermissions = [
   'android.permission.INTERNET',
@@ -102,9 +104,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       bundleIdentifier: isDev
         ? DEV_BUNDLE_IDENTIFIER
-        : PROD_BUNDLE_IDENTIFIER,
+        : IOS_PROD_BUNDLE_IDENTIFIER,
       supportsTablet: false,
-      buildNumber: VERSION_CODE.toString(),
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
@@ -115,7 +116,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ? DEV_PACKAGE
         : PROD_PACKAGE,
       permissions: androidPermissions,
-      versionCode: VERSION_CODE,
       adaptiveIcon: {
         foregroundImage: './assets/icons/adaptiveicon.png',
         backgroundColor: '#FFFFFF',
