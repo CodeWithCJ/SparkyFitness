@@ -10,5 +10,9 @@ npx expo run:ios
 
 npx expo run:ios --device
 npx expo run:ios --configuration Release --device
+
+
+
 ```
 
+APP_VARIANT=production eas build -p ios --profile production --auto-submit
