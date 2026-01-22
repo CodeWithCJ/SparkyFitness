@@ -657,6 +657,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                         }));
                       }}
                       initialFocus
+                      yearsRange={100} // Set to 100 years for date of birth
                     />
                   </PopoverContent>
                 </Popover>

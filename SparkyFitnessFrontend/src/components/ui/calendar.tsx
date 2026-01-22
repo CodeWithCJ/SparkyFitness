@@ -7,12 +7,15 @@ import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select components
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+  yearsRange?: number;
+};
 
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  yearsRange = 10, // Default to 10 years if not provided
   ...props
 }: CalendarProps) {
   return (
@@ -20,7 +23,7 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       captionLayout="dropdown"
-      fromYear={new Date().getFullYear() - 10}
+      fromYear={new Date().getFullYear() - yearsRange}
       toYear={new Date().getFullYear() + 1}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",

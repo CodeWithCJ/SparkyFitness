@@ -1043,6 +1043,7 @@ const GoalsSettings = () => {
                       selected={parseDateInUserTimezone(currentWeeklyPlan.start_date)} // Changed
                       onSelect={(date) => setCurrentWeeklyPlan({ ...currentWeeklyPlan, start_date: formatDateInUserTimezone(date!, 'yyyy-MM-dd') })}
                       initialFocus
+                      yearsRange={10}
                     />
                   </PopoverContent>
                 </Popover>
@@ -1070,6 +1071,7 @@ const GoalsSettings = () => {
                       selected={currentWeeklyPlan.end_date ? parseDateInUserTimezone(currentWeeklyPlan.end_date) : undefined} // Changed
                       onSelect={(date) => setCurrentWeeklyPlan({ ...currentWeeklyPlan, end_date: date ? formatDateInUserTimezone(date, 'yyyy-MM-dd') : null })}
                       initialFocus
+                      yearsRange={10}
                     />
                   </PopoverContent>
                 </Popover>

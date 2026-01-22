@@ -100,6 +100,7 @@ const CheckInPreferences = ({
                     selected={date} // Use the date object parsed in user's timezone
                     onSelect={handleDateSelect}
                     initialFocus
+                    yearsRange={10} // Default to 10 years for general date selection
                   />
                 </PopoverContent>
               </Popover>

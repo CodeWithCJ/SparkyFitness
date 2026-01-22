@@ -753,6 +753,7 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
                                             date > new Date() || date < new Date("1900-01-01")
                                         }
                                         initialFocus
+                                        yearsRange={100} // Set to 100 years for date of birth
                                     />
                                 </PopoverContent>
                             </Popover>
