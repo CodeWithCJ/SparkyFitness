@@ -118,6 +118,7 @@ const ReportsControls = ({
                     onSelect={handleStartDateSelect}
                     initialFocus
                     className={cn("p-3 pointer-events-auto")}
+                    yearsRange={10} // Default to 10 years for general date selection
                     // Ensure the calendar displays the date in the local timezone
                     // by setting the timezone to the user's local timezone
                     // This is important for react-day-picker to correctly highlight the selected day
@@ -172,6 +173,7 @@ const ReportsControls = ({
                     onSelect={handleEndDateSelect}
                     initialFocus
                     className={cn("p-3 pointer-events-auto")}
+                    yearsRange={10} // Default to 10 years for general date selection
                     // Ensure the calendar displays the date in the local timezone
                     // by setting the timezone to the user's local timezone
                     // This is important for react-day-picker to correctly highlight the selected day

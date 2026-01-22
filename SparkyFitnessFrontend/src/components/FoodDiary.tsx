@@ -944,6 +944,7 @@ const FoodDiary = ({
                     selected={date}
                     onSelect={handleDateSelect}
                     initialFocus
+                    yearsRange={10} // Default to 10 years for general date selection
                   />
                 </PopoverContent>
               </Popover>
