@@ -213,8 +213,10 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
     // Check for existing entry
     // treat entries without a preset ID as unique if their exercise_id, entry_date, and source match.
     // For entries within a preset, we always allow duplicates (no uniqueness check).
+    // For HealthKit/HealthConnect, skip uniqueness check to allow multiple workouts of the same type per day.
+    const skipDuplicateCheck = ['HealthKit', 'HealthConnect'].includes(entrySource);
     let existingEntryResult;
-    if (!exercisePresetEntryId) {
+    if (!exercisePresetEntryId && !skipDuplicateCheck) {
       existingEntryResult = await client.query(
         'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id IS NULL',
         [userId, entryData.exercise_id, entryData.entry_date, entrySource]
