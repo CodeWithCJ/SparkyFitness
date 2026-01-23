@@ -5,6 +5,56 @@ const fitbitIntegrationService = require('../integrations/fitbit/fitbitService')
 const fitbitDataProcessor = require('../integrations/fitbit/fitbitDataProcessor');
 const { getSystemClient } = require('../db/poolManager');
 const moment = require('moment');
+const fs = require('fs');
+const path = require('path');
+
+// Configuration for data mocking/caching
+const FITBIT_DATA_SOURCE = process.env.SPARKY_FITNESS_FITBIT_DATA_SOURCE || 'fitbit';
+const MOCK_DATA_DIR = path.join(__dirname, '..', 'mock_data');
+
+// Ensure mock_data directory exists
+if (!fs.existsSync(MOCK_DATA_DIR)) {
+    fs.mkdirSync(MOCK_DATA_DIR, { recursive: true });
+    log('info', `[fitbitService] Created mock_data directory at ${MOCK_DATA_DIR}`);
+}
+
+log('info', `[fitbitService] Fitbit data source configured to: ${FITBIT_DATA_SOURCE}`);
+
+/**
+ * Load data from a local JSON file in the mock_data directory
+ * @param {string} filename - Name of the file to load
+ * @returns {object|null} - Parsed JSON data or null if file doesn't exist
+ */
+function _loadFromLocalFile(filename) {
+    const filepath = path.join(MOCK_DATA_DIR, filename);
+    if (fs.existsSync(filepath)) {
+        try {
+            const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+            log('info', `[fitbitService] Data loaded from local file: ${filepath}`);
+            return data;
+        } catch (error) {
+            log('error', `[fitbitService] Error reading mock data file ${filepath}: ${error.message}`);
+            return null;
+        }
+    }
+    log('warn', `[fitbitService] Local file not found: ${filepath}`);
+    return null;
+}
+
+/**
+ * Save data to a local JSON file in the mock_data directory
+ * @param {string} filename - Name of the file to save
+ * @param {object} data - Data to save as JSON
+ */
+function _saveToLocalFile(filename, data) {
+    const filepath = path.join(MOCK_DATA_DIR, filename);
+    try {
+        fs.writeFileSync(filepath, JSON.stringify(data, null, 2), 'utf8');
+        log('info', `[fitbitService] Data saved to local file: ${filepath}`);
+    } catch (error) {
+        log('error', `[fitbitService] Error saving to mock data file ${filepath}: ${error.message}`);
+    }
+}
 
 /**
  * Orchestrate a full Fitbit data sync for a user
@@ -26,6 +76,62 @@ async function syncFitbitData(userId, syncType = 'manual') {
     }
 
     log('info', `[fitbitService] Starting Fitbit sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}.`);
+
+    // Check if we should load from local mock data
+    if (FITBIT_DATA_SOURCE === 'local') {
+        log('info', `[fitbitService] Loading Fitbit data from local mock file for user ${userId}`);
+        const mockData = _loadFromLocalFile('fitbit_mock_data.json');
+
+        if (!mockData) {
+            throw new Error(
+                'Local mock data file not found. Please run a sync with SPARKY_FITNESS_FITBIT_DATA_SOURCE unset (or set to "fitbit") ' +
+                'to fetch from live Fitbit API and automatically save the data for future local use.'
+            );
+        }
+
+        log('info', `[fitbitService] Successfully loaded mock data for user ${userId}. Sync date: ${mockData.sync_date || 'unknown'}`);
+
+        // Extract cached data and units
+        const cachedData = mockData.data || {};
+        const units = mockData.units || {};
+        const timezoneOffset = mockData.timezone_offset || 0;
+
+        try {
+            // Process all cached data through the same processors as live data
+            log('debug', `[fitbitService] Processing cached data for ${userId}...`);
+            if (cachedData.profile) await fitbitDataProcessor.processFitbitProfile(userId, userId, cachedData.profile);
+            if (cachedData.heartRate) await fitbitDataProcessor.processFitbitHeartRate(userId, userId, cachedData.heartRate);
+            if (cachedData.steps) await fitbitDataProcessor.processFitbitSteps(userId, userId, cachedData.steps);
+            if (cachedData.weight) await fitbitDataProcessor.processFitbitWeight(userId, userId, cachedData.weight, units.weight || 'METRIC');
+            if (cachedData.bodyFat) await fitbitDataProcessor.processFitbitBodyFat(userId, userId, cachedData.bodyFat);
+            if (cachedData.spo2) await fitbitDataProcessor.processFitbitSpO2(userId, userId, cachedData.spo2);
+            if (cachedData.temperature) await fitbitDataProcessor.processFitbitTemperature(userId, userId, cachedData.temperature, units.temperature || 'METRIC');
+            if (cachedData.hrv) await fitbitDataProcessor.processFitbitHRV(userId, userId, cachedData.hrv);
+            if (cachedData.respiratoryRate) await fitbitDataProcessor.processFitbitRespiratoryRate(userId, userId, cachedData.respiratoryRate);
+            if (cachedData.activeZoneMinutes) await fitbitDataProcessor.processFitbitActiveZoneMinutes(userId, userId, cachedData.activeZoneMinutes);
+            if (cachedData.activityMinutes) await fitbitDataProcessor.processFitbitActivityMinutes(userId, userId, cachedData.activityMinutes);
+            if (cachedData.sleep) await fitbitDataProcessor.processFitbitSleep(userId, userId, cachedData.sleep, timezoneOffset);
+            if (cachedData.activities) await fitbitDataProcessor.processFitbitActivities(userId, userId, cachedData.activities, timezoneOffset, units.distance || 'METRIC', startDate);
+            if (cachedData.water) await fitbitDataProcessor.processFitbitWater(userId, userId, cachedData.water, units.water || 'METRIC');
+
+            // Update last_sync_at
+            const client = await getSystemClient();
+            try {
+                await client.query(
+                    `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'fitbit'`,
+                    [userId]
+                );
+            } finally {
+                client.release();
+            }
+
+            log('info', `[fitbitService] Fitbit sync from local cache completed for user ${userId}.`);
+            return { success: true, source: 'local_cache', cached_date: mockData.sync_date };
+        } catch (error) {
+            log('error', `[fitbitService] Error processing cached Fitbit data for user ${userId}:`, error.message);
+            throw error;
+        }
+    }
 
     try {
         // 1. Fetch token and Profile first to get unit preferences and timezone
@@ -116,8 +222,42 @@ async function syncFitbitData(userId, syncType = 'manual') {
             client.release();
         }
 
+        // 5. Save all fetched data to mock file for future local use
+        const mockDataPayload = {
+            user_id: userId,
+            sync_date: moment().format('YYYY-MM-DD HH:mm:ss'),
+            sync_type: syncType,
+            start_date: startDate,
+            end_date: endDate,
+            data: {
+                profile: profileData,
+                heartRate: heartRateData,
+                steps: stepsData,
+                weight: weightData,
+                bodyFat: bodyFatData,
+                spo2: spo2Data,
+                temperature: tempData,
+                hrv: hrvData,
+                respiratoryRate: respiratoryRateData,
+                activeZoneMinutes: azmData,
+                activityMinutes: activityMinutesData,
+                sleep: sleepData,
+                activities: activitiesData,
+                water: waterData
+            },
+            units: {
+                weight: weightUnit,
+                distance: distanceUnit,
+                water: waterUnit,
+                temperature: temperatureUnit
+            },
+            timezone_offset: timezoneOffset
+        };
+
+        _saveToLocalFile('fitbit_mock_data.json', mockDataPayload);
+
         log('info', `[fitbitService] Full Fitbit sync completed for user ${userId}.`);
-        return { success: true };
+        return { success: true, source: 'live_api' };
     } catch (error) {
         log('error', `[fitbitService] Error during full Fitbit sync for user ${userId}:`, error.message);
         throw error;
