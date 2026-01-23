@@ -2,6 +2,8 @@ const externalProviderRepository = require('../models/externalProviderRepository
 const { log } = require('../config/logging');
 const { checkFamilyAccessPermission } = require('../models/familyAccessRepository');
 
+const STRICTLY_PRIVATE_PROVIDERS = ['fitbit', 'withings', 'garmin', 'health'];
+
 async function getExternalDataProviders(userId) {
   try {
     const providers = await externalProviderRepository.getExternalDataProviders(userId);
@@ -24,7 +26,13 @@ async function getExternalDataProvidersForUser(authenticatedUserId, targetUserId
     // RLS will enforce visibility (owner/family/public). Use the viewer-scoped repository call
     // to let the DB filter rows. Then map visibility for the response.
     const providers = await externalProviderRepository.getExternalDataProvidersByUserId(authenticatedUserId, targetUserId);
-    const providersWithVisibility = providers.map(p => ({
+
+    // Filter out restricted providers for non-owners
+    const filteredProviders = authenticatedUserId === targetUserId
+      ? providers
+      : providers.filter(p => !STRICTLY_PRIVATE_PROVIDERS.includes(p.provider_type));
+
+    const providersWithVisibility = filteredProviders.map(p => ({
       ...p,
       visibility: p.user_id === authenticatedUserId ? 'private' : (p.shared_with_public ? 'public' : 'family'),
       shared_with_public: !!p.shared_with_public,
@@ -55,8 +63,12 @@ async function updateExternalDataProvider(authenticatedUserId, providerId, updat
       throw new Error("Forbidden: You do not have permission to update this external data provider.");
     }
     // Only allow owner to set shared_with_public
-    if (updateData.shared_with_public !== undefined) {
-      // no extra checks here - owner can toggle public sharing
+    if (updateData.shared_with_public === true) {
+      // Fetch current provider to check name
+      const provider = await externalProviderRepository.getExternalDataProviderById(providerId);
+      if (provider && STRICTLY_PRIVATE_PROVIDERS.includes(provider.provider_type)) {
+        throw new Error(`Forbidden: ${provider.provider_type} connection cannot be shared publicly.`);
+      }
     }
     const updatedProvider = await externalProviderRepository.updateExternalDataProvider(providerId, authenticatedUserId, updateData);
     if (!updatedProvider) {
@@ -82,14 +94,14 @@ async function getExternalDataProviderDetails(authenticatedUserId, providerId) {
     throw error;
   }
 }
- 
+
 async function deleteExternalDataProvider(authenticatedUserId, providerId) {
   try {
     const isOwner = await externalProviderRepository.checkExternalDataProviderOwnership(providerId, authenticatedUserId);
     if (!isOwner) {
       throw new Error("Forbidden: You do not have permission to delete this external data provider.");
     }
-  const success = await externalProviderRepository.deleteExternalDataProvider(providerId, authenticatedUserId);
+    const success = await externalProviderRepository.deleteExternalDataProvider(providerId, authenticatedUserId);
     if (!success) {
       throw new Error('External data provider not found or not authorized to delete.');
     }

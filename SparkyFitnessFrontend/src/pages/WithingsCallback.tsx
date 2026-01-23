@@ -35,8 +35,8 @@ const WithingsCallback = () => {
         });
         setLoading(false);
         setTimeout(() => {
-          navigate('/');
-        }, 1000); // Redirect after 3 seconds
+          navigate('/?tab=settings&section=integrations');
+        }, 1000); // Redirect after short delay
       } catch (error) {
         console.error('Error processing Withings callback:', error);
         setMessage('Error linking Withings account.');

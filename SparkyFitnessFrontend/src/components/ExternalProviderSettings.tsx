@@ -14,7 +14,7 @@ import GarminConnectSettings from "./GarminConnectSettings";
 export interface ExternalDataProvider {
   id: string;
   provider_name: string;
-  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings' | 'garmin' | 'tandoor' | 'usda';
+  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings' | 'garmin' | 'tandoor' | 'usda' | 'fitbit';
   app_id: string | null;
   app_key: string | null;
   is_active: boolean;
@@ -30,6 +30,8 @@ export interface ExternalDataProvider {
   garmin_token_expires?: string;
   withings_last_sync_at?: string;
   withings_token_expires?: string;
+  fitbit_last_sync_at?: string;
+  fitbit_token_expires?: string;
 }
 
 const ExternalProviderSettings = () => {
@@ -108,6 +110,28 @@ const ExternalProviderSettings = () => {
       } else {
         setProviders(updatedProviders || []);
       }
+
+      // Fetch Fitbit status if applicable
+      const fitbitProviders = updatedProviders.filter((p: ExternalDataProvider) => p.provider_type === 'fitbit' && p.has_token);
+      if (fitbitProviders.length > 0) {
+        setProviders(prev => prev.map(p => {
+          const isFitbit = fitbitProviders.find(fp => fp.id === p.id);
+          return isFitbit ? p : p; // We'll update them below
+        }));
+
+        for (const provider of fitbitProviders) {
+          try {
+            const fitbitStatus = await apiCall(`/integrations/fitbit/status`);
+            setProviders(prev => prev.map(p => p.id === provider.id ? {
+              ...p,
+              fitbit_last_sync_at: fitbitStatus.lastSyncAt,
+              fitbit_token_expires: fitbitStatus.tokenExpiresAt,
+            } : p));
+          } catch (fitbitError) {
+            console.error('Failed to fetch Fitbit specific status for provider:', provider.id, fitbitError);
+          }
+        }
+      }
     } catch (error: any) {
       console.error('Error loading external data providers:', error);
       toast({
@@ -145,12 +169,11 @@ const ExternalProviderSettings = () => {
       app_key: editData.app_key || null,
       is_active: editData.is_active,
       base_url: (editData.provider_type === 'mealie' || editData.provider_type === 'tandoor' || editData.provider_type === 'free-exercise-db') ? editData.base_url || null : null,
-      sync_frequency: (editData.provider_type === 'withings' || editData.provider_type === 'garmin') ? editData.sync_frequency : null,
-      garmin_connect_status: editData.provider_type === 'garmin' ? editData.garmin_connect_status : null,
-      garmin_last_status_check: editData.provider_type === 'garmin' ? editData.garmin_last_status_check : null,
-      garmin_token_expires: editData.provider_type === 'garmin' ? editData.garmin_token_expires : null,
       withings_last_sync_at: editData.provider_type === 'withings' ? editData.withings_last_sync_at : null,
       withings_token_expires: editData.provider_type === 'withings' ? editData.withings_token_expires : null,
+      fitbit_last_sync_at: editData.provider_type === 'fitbit' ? editData.fitbit_last_sync_at : null,
+      fitbit_token_expires: editData.provider_type === 'fitbit' ? editData.fitbit_token_expires : null,
+      sync_frequency: (editData.provider_type === 'withings' || editData.provider_type === 'garmin' || editData.provider_type === 'fitbit') ? editData.sync_frequency : null,
     };
 
     try {
@@ -386,6 +409,77 @@ const ExternalProviderSettings = () => {
     }
   };
 
+  const handleConnectFitbit = async (providerId: string) => {
+    setLoading(true);
+    try {
+      const response = await apiCall(`/integrations/fitbit/authorize`, {
+        method: 'GET',
+      });
+      if (response && response.authUrl) {
+        window.location.href = response.authUrl;
+      } else {
+        throw new Error('Failed to get Fitbit authorization URL.');
+      }
+    } catch (error: any) {
+      console.error('Error connecting to Fitbit:', error);
+      toast({
+        title: "Error",
+        description: `Failed to connect to Fitbit: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnectFitbit = async (providerId: string) => {
+    if (!confirm('Are you sure you want to disconnect from Fitbit? This will revoke access and delete all associated tokens.')) return;
+
+    setLoading(true);
+    try {
+      await apiCall(`/integrations/fitbit/disconnect`, {
+        method: 'POST',
+      });
+      toast({
+        title: "Success",
+        description: "Disconnected from Fitbit successfully."
+      });
+      loadProviders();
+    } catch (error: any) {
+      console.error('Error disconnecting from Fitbit:', error);
+      toast({
+        title: "Error",
+        description: `Failed to disconnect from Fitbit: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualSyncFitbit = async (providerId: string) => {
+    setLoading(true);
+    try {
+      await apiCall(`/integrations/fitbit/sync`, {
+        method: 'POST',
+      });
+      toast({
+        title: "Success",
+        description: "Fitbit data synchronization initiated."
+      });
+      loadProviders();
+    } catch (error: any) {
+      console.error('Error initiating manual Fitbit sync:', error);
+      toast({
+        title: "Error",
+        description: `Failed to initiate manual Fitbit sync: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const startEditing = (provider: ExternalDataProvider) => {
     setEditingProvider(provider.id);
     setEditData({
@@ -403,6 +497,8 @@ const ExternalProviderSettings = () => {
       garmin_token_expires: provider.garmin_token_expires || '',
       withings_last_sync_at: provider.withings_last_sync_at || '',
       withings_token_expires: provider.withings_token_expires || '',
+      fitbit_last_sync_at: provider.fitbit_last_sync_at || '',
+      fitbit_token_expires: provider.fitbit_token_expires || '',
     });
   };
 
@@ -421,6 +517,7 @@ const ExternalProviderSettings = () => {
     { value: "tandoor", label: "Tandoor" },
     { value: "withings", label: "Withings" },
     { value: "garmin", label: "Garmin" },
+    { value: "fitbit", label: "Fitbit" },
     { value: "usda", label: "USDA" },
   ];
 
@@ -441,6 +538,7 @@ const ExternalProviderSettings = () => {
             loading={loading}
             getProviderTypes={getProviderTypes}
             handleConnectWithings={handleConnectWithings}
+            handleConnectFitbit={handleConnectFitbit}
             onGarminMfaRequired={handleGarminMfaRequiredFromAddForm}
           />
 
@@ -476,6 +574,9 @@ const ExternalProviderSettings = () => {
                 handleDisconnectWithings={handleDisconnectWithings}
                 handleManualSyncGarmin={handleManualSyncGarmin}
                 handleDisconnectGarmin={handleDisconnectGarmin}
+                handleConnectFitbit={handleConnectFitbit}
+                handleManualSyncFitbit={handleManualSyncFitbit}
+                handleDisconnectFitbit={handleDisconnectFitbit}
                 startEditing={startEditing}
                 handleDeleteProvider={handleDeleteProvider}
                 toggleProviderPublicSharing={toggleProviderPublicSharing}

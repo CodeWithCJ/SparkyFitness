@@ -1028,6 +1028,27 @@ const options = {
           },
           required: ['id', 'email', 'role', 'is_active'],
         },
+        FitbitStatus: {
+          type: 'object',
+          properties: {
+            isLinked: {
+              type: 'boolean',
+              description: 'Indicates if the user has a linked Fitbit account.',
+            },
+            lastSyncAt: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              description: 'The date and time of the last successful data sync.',
+            },
+            tokenExpiresAt: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              description: 'The date and time when the Fitbit access token expires.',
+            },
+          },
+        },
       },
       '/admin/auth/settings/mfa-mandatory': {
         get: {

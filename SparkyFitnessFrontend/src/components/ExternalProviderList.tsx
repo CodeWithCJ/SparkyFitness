@@ -23,6 +23,9 @@ interface ExternalProviderListProps {
   handleDisconnectWithings: (providerId: string) => void;
   handleManualSyncGarmin: (providerId: string) => void;
   handleDisconnectGarmin: (providerId: string) => void;
+  handleConnectFitbit: (providerId: string) => void;
+  handleManualSyncFitbit: (providerId: string) => void;
+  handleDisconnectFitbit: (providerId: string) => void;
   startEditing: (provider: ExternalDataProvider) => void;
   handleDeleteProvider: (providerId: string) => void;
   toggleProviderPublicSharing: (providerId: string, isPublic: boolean) => void;
@@ -46,6 +49,9 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
   handleDisconnectWithings,
   handleManualSyncGarmin,
   handleDisconnectGarmin,
+  handleConnectFitbit,
+  handleManualSyncFitbit,
+  handleDisconnectFitbit,
   startEditing,
   handleDeleteProvider,
   toggleProviderPublicSharing,
@@ -255,7 +261,51 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                   )}
                 </>
               )}
-              {(editData.provider_type === 'withings' || editData.provider_type === 'garmin') && (
+              {editData.provider_type === 'fitbit' && (
+                <>
+                  <div>
+                    <Label>Client ID</Label>
+                    <Input
+                      type="text"
+                      value={editData.app_id || ''}
+                      onChange={(e) => setEditData(prev => ({ ...prev, app_id: e.target.value }))}
+                      placeholder="Enter Fitbit Client ID"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <Label>Client Secret</Label>
+                    <Input
+                      type="password"
+                      value={editData.app_key || ''}
+                      onChange={(e) => setEditData(prev => ({ ...prev, app_key: e.target.value }))}
+                      placeholder="Enter Fitbit Client Secret"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground col-span-2">
+                    Fitbit integration uses OAuth2. You will be redirected to Fitbit to authorize access after adding the provider.
+                    <br />
+                    In your <a href="https://dev.fitbit.com/apps" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Fitbit Developer Dashboard</a>, you must set your callback URL to:
+                    <strong className="flex items-center">
+                      {`${window.location.origin}/fitbit/callback`}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="ml-2 h-5 w-5"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigator.clipboard.writeText(`${window.location.origin}/fitbit/callback`);
+                          toast({ title: "Copied!", description: "Callback URL copied to clipboard." });
+                        }}
+                      >
+                        <Clipboard className="h-4 w-4" />
+                      </Button>
+                    </strong>
+                  </p>
+                </>
+              )}
+              {(editData.provider_type === 'withings' || editData.provider_type === 'garmin' || editData.provider_type === 'fitbit') && (
                 <div>
                   <Label htmlFor="edit_sync_frequency">Sync Frequency</Label>
                   <Select
@@ -393,6 +443,46 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                       </TooltipProvider>
                     </>
                   )}
+                  {provider.provider_type === 'fitbit' && provider.is_active && provider.has_token && (
+                    <>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleManualSyncFitbit(provider.id)}
+                              disabled={loading}
+                              className="ml-2 text-blue-500"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Sync Now</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDisconnectFitbit(provider.id)}
+                              disabled={loading}
+                              className="ml-2 text-red-500"
+                            >
+                              <Link2Off className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Disconnect</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {provider.visibility === 'private' ? (
@@ -429,12 +519,24 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                         </Button>
                       )}
 
+                      {/* Connect Fitbit Button */}
+                      {provider.provider_type === 'fitbit' && provider.is_active && !provider.has_token && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleConnectFitbit(provider.id)}
+                          disabled={loading}
+                        >
+                          Connect Fitbit
+                        </Button>
+                      )}
+
                       {/* Edit Button */}
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => startEditing(provider)}
-                        >
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
 
@@ -485,6 +587,11 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                       {provider.sync_frequency && ` - Sync: ${provider.sync_frequency}`}
                     </>
                   )}
+                  {provider.provider_type === 'fitbit' && (
+                    <>
+                      {provider.sync_frequency && ` - Sync: ${provider.sync_frequency}`}
+                    </>
+                  )}
                 </p>
                 {provider.provider_type === 'withings' && (provider.has_token) && (
                   <div className="text-sm text-muted-foreground">
@@ -494,6 +601,17 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                     {provider.withings_last_sync_at && provider.withings_token_expires && <span> | </span>}
                     {provider.withings_token_expires && (
                       <span>Token Expires: {new Date(provider.withings_token_expires).toLocaleString()}</span>
+                    )}
+                  </div>
+                )}
+                {provider.provider_type === 'fitbit' && (provider.has_token) && (
+                  <div className="text-sm text-muted-foreground">
+                    {provider.fitbit_last_sync_at && (
+                      <span>Last Sync: {new Date(provider.fitbit_last_sync_at).toLocaleString()}</span>
+                    )}
+                    {provider.fitbit_last_sync_at && provider.fitbit_token_expires && <span> | </span>}
+                    {provider.fitbit_token_expires && (
+                      <span>Token Expires: {new Date(provider.fitbit_token_expires).toLocaleString()}</span>
                     )}
                   </div>
                 )}
