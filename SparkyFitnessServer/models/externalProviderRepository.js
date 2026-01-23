@@ -6,7 +6,12 @@ async function getExternalDataProviders(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public, encrypted_access_token, sync_frequency FROM external_data_providers ORDER BY created_at DESC',
+      `SELECT edp.id, edp.user_id, edp.provider_name, edp.provider_type, edp.is_active, edp.base_url, 
+              edp.shared_with_public, edp.encrypted_access_token, edp.sync_frequency,
+              ept.is_strictly_private
+       FROM external_data_providers edp
+       LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
+       ORDER BY edp.created_at DESC`,
       []
     );
     // log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
@@ -25,16 +30,18 @@ async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
   try {
     const result = await client.query(
       `SELECT
-        id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public, sync_frequency,
-        encrypted_app_id, app_id_iv, app_id_tag,
-        encrypted_app_key, app_key_iv, app_key_tag,
-        token_expires_at, external_user_id,
-        encrypted_garth_dump, garth_dump_iv, garth_dump_tag,
-        encrypted_access_token -- Include encrypted_access_token
-        FROM external_data_providers
-        WHERE user_id = $1
-        ORDER BY created_at DESC`,
-        [targetUserId]
+        edp.id, edp.user_id, edp.provider_name, edp.provider_type, edp.is_active, edp.base_url, edp.shared_with_public, edp.sync_frequency,
+        edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
+        edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
+        edp.token_expires_at, edp.external_user_id,
+        edp.encrypted_garth_dump, edp.garth_dump_iv, edp.garth_dump_tag,
+        edp.encrypted_access_token, -- Include encrypted_access_token
+        ept.is_strictly_private
+        FROM external_data_providers edp
+        LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
+        WHERE edp.user_id = $1
+        ORDER BY edp.created_at DESC`,
+      [targetUserId]
     );
     const providers = await Promise.all(result.rows.map(async (row) => {
       let decryptedAppId = null;
@@ -77,7 +84,8 @@ async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
         is_active: row.is_active,
         base_url: row.base_url,
         sync_frequency: row.sync_frequency,
-        has_token: !!row.encrypted_access_token // Add has_token property
+        has_token: !!row.encrypted_access_token, // Add has_token property
+        is_strictly_private: !!row.is_strictly_private
       };
     }));
     return providers;
@@ -242,12 +250,15 @@ async function getExternalDataProviderById(providerId) {
   try {
     const result = await client.query(
       `SELECT
-        id, provider_name, provider_type, user_id, is_active, base_url, shared_with_public, sync_frequency,
-        encrypted_app_id, app_id_iv, app_id_tag,
-        encrypted_app_key, app_key_iv, app_key_tag,
-        token_expires_at, external_user_id,
-        encrypted_garth_dump, garth_dump_iv, garth_dump_tag
-      FROM external_data_providers WHERE id = $1`,
+        edp.id, edp.provider_name, edp.provider_type, edp.user_id, edp.is_active, edp.base_url, edp.shared_with_public, edp.sync_frequency,
+        edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
+        edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
+        edp.token_expires_at, edp.external_user_id,
+        edp.encrypted_garth_dump, edp.garth_dump_iv, edp.garth_dump_tag,
+        ept.is_strictly_private
+      FROM external_data_providers edp
+      LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
+      WHERE edp.id = $1`,
       [providerId]
     );
     const data = result.rows[0];
@@ -292,7 +303,8 @@ async function getExternalDataProviderById(providerId) {
       app_key: decryptedAppKey,
       token_expires_at: data.token_expires_at,
       external_user_id: data.external_user_id,
-      garth_dump: decryptedGarthDump
+      garth_dump: decryptedGarthDump,
+      is_strictly_private: !!data.is_strictly_private
     };
   } finally {
     client.release();
@@ -305,11 +317,14 @@ async function getExternalDataProviderByUserIdAndProviderName(userId, providerNa
     log('debug', `Fetching external data provider for user ${userId} and provider ${providerName}`);
     const result = await client.query(
       `SELECT
-        id, provider_name, provider_type, user_id, sync_frequency, encrypted_app_id, app_id_iv, app_id_tag,
-        encrypted_app_key, app_key_iv, app_key_tag,
-        token_expires_at, external_user_id, is_active, base_url, shared_with_public, updated_at,
-        encrypted_garth_dump, garth_dump_iv, garth_dump_tag
-      FROM external_data_providers WHERE provider_name = $1`,
+        edp.id, edp.provider_name, edp.provider_type, edp.user_id, edp.sync_frequency, edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
+        edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
+        edp.token_expires_at, edp.external_user_id, edp.is_active, edp.base_url, edp.shared_with_public, edp.updated_at,
+        edp.encrypted_garth_dump, edp.garth_dump_iv, edp.garth_dump_tag,
+        ept.is_strictly_private
+      FROM external_data_providers edp
+      LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
+      WHERE edp.provider_name = $1`,
       [providerName]
     );
     const data = result.rows[0];
@@ -358,7 +373,8 @@ async function getExternalDataProviderByUserIdAndProviderName(userId, providerNa
       token_expires_at: data.token_expires_at,
       external_user_id: data.external_user_id,
       garth_dump: decryptedGarthDump,
-      updated_at: data.updated_at // Include updated_at
+      updated_at: data.updated_at, // Include updated_at
+      is_strictly_private: !!data.is_strictly_private
     };
   } finally {
     client.release();
@@ -377,7 +393,7 @@ async function checkExternalDataProviderOwnership(providerId, userId) {
     client.release();
   }
 }
- 
+
 async function deleteExternalDataProvider(id, userId) {
   // Use a user-scoped client so RLS will prevent unauthorized deletions
   const client = await getClient(userId);

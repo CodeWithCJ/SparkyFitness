@@ -2,7 +2,7 @@ const externalProviderRepository = require('../models/externalProviderRepository
 const { log } = require('../config/logging');
 const { checkFamilyAccessPermission } = require('../models/familyAccessRepository');
 
-const STRICTLY_PRIVATE_PROVIDERS = ['fitbit', 'withings', 'garmin', 'health'];
+// Privacy status is now driven by external_provider_types.is_strictly_private in the database.
 
 async function getExternalDataProviders(userId) {
   try {
@@ -27,10 +27,10 @@ async function getExternalDataProvidersForUser(authenticatedUserId, targetUserId
     // to let the DB filter rows. Then map visibility for the response.
     const providers = await externalProviderRepository.getExternalDataProvidersByUserId(authenticatedUserId, targetUserId);
 
-    // Filter out restricted providers for non-owners
+    // Filter out restricted providers for non-owners using the dynamic flag
     const filteredProviders = authenticatedUserId === targetUserId
       ? providers
-      : providers.filter(p => !STRICTLY_PRIVATE_PROVIDERS.includes(p.provider_type));
+      : providers.filter(p => !p.is_strictly_private);
 
     const providersWithVisibility = filteredProviders.map(p => ({
       ...p,
@@ -66,8 +66,8 @@ async function updateExternalDataProvider(authenticatedUserId, providerId, updat
     if (updateData.shared_with_public === true) {
       // Fetch current provider to check name
       const provider = await externalProviderRepository.getExternalDataProviderById(providerId);
-      if (provider && STRICTLY_PRIVATE_PROVIDERS.includes(provider.provider_type)) {
-        throw new Error(`Forbidden: ${provider.provider_type} connection cannot be shared publicly.`);
+      if (provider && provider.is_strictly_private) {
+        throw new Error(`Forbidden: ${provider.provider_name} connection is strictly private and cannot be shared publicly.`);
       }
     }
     const updatedProvider = await externalProviderRepository.updateExternalDataProvider(providerId, authenticatedUserId, updateData);

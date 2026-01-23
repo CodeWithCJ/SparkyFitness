@@ -32,6 +32,7 @@ export interface ExternalDataProvider {
   withings_token_expires?: string;
   fitbit_last_sync_at?: string;
   fitbit_token_expires?: string;
+  is_strictly_private?: boolean;
 }
 
 const ExternalProviderSettings = () => {

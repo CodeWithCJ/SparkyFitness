@@ -53,4 +53,7 @@ SparkyFitnessServer/temp_uploads/
 # Garmin microservice specific
 SparkyFitnessGarmin/mock_data/
 
+# Fitbit mock data (cached API responses)
+SparkyFitnessServer/mock_data/
+
 WIP/

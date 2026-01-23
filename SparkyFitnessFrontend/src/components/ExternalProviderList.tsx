@@ -487,8 +487,8 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                 <div className="flex items-center gap-2">
                   {provider.visibility === 'private' ? (
                     <>
-                      {/* Share/Lock Button - First icon, not for Garmin/Withings */}
-                      {provider.provider_type !== 'garmin' && provider.provider_type !== 'withings' && (
+                      {/* Share/Lock Button - Hides for strictly private providers (Fitbit, Garmin, etc.) */}
+                      {!provider.is_strictly_private && (
                         <Button
                           variant="outline"
                           size="sm"
