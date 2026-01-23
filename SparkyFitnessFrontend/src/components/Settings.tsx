@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
+import { useLocation } from "react-router-dom"; // Import useLocation
 import { useTranslation } from "react-i18next";
 import { formatDateToYYYYMMDD } from "@/lib/utils"; // Import the new utility function
 import {
@@ -25,7 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar as CalendarIcon } from "lucide-react"; // Import CalendarIcon
 import { Calendar } from "@/components/ui/calendar"; // Import Calendar component
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Import Popover components
-import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles, QrCode, Mail, BookOpen,UtensilsCrossed } from "lucide-react";
+import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles, QrCode, Mail, BookOpen, UtensilsCrossed } from "lucide-react";
 import { apiCall } from '@/services/api'; // Assuming a common API utility
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -90,7 +91,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     setLoggingLevel,
     itemDisplayLimit,
     setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
-	autoScaleOpenFoodFactsImports, setAutoScaleOpenFoodFactsImports, // Add auto-scale preference
+    autoScaleOpenFoodFactsImports, setAutoScaleOpenFoodFactsImports, // Add auto-scale preference
     loadPreferences: loadUserPreferencesFromContext, // Rename to avoid conflict
     saveAllPreferences, // Add saveAllPreferences from context
     formatDate, // Destructure formatDate
@@ -143,6 +144,8 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   useEffect(() => {
     setLocalLoggingLevel(loggingLevel);
   }, [loggingLevel]);
+
+  const location = useLocation(); // Hook to get current location
 
   // Effect to fetch avatar image when profile.avatar_url changes
   useEffect(() => {
@@ -503,10 +506,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
       .slice(0, 2);
   };
 
+  const queryParams = new URLSearchParams(location.search);
+  const defaultExpanded = queryParams.get('section') === 'integrations' ? ["food-and-exercise-data-providers"] : [];
+
   return (
     <div className="space-y-6 w-full">
       {/* Removed redundant Settings heading */}
-      <Accordion type="multiple" className="w-full">
+      <Accordion type="multiple" className="w-full" defaultValue={defaultExpanded}>
         {/* Profile Information */}
         <AccordionItem
           value="profile-information"
@@ -549,13 +555,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                       <Camera className="h-4 w-4 mr-2" />
                       {uploadingImage
                         ? t(
-                            "settings.profileInformation.uploading",
-                            "Uploading..."
-                          )
+                          "settings.profileInformation.uploading",
+                          "Uploading..."
+                        )
                         : t(
-                            "settings.profileInformation.changePhoto",
-                            "Change Photo"
-                          )}
+                          "settings.profileInformation.changePhoto",
+                          "Change Photo"
+                        )}
                     </span>
                   </Button>
                 </Label>
@@ -1022,9 +1028,9 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               {loading
                 ? t("settings.profileInformation.saving", "Saving...")
                 : t(
-                    "settings.waterTracking.saveWaterDisplayUnit",
-                    "Save Water Display Unit"
-                  )}
+                  "settings.waterTracking.saveWaterDisplayUnit",
+                  "Save Water Display Unit"
+                )}
             </Button>
             <Separator />
             <WaterContainerManager />
@@ -1288,9 +1294,9 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 {generatingApiKey
                   ? t("settings.apiKeyManagement.generating", "Generating...")
                   : t(
-                      "settings.apiKeyManagement.generateNewKey",
-                      "Generate New Key"
-                    )}
+                    "settings.apiKeyManagement.generateNewKey",
+                    "Generate New Key"
+                  )}
               </Button>
             </div>
 
@@ -1550,9 +1556,9 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 {loading
                   ? t("settings.accountSecurity.updating", "Updating...")
                   : t(
-                      "settings.accountSecurity.updatePassword",
-                      "Update Password"
-                    )}
+                    "settings.accountSecurity.updatePassword",
+                    "Update Password"
+                  )}
               </Button>
             </form>
             <Separator />

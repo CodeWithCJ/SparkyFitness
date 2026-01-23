@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Hb9PePndvFR0vQvRT7LibJs74ogZtZW4BjX9ezkShB8cbvZsnfAY1d8Oj2PNNme
+\restrict lr6tlMX4ey7W3hR4jvKanDe8eOAdZPgJ5zc4HggjLgCgmCDe9r6gt2BzOHe8koo
 
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 18.0
@@ -1083,8 +1083,26 @@ CREATE TABLE public.external_data_providers (
     refresh_token_tag text,
     scope text,
     last_sync_at timestamp with time zone,
-    sync_frequency text DEFAULT 'manual'::text,
-    CONSTRAINT external_data_providers_provider_type_check CHECK ((provider_type = ANY (ARRAY['fatsecret'::text, 'openfoodfacts'::text, 'mealie'::text, 'garmin'::text, 'health'::text, 'nutritionix'::text, 'wger'::text, 'free-exercise-db'::text, 'withings'::text, 'tandoor'::text, 'usda'::text])))
+    sync_frequency text DEFAULT 'manual'::text
+);
+
+
+--
+-- Name: COLUMN external_data_providers.provider_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.external_data_providers.provider_type IS 'References the external_provider_types table. Refactored from a CHECK constraint to a lookup table.';
+
+
+--
+-- Name: external_provider_types; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.external_provider_types (
+    id character varying(50) NOT NULL,
+    display_name character varying(100) NOT NULL,
+    description text,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );
 
 
@@ -1135,7 +1153,6 @@ CREATE TABLE public.food_entries (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
     food_id uuid,
-    meal_type text NOT NULL,
     quantity numeric DEFAULT 1 NOT NULL,
     unit text DEFAULT 'g'::text,
     entry_date date DEFAULT CURRENT_DATE NOT NULL,
@@ -1169,8 +1186,8 @@ CREATE TABLE public.food_entries (
     meal_id uuid,
     food_entry_meal_id uuid,
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
-    CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
-    CONSTRAINT food_entries_meal_type_check CHECK ((meal_type = ANY (ARRAY['breakfast'::text, 'lunch'::text, 'dinner'::text, 'snacks'::text])))
+    meal_type_id uuid NOT NULL,
+    CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL))))
 );
 
 
@@ -1182,7 +1199,6 @@ CREATE TABLE public.food_entry_meals (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     user_id uuid NOT NULL,
     meal_template_id uuid,
-    meal_type character varying(50) NOT NULL,
     entry_date date NOT NULL,
     name character varying(255) NOT NULL,
     description text,
@@ -1191,7 +1207,8 @@ CREATE TABLE public.food_entry_meals (
     created_by_user_id uuid NOT NULL,
     updated_by_user_id uuid NOT NULL,
     quantity numeric DEFAULT 1.0 NOT NULL,
-    unit text DEFAULT 'serving'::text
+    unit text DEFAULT 'serving'::text,
+    meal_type_id uuid NOT NULL
 );
 
 
@@ -1290,7 +1307,7 @@ CREATE TABLE public.goal_presets (
     protein numeric,
     carbs numeric,
     fat numeric,
-    water_goal integer,
+    water_goal numeric(10,3),
     saturated_fat numeric,
     polyunsaturated_fat numeric,
     monounsaturated_fat numeric,
@@ -1343,13 +1360,13 @@ CREATE TABLE public.meal_plan_template_assignments (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     template_id uuid NOT NULL,
     day_of_week integer NOT NULL,
-    meal_type character varying(50) NOT NULL,
     meal_id uuid,
     item_type character varying(50) DEFAULT 'meal'::character varying NOT NULL,
     food_id uuid,
     variant_id uuid,
     quantity numeric(10,2),
     unit character varying(50),
+    meal_type_id uuid NOT NULL,
     CONSTRAINT chk_item_type_and_id CHECK (((((item_type)::text = 'meal'::text) AND (meal_id IS NOT NULL) AND (food_id IS NULL)) OR (((item_type)::text = 'food'::text) AND (food_id IS NOT NULL) AND (meal_id IS NULL))))
 );
 
@@ -1384,13 +1401,26 @@ CREATE TABLE public.meal_plans (
     quantity numeric,
     unit character varying(50),
     plan_date date NOT NULL,
-    meal_type character varying(50) NOT NULL,
     is_template boolean DEFAULT false,
     template_name character varying(255),
     day_of_week integer,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    meal_type_id uuid NOT NULL,
     CONSTRAINT chk_meal_or_food CHECK ((((meal_id IS NOT NULL) AND (food_id IS NULL) AND (variant_id IS NULL) AND (quantity IS NULL) AND (unit IS NULL)) OR ((meal_id IS NULL) AND (food_id IS NOT NULL) AND (variant_id IS NOT NULL) AND (quantity IS NOT NULL) AND (unit IS NOT NULL))))
+);
+
+
+--
+-- Name: meal_types; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.meal_types (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    user_id uuid,
+    sort_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -1805,9 +1835,17 @@ CREATE TABLE public.user_preferences (
     mineral_calculation_algorithm text DEFAULT 'RDA_STANDARD'::text NOT NULL,
     vitamin_calculation_algorithm text DEFAULT 'RDA_STANDARD'::text NOT NULL,
     sugar_calculation_algorithm text DEFAULT 'WHO_GUIDELINES'::text NOT NULL,
+    auto_scale_open_food_facts_imports boolean DEFAULT false,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text])))
 );
+
+
+--
+-- Name: COLUMN user_preferences.auto_scale_open_food_facts_imports; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.auto_scale_open_food_facts_imports IS 'When enabled, OpenFoodFacts imports will automatically scale nutrition values from per-100g to the serving size provided by the product';
 
 
 --
@@ -2301,6 +2339,14 @@ ALTER TABLE ONLY public.exercises
 
 
 --
+-- Name: external_provider_types external_provider_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_provider_types
+    ADD CONSTRAINT external_provider_types_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: fasting_logs fasting_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2386,6 +2432,22 @@ ALTER TABLE ONLY public.meal_plan_templates
 
 ALTER TABLE ONLY public.meal_plans
     ADD CONSTRAINT meal_plans_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: meal_types meal_types_name_user_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meal_types
+    ADD CONSTRAINT meal_types_name_user_unique UNIQUE NULLS NOT DISTINCT (name, user_id);
+
+
+--
+-- Name: meal_types meal_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meal_types
+    ADD CONSTRAINT meal_types_pkey PRIMARY KEY (id);
 
 
 --
@@ -3174,6 +3236,14 @@ ALTER TABLE ONLY public.exercise_preset_entries
 
 
 --
+-- Name: external_data_providers external_data_providers_provider_type_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_data_providers
+    ADD CONSTRAINT external_data_providers_provider_type_fkey FOREIGN KEY (provider_type) REFERENCES public.external_provider_types(id);
+
+
+--
 -- Name: fasting_logs fasting_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3254,6 +3324,14 @@ ALTER TABLE ONLY public.food_entries
 
 
 --
+-- Name: food_entries food_entries_meal_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entries
+    ADD CONSTRAINT food_entries_meal_type_id_fkey FOREIGN KEY (meal_type_id) REFERENCES public.meal_types(id) ON DELETE RESTRICT;
+
+
+--
 -- Name: food_entries food_entries_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3283,6 +3361,14 @@ ALTER TABLE ONLY public.food_entry_meals
 
 ALTER TABLE ONLY public.food_entry_meals
     ADD CONSTRAINT food_entry_meals_meal_template_id_fkey FOREIGN KEY (meal_template_id) REFERENCES public.meals(id) ON DELETE SET NULL;
+
+
+--
+-- Name: food_entry_meals food_entry_meals_meal_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entry_meals
+    ADD CONSTRAINT food_entry_meals_meal_type_id_fkey FOREIGN KEY (meal_type_id) REFERENCES public.meal_types(id) ON DELETE RESTRICT;
 
 
 --
@@ -3374,6 +3460,14 @@ ALTER TABLE ONLY public.meal_plans
 
 
 --
+-- Name: meal_plans meal_plans_meal_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meal_plans
+    ADD CONSTRAINT meal_plans_meal_type_id_fkey FOREIGN KEY (meal_type_id) REFERENCES public.meal_types(id) ON DELETE RESTRICT;
+
+
+--
 -- Name: meal_plans meal_plans_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3390,6 +3484,14 @@ ALTER TABLE ONLY public.meal_plans
 
 
 --
+-- Name: meal_types meal_types_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meal_types
+    ADD CONSTRAINT meal_types_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: meals meals_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3403,6 +3505,14 @@ ALTER TABLE ONLY public.meals
 
 ALTER TABLE ONLY public.mood_entries
     ADD CONSTRAINT mood_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: meal_plan_template_assignments mpta_meal_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meal_plan_template_assignments
+    ADD CONSTRAINT mpta_meal_type_id_fkey FOREIGN KEY (meal_type_id) REFERENCES public.meal_types(id) ON DELETE RESTRICT;
 
 
 --
@@ -4195,7 +4305,7 @@ CREATE POLICY select_policy ON public.exercises FOR SELECT USING (public.has_lib
 -- Name: external_data_providers select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.external_data_providers FOR SELECT USING (((public.current_user_id() = user_id) OR ((provider_type <> 'garmin'::text) AND (shared_with_public OR public.has_family_access_or(user_id, ARRAY['can_view_food_library'::text, 'can_view_exercise_library'::text])))));
+CREATE POLICY select_policy ON public.external_data_providers FOR SELECT USING (((public.current_user_id() = user_id) OR ((provider_type <> ALL (ARRAY['garmin'::text, 'fitbit'::text, 'withings'::text, 'health'::text])) AND (shared_with_public OR public.has_family_access_or(user_id, ARRAY['can_view_food_library'::text, 'can_view_exercise_library'::text])))));
 
 
 --
@@ -4544,6 +4654,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO spa
 
 
 --
+-- Name: TABLE external_provider_types; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_uat;
+
+
+--
 -- Name: TABLE family_access; Type: ACL; Schema: public; Owner: -
 --
 
@@ -4649,6 +4768,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_app;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_uat;
+
+
+--
+-- Name: TABLE meal_types; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_app;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_test;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_uat;
 
 
 --
@@ -5036,5 +5164,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Hb9PePndvFR0vQvRT7LibJs74ogZtZW4BjX9ezkShB8cbvZsnfAY1d8Oj2PNNme
+\unrestrict lr6tlMX4ey7W3hR4jvKanDe8eOAdZPgJ5zc4HggjLgCgmCDe9r6gt2BzOHe8koo
 

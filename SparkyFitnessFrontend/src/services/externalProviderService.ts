@@ -7,6 +7,7 @@ export interface DataProvider {
   provider_name: string; // e.g., 'Wger', 'FatSecret' (for display and value)
   is_active: boolean; // Changed from is_enabled to is_active
   shared_with_public?: boolean;
+  is_strictly_private?: boolean;
 }
 
 export const getExternalDataProviders = async (): Promise<DataProvider[]> => {

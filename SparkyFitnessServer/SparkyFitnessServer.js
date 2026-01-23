@@ -40,6 +40,7 @@ const externalProviderRoutes = require('./routes/externalProviderRoutes'); // Re
 const garminRoutes = require('./routes/garminRoutes'); // Import Garmin routes
 const withingsRoutes = require('./routes/withingsRoutes'); // Import Withings routes
 const withingsDataRoutes = require('./routes/withingsDataRoutes'); // Import Withings Data routes
+const fitbitRoutes = require('./routes/fitbitRoutes'); // Import Fitbit routes
 const moodRoutes = require('./routes/moodRoutes'); // Import Mood routes
 const fastingRoutes = require('./routes/fastingRoutes'); // Import Fasting routes
 const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
@@ -63,6 +64,7 @@ const externalProviderRepository = require('./models/externalProviderRepository'
 const withingsService = require('./integrations/withings/withingsService'); // Import withingsService
 const garminConnectService = require('./integrations/garminconnect/garminConnectService'); // Import garminConnectService
 const garminService = require('./services/garminService'); // Import garminService
+const fitbitService = require('./services/fitbitService'); // Import fitbitService
 const mealTypeRoutes = require("./routes/mealTypeRoutes");
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
@@ -328,6 +330,7 @@ app.use("/integrations/garmin", garminRoutes); // Add Garmin integration routes
 app.use("/api/withings", withingsRoutes); // Add Withings integration routes
 log("info", "Withings routes mounted at /api/withings");
 app.use("/integrations/withings/data", withingsDataRoutes); // Add Withings Data routes
+app.use("/integrations/fitbit", fitbitRoutes); // Add Fitbit routes
 app.use("/mood", moodRoutes); // Add Mood routes
 app.use("/fasting", fastingRoutes); // Add Fasting routes
 app.use("/admin/oidc-settings", oidcSettingsRoutes); // Admin OIDC settings routes
@@ -601,6 +604,65 @@ const scheduleGarminSyncs = async () => {
   log("info", "Garmin sync scheduler initialized.");
 };
 
+// Function to schedule Fitbit data synchronization
+const scheduleFitbitSyncs = async () => {
+  cron.schedule("0 * * * *", async () => {
+    // Run every hour
+    log("info", "Scheduled Fitbit data sync initiated.");
+    try {
+      const fitbitProviders = await externalProviderRepository.getProvidersByType("fitbit");
+      for (const provider of fitbitProviders) {
+        if (provider.is_active && provider.sync_frequency !== "manual") {
+          const userId = provider.user_id;
+          const lastSyncAt = provider.last_sync_at
+            ? new Date(provider.last_sync_at)
+            : new Date(0);
+          const now = new Date();
+
+          let shouldSync = false;
+          if (
+            provider.sync_frequency === "hourly" &&
+            now.getTime() - lastSyncAt.getTime() >= 60 * 60 * 1000
+          ) {
+            shouldSync = true;
+          } else if (
+            provider.sync_frequency === "daily" &&
+            (now.getDate() !== lastSyncAt.getDate() ||
+              now.getMonth() !== lastSyncAt.getMonth() ||
+              now.getFullYear() !== lastSyncAt.getFullYear())
+          ) {
+            shouldSync = true;
+          }
+
+          if (shouldSync) {
+            log(
+              "info",
+              `Initiating Fitbit sync for user ${userId} (frequency: ${provider.sync_frequency}).`
+            );
+
+            // For scheduled sync, we sync for today
+            const today = new Date().toISOString().split('T')[0];
+
+            try {
+              // Sync all metrics using the high-level service
+              await fitbitService.syncFitbitData(userId, 'scheduled');
+              log("info", `Fitbit sync completed for user ${userId}.`);
+            } catch (syncError) {
+              log("error", `Error syncing Fitbit data for user ${userId}: ${syncError.message}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      log(
+        "error",
+        `Error during scheduled Fitbit data sync: ${error.message}`
+      );
+    }
+  });
+  log("info", "Fitbit sync scheduler initialized.");
+};
+
 applyMigrations()
   .then(grantPermissions)
   .then(applyRlsPolicies)
@@ -612,6 +674,7 @@ applyMigrations()
     // Schedule Withings syncs after migrations
     scheduleWithingsSyncs();
     scheduleGarminSyncs();
+    scheduleFitbitSyncs();
 
     // Set admin user from environment variable if provided
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {

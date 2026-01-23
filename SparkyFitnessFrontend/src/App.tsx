@@ -20,6 +20,7 @@ import { Routes, Route } from 'react-router-dom';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import WithingsCallback from '@/pages/WithingsCallback';
+import FitbitCallback from '@/pages/FitbitCallback';
 import ExternalProviderSettings from '@/components/ExternalProviderSettings'; // Import ExternalProviderSettings
 import Auth from '@/components/Auth'; // Import the Auth component
 import { useAuth } from '@/hooks/useAuth';
@@ -88,7 +89,7 @@ const App = () => {
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/login/magic-link" element={<Auth />} /> {/* New route for Magic Link Login */}
                   <Route path="/withings/callback" element={<WithingsCallback />} /> {/* New route for Withings callback */}
-                  <Route path="/settings/integrations" element={<ExternalProviderSettings />} /> {/* Route for integrations settings */}
+                  <Route path="/fitbit/callback" element={<FitbitCallback />} /> {/* New route for Fitbit callback */}
                   <Route path="*" element={<AppContent onShowAboutDialog={() => setShowAboutDialog(true)} />} />
                 </Routes>
                 <DraggableChatbotButton />
