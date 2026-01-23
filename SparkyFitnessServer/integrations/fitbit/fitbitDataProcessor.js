@@ -358,11 +358,17 @@ async function processFitbitWater(userId, createdByUserId, data, waterUnit = 'ME
 /**
  * Process Fitbit Activity/Exercise data
  */
-async function processFitbitActivities(userId, createdByUserId, data, timezoneOffset = 0, distanceUnit = 'METRIC') {
+async function processFitbitActivities(userId, createdByUserId, data, timezoneOffset = 0, distanceUnit = 'METRIC', startDate = null) {
     if (!data || !data.activities || data.activities.length === 0) return;
     for (const activity of data.activities) {
         const startIso = parseFitbitTime(activity.startTime, timezoneOffset);
         const entryDate = startIso.split('T')[0];
+
+        // Safety filter to prevent processing very old data
+        if (startDate && entryDate < startDate) {
+            log('debug', `[fitbitDataProcessor] Skipping activity ${activity.activityName} from ${entryDate} (before sync range ${startDate})`);
+            continue;
+        }
         const exerciseName = activity.activityName || 'Fitbit Activity';
 
         let exercise = await exerciseRepository.findExerciseByNameAndUserId(exerciseName, userId);

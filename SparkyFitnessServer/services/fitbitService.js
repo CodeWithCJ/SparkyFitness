@@ -83,7 +83,7 @@ async function syncFitbitData(userId, syncType = 'manual') {
         const sleepData = await safeFetch(() => fitbitIntegrationService.fetchSleep(userId, startDate, endDate, accessToken), 'sleep');
 
         log('debug', `[fitbitService] Fetching activities for ${userId}...`);
-        const activitiesData = await safeFetch(() => fitbitIntegrationService.fetchActivities(userId, endDate, accessToken), 'activities');
+        const activitiesData = await safeFetch(() => fitbitIntegrationService.fetchActivities(userId, startDate, accessToken), 'activities');
 
         log('debug', `[fitbitService] Fetching water for ${userId}...`);
         const waterData = await safeFetch(() => fitbitIntegrationService.fetchWater(userId, endDate, accessToken), 'water');
@@ -102,7 +102,7 @@ async function syncFitbitData(userId, syncType = 'manual') {
         if (azmData) await fitbitDataProcessor.processFitbitActiveZoneMinutes(userId, userId, azmData);
         if (activityMinutesData) await fitbitDataProcessor.processFitbitActivityMinutes(userId, userId, activityMinutesData);
         if (sleepData) await fitbitDataProcessor.processFitbitSleep(userId, userId, sleepData, timezoneOffset);
-        if (activitiesData) await fitbitDataProcessor.processFitbitActivities(userId, userId, activitiesData, timezoneOffset, distanceUnit);
+        if (activitiesData) await fitbitDataProcessor.processFitbitActivities(userId, userId, activitiesData, timezoneOffset, distanceUnit, startDate);
         if (waterData) await fitbitDataProcessor.processFitbitWater(userId, userId, waterData, waterUnit);
 
         // 4. Update last_sync_at

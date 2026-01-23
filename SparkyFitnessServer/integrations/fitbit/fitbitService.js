@@ -375,8 +375,8 @@ async function fetchBodyFat(userId, startDate, endDate, providedToken = null) {
 async function fetchActivities(userId, date = 'today', providedToken = null) {
     const accessToken = providedToken || await getValidAccessToken(userId);
     try {
-        // Fetching the activity list (max 20 records)
-        const response = await axios.get(`${FITBIT_API_BASE_URL}/1/user/-/activities/list.json?beforeDate=${date}&sort=desc&limit=20&offset=0`, {
+        // Fetching the activity list (max 100 records) after a specific date
+        const response = await axios.get(`${FITBIT_API_BASE_URL}/1/user/-/activities/list.json?afterDate=${date}&sort=asc&limit=100&offset=0`, {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Accept-Language': 'en-US'

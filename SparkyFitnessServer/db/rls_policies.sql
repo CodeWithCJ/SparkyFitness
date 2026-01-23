@@ -225,7 +225,17 @@ USING (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_e
 WITH CHECK (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_sets.exercise_entry_id AND has_diary_access(ee.user_id)));
 
 CREATE POLICY select_policy ON public.external_data_providers FOR SELECT TO PUBLIC
-USING (current_user_id() = user_id OR (provider_type NOT IN ('garmin', 'fitbit', 'withings', 'health') AND (shared_with_public OR has_family_access_or(user_id, ARRAY['can_view_food_library', 'can_view_exercise_library']))));
+USING (
+  current_user_id() = user_id OR (
+    EXISTS (
+      SELECT 1 FROM public.external_provider_types ept
+      WHERE ept.id = external_data_providers.provider_type
+      AND ept.is_strictly_private = false
+    ) AND (
+      shared_with_public OR has_family_access_or(user_id, ARRAY['can_view_food_library', 'can_view_exercise_library'])
+    )
+  )
+);
 CREATE POLICY modify_policy ON public.external_data_providers FOR ALL TO PUBLIC
 USING (current_user_id() = user_id)
 WITH CHECK (current_user_id() = user_id);
