@@ -111,8 +111,8 @@ const DraggableChatbotButton: React.FC = () => {
       try {
         const activeService = await getActiveAiServiceSetting();
         const hasActive = activeService !== null &&
-                          activeService !== undefined &&
-                          Object.keys(activeService).length > 0;
+          activeService !== undefined &&
+          Object.keys(activeService).length > 0;
         setHasAiProvider(hasActive);
       } catch (error) {
         console.error("[DraggableChatbotButton] Failed to fetch AI services:", error);
@@ -138,7 +138,7 @@ const DraggableChatbotButton: React.FC = () => {
   }, [checkAiProviders]);
 
   useEffect(() => {
-    const interval = setInterval(checkAiProviders, 5000);
+    const interval = setInterval(checkAiProviders, 60000);
     return () => clearInterval(interval);
   }, [checkAiProviders]);
 
@@ -180,7 +180,7 @@ const DraggableChatbotButton: React.FC = () => {
     if (!isDragging) return;
 
     if (Math.abs(clientX - (dragPosition.x + dragOffset.current.x)) > 5 ||
-        Math.abs(clientY - (dragPosition.y + dragOffset.current.y)) > 5) {
+      Math.abs(clientY - (dragPosition.y + dragOffset.current.y)) > 5) {
       hasDragged.current = true;
     }
 

@@ -1,5 +1,6 @@
 import SparkyChat from "@/components/SparkyChat";
 import { usePreferences } from "@/contexts/PreferencesContext";
+import { useLocation } from "react-router-dom"; // Import useLocation
 import { debug, info, warn, error } from "@/utils/logging";
 import { apiCall } from "@/services/api";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -116,6 +117,8 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
       window.removeEventListener("foodDiaryRefresh", handleRefresh);
     };
   }, [loggingLevel]);
+
+  const location = useLocation(); // Hook to get current location
 
   const handleSignOut = async () => {
     info(loggingLevel, "Index: Attempting to sign out.");
@@ -268,6 +271,15 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
     loggingLevel,
     user?.role,
   ]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab && availableTabs.some(t => t.value === tab)) {
+      info(loggingLevel, `Index: Setting active tab to ${tab} from query parameter.`);
+      setActiveTab(tab);
+    }
+  }, [location, availableTabs, loggingLevel]);
 
   useEffect(() => {
     if (user && availableTabs.length > 0 && !activeTab) {
