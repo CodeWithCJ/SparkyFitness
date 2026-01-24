@@ -242,7 +242,8 @@ async function upsertSleepStageEvent(userId, entryId, sleepStageEventData) {
                 duration_in_seconds
             ]);
             sleepStageEventId = insertResult.rows[0].id;
-            log('info', `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId}(ignoring invalid ID: ${id}).`);
+            const reason = id === undefined ? 'no ID provided' : `ignoring invalid ID: ${id}`;
+            log('info', `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId} (${reason}).`);
         }
 
         await client.query('COMMIT');
