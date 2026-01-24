@@ -233,7 +233,7 @@ async function processFitbitRespiratoryRate(userId, createdByUserId, data) {
     if (!data || !data.br || data.br.length === 0) return;
     for (const entry of data.br) {
         const entryDate = entry.dateTime;
-        const br = entry.value.fullSleepSummary.breathingRate;
+        const br = entry.value?.fullSleepSummary?.breathingRate;
         if (br) {
             await upsertCustomMeasurementLogic(userId, createdByUserId, {
                 categoryName: 'Respiratory Rate',
@@ -318,6 +318,10 @@ async function processFitbitSleep(userId, createdByUserId, data, timezoneOffset 
 
         const result = await sleepRepository.upsertSleepEntry(userId, createdByUserId, sleepEntryData);
         if (result && result.id && entry.levels && entry.levels.data) {
+            // First, delete existing sleep stages for this entry to prevent duplication
+            // This aligns with how other providers (Apple/Android) handle sleep stage updates
+            await sleepRepository.deleteSleepStageEventsByEntryId(userId, result.id);
+
             for (const stage of entry.levels.data) {
                 const startIso = parseFitbitTime(stage.dateTime, timezoneOffset);
                 const startTime = new Date(startIso);
