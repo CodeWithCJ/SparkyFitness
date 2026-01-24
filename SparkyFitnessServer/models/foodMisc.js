@@ -161,15 +161,28 @@ async function getDailyNutritionSummary(userId, date) {
   try {
     const result = await client.query(
       `SELECT
-        SUM(fe.calories * fe.quantity / fe.serving_size) AS total_calories,
-        SUM(fe.protein * fe.quantity / fe.serving_size) AS total_protein,
-        SUM(fe.carbs * fe.quantity / fe.serving_size) AS total_carbs,
-        SUM(fe.fat * fe.quantity / fe.serving_size) AS total_fat,
-        SUM(fe.dietary_fiber * fe.quantity / fe.serving_size) AS total_dietary_fiber,
-        jsonb_object_agg(key, value) AS total_custom_nutrients
-       FROM food_entries fe, jsonb_each_text(fe.custom_nutrients) AS custom_nutrient
-       WHERE fe.user_id = $1 AND fe.entry_date = $2
-       GROUP BY fe.user_id, fe.entry_date`,
+        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_calories,
+        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_protein,
+        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_carbs,
+        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_fat,
+        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_dietary_fiber,
+        COALESCE(
+          (
+            SELECT jsonb_object_agg(key, value::numeric)
+            FROM (
+              SELECT
+                key,
+                SUM((value::numeric) * fe2.quantity / NULLIF(fe2.serving_size, 0)) as value
+              FROM food_entries fe2
+              CROSS JOIN LATERAL jsonb_each_text(fe2.custom_nutrients)
+              WHERE fe2.user_id = $1 AND fe2.entry_date = $2
+              GROUP BY key
+            ) custom_agg
+          ),
+          '{}'::jsonb
+        ) AS total_custom_nutrients
+       FROM food_entries fe
+       WHERE fe.user_id = $1 AND fe.entry_date = $2`,
       [userId, date]
     );
     return result.rows[0];
