@@ -367,9 +367,9 @@ const getAggregatedDataByDate = async (
 
   const results: AggregatedHealthRecord[] = [];
   const currentDate = new Date(startDate);
-  let daysQueried = 0;
-  let daysWithData = 0;
-  let errorCount = 0;
+  // let daysQueried = 0;
+  // let daysWithData = 0;
+  // let errorCount = 0;
   let isFirstDay = true;
 
   while (currentDate <= endDate) {
@@ -392,7 +392,7 @@ const getAggregatedDataByDate = async (
       dayEnd.setTime(now.getTime());
     }
 
-    daysQueried++;
+    // daysQueried++;
     try {
       // Use custom query function if provided, otherwise use default single-metric query
       const queryResult = config.queryFn
@@ -401,9 +401,9 @@ const getAggregatedDataByDate = async (
 
       if (queryResult === null) {
         // null indicates an error occurred in the custom query
-        errorCount++;
+        // errorCount++; // commented out to fix unused variable warning
       } else if (queryResult.hasData) {
-        daysWithData++;
+        // daysWithData++; // commented out to fix unused variable warning
         // Use dayStart's date for the date string (normalized to midnight for consistent keys)
         const dateForKey = new Date(dayStart);
         dateForKey.setHours(0, 0, 0, 0);
@@ -415,7 +415,7 @@ const getAggregatedDataByDate = async (
         });
       }
     } catch (error) {
-      errorCount++;
+      // errorCount++;
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[HealthKitService] Failed to get aggregated ${config.logLabel}: ${message}`, 'ERROR');
     }
