@@ -67,18 +67,18 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(meals);
-      expect(mealService.getMeals).toHaveBeenCalledWith('testUserId', false);
+      expect(mealService.getMeals).toHaveBeenCalledWith('testUserId', undefined, undefined);
     });
 
-    it('should return public meals when is_public is true', async () => {
+    it('should return public meals when filter is public', async () => {
       const meals = [{ id: uuidv4(), name: 'Public Meal', is_public: true }];
       mealService.getMeals.mockResolvedValue(meals);
 
-      const res = await request(app).get('/meals?is_public=true');
+      const res = await request(app).get('/meals?filter=public');
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(meals);
-      expect(mealService.getMeals).toHaveBeenCalledWith('testUserId', true);
+      expect(mealService.getMeals).toHaveBeenCalledWith('testUserId', 'public', undefined);
     });
   });
 
