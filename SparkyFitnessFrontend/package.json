@@ -20,11 +20,20 @@
       "<rootDir>/src/tests/setupTests.ts"
     ],
     "moduleNameMapper": {
-      "\\.(css|less|sass|scss)$": "identity-obj-proxy"
+      "\\.(css|less|sass|scss)$": "identity-obj-proxy",
+      "^@/(.*)$": "<rootDir>/src/$1"
     },
     "transform": {
       "^.+\\.tsx?$": ["ts-jest", {
-        "useESM": true
+        "useESM": true,
+        "isolatedModules": true,
+        "tsconfig": {
+          "jsx": "react-jsx",
+          "esModuleInterop": true,
+          "module": "ESNext",
+          "moduleResolution": "node",
+          "types": ["jest", "@testing-library/jest-dom", "node"]
+        }
       }]
     },
     "extensionsToTreatAsEsm": [".ts", ".tsx"]
