@@ -3,6 +3,7 @@ const express = require('express');
 const mealRoutes = require('../routes/mealRoutes');
 const mealService = require('../services/mealService');
 const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const errorHandler = require('../middleware/errorHandler');
 const { v4: uuidv4 } = require('uuid');
 
 // Mock middleware and service
@@ -24,6 +25,7 @@ jest.mock('../middleware/authMiddleware', () => ({
 const app = express();
 app.use(express.json());
 app.use('/meals', mealRoutes);
+app.use(errorHandler);
 
 describe('Meal Routes', () => {
   beforeEach(() => {
