@@ -111,6 +111,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@tailwindcss/typography": "^0.5.19",
+    "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.0.9",
