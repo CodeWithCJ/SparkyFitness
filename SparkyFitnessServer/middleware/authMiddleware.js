@@ -1,13 +1,13 @@
-const jwt = require('jsonwebtoken');
-const { log } = require('../config/logging');
-const { JWT_SECRET } = require('../security/encryption');
-const userRepository = require('../models/userRepository'); // Import userRepository
-const { getClient, getSystemClient } = require('../db/poolManager'); // Import getClient and getSystemClient
-const { canAccessUserData } = require('../utils/permissionUtils');
+const jwt = require("jsonwebtoken");
+const { log } = require("../config/logging");
+const { JWT_SECRET } = require("../security/encryption");
+const userRepository = require("../models/userRepository"); // Import userRepository
+const { getClient, getSystemClient } = require("../db/poolManager"); // Import getClient and getSystemClient
+const { canAccessUserData } = require("../utils/permissionUtils");
 
 const tryAuthenticateWithApiKey = async (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const apiKey = authHeader && authHeader.split(' ')[1]; // Bearer API_KEY
+  const authHeader = req.headers["authorization"];
+  const apiKey = authHeader && authHeader.split(" ")[1]; // Bearer API_KEY
 
   if (!apiKey) {
     return null; // No API key found
@@ -22,11 +22,11 @@ const tryAuthenticateWithApiKey = async (req, res, next) => {
     );
 
     if (result.rows.length > 0) {
-      log('debug', `Authentication: API Key valid. User ID: ${result.rows[0].user_id}`);
+      log("debug", `Authentication: API Key valid. User ID: ${result.rows[0].user_id}`);
       return result.rows[0].user_id;
     }
   } catch (error) {
-    log('error', 'Error during API Key authentication:', error);
+    log("error", "Error during API Key authentication:", error);
   } finally {
     if (client) {
       client.release();
@@ -37,17 +37,17 @@ const tryAuthenticateWithApiKey = async (req, res, next) => {
 
 const authenticate = async (req, res, next) => {
   // Allow public access to the /api/auth/settings endpoint
-  if (req.path === '/settings') {
+  if (req.path === "/settings") {
     return next();
   }
 
-  log('debug', `authenticate middleware: req.path = ${req.path}`);
+  log("debug", `authenticate middleware: req.path = ${req.path}`);
 
   // Allow MFA challenge related routes to be authenticated with a special MFA token
   // This token is short-lived and only grants access to MFA endpoints.
   // Handle MFA challenge routes with a special MFA token
-  if (req.originalUrl.startsWith('/auth/mfa/') && (req.originalUrl.includes('/request-email-code') || req.originalUrl.includes('/verify') || req.originalUrl.includes('/verify-email-code'))) {
-    log('debug', 'authenticate middleware: Path matches MFA challenge route.');
+  if (req.originalUrl.startsWith("/auth/mfa/") && (req.originalUrl.includes("/request-email-code") || req.originalUrl.includes("/verify") || req.originalUrl.includes("/verify-email-code"))) {
+    log("debug", "authenticate middleware: Path matches MFA challenge route.");
     // Access headers in a case-insensitive way to handle potential variations
     const mfaToken = req.headers['x-mfa-token'] || req.headers['X-MFA-Token'];
 
@@ -59,11 +59,11 @@ const authenticate = async (req, res, next) => {
           return next();
         }
       } catch (err) {
-        log('warn', `Authentication: Invalid or expired MFA challenge token. Error: ${err.message}`);
-        return res.status(401).json({ error: 'Authentication: Invalid or expired MFA token.' });
+        log("warn", `Authentication: Invalid or expired MFA challenge token. Error: ${err.message}`);
+        return res.status(401).json({ error: "Authentication: Invalid or expired MFA token." });
       }
     } else {
-      log('warn', 'authenticate middleware: X-MFA-Token is missing for MFA challenge route.');
+      log("warn", "authenticate middleware: X-MFA-Token is missing for MFA challenge route.");
     }
   }
 
@@ -87,15 +87,15 @@ const authenticate = async (req, res, next) => {
         ]);
 
         if (!hasReports && !hasDiary && !hasCheckin) {
-          log('warn', `Authentication: Context access revoked for User ${req.authenticatedUserId} -> ${req.activeUserId}`);
-          return res.status(403).json({ error: 'Access to the active user context has been revoked or is insufficient.' });
+          log("warn", `Authentication: Context access revoked for User ${req.authenticatedUserId} -> ${req.activeUserId}`);
+          return res.status(403).json({ error: "Access to the active user context has been revoked or is insufficient." });
         }
       }
 
-      log('debug', `Authentication: JWT token valid. User ID: ${req.userId} (Original: ${req.originalUserId})`);
+      log("debug", `Authentication: JWT token valid. User ID: ${req.userId} (Original: ${req.originalUserId})`);
       return next();
     } catch (err) {
-      log('warn', 'Authentication: JWT token invalid or expired.', err.message);
+      log("warn", "Authentication: JWT token invalid or expired.", err.message);
     }
   }
 
@@ -114,12 +114,12 @@ const authenticate = async (req, res, next) => {
       ]);
 
       if (!hasReports && !hasDiary && !hasCheckin) {
-        log('warn', `Authentication: Session context access revoked for User ${req.authenticatedUserId} -> ${req.activeUserId}`);
-        return res.status(403).json({ error: 'Access to the active user context has been revoked or is insufficient.' });
+        log("warn", `Authentication: Session context access revoked for User ${req.authenticatedUserId} -> ${req.activeUserId}`);
+        return res.status(403).json({ error: "Access to the active user context has been revoked or is insufficient." });
       }
     }
 
-    log('debug', `Authentication: Session valid. User ID: ${req.userId}`);
+    log("debug", `Authentication: Session valid. User ID: ${req.userId}`);
     return next();
   }
 
@@ -134,20 +134,20 @@ const authenticate = async (req, res, next) => {
   }
 
   // If no authentication method succeeded
-  log('warn', 'Authentication: No token, active session, or valid API key provided.');
-  return res.status(401).json({ error: 'Authentication: No token, active session, or valid API key provided.' });
+  log("warn", "Authentication: No token, active session, or valid API key provided.");
+  return res.status(401).json({ error: "Authentication: No token, active session, or valid API key provided." });
 };
 
 
 const isAdmin = async (req, res, next) => {
   if (!req.userId) {
     log(
-      'warn',
-      'Admin Check: No user ID found in request. User not authenticated.'
+      "warn",
+      "Admin Check: No user ID found in request. User not authenticated."
     );
     return res
       .status(401)
-      .json({ error: 'Admin Check: Authentication required.' });
+      .json({ error: "Admin Check: Authentication required." });
   }
 
   try {
@@ -155,40 +155,40 @@ const isAdmin = async (req, res, next) => {
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       const user = await userRepository.findUserById(req.userId);
       if (user && user.email === process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
-        log('debug', `Admin Check: Super-admin ${user.email} granted access.`);
+        log("debug", `Admin Check: Super-admin ${user.email} granted access.`);
         return next();
       }
     }
 
     const userRole = await userRepository.getUserRole(req.userId);
-    if (userRole === 'admin') {
+    if (userRole === "admin") {
       next();
     } else {
       log(
-        'warn',
+        "warn",
         `Admin Check: User ${req.userId} with role '${userRole}' attempted to access admin resource.`
       );
       return res
         .status(403)
         .json({
-          error: 'Admin Check: Access denied. Admin privileges required.',
+          error: "Admin Check: Access denied. Admin privileges required.",
         });
     }
   } catch (error) {
     log(
-      'error',
+      "error",
       `Admin Check: Error checking user role for user ${req.userId}: ${error.message}`
     );
     return res
       .status(500)
-      .json({ error: 'Admin Check: Internal server error during role check.' });
+      .json({ error: "Admin Check: Internal server error during role check." });
   }
 };
 
 const authorize = (requiredPermission) => {
   return async (req, res, next) => {
     if (!req.userId) {
-      return res.status(401).json({ error: 'Authentication required.' });
+      return res.status(401).json({ error: "Authentication required." });
     }
 
     // In a real application, you would fetch user permissions from the DB

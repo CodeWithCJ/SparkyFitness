@@ -17,16 +17,16 @@ function log(level, message, ...args) {
   if (LOG_LEVELS[level.toUpperCase()] >= currentLogLevel) {
     const timestamp = new Date().toISOString();
     switch (level.toUpperCase()) {
-      case 'DEBUG':
+      case "DEBUG":
         console.debug(`[${timestamp}] [DEBUG] ${message}`, ...args);
         break;
-      case 'INFO':
+      case "INFO":
         console.info(`[${timestamp}] [INFO] ${message}`, ...args);
         break;
-      case 'WARN':
+      case "WARN":
         console.warn(`[${timestamp}] [WARN] ${message}`, ...args);
         break;
-      case 'ERROR':
+      case "ERROR":
         console.error(`[${timestamp}] [ERROR] ${message}`, ...args);
         break;
       default:

@@ -1039,23 +1039,23 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Exercise ID is required and must be a valid UUID.' });
   }
   try {
-    const result = await exerciseService.deleteExercise(req.userId, id, forceDelete === 'true');
+    const result = await exerciseService.deleteExercise(req.userId, id, forceDelete === "true");
     // Based on the result status, return appropriate messages and status codes
-    if (result.status === 'deleted') {
+    if (result.status === "deleted") {
       res.status(200).json({ message: result.message });
-    } else if (result.status === 'force_deleted') {
+    } else if (result.status === "force_deleted") {
       res.status(200).json({ message: result.message });
-    } else if (result.status === 'hidden') {
+    } else if (result.status === "hidden") {
       res.status(200).json({ message: result.message });
     } else {
       // Fallback for unexpected status
-      res.status(500).json({ error: 'An unexpected error occurred during deletion.' });
+      res.status(500).json({ error: "An unexpected error occurred during deletion." });
     }
   } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
+    if (error.message.startsWith("Forbidden")) {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message === 'Exercise not found.' || error.message === 'Exercise not found or not authorized to delete.') {
+    if (error.message === "Exercise not found." || error.message === "Exercise not found or not authorized to delete.") {
       return res.status(404).json({ error: error.message });
     }
     next(error);
@@ -1085,7 +1085,7 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *         description: Server error.
  */
 router.get(
-  '/needs-review',
+  "/needs-review",
   authenticate,
   async (req, res, next) => {
     try {
@@ -1135,12 +1135,12 @@ router.get(
  *         description: Server error.
  */
 router.post(
-  '/update-snapshot',
+  "/update-snapshot",
   authenticate,
   async (req, res, next) => {
     const { exerciseId } = req.body;
     if (!exerciseId) {
-      return res.status(400).json({ error: 'exerciseId is required.' });
+      return res.status(400).json({ error: "exerciseId is required." });
     }
     try {
       const result = await exerciseService.updateExerciseEntriesSnapshot(req.userId, exerciseId);

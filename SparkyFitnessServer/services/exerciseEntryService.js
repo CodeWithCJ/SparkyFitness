@@ -9,7 +9,7 @@ const { parseISO, isValid, format } = require('date-fns');
 
 async function importExerciseEntriesFromCsv(authenticatedUserId, actingUserId, entries) {
   let createdCount = 0;
-  const updatedCount = 0;
+  let updatedCount = 0;
   let failedCount = 0;
   const failedEntries = [];
 
@@ -46,7 +46,7 @@ async function importExerciseEntriesFromCsv(authenticatedUserId, actingUserId, e
           instructions: entryGroup.instructions && entryGroup.instructions.length > 0 ? entryGroup.instructions : undefined,
           // Images are not typically imported via CSV for exercise definitions
         };
-        log('debug', 'Calling createExercise with newExerciseData:', newExerciseData);
+        log('debug', `Calling createExercise with newExerciseData:`, newExerciseData);
         exercise = await exerciseRepository.createExercise(newExerciseData);
       }
 
@@ -95,7 +95,7 @@ async function importExerciseEntriesFromCsv(authenticatedUserId, actingUserId, e
           workoutPreset = await workoutPresetRepository.createWorkoutPreset({
             user_id: authenticatedUserId,
             name: entryGroup.preset_name,
-            description: 'Auto-created from CSV import',
+            description: `Auto-created from CSV import`,
             is_public: false,
             exercises: [{
               exercise_id: exercise.id,

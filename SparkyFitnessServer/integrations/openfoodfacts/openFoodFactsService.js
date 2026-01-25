@@ -6,7 +6,7 @@ async function searchOpenFoodFacts(query) {
     const response = await fetch(searchUrl, { method: 'GET' });
     if (!response.ok) {
       const errorText = await response.text();
-      log('error', 'OpenFoodFacts Search API error:', errorText);
+      log('error', "OpenFoodFacts Search API error:", errorText);
       throw new Error(`OpenFoodFacts API error: ${errorText}`);
     }
     const data = await response.json();
@@ -23,7 +23,7 @@ async function searchOpenFoodFactsByBarcode(barcode) {
     const response = await fetch(searchUrl, { method: 'GET' });
     if (!response.ok) {
       const errorText = await response.text();
-      log('error', 'OpenFoodFacts Barcode Search API error:', errorText);
+      log('error', "OpenFoodFacts Barcode Search API error:", errorText);
       throw new Error(`OpenFoodFacts API error: ${errorText}`);
     }
     const data = await response.json();

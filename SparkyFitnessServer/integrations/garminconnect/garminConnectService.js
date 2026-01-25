@@ -46,10 +46,10 @@ async function handleGarminTokens(userId, tokensB64) {
         const parsedGarthDump = JSON.parse(Buffer.from(garthDump, 'base64').toString('utf8'));
         // The actual tokens are typically in the second element of the array returned by garth.dumps()
         const tokens = parsedGarthDump[1];
-        log('debug', 'handleGarminTokens: Parsed Garth Dump:', parsedGarthDump);
-        log('debug', 'handleGarminTokens: Extracted Tokens:', tokens);
+        log('debug', `handleGarminTokens: Parsed Garth Dump:`, parsedGarthDump);
+        log('debug', `handleGarminTokens: Extracted Tokens:`, tokens);
 
-        log('debug', 'handleGarminTokens: Received Garth dump (masked):', {
+        log('debug', `handleGarminTokens: Received Garth dump (masked):`, {
             garth_dump_masked: garthDump ? `${garthDump.substring(0, 30)}...` : 'N/A',
             access_token_masked: tokens.access_token ? `${tokens.access_token.substring(0, 8)}...` : 'N/A',
             refresh_token_masked: tokens.refresh_token ? `${tokens.refresh_token.substring(0, 8)}...` : 'N/A',
@@ -70,7 +70,7 @@ async function handleGarminTokens(userId, tokensB64) {
         log('debug', `handleGarminTokens: externalUserId determined as: ${externalUserId}`);
 
         // Check if a Garmin provider entry already exists for this user
-        const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
+        let provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
 
         const updateData = {
             provider_name: 'garmin',
@@ -87,7 +87,7 @@ async function handleGarminTokens(userId, tokensB64) {
             token_expires_at: tokens.refresh_token_expires_at ? new Date(tokens.refresh_token_expires_at * 1000) : null, // Convert Unix timestamp to Date object, handle null/undefined
             external_user_id: tokens.external_user_id || externalUserId // Use external_user_id from tokens if available
         };
-        log('debug', 'handleGarminTokens: Update data for provider (masked):', {
+        log('debug', `handleGarminTokens: Update data for provider (masked):`, {
             provider_name: updateData.provider_name,
             provider_type: updateData.provider_type,
             user_id: updateData.user_id,
@@ -114,7 +114,7 @@ async function handleGarminTokens(userId, tokensB64) {
         log('error', `Error handling Garmin tokens for user ${userId}:`, error.message);
         let errorMessage = `Failed to handle Garmin tokens: ${error.message}`;
         if (error.message.includes('Invalid key length')) {
-            errorMessage = 'Failed to handle Garmin tokens: Encryption key (SPARKY_FITNESS_API_ENCRYPTION_KEY) has an invalid length. Expected 64 hex characters or 44 Base64 characters. Update your environment variable and try again.';
+            errorMessage = `Failed to handle Garmin tokens: Encryption key (SPARKY_FITNESS_API_ENCRYPTION_KEY) has an invalid length. Expected 64 hex characters or 44 Base64 characters. Update your environment variable and try again.`;
         }
         throw new Error(errorMessage);
     }
@@ -125,7 +125,7 @@ async function syncGarminHealthAndWellness(userId, startDate, endDate, metricTyp
     try {
         const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
         if (!provider || !provider.garth_dump) {
-            throw new Error('Garmin tokens not found for this user.');
+            throw new Error("Garmin tokens not found for this user.");
         }
         const decryptedGarthDump = provider.garth_dump; // This is already decrypted by the repository
         log('debug', `syncGarminHealthAndWellness: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
@@ -157,7 +157,7 @@ async function fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, acti
     try {
         const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
         if (!provider || !provider.garth_dump) {
-            throw new Error('Garmin tokens not found for this user.');
+            throw new Error("Garmin tokens not found for this user.");
         }
         const decryptedGarthDump = provider.garth_dump;
         log('debug', `fetchGarminActivitiesAndWorkouts: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);

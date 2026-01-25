@@ -8,7 +8,7 @@ const withingsDataProcessor = require('./withingsDataProcessor'); // Import the 
 
 // Helper function to interpolate parameters into a SQL query for logging
 function interpolateQuery(sql, params) {
-    const i = 0;
+    let i = 0;
     return sql.replace(/\$([0-9]+)/g, (match, p1) => {
         const index = parseInt(p1, 10) - 1;
         if (params[index] === undefined) {
@@ -238,7 +238,7 @@ async function getValidAccessToken(userId) {
             throw new Error('Withings provider not configured for user.');
         }
 
-        const { encrypted_access_token, access_token_iv, access_token_tag, token_expires_at } = providerResult.rows[0];
+        let { encrypted_access_token, access_token_iv, access_token_tag, token_expires_at } = providerResult.rows[0];
         let accessToken = await decrypt(encrypted_access_token, access_token_iv, access_token_tag, ENCRYPTION_KEY);
 
         if (new Date() >= new Date(token_expires_at)) {
@@ -257,7 +257,7 @@ async function fetchAndProcessMeasuresData(userId, createdByUserId, startDate, e
     const client = await getClient(userId);
     try {
         const providerResult = await client.query(
-            'SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = \'withings\'',
+            `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
             [userId]
         );
         const withingsUserId = providerResult.rows[0].external_user_id;
@@ -288,7 +288,7 @@ async function fetchAndProcessHeartData(userId, createdByUserId, startDate, endD
     const client = await getClient(userId);
     try {
         const providerResult = await client.query(
-            'SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = \'withings\'',
+            `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
             [userId]
         );
         const withingsUserId = providerResult.rows[0].external_user_id;
@@ -319,7 +319,7 @@ async function fetchAndProcessSleepData(userId, createdByUserId, startDate, endD
     const client = await getClient(userId);
     try {
         const providerResult = await client.query(
-            'SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = \'withings\'',
+            `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
             [userId]
         );
         const withingsUserId = providerResult.rows[0].external_user_id;
@@ -350,7 +350,7 @@ async function fetchAndProcessWorkoutsData(userId, createdByUserId, startDateYMD
     const client = await getClient(userId);
     try {
         const providerResult = await client.query(
-            'SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = \'withings\'',
+            `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
             [userId]
         );
         const withingsUserId = providerResult.rows[0].external_user_id;

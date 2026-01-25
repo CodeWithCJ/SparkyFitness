@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const foodEntryService = require('../services/foodEntryService');
-const { authenticate } = require('../middleware/authMiddleware'); // Import authenticate function
-const { log } = require('../config/logging');
+const foodEntryService = require("../services/foodEntryService");
+const { authenticate } = require("../middleware/authMiddleware"); // Import authenticate function
+const { log } = require("../config/logging");
 
 // Middleware to protect routes
 router.use(authenticate); // Use the authenticate middleware function
@@ -30,7 +30,7 @@ router.use(authenticate); // Use the authenticate middleware function
  *       403:
  *         description: User does not have permission to create a food entry meal.
  */
-router.post('/', async (req, res, next) => {
+router.post("/", async (req, res, next) => {
   try {
     const {
       meal_template_id,
@@ -69,10 +69,10 @@ router.post('/', async (req, res, next) => {
         unit,
       } // mealData
     );
-    log('info', `User ${userId} created FoodEntryMeal ${newFoodEntryMeal.id}`);
+    log("info", `User ${userId} created FoodEntryMeal ${newFoodEntryMeal.id}`);
     res.status(201).json(newFoodEntryMeal);
   } catch (err) {
-    log('error', `Error creating FoodEntryMeal: ${err.message}`, err);
+    log("error", `Error creating FoodEntryMeal: ${err.message}`, err);
     next(err);
   }
 });
@@ -104,7 +104,7 @@ router.post('/', async (req, res, next) => {
  *       403:
  *         description: User does not have permission to access this resource.
  */
-router.get('/by-date/:date', async (req, res, next) => {
+router.get("/by-date/:date", async (req, res, next) => {
   try {
     const { date } = req.params;
     const { userId } = req.query; // Check query param
@@ -126,7 +126,7 @@ router.get('/by-date/:date', async (req, res, next) => {
     ); // Corrected arguments
     res.status(200).json(foodEntryMeals);
   } catch (err) {
-    log('error', `Error getting FoodEntryMeals by date: ${err.message}`, err);
+    log("error", `Error getting FoodEntryMeals by date: ${err.message}`, err);
     next(err);
   }
 });
@@ -158,7 +158,7 @@ router.get('/by-date/:date', async (req, res, next) => {
  *       404:
  *         description: FoodEntryMeal not found.
  */
-router.get('/:id', async (req, res, next) => {
+router.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.userId; // From authMiddleware
@@ -169,11 +169,11 @@ router.get('/:id', async (req, res, next) => {
     if (foodEntryMeal) {
       res.status(200).json(foodEntryMeal);
     } else {
-      log('warn', `FoodEntryMeal with ID ${id} not found for user ${userId}`);
-      res.status(404).json({ message: 'FoodEntryMeal not found' });
+      log("warn", `FoodEntryMeal with ID ${id} not found for user ${userId}`);
+      res.status(404).json({ message: "FoodEntryMeal not found" });
     }
   } catch (err) {
-    log('error', `Error getting FoodEntryMeal by ID: ${err.message}`, err);
+    log("error", `Error getting FoodEntryMeal by ID: ${err.message}`, err);
     next(err);
   }
 });
@@ -211,12 +211,12 @@ router.get('/:id', async (req, res, next) => {
  *       404:
  *         description: FoodEntryMeal not found.
  */
-router.put('/:id', async (req, res, next) => {
+router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, description, meal_type, meal_type_id, entry_date, foods, quantity, unit } =
       req.body;
-    log('info', `[DEBUG] PUT /food-entry-meals/${id} Body:`, {
+    log("info", `[DEBUG] PUT /food-entry-meals/${id} Body:`, {
       quantity,
       unit,
       name,
@@ -237,7 +237,7 @@ router.put('/:id', async (req, res, next) => {
 
     const existingMeal = await foodEntryService.getFoodEntryMealWithComponents(userId, id);
     if (!existingMeal) {
-      return res.status(404).json({ message: 'FoodEntryMeal not found or permission denied.' });
+      return res.status(404).json({ message: "FoodEntryMeal not found or permission denied." });
     }
 
     const targetUserId = existingMeal.user_id;
@@ -254,10 +254,10 @@ router.put('/:id', async (req, res, next) => {
       id, // foodEntryMealId
       { name, description, meal_type, meal_type_id, entry_date, foods, quantity, unit } // updatedMealData
     );
-    log('info', `User ${userId} updated FoodEntryMeal ${id}`);
+    log("info", `User ${userId} updated FoodEntryMeal ${id}`);
     res.status(200).json(updatedFoodEntryMeal);
   } catch (err) {
-    log('error', `Error updating FoodEntryMeal ${id}: ${err.message}`, err);
+    log("error", `Error updating FoodEntryMeal ${id}: ${err.message}`, err);
     next(err);
   }
 });
@@ -285,15 +285,15 @@ router.put('/:id', async (req, res, next) => {
  *       404:
  *         description: FoodEntryMeal not found.
  */
-router.delete('/:id', async (req, res, next) => {
+router.delete("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.userId; // From authMiddleware
     await foodEntryService.deleteFoodEntryMeal(userId, id);
-    log('info', `User ${userId} deleted FoodEntryMeal ${id}`);
+    log("info", `User ${userId} deleted FoodEntryMeal ${id}`);
     res.status(204).send(); // No content
   } catch (err) {
-    log('error', `Error deleting FoodEntryMeal ${id}: ${err.message}`, err);
+    log("error", `Error deleting FoodEntryMeal ${id}: ${err.message}`, err);
     next(err);
   }
 });

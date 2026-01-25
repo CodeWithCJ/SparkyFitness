@@ -1,5 +1,5 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
+const { getClient } = require("../db/poolManager");
+const { log } = require("../config/logging");
 
 async function getNutritionData(
   userId,
@@ -12,20 +12,20 @@ async function getNutritionData(
     // Generate dynamic SQL parts for custom nutrients
     const customNutrientsSelectOuter = customNutrients
       .map((cn) => `SUM("${cn.name}") AS "${cn.name}"`)
-      .join(',\n         ');
+      .join(",\n         ");
     const customNutrientsSelectInner1 = customNutrients
       .map(
         (cn) =>
           `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`
       )
-      .join(',\n           ');
+      .join(",\n           ");
     // Note: fe_meal.quantity is already scaled, so do NOT multiply by fem.quantity
     const customNutrientsSelectInner2 = customNutrients
       .map(
         (cn) =>
           `SUM(COALESCE((fe_meal.custom_nutrients->>'${cn.name}')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`
       )
-      .join(',\n           ');
+      .join(",\n           ");
 
     const result = await client.query(
       `SELECT
@@ -48,8 +48,8 @@ async function getNutritionData(
          SUM(calcium) AS calcium,
          SUM(iron) AS iron${
            customNutrientsSelectOuter
-             ? ',\n         ' + customNutrientsSelectOuter
-             : ''
+             ? ",\n         " + customNutrientsSelectOuter
+             : ""
          }
        FROM (
          SELECT
@@ -72,8 +72,8 @@ async function getNutritionData(
            (COALESCE(fe.calcium, 0) * fe.quantity / fe.serving_size) AS calcium,
            (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron${
              customNutrientsSelectInner1
-               ? ',\n           ' + customNutrientsSelectInner1
-               : ''
+               ? ",\n           " + customNutrientsSelectInner1
+               : ""
            }
          FROM food_entries fe
          WHERE fe.user_id = $1 AND fe.entry_date BETWEEN $2 AND $3 AND fe.food_entry_meal_id IS NULL
@@ -100,8 +100,8 @@ async function getNutritionData(
            SUM(COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) AS calcium,
            SUM(COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) AS iron${
              customNutrientsSelectInner2
-               ? ',\n           ' + customNutrientsSelectInner2
-               : ''
+               ? ",\n           " + customNutrientsSelectInner2
+               : ""
            }
          FROM food_entry_meals fem
          JOIN food_entries fe_meal ON fem.id = fe_meal.food_entry_meal_id
@@ -132,14 +132,14 @@ async function getTabularFoodData(
         (cn) =>
           `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`
       )
-      .join(',\n          ');
+      .join(",\n          ");
     const customNutrientsSelectOuter = customNutrients
       .map((cn) => `cfe."${cn.name}"`)
-      .join(',\n        ');
+      .join(",\n        ");
     // Note: cfe_meal values already include scaled quantity, so do NOT multiply by fem.quantity
     const customNutrientsSelectMealAgg = customNutrients
       .map((cn) => `SUM(cfe_meal."${cn.name}") AS "${cn.name}"`)
-      .join(',\n        ');
+      .join(",\n        ");
 
     const result = await client.query(
       `WITH CalculatedFoodEntries AS (
@@ -177,8 +177,8 @@ async function getTabularFoodData(
           fe.serving_unit,
           fe.food_entry_meal_id${
             customNutrientsSelectCTE
-              ? ',\n          ' + customNutrientsSelectCTE
-              : ''
+              ? ",\n          " + customNutrientsSelectCTE
+              : ""
           }
         FROM food_entries fe
         LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id 
@@ -217,8 +217,8 @@ async function getTabularFoodData(
         cfe.serving_unit,
         cfe.food_entry_meal_id${
           customNutrientsSelectOuter
-            ? ',\n        ' + customNutrientsSelectOuter
-            : ''
+            ? ",\n        " + customNutrientsSelectOuter
+            : ""
         }
       FROM CalculatedFoodEntries cfe
       WHERE cfe.food_entry_meal_id IS NULL -- Standalone food entries
@@ -304,8 +304,8 @@ async function getTabularFoodData(
         'serving' AS serving_unit,
         fem.id AS food_entry_meal_id${
           customNutrientsSelectMealAgg
-            ? ',\n        ' + customNutrientsSelectMealAgg
-            : ''
+            ? ",\n        " + customNutrientsSelectMealAgg
+            : ""
         }
       FROM food_entry_meals fem
       JOIN CalculatedFoodEntries cfe_meal ON fem.id = cfe_meal.food_entry_meal_id
@@ -333,7 +333,7 @@ async function getMeasurementData(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT TO_CHAR(entry_date, \'YYYY-MM-DD\') AS entry_date, weight, neck, waist, hips, steps FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date',
+      `SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, weight, neck, waist, hips, steps FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date`,
       [userId, startDate, endDate]
     );
     return result.rows;
@@ -351,7 +351,7 @@ async function getCustomMeasurementsData(
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT category_id, TO_CHAR(entry_date, \'YYYY-MM-DD\') AS entry_date, entry_hour AS hour, value, notes, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4 ORDER BY entry_date, entry_timestamp',
+      `SELECT category_id, TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, entry_hour AS hour, value, notes, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4 ORDER BY entry_date, entry_timestamp`,
       [userId, categoryId, startDate, endDate]
     );
     return result.rows;
@@ -373,20 +373,20 @@ async function getMiniNutritionTrends(
     // For custom nutrients, I will use their name directly to match the service mapping.
     const customNutrientsSelectOuter = customNutrients
       .map((cn) => `SUM("${cn.name}") AS "${cn.name}"`)
-      .join(',\n         ');
+      .join(",\n         ");
     const customNutrientsSelectInner1 = customNutrients
       .map(
         (cn) =>
           `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`
       )
-      .join(',\n           ');
+      .join(",\n           ");
     // Note: fe_meal.quantity is already scaled, so do NOT multiply by fem.quantity
     const customNutrientsSelectInner2 = customNutrients
       .map(
         (cn) =>
           `SUM(COALESCE((fe_meal.custom_nutrients->>'${cn.name}')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`
       )
-      .join(',\n           ');
+      .join(",\n           ");
 
     const result = await client.query(
       `SELECT
@@ -409,8 +409,8 @@ async function getMiniNutritionTrends(
          SUM(calcium) AS total_calcium,
          SUM(iron) AS total_iron${
            customNutrientsSelectOuter
-             ? ',\n         ' + customNutrientsSelectOuter
-             : ''
+             ? ",\n         " + customNutrientsSelectOuter
+             : ""
          }
        FROM (
          SELECT
@@ -433,8 +433,8 @@ async function getMiniNutritionTrends(
            (COALESCE(fe.calcium, 0) * fe.quantity / fe.serving_size) AS calcium,
            (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron${
              customNutrientsSelectInner1
-               ? ',\n           ' + customNutrientsSelectInner1
-               : ''
+               ? ",\n           " + customNutrientsSelectInner1
+               : ""
            }
          FROM food_entries fe
          WHERE fe.user_id = $1 AND fe.entry_date BETWEEN $2 AND $3 AND fe.food_entry_meal_id IS NULL
@@ -461,8 +461,8 @@ async function getMiniNutritionTrends(
            SUM(COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) AS calcium,
            SUM(COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) AS iron${
              customNutrientsSelectInner2
-               ? ',\n           ' + customNutrientsSelectInner2
-               : ''
+               ? ",\n           " + customNutrientsSelectInner2
+               : ""
            }
          FROM food_entry_meals fem
          JOIN food_entries fe_meal ON fem.id = fe_meal.food_entry_meal_id
@@ -541,7 +541,7 @@ async function getExerciseEntries(
       paramIndex++;
     }
 
-    query += ' ORDER BY ee.entry_date DESC, ee.created_at DESC';
+    query += ` ORDER BY ee.entry_date DESC, ee.created_at DESC`;
 
     const result = await client.query(query, params);
     return result.rows;
@@ -553,7 +553,7 @@ async function getExerciseEntries(
 async function getExerciseNames(userId, muscle, equipment) {
   const client = await getClient(userId); // User-specific operation
   try {
-    let query = 'SELECT DISTINCT exercise_id as id, exercise_name as name FROM exercise_entries WHERE user_id = $1';
+    let query = `SELECT DISTINCT exercise_id as id, exercise_name as name FROM exercise_entries WHERE user_id = $1`;
     const params = [userId];
     let paramIndex = 2;
 
@@ -567,7 +567,7 @@ async function getExerciseNames(userId, muscle, equipment) {
       params.push(`%${equipment}%`);
       paramIndex++;
     }
-    query += ' ORDER BY name';
+    query += ` ORDER BY name`;
 
     const result = await client.query(query, params);
     return result.rows;

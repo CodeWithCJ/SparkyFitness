@@ -36,7 +36,7 @@ async function createWorkoutPlanTemplate(planData) {
                         newAssignmentId, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
                     ]);
                     const setsQuery = format(
-                        'INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
+                        `INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
                         setsValues
                     );
                     await client.query(setsQuery);
@@ -203,7 +203,7 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
             // Delete any assignments that are no longer in the plan
             const assignmentsToDelete = existingAssignmentIds.filter(id => !newAssignmentIds.includes(id));
             if (assignmentsToDelete.length > 0) {
-                await client.query('DELETE FROM workout_plan_template_assignments WHERE id = ANY($1::int[])', [assignmentsToDelete]);
+                await client.query(`DELETE FROM workout_plan_template_assignments WHERE id = ANY($1::int[])`, [assignmentsToDelete]);
             }
 
             // Now, update or insert the assignments
@@ -211,7 +211,7 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
                 if (a.id) {
                     // This is an existing assignment, so we update it
                     await client.query(
-                        'UPDATE workout_plan_template_assignments SET day_of_week = $1, workout_preset_id = $2, exercise_id = $3 WHERE id = $4',
+                        `UPDATE workout_plan_template_assignments SET day_of_week = $1, workout_preset_id = $2, exercise_id = $3 WHERE id = $4`,
                         [a.day_of_week, a.workout_preset_id, a.exercise_id, a.id]
                     );
                     // And update the sets
@@ -221,7 +221,7 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
                             a.id, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
                         ]);
                         const setsQuery = format(
-                            'INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
+                            `INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
                             setsValues
                         );
                         await client.query(setsQuery);
@@ -239,7 +239,7 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
                             newAssignmentId, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
                         ]);
                         const setsQuery = format(
-                            'INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
+                            `INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
                             setsValues
                         );
                         await client.query(setsQuery);
@@ -295,7 +295,7 @@ async function deleteWorkoutPlanTemplate(templateId, userId) {
     const client = await getClient(userId); // User-specific operation
     try {
         const result = await client.query(
-            'DELETE FROM workout_plan_templates WHERE id = $1 AND user_id = $2 RETURNING *',
+            `DELETE FROM workout_plan_templates WHERE id = $1 AND user_id = $2 RETURNING *`,
             [templateId, userId]
         );
         return result.rows[0];
@@ -311,7 +311,7 @@ async function getWorkoutPlanTemplateOwnerId(templateId, userId) {
     const client = await getClient(userId); // User-specific operation (RLS will handle access)
     try {
         const result = await client.query(
-            'SELECT user_id FROM workout_plan_templates WHERE id = $1',
+            `SELECT user_id FROM workout_plan_templates WHERE id = $1`,
             [templateId]
         );
         return result.rows[0]?.user_id;

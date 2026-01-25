@@ -13,7 +13,7 @@ async function searchUsdaFoods(query, apiKey) {
     log('debug', 'USDA API Search Response Status:', response.status);
     if (!response.ok) {
       const errorText = await response.text();
-      log('error', 'USDA Food Search API error:', errorText);
+      log('error', "USDA Food Search API error:", errorText);
       throw new Error(`USDA API error: ${errorText}`);
     }
     const data = await response.json();
@@ -32,7 +32,7 @@ async function getUsdaFoodDetails(fdcId, apiKey) {
     log('debug', 'USDA API Details Response Status:', response.status);
     if (!response.ok) {
       const errorText = await response.text();
-      log('error', 'USDA Food Details API error:', errorText);
+      log('error', "USDA Food Details API error:", errorText);
       throw new Error(`USDA API error: ${errorText}`);
     }
     const data = await response.json();

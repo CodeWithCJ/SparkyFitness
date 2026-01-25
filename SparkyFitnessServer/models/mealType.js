@@ -1,5 +1,5 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
+const { getClient } = require("../db/poolManager");
+const { log } = require("../config/logging");
 
 /**
  * Creates a new custom meal type for a specific user.
@@ -8,7 +8,7 @@ const { log } = require('../config/logging');
  */
 async function createMealType(data, userId) {
   log(
-    'info',
+    "info",
     `createMealType in mealType.js: data: ${JSON.stringify(
       data
     )}, userId: ${userId}`
@@ -26,7 +26,7 @@ async function createMealType(data, userId) {
     );
     return result.rows[0];
   } catch (error) {
-    log('error', 'Error creating meal type:', error);
+    log("error", "Error creating meal type:", error);
     throw error;
   } finally {
     client.release();
@@ -39,7 +39,7 @@ async function createMealType(data, userId) {
  * Ordered by sort_order.
  */
 async function getAllMealTypes(userId) {
-  log('info', `getAllMealTypes in mealType.js for userId: ${userId}`);
+  log("info", `getAllMealTypes in mealType.js for userId: ${userId}`);
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -81,7 +81,7 @@ async function getMealTypeById(mealTypeId, userId) {
  */
 async function updateMealType(mealTypeId, data, userId) {
   log(
-    'info',
+    "info",
     `updateMealType in mealType.js: id: ${mealTypeId}, data: ${JSON.stringify(
       data
     )}`
@@ -101,18 +101,18 @@ async function updateMealType(mealTypeId, data, userId) {
     if (result.rows.length === 0) {
       // Check if it exists as a system default
       const checkSystem = await client.query(
-        'SELECT id FROM meal_types WHERE id = $1 AND user_id IS NULL',
+        "SELECT id FROM meal_types WHERE id = $1 AND user_id IS NULL",
         [mealTypeId]
       );
       if (checkSystem.rows.length > 0) {
-        throw new Error('Cannot edit system default meal types.');
+        throw new Error("Cannot edit system default meal types.");
       }
-      throw new Error('Meal type not found or access denied.');
+      throw new Error("Meal type not found or access denied.");
     }
 
     return result.rows[0];
   } catch (error) {
-    log('error', 'Error updating meal type:', error);
+    log("error", "Error updating meal type:", error);
     throw error;
   } finally {
     client.release();
@@ -125,7 +125,7 @@ async function updateMealType(mealTypeId, data, userId) {
  * Prevents deleting system defaults.
  */
 async function deleteMealType(mealTypeId, userId) {
-  log('info', `deleteMealType in mealType.js: id: ${mealTypeId}`);
+  log("info", `deleteMealType in mealType.js: id: ${mealTypeId}`);
   const client = await getClient(userId);
   try {
     // Optional: Check if used in food_entries before deleting?
@@ -141,11 +141,11 @@ async function deleteMealType(mealTypeId, userId) {
     if (result.rowCount === 0) {
       // Check if it was a system default
       const checkSystem = await client.query(
-        'SELECT id FROM meal_types WHERE id = $1 AND user_id IS NULL',
+        "SELECT id FROM meal_types WHERE id = $1 AND user_id IS NULL",
         [mealTypeId]
       );
       if (checkSystem.rows.length > 0) {
-        throw new Error('Cannot delete system default meal types.');
+        throw new Error("Cannot delete system default meal types.");
       }
       return false; // Not found or not owned
     }
@@ -153,13 +153,13 @@ async function deleteMealType(mealTypeId, userId) {
     return true;
   } catch (error) {
     // specialized error message if DB constraint prevents deletion
-    if (error.code === '23503') {
+    if (error.code === "23503") {
       // foreign_key_violation
       throw new Error(
-        'Cannot delete this meal type because it contains food entries.'
+        "Cannot delete this meal type because it contains food entries."
       );
     }
-    log('error', 'Error deleting meal type:', error);
+    log("error", "Error deleting meal type:", error);
     throw error;
   } finally {
     client.release();

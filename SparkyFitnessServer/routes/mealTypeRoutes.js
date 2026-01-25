@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 const {
   createMealType,
@@ -6,9 +6,9 @@ const {
   getMealTypeById,
   updateMealType,
   deleteMealType,
-} = require('../models/mealType');
-const { log } = require('../config/logging');
-const { authenticate } = require('../middleware/authMiddleware');
+} = require("../models/mealType");
+const { log } = require("../config/logging");
+const { authenticate } = require("../middleware/authMiddleware");
 
 router.use(authenticate);
 
@@ -42,14 +42,14 @@ router.use(authenticate);
  *       500:
  *         description: Failed to fetch meal types.
  */
-router.get('/', async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const userId = req.userId;
     const mealTypes = await getAllMealTypes(userId);
     res.status(200).json(mealTypes);
   } catch (error) {
-    log('error', 'Route GET /meal-types error:', error);
-    res.status(500).json({ error: 'Failed to fetch meal types' });
+    log("error", "Route GET /meal-types error:", error);
+    res.status(500).json({ error: "Failed to fetch meal types" });
   }
 });
 
@@ -84,7 +84,7 @@ router.get('/', async (req, res) => {
  *       500:
  *         description: Failed to fetch meal type.
  */
-router.get('/:id', async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const userId = req.userId;
     const { id } = req.params;
@@ -92,13 +92,13 @@ router.get('/:id', async (req, res) => {
     const mealType = await getMealTypeById(id, userId);
 
     if (!mealType) {
-      return res.status(404).json({ error: 'Meal type not found' });
+      return res.status(404).json({ error: "Meal type not found" });
     }
 
     res.status(200).json(mealType);
   } catch (error) {
-    log('error', `Route GET /meal-types/${req.params.id} error:`, error);
-    res.status(500).json({ error: 'Failed to fetch meal type' });
+    log("error", `Route GET /meal-types/${req.params.id} error:`, error);
+    res.status(500).json({ error: "Failed to fetch meal type" });
   }
 });
 
@@ -143,13 +143,13 @@ router.get('/:id', async (req, res) => {
  *       500:
  *         description: Failed to create meal type.
  */
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const userId = req.userId;
     const { name, sort_order } = req.body;
 
     if (!name) {
-      return res.status(400).json({ error: 'Name is required' });
+      return res.status(400).json({ error: "Name is required" });
     }
 
     const newMealType = await createMealType(
@@ -158,13 +158,13 @@ router.post('/', async (req, res) => {
     );
     res.status(201).json(newMealType);
   } catch (error) {
-    log('error', 'Route POST /meal-types error:', error);
+    log("error", "Route POST /meal-types error:", error);
 
-    if (error.message.includes('already exists')) {
+    if (error.message.includes("already exists")) {
       return res.status(409).json({ error: error.message });
     }
 
-    res.status(500).json({ error: 'Failed to create meal type' });
+    res.status(500).json({ error: "Failed to create meal type" });
   }
 });
 
@@ -215,7 +215,7 @@ router.post('/', async (req, res) => {
  *       500:
  *         description: Failed to update meal type.
  */
-router.put('/:id', async (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
     const userId = req.userId;
     const { id } = req.params;
@@ -229,16 +229,16 @@ router.put('/:id', async (req, res) => {
 
     res.status(200).json(updatedMealType);
   } catch (error) {
-    log('error', `Route PUT /meal-types/${req.params.id} error:`, error);
+    log("error", `Route PUT /meal-types/${req.params.id} error:`, error);
 
-    if (error.message.includes('system default')) {
+    if (error.message.includes("system default")) {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message.includes('not found')) {
+    if (error.message.includes("not found")) {
       return res.status(404).json({ error: error.message });
     }
 
-    res.status(500).json({ error: 'Failed to update meal type' });
+    res.status(500).json({ error: "Failed to update meal type" });
   }
 });
 
@@ -273,7 +273,7 @@ router.put('/:id', async (req, res) => {
  *       500:
  *         description: Failed to delete meal type.
  */
-router.delete('/:id', async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
     const userId = req.userId;
     const { id } = req.params;
@@ -283,21 +283,21 @@ router.delete('/:id', async (req, res) => {
     if (!deleted) {
       return res
         .status(404)
-        .json({ error: 'Meal type not found or cannot be deleted' });
+        .json({ error: "Meal type not found or cannot be deleted" });
     }
 
-    res.status(200).json({ message: 'Meal type deleted successfully' });
+    res.status(200).json({ message: "Meal type deleted successfully" });
   } catch (error) {
-    log('error', `Route DELETE /meal-types/${req.params.id} error:`, error);
+    log("error", `Route DELETE /meal-types/${req.params.id} error:`, error);
 
-    if (error.message.includes('system default')) {
+    if (error.message.includes("system default")) {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message.includes('contains food entries')) {
+    if (error.message.includes("contains food entries")) {
       return res.status(409).json({ error: error.message });
     }
 
-    res.status(500).json({ error: 'Failed to delete meal type' });
+    res.status(500).json({ error: "Failed to delete meal type" });
   }
 });
 

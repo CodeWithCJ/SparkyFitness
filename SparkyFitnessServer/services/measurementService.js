@@ -74,7 +74,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
     const isComplexType = complexTypes.includes(type);
 
     if ((!isComplexType && (value === undefined || value === null)) || !type || (!date && !timestamp)) { // Check for undefined/null value only for non-complex types
-      errors.push({ error: 'Missing required fields: value (for scalar types), type, or date/timestamp in one of the entries', entry: dataEntry });
+      errors.push({ error: "Missing required fields: value (for scalar types), type, or date/timestamp in one of the entries", entry: dataEntry });
       continue;
     }
 
@@ -108,7 +108,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
         entryHour = 0; // Default to hour 0
       }
     } catch (e) {
-      log('error', 'Date/Timestamp parsing error:', e);
+      log('error', "Date/Timestamp parsing error:", e);
       errors.push({ error: `Invalid date/timestamp format for entry: ${JSON.stringify(dataEntry)}. Error: ${e.message}`, entry: dataEntry });
       continue;
     }
@@ -123,7 +123,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
         case 'steps':
           const stepValue = parseInt(value, 10);
           if (isNaN(stepValue) || !Number.isInteger(stepValue)) {
-            errors.push({ error: 'Invalid value for step. Must be an integer.', entry: dataEntry });
+            errors.push({ error: "Invalid value for step. Must be an integer.", entry: dataEntry });
             break;
           }
           result = await measurementRepository.upsertStepData(userId, actingUserId, stepValue, parsedDate);
@@ -132,7 +132,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
         case 'water':
           const waterValue = parseInt(value, 10);
           if (isNaN(waterValue) || !Number.isInteger(waterValue)) {
-            errors.push({ error: 'Invalid value for water. Must be an integer.', entry: dataEntry });
+            errors.push({ error: "Invalid value for water. Must be an integer.", entry: dataEntry });
             break;
           }
           result = await measurementRepository.upsertWaterData(userId, actingUserId, waterValue, parsedDate);
@@ -141,7 +141,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
         case 'Active Calories':
           const activeCaloriesValue = parseFloat(value);
           if (isNaN(activeCaloriesValue) || activeCaloriesValue < 0) {
-            errors.push({ error: 'Invalid value for active_calories. Must be a non-negative number.', entry: dataEntry });
+            errors.push({ error: "Invalid value for active_calories. Must be a non-negative number.", entry: dataEntry });
             break;
           }
           const exerciseSource = source || 'Health Data';
@@ -189,7 +189,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           try {
             const stressCategory = await getOrCreateCustomCategory(userId, actingUserId, 'Stress', 'numeric', 'Daily');
             if (!stressCategory || !stressCategory.id) {
-              errors.push({ error: 'Failed to get or create custom category for Stress', entry: dataEntry });
+              errors.push({ error: `Failed to get or create custom category for Stress`, entry: dataEntry });
               break;
             }
             // Check if 'value' is present, otherwise checks strictly for Stress it might be just presence?
@@ -313,13 +313,13 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
 
   if (errors.length > 0) {
     throw new Error(JSON.stringify({
-      message: 'Some health data entries could not be processed.',
+      message: "Some health data entries could not be processed.",
       processed: processedResults,
       errors: errors
     }));
   } else {
     return {
-      message: 'All health data successfully processed.',
+      message: "All health data successfully processed.",
       processed: processedResults
     };
   }
@@ -334,7 +334,7 @@ async function processMobileHealthData(mobileHealthDataArray, userId, actingUser
     log('debug', `[processMobileHealthData] Processing dataEntry with type: ${type}`);
 
     if (!type || !source || !timestamp) {
-      errors.push({ error: 'Missing required fields: type, source, or timestamp in one of the entries', entry: dataEntry });
+      errors.push({ error: "Missing required fields: type, source, or timestamp in one of the entries", entry: dataEntry });
       continue;
     }
 
@@ -351,7 +351,7 @@ async function processMobileHealthData(mobileHealthDataArray, userId, actingUser
       entryTimestamp = dateObj.toISOString();
       entryHour = dateObj.getHours();
     } catch (e) {
-      log('error', 'Timestamp parsing error:', e);
+      log('error', "Timestamp parsing error:", e);
       errors.push({ error: `Invalid timestamp format for entry: ${JSON.stringify(dataEntry)}. Error: ${e.message}`, entry: dataEntry });
       continue;
     }
@@ -363,7 +363,7 @@ async function processMobileHealthData(mobileHealthDataArray, userId, actingUser
           // Map incoming stress data to the existing custom measurement system
           const stressCategory = await getOrCreateCustomCategory(userId, actingUserId, 'Stress', 'numeric', 'Daily');
           if (!stressCategory || !stressCategory.id) {
-            errors.push({ error: 'Failed to get or create custom category for Stress', entry: dataEntry });
+            errors.push({ error: `Failed to get or create custom category for Stress`, entry: dataEntry });
             break;
           }
           result = await measurementRepository.upsertCustomMeasurement(
@@ -447,13 +447,13 @@ async function processMobileHealthData(mobileHealthDataArray, userId, actingUser
 
   if (errors.length > 0) {
     throw new Error(JSON.stringify({
-      message: 'Some mobile health data entries could not be processed.',
+      message: "Some mobile health data entries could not be processed.",
       processed: processedResults,
       errors: errors
     }));
   } else {
     return {
-      message: 'All mobile health data successfully processed.',
+      message: "All mobile health data successfully processed.",
       processed: processedResults
     };
   }
@@ -463,7 +463,7 @@ async function processMobileHealthData(mobileHealthDataArray, userId, actingUser
 async function getOrCreateCustomCategory(userId, actingUserId, categoryName, dataType = 'numeric', measurementType = 'N/A') {
   // Try to get existing category
   const existingCategories = await measurementRepository.getCustomCategories(userId);
-  const category = existingCategories.find(cat => cat.name === categoryName);
+  let category = existingCategories.find(cat => cat.name === categoryName);
 
   if (category) {
     return category;
@@ -776,8 +776,8 @@ async function calculateSleepScore(sleepEntryData, stageEvents, age = null, gend
   let optimalMaxDuration = 9 * 3600; // Default 9 hours
   let optimalDeepMin = 15; // Default 15%
   let optimalDeepMax = 25; // Default 25%
-  const optimalRemMin = 20; // Default 20%
-  const optimalRemMax = 25; // Default 25%
+  let optimalRemMin = 20; // Default 20%
+  let optimalRemMax = 25; // Default 25%
 
   // Adjust optimal sleep duration based on age
   if (age !== null) {
@@ -949,7 +949,7 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
       awake_sleep_seconds: Math.round(Number(awake_sleep_seconds)) || 0,
       ...rest // Include any other properties
     };
-    log('debug', '[processSleepEntry] entryToUpsert before upsert:', entryToUpsert);
+    log('debug', `[processSleepEntry] entryToUpsert before upsert:`, entryToUpsert);
 
     const newSleepEntry = await sleepRepository.upsertSleepEntry(userId, actingUserId, entryToUpsert);
 
@@ -1014,7 +1014,7 @@ async function updateSleepEntry(userId, entryId, updateData) {
       time_asleep_in_seconds: timeAsleepInSeconds, // Populate time_asleep_in_seconds
       sleep_score: sleepScore, // Always use the calculated sleepScore
     };
-    log('debug', '[updateSleepEntry] updatedEntryDetails before update:', updatedEntryDetails);
+    log('debug', `[updateSleepEntry] updatedEntryDetails before update:`, updatedEntryDetails);
 
     // Update the main sleep entry details
     const updatedEntry = await sleepRepository.updateSleepEntry(userId, entryId, updatedEntryDetails);

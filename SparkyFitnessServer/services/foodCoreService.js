@@ -1,6 +1,6 @@
-const foodRepository = require('../models/foodRepository');
-const preferenceService = require('./preferenceService');
-const { log } = require('../config/logging');
+const foodRepository = require("../models/foodRepository");
+const preferenceService = require("./preferenceService");
+const { log } = require("../config/logging");
 
 async function searchFoods(
   authenticatedUserId,
@@ -50,7 +50,7 @@ async function searchFoods(
     }
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error searching foods for user ${authenticatedUserId} with name "${name}" in foodService:`,
       error
     );
@@ -70,7 +70,7 @@ async function createFood(authenticatedUserId, foodData) {
     return newFood;
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error creating food for user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -89,14 +89,14 @@ async function getFoodById(authenticatedUserId, foodId) {
         // Assuming public foods are not custom
         return publicFood;
       }
-      throw new Error('Food not found.');
+      throw new Error("Food not found.");
     }
 
     const food = await foodRepository.getFoodById(foodId, authenticatedUserId);
     return food;
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error fetching food ${foodId} by user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -108,11 +108,11 @@ async function updateFood(authenticatedUserId, foodId, foodData) {
   try {
     const foodOwnerId = await foodRepository.getFoodOwnerId(foodId, authenticatedUserId);
     if (!foodOwnerId) {
-      throw new Error('Food not found.');
+      throw new Error("Food not found.");
     }
     if (foodOwnerId !== authenticatedUserId) {
       throw new Error(
-        'Forbidden: You do not have permission to update this food.'
+        "Forbidden: You do not have permission to update this food."
       );
     }
 
@@ -123,7 +123,7 @@ async function updateFood(authenticatedUserId, foodId, foodData) {
       foodData
     );
     if (!updatedFood) {
-      throw new Error('Food not found or not authorized to update.');
+      throw new Error("Food not found or not authorized to update.");
     }
 
     // The food_entries table now holds the snapshot of nutrient data.
@@ -134,7 +134,7 @@ async function updateFood(authenticatedUserId, foodId, foodData) {
     return updatedFood;
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error updating food ${foodId} by user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -143,22 +143,22 @@ async function updateFood(authenticatedUserId, foodId, foodData) {
 }
 
 async function deleteFood(authenticatedUserId, foodId, forceDelete = false) {
-  log('info', `deleteFood: Attempting to delete food ${foodId} by user ${authenticatedUserId}. Force delete: ${forceDelete}`);
+  log("info", `deleteFood: Attempting to delete food ${foodId} by user ${authenticatedUserId}. Force delete: ${forceDelete}`);
   try {
     const foodOwnerId = await foodRepository.getFoodOwnerId(foodId, authenticatedUserId);
     if (!foodOwnerId) {
-      log('warn', `deleteFood: Food ${foodId} not found for user ${authenticatedUserId}.`);
-      throw new Error('Food not found.');
+      log("warn", `deleteFood: Food ${foodId} not found for user ${authenticatedUserId}.`);
+      throw new Error("Food not found.");
     }
     if (foodOwnerId !== authenticatedUserId) {
-      log('warn', `deleteFood: User ${authenticatedUserId} forbidden from deleting food ${foodId} owned by ${foodOwnerId}.`);
+      log("warn", `deleteFood: User ${authenticatedUserId} forbidden from deleting food ${foodId} owned by ${foodOwnerId}.`);
       throw new Error(
-        'Forbidden: You do not have permission to delete this food.'
+        "Forbidden: You do not have permission to delete this food."
       );
     }
 
     const deletionImpact = await foodRepository.getFoodDeletionImpact(foodId, authenticatedUserId);
-    log('info', `deleteFood: Deletion impact for food ${foodId}: ${JSON.stringify(deletionImpact)}`);
+    log("info", `deleteFood: Deletion impact for food ${foodId}: ${JSON.stringify(deletionImpact)}`);
 
     const {
       foodEntriesCount,
@@ -175,45 +175,45 @@ async function deleteFood(authenticatedUserId, foodId, forceDelete = false) {
 
     // Scenario 1: No references at all
     if (totalReferences === 0) {
-      log('info', `deleteFood: Food ${foodId} has no references. Performing hard delete.`);
+      log("info", `deleteFood: Food ${foodId} has no references. Performing hard delete.`);
       const success = await foodRepository.deleteFoodAndDependencies(foodId, authenticatedUserId);
       if (!success) {
-        throw new Error('Food not found or not authorized to delete.');
+        throw new Error("Food not found or not authorized to delete.");
       }
-      return { message: 'Food deleted permanently.', status: 'deleted' };
+      return { message: "Food deleted permanently.", status: "deleted" };
     }
 
     // Scenario 2: References only by the current user
     if (otherUserReferences === 0) {
       if (forceDelete) {
-        log('info', `deleteFood: Food ${foodId} has references only by current user. Force deleting.`);
+        log("info", `deleteFood: Food ${foodId} has references only by current user. Force deleting.`);
         const success = await foodRepository.deleteFoodAndDependencies(foodId, authenticatedUserId);
         if (!success) {
-          throw new Error('Food not found or not authorized to delete.');
+          throw new Error("Food not found or not authorized to delete.");
         }
-        return { message: 'Food and all its references deleted permanently.', status: 'force_deleted' };
+        return { message: "Food and all its references deleted permanently.", status: "force_deleted" };
       } else {
-        log('info', `deleteFood: Food ${foodId} has references only by current user. Hiding as quick food.`);
+        log("info", `deleteFood: Food ${foodId} has references only by current user. Hiding as quick food.`);
         await foodRepository.updateFood(foodId, foodOwnerId, { is_quick_food: true });
-        return { message: 'Food hidden (marked as quick food). Existing references remain.', status: 'hidden' };
+        return { message: "Food hidden (marked as quick food). Existing references remain.", status: "hidden" };
       }
     }
 
     // Scenario 3: References by other users
     if (otherUserReferences > 0) {
-      log('info', `deleteFood: Food ${foodId} has references by other users. Hiding as quick food.`);
+      log("info", `deleteFood: Food ${foodId} has references by other users. Hiding as quick food.`);
       await foodRepository.updateFood(foodId, foodOwnerId, { is_quick_food: true });
-      return { message: 'Food hidden (marked as quick food). Existing references remain.', status: 'hidden' };
+      return { message: "Food hidden (marked as quick food). Existing references remain.", status: "hidden" };
     }
 
     // Fallback for any unhandled cases (should not be reached)
-    log('warn', `deleteFood: Unhandled deletion scenario for food ${foodId}. Hiding as quick food.`);
+    log("warn", `deleteFood: Unhandled deletion scenario for food ${foodId}. Hiding as quick food.`);
     await foodRepository.updateFood(foodId, foodOwnerId, { is_quick_food: true });
-    return { message: 'Food hidden (marked as quick food). Existing references remain.', status: 'hidden' };
+    return { message: "Food hidden (marked as quick food). Existing references remain.", status: "hidden" };
 
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error deleting food ${foodId} by user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -247,7 +247,7 @@ async function getFoodsWithPagination(
     return { foods, totalCount };
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error fetching foods with pagination for user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -261,11 +261,11 @@ async function createFoodVariant(authenticatedUserId, variantData) {
       variantData.food_id, authenticatedUserId
     );
     if (!foodOwnerId) {
-      throw new Error('Food not found.');
+      throw new Error("Food not found.");
     }
     if (foodOwnerId !== authenticatedUserId) {
       throw new Error(
-        'Forbidden: You do not have permission to create a variant for this food.'
+        "Forbidden: You do not have permission to create a variant for this food."
       );
     }
     variantData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
@@ -279,7 +279,7 @@ async function createFoodVariant(authenticatedUserId, variantData) {
     return newVariant;
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error creating food variant for food ${variantData.food_id} by user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -294,16 +294,16 @@ async function getFoodVariantById(authenticatedUserId, variantId) {
       authenticatedUserId
     );
     if (!variant) {
-      throw new Error('Food variant not found.');
+      throw new Error("Food variant not found.");
     }
     const foodOwnerId = await foodRepository.getFoodOwnerId(variant.food_id, authenticatedUserId);
     if (!foodOwnerId) {
-      throw new Error('Associated food not found.');
+      throw new Error("Associated food not found.");
     }
     return variant;
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error fetching food variant ${variantId} by user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -318,15 +318,15 @@ async function updateFoodVariant(authenticatedUserId, variantId, variantData) {
       authenticatedUserId
     );
     if (!variant) {
-      throw new Error('Food variant not found.');
+      throw new Error("Food variant not found.");
     }
     const foodOwnerId = await foodRepository.getFoodOwnerId(variant.food_id, authenticatedUserId);
     if (!foodOwnerId) {
-      throw new Error('Associated food not found.');
+      throw new Error("Associated food not found.");
     }
     if (foodOwnerId !== authenticatedUserId) {
       throw new Error(
-        'Forbidden: You do not have permission to update this food variant.'
+        "Forbidden: You do not have permission to update this food variant."
       );
     }
     variantData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
@@ -340,12 +340,12 @@ async function updateFoodVariant(authenticatedUserId, variantId, variantData) {
       authenticatedUserId
     );
     if (!updatedVariant) {
-      throw new Error('Food variant not found.');
+      throw new Error("Food variant not found.");
     }
     return updatedVariant;
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error updating food variant ${variantId} by user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -360,23 +360,23 @@ async function deleteFoodVariant(authenticatedUserId, variantId) {
       authenticatedUserId
     );
     if (!variant) {
-      throw new Error('Food variant not found.');
+      throw new Error("Food variant not found.");
     }
     const foodOwnerId = await foodRepository.getFoodOwnerId(variant.food_id, authenticatedUserId);
     if (!foodOwnerId) {
-      throw new Error('Associated food not found.');
+      throw new Error("Associated food not found.");
     }
     const success = await foodRepository.deleteFoodVariant(
       variantId,
       authenticatedUserId
     );
     if (!success) {
-      throw new Error('Food variant not found.');
+      throw new Error("Food variant not found.");
     }
     return true;
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error deleting food variant ${variantId} by user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -386,20 +386,20 @@ async function deleteFoodVariant(authenticatedUserId, variantId) {
 
 async function getFoodVariantsByFoodId(authenticatedUserId, foodId) {
   log(
-    'info',
+    "info",
     `getFoodVariantsByFoodId: Fetching variants for foodId: ${foodId}, authenticatedUserId: ${authenticatedUserId}`
   );
   try {
     const foodOwnerId = await foodRepository.getFoodOwnerId(foodId, authenticatedUserId);
     log(
-      'info',
+      "info",
       `getFoodVariantsByFoodId: foodOwnerId for ${foodId}: ${foodOwnerId}`
     );
     // If food is not found (foodOwnerId is null), return an empty array of variants.
     // The client-side expects an empty array if no variants exist for a food.
     if (!foodOwnerId) {
       log(
-        'warn',
+        "warn",
         `getFoodVariantsByFoodId: Food with ID ${foodId} not found or not owned by user. Returning empty array.`
       );
       return [];
@@ -413,13 +413,13 @@ async function getFoodVariantsByFoodId(authenticatedUserId, foodId) {
       authenticatedUserId
     );
     log(
-      'info',
+      "info",
       `getFoodVariantsByFoodId: Found ${variants.length} variants for foodId: ${foodId}`
     );
     return variants;
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error fetching food variants for food ${foodId} by user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -438,7 +438,7 @@ async function createOrGetFood(authenticatedUserId, foodSuggestion) {
 
     if (existingFood) {
       log(
-        'info',
+        "info",
         `Found existing food: ${existingFood.name} (ID: ${existingFood.id})`
       );
       return existingFood;
@@ -463,7 +463,7 @@ async function createOrGetFood(authenticatedUserId, foodSuggestion) {
     const defaultVariantData = {
       food_id: newFood.id,
       serving_size: foodSuggestion.serving_size || 0,
-      serving_unit: foodSuggestion.serving_unit || 'g',
+      serving_unit: foodSuggestion.serving_unit || "g",
       calories: foodSuggestion.calories || 0,
       protein: foodSuggestion.protein || 0,
       carbs: foodSuggestion.carbs || 0,
@@ -495,13 +495,13 @@ async function createOrGetFood(authenticatedUserId, foodSuggestion) {
     });
 
     log(
-      'info',
+      "info",
       `Created new food: ${newFood.name} (ID: ${newFood.id}) with default variant (ID: ${newVariant.id})`
     );
     return { ...newFood, ...newVariant };
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error in createOrGetFood for user ${authenticatedUserId}:`,
       error
     );
@@ -531,7 +531,7 @@ async function bulkCreateFoodVariants(authenticatedUserId, variantsData) {
     return createdVariants;
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error in bulkCreateFoodVariants for user ${authenticatedUserId}:`,
       error
     );
@@ -540,18 +540,18 @@ async function bulkCreateFoodVariants(authenticatedUserId, variantsData) {
 }
 
 async function getFoodDeletionImpact(authenticatedUserId, foodId) {
-  log('info', `getFoodDeletionImpact: Checking deletion impact for food ${foodId} by user ${authenticatedUserId}`);
+  log("info", `getFoodDeletionImpact: Checking deletion impact for food ${foodId} by user ${authenticatedUserId}`);
   try {
     const foodOwnerId = await foodRepository.getFoodOwnerId(foodId, authenticatedUserId);
     if (!foodOwnerId) {
-      log('warn', `getFoodDeletionImpact: Food ${foodId} not found for user ${authenticatedUserId}.`);
-      throw new Error('Food not found.');
+      log("warn", `getFoodDeletionImpact: Food ${foodId} not found for user ${authenticatedUserId}.`);
+      throw new Error("Food not found.");
     }
     // No need to check permission here, as foodRepository.getFoodDeletionImpact handles it
     return await foodRepository.getFoodDeletionImpact(foodId, authenticatedUserId);
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error getting food deletion impact for food ${foodId} by user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -562,8 +562,8 @@ async function getFoodDeletionImpact(authenticatedUserId, foodId) {
 async function importFoodsInBulk(authenticatedUserId, foodDataArray) {
   try {
     if (!foodDataArray) {
-      log('error', 'importFoodsInBulk: No food data provided.');
-      throw new Error('No food data provided.');
+      log("error", `importFoodsInBulk: No food data provided.`);
+      throw new Error("No food data provided.");
     }
     return await foodRepository.createFoodsInBulk(
       authenticatedUserId,
@@ -575,7 +575,7 @@ async function importFoodsInBulk(authenticatedUserId, foodDataArray) {
     );
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error importing foods in bulk for user ${authenticatedUserId}:`,
       error
     );
@@ -588,7 +588,7 @@ async function getFoodsNeedingReview(authenticatedUserId) {
     const foodsNeedingReview = await foodRepository.getFoodsNeedingReview(authenticatedUserId);
     return foodsNeedingReview;
   } catch (error) {
-    log('error', `Error getting foods needing review for user ${authenticatedUserId}:`, error);
+    log("error", `Error getting foods needing review for user ${authenticatedUserId}:`, error);
     throw error;
   }
 }
@@ -598,14 +598,14 @@ async function updateFoodEntriesSnapshot(authenticatedUserId, foodId, variantId)
     // Fetch the latest food and variant details
     const food = await foodRepository.getFoodById(foodId, authenticatedUserId);
     if (!food) {
-      throw new Error('Food not found.');
+      throw new Error("Food not found.");
     }
     const variant = await foodRepository.getFoodVariantById(
       variantId,
       authenticatedUserId
     );
     if (!variant) {
-      throw new Error('Food variant not found.');
+      throw new Error("Food variant not found.");
     }
 
     // Construct the new snapshot data
@@ -641,9 +641,9 @@ async function updateFoodEntriesSnapshot(authenticatedUserId, foodId, variantId)
     // Clear any ignored updates for this variant for this user
     await foodRepository.clearUserIgnoredUpdate(authenticatedUserId, variantId);
 
-    return { message: 'Food entries updated successfully.' };
+    return { message: "Food entries updated successfully." };
   } catch (error) {
-    log('error', `Error updating food entries snapshot for user ${authenticatedUserId}, food ${foodId}, variant ${variantId}:`, error);
+    log("error", `Error updating food entries snapshot for user ${authenticatedUserId}, food ${foodId}, variant ${variantId}:`, error);
     throw error;
   }
 }

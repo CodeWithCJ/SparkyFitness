@@ -1,17 +1,17 @@
 const { log } = require('../../config/logging');
 const externalProviderRepository = require('../../models/externalProviderRepository');
 
-const NUTRITIONIX_API_BASE_URL = 'https://trackapi.nutritionix.com/v2';
+const NUTRITIONIX_API_BASE_URL = "https://trackapi.nutritionix.com/v2";
 
 async function getNutritionixHeaders(providerId) {
   const providerData = await externalProviderRepository.getExternalDataProviderById(providerId);
   if (!providerData || !providerData.app_id || !providerData.app_key) {
-    throw new Error('Nutritionix provider not configured or keys missing.');
+    throw new Error("Nutritionix provider not configured or keys missing.");
   }
   return {
-    'Content-Type': 'application/json',
-    'x-app-id': providerData.app_id,
-    'x-app-key': providerData.app_key,
+    "Content-Type": "application/json",
+    "x-app-id": providerData.app_id,
+    "x-app-key": providerData.app_key,
   };
 }
 
@@ -19,12 +19,12 @@ async function searchNutritionixFoods(query, providerId) {
   try {
     const headers = await getNutritionixHeaders(providerId);
     const response = await fetch(`${NUTRITIONIX_API_BASE_URL}/search/instant?query=${encodeURIComponent(query)}`, {
-      method: 'GET',
+      method: "GET",
       headers: headers,
     });
     if (!response.ok) {
       const errorText = await response.text();
-      log('error', 'Nutritionix Instant Search API error:', errorText);
+      log('error', "Nutritionix Instant Search API error:", errorText);
       throw new Error(`Nutritionix API error: ${errorText}`);
     }
     const data = await response.json();
@@ -39,13 +39,13 @@ async function getNutritionixNutrients(query, providerId) {
   try {
     const headers = await getNutritionixHeaders(providerId);
     const response = await fetch(`${NUTRITIONIX_API_BASE_URL}/natural/nutrients`, {
-      method: 'POST',
+      method: "POST",
       headers: headers,
       body: JSON.stringify({ query: query }),
     });
     if (!response.ok) {
       const errorText = await response.text();
-      log('error', 'Nutritionix Natural Nutrients API error:', errorText);
+      log('error', "Nutritionix Natural Nutrients API error:", errorText);
       throw new Error(`Nutritionix API error: ${errorText}`);
     }
     const data = await response.json();
@@ -87,13 +87,13 @@ async function getNutritionixBrandedNutrients(nixItemId, providerId) {
   try {
     const headers = await getNutritionixHeaders(providerId);
     const response = await fetch(`${NUTRITIONIX_API_BASE_URL}/search/item`, {
-      method: 'POST',
+      method: "POST",
       headers: headers,
       body: JSON.stringify({ nix_item_id: nixItemId }),
     });
     if (!response.ok) {
       const errorText = await response.text();
-      log('error', 'Nutritionix Item Search API error:', errorText);
+      log('error', "Nutritionix Item Search API error:", errorText);
       throw new Error(`Nutritionix API error: ${errorText}`);
     }
     const data = await response.json();
@@ -142,14 +142,14 @@ async function searchNutritionixExercises(query, providerId, userDemographics = 
     };
 
     const response = await fetch(`${NUTRITIONIX_API_BASE_URL}/natural/exercise`, {
-      method: 'POST',
+      method: "POST",
       headers: headers,
       body: JSON.stringify(body),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      log('error', 'Nutritionix Natural Exercise API error:', errorText);
+      log('error', "Nutritionix Natural Exercise API error:", errorText);
       throw new Error(`Nutritionix API error: ${errorText}`);
     }
 
@@ -162,12 +162,12 @@ async function searchNutritionixExercises(query, providerId, userDemographics = 
         return {
           id: exercise.tag_id, // Using tag_id as a unique identifier for now
           name: exercise.name || exercise.user_input, // Use user_input as fallback for name
-          category: 'External', // Nutritionix doesn't provide categories in the same way as Wger
+          category: "External", // Nutritionix doesn't provide categories in the same way as Wger
           calories_per_hour: caloriesPerHour,
           description: exercise.description || exercise.user_input,
           duration_min: exercise.duration_min,
           external_id: exercise.tag_id, // Store original external ID
-          source: 'nutritionix',
+          source: "nutritionix",
         };
       });
     }

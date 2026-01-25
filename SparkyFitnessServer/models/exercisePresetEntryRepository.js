@@ -18,7 +18,7 @@ async function createExercisePresetEntry(userId, entryData, createdByUserId) {
     return getExercisePresetEntryById(newEntryId, userId);
   } catch (error) {
     await client.query('ROLLBACK');
-    log('error', 'Error creating exercise preset entry:', error);
+    log('error', `Error creating exercise preset entry:`, error);
     throw error;
   } finally {
     client.release();
@@ -127,7 +127,7 @@ async function deleteExercisePresetEntriesByEntrySourceAndDate(userId, startDate
 
       // Delete the exercise preset entries themselves
       const result = await client.query(
-        'DELETE FROM exercise_preset_entries WHERE id = ANY($1::uuid[])',
+        `DELETE FROM exercise_preset_entries WHERE id = ANY($1::uuid[])`,
         [presetEntryIds]
       );
       log('info', `[exercisePresetEntryRepository] Deleted ${result.rowCount} exercise preset entries with source '${entrySource}' for user ${userId} from ${startDate} to ${endDate}.`);

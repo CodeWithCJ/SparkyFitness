@@ -86,7 +86,7 @@ class BackupSettingsRepository {
         log('error', 'Backup settings row not found for status update. This should not happen if default settings are created.');
         throw new Error('Backup settings row not found for status update.');
       }
-      log('info', 'Successfully updated last backup status. New settings:', result.rows[0]);
+      log('info', `Successfully updated last backup status. New settings:`, result.rows[0]);
       return result.rows[0];
     } catch (error) {
       log('error', 'Error updating last backup status:', error);

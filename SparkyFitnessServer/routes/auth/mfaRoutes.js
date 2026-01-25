@@ -126,7 +126,7 @@ router.post('/mfa/verify/totp', authenticate, mfaValidation, async (req, res, ne
     const isValid = await authService.verifyTotpCode(req.userId, code);
     if (isValid) {
       const user = await authService.getUser(req.userId);
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
 
       await authService.updateUserMfaSettings(req.userId, null, true, null, null, null, null, null);
 
@@ -353,7 +353,7 @@ router.post('/mfa/verify-email-code', authenticate, mfaValidation, async (req, r
   try {
     const user = await authService.verifyEmailMfaCode(req.userId, code);
     if (user) {
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -463,7 +463,7 @@ router.post('/mfa/verify-recovery-code', verifyRecoveryCodeValidation, async (re
       if (!user) {
         return res.status(404).json({ error: 'User not found after recovery code verification.' });
       }
-      const token = jwt.sign({ userId: targetUserId }, JWT_SECRET, { expiresIn: '30d' });
+      const token = jwt.sign({ userId: targetUserId }, JWT_SECRET, { expiresIn: "30d" });
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',

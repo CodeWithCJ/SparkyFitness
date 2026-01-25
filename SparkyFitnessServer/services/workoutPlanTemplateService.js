@@ -4,7 +4,7 @@ const exerciseRepository = require('../models/exerciseRepository');
 const { log } = require('../config/logging');
 
 async function createWorkoutPlanTemplate(userId, planData, currentClientDate = null) {
-    log('info', 'createWorkoutPlanTemplate service - received planData:', planData);
+    log('info', `createWorkoutPlanTemplate service - received planData:`, planData);
     // Validate assignments
     if (planData.assignments) {
         for (const assignment of planData.assignments) {
@@ -29,7 +29,7 @@ async function createWorkoutPlanTemplate(userId, planData, currentClientDate = n
             log('info', `createWorkoutPlanTemplate service - New plan is active, creating exercise entries from template ${newPlan.id}`);
             await exerciseRepository.createExerciseEntriesFromTemplate(newPlan.id, userId, currentClientDate);
         } else {
-            log('info', 'createWorkoutPlanTemplate service - New plan is not active, skipping exercise entry creation.');
+            log('info', `createWorkoutPlanTemplate service - New plan is not active, skipping exercise entry creation.`);
         }
         return newPlan;
     } catch (error) {
@@ -88,7 +88,7 @@ async function updateWorkoutPlanTemplate(userId, templateId, updateData, current
             log('info', `updateWorkoutPlanTemplate service - Updated plan is active, creating exercise entries from template ${updatedPlan.id}`);
             await exerciseRepository.createExerciseEntriesFromTemplate(updatedPlan.id, userId, currentClientDate);
         } else {
-            log('info', 'updateWorkoutPlanTemplate service - Updated plan is not active, skipping exercise entry creation.');
+            log('info', `updateWorkoutPlanTemplate service - Updated plan is not active, skipping exercise entry creation.`);
         }
         return updatedPlan;
     } catch (error) {

@@ -398,10 +398,10 @@ router.post('/reset-password', resetPasswordValidation, async (req, res, next) =
  *         description: Server error.
  */
 router.post('/request-magic-link', magicLinkRequestValidation, async (req, res, next) => {
-  log('debug', 'Received request for magic link. Body:', req.body);
+  log('debug', `Received request for magic link. Body:`, req.body);
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    log('warn', 'Magic link request validation errors:', errors.array());
+    log('warn', `Magic link request validation errors:`, errors.array());
     return res.status(400).json({ errors: errors.array() });
   }
   const { email } = req.body;

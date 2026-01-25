@@ -76,7 +76,7 @@ async function getActivityDetailsByEntryOrPresetId(userId, entryId = null, prese
     let values;
 
     if (entryId && presetEntryId) {
-        throw new Error('Cannot query activity details by both entryId and presetEntryId simultaneously.');
+        throw new Error("Cannot query activity details by both entryId and presetEntryId simultaneously.");
     }
 
     if (entryId) {
@@ -96,7 +96,7 @@ async function getActivityDetailsByEntryOrPresetId(userId, entryId = null, prese
         `;
         values = [presetEntryId, userId];
     } else {
-        throw new Error('Either entryId or presetEntryId must be provided.');
+        throw new Error("Either entryId or presetEntryId must be provided.");
     }
 
     try {

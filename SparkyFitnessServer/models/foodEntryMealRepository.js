@@ -1,9 +1,9 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
+const { getClient } = require("../db/poolManager");
+const { log } = require("../config/logging");
 
 async function createFoodEntryMeal(foodEntryMealData, createdByUserId) {
   log(
-    'info',
+    "info",
     `createFoodEntryMeal in foodEntryMealRepository: foodEntryMealData: ${JSON.stringify(
       foodEntryMealData
     )}, createdByUserId: ${createdByUserId}`
@@ -15,7 +15,7 @@ async function createFoodEntryMeal(foodEntryMealData, createdByUserId) {
 
     if (!mealTypeId && foodEntryMealData.meal_type) {
       const typeRes = await client.query(
-        'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
+        "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)",
         [foodEntryMealData.meal_type]
       );
       if (typeRes.rows.length > 0) {
@@ -47,7 +47,7 @@ async function createFoodEntryMeal(foodEntryMealData, createdByUserId) {
     );
     return result.rows[0];
   } catch (error) {
-    log('error', 'Error creating food entry meal in repository:', error);
+    log("error", `Error creating food entry meal in repository:`, error);
     throw error;
   } finally {
     client.release();
@@ -60,21 +60,21 @@ async function updateFoodEntryMeal(
   updatedByUserId
 ) {
   log(
-    'info',
+    "info",
     `updateFoodEntryMeal in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, foodEntryMealData: ${JSON.stringify(
       foodEntryMealData
     )}, updatedByUserId: ${updatedByUserId}`
   );
   const client = await getClient(updatedByUserId);
   log(
-    'info',
+    "info",
     `[DEBUG] Repo update params: quantity=${foodEntryMealData.quantity}, unit=${foodEntryMealData.unit}`
   ); // DEBUG LOG
   try {
     let mealTypeId = foodEntryMealData.meal_type_id;
     if (!mealTypeId && foodEntryMealData.meal_type) {
       const typeRes = await client.query(
-        'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
+        "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)",
         [foodEntryMealData.meal_type]
       );
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
@@ -106,12 +106,12 @@ async function updateFoodEntryMeal(
       ]
     );
     if (result.rows.length === 0) {
-      throw new Error('Food entry meal not found or not authorized to update.');
+      throw new Error("Food entry meal not found or not authorized to update.");
     }
     return result.rows[0];
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error updating food entry meal ${foodEntryMealId} in repository:`,
       error
     );
@@ -123,7 +123,7 @@ async function updateFoodEntryMeal(
 
 async function getFoodEntryMealById(foodEntryMealId, userId) {
   log(
-    'info',
+    "info",
     `getFoodEntryMealById in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, userId: ${userId}`
   );
   const client = await getClient(userId);
@@ -152,7 +152,7 @@ async function getFoodEntryMealById(foodEntryMealId, userId) {
     return result.rows[0];
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error getting food entry meal ${foodEntryMealId} in repository:`,
       error
     );
@@ -164,7 +164,7 @@ async function getFoodEntryMealById(foodEntryMealId, userId) {
 
 async function getFoodEntryMealsByDate(userId, selectedDate) {
   log(
-    'info',
+    "info",
     `getFoodEntryMealsByDate in foodEntryMealRepository: userId: ${userId}, selectedDate: ${selectedDate}`
   );
   const client = await getClient(userId);
@@ -194,7 +194,7 @@ async function getFoodEntryMealsByDate(userId, selectedDate) {
     return result.rows;
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error getting food entry meals by date for user ${userId} on ${selectedDate} in repository:`,
       error
     );
@@ -206,7 +206,7 @@ async function getFoodEntryMealsByDate(userId, selectedDate) {
 
 async function deleteFoodEntryMeal(foodEntryMealId, userId) {
   log(
-    'info',
+    "info",
     `deleteFoodEntryMeal in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, userId: ${userId}`
   );
   const client = await getClient(userId);
@@ -220,7 +220,7 @@ async function deleteFoodEntryMeal(foodEntryMealId, userId) {
     return result.rowCount > 0;
   } catch (error) {
     log(
-      'error',
+      "error",
       `Error deleting food entry meal ${foodEntryMealId} in repository:`,
       error
     );

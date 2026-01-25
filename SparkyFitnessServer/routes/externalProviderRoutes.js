@@ -137,7 +137,7 @@ router.get('/', authenticate, async (req, res, next) => {
 router.get('/user/:targetUserId', authenticate, async (req, res, next) => {
   const { targetUserId } = req.params;
   if (!targetUserId) {
-    return res.status(400).json({ error: 'Missing target user ID' });
+    return res.status(400).json({ error: "Missing target user ID" });
   }
   try {
     const providers = await externalProviderService.getExternalDataProvidersForUser(req.userId, targetUserId);
@@ -387,7 +387,7 @@ router.delete('/:id', authenticate, async (req, res, next) => {
 router.get('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
-    return res.status(400).json({ error: 'Missing provider ID' });
+    return res.status(400).json({ error: "Missing provider ID" });
   }
   try {
     const providerDetails = await externalProviderService.getExternalDataProviderDetails(req.userId, id);

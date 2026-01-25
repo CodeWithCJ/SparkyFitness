@@ -3,12 +3,5 @@
     "@types/react-beautiful-dnd": "^13.1.8",
     "js-yaml": "^4.1.0",
     "react-beautiful-dnd": "^13.1.1"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.2",
-    "eslint": "^9.39.2",
-    "eslint-plugin-n": "^17.23.2",
-    "eslint-plugin-security": "^3.0.1",
-    "globals": "^17.1.0"
   }
 }

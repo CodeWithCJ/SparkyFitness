@@ -1,7 +1,7 @@
-const foodIntegrationService = require('./foodIntegrationService');
-const foodCoreService = require('./foodCoreService');
-const foodEntryService = require('./foodEntryService');
-const externalProviderService = require('./externalProviderService');
+const foodIntegrationService = require("./foodIntegrationService");
+const foodCoreService = require("./foodCoreService");
+const foodEntryService = require("./foodEntryService");
+const externalProviderService = require("./externalProviderService");
 
 // This file now acts as a barrel, exporting all the functions from the new service modules.
 // This maintains the existing API for other parts of the application while allowing for a more modular internal structure.

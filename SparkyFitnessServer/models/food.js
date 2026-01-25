@@ -40,12 +40,12 @@
  *         total_iron:
  *           type: number
  */
-const { getClient, getSystemClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
+const { getClient, getSystemClient } = require("../db/poolManager");
+const { log } = require("../config/logging");
 
 function sanitizeGlycemicIndex(gi) {
   const allowedGICategories = ['None', 'Very Low', 'Low', 'Medium', 'High', 'Very High'];
-  if (gi === '0' || gi === '0.0' || gi === null || gi === undefined || gi === '' || !allowedGICategories.includes(gi)) {
+  if (gi === "0" || gi === "0.0" || gi === null || gi === undefined || gi === '' || !allowedGICategories.includes(gi)) {
     return null;
   }
   return gi;
@@ -121,7 +121,7 @@ async function searchFoods(name, userId, exactMatch, broadMatch, checkCustom, li
       query += `f.name = $${paramIndex++}`;
       queryParams.push(name);
     } else {
-      throw new Error('Invalid search parameters.');
+      throw new Error("Invalid search parameters.");
     }
 
     query += ` LIMIT $${paramIndex++}`;
@@ -136,7 +136,7 @@ async function searchFoods(name, userId, exactMatch, broadMatch, checkCustom, li
 async function createFood(foodData) {
   const client = await getClient(foodData.user_id); // User-specific operation
   try {
-    await client.query('BEGIN'); // Start transaction
+    await client.query("BEGIN"); // Start transaction
 
     // 1. Create the food entry
     const foodResult = await client.query(
@@ -192,7 +192,7 @@ async function createFood(foodData) {
     );
     const newVariantId = variantResult.rows[0].id;
 
-    await client.query('COMMIT'); // Commit transaction
+    await client.query("COMMIT"); // Commit transaction
 
     // Return the new food with its default variant details
     return {
@@ -223,7 +223,7 @@ async function createFood(foodData) {
       },
     };
   } catch (error) {
-    await client.query('ROLLBACK'); // Rollback transaction on error
+    await client.query("ROLLBACK"); // Rollback transaction on error
     throw error;
   } finally {
     client.release();
@@ -276,11 +276,11 @@ async function getFoodOwnerId(foodId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const foodResult = await client.query(
-      'SELECT user_id FROM foods WHERE id = $1',
+      "SELECT user_id FROM foods WHERE id = $1",
       [foodId]
     );
     const ownerId = foodResult.rows[0]?.user_id;
-    log('info', `getFoodOwnerId: Food ID ${foodId} owner: ${ownerId}`);
+    log("info", `getFoodOwnerId: Food ID ${foodId} owner: ${ownerId}`);
     return ownerId;
   } finally {
     client.release();
@@ -325,7 +325,7 @@ async function deleteFood(id, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'DELETE FROM foods WHERE id = $1 RETURNING id',
+      "DELETE FROM foods WHERE id = $1 RETURNING id",
       [id]
     );
     return result.rowCount > 0;
@@ -344,7 +344,7 @@ async function getFoodsWithPagination(
 ) {
   const client = await getClient(authenticatedUserId); // User-specific operation
   try {
-    const whereClauses = ['f.is_quick_food = FALSE'];
+    let whereClauses = ["f.is_quick_food = FALSE"];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -386,14 +386,14 @@ async function getFoodsWithPagination(
         ) AS default_variant
       FROM foods f
       LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE
-      WHERE ${whereClauses.join(' AND ')}
+      WHERE ${whereClauses.join(" AND ")}
     `;
 
-    let orderByClause = 'f.id, f.name ASC'; // DISTINCT ON requires f.id to be the first sort field
+    let orderByClause = "f.id, f.name ASC"; // DISTINCT ON requires f.id to be the first sort field
     if (sortBy) {
-      const [sortField, sortOrder] = sortBy.split(':');
-      const allowedSortFields = ['name', 'calories', 'protein', 'carbs', 'fat'];
-      const allowedSortOrders = ['asc', 'desc'];
+      const [sortField, sortOrder] = sortBy.split(":");
+      const allowedSortFields = ["name", "calories", "protein", "carbs", "fat"];
+      const allowedSortOrders = ["asc", "desc"];
 
       if (
         allowedSortFields.includes(sortField) &&
@@ -402,7 +402,7 @@ async function getFoodsWithPagination(
         orderByClause = `f.id, ${sortField} ${sortOrder.toUpperCase()}`;
       } else {
         log(
-          'warn',
+          "warn",
           `Invalid sortBy parameter received: ${sortBy}. Using default sort.`
         );
       }
@@ -422,7 +422,7 @@ async function getFoodsWithPagination(
 async function countFoods(searchTerm, foodFilter, authenticatedUserId) {
   const client = await getClient(authenticatedUserId); // User-specific operation
   try {
-    const whereClauses = ['is_quick_food = FALSE'];
+    let whereClauses = ["is_quick_food = FALSE"];
     const countQueryParams = [];
     let paramIndex = 1;
 
@@ -437,7 +437,7 @@ async function countFoods(searchTerm, foodFilter, authenticatedUserId) {
     const countQuery = `
       SELECT COUNT(*)
       FROM foods
-      WHERE ${whereClauses.join(' AND ')}
+      WHERE ${whereClauses.join(" AND ")}
     `;
     const countResult = await client.query(countQuery, countQueryParams);
     return parseInt(countResult.rows[0].count, 10);
@@ -496,24 +496,24 @@ async function getFoodDeletionImpact(foodId, authenticatedUserId) {
   try {
     // Check if the food is publicly shared (using systemClient to bypass RLS)
     const publicFoodResult = await systemClient.query(
-      'SELECT shared_with_public FROM foods WHERE id = $1',
+      "SELECT shared_with_public FROM foods WHERE id = $1",
       [foodId]
     );
     const isPubliclyShared = publicFoodResult.rows[0]?.shared_with_public || false;
 
     // Get food owner ID (using systemClient to bypass RLS)
     const foodOwnerResult = await systemClient.query(
-      'SELECT user_id FROM foods WHERE id = $1',
+      "SELECT user_id FROM foods WHERE id = $1",
       [foodId]
     );
     const foodOwnerId = foodOwnerResult.rows[0]?.user_id;
 
     // Count references by the authenticated user (using client with RLS)
     const currentUserReferencesQueries = [
-      client.query('SELECT COUNT(*) FROM food_entries WHERE food_id = $1 AND user_id = $2', [foodId, authenticatedUserId]),
-      client.query('SELECT COUNT(*) FROM meal_foods mf JOIN meals m ON mf.meal_id = m.id WHERE mf.food_id = $1 AND m.user_id = $2', [foodId, authenticatedUserId]),
-      client.query('SELECT COUNT(*) FROM meal_plans mp WHERE mp.food_id = $1 AND mp.user_id = $2', [foodId, authenticatedUserId]),
-      client.query('SELECT COUNT(*) FROM meal_plan_template_assignments mpta JOIN meal_plan_templates mpt ON mpta.template_id = mpt.id WHERE mpta.food_id = $1 AND mpt.user_id = $2', [foodId, authenticatedUserId]),
+      client.query("SELECT COUNT(*) FROM food_entries WHERE food_id = $1 AND user_id = $2", [foodId, authenticatedUserId]),
+      client.query("SELECT COUNT(*) FROM meal_foods mf JOIN meals m ON mf.meal_id = m.id WHERE mf.food_id = $1 AND m.user_id = $2", [foodId, authenticatedUserId]),
+      client.query("SELECT COUNT(*) FROM meal_plans mp WHERE mp.food_id = $1 AND mp.user_id = $2", [foodId, authenticatedUserId]),
+      client.query("SELECT COUNT(*) FROM meal_plan_template_assignments mpta JOIN meal_plan_templates mpt ON mpta.template_id = mpt.id WHERE mpta.food_id = $1 AND mpt.user_id = $2", [foodId, authenticatedUserId]),
     ];
     const currentUserReferencesResults = await Promise.all(currentUserReferencesQueries);
     const currentUserFoodEntriesCount = parseInt(currentUserReferencesResults[0].rows[0].count, 10);
@@ -529,10 +529,10 @@ async function getFoodDeletionImpact(foodId, authenticatedUserId) {
 
     // Count references by other users (excluding the authenticated user) (using systemClient to bypass RLS)
     const otherUserReferencesQueries = [
-      systemClient.query('SELECT COUNT(*) FROM food_entries WHERE food_id = $1 AND user_id != $2', [foodId, authenticatedUserId]),
-      systemClient.query('SELECT COUNT(*) FROM meal_foods mf JOIN meals m ON mf.meal_id = m.id WHERE mf.food_id = $1 AND m.user_id != $2', [foodId, authenticatedUserId]),
-      systemClient.query('SELECT COUNT(*) FROM meal_plans mp WHERE mp.food_id = $1 AND mp.user_id != $2', [foodId, authenticatedUserId]),
-      systemClient.query('SELECT COUNT(*) FROM meal_plan_template_assignments mpta JOIN meal_plan_templates mpt ON mpta.template_id = mpt.id WHERE mpta.food_id = $1 AND mpt.user_id != $2', [foodId, authenticatedUserId]),
+      systemClient.query("SELECT COUNT(*) FROM food_entries WHERE food_id = $1 AND user_id != $2", [foodId, authenticatedUserId]),
+      systemClient.query("SELECT COUNT(*) FROM meal_foods mf JOIN meals m ON mf.meal_id = m.id WHERE mf.food_id = $1 AND m.user_id != $2", [foodId, authenticatedUserId]),
+      systemClient.query("SELECT COUNT(*) FROM meal_plans mp WHERE mp.food_id = $1 AND mp.user_id != $2", [foodId, authenticatedUserId]),
+      systemClient.query("SELECT COUNT(*) FROM meal_plan_template_assignments mpta JOIN meal_plan_templates mpt ON mpta.template_id = mpt.id WHERE mpta.food_id = $1 AND mpt.user_id != $2", [foodId, authenticatedUserId]),
     ];
     const otherUserReferencesResults = await Promise.all(otherUserReferencesQueries);
     const otherUserFoodEntriesCount = parseInt(otherUserReferencesResults[0].rows[0].count, 10);
@@ -581,11 +581,11 @@ async function getFoodDeletionImpact(foodId, authenticatedUserId) {
 async function deleteFoodAndDependencies(foodId, userId) {
   const client = await getClient(userId);
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     // 1. Delete food entries referencing this food for the current user
-    await client.query('DELETE FROM food_entries WHERE food_id = $1 AND user_id = $2', [foodId, userId]);
-    log('info', `Deleted food entries for food ${foodId} by user ${userId}`);
+    await client.query("DELETE FROM food_entries WHERE food_id = $1 AND user_id = $2", [foodId, userId]);
+    log("info", `Deleted food entries for food ${foodId} by user ${userId}`);
 
     // 2. Delete meal_foods referencing this food for meals owned by the current user
     await client.query(`
@@ -595,11 +595,11 @@ async function deleteFoodAndDependencies(foodId, userId) {
         AND mf.food_id = $1
         AND m.user_id = $2
     `, [foodId, userId]);
-    log('info', `Deleted meal foods for food ${foodId} in meals by user ${userId}`);
+    log("info", `Deleted meal foods for food ${foodId} in meals by user ${userId}`);
 
     // 3. Delete meal_plans referencing this food for the current user
-    await client.query('DELETE FROM meal_plans WHERE food_id = $1 AND user_id = $2', [foodId, userId]);
-    log('info', `Deleted meal plans for food ${foodId} by user ${userId}`);
+    await client.query("DELETE FROM meal_plans WHERE food_id = $1 AND user_id = $2", [foodId, userId]);
+    log("info", `Deleted meal plans for food ${foodId} by user ${userId}`);
 
     // 4. Delete meal_plan_template_assignments referencing this food for templates owned by the current user
     await client.query(`
@@ -609,21 +609,21 @@ async function deleteFoodAndDependencies(foodId, userId) {
         AND mpta.food_id = $1
         AND mpt.user_id = $2
     `, [foodId, userId]);
-    log('info', `Deleted meal plan template assignments for food ${foodId} in templates by user ${userId}`);
+    log("info", `Deleted meal plan template assignments for food ${foodId} in templates by user ${userId}`);
 
     // 5. Delete food variants associated with this food
-    await client.query('DELETE FROM food_variants WHERE food_id = $1', [foodId]);
-    log('info', `Deleted food variants for food ${foodId}`);
+    await client.query("DELETE FROM food_variants WHERE food_id = $1", [foodId]);
+    log("info", `Deleted food variants for food ${foodId}`);
 
     // 6. Finally, delete the food itself
-    const result = await client.query('DELETE FROM foods WHERE id = $1 AND user_id = $2 RETURNING id', [foodId, userId]);
-    log('info', `Deleted food ${foodId} by user ${userId}`);
+    const result = await client.query("DELETE FROM foods WHERE id = $1 AND user_id = $2 RETURNING id", [foodId, userId]);
+    log("info", `Deleted food ${foodId} by user ${userId}`);
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
     return result.rowCount > 0;
   } catch (error) {
-    await client.query('ROLLBACK');
-    log('error', `Error deleting food and dependencies for food ${foodId} by user ${userId}:`, error);
+    await client.query("ROLLBACK");
+    log("error", `Error deleting food and dependencies for food ${foodId} by user ${userId}:`, error);
     throw error;
   } finally {
     client.release();
@@ -634,7 +634,7 @@ async function createFoodsInBulk(userId, foodDataArray) {
   class DuplicateFoodError extends Error {
     constructor(message, duplicates) {
       super(message);
-      this.name = 'DuplicateFoodError';
+      this.name = "DuplicateFoodError";
       this.duplicates = duplicates;
     }
   }
@@ -660,7 +660,7 @@ async function createFoodsInBulk(userId, foodDataArray) {
   const foodsToCreate = Object.values(groupedFoods);
   if (foodsToCreate.length === 0) {
     return {
-      message: 'No food data provided to import.',
+      message: "No food data provided to import.",
       createdFoods: 0,
       createdVariants: 0,
     };
@@ -681,7 +681,7 @@ async function createFoodsInBulk(userId, foodDataArray) {
       () =>
         `($${placeholderIndex++}::uuid, $${placeholderIndex++}, $${placeholderIndex++})`
     )
-    .join(', ');
+    .join(", ");
 
   const duplicateCheckQuery = `
     SELECT name, brand FROM foods
@@ -703,7 +703,7 @@ async function createFoodsInBulk(userId, foodDataArray) {
   if (existingFoods.length > 0) {
     // If duplicates are found, throw an error.
     throw new DuplicateFoodError(
-      'The import was terminated because duplicate entries were found in your food list.',
+      `The import was terminated because duplicate entries were found in your food list.`,
       existingFoods
     );
   }
@@ -711,7 +711,7 @@ async function createFoodsInBulk(userId, foodDataArray) {
   // 3. Database Transaction starts here for Bulk Insert
   const client = await getClient(userId); // User-specific operation
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     let totalFoodsCreated = 0;
     let totalVariantsCreated = 0;
@@ -777,16 +777,16 @@ async function createFoodsInBulk(userId, foodDataArray) {
       }
     }
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     return {
-      message: 'Food data imported successfully.',
+      message: "Food data imported successfully.",
       createdFoods: totalFoodsCreated,
       createdVariants: totalVariantsCreated,
     };
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error during bulk food import:', error);
+    await client.query("ROLLBACK");
+    console.error("Error during bulk food import:", error);
     throw error;
   } finally {
     client.release();

@@ -50,7 +50,7 @@ router.get('/analytics', authenticate, checkPermissionMiddleware('reports'), asy
   try {
     const { startDate, endDate, userId } = req.query;
     if (!startDate || !endDate) {
-      return res.status(400).json({ error: 'Missing required query parameters: startDate and endDate.' });
+      return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
     }
 
     const targetUserId = userId || req.userId;
@@ -58,7 +58,7 @@ router.get('/analytics', authenticate, checkPermissionMiddleware('reports'), asy
     const analyticsData = await sleepAnalyticsService.getSleepAnalytics(targetUserId, startDate, endDate);
     res.status(200).json(analyticsData);
   } catch (error) {
-    log('error', 'Error fetching sleep analytics:', error);
+    log('error', "Error fetching sleep analytics:", error);
     next(error);
   }
 });
@@ -107,7 +107,7 @@ router.post('/manual_entry', authenticate, checkPermissionMiddleware('checkin'),
   try {
     const { entry_date, bedtime, wake_time, duration_in_seconds, stage_events } = req.body;
     if (!entry_date || !bedtime || !wake_time || !duration_in_seconds) {
-      return res.status(400).json({ error: 'Missing required fields: entry_date, bedtime, wake_time, or duration_in_seconds.' });
+      return res.status(400).json({ error: "Missing required fields: entry_date, bedtime, wake_time, or duration_in_seconds." });
     }
 
     const sleepEntryData = {
@@ -122,7 +122,7 @@ router.post('/manual_entry', authenticate, checkPermissionMiddleware('checkin'),
     const result = await measurementService.processSleepEntry(req.userId, req.userId, sleepEntryData);
     res.status(200).json(result);
   } catch (error) {
-    log('error', 'Error during manual sleep entry:', error);
+    log('error', "Error during manual sleep entry:", error);
     next(error);
   }
 });
@@ -162,7 +162,7 @@ router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, 
   try {
     const { startDate, endDate, userId } = req.query;
     if (!startDate || !endDate) {
-      return res.status(400).json({ error: 'Missing required query parameters: startDate and endDate.' });
+      return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
     }
 
     const targetUserId = userId || req.userId;
@@ -178,7 +178,7 @@ router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, 
     const sleepEntries = await measurementService.getSleepEntriesByUserIdAndDateRange(targetUserId, startDate, endDate);
     res.status(200).json(sleepEntries);
   } catch (error) {
-    log('error', 'Error fetching sleep entries:', error);
+    log('error', "Error fetching sleep entries:", error);
     next(error);
   }
 });
@@ -213,7 +213,7 @@ router.get('/details', authenticate, checkPermissionMiddleware('checkin'), async
   try {
     const { startDate, endDate, userId } = req.query;
     if (!startDate || !endDate) {
-      return res.status(400).json({ error: 'Missing required query parameters: startDate and endDate.' });
+      return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
     }
 
     const targetUserId = userId || req.userId;
@@ -229,7 +229,7 @@ router.get('/details', authenticate, checkPermissionMiddleware('checkin'), async
     const sleepEntries = await measurementService.getSleepEntriesByUserIdAndDateRange(targetUserId, startDate, endDate);
     res.status(200).json(sleepEntries);
   } catch (error) {
-    log('error', 'Error fetching sleep entries details:', error);
+    log('error', "Error fetching sleep entries details:", error);
     next(error);
   }
 });
