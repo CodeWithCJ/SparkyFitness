@@ -31,7 +31,8 @@
           "esModuleInterop": true,
           "module": "ESNext",
           "moduleResolution": "node",
-          "types": ["jest", "@testing-library/jest-dom", "node"]
+          "types": ["jest", "@testing-library/jest-dom", "node"],
+          "isolatedModules": true
         }
       }]
     },
