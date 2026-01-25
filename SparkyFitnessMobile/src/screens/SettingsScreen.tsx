@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Alert, Text, ScrollView, Platform } from 'react-native';
+import { View, Alert, Text, ScrollView, Platform, TouchableOpacity } from 'react-native';
 import styles from './SettingsScreenStyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig } from '../services/storage';
@@ -15,6 +15,7 @@ import HealthDataSync from '../components/HealthDataSync';
 import SyncFrequency from '../components/SyncFrequency';
 import AppearanceSettings from '../components/AppearanceSettings';
 import DevTools from '../components/DevTools';
+import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import { useTheme } from '../contexts/ThemeContext';
 import * as Application from 'expo-application';
 import type { HealthMetricStates } from '../types/healthRecords';
@@ -41,6 +42,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
   const [currentConfigId, setCurrentConfigId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 
   const healthSettingsName = Platform.OS === 'android' ? 'Health Connect settings' : 'Health app settings';
 
@@ -314,10 +316,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           )}
 
           <View style={styles.footer}>
-            <Text style={{ color: colors.textMuted, zIndex: 100 }}>Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
+            <TouchableOpacity onPress={() => setShowPrivacyModal(true)} activeOpacity={0.7}>
+              <Text style={{ color: colors.primary, marginBottom: 8 }}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={{ color: colors.textMuted }}>Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
           </View>
         </View>
       </ScrollView>
+
+      <PrivacyPolicyModal
+        visible={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
     </View>
   );
 };

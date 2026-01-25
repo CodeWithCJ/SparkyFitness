@@ -3,11 +3,16 @@ const express = require('express');
 const mealRoutes = require('../routes/mealRoutes');
 const mealService = require('../services/mealService');
 const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const errorHandler = require('../middleware/errorHandler');
 const { v4: uuidv4 } = require('uuid');
 
 // Mock middleware and service
 jest.mock('../services/mealService');
 jest.mock('../middleware/authMiddleware', () => ({
+  authenticate: jest.fn((req, res, next) => {
+    req.userId = 'testUserId';
+    next();
+  }),
   authenticateToken: jest.fn((req, res, next) => {
     req.userId = 'testUserId';
     next();
@@ -20,6 +25,7 @@ jest.mock('../middleware/authMiddleware', () => ({
 const app = express();
 app.use(express.json());
 app.use('/meals', mealRoutes);
+app.use(errorHandler);
 
 describe('Meal Routes', () => {
   beforeEach(() => {
@@ -63,18 +69,18 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(meals);
-      expect(mealService.getMeals).toHaveBeenCalledWith('testUserId', false);
+      expect(mealService.getMeals).toHaveBeenCalledWith('testUserId', undefined, undefined);
     });
 
-    it('should return public meals when is_public is true', async () => {
+    it('should return public meals when filter is public', async () => {
       const meals = [{ id: uuidv4(), name: 'Public Meal', is_public: true }];
       mealService.getMeals.mockResolvedValue(meals);
 
-      const res = await request(app).get('/meals?is_public=true');
+      const res = await request(app).get('/meals?filter=public');
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(meals);
-      expect(mealService.getMeals).toHaveBeenCalledWith('testUserId', true);
+      expect(mealService.getMeals).toHaveBeenCalledWith('testUserId', 'public', undefined);
     });
   });
 
