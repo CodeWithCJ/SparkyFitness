@@ -40,6 +40,10 @@
         {
           "appearance" : "dark",
           "value" : null
+        },
+        {
+          "appearance" : "tinted",
+          "value" : null
         }
       ],
       "layers" : [
@@ -111,6 +115,13 @@
             "kind" : "neutral",
             "opacity" : 0.49
           }
+        },
+        {
+          "appearance" : "tinted",
+          "value" : {
+            "kind" : "neutral",
+            "opacity" : 0.5
+          }
         }
       ],
       "specular-specializations" : [
@@ -119,6 +130,10 @@
         },
         {
           "appearance" : "dark",
+          "value" : false
+        },
+        {
+          "appearance" : "tinted",
           "value" : false
         }
       ],
@@ -251,7 +266,7 @@
         {
           "appearance" : "tinted",
           "value" : {
-            "enabled" : true,
+            "enabled" : false,
             "value" : 0.5
           }
         }
