@@ -1,0 +1,218 @@
+name: CI Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'SparkyFitnessFrontend/**'
+      - 'SparkyFitnessMobile/**'
+      - 'SparkyFitnessServer/**'
+      - 'SparkyFitnessGarmin/**'
+      - '.github/workflows/ci-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'SparkyFitnessFrontend/**'
+      - 'SparkyFitnessMobile/**'
+      - 'SparkyFitnessServer/**'
+      - 'SparkyFitnessGarmin/**'
+      - '.github/workflows/ci-tests.yml'
+
+jobs:
+  # Detect which components changed
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      server: ${{ steps.filter.outputs.server }}
+      garmin: ${{ steps.filter.outputs.garmin }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'SparkyFitnessFrontend/**'
+            mobile:
+              - 'SparkyFitnessMobile/**'
+            server:
+              - 'SparkyFitnessServer/**'
+            garmin:
+              - 'SparkyFitnessGarmin/**'
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+
+    defaults:
+      run:
+        working-directory: SparkyFitnessFrontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: SparkyFitnessFrontend/pnpm-lock.yaml
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linting
+        run: pnpm run lint
+
+      - name: Run tests with coverage
+        run: pnpm test -- --ci --coverage --maxWorkers=2
+        env:
+          NODE_ENV: test
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: SparkyFitnessFrontend/coverage/
+          retention-days: 7
+
+  mobile-tests:
+    name: Mobile Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+
+    defaults:
+      run:
+        working-directory: SparkyFitnessMobile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: SparkyFitnessMobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run tests with coverage
+        run: npm run test:coverage -- --ci --maxWorkers=2
+        env:
+          NODE_ENV: test
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-coverage
+          path: SparkyFitnessMobile/coverage/
+          retention-days: 7
+
+  server-tests:
+    name: Server Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+
+    defaults:
+      run:
+        working-directory: SparkyFitnessServer
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: SparkyFitnessServer/pnpm-lock.yaml
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests with coverage
+        run: pnpm run test:coverage -- --ci --maxWorkers=2
+        env:
+          NODE_ENV: test
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: server-coverage
+          path: SparkyFitnessServer/coverage/
+          retention-days: 7
+
+  garmin-tests:
+    name: Garmin Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.garmin == 'true'
+
+    defaults:
+      run:
+        working-directory: SparkyFitnessGarmin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          pip install pytest pytest-cov
+
+      - name: Run tests with coverage
+        continue-on-error: true
+        run: |
+          if [ -d tests ] || [ -f test_*.py ]; then
+            pytest --cov=. --cov-report=xml --cov-report=html
+          else
+            echo "No tests found, skipping..."
+          fi
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: garmin-coverage
+          path: SparkyFitnessGarmin/htmlcov/
+          retention-days: 7
