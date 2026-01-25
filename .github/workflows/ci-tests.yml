@@ -51,6 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
+    continue-on-error: true  # Show as failed but don't block - 9 tests need fixing
 
     defaults:
       run:
@@ -77,11 +78,9 @@ jobs:
 
       - name: Run linting
         run: pnpm run lint
-        continue-on-error: true
 
       - name: Run tests with coverage
         run: pnpm run test:ci
-        continue-on-error: true  # 9 failing tests need fixing separately
         env:
           NODE_ENV: test
 
