@@ -166,7 +166,7 @@ jobs:
         continue-on-error: true
 
       - name: Run tests with coverage
-        run: pnpm run test:coverage -- --ci --maxWorkers=2
+        run: pnpm test -- --ci --coverage --maxWorkers=2
         env:
           NODE_ENV: test
 
