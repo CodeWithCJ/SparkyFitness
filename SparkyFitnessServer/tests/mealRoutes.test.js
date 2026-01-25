@@ -8,6 +8,10 @@ const { v4: uuidv4 } = require('uuid');
 // Mock middleware and service
 jest.mock('../services/mealService');
 jest.mock('../middleware/authMiddleware', () => ({
+  authenticate: jest.fn((req, res, next) => {
+    req.userId = 'testUserId';
+    next();
+  }),
   authenticateToken: jest.fn((req, res, next) => {
     req.userId = 'testUserId';
     next();

@@ -1,15 +1,12 @@
 const mealRepository = require('../models/mealRepository');
-const pool = require('../db/connection');
 const { v4: uuidv4 } = require('uuid');
 
-// Mock the pool.query function
-jest.mock('../db/connection', () => ({
-  query: jest.fn(),
-  connect: jest.fn(() => ({
-    query: jest.fn(),
-    release: jest.fn(),
-  })),
+// Mock the poolManager.getClient function
+jest.mock('../db/poolManager', () => ({
+  getClient: jest.fn(),
 }));
+
+const { getClient } = require('../db/poolManager');
 
 describe('mealRepository', () => {
   let mockClient;
@@ -19,7 +16,7 @@ describe('mealRepository', () => {
       query: jest.fn(),
       release: jest.fn(),
     };
-    pool.connect.mockResolvedValue(mockClient);
+    getClient.mockResolvedValue(mockClient);
     mockClient.query.mockClear();
   });
 
