@@ -424,12 +424,12 @@ const getAggregatedDataByDate = async (
     isFirstDay = false;
   }
 
-  const errorSuffix = errorCount > 0 ? `, ${errorCount} errors` : '';
-  if (daysWithData === 0) {
-    addLog(`[HealthKitService] No ${config.logLabel} data found for ${daysQueried} days queried${errorSuffix}`, 'DEBUG');
-  } else {
-    addLog(`[HealthKitService] ${config.logLabel} aggregation: ${daysWithData}/${daysQueried} days with data${errorSuffix}`, 'DEBUG');
-  }
+  // const errorSuffix = errorCount > 0 ? `, ${errorCount} errors` : '';
+  // if (daysWithData === 0) {
+  //   addLog(`[HealthKitService] No ${config.logLabel} data found for ${daysQueried} days queried${errorSuffix}`, 'DEBUG');
+  // } else {
+  //   addLog(`[HealthKitService] ${config.logLabel} aggregation: ${daysWithData}/${daysQueried} days with data${errorSuffix}`, 'DEBUG');
+  // }
 
   return results;
 };
