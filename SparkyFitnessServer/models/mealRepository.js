@@ -1,13 +1,13 @@
-const { getClient } = require("../db/poolManager");
-const { log } = require("../config/logging");
-const format = require("pg-format");
+const { getClient } = require('../db/poolManager');
+const { log } = require('../config/logging');
+const format = require('pg-format');
 
 // --- Meal Template CRUD Operations ---
 
 async function createMeal(mealData) {
   const client = await getClient(mealData.user_id); // User-specific operation
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
     const mealResult = await client.query(
       `INSERT INTO meals (user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at)
@@ -30,28 +30,28 @@ async function createMeal(mealData) {
         food.variant_id,
         food.quantity,
         food.unit,
-        "now()",
-        "now()",
+        'now()',
+        'now()',
       ]);
       const mealFoodsQuery = format(
-        `INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id`,
+        'INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id',
         mealFoodsValues
       );
       await client.query(mealFoodsQuery);
     }
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return newMeal;
   } catch (error) {
-    await client.query("ROLLBACK");
-    log("error", `Error creating meal:`, error);
+    await client.query('ROLLBACK');
+    log('error', 'Error creating meal:', error);
     throw error;
   } finally {
     client.release();
   }
 }
 
-async function getMeals(userId, filter = "all") {
+async function getMeals(userId, filter = 'all') {
   const client = await getClient(userId); // User-specific operation
   try {
     let query = `
@@ -60,17 +60,17 @@ async function getMeals(userId, filter = "all") {
       WHERE 1=1`; // Start with a true condition to easily append AND clauses
     const queryParams = [];
 
-    if (filter === "mine") {
-      query += ` AND user_id = $1`;
+    if (filter === 'mine') {
+      query += ' AND user_id = $1';
       queryParams.push(userId);
-    } else if (filter === "all") {
+    } else if (filter === 'all') {
       // 'all' means user's own meals and public meals
-      query += ` AND (user_id = $1 OR is_public = TRUE)`;
+      query += ' AND (user_id = $1 OR is_public = TRUE)';
       queryParams.push(userId);
     }
     // For 'family' and 'public' filters, separate functions will be called in mealService
 
-    query += ` ORDER BY name ASC`;
+    query += ' ORDER BY name ASC';
 
     const result = await client.query(query, queryParams);
     const meals = result.rows;
@@ -107,7 +107,7 @@ async function searchMeals(searchTerm, userId, limit = null) {
     const queryParams = [searchTerm];
 
     if (limit !== null) {
-      query += ` LIMIT $3`;
+      query += ' LIMIT $3';
       queryParams.push(limit);
     }
 
@@ -166,7 +166,7 @@ async function getMealById(mealId, userId) {
 async function updateMeal(mealId, userId, updateData) {
   const client = await getClient(userId); // User-specific operation
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
     const result = await client.query(
       `UPDATE meals SET
@@ -191,7 +191,7 @@ async function updateMeal(mealId, userId, updateData) {
 
     if (updatedMeal && updateData.foods !== undefined) {
       // Delete existing meal_foods for this meal
-      await client.query("DELETE FROM meal_foods WHERE meal_id = $1", [mealId]);
+      await client.query('DELETE FROM meal_foods WHERE meal_id = $1', [mealId]);
 
       // Insert new meal_foods
       if (updateData.foods.length > 0) {
@@ -201,22 +201,22 @@ async function updateMeal(mealId, userId, updateData) {
           food.variant_id,
           food.quantity,
           food.unit,
-          "now()",
-          "now()",
+          'now()',
+          'now()',
         ]);
         const mealFoodsQuery = format(
-          `INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id`,
+          'INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id',
           mealFoodsValues
         );
         await client.query(mealFoodsQuery);
       }
     }
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return updatedMeal;
   } catch (error) {
-    await client.query("ROLLBACK");
-    log("error", `Error updating meal ${mealId}:`, error);
+    await client.query('ROLLBACK');
+    log('error', `Error updating meal ${mealId}:`, error);
     throw error;
   } finally {
     client.release();
@@ -226,17 +226,17 @@ async function updateMeal(mealId, userId, updateData) {
 async function deleteMeal(mealId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
     // meal_foods will be cascade deleted due to ON DELETE CASCADE on meal_id
     const result = await client.query(
-      "DELETE FROM meals WHERE id = $1 RETURNING id",
+      'DELETE FROM meals WHERE id = $1 RETURNING id',
       [mealId]
     );
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return result.rowCount > 0;
   } catch (error) {
-    await client.query("ROLLBACK");
-    log("error", `Error deleting meal ${mealId}:`, error);
+    await client.query('ROLLBACK');
+    log('error', `Error deleting meal ${mealId}:`, error);
     throw error;
   } finally {
     client.release();
@@ -251,7 +251,7 @@ async function createMealPlanEntry(planData) {
     let mealTypeId = planData.meal_type_id;
     if (!mealTypeId && planData.meal_type) {
       const typeRes = await client.query(
-        "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)",
+        'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
         [planData.meal_type]
       );
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
@@ -278,7 +278,7 @@ async function createMealPlanEntry(planData) {
     );
     return result.rows[0];
   } catch (error) {
-    log("error", `Error creating meal plan entry:`, error);
+    log('error', 'Error creating meal plan entry:', error);
     throw error;
   } finally {
     client.release();
@@ -334,7 +334,7 @@ async function updateMealPlanEntry(planId, userId, updateData) {
     let mealTypeId = updateData.meal_type_id;
     if (!mealTypeId && updateData.meal_type) {
       const typeRes = await client.query(
-        "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)",
+        'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
         [updateData.meal_type]
       );
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
@@ -373,7 +373,7 @@ async function updateMealPlanEntry(planId, userId, updateData) {
     );
     return result.rows[0];
   } catch (error) {
-    log("error", `Error updating meal plan entry ${planId}:`, error);
+    log('error', `Error updating meal plan entry ${planId}:`, error);
     throw error;
   } finally {
     client.release();
@@ -384,12 +384,12 @@ async function deleteMealPlanEntry(planId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      "DELETE FROM meal_plans WHERE id = $1 RETURNING id",
+      'DELETE FROM meal_plans WHERE id = $1 RETURNING id',
       [planId]
     );
     return result.rowCount > 0;
   } catch (error) {
-    log("error", `Error deleting meal plan entry ${planId}:`, error);
+    log('error', `Error deleting meal plan entry ${planId}:`, error);
     throw error;
   } finally {
     client.release();
@@ -434,7 +434,7 @@ async function createFoodEntryFromMealPlan(entryData) {
     let mealTypeId = entryData.meal_type_id;
     if (!mealTypeId && entryData.meal_type) {
       const typeRes = await client.query(
-        "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)",
+        'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
         [entryData.meal_type]
       );
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
@@ -457,7 +457,7 @@ async function createFoodEntryFromMealPlan(entryData) {
     );
     return result.rows[0];
   } catch (error) {
-    log("error", `Error creating food entry from meal plan:`, error);
+    log('error', 'Error creating food entry from meal plan:', error);
     throw error;
   } finally {
     client.release();
@@ -468,13 +468,13 @@ async function deleteMealPlanEntriesByTemplateId(templateId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      "DELETE FROM meal_plans WHERE meal_plan_template_id = $1 RETURNING id",
+      'DELETE FROM meal_plans WHERE meal_plan_template_id = $1 RETURNING id',
       [templateId]
     );
     return result.rowCount;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting meal plan entries for template ${templateId}:`,
       error
     );
@@ -494,7 +494,7 @@ async function getRecentMeals(userId, limit = null) {
     const queryParams = [];
 
     if (limit !== null) {
-      query += ` LIMIT $2`;
+      query += ' LIMIT $2';
       queryParams.push(limit);
     }
 
@@ -535,7 +535,7 @@ async function getTopMeals(userId, limit = null) {
     const queryParams = [];
 
     if (limit !== null) {
-      query += ` LIMIT $2`;
+      query += ' LIMIT $2';
       queryParams.push(limit);
     }
 
@@ -565,7 +565,7 @@ async function getMealOwnerId(mealId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      "SELECT user_id FROM meals WHERE id = $1",
+      'SELECT user_id FROM meals WHERE id = $1',
       [mealId]
     );
     return result.rows[0] ? result.rows[0].user_id : null;
@@ -673,7 +673,7 @@ async function deleteMealPlanEntriesByMealId(mealId, userId) {
     );
     return result.rowCount;
   } catch (error) {
-    log("error", `Error deleting meal plan entries for meal ${mealId}:`, error);
+    log('error', `Error deleting meal plan entries for meal ${mealId}:`, error);
     throw error;
   } finally {
     client.release();
@@ -684,7 +684,7 @@ async function getMealPlanOwnerId(mealPlanId) {
   const client = await getClient(mealPlanId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      "SELECT user_id FROM meal_plans WHERE id = $1",
+      'SELECT user_id FROM meal_plans WHERE id = $1',
       [mealPlanId]
     );
     return result.rows[0] ? result.rows[0].user_id : null;

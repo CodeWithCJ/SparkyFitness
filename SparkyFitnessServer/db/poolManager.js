@@ -57,10 +57,10 @@ function _getRawAppPool() {
 
 async function getClient(userId) {
   if (!userId) {
-    throw new Error("userId is required for getClient to ensure RLS is applied.");
+    throw new Error('userId is required for getClient to ensure RLS is applied.');
   }
   const client = await _getRawAppPool().connect();
-  await client.query(`SELECT public.set_user_id($1)`, [userId]);
+  await client.query('SELECT public.set_user_id($1)', [userId]);
   return client;
 }
 

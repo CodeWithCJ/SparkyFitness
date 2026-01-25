@@ -4,7 +4,7 @@ const foodRepository = require('../models/foodRepository');
 const { log } = require('../config/logging');
 
 async function createMealPlanTemplate(userId, planData, currentClientDate = null) {
-    log('info', `createMealPlanTemplate service - received planData:`, planData);
+    log('info', 'createMealPlanTemplate service - received planData:', planData);
     try {
         if (planData.is_active) {
             log('info', `createMealPlanTemplate service - Deactivating all other meal plan templates for user ${userId}`);
@@ -16,7 +16,7 @@ async function createMealPlanTemplate(userId, planData, currentClientDate = null
             log('info', `createMealPlanTemplate service - New plan is active, creating food entries from template ${newPlan.id}`);
             await foodRepository.createFoodEntriesFromTemplate(newPlan.id, userId, planData.currentClientDate || currentClientDate);
         } else {
-            log('info', `createMealPlanTemplate service - New plan is not active, skipping food entry creation.`);
+            log('info', 'createMealPlanTemplate service - New plan is not active, skipping food entry creation.');
         }
         return newPlan;
     } catch (error) {
@@ -59,7 +59,7 @@ async function updateMealPlanTemplate(planId, userId, planData, currentClientDat
             log('info', `updateMealPlanTemplate service - Updated plan is active, creating food entries from template ${updatedPlan.id}`);
             await foodRepository.createFoodEntriesFromTemplate(updatedPlan.id, userId, planData.currentClientDate || currentClientDate);
         } else {
-            log('info', `updateMealPlanTemplate service - Updated plan is not active, skipping food entry creation.`);
+            log('info', 'updateMealPlanTemplate service - Updated plan is not active, skipping food entry creation.');
         }
         
         return updatedPlan;

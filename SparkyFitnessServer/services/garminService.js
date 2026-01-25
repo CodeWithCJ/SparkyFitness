@@ -62,9 +62,9 @@ async function processGarminHealthAndWellnessData(userId, actingUserId, healthDa
             const customCategory = await measurementService.getOrCreateCustomCategory(
               userId,
               actingUserId,
-              "Raw Stress Data",
-              "text",
-              "JSON"
+              'Raw Stress Data',
+              'text',
+              'JSON'
             );
 
             await measurementService.upsertCustomMeasurementEntry(
@@ -74,7 +74,7 @@ async function processGarminHealthAndWellnessData(userId, actingUserId, healthDa
                 category_id: customCategory.id,
                 value: raw_stress_data,
                 entry_date: date,
-                notes: `Source: Garmin`,
+                notes: 'Source: Garmin',
                 source: 'garmin',
               }
             );
@@ -117,13 +117,13 @@ async function processGarminHealthAndWellnessData(userId, actingUserId, healthDa
 
   if (errors.length > 0) {
     throw new Error(JSON.stringify({
-      message: "Some Garmin health and wellness data entries could not be processed.",
+      message: 'Some Garmin health and wellness data entries could not be processed.',
       processed: processedResults,
       errors: errors
     }));
   } else {
     return {
-      message: "All Garmin health and wellness data successfully processed.",
+      message: 'All Garmin health and wellness data successfully processed.',
       processed: processedResults
     };
   }
@@ -487,13 +487,13 @@ async function processGarminSleepData(userId, actingUserId, sleepDataArray, star
 
   if (errors.length > 0) {
     throw new Error(JSON.stringify({
-      message: "Some Garmin sleep entries could not be processed.",
+      message: 'Some Garmin sleep entries could not be processed.',
       processed: processedResults,
       errors: errors
     }));
   } else {
     return {
-      message: "All Garmin sleep data successfully processed.",
+      message: 'All Garmin sleep data successfully processed.',
       processed: processedResults
     };
   }
@@ -521,7 +521,7 @@ async function syncGarminData(userId, syncType = 'manual') {
 
   try {
     // 1. Sync Health and Wellness
-    log('info', `[garminService] Fetching Health and Wellness data...`);
+    log('info', '[garminService] Fetching Health and Wellness data...');
     const healthWellnessData = await garminConnectService.syncGarminHealthAndWellness(userId, startDate, endDate, []);
 
     // 2. Process Health and Wellness (Stress, Mood, etc.)
@@ -584,7 +584,7 @@ async function syncGarminData(userId, syncType = 'manual') {
     };
 
     // 5. Sync Activities and Workouts
-    log('info', `[garminService] Fetching Activities and Workouts data...`);
+    log('info', '[garminService] Fetching Activities and Workouts data...');
     const activitiesData = await garminConnectService.fetchGarminActivitiesAndWorkouts(userId, startDate, endDate);
 
     // 6. Process Activities and Workouts

@@ -44,7 +44,7 @@ class FreeExerciseDBService {
 
     async searchExercises(query, equipmentFilter = [], muscleGroupFilter = [], limit = 50) {
         const cacheKey = `search_exercises_${query}_${equipmentFilter.join(',')}_${muscleGroupFilter.join(',')}_${limit}`;
-        let cachedResults = githubCache.get(cacheKey);
+        const cachedResults = githubCache.get(cacheKey);
 
         if (cachedResults) {
             console.log(`[FreeExerciseDBService] Cache hit for search query: ${query}, equipment: ${equipmentFilter}, muscles: ${muscleGroupFilter}, limit: ${limit}`);

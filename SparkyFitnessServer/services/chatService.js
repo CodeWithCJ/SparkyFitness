@@ -470,7 +470,7 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
             }
             const imageParts = msg.content.filter(part => part.type === 'image_url');
             if (imageParts.length > 0) {
-              log('warn', `Image data detected for Ollama service. Ollama does not support multimodal input in this format. Image data will be ignored.`);
+              log('warn', 'Image data detected for Ollama service. Ollama does not support multimodal input in this format. Image data will be ignored.');
             }
           } else if (typeof msg.content === 'string') {
             contentString = msg.content;

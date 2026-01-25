@@ -46,7 +46,7 @@ async function updateWaterContainer(id, userId, updateData) {
         throw new Error('Invalid unit provided.');
     }
     try {
-        let dataToSave = { ...updateData };
+        const dataToSave = { ...updateData };
         if (updateData.volume !== undefined && updateData.unit !== undefined) {
             dataToSave.volume = convertToMl(updateData.volume, updateData.unit);
         } else if (updateData.volume !== undefined && updateData.unit === undefined) {

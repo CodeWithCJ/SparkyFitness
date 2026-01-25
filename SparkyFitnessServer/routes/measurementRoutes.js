@@ -11,7 +11,7 @@ router.use('/health-data', async (req, res, next) => {
   const apiKey = req.headers['authorization']?.split(' ')[1] || req.headers['x-api-key'];
 
   if (!apiKey) {
-    return res.status(401).json({ error: "Unauthorized: Missing API Key" });
+    return res.status(401).json({ error: 'Unauthorized: Missing API Key' });
   }
 
   try {
@@ -25,12 +25,12 @@ router.use('/health-data', async (req, res, next) => {
     const data = result.rows[0];
 
     if (!data) {
-      log('error', "API Key validation error: No data found for API key.");
-      return res.status(401).json({ error: "Unauthorized: Invalid or inactive API Key" });
+      log('error', 'API Key validation error: No data found for API key.');
+      return res.status(401).json({ error: 'Unauthorized: Invalid or inactive API Key' });
     }
 
     if (!data.permissions || !data.permissions.health_data_write) {
-      return res.status(403).json({ error: "Forbidden: API Key does not have health_data_write permission" });
+      return res.status(403).json({ error: 'Forbidden: API Key does not have health_data_write permission' });
     }
 
     req.userId = data.user_id;
@@ -77,7 +77,7 @@ router.post('/health-data', express.text({ type: '*/*' }), async (req, res, next
     try {
       healthDataArray = JSON.parse(rawBody);
     } catch (e) {
-      return res.status(400).json({ error: "Invalid JSON array format." });
+      return res.status(400).json({ error: 'Invalid JSON array format.' });
     }
   } else if (rawBody.includes('}{')) {
     const jsonStrings = rawBody.split('}{').map((part, index, arr) => {
@@ -89,14 +89,14 @@ router.post('/health-data', express.text({ type: '*/*' }), async (req, res, next
       try {
         healthDataArray.push(JSON.parse(jsonStr));
       } catch (parseError) {
-        log('error', "Error parsing individual concatenated JSON string:", jsonStr, parseError);
+        log('error', 'Error parsing individual concatenated JSON string:', jsonStr, parseError);
       }
     }
   } else {
     try {
       healthDataArray.push(JSON.parse(rawBody));
     } catch (e) {
-      return res.status(400).json({ error: "Invalid single JSON format." });
+      return res.status(400).json({ error: 'Invalid single JSON format.' });
     }
   }
 

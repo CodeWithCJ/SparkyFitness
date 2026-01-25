@@ -172,7 +172,7 @@ router.post(
       if (error.message === 'Workout preset not found.') {
         return res.status(404).json({ message: error.message });
       }
-      log('error', `Error adding workout preset to diary:`, error);
+      log('error', 'Error adding workout preset to diary:', error);
       next(error);
     }
   }

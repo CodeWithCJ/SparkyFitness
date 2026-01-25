@@ -244,7 +244,7 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
 
         log('info', `[GARMIN_SYNC] Total processed health data items: ${processedHealthData.length}`);
 
-        log('debug', `Processed health data for measurementService:`, processedHealthData);
+        log('debug', 'Processed health data for measurementService:', processedHealthData);
 
         let measurementServiceResult = {};
         if (processedHealthData.length > 0) {
@@ -376,12 +376,12 @@ router.get('/status', authenticate, async (req, res, next) => {
                 lastUpdated: provider.updated_at,
                 tokenExpiresAt: provider.token_expires_at,
                 // externalUserId: provider.external_user_id ? `${provider.external_user_id.substring(0, 4)}...` : null, // Example masking
-                message: "Garmin Connect is linked."
+                message: 'Garmin Connect is linked.'
             });
         } else {
             res.status(200).json({
                 isLinked: false,
-                message: "Garmin Connect is not linked."
+                message: 'Garmin Connect is not linked.'
             });
         }
     } catch (error) {
@@ -408,9 +408,9 @@ router.post('/unlink', authenticate, async (req, res, next) => {
 
         if (provider) {
             await externalProviderRepository.deleteExternalDataProvider(provider.id, userId);
-            res.status(200).json({ success: true, message: "Garmin Connect account unlinked successfully." });
+            res.status(200).json({ success: true, message: 'Garmin Connect account unlinked successfully.' });
         } else {
-            res.status(400).json({ error: "Garmin Connect account not found for this user." });
+            res.status(400).json({ error: 'Garmin Connect account not found for this user.' });
         }
     } catch (error) {
         next(error);

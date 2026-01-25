@@ -29,8 +29,8 @@ async function endFast(id, userId, endTime, durationMinutes, startTime) {
         if (startTime !== undefined && startTime !== null) {
             setParts.push(`start_time = $${idx++}`); values.push(startTime);
         }
-        setParts.push(`status = 'COMPLETED'`);
-        setParts.push(`updated_at = NOW()`);
+        setParts.push('status = \'COMPLETED\'');
+        setParts.push('updated_at = NOW()');
 
         const whereIdPos = idx++;
         const whereUserPos = idx++;
@@ -48,7 +48,7 @@ async function getFastingById(id, userId) {
     const client = await getClient(userId);
     try {
         const result = await client.query(
-            `SELECT * FROM fasting_logs WHERE id = $1 AND user_id = $2 LIMIT 1`,
+            'SELECT * FROM fasting_logs WHERE id = $1 AND user_id = $2 LIMIT 1',
             [id, userId]
         );
         return result.rows[0];

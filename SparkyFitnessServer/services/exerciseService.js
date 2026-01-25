@@ -22,7 +22,7 @@ const { isValidUuid, resolveExerciseIdToUuid } = require('../utils/uuidUtils'); 
 const papa = require('papaparse');
 const {
   checkFamilyAccessPermission,
-} = require("../models/familyAccessRepository");
+} = require('../models/familyAccessRepository');
 
 async function getExercisesWithPagination(authenticatedUserId, targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, currentPage, itemsPerPage) {
   try {
@@ -39,16 +39,16 @@ async function getExercisesWithPagination(authenticatedUserId, targetUserId, sea
         const isOwner = exercise.user_id === authenticatedUserId;
 
         if (isOwner) {
-          tags.push("private");
+          tags.push('private');
         }
 
         if (exercise.shared_with_public) {
-          tags.push("public");
+          tags.push('public');
         }
 
         if (!isOwner && !exercise.shared_with_public) {
           // If not owned and not public, it must be visible due to family access
-          tags.push("family");
+          tags.push('family');
         }
 
         return { ...exercise, tags };
@@ -70,15 +70,15 @@ async function searchExercises(authenticatedUserId, name, targetUserId, equipmen
         const isOwner = exercise.user_id === authenticatedUserId;
 
         if (isOwner) {
-          tags.push("private");
+          tags.push('private');
         }
 
         if (exercise.shared_with_public) {
-          tags.push("public");
+          tags.push('public');
         }
 
         if (!isOwner && !exercise.shared_with_public) {
-          tags.push("family");
+          tags.push('family');
         }
 
         return { ...exercise, tags };
@@ -96,7 +96,7 @@ async function getAvailableEquipment() {
     const equipment = await exerciseDb.getDistinctEquipment();
     return equipment;
   } catch (error) {
-    log('error', `Error fetching available equipment:`, error);
+    log('error', 'Error fetching available equipment:', error);
     throw error;
   }
 }
@@ -106,7 +106,7 @@ async function getAvailableMuscleGroups() {
     const muscleGroups = await exerciseDb.getDistinctMuscleGroups();
     return muscleGroups;
   } catch (error) {
-    log('error', `Error fetching available muscle groups:`, error);
+    log('error', 'Error fetching available muscle groups:', error);
     throw error;
   }
 }
@@ -136,7 +136,7 @@ async function createExerciseEntry(authenticatedUserId, actingUserId, entryData)
     // Fetch exercise details to create the snapshot
     const exercise = await exerciseDb.getExerciseById(entryData.exercise_id, authenticatedUserId);
     if (!exercise) {
-      throw new Error("Exercise not found for snapshot.");
+      throw new Error('Exercise not found for snapshot.');
     }
 
     // If calories_burned is not provided, calculate it using the calorieCalculationService
@@ -360,16 +360,16 @@ async function updateExercise(authenticatedUserId, id, updateData) {
 }
 
 async function deleteExercise(authenticatedUserId, exerciseId, forceDelete = false) {
-  log("info", `deleteExercise: Attempting to delete exercise ${exerciseId} by user ${authenticatedUserId}. Force delete: ${forceDelete}`);
+  log('info', `deleteExercise: Attempting to delete exercise ${exerciseId} by user ${authenticatedUserId}. Force delete: ${forceDelete}`);
   try {
     const exerciseOwnerId = await exerciseDb.getExerciseOwnerId(exerciseId, authenticatedUserId);
     if (!exerciseOwnerId) {
-      log("warn", `deleteExercise: Exercise ${exerciseId} not found for user ${authenticatedUserId}.`);
-      throw new Error("Exercise not found.");
+      log('warn', `deleteExercise: Exercise ${exerciseId} not found for user ${authenticatedUserId}.`);
+      throw new Error('Exercise not found.');
     }
 
     const deletionImpact = await exerciseDb.getExerciseDeletionImpact(exerciseId, authenticatedUserId);
-    log("info", `deleteExercise: Deletion impact for exercise ${exerciseId}: ${JSON.stringify(deletionImpact)}`);
+    log('info', `deleteExercise: Deletion impact for exercise ${exerciseId}: ${JSON.stringify(deletionImpact)}`);
 
     const {
       exerciseEntriesCount,
@@ -385,46 +385,46 @@ async function deleteExercise(authenticatedUserId, exerciseId, forceDelete = fal
 
     // Scenario 1: No references at all
     if (totalReferences === 0) {
-      log("info", `deleteExercise: Exercise ${exerciseId} has no references. Performing hard delete.`);
+      log('info', `deleteExercise: Exercise ${exerciseId} has no references. Performing hard delete.`);
       const success = await exerciseDb.deleteExerciseAndDependencies(exerciseId, authenticatedUserId);
       if (!success) {
-        throw new Error("Exercise not found or not authorized to delete.");
+        throw new Error('Exercise not found or not authorized to delete.');
       }
-      return { message: "Exercise deleted permanently.", status: "deleted" };
+      return { message: 'Exercise deleted permanently.', status: 'deleted' };
     }
 
     // Scenario 2: References only by the current user
     if (otherUserReferences === 0) {
       if (forceDelete) {
-        log("info", `deleteExercise: Exercise ${exerciseId} has references only by current user. Force deleting.`);
+        log('info', `deleteExercise: Exercise ${exerciseId} has references only by current user. Force deleting.`);
         const success = await exerciseDb.deleteExerciseAndDependencies(exerciseId, authenticatedUserId);
         if (!success) {
-          throw new Error("Exercise not found or not authorized to delete.");
+          throw new Error('Exercise not found or not authorized to delete.');
         }
-        return { message: "Exercise and all its references deleted permanently.", status: "force_deleted" };
+        return { message: 'Exercise and all its references deleted permanently.', status: 'force_deleted' };
       } else {
         // Hide the exercise (mark as quick/hidden) so it won't appear in searches but existing references remain
-        log("info", `deleteExercise: Exercise ${exerciseId} has references only by current user. Hiding as quick exercise.`);
+        log('info', `deleteExercise: Exercise ${exerciseId} has references only by current user. Hiding as quick exercise.`);
         await exerciseDb.updateExercise(exerciseId, exerciseOwnerId, { is_quick_exercise: true });
-        return { message: "Exercise hidden (marked as quick exercise). Existing references remain.", status: "hidden" };
+        return { message: 'Exercise hidden (marked as quick exercise). Existing references remain.', status: 'hidden' };
       }
     }
 
     // Scenario 3: References by other users
     if (otherUserReferences > 0) {
       // If other users reference this exercise, hide it (mark as quick exercise) so it's removed from searches
-      log("info", `deleteExercise: Exercise ${exerciseId} has references by other users. Hiding as quick exercise.`);
+      log('info', `deleteExercise: Exercise ${exerciseId} has references by other users. Hiding as quick exercise.`);
       await exerciseDb.updateExercise(exerciseId, exerciseOwnerId, { is_quick_exercise: true });
-      return { message: "Exercise hidden (marked as quick exercise). Existing references remain.", status: "hidden" };
+      return { message: 'Exercise hidden (marked as quick exercise). Existing references remain.', status: 'hidden' };
     }
 
     // Fallback for any unhandled cases (should not be reached)
-    log("warn", `deleteExercise: Unhandled deletion scenario for exercise ${exerciseId}.`);
-    throw new Error("Could not delete exercise due to an unknown issue.");
+    log('warn', `deleteExercise: Unhandled deletion scenario for exercise ${exerciseId}.`);
+    throw new Error('Could not delete exercise due to an unknown issue.');
 
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting exercise ${exerciseId} by user ${authenticatedUserId} in exerciseService:`,
       error
     );
@@ -761,15 +761,15 @@ async function getRecentExercises(authenticatedUserId, limit) {
         const isOwner = exercise.user_id === authenticatedUserId;
 
         if (isOwner) {
-          tags.push("private");
+          tags.push('private');
         }
 
         if (exercise.shared_with_public) {
-          tags.push("public");
+          tags.push('public');
         }
 
         if (!isOwner && !exercise.shared_with_public) {
-          tags.push("family");
+          tags.push('family');
         }
 
         return { ...exercise, tags };
@@ -793,15 +793,15 @@ async function getTopExercises(authenticatedUserId, limit) {
         const isOwner = exercise.user_id === authenticatedUserId;
 
         if (isOwner) {
-          tags.push("private");
+          tags.push('private');
         }
 
         if (exercise.shared_with_public) {
-          tags.push("public");
+          tags.push('public');
         }
 
         if (!isOwner && !exercise.shared_with_public) {
-          tags.push("family");
+          tags.push('family');
         }
 
         return { ...exercise, tags };
@@ -945,18 +945,18 @@ async function importExercisesFromCSV(authenticatedUserId, filePath) {
 }
 
 async function getExerciseDeletionImpact(authenticatedUserId, exerciseId) {
-  log("info", `getExerciseDeletionImpact: Checking deletion impact for exercise ${exerciseId} by user ${authenticatedUserId}`);
+  log('info', `getExerciseDeletionImpact: Checking deletion impact for exercise ${exerciseId} by user ${authenticatedUserId}`);
   try {
     const exerciseOwnerId = await exerciseDb.getExerciseOwnerId(exerciseId, authenticatedUserId);
     if (!exerciseOwnerId) {
-      log("warn", `getExerciseDeletionImpact: Exercise ${exerciseId} not found for user ${authenticatedUserId}.`);
-      throw new Error("Exercise not found.");
+      log('warn', `getExerciseDeletionImpact: Exercise ${exerciseId} not found for user ${authenticatedUserId}.`);
+      throw new Error('Exercise not found.');
     }
     // No need to check permission here, as exerciseRepository.getExerciseDeletionImpact handles it
     return await exerciseDb.getExerciseDeletionImpact(exerciseId, authenticatedUserId);
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error getting exercise deletion impact for exercise ${exerciseId} by user ${authenticatedUserId} in exerciseService:`,
       error
     );
@@ -1037,7 +1037,7 @@ async function logWorkoutPresetGrouped(userId, actingUserId, workoutPresetId, en
       total_duration_minutes: createdExerciseEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0)
     };
   } catch (error) {
-    log('error', `Error logging workout preset grouped:`, error);
+    log('error', 'Error logging workout preset grouped:', error);
     throw error;
   }
 }
@@ -1081,7 +1081,7 @@ async function getActivityDetailsByExerciseEntryIdAndProvider(authenticatedUserI
     let activityDetails = [];
 
     // First, try to find an exercise entry with the given ID
-    let exerciseEntry = await exerciseEntryDb.getExerciseEntryById(entryId, authenticatedUserId);
+    const exerciseEntry = await exerciseEntryDb.getExerciseEntryById(entryId, authenticatedUserId);
     let targetId = entryId; // Default to the provided entryId
 
     if (exerciseEntry) {
@@ -1095,7 +1095,7 @@ async function getActivityDetailsByExerciseEntryIdAndProvider(authenticatedUserI
       }
     } else {
       // If not an exercise entry, try to find an exercise preset entry with the given ID
-      let presetEntry = await exercisePresetEntryRepository.getExercisePresetEntryById(entryId, authenticatedUserId);
+      const presetEntry = await exercisePresetEntryRepository.getExercisePresetEntryById(entryId, authenticatedUserId);
       if (presetEntry) {
         targetId = entryId; // The provided ID is already a preset entry ID
         activityDetails = await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(authenticatedUserId, null, targetId);
@@ -1129,7 +1129,7 @@ async function getExercisesNeedingReview(authenticatedUserId) {
     const exercisesNeedingReview = await exerciseDb.getExercisesNeedingReview(authenticatedUserId);
     return exercisesNeedingReview;
   } catch (error) {
-    log("error", `Error getting exercises needing review for user ${authenticatedUserId}:`, error);
+    log('error', `Error getting exercises needing review for user ${authenticatedUserId}:`, error);
     throw error;
   }
 }
@@ -1139,7 +1139,7 @@ async function updateExerciseEntriesSnapshot(authenticatedUserId, exerciseId) {
     // Fetch the latest exercise details
     const exercise = await exerciseDb.getExerciseById(exerciseId, authenticatedUserId);
     if (!exercise) {
-      throw new Error("Exercise not found.");
+      throw new Error('Exercise not found.');
     }
 
     // Construct the new snapshot data
@@ -1154,9 +1154,9 @@ async function updateExerciseEntriesSnapshot(authenticatedUserId, exerciseId) {
     // Clear any ignored updates for this exercise for this user
     await exerciseDb.clearUserIgnoredUpdate(authenticatedUserId, exerciseId);
 
-    return { message: "Exercise entries updated successfully." };
+    return { message: 'Exercise entries updated successfully.' };
   } catch (error) {
-    log("error", `Error updating exercise entries snapshot for user ${authenticatedUserId}, exercise ${exerciseId}:`, error);
+    log('error', `Error updating exercise entries snapshot for user ${authenticatedUserId}, exercise ${exerciseId}:`, error);
     throw error;
   }
 }

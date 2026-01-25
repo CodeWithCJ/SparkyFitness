@@ -59,7 +59,7 @@ async function searchWgerExercises(query, muscleIds = [], equipmentIds = [], lan
     const equipmentIdList = Array.isArray(equipmentIds) ? equipmentIds : (equipmentIds ? equipmentIds.split(',') : []);
     const hasFilters = muscleIdList.length > 0 || equipmentIdList.length > 0;
 
-    let exerciseSet = new Map();
+    const exerciseSet = new Map();
 
     if (hasQuery && !hasFilters) {
         const params = { term: query, language: language };
@@ -90,7 +90,7 @@ async function searchWgerExercises(query, muscleIds = [], equipmentIds = [], lan
         });
     }
 
-    let exercises = Array.from(exerciseSet.values());
+    const exercises = Array.from(exerciseSet.values());
 
     const detailedExercises = await Promise.all(exercises.map(async (exercise) => {
         const details = await getWgerExerciseDetails(exercise.id);
@@ -115,7 +115,7 @@ async function searchWgerExercises(query, muscleIds = [], equipmentIds = [], lan
         };
     }));
 
-    let validExercises = detailedExercises.filter(d => d !== null);
+    const validExercises = detailedExercises.filter(d => d !== null);
 
 
     return validExercises.slice(offset, offset + limit);

@@ -1,6 +1,6 @@
-const { getClient } = require("../db/poolManager");
-const { log } = require("../config/logging");
-const format = require("pg-format");
+const { getClient } = require('../db/poolManager');
+const { log } = require('../config/logging');
+const format = require('pg-format');
 
 /**
  * @swagger
@@ -110,7 +110,7 @@ const format = require("pg-format");
  */
 async function createFoodEntry(entryData, createdByUserId) {
   log(
-    "info",
+    'info',
     `createFoodEntry in foodEntry.js: entryData: ${JSON.stringify(
       entryData
     )}, createdByUserId: ${createdByUserId}`
@@ -118,13 +118,13 @@ async function createFoodEntry(entryData, createdByUserId) {
   const client = await getClient(createdByUserId); // User-specific operation
 
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
     let mealTypeId = entryData.meal_type_id;
 
     if (!mealTypeId && entryData.meal_type) {
       const typeRes = await client.query(
-        "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)",
+        'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
         [entryData.meal_type]
       );
       if (typeRes.rows.length > 0) {
@@ -154,7 +154,7 @@ async function createFoodEntry(entryData, createdByUserId) {
       }
 
       if (foodSnapshotQuery.rows.length === 0) {
-        throw new Error("Food or variant not found for snapshotting.");
+        throw new Error('Food or variant not found for snapshotting.');
       }
       snapshot = foodSnapshotQuery.rows[0];
     } else {
@@ -238,11 +238,11 @@ async function createFoodEntry(entryData, createdByUserId) {
       ]
     );
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return result.rows[0];
   } catch (error) {
-    await client.query("ROLLBACK");
-    log("error", "Error creating food entry with snapshot:", error);
+    await client.query('ROLLBACK');
+    log('error', 'Error creating food entry with snapshot:', error);
     throw error;
   } finally {
     client.release();
@@ -302,7 +302,7 @@ async function getFoodEntryOwnerId(entryId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      "SELECT user_id FROM food_entries WHERE id = $1",
+      'SELECT user_id FROM food_entries WHERE id = $1',
       [entryId]
     );
     return result.rows[0]?.user_id;
@@ -315,7 +315,7 @@ async function deleteFoodEntry(entryId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      "DELETE FROM food_entries WHERE id = $1 RETURNING id",
+      'DELETE FROM food_entries WHERE id = $1 RETURNING id',
       [entryId]
     );
     return result.rowCount > 0;
@@ -337,7 +337,7 @@ async function updateFoodEntry(
   if (!mealTypeId && entryData.meal_type) {
       // If we are updating the meal type and only have the name
       const typeRes = await client.query(
-          "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)", 
+          'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)', 
           [entryData.meal_type]
       );
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
@@ -517,7 +517,7 @@ async function getFoodEntriesByDateAndMealType(userId, date, mealType) {
       [userId, date, mealType]
     );
     log(
-      "debug",
+      'debug',
       `getFoodEntriesByDateAndMealType: Fetched entries for user ${userId}, date ${date}, mealType ${mealType}: ${JSON.stringify(
         result.rows
       )}`
@@ -607,7 +607,7 @@ async function getFoodEntryByDetails(
 
 async function bulkCreateFoodEntries(entriesData, authenticatedUserId) {
   log(
-    "info",
+    'info',
     `bulkCreateFoodEntries in foodEntry.js: entriesData: ${JSON.stringify(
       entriesData
     )}, authenticatedUserId: ${authenticatedUserId}`
@@ -706,7 +706,7 @@ async function getFoodEntryComponentsByFoodEntryMealId(
   userId
 ) {
   log(
-    "info",
+    'info',
     `getFoodEntryComponentsByFoodEntryMealId in foodEntry.js: foodEntryMealId: ${foodEntryMealId}, userId: ${userId}`
   );
   const client = await getClient(userId);
@@ -760,13 +760,13 @@ async function deleteFoodEntryComponentsByFoodEntryMealId(
   userId
 ) {
   log(
-    "info",
+    'info',
     `deleteFoodEntryComponentsByFoodEntryMealId in foodEntry.js: foodEntryMealId: ${foodEntryMealId}, userId: ${userId}`
   );
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      "DELETE FROM food_entries WHERE food_entry_meal_id = $1 RETURNING id",
+      'DELETE FROM food_entries WHERE food_entry_meal_id = $1 RETURNING id',
       [foodEntryMealId]
     );
     return result.rowCount > 0;

@@ -40,7 +40,7 @@ async function createExerciseEntriesFromTemplate(templateId, userId, currentClie
     );
 
     const template = templateResult.rows[0];
-    log('info', `createExerciseEntriesFromTemplate - Fetched template:`, template);
+    log('info', 'createExerciseEntriesFromTemplate - Fetched template:', template);
 
     if (!template || !template.assignments || template.assignments.length === 0) {
       log('info', `No assignments found for workout plan template ${templateId} or template not found.`);

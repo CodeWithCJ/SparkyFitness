@@ -1,28 +1,28 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { authenticate } = require("../middleware/authMiddleware");
+const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
-const foodService = require("../services/foodService");
-const { log } = require("../config/logging");
+const foodService = require('../services/foodService');
+const { log } = require('../config/logging');
 const {
   getFatSecretAccessToken,
   foodNutrientCache,
   CACHE_DURATION_MS,
   FATSECRET_API_BASE_URL,
-} = require("../integrations/fatsecret/fatsecretService");
+} = require('../integrations/fatsecret/fatsecretService');
 const {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcode,
-} = require("../integrations/openfoodfacts/openFoodFactsService");
+} = require('../integrations/openfoodfacts/openFoodFactsService');
 const {
   searchNutritionixFoods,
   getNutritionixNutrients,
   getNutritionixBrandedNutrients,
-} = require("../integrations/nutritionix/nutritionixService");
+} = require('../integrations/nutritionix/nutritionixService');
 const {
   searchUsdaFoods,
   getUsdaFoodDetails,
-} = require("../integrations/usda/usdaService");
+} = require('../integrations/usda/usdaService');
 
 router.use(express.json());
 
@@ -30,11 +30,11 @@ router.use(express.json());
 router.use(checkPermissionMiddleware('diary'));
 
 // Middleware to get FatSecret API keys from Supabase - This middleware will be moved to a more generic place if needed for other providers
-router.use("/fatsecret", authenticate, async (req, res, next) => {
-  const providerId = req.headers["x-provider-id"];
+router.use('/fatsecret', authenticate, async (req, res, next) => {
+  const providerId = req.headers['x-provider-id'];
 
   if (!providerId) {
-    return res.status(400).json({ error: "Missing x-provider-id header" });
+    return res.status(400).json({ error: 'Missing x-provider-id header' });
   }
 
   try {
@@ -50,7 +50,7 @@ router.use("/fatsecret", authenticate, async (req, res, next) => {
     ) {
       return next(
         new Error(
-          "Failed to retrieve FatSecret API keys. Please check provider configuration."
+          'Failed to retrieve FatSecret API keys. Please check provider configuration.'
         )
       );
     }
@@ -58,19 +58,19 @@ router.use("/fatsecret", authenticate, async (req, res, next) => {
     req.clientSecret = providerDetails.app_key;
     next();
   } catch (error) {
-    if (error.message.startsWith("Forbidden")) {
+    if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
   }
 });
 
-router.use("/mealie", authenticate, async (req, res, next) => {
-  const providerId = req.headers["x-provider-id"];
-  log("debug", `foodRoutes: /mealie middleware: x-provider-id: ${providerId}`);
+router.use('/mealie', authenticate, async (req, res, next) => {
+  const providerId = req.headers['x-provider-id'];
+  log('debug', `foodRoutes: /mealie middleware: x-provider-id: ${providerId}`);
 
   if (!providerId) {
-    return res.status(400).json({ error: "Missing x-provider-id header" });
+    return res.status(400).json({ error: 'Missing x-provider-id header' });
   }
 
   try {
@@ -85,7 +85,7 @@ router.use("/mealie", authenticate, async (req, res, next) => {
     ) {
       return next(
         new Error(
-          "Failed to retrieve Mealie API keys or base URL. Please check provider configuration."
+          'Failed to retrieve Mealie API keys or base URL. Please check provider configuration.'
         )
       );
     }
@@ -93,7 +93,7 @@ router.use("/mealie", authenticate, async (req, res, next) => {
     req.mealieApiKey = providerDetails.app_key;
     next();
   } catch (error) {
-    if (error.message.startsWith("Forbidden")) {
+    if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -101,12 +101,12 @@ router.use("/mealie", authenticate, async (req, res, next) => {
 });
 
 // Middleware to get Tandoor API keys and base URL
-router.use("/tandoor", authenticate, async (req, res, next) => {
-  req.providerId = req.headers["x-provider-id"]; // Attach to req object
-  log("debug", `foodRoutes: /tandoor middleware: x-provider-id: ${req.providerId}`);
+router.use('/tandoor', authenticate, async (req, res, next) => {
+  req.providerId = req.headers['x-provider-id']; // Attach to req object
+  log('debug', `foodRoutes: /tandoor middleware: x-provider-id: ${req.providerId}`);
 
   if (!req.providerId) {
-    return res.status(400).json({ error: "Missing x-provider-id header" });
+    return res.status(400).json({ error: 'Missing x-provider-id header' });
   }
 
   try {
@@ -117,7 +117,7 @@ router.use("/tandoor", authenticate, async (req, res, next) => {
     if (!providerDetails || !providerDetails.base_url || !providerDetails.app_key) {
       return next(
         new Error(
-          "Failed to retrieve Tandoor API keys or base URL. Please check provider configuration."
+          'Failed to retrieve Tandoor API keys or base URL. Please check provider configuration.'
         )
       );
     }
@@ -134,19 +134,19 @@ router.use("/tandoor", authenticate, async (req, res, next) => {
     req.tandoorApiKey = providerDetails.app_key;
     next();
   } catch (error) {
-    if (error.message.startsWith("Forbidden")) {
+    if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
   }
 });
 
-router.use("/usda", authenticate, async (req, res, next) => {
-  const providerId = req.headers["x-provider-id"];
-  log("debug", `foodRoutes: /usda middleware: x-provider-id: ${providerId}`);
+router.use('/usda', authenticate, async (req, res, next) => {
+  const providerId = req.headers['x-provider-id'];
+  log('debug', `foodRoutes: /usda middleware: x-provider-id: ${providerId}`);
 
   if (!providerId) {
-    return res.status(400).json({ error: "Missing x-provider-id header" });
+    return res.status(400).json({ error: 'Missing x-provider-id header' });
   }
 
   try {
@@ -157,14 +157,14 @@ router.use("/usda", authenticate, async (req, res, next) => {
     if (!providerDetails || !providerDetails.app_key) {
       return next(
         new Error(
-          "Failed to retrieve USDA API key. Please check provider configuration."
+          'Failed to retrieve USDA API key. Please check provider configuration.'
         )
       );
     }
     req.usdaApiKey = providerDetails.app_key;
     next();
   } catch (error) {
-    if (error.message.startsWith("Forbidden")) {
+    if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -223,12 +223,12 @@ router.use("/usda", authenticate, async (req, res, next) => {
  *       400:
  *         description: Missing search query or x-provider-id header.
  */
-router.get("/fatsecret/search", authenticate, async (req, res, next) => {
+router.get('/fatsecret/search', authenticate, async (req, res, next) => {
   const { query } = req.query;
   const { clientId, clientSecret } = req;
 
   if (!query) {
-    return res.status(400).json({ error: "Missing search query" });
+    return res.status(400).json({ error: 'Missing search query' });
   }
 
   try {
@@ -270,14 +270,14 @@ router.get("/fatsecret/search", authenticate, async (req, res, next) => {
  *         description: Missing foodId or x-provider-id header.
  */
 router.get(
-  "/fatsecret/nutrients",
+  '/fatsecret/nutrients',
   authenticate,
   async (req, res, next) => {
     const { foodId } = req.query;
     const { clientId, clientSecret } = req;
 
     if (!foodId) {
-      return res.status(400).json({ error: "Missing foodId" });
+      return res.status(400).json({ error: 'Missing foodId' });
     }
 
     try {
@@ -314,12 +314,12 @@ router.get(
  *         description: Missing search query.
  */
 router.get(
-  "/openfoodfacts/search",
+  '/openfoodfacts/search',
   authenticate,
   async (req, res, next) => {
     const { query } = req.query;
     if (!query) {
-      return res.status(400).json({ error: "Missing search query" });
+      return res.status(400).json({ error: 'Missing search query' });
     }
     try {
       const data = await searchOpenFoodFacts(query);
@@ -351,12 +351,12 @@ router.get(
  *         description: Missing barcode.
  */
 router.get(
-  "/openfoodfacts/barcode/:barcode",
+  '/openfoodfacts/barcode/:barcode',
   authenticate,
   async (req, res, next) => {
     const { barcode } = req.params;
     if (!barcode) {
-      return res.status(400).json({ error: "Missing barcode" });
+      return res.status(400).json({ error: 'Missing barcode' });
     }
     try {
       const data = await searchOpenFoodFactsByBarcode(barcode);
@@ -393,12 +393,12 @@ router.get(
  *       400:
  *         description: Missing search query or providerId.
  */
-router.get("/nutritionix/search", authenticate, async (req, res, next) => {
+router.get('/nutritionix/search', authenticate, async (req, res, next) => {
   const { query, providerId } = req.query;
   if (!query || !providerId) {
     return res
       .status(400)
-      .json({ error: "Missing search query or providerId" });
+      .json({ error: 'Missing search query or providerId' });
   }
   try {
     const data = await searchNutritionixFoods(query, providerId);
@@ -435,14 +435,14 @@ router.get("/nutritionix/search", authenticate, async (req, res, next) => {
  *         description: Missing search query or providerId.
  */
 router.get(
-  "/nutritionix/nutrients",
+  '/nutritionix/nutrients',
   authenticate,
   async (req, res, next) => {
     const { query, providerId } = req.query;
     if (!query || !providerId) {
       return res
         .status(400)
-        .json({ error: "Missing search query or providerId" });
+        .json({ error: 'Missing search query or providerId' });
     }
     try {
       const data = await getNutritionixNutrients(query, providerId);
@@ -479,10 +479,10 @@ router.get(
  *       400:
  *         description: Missing nix_item_id or providerId.
  */
-router.get("/nutritionix/item", authenticate, async (req, res, next) => {
+router.get('/nutritionix/item', authenticate, async (req, res, next) => {
   const { nix_item_id, providerId } = req.query;
   if (!nix_item_id || !providerId) {
-    return res.status(400).json({ error: "Missing nix_item_id or providerId" });
+    return res.status(400).json({ error: 'Missing nix_item_id or providerId' });
   }
   try {
     const data = await getNutritionixBrandedNutrients(nix_item_id, providerId);
@@ -520,14 +520,14 @@ router.get("/nutritionix/item", authenticate, async (req, res, next) => {
  *         description: Missing search query or x-provider-id header.
  */
 router.get(
-  "/mealie/search",
+  '/mealie/search',
   authenticate,
   async (req, res, next) => {
     const { query } = req.query;
     const { mealieBaseUrl, mealieApiKey, userId } = req;
 
     if (!query) {
-      return res.status(400).json({ error: "Missing search query" });
+      return res.status(400).json({ error: 'Missing search query' });
     }
 
     try {
@@ -571,14 +571,14 @@ router.get(
  *         description: Missing food slug or x-provider-id header.
  */
 router.get(
-  "/mealie/details",
+  '/mealie/details',
   authenticate,
   async (req, res, next) => {
     const { slug } = req.query;
     const { mealieBaseUrl, mealieApiKey, userId } = req;
 
     if (!slug) {
-      return res.status(400).json({ error: "Missing food slug" });
+      return res.status(400).json({ error: 'Missing food slug' });
     }
 
     try {
@@ -622,14 +622,14 @@ router.get(
  *         description: Missing search query or x-provider-id header.
  */
 router.get(
-  "/tandoor/search",
+  '/tandoor/search',
   authenticate,
   async (req, res, next) => {
     const { query } = req.query;
     const { tandoorBaseUrl, tandoorApiKey, userId, providerId } = req;
 
     if (!query) {
-      return res.status(400).json({ error: "Missing search query" });
+      return res.status(400).json({ error: 'Missing search query' });
     }
 
     try {
@@ -674,14 +674,14 @@ router.get(
  *         description: Missing food id or x-provider-id header.
  */
 router.get(
-  "/tandoor/details",
+  '/tandoor/details',
   authenticate,
   async (req, res, next) => {
     const { id } = req.query; // Tandoor uses 'id' for details
     const { tandoorBaseUrl, tandoorApiKey, userId, providerId } = req;
 
     if (!id) {
-      return res.status(400).json({ error: "Missing food id" });
+      return res.status(400).json({ error: 'Missing food id' });
     }
 
     try {
@@ -725,12 +725,12 @@ router.get(
  *       400:
  *         description: Missing search query or x-provider-id header.
  */
-router.get("/usda/search", authenticate, async (req, res, next) => {
+router.get('/usda/search', authenticate, async (req, res, next) => {
   const { query } = req.query;
   const { usdaApiKey } = req;
 
   if (!query) {
-    return res.status(400).json({ error: "Missing search query" });
+    return res.status(400).json({ error: 'Missing search query' });
   }
 
   try {
@@ -768,12 +768,12 @@ router.get("/usda/search", authenticate, async (req, res, next) => {
  *       400:
  *         description: Missing FDC ID or x-provider-id header.
  */
-router.get("/usda/details", authenticate, async (req, res, next) => {
+router.get('/usda/details', authenticate, async (req, res, next) => {
   const { fdcId } = req.query;
   const { usdaApiKey } = req;
 
   if (!fdcId) {
-    return res.status(400).json({ error: "Missing FDC ID" });
+    return res.status(400).json({ error: 'Missing FDC ID' });
   }
 
   try {

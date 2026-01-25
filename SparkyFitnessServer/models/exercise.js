@@ -41,7 +41,7 @@ async function getExerciseOwnerId(id, userId) {
 }
 
 async function getOrCreateActiveCaloriesExercise(userId, source = 'Health Data') {
-  const exerciseName = "Active Calories";
+  const exerciseName = 'Active Calories';
   const client = await getClient(userId);
   let exercise = null;
   try {
@@ -51,7 +51,7 @@ async function getOrCreateActiveCaloriesExercise(userId, source = 'Health Data')
     );
     exercise = result.rows[0];
   } catch (error) {
-    log('error', "Error fetching active calories exercise:", error);
+    log('error', 'Error fetching active calories exercise:', error);
     throw new Error(`Failed to retrieve active calories exercise: ${error.message}`);
   } finally {
     client.release();
@@ -69,7 +69,7 @@ async function getOrCreateActiveCaloriesExercise(userId, source = 'Health Data')
       );
       newExercise = result.rows[0];
     } catch (createError) {
-      log('error', "Error creating active calories exercise:", createError);
+      log('error', 'Error creating active calories exercise:', createError);
       throw new Error(`Failed to create active calories exercise: ${createError.message}`);
     } finally {
       insertClient.release();
@@ -82,7 +82,7 @@ async function getOrCreateActiveCaloriesExercise(userId, source = 'Health Data')
 async function getExercisesWithPagination(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, limit, offset) {
   const client = await getClient(targetUserId);
   try {
-    let whereClauses = ['is_quick_exercise = FALSE'];
+    const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -113,7 +113,7 @@ async function getExercisesWithPagination(targetUserId, searchTerm, categoryFilt
       paramIndex += (muscleGroupFilter.length * 2);
     }
 
-    let query = `
+    const query = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
              primary_muscles, secondary_muscles, instructions, category, images,
              calories_per_hour, description, user_id, is_custom, shared_with_public,
@@ -145,7 +145,7 @@ async function getExercisesWithPagination(targetUserId, searchTerm, categoryFilt
 async function countExercises(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter) {
   const client = await getClient(targetUserId);
   try {
-    let whereClauses = ['is_quick_exercise = FALSE'];
+    const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -191,7 +191,7 @@ async function countExercises(targetUserId, searchTerm, categoryFilter, ownershi
 async function getDistinctEquipment() {
   const client = await getSystemClient();
   try {
-    const result = await client.query(`SELECT equipment FROM exercises WHERE equipment IS NOT NULL AND equipment <> '[]' AND equipment <> ''`);
+    const result = await client.query('SELECT equipment FROM exercises WHERE equipment IS NOT NULL AND equipment <> \'[]\' AND equipment <> \'\'');
     const equipmentSet = new Set();
     result.rows.forEach(row => {
       try {
@@ -201,8 +201,8 @@ async function getDistinctEquipment() {
         }
       } catch (e) {
         // Fallback for non-JSON string
-        let equipment = row.equipment.replace(/[\[\]'"`]/g, ''); // Clean the string
-        let equipmentList = equipment.split(',').map(item => item.trim()).filter(Boolean);
+        const equipment = row.equipment.replace(/[\[\]'"`]/g, ''); // Clean the string
+        const equipmentList = equipment.split(',').map(item => item.trim()).filter(Boolean);
         equipmentList.forEach(item => equipmentSet.add(item));
       }
     });
@@ -218,7 +218,7 @@ async function getDistinctEquipment() {
 async function getDistinctMuscleGroups() {
   const client = await getSystemClient();
   try {
-    const result = await client.query(`SELECT primary_muscles, secondary_muscles FROM exercises WHERE (primary_muscles IS NOT NULL AND primary_muscles <> '[]' AND primary_muscles <> '') OR (secondary_muscles IS NOT NULL AND secondary_muscles <> '[]' AND secondary_muscles <> '')`);
+    const result = await client.query('SELECT primary_muscles, secondary_muscles FROM exercises WHERE (primary_muscles IS NOT NULL AND primary_muscles <> \'[]\' AND primary_muscles <> \'\') OR (secondary_muscles IS NOT NULL AND secondary_muscles <> \'[]\' AND secondary_muscles <> \'\')');
     const muscleGroupSet = new Set();
 
     result.rows.forEach(row => {
@@ -231,8 +231,8 @@ async function getDistinctMuscleGroups() {
             }
           } catch (e) {
             // Fallback for non-JSON string
-            let muscles = row[field].replace(/[\[\]'"`]/g, ''); // Clean the string
-            let muscleList = muscles.split(',').map(item => item.trim()).filter(Boolean);
+            const muscles = row[field].replace(/[\[\]'"`]/g, ''); // Clean the string
+            const muscleList = muscles.split(',').map(item => item.trim()).filter(Boolean);
             muscleList.forEach(item => muscleGroupSet.add(item));
           }
         }
@@ -250,7 +250,7 @@ async function getDistinctMuscleGroups() {
 async function searchExercises(name, userId, equipmentFilter, muscleGroupFilter) {
   const client = await getClient(userId);
   try {
-    let whereClauses = ['is_quick_exercise = FALSE'];
+    const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -541,21 +541,21 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
   const systemClient = await getSystemClient();
   try {
     const publicExerciseResult = await systemClient.query(
-      "SELECT shared_with_public FROM exercises WHERE id = $1",
+      'SELECT shared_with_public FROM exercises WHERE id = $1',
       [exerciseId]
     );
     const isPubliclyShared = publicExerciseResult.rows[0]?.shared_with_public || false;
 
     const exerciseOwnerResult = await systemClient.query(
-      "SELECT user_id FROM exercises WHERE id = $1",
+      'SELECT user_id FROM exercises WHERE id = $1',
       [exerciseId]
     );
     const exerciseOwnerId = exerciseOwnerResult.rows[0]?.user_id;
 
     const currentUserReferencesQueries = [
-      client.query("SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2", [exerciseId, authenticatedUserId]),
-      client.query("SELECT COUNT(*) FROM workout_plan_template_assignments wpta JOIN workout_plan_templates wpt ON wpta.template_id = wpt.id WHERE wpta.exercise_id = $1 AND wpt.user_id = $2", [exerciseId, authenticatedUserId]),
-      client.query("SELECT COUNT(*) FROM workout_preset_exercises wpe JOIN workout_presets wp ON wpe.workout_preset_id = wp.id WHERE wpe.exercise_id = $1 AND wp.user_id = $2", [exerciseId, authenticatedUserId]),
+      client.query('SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2', [exerciseId, authenticatedUserId]),
+      client.query('SELECT COUNT(*) FROM workout_plan_template_assignments wpta JOIN workout_plan_templates wpt ON wpta.template_id = wpt.id WHERE wpta.exercise_id = $1 AND wpt.user_id = $2', [exerciseId, authenticatedUserId]),
+      client.query('SELECT COUNT(*) FROM workout_preset_exercises wpe JOIN workout_presets wp ON wpe.workout_preset_id = wp.id WHERE wpe.exercise_id = $1 AND wp.user_id = $2', [exerciseId, authenticatedUserId]),
     ];
     const currentUserReferencesResults = await Promise.all(currentUserReferencesQueries);
     const currentUserExerciseEntriesCount = parseInt(currentUserReferencesResults[0].rows[0].count, 10);
@@ -568,9 +568,9 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
       currentUserWorkoutPresetsCount;
 
     const otherUserReferencesQueries = [
-      systemClient.query("SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id != $2", [exerciseId, authenticatedUserId]),
-      systemClient.query("SELECT COUNT(*) FROM workout_plan_template_assignments wpta JOIN workout_plan_templates wpt ON wpta.template_id = wpt.id WHERE wpta.exercise_id = $1 AND wpt.user_id != $2", [exerciseId, authenticatedUserId]),
-      systemClient.query("SELECT COUNT(*) FROM workout_preset_exercises wpe JOIN workout_presets wp ON wpe.workout_preset_id = wp.id WHERE wpe.exercise_id = $1 AND wp.user_id != $2", [exerciseId, authenticatedUserId]),
+      systemClient.query('SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id != $2', [exerciseId, authenticatedUserId]),
+      systemClient.query('SELECT COUNT(*) FROM workout_plan_template_assignments wpta JOIN workout_plan_templates wpt ON wpta.template_id = wpt.id WHERE wpta.exercise_id = $1 AND wpt.user_id != $2', [exerciseId, authenticatedUserId]),
+      systemClient.query('SELECT COUNT(*) FROM workout_preset_exercises wpe JOIN workout_presets wp ON wpe.workout_preset_id = wp.id WHERE wpe.exercise_id = $1 AND wp.user_id != $2', [exerciseId, authenticatedUserId]),
     ];
     const otherUserReferencesResults = await Promise.all(otherUserReferencesQueries);
     const otherUserExerciseEntriesCount = parseInt(otherUserReferencesResults[0].rows[0].count, 10);
@@ -615,10 +615,10 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
 async function deleteExerciseAndDependencies(exerciseId, userId) {
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
-    await client.query("DELETE FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2", [exerciseId, userId]);
-    log("info", `Deleted exercise entries for exercise ${exerciseId} by user ${userId}`);
+    await client.query('DELETE FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2', [exerciseId, userId]);
+    log('info', `Deleted exercise entries for exercise ${exerciseId} by user ${userId}`);
 
     await client.query(`
       DELETE FROM workout_plan_template_assignments wpta
@@ -627,7 +627,7 @@ async function deleteExerciseAndDependencies(exerciseId, userId) {
         AND wpta.exercise_id = $1
         AND wpt.user_id = $2
     `, [exerciseId, userId]);
-log("info", `Deleted workout plan exercises for exercise ${exerciseId} in plans by user ${userId}`);
+log('info', `Deleted workout plan exercises for exercise ${exerciseId} in plans by user ${userId}`);
 
     await client.query(`
       DELETE FROM workout_preset_exercises wpe
@@ -636,16 +636,16 @@ log("info", `Deleted workout plan exercises for exercise ${exerciseId} in plans 
         AND wpe.exercise_id = $1
         AND wp.user_id = $2
     `, [exerciseId, userId]);
-    log("info", `Deleted workout preset exercises for exercise ${exerciseId} in presets by user ${userId}`);
+    log('info', `Deleted workout preset exercises for exercise ${exerciseId} in presets by user ${userId}`);
 
-    const result = await client.query("DELETE FROM exercises WHERE id = $1 AND user_id = $2 RETURNING id", [exerciseId, userId]);
-    log("info", `Deleted exercise ${exerciseId} by user ${userId}`);
+    const result = await client.query('DELETE FROM exercises WHERE id = $1 AND user_id = $2 RETURNING id', [exerciseId, userId]);
+    log('info', `Deleted exercise ${exerciseId} by user ${userId}`);
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return result.rowCount > 0;
   } catch (error) {
-    await client.query("ROLLBACK");
-    log("error", `Error deleting exercise and dependencies for exercise ${exerciseId} by user ${userId}:`, error);
+    await client.query('ROLLBACK');
+    log('error', `Error deleting exercise and dependencies for exercise ${exerciseId} by user ${userId}:`, error);
     throw error;
   } finally {
     client.release();

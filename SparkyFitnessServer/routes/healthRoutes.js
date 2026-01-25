@@ -1,4 +1,4 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 
 router.use(express.json());
@@ -21,9 +21,9 @@ router.use(express.json());
  *                   type: string
  *                   example: UP
  */
-router.get("/", async (req, res,) => {
+router.get('/', async (req, res,) => {
   return res.json({
-    status: "UP",
+    status: 'UP',
   });
 });
 

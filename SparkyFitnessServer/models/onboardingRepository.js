@@ -1,4 +1,4 @@
-const { getClient } = require("../db/poolManager");
+const { getClient } = require('../db/poolManager');
 
 /**
  * Saves onboarding data and updates the user's status to complete.
@@ -23,7 +23,7 @@ async function saveOnboardingData(userId, data) {
 
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN"); 
+    await client.query('BEGIN'); 
 
     // Query 1: Insert or update the detailed onboarding data.
     const onboardingQuery = `
@@ -60,10 +60,10 @@ async function saveOnboardingData(userId, data) {
     `;
     await client.query(statusQuery, [userId]);
 
-    await client.query("COMMIT"); 
+    await client.query('COMMIT'); 
   } catch (error) {
-    await client.query("ROLLBACK"); 
-    console.error("Error in saveOnboardingData repository:", error);
+    await client.query('ROLLBACK'); 
+    console.error('Error in saveOnboardingData repository:', error);
     throw error;
   } finally {
     client.release();
@@ -79,12 +79,12 @@ async function getOnboardingStatus(userId) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      "SELECT onboarding_complete FROM onboarding_status WHERE user_id = $1",
+      'SELECT onboarding_complete FROM onboarding_status WHERE user_id = $1',
       [userId]
     );
     return result.rows[0] || null;
   } catch (error) {
-    console.error("Error in getOnboardingStatus repository:", error);
+    console.error('Error in getOnboardingStatus repository:', error);
     throw error;
   } finally {
     client.release();
@@ -106,7 +106,7 @@ async function resetOnboardingStatus(userId) {
     `;
     await client.query(query, [userId]);
   } catch (error) {
-    console.error("Error in resetOnboardingStatus repository:", error);
+    console.error('Error in resetOnboardingStatus repository:', error);
     throw error;
   } finally {
     client.release();

@@ -261,8 +261,8 @@ router.post('/', authenticate, upload.single('image'), async (req, res, next) =>
         try {
           entryData.sets = JSON.parse(entryData.sets);
         } catch (e) {
-          console.error("Error parsing sets from FormData:", e);
-          return res.status(400).json({ error: "Invalid format for sets." });
+          console.error('Error parsing sets from FormData:', e);
+          return res.status(400).json({ error: 'Invalid format for sets.' });
         }
       }
     } else {
@@ -274,8 +274,8 @@ router.post('/', authenticate, upload.single('image'), async (req, res, next) =>
       try {
         entryData.activity_details = JSON.parse(activity_details);
       } catch (e) {
-        console.error("Error parsing activity_details from FormData:", e);
-        return res.status(400).json({ error: "Invalid format for activity_details." });
+        console.error('Error parsing activity_details from FormData:', e);
+        return res.status(400).json({ error: 'Invalid format for activity_details.' });
       }
     }
 
@@ -291,7 +291,7 @@ router.post('/', authenticate, upload.single('image'), async (req, res, next) =>
       imageUrl = `/uploads/exercise_entries/${today}/${req.file.filename}`;
     }
 
-    let targetUserId = req.body.user_id || req.userId;
+    const targetUserId = req.body.user_id || req.userId;
     // Check permission if explicitly creating for another user
     if (req.body.user_id && req.body.user_id !== req.userId) {
       const hasPermission = await require('../utils/permissionUtils').canAccessUserData(req.body.user_id, 'diary', req.userId); // Permission check
@@ -619,8 +619,8 @@ router.put('/:id', authenticate, upload.single('image'), async (req, res, next) 
       try {
         updateData.sets = JSON.parse(updateData.sets);
       } catch (e) {
-        console.error("Error parsing sets from FormData:", e);
-        return res.status(400).json({ error: "Invalid format for sets." });
+        console.error('Error parsing sets from FormData:', e);
+        return res.status(400).json({ error: 'Invalid format for sets.' });
       }
     }
   } else {
@@ -631,8 +631,8 @@ router.put('/:id', authenticate, upload.single('image'), async (req, res, next) 
     try {
       updateData.activity_details = JSON.parse(updateData.activity_details);
     } catch (e) {
-      console.error("Error parsing activity_details from FormData:", e);
-      return res.status(400).json({ error: "Invalid format for activity_details." });
+      console.error('Error parsing activity_details from FormData:', e);
+      return res.status(400).json({ error: 'Invalid format for activity_details.' });
     }
   }
 

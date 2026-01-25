@@ -28,7 +28,7 @@ async function createWorkoutPreset(presetData) {
             newExerciseId, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
           ]);
           const setsQuery = format(
-            `INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
+            'INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
             setsValues
           );
           await client.query(setsQuery);
@@ -41,7 +41,7 @@ async function createWorkoutPreset(presetData) {
     return getWorkoutPresetById(newPreset.id, presetData.user_id);
   } catch (error) {
     await client.query('ROLLBACK');
-    log('error', `Error creating workout preset:`, error);
+    log('error', 'Error creating workout preset:', error);
     throw error;
   } finally {
     client.release();
@@ -95,7 +95,7 @@ async function getWorkoutPresets(userId, page = 1, limit = 10) {
     const offset = (page - 1) * limit;
 
     const totalResult = await client.query(
-      `SELECT COUNT(*) FROM workout_presets WHERE is_public = TRUE OR user_id = $1`,
+      'SELECT COUNT(*) FROM workout_presets WHERE is_public = TRUE OR user_id = $1',
       [userId]
     );
     const total = parseInt(totalResult.rows[0].count, 10);
@@ -223,7 +223,7 @@ async function updateWorkoutPreset(presetId, userId, updateData) {
               newExerciseId, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
             ]);
             const setsQuery = format(
-              `INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
+              'INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
               setsValues
             );
             await client.query(setsQuery);
@@ -334,7 +334,7 @@ async function addExerciseToWorkoutPreset(userId, workoutPresetId, exerciseId, i
         newExerciseId, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
       ]);
       const setsQuery = format(
-        `INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
+        'INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
         setsValues
       );
       await client.query(setsQuery);
@@ -389,7 +389,7 @@ async function searchWorkoutPresets(searchTerm, userId, limit = null) {
     const queryParams = [`%${searchTerm}%`, userId];
 
     if (limit !== null) {
-      query += ` LIMIT $2`;
+      query += ' LIMIT $2';
       queryParams.push(limit);
     }
 

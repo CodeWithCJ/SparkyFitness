@@ -33,7 +33,7 @@ async function createMeal(userId, mealData) {
   }
 }
 
-async function getMeals(userId, filter = 'all', searchTerm = "") {
+async function getMeals(userId, filter = 'all', searchTerm = '') {
   try {
     let meals;
     if (searchTerm) {
@@ -147,7 +147,7 @@ async function deleteMeal(userId, mealId) {
     if (deletionImpact.usedByOtherUsers) {
       // Soft delete (hide) if used by other users
       await mealRepository.updateMeal(mealId, userId, { is_public: false });
-      return { message: "Meal hidden successfully." };
+      return { message: 'Meal hidden successfully.' };
     } else if (deletionImpact.usedByCurrentUser) {
       // Force delete if used only by the current user
       await mealRepository.deleteMealPlanEntriesByMealId(mealId, userId); // Assuming this function exists
@@ -155,14 +155,14 @@ async function deleteMeal(userId, mealId) {
       if (!success) {
         throw new Error('Failed to delete meal.');
       }
-      return { message: "Meal and associated meal plan entries deleted permanently." };
+      return { message: 'Meal and associated meal plan entries deleted permanently.' };
     } else {
       // Hard delete if not used by anyone
       const success = await mealRepository.deleteMeal(mealId, userId);
       if (!success) {
         throw new Error('Failed to delete meal.');
       }
-      return { message: "Meal deleted permanently." };
+      return { message: 'Meal deleted permanently.' };
     }
   } catch (error) {
     log('error', `Error in mealService.deleteMeal for user ${userId}, meal ${mealId}:`, error);
@@ -342,7 +342,7 @@ async function getMealsNeedingReview(authenticatedUserId) {
     const mealsNeedingReview = await mealRepository.getMealsNeedingReview(authenticatedUserId);
     return mealsNeedingReview;
   } catch (error) {
-    log("error", `Error getting meals needing review for user ${authenticatedUserId}:`, error);
+    log('error', `Error getting meals needing review for user ${authenticatedUserId}:`, error);
     throw error;
   }
 }
@@ -352,7 +352,7 @@ async function updateMealEntriesSnapshot(authenticatedUserId, mealId) {
     // Fetch the latest meal details
     const meal = await mealRepository.getMealById(mealId, authenticatedUserId);
     if (!meal) {
-      throw new Error("Meal not found.");
+      throw new Error('Meal not found.');
     }
 
     // Construct the new snapshot data
@@ -367,9 +367,9 @@ async function updateMealEntriesSnapshot(authenticatedUserId, mealId) {
     // Clear any ignored updates for this meal for this user
     await mealRepository.clearUserIgnoredUpdate(authenticatedUserId, mealId);
 
-    return { message: "Meal entries updated successfully." };
+    return { message: 'Meal entries updated successfully.' };
   } catch (error) {
-    log("error", `Error updating meal entries snapshot for user ${authenticatedUserId}, meal ${mealId}:`, error);
+    log('error', `Error updating meal entries snapshot for user ${authenticatedUserId}, meal ${mealId}:`, error);
     throw error;
   }
 }

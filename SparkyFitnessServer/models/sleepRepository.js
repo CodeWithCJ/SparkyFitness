@@ -38,7 +38,7 @@ async function upsertSleepEntry(userId, actingUserId, sleepEntryData) {
         // If no ID is provided, check for an existing entry for this user, date, and source to prevent duplicates
         if (!sleepEntryId) {
             const existingCheck = await client.query(
-                `SELECT id FROM sleep_entries WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
+                'SELECT id FROM sleep_entries WHERE user_id = $1 AND entry_date = $2 AND source = $3',
                 [userId, entry_date, source]
             );
             if (existingCheck.rows.length > 0) {
@@ -391,11 +391,11 @@ async function updateSleepEntry(userId, entryId, updateData) {
         if (body_battery_change !== undefined) { updateFields.push(`body_battery_change = $${paramIndex++} `); updateValues.push(body_battery_change); }
         if (resting_heart_rate !== undefined) { updateFields.push(`resting_heart_rate = $${paramIndex++} `); updateValues.push(resting_heart_rate); }
 
-        updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+        updateFields.push('updated_at = CURRENT_TIMESTAMP');
 
         if (updateFields.length === 1 && updateFields[0].includes('updated_at') && !stage_events) { // Only updated_at, no other fields to update
             await client.query('COMMIT');
-            return { id: entryId, message: "No specific fields to update for sleep entry." };
+            return { id: entryId, message: 'No specific fields to update for sleep entry.' };
         }
 
         if (updateFields.length > 0) {

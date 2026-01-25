@@ -60,7 +60,7 @@ async function updateExternalDataProvider(authenticatedUserId, providerId, updat
   try {
     const isOwner = await externalProviderRepository.checkExternalDataProviderOwnership(providerId, authenticatedUserId);
     if (!isOwner) {
-      throw new Error("Forbidden: You do not have permission to update this external data provider.");
+      throw new Error('Forbidden: You do not have permission to update this external data provider.');
     }
     // Only allow owner to set shared_with_public
     if (updateData.shared_with_public === true) {
@@ -85,7 +85,7 @@ async function getExternalDataProviderDetails(authenticatedUserId, providerId) {
   try {
     const isOwner = await externalProviderRepository.checkExternalDataProviderOwnership(providerId, authenticatedUserId);
     if (!isOwner) {
-      throw new Error("Forbidden: You do not have permission to access this external data provider.");
+      throw new Error('Forbidden: You do not have permission to access this external data provider.');
     }
     const details = await externalProviderRepository.getExternalDataProviderById(providerId);
     return details;
@@ -99,7 +99,7 @@ async function deleteExternalDataProvider(authenticatedUserId, providerId) {
   try {
     const isOwner = await externalProviderRepository.checkExternalDataProviderOwnership(providerId, authenticatedUserId);
     if (!isOwner) {
-      throw new Error("Forbidden: You do not have permission to delete this external data provider.");
+      throw new Error('Forbidden: You do not have permission to delete this external data provider.');
     }
     const success = await externalProviderRepository.deleteExternalDataProvider(providerId, authenticatedUserId);
     if (!success) {

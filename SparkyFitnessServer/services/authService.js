@@ -28,11 +28,11 @@ async function registerUser(email, password, full_name) {
     );
 
     const token = jwt.sign({ userId: userId }, JWT_SECRET, {
-      expiresIn: "30d",
+      expiresIn: '30d',
     });
     return { userId, token, fullName: full_name };
   } catch (error) {
-    log("error", "Error during user registration in authService:", error);
+    log('error', 'Error during user registration in authService:', error);
     throw error;
   }
 }
@@ -40,19 +40,19 @@ async function registerUser(email, password, full_name) {
 async function loginUser(email, password, loginSettings) {
   try {
     if (!loginSettings.email.enabled) {
-      throw new Error("Email/Password login is disabled.");
+      throw new Error('Email/Password login is disabled.');
     }
 
     const user = await userRepository.findUserByEmail(email);
-    log('debug', `User object after findUserByEmail in loginUser:`, user);
+    log('debug', 'User object after findUserByEmail in loginUser:', user);
 
     // Verify password
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-      throw new Error("Invalid credentials.");
+      throw new Error('Invalid credentials.');
     }
 
     if (!user.is_active) {
-      throw new Error("Account is disabled. Please contact an administrator.");
+      throw new Error('Account is disabled. Please contact an administrator.');
     }
 
     // Defensive Coding: If full_name is missing, try fetching by ID (since refresh works, ID lookup might work better)
@@ -73,11 +73,11 @@ async function loginUser(email, password, loginSettings) {
     await userRepository.updateUserLastLogin(user.id);
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-      expiresIn: "30d",
+      expiresIn: '30d',
     });
     return { userId: user.id, token, role: user.role, fullName: user.full_name };
   } catch (error) {
-    log("error", "Error during user login in authService:", error);
+    log('error', 'Error during user login in authService:', error);
     throw error;
   }
 }
@@ -86,12 +86,12 @@ async function getUser(authenticatedUserId) {
   try {
     const user = await userRepository.findUserById(authenticatedUserId);
     if (!user) {
-      throw new Error("User not found.");
+      throw new Error('User not found.');
     }
     return user;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching user ${authenticatedUserId} in authService:`,
       error
     );
@@ -103,11 +103,11 @@ async function findUserIdByEmail(email) {
   try {
     const user = await userRepository.findUserIdByEmail(email);
     if (!user) {
-      throw new Error("User not found.");
+      throw new Error('User not found.');
     }
     return user.id;
   } catch (error) {
-    log("error", `Error finding user by email ${email} in authService:`, error);
+    log('error', `Error finding user by email ${email} in authService:`, error);
     throw error;
   }
 }
@@ -127,7 +127,7 @@ async function generateUserApiKey(
     return apiKey;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error generating API key for user ${targetUserId} in authService:`,
       error
     );
@@ -139,12 +139,12 @@ async function deleteUserApiKey(authenticatedUserId, targetUserId, apiKeyId) {
   try {
     const success = await userRepository.deleteApiKey(apiKeyId, targetUserId);
     if (!success) {
-      throw new Error("API Key not found or not authorized for deletion.");
+      throw new Error('API Key not found or not authorized for deletion.');
     }
     return true;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting API key ${apiKeyId} for user ${targetUserId} in authService:`,
       error
     );
@@ -158,7 +158,7 @@ async function getAccessibleUsers(authenticatedUserId) {
     return users;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching accessible users for user ${authenticatedUserId} in authService:`,
       error
     );
@@ -172,7 +172,7 @@ async function getUserProfile(authenticatedUserId, targetUserId) {
     return profile;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching profile for user ${targetUserId} in authService:`,
       error
     );
@@ -196,12 +196,12 @@ async function updateUserProfile(
       profileData.gender
     );
     if (!updatedProfile) {
-      throw new Error("Profile not found or no changes made.");
+      throw new Error('Profile not found or no changes made.');
     }
     return updatedProfile;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error updating profile for user ${targetUserId} in authService:`,
       error
     );
@@ -215,7 +215,7 @@ async function getUserApiKeys(authenticatedUserId, targetUserId) {
     return apiKeys;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching API keys for user ${targetUserId} in authService:`,
       error
     );
@@ -230,7 +230,7 @@ async function switchUserContext(authenticatedUserId, targetUserId) {
     // Verify access
     const hasAccess = await canAccessUserData(targetUserId, 'reports', authenticatedUserId);
     if (!hasAccess) {
-      throw new Error("Forbidden: You do not have permission to switch to this user context.");
+      throw new Error('Forbidden: You do not have permission to switch to this user context.');
     }
 
     // Issue new token with context
@@ -240,12 +240,12 @@ async function switchUserContext(authenticatedUserId, targetUserId) {
     }
 
     const token = jwt.sign(payload, JWT_SECRET, {
-      expiresIn: "30d",
+      expiresIn: '30d',
     });
 
     return { token, activeUserId: targetUserId };
   } catch (error) {
-    log("error", `Error switching context for user ${authenticatedUserId} to ${targetUserId} in authService:`, error);
+    log('error', `Error switching context for user ${authenticatedUserId} to ${targetUserId} in authService:`, error);
     throw error;
   }
 }
@@ -259,12 +259,12 @@ async function updateUserPassword(authenticatedUserId, newPassword) {
       hashedPassword
     );
     if (!success) {
-      throw new Error("User not found.");
+      throw new Error('User not found.');
     }
     return true;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error updating password for user ${authenticatedUserId} in authService:`,
       error
     );
@@ -276,19 +276,19 @@ async function updateUserEmail(authenticatedUserId, newEmail) {
   try {
     const existingUser = await userRepository.findUserByEmail(newEmail);
     if (existingUser && existingUser.id !== authenticatedUserId) {
-      throw new Error("Email already in use by another account.");
+      throw new Error('Email already in use by another account.');
     }
     const success = await userRepository.updateUserEmail(
       authenticatedUserId,
       newEmail
     );
     if (!success) {
-      throw new Error("User not found.");
+      throw new Error('User not found.');
     }
     return true;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error updating email for user ${authenticatedUserId} in authService:`,
       error
     );
@@ -308,7 +308,7 @@ async function checkFamilyAccess(authenticatedUserId, ownerUserId, permission) {
     return hasAccess;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error checking family access for family user ${authenticatedUserId} and owner ${ownerUserId} with permission ${permission} in authService:`,
       error
     );
@@ -341,7 +341,7 @@ async function createFamilyAccessEntry(authenticatedUserId, entryData) {
     return newEntry;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error creating family access entry for owner ${authenticatedUserId} in authService:`,
       error
     );
@@ -361,13 +361,13 @@ async function updateFamilyAccessEntry(authenticatedUserId, id, updateData) {
     );
     if (!updatedEntry) {
       throw new Error(
-        "Family access entry not found or not authorized to update."
+        'Family access entry not found or not authorized to update.'
       );
     }
     return updatedEntry;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error updating family access entry ${id} for owner ${authenticatedUserId} in authService:`,
       error
     );
@@ -383,13 +383,13 @@ async function deleteFamilyAccessEntry(authenticatedUserId, id) {
     ); // Use authenticatedUserId as owner_user_id
     if (!success) {
       throw new Error(
-        "Family access entry not found or not authorized to delete."
+        'Family access entry not found or not authorized to delete.'
       );
     }
     return true;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting family access entry ${id} for owner ${authenticatedUserId} in authService:`,
       error
     );
@@ -488,14 +488,14 @@ async function forgotPassword(email) {
     const user = await userRepository.findUserByEmail(email);
     if (!user) {
       // For security, don't reveal if the user exists or not
-      log("info", `Password reset requested for non-existent email: ${email}`);
+      log('info', `Password reset requested for non-existent email: ${email}`);
       return;
     }
-    log("debug", `User object before sending email: ${JSON.stringify(user)}`);
-    log("debug", `User found for password reset: ${JSON.stringify(user)}`);
+    log('debug', `User object before sending email: ${JSON.stringify(user)}`);
+    log('debug', `User found for password reset: ${JSON.stringify(user)}`);
 
     // Generate a secure, unique token
-    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetToken = crypto.randomBytes(32).toString('hex');
     const passwordResetExpires = Date.now() + 3600000; // 1 hour from now
 
     await userRepository.updatePasswordResetToken(
@@ -508,12 +508,12 @@ async function forgotPassword(email) {
     await emailService.sendPasswordResetEmail(user.email, resetUrl);
 
     log(
-      "info",
+      'info',
       `Password reset token generated and email sent to user: ${user.id}`
     );
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error in forgotPassword for email ${email} in authService:`,
       error
     );
@@ -526,7 +526,7 @@ async function getAllUsers(limit, offset, searchTerm) {
     const users = await userRepository.getAllUsers(limit, offset, searchTerm);
     return users;
   } catch (error) {
-    log("error", `Error fetching all users in authService:`, error);
+    log('error', 'Error fetching all users in authService:', error);
     throw error;
   }
 }
@@ -535,11 +535,11 @@ async function deleteUser(userId) {
   try {
     const success = await userRepository.deleteUser(userId);
     if (!success) {
-      throw new Error("User not found or could not be deleted.");
+      throw new Error('User not found or could not be deleted.');
     }
     return true;
   } catch (error) {
-    log("error", `Error deleting user ${userId} in authService:`, error);
+    log('error', `Error deleting user ${userId} in authService:`, error);
     throw error;
   }
 }
@@ -548,12 +548,12 @@ async function updateUserStatus(userId, isActive) {
   try {
     const success = await userRepository.updateUserStatus(userId, isActive);
     if (!success) {
-      throw new Error("User not found or status could not be updated.");
+      throw new Error('User not found or status could not be updated.');
     }
     return true;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error updating user status for user ${userId} in authService:`,
       error
     );
@@ -565,12 +565,12 @@ async function updateUserRole(userId, role) {
   try {
     const success = await userRepository.updateUserRole(userId, role);
     if (!success) {
-      throw new Error("User not found or role could not be updated.");
+      throw new Error('User not found or role could not be updated.');
     }
     return true;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error updating user role for user ${userId} in authService:`,
       error
     );
@@ -582,12 +582,12 @@ async function updateUserFullName(userId, fullName) {
   try {
     const success = await userRepository.updateUserFullName(userId, fullName);
     if (!success) {
-      throw new Error("User not found or full name could not be updated.");
+      throw new Error('User not found or full name could not be updated.');
     }
     return true;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error updating user full name for user ${userId} in authService:`,
       error
     );
@@ -605,7 +605,7 @@ async function logAdminAction(adminUserId, targetUserId, actionType, details) {
     );
   } catch (error) {
     log(
-      "error",
+      'error',
       `Failed to log admin action for admin ${adminUserId} on user ${targetUserId}:`,
       error
     );
@@ -617,9 +617,9 @@ async function logAdminAction(adminUserId, targetUserId, actionType, details) {
 async function generateTotpSecret(userId, email) {
   try {
     const totp = new TOTP({
-      issuer: "SparkyFitness",
+      issuer: 'SparkyFitness',
       label: email,
-      algorithm: "SHA1",
+      algorithm: 'SHA1',
       digits: 6,
       period: 30,
       secret: new Secret({ size: 20 }), // Generate a random 20-byte secret
@@ -640,18 +640,18 @@ async function verifyTotpCode(userId, code) {
   try {
     const user = await userRepository.findUserById(userId);
     if (!user || !user.mfa_secret) {
-      throw new Error("TOTP not set up for this user.");
+      throw new Error('TOTP not set up for this user.');
     }
     const { encryptedText, iv, tag } = JSON.parse(user.mfa_secret);
     const decryptedSecret = await decrypt(encryptedText, iv, tag, ENCRYPTION_KEY);
     if (!decryptedSecret) {
-      throw new Error("Failed to decrypt TOTP secret.");
+      throw new Error('Failed to decrypt TOTP secret.');
     }
 
     const totp = new TOTP({
-      issuer: "SparkyFitness",
+      issuer: 'SparkyFitness',
       label: user.email,
-      algorithm: "SHA1",
+      algorithm: 'SHA1',
       digits: 6,
       period: 30,
       secret: Secret.fromBase32(decryptedSecret),
@@ -690,7 +690,7 @@ async function verifyEmailMfaCode(userId, code) {
   try {
     const user = await userRepository.findUserById(userId);
     if (!user || !user.email_mfa_code || !user.email_mfa_expires_at) {
-      throw new Error("Email MFA code not found or expired.");
+      throw new Error('Email MFA code not found or expired.');
     }
     log('debug', `Stored email_mfa_code for user ${userId} before JSON.parse:`, user.email_mfa_code);
 
@@ -798,7 +798,7 @@ async function requestMagicLink(email) {
   try {
     const user = await userRepository.findUserByEmail(email);
     if (!user) {
-      log("info", `Magic link requested for non-existent email: ${email}`);
+      log('info', `Magic link requested for non-existent email: ${email}`);
       return; // For security, don't reveal if user exists or not
     }
 
@@ -810,7 +810,7 @@ async function requestMagicLink(email) {
     const magicLinkUrl = `${process.env.SPARKY_FITNESS_FRONTEND_URL}/login/magic-link?token=${token}`;
     await emailService.sendMagicLinkEmail(user.email, magicLinkUrl);
 
-    log("info", `Magic link sent to user: ${user.id}`);
+    log('info', `Magic link sent to user: ${user.id}`);
   } catch (error) {
     log('error', `Error requesting magic link for email ${email}:`, error);
     throw error;
@@ -821,10 +821,10 @@ async function verifyMagicLink(token) {
   try {
     const user = await userRepository.getMagicLinkToken(token);
     if (!user) {
-      throw new Error("Magic link is invalid or has already been used.");
+      throw new Error('Magic link is invalid or has already been used.');
     }
     if (new Date() > new Date(user.magic_link_expires)) {
-      throw new Error("Magic link has expired.");
+      throw new Error('Magic link has expired.');
     }
 
     // Defer clearing the magic link token until after MFA check or full login
@@ -860,11 +860,11 @@ async function verifyMagicLink(token) {
     // Clear the magic link token now that the user is fully logged in without MFA
     await userRepository.clearMagicLinkToken(user.id);
 
-    const authToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
+    const authToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
     return { userId: user.id, email: user.email, token: authToken, role: user.role };
 
   } catch (error) {
-    log('error', `Error verifying magic link:`, error);
+    log('error', 'Error verifying magic link:', error);
     throw error;
   }
 }
@@ -874,17 +874,17 @@ async function verifyMagicLink(token) {
 async function loginUser(email, password, loginSettings) {
   try {
     if (!loginSettings.email.enabled) {
-      throw new Error("Email/Password login is disabled.");
+      throw new Error('Email/Password login is disabled.');
     }
 
     const user = await userRepository.findUserByEmail(email);
 
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-      throw new Error("Invalid credentials.");
+      throw new Error('Invalid credentials.');
     }
 
     if (!user.is_active) {
-      throw new Error("Account is disabled. Please contact an administrator.");
+      throw new Error('Account is disabled. Please contact an administrator.');
     }
 
     // Check if user is an OIDC user
@@ -892,7 +892,7 @@ async function loginUser(email, password, loginSettings) {
     if (isOidc) {
       // OIDC users bypass our MFA; their OIDC provider handles it
       await userRepository.updateUserLastLogin(user.id);
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
       return { userId: user.id, token, role: user.role };
     }
 
@@ -918,11 +918,11 @@ async function loginUser(email, password, loginSettings) {
     await userRepository.updateUserLastLogin(user.id);
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-      expiresIn: "30d",
+      expiresIn: '30d',
     });
     return { userId: user.id, token, role: user.role };
   } catch (error) {
-    log("error", "Error during user login in authService:", error);
+    log('error', 'Error during user login in authService:', error);
     throw error;
   }
 }
@@ -932,7 +932,7 @@ async function getMfaStatus(userId) {
   try {
     const user = await userRepository.findUserById(userId);
     if (!user) {
-      throw new Error("User not found.");
+      throw new Error('User not found.');
     }
     return {
       totp_enabled: user.mfa_totp_enabled,
@@ -968,7 +968,7 @@ async function updateUserMfaSettings(
       emailMfaExpiresAt
     );
     if (!success) {
-      throw new Error("User not found or MFA settings could not be updated.");
+      throw new Error('User not found or MFA settings could not be updated.');
     }
     return true;
   } catch (error) {
@@ -982,7 +982,7 @@ async function resetPassword(token, newPassword) {
     const user = await userRepository.findUserByPasswordResetToken(token);
 
     if (!user) {
-      throw new Error("Password reset token is invalid or has expired.");
+      throw new Error('Password reset token is invalid or has expired.');
     }
 
     const saltRounds = 10;
@@ -991,10 +991,10 @@ async function resetPassword(token, newPassword) {
     await userRepository.updateUserPassword(user.id, hashedPassword);
     await userRepository.updatePasswordResetToken(user.id, null, null); // Clear the token and expiration
 
-    log("info", `Password successfully reset for user: ${user.id}`);
+    log('info', `Password successfully reset for user: ${user.id}`);
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error in resetPassword for token ${token} in authService:`,
       error
     );

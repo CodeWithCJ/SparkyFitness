@@ -130,7 +130,7 @@ async function deleteWaterIntake(id, userId) {
 }
 
 async function upsertCheckInMeasurements(userId, createdByUserId, entryDate, measurements) {
-  console.log("Incoming measurements:", measurements);
+  console.log('Incoming measurements:', measurements);
   const client = await getClient(createdByUserId); // User-specific operation, using createdByUserId for RLS context
   try {
     let query;
@@ -389,7 +389,7 @@ async function getCustomMeasurementEntries(userId, limit, orderBy, filterObj) { 
         query += ` ORDER BY cm.${field} ${order.toUpperCase()}`;
       }
     } else {
-      query += ` ORDER BY cm.entry_timestamp DESC`;
+      query += ' ORDER BY cm.entry_timestamp DESC';
     }
 
     if (limit) {
@@ -497,7 +497,7 @@ async function upsertCustomMeasurement(userId, createdByUserId, categoryId, valu
         SELECT id FROM custom_measurements
         WHERE user_id = $1 AND category_id = $2 AND entry_date = $3 AND source = $4
       `;
-      let existingEntryValues = [userId, categoryId, entryDate, source];
+      const existingEntryValues = [userId, categoryId, entryDate, source];
 
       if (frequency === 'Hourly' && normalizedEntryHour !== null) {
         existingEntryQuery += ` AND entry_hour = $${existingEntryValues.length + 1}`;
@@ -505,7 +505,7 @@ async function upsertCustomMeasurement(userId, createdByUserId, categoryId, valu
       } else if (frequency === 'Daily') {
         // For daily, we only care about the date and source, so entry_hour should not be part of the WHERE clause
         // and we should ensure we're only looking for entries without an hour or with hour 0
-        existingEntryQuery += ` AND (entry_hour IS NULL OR entry_hour = 0)`;
+        existingEntryQuery += ' AND (entry_hour IS NULL OR entry_hour = 0)';
       }
 
       const existingEntry = await client.query(existingEntryQuery, existingEntryValues);

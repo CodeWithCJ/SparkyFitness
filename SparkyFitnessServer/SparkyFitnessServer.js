@@ -1,9 +1,9 @@
-const path = require("path");
-const fs = require("fs");
-require("dotenv").config({ path: path.resolve(__dirname, "../.env") }); // Load .env from root directory
+const path = require('path');
+const fs = require('fs');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') }); // Load .env from root directory
 
 // Run pre-flight checks for essential environment variables
-const { runPreflightChecks } = require("./utils/preflightChecks");
+const { runPreflightChecks } = require('./utils/preflightChecks');
 runPreflightChecks();
 
 const express = require('express');
@@ -65,7 +65,7 @@ const withingsService = require('./integrations/withings/withingsService'); // I
 const garminConnectService = require('./integrations/garminconnect/garminConnectService'); // Import garminConnectService
 const garminService = require('./services/garminService'); // Import garminService
 const fitbitService = require('./services/fitbitService'); // Import fitbitService
-const mealTypeRoutes = require("./routes/mealTypeRoutes");
+const mealTypeRoutes = require('./routes/mealTypeRoutes');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const redoc = require('redoc-express');
@@ -82,13 +82,13 @@ console.log(
 // Use cors middleware to allow requests from your frontend
 app.use(
   cors({
-    origin: process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    origin: process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "x-provider-id",
-      "x-api-key",
+      'Content-Type',
+      'Authorization',
+      'x-provider-id',
+      'x-api-key',
     ],
     credentials: true, // Allow cookies to be sent from the frontend
   })
@@ -96,13 +96,13 @@ app.use(
 
 // Middleware to parse JSON bodies for all incoming requests
 // Increased limit to 50mb to accommodate image uploads
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 
 // Log all incoming requests
 app.use((req, res, next) => {
-  if (req.originalUrl !== "/auth/users/accessible-users") {
-    log("debug", `Incoming request: ${req.method} ${req.originalUrl}`);
+  if (req.originalUrl !== '/auth/users/accessible-users') {
+    log('debug', `Incoming request: ${req.method} ${req.originalUrl}`);
   }
   next();
 });
@@ -111,18 +111,18 @@ app.use((req, res, next) => {
 // This middleware will first try to serve the file if it exists locally.
 // If the file is not found, it will fall through to the next middleware,
 // which will handle on-demand downloading.
-const UPLOADS_BASE_DIR = path.join(__dirname, "uploads");
-console.log("SparkyFitnessServer UPLOADS_BASE_DIR:", UPLOADS_BASE_DIR);
-app.use("/uploads", express.static(UPLOADS_BASE_DIR));
+const UPLOADS_BASE_DIR = path.join(__dirname, 'uploads');
+console.log('SparkyFitnessServer UPLOADS_BASE_DIR:', UPLOADS_BASE_DIR);
+app.use('/uploads', express.static(UPLOADS_BASE_DIR));
 
 // On-demand image serving route
 app.get(
-  "/uploads/exercises/:exerciseId/:imageFileName",
+  '/uploads/exercises/:exerciseId/:imageFileName',
   async (req, res, next) => {
     const { exerciseId, imageFileName } = req.params;
     const localImagePath = path.join(
       __dirname,
-      "uploads/exercises",
+      'uploads/exercises',
       exerciseId,
       imageFileName
     );
@@ -134,17 +134,17 @@ app.get(
 
     // If not found, attempt to re-download
     try {
-      const exerciseRepository = require("./models/exerciseRepository");
-      const freeExerciseDBService = require("./integrations/freeexercisedb/FreeExerciseDBService"); // Import service
+      const exerciseRepository = require('./models/exerciseRepository');
+      const freeExerciseDBService = require('./integrations/freeexercisedb/FreeExerciseDBService'); // Import service
 
       // Use getExerciseBySourceAndSourceId since exerciseId in the URL is actually the source_id
       const exercise = await exerciseRepository.getExerciseBySourceAndSourceId(
-        "free-exercise-db",
+        'free-exercise-db',
         exerciseId
       );
 
       if (!exercise) {
-        return res.status(404).send("Exercise not found.");
+        return res.status(404).send('Exercise not found.');
       }
 
       // Find the original image path from the exercise's images array
@@ -153,34 +153,34 @@ app.get(
         img.endsWith(imageFileName)
       );
       log(
-        "debug",
+        'debug',
         `[SparkyFitnessServer] Original relative image path from DB: ${originalRelativeImagePath}`
       );
 
       if (!originalRelativeImagePath) {
-        return res.status(404).send("Image not found for this exercise.");
+        return res.status(404).send('Image not found for this exercise.');
       }
 
       let externalImageUrl;
       // Determine the external image URL based on the source
-      if (exercise.source === "free-exercise-db") {
+      if (exercise.source === 'free-exercise-db') {
         // Use the originalRelativeImagePath directly as it contains the full path needed by getExerciseImageUrl
         externalImageUrl = freeExerciseDBService.getExerciseImageUrl(
           originalRelativeImagePath
         );
         log(
-          "debug",
+          'debug',
           `[SparkyFitnessServer] External image URL constructed: ${externalImageUrl}`
         );
       } else {
         // Handle other sources here if needed
         return res
           .status(404)
-          .send("Unsupported exercise source for image download.");
+          .send('Unsupported exercise source for image download.');
       }
 
       // Download the image
-      const { downloadImage } = require("./utils/imageDownloader");
+      const { downloadImage } = require('./utils/imageDownloader');
       const downloadedLocalPath = await downloadImage(
         externalImageUrl,
         exerciseId
@@ -189,15 +189,15 @@ app.get(
       // Serve the newly downloaded image
       // downloadedLocalPath already starts with /uploads/exercises/..., so we just need to resolve it from the base directory
       const finalImagePath = path.join(__dirname, downloadedLocalPath);
-      log("info", `Serving image from: ${finalImagePath}`);
+      log('info', `Serving image from: ${finalImagePath}`);
       res.sendFile(finalImagePath);
     } catch (error) {
       log(
-        "error",
+        'error',
         `Error serving or re-downloading image for exercise ${exerciseId}, image ${imageFileName}:`,
         error
       );
-      res.status(500).send("Error serving image.");
+      res.status(500).send('Error serving image.');
     }
   }
 );
@@ -205,22 +205,22 @@ app.get(
 let sessionMiddleware; // Declare sessionMiddleware globally
 
 const configureSessionMiddleware = (pool) => {
-  const session = require("express-session");
-  const pgSession = require("connect-pg-simple")(session);
+  const session = require('express-session');
+  const pgSession = require('connect-pg-simple')(session);
 
   sessionMiddleware = session({
     store: new pgSession({
       pool: pool, // Connection pool
-      tableName: "session", // Use a table named 'session'
+      tableName: 'session', // Use a table named 'session'
     }),
-    name: "sparky.sid",
+    name: 'sparky.sid',
     secret: process.env.JWT_SECRET,
     resave: false,
     saveUninitialized: true,
     rolling: true, // Reset session expiration on every request to keep user logged in
     proxy: true, // Trust the proxy in all environments (like Vite dev server)
     cookie: {
-      path: "/", // Ensure cookie is sent for all paths
+      path: '/', // Ensure cookie is sent for all paths
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       // secure and sameSite will be set dynamically
@@ -232,17 +232,17 @@ const configureSessionMiddleware = (pool) => {
 configureSessionMiddleware(getRawOwnerPool());
 
 // Trust the first proxy
-app.set("trust proxy", 1);
+app.set('trust proxy', 1);
 
 app.use((req, res, next) => sessionMiddleware(req, res, next));
 
 // Dynamically set cookie properties based on protocol
 app.use((req, res, next) => {
-  if (req.session && req.protocol === "https") {
+  if (req.session && req.protocol === 'https') {
     req.session.cookie.secure = true;
-    req.session.cookie.sameSite = "none";
+    req.session.cookie.sameSite = 'none';
   } else if (req.session) {
-    req.session.cookie.sameSite = "lax";
+    req.session.cookie.sameSite = 'lax';
   }
   // log('debug', `[Session Debug] Request Protocol: ${req.protocol}, Secure: ${req.secure}, Host: ${req.headers.host}`); // Commented out for less verbose logging
   next();
@@ -252,31 +252,31 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   // Routes that do not require authentication (e.g., login, register, OIDC flows, health checks)
   const publicRoutes = [
-    "/auth/login",
-    "/auth/register",
-    "/auth/settings",
-    "/auth/forgot-password", // Allow password reset request to be public
-    "/auth/reset-password", // Allow password reset to be public
-    "/auth/mfa", // Allow MFA routes to be public
-    "/auth/request-magic-link", // Allow magic link request to be public
-    "/auth/magic-link-login", // Allow magic link login to be public
-    "/api/health-data",
-    "/health",
-    "/openid", // All OIDC routes are handled by session, not JWT token
-    "/openid/api/me", // Explicitly allow /openid/api/me as a public route for session check
-    "/version", // Allow version endpoint to be public
+    '/auth/login',
+    '/auth/register',
+    '/auth/settings',
+    '/auth/forgot-password', // Allow password reset request to be public
+    '/auth/reset-password', // Allow password reset to be public
+    '/auth/mfa', // Allow MFA routes to be public
+    '/auth/request-magic-link', // Allow magic link request to be public
+    '/auth/magic-link-login', // Allow magic link login to be public
+    '/api/health-data',
+    '/health',
+    '/openid', // All OIDC routes are handled by session, not JWT token
+    '/openid/api/me', // Explicitly allow /openid/api/me as a public route for session check
+    '/version', // Allow version endpoint to be public
     // "/withings/callback", // Withings OAuth callback will now be handled by /api/withings/callback
   ];
 
   // Check if the current request path starts with any of the public routes
   const isPublic = publicRoutes.some((route) => req.path.startsWith(route));
 
-  if (req.path.includes("withings")) {
-    log("error", `[WITHINGS DEBUG] Path: ${req.path}, IsPublic: ${isPublic}`);
+  if (req.path.includes('withings')) {
+    log('error', `[WITHINGS DEBUG] Path: ${req.path}, IsPublic: ${isPublic}`);
   }
 
   if (isPublic) {
-    log("debug", `Skipping authentication for public route: ${req.path}`);
+    log('debug', `Skipping authentication for public route: ${req.path}`);
     return next();
   }
 
@@ -292,65 +292,65 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
   message:
-    "Too many authentication attempts from this IP, please try again after 15 minutes",
+    'Too many authentication attempts from this IP, please try again after 15 minutes',
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
 // Apply rate limiting to all /auth routes
-app.use("/auth/", authLimiter);
+app.use('/auth/', authLimiter);
 
 // Link all routes
-app.use("/chat", chatRoutes);
-app.use("/foods", foodRoutes);
-app.use("/food-entries", foodEntryRoutes); // Add this line
-app.use("/food-entry-meals", foodEntryMealRoutes); // New: Mount FoodEntryMeal routes
-app.use("/meals", mealRoutes);
-app.use("/reports", reportRoutes);
-app.use("/user-preferences", preferenceRoutes);
-app.use("/preferences/nutrient-display", nutrientDisplayPreferenceRoutes);
-app.use("/measurements", measurementRoutes);
-app.use("/goals", goalRoutes);
-app.use("/user-goals", goalRoutes);
-app.use("/goal-presets", goalPresetRoutes);
-app.use("/weekly-goal-plans", weeklyGoalPlanRoutes);
-app.use("/meal-plan-templates", mealPlanTemplateRoutes);
-app.use("/exercises", exerciseRoutes);
-app.use("/exercise-entries", exerciseEntryRoutes);
-app.use("/exercise-preset-entries", exercisePresetEntryRoutes); // New route
-app.use("/freeexercisedb", freeExerciseDBRoutes); // Add freeExerciseDB routes
-app.use("/api/health-data", healthDataRoutes);
-app.use("/sleep", sleepRoutes);
-app.use("/sleep", sleepRoutes); // Add sleep routes
-app.use("/auth", authRoutes);
-app.use("/user", authRoutes);
-app.use("/health", healthRoutes);
-app.use("/external-providers", externalProviderRoutes); // Renamed route for generic data providers
-app.use("/integrations/garmin", garminRoutes); // Add Garmin integration routes
-app.use("/api/withings", withingsRoutes); // Add Withings integration routes
-log("info", "Withings routes mounted at /api/withings");
-app.use("/integrations/withings/data", withingsDataRoutes); // Add Withings Data routes
-app.use("/integrations/fitbit", fitbitRoutes); // Add Fitbit routes
-app.use("/mood", moodRoutes); // Add Mood routes
-app.use("/fasting", fastingRoutes); // Add Fasting routes
-app.use("/admin/oidc-settings", oidcSettingsRoutes); // Admin OIDC settings routes
-app.use("/admin/global-settings", globalSettingsRoutes);
-app.use("/version", versionRoutes); // Version routes
-app.use("/admin", adminRoutes); // Add admin routes
-app.use("/admin/auth", adminAuthRoutes); // Add admin auth routes
-log("debug", "Registering /openid routes");
-app.use("/openid", openidRoutes); // Import OpenID routes
-app.use("/water-containers", waterContainerRoutes);
-app.use("/admin/backup", backupRoutes); // Add backup routes
-app.use("/workout-presets", require("./routes/workoutPresetRoutes")); // Add workout preset routes
+app.use('/chat', chatRoutes);
+app.use('/foods', foodRoutes);
+app.use('/food-entries', foodEntryRoutes); // Add this line
+app.use('/food-entry-meals', foodEntryMealRoutes); // New: Mount FoodEntryMeal routes
+app.use('/meals', mealRoutes);
+app.use('/reports', reportRoutes);
+app.use('/user-preferences', preferenceRoutes);
+app.use('/preferences/nutrient-display', nutrientDisplayPreferenceRoutes);
+app.use('/measurements', measurementRoutes);
+app.use('/goals', goalRoutes);
+app.use('/user-goals', goalRoutes);
+app.use('/goal-presets', goalPresetRoutes);
+app.use('/weekly-goal-plans', weeklyGoalPlanRoutes);
+app.use('/meal-plan-templates', mealPlanTemplateRoutes);
+app.use('/exercises', exerciseRoutes);
+app.use('/exercise-entries', exerciseEntryRoutes);
+app.use('/exercise-preset-entries', exercisePresetEntryRoutes); // New route
+app.use('/freeexercisedb', freeExerciseDBRoutes); // Add freeExerciseDB routes
+app.use('/api/health-data', healthDataRoutes);
+app.use('/sleep', sleepRoutes);
+app.use('/sleep', sleepRoutes); // Add sleep routes
+app.use('/auth', authRoutes);
+app.use('/user', authRoutes);
+app.use('/health', healthRoutes);
+app.use('/external-providers', externalProviderRoutes); // Renamed route for generic data providers
+app.use('/integrations/garmin', garminRoutes); // Add Garmin integration routes
+app.use('/api/withings', withingsRoutes); // Add Withings integration routes
+log('info', 'Withings routes mounted at /api/withings');
+app.use('/integrations/withings/data', withingsDataRoutes); // Add Withings Data routes
+app.use('/integrations/fitbit', fitbitRoutes); // Add Fitbit routes
+app.use('/mood', moodRoutes); // Add Mood routes
+app.use('/fasting', fastingRoutes); // Add Fasting routes
+app.use('/admin/oidc-settings', oidcSettingsRoutes); // Admin OIDC settings routes
+app.use('/admin/global-settings', globalSettingsRoutes);
+app.use('/version', versionRoutes); // Version routes
+app.use('/admin', adminRoutes); // Add admin routes
+app.use('/admin/auth', adminAuthRoutes); // Add admin auth routes
+log('debug', 'Registering /openid routes');
+app.use('/openid', openidRoutes); // Import OpenID routes
+app.use('/water-containers', waterContainerRoutes);
+app.use('/admin/backup', backupRoutes); // Add backup routes
+app.use('/workout-presets', require('./routes/workoutPresetRoutes')); // Add workout preset routes
 app.use(
-  "/workout-plan-templates",
-  require("./routes/workoutPlanTemplateRoutes")
+  '/workout-plan-templates',
+  require('./routes/workoutPlanTemplateRoutes')
 ); // Add workout plan template routes
-app.use("/review", reviewRoutes);
-app.use("/onboarding", onboardingRoutes); // Add onboarding routes
-app.use("/custom-nutrients", customNutrientRoutes); // Add custom nutrient routes
-app.use("/meal-types", mealTypeRoutes);
+app.use('/review', reviewRoutes);
+app.use('/onboarding', onboardingRoutes); // Add onboarding routes
+app.use('/custom-nutrients', customNutrientRoutes); // Add custom nutrient routes
+app.use('/meal-types', mealTypeRoutes);
 
 // Serve Swagger UI
 app.use('/api-docs/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
@@ -401,10 +401,10 @@ app.get('/api-docs', (req, res) => {
 
 // Temporary debug route to log incoming requests for meal plan templates
 app.use(
-  "/meal-plan-templates",
+  '/meal-plan-templates',
   (req, res, next) => {
     log(
-      "debug",
+      'debug',
       `[DEBUG ROUTE] Original URL: ${req.originalUrl}, Path: ${req.path}`
     );
     next();
@@ -412,36 +412,36 @@ app.use(
   mealPlanTemplateRoutes
 );
 
-console.log("DEBUG: Attempting to start server...");
+console.log('DEBUG: Attempting to start server...');
 
 // Function to schedule backups
 const scheduleBackups = async () => {
   // For now, a placeholder. In a later step, we will fetch backup preferences from the DB.
   // Example: Schedule a backup every day at 2 AM
-  cron.schedule("0 2 * * *", async () => {
-    log("info", "Scheduled backup initiated.");
+  cron.schedule('0 2 * * *', async () => {
+    log('info', 'Scheduled backup initiated.');
     const result = await performBackup();
     if (result.success) {
-      log("info", `Scheduled backup completed successfully: ${result.path}`);
+      log('info', `Scheduled backup completed successfully: ${result.path}`);
       // Apply retention policy after successful backup
       await applyRetentionPolicy(7); // Keep 7 days of backups for now
     } else {
-      log("error", `Scheduled backup failed: ${result.error}`);
+      log('error', `Scheduled backup failed: ${result.error}`);
     }
   });
-  log("info", "Backup scheduler initialized.");
+  log('info', 'Backup scheduler initialized.');
 };
 
 // Function to schedule Withings data synchronization
 const scheduleWithingsSyncs = async () => {
-  cron.schedule("0 * * * *", async () => {
+  cron.schedule('0 * * * *', async () => {
     // Run every hour
-    log("info", "Scheduled Withings data sync initiated.");
+    log('info', 'Scheduled Withings data sync initiated.');
     try {
       const withingsProviders =
-        await externalProviderRepository.getProvidersByType("withings");
+        await externalProviderRepository.getProvidersByType('withings');
       for (const provider of withingsProviders) {
-        if (provider.is_active && provider.sync_frequency !== "manual") {
+        if (provider.is_active && provider.sync_frequency !== 'manual') {
           const userId = provider.user_id;
           const createdByUserId = userId; // Assuming the user is the creator for their own data
           const lastSyncAt = provider.last_sync_at
@@ -451,12 +451,12 @@ const scheduleWithingsSyncs = async () => {
 
           let shouldSync = false;
           if (
-            provider.sync_frequency === "hourly" &&
+            provider.sync_frequency === 'hourly' &&
             now.getTime() - lastSyncAt.getTime() >= 60 * 60 * 1000
           ) {
             shouldSync = true;
           } else if (
-            provider.sync_frequency === "daily" &&
+            provider.sync_frequency === 'daily' &&
             (now.getDate() !== lastSyncAt.getDate() ||
               now.getMonth() !== lastSyncAt.getMonth() ||
               now.getFullYear() !== lastSyncAt.getFullYear())
@@ -466,7 +466,7 @@ const scheduleWithingsSyncs = async () => {
 
           if (shouldSync) {
             log(
-              "info",
+              'info',
               `Initiating Withings sync for user ${userId} (frequency: ${provider.sync_frequency}).`
             );
             // Fetch data for the last 24 hours or since last sync
@@ -497,31 +497,31 @@ const scheduleWithingsSyncs = async () => {
               provider.id,
               now
             );
-            log("info", `Withings sync completed for user ${userId}.`);
+            log('info', `Withings sync completed for user ${userId}.`);
           }
         }
       }
     } catch (error) {
       log(
-        "error",
+        'error',
         `Error during scheduled Withings data sync: ${error.message}`
       );
     }
   });
-  log("info", "Withings sync scheduler initialized.");
+  log('info', 'Withings sync scheduler initialized.');
 };
 
 // Function to schedule Garmin data synchronization
 const scheduleGarminSyncs = async () => {
-  cron.schedule("0 * * * *", async () => {
+  cron.schedule('0 * * * *', async () => {
     // Run every hour
-    log("info", "Scheduled Garmin data sync initiated.");
+    log('info', 'Scheduled Garmin data sync initiated.');
     let providers = [];
     try {
-      providers = await externalProviderRepository.getProvidersByType("garmin");
+      providers = await externalProviderRepository.getProvidersByType('garmin');
     } catch (error) {
       log(
-        "error",
+        'error',
         `Error fetching Garmin providers for hourly sync: ${error.message}`
       );
       return;
@@ -529,7 +529,7 @@ const scheduleGarminSyncs = async () => {
 
     for (const provider of providers) {
       try {
-        if (provider.is_active && provider.sync_frequency === "hourly") {
+        if (provider.is_active && provider.sync_frequency === 'hourly') {
           const userId = provider.user_id;
           const createdByUserId = userId;
           const lastSyncAt = provider.last_sync_at
@@ -538,8 +538,8 @@ const scheduleGarminSyncs = async () => {
           const now = new Date();
 
           if (now.getTime() - lastSyncAt.getTime() >= 60 * 60 * 1000) {
-            log("info", `Hourly Garmin sync for user ${userId}`);
-            await garminService.syncGarminData(userId, "scheduled");
+            log('info', `Hourly Garmin sync for user ${userId}`);
+            await garminService.syncGarminData(userId, 'scheduled');
             await externalProviderRepository.updateProviderLastSync(
               provider.id,
               now
@@ -548,22 +548,22 @@ const scheduleGarminSyncs = async () => {
         }
       } catch (error) {
         log(
-          "error",
+          'error',
           `Error during hourly Garmin sync for user ${provider.user_id}: ${error.message}`
         );
       }
     }
   });
 
-  cron.schedule("0 2 * * *", async () => {
+  cron.schedule('0 2 * * *', async () => {
     // Run every day at 2 AM
-    log("info", "Scheduled daily Garmin data sync initiated.");
+    log('info', 'Scheduled daily Garmin data sync initiated.');
     let providers = [];
     try {
-      providers = await externalProviderRepository.getProvidersByType("garmin");
+      providers = await externalProviderRepository.getProvidersByType('garmin');
     } catch (error) {
       log(
-        "error",
+        'error',
         `Error fetching Garmin providers for daily sync: ${error.message}`
       );
       return;
@@ -571,7 +571,7 @@ const scheduleGarminSyncs = async () => {
 
     for (const provider of providers) {
       try {
-        if (provider.is_active && provider.sync_frequency === "daily") {
+        if (provider.is_active && provider.sync_frequency === 'daily') {
           const userId = provider.user_id;
           const createdByUserId = userId;
           const lastSyncAt = provider.last_sync_at
@@ -584,8 +584,8 @@ const scheduleGarminSyncs = async () => {
             now.getMonth() !== lastSyncAt.getMonth() ||
             now.getFullYear() !== lastSyncAt.getFullYear()
           ) {
-            log("info", `Daily Garmin sync for user ${userId}`);
-            await garminService.syncGarminData(userId, "scheduled");
+            log('info', `Daily Garmin sync for user ${userId}`);
+            await garminService.syncGarminData(userId, 'scheduled');
             await externalProviderRepository.updateProviderLastSync(
               provider.id,
               now
@@ -594,25 +594,25 @@ const scheduleGarminSyncs = async () => {
         }
       } catch (error) {
         log(
-          "error",
+          'error',
           `Error during daily Garmin sync for user ${provider.user_id}: ${error.message}`
         );
       }
     }
   });
 
-  log("info", "Garmin sync scheduler initialized.");
+  log('info', 'Garmin sync scheduler initialized.');
 };
 
 // Function to schedule Fitbit data synchronization
 const scheduleFitbitSyncs = async () => {
-  cron.schedule("0 * * * *", async () => {
+  cron.schedule('0 * * * *', async () => {
     // Run every hour
-    log("info", "Scheduled Fitbit data sync initiated.");
+    log('info', 'Scheduled Fitbit data sync initiated.');
     try {
-      const fitbitProviders = await externalProviderRepository.getProvidersByType("fitbit");
+      const fitbitProviders = await externalProviderRepository.getProvidersByType('fitbit');
       for (const provider of fitbitProviders) {
-        if (provider.is_active && provider.sync_frequency !== "manual") {
+        if (provider.is_active && provider.sync_frequency !== 'manual') {
           const userId = provider.user_id;
           const lastSyncAt = provider.last_sync_at
             ? new Date(provider.last_sync_at)
@@ -621,12 +621,12 @@ const scheduleFitbitSyncs = async () => {
 
           let shouldSync = false;
           if (
-            provider.sync_frequency === "hourly" &&
+            provider.sync_frequency === 'hourly' &&
             now.getTime() - lastSyncAt.getTime() >= 60 * 60 * 1000
           ) {
             shouldSync = true;
           } else if (
-            provider.sync_frequency === "daily" &&
+            provider.sync_frequency === 'daily' &&
             (now.getDate() !== lastSyncAt.getDate() ||
               now.getMonth() !== lastSyncAt.getMonth() ||
               now.getFullYear() !== lastSyncAt.getFullYear())
@@ -636,7 +636,7 @@ const scheduleFitbitSyncs = async () => {
 
           if (shouldSync) {
             log(
-              "info",
+              'info',
               `Initiating Fitbit sync for user ${userId} (frequency: ${provider.sync_frequency}).`
             );
 
@@ -646,21 +646,21 @@ const scheduleFitbitSyncs = async () => {
             try {
               // Sync all metrics using the high-level service
               await fitbitService.syncFitbitData(userId, 'scheduled');
-              log("info", `Fitbit sync completed for user ${userId}.`);
+              log('info', `Fitbit sync completed for user ${userId}.`);
             } catch (syncError) {
-              log("error", `Error syncing Fitbit data for user ${userId}: ${syncError.message}`);
+              log('error', `Error syncing Fitbit data for user ${userId}: ${syncError.message}`);
             }
           }
         }
       }
     } catch (error) {
       log(
-        "error",
+        'error',
         `Error during scheduled Fitbit data sync: ${error.message}`
       );
     }
   });
-  log("info", "Fitbit sync scheduler initialized.");
+  log('info', 'Fitbit sync scheduler initialized.');
 };
 
 applyMigrations()
@@ -678,23 +678,23 @@ applyMigrations()
 
     // Set admin user from environment variable if provided
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
-      const userRepository = require("./models/userRepository");
+      const userRepository = require('./models/userRepository');
       const adminUser = await userRepository.findUserByEmail(
         process.env.SPARKY_FITNESS_ADMIN_EMAIL
       );
       if (adminUser && adminUser.id) {
         const success = await userRepository.updateUserRole(
           adminUser.id,
-          "admin"
+          'admin'
         );
         if (success) {
           log(
-            "info",
+            'info',
             `User ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} set as admin.`
           );
         } else {
           log(
-            "warn",
+            'warn',
             `Admin user with email ${process.env.SPARKY_FITNESS_ADMIN_EMAIL} not found.`
           );
         }
@@ -703,11 +703,11 @@ applyMigrations()
 
     app.listen(PORT, () => {
       console.log(`DEBUG: Server started and listening on port ${PORT}`); // Direct console log
-      log("info", `SparkyFitnessServer listening on port ${PORT}`);
+      log('info', `SparkyFitnessServer listening on port ${PORT}`);
     });
   })
   .catch((error) => {
-    log("error", "Failed to apply migrations and start server:", error);
+    log('error', 'Failed to apply migrations and start server:', error);
     process.exit(1);
   });
 
@@ -720,7 +720,7 @@ app.use(errorHandler);
 app.use((req, res, next) => {
   // For any unhandled routes, return a JSON 404 response
   res.status(404).json({
-    error: "Not Found",
+    error: 'Not Found',
     message: `The requested URL ${req.originalUrl} was not found on this server.`,
   });
 });

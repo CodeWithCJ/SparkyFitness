@@ -64,7 +64,7 @@ async function getUserPreferences(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT * FROM user_preferences WHERE user_id = $1`,
+      'SELECT * FROM user_preferences WHERE user_id = $1',
       [userId]
     );
     return result.rows[0];

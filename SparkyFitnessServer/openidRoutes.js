@@ -1,4 +1,4 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
@@ -11,7 +11,7 @@ function debugLog(message) {
     // ignore
   }
 }
-const client = require("openid-client");
+const client = require('openid-client');
 const oidcProviderRepository = require('./models/oidcProviderRepository');
 const userRepository = require('./models/userRepository');
 const authService = require('./services/authService');
@@ -99,7 +99,7 @@ function clearOidcClientCache(providerId) {
 router.use(express.json());
 
 // Get all active providers for the login page
-router.get("/providers", async (req, res) => {
+router.get('/providers', async (req, res) => {
   try {
     const providers = await oidcProviderRepository.getOidcProviders();
     const activeProviders = providers.filter(p => p.is_active).map(({ id, display_name, logo_url }) => ({ id, display_name, logo_url }));
@@ -111,7 +111,7 @@ router.get("/providers", async (req, res) => {
 });
 
 // Kick off the flow for a specific provider
-router.get("/login/:providerId", async (req, res, next) => {
+router.get('/login/:providerId', async (req, res, next) => {
   const { providerId } = req.params;
   log('debug', `Received login request for OIDC provider ${providerId}`);
 
@@ -139,7 +139,7 @@ router.get("/login/:providerId", async (req, res, next) => {
     redirect_uri,
     scope: provider.scope || 'openid email profile',
     code_challenge,
-    code_challenge_method: "S256",
+    code_challenge_method: 'S256',
   };
 
   // Always send state for CSRF protection and because we validate it on callback
@@ -160,7 +160,7 @@ router.get("/login/:providerId", async (req, res, next) => {
 });
 
 // Handle the callback from the frontend
-router.post("/callback", async (req, res, next) => {
+router.post('/callback', async (req, res, next) => {
   const { providerId, codeVerifier, state: expectedState, nonce: expectedNonce } = req.session;
 
   if (!providerId) {
@@ -199,7 +199,7 @@ router.post("/callback", async (req, res, next) => {
       if (state) callbackUrl.searchParams.set('state', state);
     }
 
-    log('info', "Exchanging code for tokens using v6 API...");
+    log('info', 'Exchanging code for tokens using v6 API...');
     log('debug', `OIDC Callback URL: ${callbackUrl.href}`);
     log('debug', `OIDC Expected State: ${expectedState}, Expected Nonce: ${expectedNonce}`);
 
@@ -220,7 +220,7 @@ router.post("/callback", async (req, res, next) => {
           const body = await grantError.response.text();
           debugLog(`OIDC Error Response Body: ${body}`);
           log('error', `OIDC Error Response Body: ${body}`);
-          log('error', `OIDC Error Response Headers:`, JSON.stringify(Object.fromEntries(grantError.response.headers.entries())));
+          log('error', 'OIDC Error Response Headers:', JSON.stringify(Object.fromEntries(grantError.response.headers.entries())));
         } catch (readError) {
           log('error', 'Could not read OIDC error response body:', readError);
         }
@@ -228,13 +228,13 @@ router.post("/callback", async (req, res, next) => {
       throw grantError;
     }
 
-    log('info', "Successfully received and validated tokens from OIDC provider.");
+    log('info', 'Successfully received and validated tokens from OIDC provider.');
 
     // Store id_token in session for optimized logout (id_token_hint)
     req.session.idToken = tokens.id_token;
 
     const claims = tokens.claims();
-    log('debug', "Validated ID Token claims:", claims);
+    log('debug', 'Validated ID Token claims:', claims);
 
     let finalClaims = { ...claims };
 
@@ -310,11 +310,11 @@ router.post("/callback", async (req, res, next) => {
 });
 
 // Protect an API route
-router.get("/api/me", async (req, res) => {
+router.get('/api/me', async (req, res) => {
   log('debug', '/openid/api/me hit. Session user:', req.session.user);
   if (!req.session.user || !req.session.user.userId) {
     log('warn', '/openid/api/me: No active session or user ID found. Returning 401.');
-    return res.status(401).json({ error: "Unauthorized", message: "No active session or user ID found." });
+    return res.status(401).json({ error: 'Unauthorized', message: 'No active session or user ID found.' });
   }
   try {
     const activeUserId = req.session.user.activeUserId || req.session.user.userId;
@@ -349,11 +349,11 @@ router.get("/api/me", async (req, res) => {
       return res.json(userData);
     } else {
       log('warn', '/openid/api/me: User not found in database for ID:', activeUserId);
-      return res.status(404).json({ error: "Not Found", message: "User not found in database." });
+      return res.status(404).json({ error: 'Not Found', message: 'User not found in database.' });
     }
   } catch (error) {
     log('error', 'Error fetching user data for /openid/api/me:', error);
-    return res.status(500).json({ error: "Internal Server Error", message: "Failed to retrieve user data." });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to retrieve user data.' });
   }
 });
 

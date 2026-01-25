@@ -1,10 +1,10 @@
-const { getClient, getSystemClient } = require("../db/poolManager");
+const { getClient, getSystemClient } = require('../db/poolManager');
 
 async function getFoodDataProviderById(providerId) {
   const client = await getSystemClient(); // System-level operation
   try {
     const result = await client.query(
-      "SELECT * FROM external_data_providers WHERE id = $1",
+      'SELECT * FROM external_data_providers WHERE id = $1',
       [providerId]
     );
     return result.rows[0];
@@ -17,7 +17,7 @@ async function getRecentFoods(userId, limit, mealType) {
   const client = await getClient(userId); // User-specific operation
 
   const queryParams = [userId];
-  let mealTypeCondition = "";
+  let mealTypeCondition = '';
   if (mealType) {
     queryParams.push(mealType);
     mealTypeCondition = `AND (LOWER(mt.name) = LOWER($${queryParams.length}) OR fe.meal_type_id::text = $${queryParams.length})`;
@@ -88,7 +88,7 @@ async function getTopFoods(userId, limit, mealType) {
   const client = await getClient(userId); // User-specific operation
 
   const queryParams = [userId];
-  let mealTypeCondition = "";
+  let mealTypeCondition = '';
   if (mealType) {
     queryParams.push(mealType);
     mealTypeCondition = `AND (LOWER(mt.name) = LOWER($${queryParams.length}) OR fe.meal_type_id::text = $${queryParams.length})`;

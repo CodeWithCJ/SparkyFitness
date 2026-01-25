@@ -159,7 +159,7 @@ router.get('/family-access', authenticate, async (req, res, next) => {
     const entries = await authService.getFamilyAccessEntries(authenticatedUserId);
     res.status(200).json(entries);
   } catch (error) {
-    log('error', `Error fetching family access entries:`, error);
+    log('error', 'Error fetching family access entries:', error);
     next(error);
   }
 });

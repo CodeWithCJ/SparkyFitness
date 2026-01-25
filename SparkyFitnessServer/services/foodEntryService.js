@@ -1,21 +1,21 @@
-const foodRepository = require("../models/foodRepository");
-const foodEntryMealRepository = require("../models/foodEntryMealRepository"); // New import
-const mealService = require("./mealService");
-const { log } = require("../config/logging");
-const mealTypeRepository = require("../models/mealType");
+const foodRepository = require('../models/foodRepository');
+const foodEntryMealRepository = require('../models/foodEntryMealRepository'); // New import
+const mealService = require('./mealService');
+const { log } = require('../config/logging');
+const mealTypeRepository = require('../models/mealType');
 
 // Helper functions (already defined)
 function getGlycemicIndexValue(category) {
   switch (category) {
-    case "Very Low":
+    case 'Very Low':
       return 10;
-    case "Low":
+    case 'Low':
       return 30;
-    case "Medium":
+    case 'Medium':
       return 60;
-    case "High":
+    case 'High':
       return 80;
-    case "Very High":
+    case 'Very High':
       return 100;
     default:
       return null;
@@ -23,12 +23,12 @@ function getGlycemicIndexValue(category) {
 }
 
 function getGlycemicIndexCategory(value) {
-  if (value === null) return "None";
-  if (value <= 20) return "Very Low";
-  if (value <= 50) return "Low";
-  if (value <= 70) return "Medium";
-  if (value <= 90) return "High";
-  return "Very High";
+  if (value === null) return 'None';
+  if (value <= 20) return 'Very Low';
+  if (value <= 50) return 'Low';
+  if (value <= 70) return 'Medium';
+  if (value <= 90) return 'High';
+  return 'Very High';
 }
 
 async function resolveMealTypeId(userId, mealTypeName) {
@@ -48,7 +48,7 @@ async function createFoodEntry(authenticatedUserId, actingUserId, entryData) {
       created_by_user_id: actingUserId, // The user performing the action
     };
     log(
-      "info",
+      'info',
       `createFoodEntry in foodService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, entryData: ${JSON.stringify(
         entryData
       )}`
@@ -60,7 +60,7 @@ async function createFoodEntry(authenticatedUserId, actingUserId, entryData) {
     return newEntry;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error creating food entry for user ${authenticatedUserId} by ${actingUserId} in foodService:`,
       error
     );
@@ -80,11 +80,11 @@ async function updateFoodEntry(
       authenticatedUserId
     );
     if (!entryOwnerId) {
-      throw new Error("Food entry not found.");
+      throw new Error('Food entry not found.');
     }
     if (entryOwnerId !== authenticatedUserId) {
       throw new Error(
-        "Forbidden: You do not have permission to update this food entry."
+        'Forbidden: You do not have permission to update this food entry.'
       );
     }
 
@@ -94,7 +94,7 @@ async function updateFoodEntry(
       authenticatedUserId
     );
     if (!existingEntry) {
-      throw new Error("Food entry not found.");
+      throw new Error('Food entry not found.');
     }
 
     const foodIdToUse = existingEntry.food_id;
@@ -106,14 +106,14 @@ async function updateFoodEntry(
       authenticatedUserId
     );
     if (!food) {
-      throw new Error("Food not found for snapshotting.");
+      throw new Error('Food not found for snapshotting.');
     }
     const variant = await foodRepository.getFoodVariantById(
       variantIdToUse,
       authenticatedUserId
     );
     if (!variant) {
-      throw new Error("Food variant not found for snapshotting.");
+      throw new Error('Food variant not found for snapshotting.');
     }
 
     // Construct the new snapshot data
@@ -155,12 +155,12 @@ async function updateFoodEntry(
       newSnapshotData // Pass the new snapshot data
     );
     if (!updatedEntry) {
-      throw new Error("Food entry not found or not authorized to update.");
+      throw new Error('Food entry not found or not authorized to update.');
     }
     return updatedEntry;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error updating food entry ${entryId} by user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -174,7 +174,7 @@ async function deleteFoodEntry(authenticatedUserId, entryId) {
       authenticatedUserId
     );
     if (!entryOwnerId) {
-      throw new Error("Food entry not found.");
+      throw new Error('Food entry not found.');
     }
     // Authorization check: Ensure the authenticated user owns the entry
     // or has family access to the owner's data.
@@ -182,7 +182,7 @@ async function deleteFoodEntry(authenticatedUserId, entryId) {
     if (entryOwnerId !== authenticatedUserId) {
       // In a real app, you'd check family access here.
       throw new Error(
-        "Forbidden: You do not have permission to delete this food entry."
+        'Forbidden: You do not have permission to delete this food entry.'
       );
     }
 
@@ -191,12 +191,12 @@ async function deleteFoodEntry(authenticatedUserId, entryId) {
       authenticatedUserId
     );
     if (!success) {
-      throw new Error("Food entry not found or not authorized to delete.");
+      throw new Error('Food entry not found or not authorized to delete.');
     }
     return true;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting food entry ${entryId} by user ${authenticatedUserId} in foodService:`,
       error
     );
@@ -212,8 +212,8 @@ async function getFoodEntriesByDate(
   try {
     if (!targetUserId) {
       log(
-        "error",
-        "getFoodEntriesByDate: targetUserId is undefined. Returning empty array."
+        'error',
+        'getFoodEntriesByDate: targetUserId is undefined. Returning empty array.'
       );
       return [];
     }
@@ -224,7 +224,7 @@ async function getFoodEntriesByDate(
     return entries;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching food entries for user ${targetUserId} on ${selectedDate} by ${authenticatedUserId} in foodService:`,
       error
     );
@@ -247,7 +247,7 @@ async function getFoodEntriesByDateRange(
     return entries;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching food entries for user ${targetUserId} from ${startDate} to ${endDate} by ${authenticatedUserId} in foodService:`,
       error
     );
@@ -273,7 +273,7 @@ async function copyFoodEntries(
 
     if (sourceEntries.length === 0) {
       log(
-        "debug",
+        'debug',
         `No food entries found for ${sourceMealType} on ${sourceDate} for user ${authenticatedUserId}. No entries to copy.`
       );
       return [];
@@ -290,7 +290,7 @@ async function copyFoodEntries(
     const entriesToCreate = [];
     for (const entry of sourceEntries) {
       log(
-        "debug",
+        'debug',
         `copyFoodEntries: Processing source entry: ${JSON.stringify(entry)}`
       );
       // Check for existing entry to prevent duplicates
@@ -339,13 +339,13 @@ async function copyFoodEntries(
           custom_nutrients: entry.custom_nutrients || {},
         });
         log(
-          "debug",
+          'debug',
           `copyFoodEntries: Adding entry for food_id: ${entry.food_id}, meal_type_id: ${targetMealTypeId}, entry_date: ${targetDate}, variant_id: ${entry.variant_id}`
         );
         // Pass authenticatedUserId as the RLS user for bulkCreateFoodEntries
       } else {
         log(
-          "debug",
+          'debug',
           `Skipping duplicate food entry for food_id ${entry.food_id} in ${targetMealType} on ${targetDate}.`
         );
       }
@@ -353,7 +353,7 @@ async function copyFoodEntries(
 
     if (entriesToCreate.length === 0) {
       log(
-        "debug",
+        'debug',
         `All food entries from ${sourceMealType} on ${sourceDate} already exist in ${targetMealType} on ${targetDate}. No new entries created.`
       );
       return [];
@@ -365,13 +365,13 @@ async function copyFoodEntries(
       authenticatedUserId // Pass authenticatedUserId for RLS
     );
     log(
-      "debug",
+      'debug',
       `Successfully copied ${newEntries.length} new food entries from ${sourceMealType} on ${sourceDate} to ${targetMealType} on ${targetDate} for user ${authenticatedUserId}.`
     );
     return newEntries;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error copying food entries for user ${authenticatedUserId} from ${sourceDate} ${sourceMealType} to ${targetDate} ${targetMealType}:`,
       error
     );
@@ -386,7 +386,7 @@ async function copyFoodEntriesFromYesterday(
   targetDate
 ) {
   try {
-    const [yearStr, monthStr, dayStr] = targetDate.split("-");
+    const [yearStr, monthStr, dayStr] = targetDate.split('-');
     const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10); // month is 1-indexed from frontend
     const day = parseInt(dayStr, 10);
@@ -401,21 +401,21 @@ async function copyFoodEntriesFromYesterday(
       day < 1 ||
       day > 31
     ) {
-      throw new Error("Invalid date format provided for targetDate.");
+      throw new Error('Invalid date format provided for targetDate.');
     }
 
     // Create UTC date object
     const priorDay = new Date(Date.UTC(year, month - 1, day)); // month - 1 because Date.UTC expects 0-indexed month
     if (isNaN(priorDay.getTime())) {
-      throw new Error("Invalid date value generated for prior day.");
+      throw new Error('Invalid date value generated for prior day.');
     }
 
     priorDay.setUTCDate(priorDay.getUTCDate() - 1); // Subtract one day in UTC
     if (isNaN(priorDay.getTime())) {
-      throw new Error("Invalid date value generated after subtracting a day.");
+      throw new Error('Invalid date value generated after subtracting a day.');
     }
 
-    const sourceDate = priorDay.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+    const sourceDate = priorDay.toISOString().split('T')[0]; // Format as YYYY-MM-DD
 
     // 1. Fetch source entries from the prior day for the specified meal type
     const sourceEntries = await foodRepository.getFoodEntriesByDateAndMealType(
@@ -426,7 +426,7 @@ async function copyFoodEntriesFromYesterday(
 
     if (sourceEntries.length === 0) {
       log(
-        "debug",
+        'debug',
         `No food entries found for ${mealType} on ${sourceDate} for user ${authenticatedUserId}. No entries to copy.`
       );
       return [];
@@ -438,7 +438,7 @@ async function copyFoodEntriesFromYesterday(
     const entriesToCreate = [];
     for (const entry of sourceEntries) {
       log(
-        "debug",
+        'debug',
         `copyFoodEntriesFromYesterday: Processing source entry: ${JSON.stringify(
           entry
         )}`
@@ -490,7 +490,7 @@ async function copyFoodEntriesFromYesterday(
         });
       } else {
         log(
-          "debug",
+          'debug',
           `Skipping duplicate food entry for food_id ${entry.food_id} in ${mealType} on ${targetDate}.`
         );
       }
@@ -498,7 +498,7 @@ async function copyFoodEntriesFromYesterday(
 
     if (entriesToCreate.length === 0) {
       log(
-        "debug",
+        'debug',
         `All food entries from prior day's ${mealType} already exist in ${targetDate} ${mealType}. No new entries created.`
       );
       return [];
@@ -510,13 +510,13 @@ async function copyFoodEntriesFromYesterday(
       authenticatedUserId // Pass authenticatedUserId for RLS
     );
     log(
-      "debug",
+      'debug',
       `Successfully copied ${newEntries.length} new food entries from prior day's ${mealType} to ${targetDate} ${mealType} for user ${authenticatedUserId}.`
     );
     return newEntries;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error copying food entries from prior day for user ${authenticatedUserId} to ${targetDate} ${mealType}:`,
       error
     );
@@ -540,7 +540,7 @@ async function getDailyNutritionSummary(userId, date) {
     return summary;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching daily nutrition summary for user ${userId} on ${date} in foodService:`,
       error
     );
@@ -555,7 +555,7 @@ async function createFoodEntryMeal(
   mealData
 ) {
   log(
-    "info",
+    'info',
     `createFoodEntryMeal in foodEntryService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, mealData: ${JSON.stringify(
       mealData
     )}`
@@ -571,7 +571,7 @@ async function createFoodEntryMeal(
         name: mealData.name,
         description: mealData.description,
         quantity: mealData.quantity || 1.0, // Default to 1.0
-        unit: mealData.unit || "serving", // Default to 'serving'
+        unit: mealData.unit || 'serving', // Default to 'serving'
       },
       actingUserId
     );
@@ -587,7 +587,7 @@ async function createFoodEntryMeal(
       (!mealData.foods || mealData.foods.length === 0)
     ) {
       log(
-        "info",
+        'info',
         `Fetching foods from meal template ${mealData.meal_template_id} for new food entry meal.`
       );
       const mealTemplate = await mealService.getMealById(
@@ -598,13 +598,13 @@ async function createFoodEntryMeal(
         foodsToProcess = mealTemplate.foods;
         mealServingSize = mealTemplate.serving_size || 1.0; // Get the meal's serving size
         log(
-          "info",
-          `Meal template serving size: ${mealServingSize} ${mealTemplate.serving_unit || "serving"
+          'info',
+          `Meal template serving size: ${mealServingSize} ${mealTemplate.serving_unit || 'serving'
           }`
         );
       } else {
         log(
-          "warn",
+          'warn',
           `Meal template ${mealData.meal_template_id} not found or has no foods when creating food entry meal.`
         );
         // Continue without foods, or throw an error if template foods are mandatory
@@ -614,13 +614,13 @@ async function createFoodEntryMeal(
     // Calculate portion multiplier: consumed_quantity / meal_serving_size
     const consumedQuantity = mealData.quantity || 1.0;
     let multiplier = 1.0;
-    if (mealData.unit === "serving") {
+    if (mealData.unit === 'serving') {
       multiplier = consumedQuantity;
     } else {
       multiplier = consumedQuantity / mealServingSize;
     }
     log(
-      "info",
+      'info',
       `Portion multiplier: ${multiplier} (consumed: ${consumedQuantity}, serving_size: ${mealServingSize})`
     );
 
@@ -633,7 +633,7 @@ async function createFoodEntryMeal(
       );
       if (!food) {
         log(
-          "warn",
+          'warn',
           `Food with ID ${foodItem.food_id} not found when creating food entry meal. Skipping.`
         );
         continue;
@@ -644,7 +644,7 @@ async function createFoodEntryMeal(
       );
       if (!variant) {
         log(
-          "warn",
+          'warn',
           `Food variant with ID ${foodItem.variant_id} not found for food ${foodItem.food_id} when creating food entry meal. Skipping.`
         );
         continue;
@@ -699,7 +699,7 @@ async function createFoodEntryMeal(
         authenticatedUserId
       );
       log(
-        "info",
+        'info',
         `Created ${entriesToCreate.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}.`
       );
     }
@@ -707,7 +707,7 @@ async function createFoodEntryMeal(
     return newFoodEntryMeal;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error creating food entry meal for user ${authenticatedUserId}:`,
       error
     );
@@ -722,7 +722,7 @@ async function updateFoodEntryMeal(
   updatedMealData
 ) {
   log(
-    "info",
+    'info',
     `updateFoodEntryMeal in foodEntryService: foodEntryMealId: ${foodEntryMealId}, updatedMealData: ${JSON.stringify(
       updatedMealData
     )}, authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}`
@@ -747,7 +747,7 @@ async function updateFoodEntryMeal(
     const resolvedMealTypeId = updatedFoodEntryMeal.meal_type_id;
 
     if (!updatedFoodEntryMeal) {
-      throw new Error("Food entry meal not found or not authorized to update.");
+      throw new Error('Food entry meal not found or not authorized to update.');
     }
 
     // 2. Delete existing component food_entries
@@ -756,10 +756,10 @@ async function updateFoodEntryMeal(
       authenticatedUserId
     );
     log(
-      "debug",
+      'debug',
       `Deleted existing component food entries for food_entry_meal ${foodEntryMealId}.`
     );
-    log("info", `[DEBUG] updateFoodEntryMeal Service Data:`, updatedMealData); // DEBUG LOG
+    log('info', '[DEBUG] updateFoodEntryMeal Service Data:', updatedMealData); // DEBUG LOG
 
     // Calculate portion multiplier
     // Foods from getFoodEntryMealWithComponents now have BASE (unscaled) quantities,
@@ -776,13 +776,13 @@ async function updateFoodEntryMeal(
       );
       if (mealTemplate && mealTemplate.serving_size) {
         const referenceServingSize = mealTemplate.serving_size || 1.0;
-        if (updatedMealData.unit === "serving") {
+        if (updatedMealData.unit === 'serving') {
           multiplier = newQuantity;
         } else {
           multiplier = newQuantity / referenceServingSize;
         }
         log(
-          "info",
+          'info',
           `Update portion scaling (with template): multiplier ${multiplier} (consumed: ${newQuantity}, reference: ${referenceServingSize})`
         );
       }
@@ -790,7 +790,7 @@ async function updateFoodEntryMeal(
       // No template - foods have base quantities, so multiplier is just the new quantity
       multiplier = newQuantity;
       log(
-        "info",
+        'info',
         `Update portion scaling (no template): multiplier ${multiplier} (quantity: ${newQuantity})`
       );
     }
@@ -804,7 +804,7 @@ async function updateFoodEntryMeal(
       );
       if (!food) {
         log(
-          "warn",
+          'warn',
           `Food with ID ${foodItem.food_id} not found when updating food entry meal. Skipping.`
         );
         continue;
@@ -815,7 +815,7 @@ async function updateFoodEntryMeal(
       );
       if (!variant) {
         log(
-          "warn",
+          'warn',
           `Food variant with ID ${foodItem.variant_id} not found for food ${foodItem.food_id} when updating food entry meal. Skipping.`
         );
         continue;
@@ -870,7 +870,7 @@ async function updateFoodEntryMeal(
         authenticatedUserId
       );
       log(
-        "info",
+        'info',
         `Recreated ${entriesToCreate.length} component food entries for food_entry_meal ${foodEntryMealId}.`
       );
     }
@@ -878,7 +878,7 @@ async function updateFoodEntryMeal(
     return updatedFoodEntryMeal;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error updating food entry meal ${foodEntryMealId} for user ${authenticatedUserId}:`,
       error
     );
@@ -891,7 +891,7 @@ async function getFoodEntryMealWithComponents(
   foodEntryMealId
 ) {
   log(
-    "info",
+    'info',
     `getFoodEntryMealWithComponents in foodEntryService: foodEntryMealId: ${foodEntryMealId}, authenticatedUserId: ${authenticatedUserId}`
   );
   try {
@@ -989,7 +989,7 @@ async function getFoodEntryMealWithComponents(
     };
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error getting food entry meal ${foodEntryMealId} with components for user ${authenticatedUserId}:`,
       error
     );
@@ -1003,7 +1003,7 @@ async function getFoodEntryMealsByDate(
   selectedDate
 ) {
   log(
-    "info",
+    'info',
     `getFoodEntryMealsByDate in foodEntryService: authenticatedUserId: ${authenticatedUserId}, targetUserId: ${targetUserId}, selectedDate: ${selectedDate}`
   );
   try {
@@ -1099,7 +1099,7 @@ async function getFoodEntryMealsByDate(
     return mealsWithComponents;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error getting food entry meals by date for user ${authenticatedUserId}:`,
       error
     );
@@ -1109,7 +1109,7 @@ async function getFoodEntryMealsByDate(
 
 async function deleteFoodEntryMeal(authenticatedUserId, foodEntryMealId) {
   log(
-    "info",
+    'info',
     `deleteFoodEntryMeal in foodEntryService: authenticatedUserId: ${authenticatedUserId}, foodEntryMealId: ${foodEntryMealId}`
   );
   try {
@@ -1120,12 +1120,12 @@ async function deleteFoodEntryMeal(authenticatedUserId, foodEntryMealId) {
       authenticatedUserId
     );
     if (!success) {
-      throw new Error("Food entry meal not found or not authorized to delete.");
+      throw new Error('Food entry meal not found or not authorized to delete.');
     }
-    return { message: "Food entry meal deleted successfully." };
+    return { message: 'Food entry meal deleted successfully.' };
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting food entry meal ${foodEntryMealId} for user ${authenticatedUserId}:`,
       error
     );
