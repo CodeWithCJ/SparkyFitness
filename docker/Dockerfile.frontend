@@ -31,6 +31,7 @@ RUN chmod +x /docker-entrypoint.sh
 # Set default values for environment variables
 ENV SPARKY_FITNESS_SERVER_HOST=sparkyfitness-server
 ENV SPARKY_FITNESS_SERVER_PORT=3010
+ENV NGINX_RATE_LIMIT=5r/s
 
 # Expose port 80
 EXPOSE 80
