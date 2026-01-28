@@ -12,7 +12,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Edit, Lock } from "lucide-react";
+import { Plus, Trash2, Edit, Lock, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
@@ -145,6 +145,21 @@ const MealTypeManager = () => {
     }
   };
 
+  const toggleVisibility = async (item: MealTypeDefinition) => {
+    try {
+      await updateMealType(item.id, { is_visible: !item.is_visible });
+
+      fetchMealTypes();
+
+      window.dispatchEvent(new CustomEvent("foodDiaryRefresh"));
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
   const openEditDialog = (item: MealTypeDefinition) => {
     setEditingMealType(item);
     setNewName(item.name);
@@ -254,6 +269,20 @@ const MealTypeManager = () => {
                   Order: {item.sort_order}
                 </span>
                 <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleVisibility(item)}
+                    title={
+                      item.is_visible ? "Hide from Diary" : "Show in Diary"
+                    }
+                  >
+                    {item.is_visible ? (
+                      <Eye className="w-4 h-4" />
+                    ) : (
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </Button>
                   {isSystem ? (
                     <Button
                       variant="ghost"

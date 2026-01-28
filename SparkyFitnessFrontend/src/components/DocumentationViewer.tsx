@@ -140,7 +140,7 @@ const DocumentationViewer = () => {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="h-10 grid w-full grid-cols-5">
           <TabsTrigger value="overview" className="flex items-center gap-2" onClick={() => debug(loggingLevel, "DocumentationViewer: Switched to Overview tab.")}>
             <FileText className="h-4 w-4" />
             Overview
