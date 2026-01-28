@@ -295,7 +295,7 @@ const Auth = () => {
               )}
               {loginSettings.email.enabled ? (
                 <Tabs defaultValue="signin" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="h-10 grid w-full grid-cols-2">
                     <TabsTrigger
                       value="signin"
                       onClick={() =>
