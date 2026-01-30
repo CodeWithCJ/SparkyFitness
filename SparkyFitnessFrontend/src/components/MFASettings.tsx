@@ -79,7 +79,7 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
                 // Custom Email MFA still needs an endpoint or we adapt Better Auth OTP
             }
             setShowPasswordPrompt(false);
-            setConfirmPassword("");
+            setConfirmPassword(""); // Clear password after use
             setPendingAction(null);
         } catch (error: any) {
             log(loggingLevel, "ERROR", "MFA Action Error:", error);
@@ -97,8 +97,8 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
 
             toast({ title: "Success", description: "TOTP verified and enabled!" });
             await refetch();
-            setOtpAuthUrl(null);
-            setTotpCode("");
+            setOtpAuthUrl(null); // Clear OTP URL after successful verification
+            setTotpCode(""); // Clear TOTP code after successful verification
         } catch (error: any) {
             log(loggingLevel, "ERROR", "Error verifying TOTP:", error);
             toast({ title: "Error", description: `Failed to verify TOTP: ${error.message}`, variant: "destructive" });
@@ -178,7 +178,13 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
                             <Button onClick={handlePasswordAction} disabled={loading}>
                                 {t('common.confirm', 'Confirm')}
                             </Button>
-                            <Button variant="ghost" onClick={() => { setShowPasswordPrompt(false); setPendingAction(null); }}>
+                            <Button variant="ghost" onClick={() => {
+                                setShowPasswordPrompt(false);
+                                setPendingAction(null);
+                                if (pendingAction === 'enableTotp') {
+                                    setOtpAuthUrl(null); // Clear OTP URL if TOTP enablement was cancelled
+                                }
+                            }}>
                                 {t('common.cancel', 'Cancel')}
                             </Button>
                         </div>
