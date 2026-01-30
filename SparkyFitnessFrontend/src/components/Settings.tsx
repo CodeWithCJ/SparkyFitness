@@ -51,6 +51,7 @@ import CalculationSettings from "@/pages/CalculationSettings";
 import TooltipWarning from "./TooltipWarning";
 import MFASettings from "./MFASettings"; // Import MFASettings component
 import CustomNutrientsSettings from "@/pages/CustomNutrientsSettings";
+import PasskeySettings from "./PasskeySettings";
 
 interface Profile {
   id: string;
@@ -1561,6 +1562,8 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   )}
               </Button>
             </form>
+            <Separator />
+            <PasskeySettings />
             <Separator />
             <MFASettings />
           </AccordionContent>

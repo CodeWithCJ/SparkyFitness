@@ -1,8 +1,5 @@
 const { log } = require('../../config/logging');
-let fetch;
-import('node-fetch').then(module => {
-    fetch = module.default;
-});
+// Using native fetch (standard in Node 22+)
 
 class TandoorService {
     constructor(baseUrl, apiKey) {
@@ -146,17 +143,17 @@ class TandoorService {
 
         const extractFromProperties = (props, candidates) => {
             if (!Array.isArray(props)) return null;
-            
+
             for (const cand of candidates) {
                 const candNorm = cand.toLowerCase().replace(/[^a-z0-9]/g, '');
-                
+
                 const found = props.find(p => {
                     const pt = p.property_type;
                     if (!pt) return false;
-                    
+
                     const nameNorm = (pt.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                     const slugNorm = (pt.open_data_slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                    
+
                     // Match against name OR the slug (e.g., "property-calories" matches "calories")
                     return nameNorm === candNorm || slugNorm.includes(candNorm);
                 });
@@ -274,7 +271,7 @@ class TandoorService {
             },
             variant: {
                 // Tandoor nutrition values are alway for 1 serving
-                serving_size: 1, 
+                serving_size: 1,
                 serving_unit: 'serving',
                 // Map nutrition values (fallbacks may be null -> coerce to 0)
                 calories: Number(calories) || 0,

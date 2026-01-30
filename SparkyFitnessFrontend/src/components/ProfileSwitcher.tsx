@@ -1,10 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, User } from 'lucide-react';
+import { Users, User, Loader2 } from 'lucide-react';
 
 const ProfileSwitcher = () => {
   const { user } = useAuth();
@@ -14,6 +14,7 @@ const ProfileSwitcher = () => {
     accessibleUsers,
     switchToUser
   } = useActiveUser();
+  const [isSwitching, setIsSwitching] = useState(false);
 
   if (!user) return null;
   // If not acting on behalf and no accessible users, hide the switcher
@@ -34,10 +35,23 @@ const ProfileSwitcher = () => {
 
   if (!isActingOnBehalf && switchableUsers.length === 0) return null;
 
+  const handleValueChange = async (value: string) => {
+    setIsSwitching(true);
+    try {
+      await switchToUser(value);
+    } finally {
+      setIsSwitching(false);
+    }
+  };
+
   return (
-    <Select value={activeUserId || user.id} onValueChange={switchToUser}>
+    <Select value={activeUserId || user.id} onValueChange={handleValueChange} disabled={isSwitching}>
       <SelectTrigger className="w-auto h-9 p-2 border-none bg-transparent hover:bg-accent">
-        <Users className="h-4 w-4" />
+        {isSwitching ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Users className="h-4 w-4" />
+        )}
         {isActingOnBehalf && (
           <div className="w-2 h-2 bg-blue-500 rounded-full ml-1" />
         )}

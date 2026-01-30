@@ -1,4 +1,4 @@
-console.log('DEBUG: Loading measurementService.js');
+//console.log('DEBUG: Loading measurementService.js');
 const { log } = require('../config/logging'); // Import the logger utility
 const measurementRepository = require('../models/measurementRepository');
 const userRepository = require('../models/userRepository');
@@ -951,6 +951,7 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
     };
     log('debug', `[processSleepEntry] entryToUpsert before upsert:`, entryToUpsert);
 
+    // Pass actingUserId to upsertSleepEntry
     const newSleepEntry = await sleepRepository.upsertSleepEntry(userId, actingUserId, entryToUpsert);
 
     if (stage_events && stage_events.length > 0) {
@@ -962,10 +963,11 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
       for (const stageEvent of stage_events) {
         // Round duration for each stage event
         const duration = Math.round(Number(stageEvent.duration_in_seconds)) || 0;
+        // Pass actingUserId to upsertSleepStageEvent
         await sleepRepository.upsertSleepStageEvent(userId, newSleepEntry.id, {
           ...stageEvent,
           duration_in_seconds: duration
-        });
+        }, actingUserId);
       }
     }
     return newSleepEntry;
@@ -975,7 +977,7 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
   }
 }
 
-async function updateSleepEntry(userId, entryId, updateData) {
+async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
   try {
     const { stage_events, bedtime, wake_time, duration_in_seconds, sleep_score: incomingSleepScore, ...entryDetails } = updateData;
 
@@ -1017,7 +1019,8 @@ async function updateSleepEntry(userId, entryId, updateData) {
     log('debug', `[updateSleepEntry] updatedEntryDetails before update:`, updatedEntryDetails);
 
     // Update the main sleep entry details
-    const updatedEntry = await sleepRepository.updateSleepEntry(userId, entryId, updatedEntryDetails);
+    // Pass actingUserId provided in the arguments
+    const updatedEntry = await sleepRepository.updateSleepEntry(userId, entryId, actingUserId, updatedEntryDetails);
 
     // Handle stage events if provided
     if (stage_events !== undefined) {
@@ -1027,7 +1030,8 @@ async function updateSleepEntry(userId, entryId, updateData) {
       // Then, insert the new stage events
       if (stage_events.length > 0) {
         for (const stageEvent of stage_events) {
-          await sleepRepository.upsertSleepStageEvent(userId, entryId, stageEvent);
+          // Pass actingUserId (assuming upsertSleepStageEvent now takes it)
+          await sleepRepository.upsertSleepStageEvent(userId, entryId, stageEvent, actingUserId);
         }
       }
     }

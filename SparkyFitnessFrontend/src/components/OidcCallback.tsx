@@ -1,83 +1,57 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { apiCall } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { authClient } from '../lib/auth-client';
 import { useAuth } from '../hooks/useAuth';
 
 const OidcCallback: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
-  const location = useLocation();
   const navigate = useNavigate();
   const { signIn } = useAuth();
   const processingRef = useRef(false);
 
   useEffect(() => {
-    const processOidcCallback = async () => {
-      // Prevent duplicate processing if already in progress
-      if (processingRef.current) {
-        return;
-      }
+    const checkSession = async () => {
+      if (processingRef.current) return;
       processingRef.current = true;
-      const params = new URLSearchParams(location.search);
-      const code = params.get('code');
-      const state = params.get('state');
-
-      if (!code) {
-        setError('Authorization code not found in callback URL.');
-        return;
-      }
 
       try {
-        const response = await apiCall('/openid/callback', {
-          method: 'POST',
-          body: { code, state, search: location.search },
-        });
+        // Better Auth handles the actual code/state exchange via server-side handler.
+        // Once the user is redirected here, the session should already be established.
+        const { data: session, error: sessionError } = await authClient.getSession();
 
-        if (response.success && response.redirectUrl) {
-          // The backend has successfully processed the OIDC callback
-          // Now, redirect the frontend to the specified URL
-          // The actual user session data will be fetched by the frontend from /openid/api/me
-          // after this redirect, or on subsequent protected route access.
-          // After successful OIDC callback and backend processing,
-          // the user session should be established on the backend.
-          // Now, we need to trigger a re-authentication on the frontend
-          // to fetch the user details and update the AuthContext.
-          // The `signIn` function in `useAuth` is designed for traditional login,
-          // so we'll call a simplified version or directly update the context
-          // after fetching user info from the backend.
+        if (sessionError) {
+          setError(sessionError.message || 'Failed to verify session after OIDC redirect.');
+          return;
+        }
 
-          // Fetch user info from the backend after successful OIDC login
-          const userInfo = await apiCall('/openid/api/me');
-          if (userInfo && userInfo.userId && userInfo.email) {
-            // Correctly map parameters to signIn: userId, activeUserId, email, role, authType, navigateOnSuccess, fullName
-            signIn(
-              userInfo.userId,
-              userInfo.activeUserId || userInfo.userId,
-              userInfo.email,
-              userInfo.role || 'user',
-              'oidc',
-              true,
-              userInfo.fullName || userInfo.full_name
-            );
-            navigate('/');
-          } else {
-            setError('Failed to retrieve user information after OIDC login.');
-          }
+        if (session?.user) {
+          // Synchronize local AuthContext with Better Auth session
+          signIn(
+            session.user.id,
+            session.user.id, // Better Auth user is always the active user initially
+            session.user.email,
+            (session.user as any).role || 'user',
+            'oidc',
+            false, // Don't navigate automatically, we do it below
+            session.user.name
+          );
+          navigate('/');
         } else {
-          setError(response.error || 'OIDC callback processing failed on the server.');
+          setError('No active session found after OIDC redirect.');
         }
       } catch (err: any) {
-        setError(err.message || 'An unexpected error occurred.');
+        setError(err.message || 'An unexpected error occurred during OIDC verification.');
       }
     };
 
-    processOidcCallback();
-  }, [location, navigate, signIn]);
+    checkSession();
+  }, [navigate, signIn]);
 
   return (
-    <div>
-      <h1>Processing OIDC Login...</h1>
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-      <p>Please wait while we securely log you in.</p>
+    <div className="min-h-screen flex items-center justify-center flex-col gap-4">
+      <h1 className="text-xl font-semibold">Completing Secure Login...</h1>
+      {error && <p className="text-red-500 font-medium">Error: {error}</p>}
+      <p className="text-muted-foreground italic">Please wait while we finalize your session.</p>
     </div>
   );
 };

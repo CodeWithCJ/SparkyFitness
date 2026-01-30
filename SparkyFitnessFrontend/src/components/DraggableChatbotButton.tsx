@@ -127,15 +127,6 @@ const DraggableChatbotButton: React.FC = () => {
     checkAiProviders();
   }, [checkAiProviders]);
 
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        checkAiProviders();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [checkAiProviders]);
 
   useEffect(() => {
     const interval = setInterval(checkAiProviders, 60000);

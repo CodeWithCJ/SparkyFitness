@@ -7,6 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/use-toast";
 import CustomNutrientsSettings from './CustomNutrientsSettings';
+import PasskeySettings from '@/components/PasskeySettings';
+import MFASettings from '@/components/MFASettings';
 
 const Settings = () => {
   const { t } = useTranslation();
@@ -58,6 +60,18 @@ const Settings = () => {
         </CardHeader>
         <CardContent>
           <CustomNutrientsSettings />
+        </CardContent>
+      </Card>
+
+      <PasskeySettings />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>MFA Settings</CardTitle>
+          <CardDescription>Secure your account with Multi-Factor Authentication.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MFASettings />
         </CardContent>
       </Card>
 

@@ -7,7 +7,7 @@ const { pipeline } = require('stream/promises');
 const { log } = require('../config/logging');
 const { getRawOwnerPool, endPool, resetPool } = require('../db/poolManager');
 const backupSettingsRepository = require('../models/backupSettingsRepository');
-const { configureSessionMiddleware } = require('../SparkyFitnessServer'); // Import the session configuration function
+// const { configureSessionMiddleware } = require('../SparkyFitnessServer'); // Removed to fix circular dependency
 
 const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, '../backup');
 const UPLOADS_BASE_DIR = path.join(__dirname, '../uploads');
@@ -197,9 +197,9 @@ async function performRestore(backupFilePath) {
     log('info', 'Reinitialized database connection pool.');
 
     // Reconfigure session middleware with the new pool
-    const { configureSessionMiddleware } = require('../SparkyFitnessServer');
-    configureSessionMiddleware(getRawOwnerPool());
-    log('info', 'Reconfigured session middleware with new database pool.');
+    // const { configureSessionMiddleware } = require('../SparkyFitnessServer');
+    // configureSessionMiddleware(getRawOwnerPool());
+    // log('info', 'Reconfigured session middleware with new database pool.');
 
     log('warn', `Wiping current uploads directory: ${UPLOADS_BASE_DIR}...`);
     await fsp.rm(UPLOADS_BASE_DIR, { recursive: true, force: true });

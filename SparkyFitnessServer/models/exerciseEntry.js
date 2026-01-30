@@ -387,7 +387,7 @@ async function getExerciseEntryOwnerId(id, userId) {
   }
 }
 
-async function updateExerciseEntry(id, userId, updateData) {
+async function updateExerciseEntry(id, userId, actingUserId, updateData) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
@@ -403,8 +403,9 @@ async function updateExerciseEntry(id, userId, updateData) {
         image_url = $7,
         distance = COALESCE($8, distance),
         avg_heart_rate = COALESCE($9, avg_heart_rate),
+        updated_by_user_id = $10,
         updated_at = now()
-      WHERE id = $10 AND user_id = $11
+      WHERE id = $11 AND user_id = $12
       RETURNING id`,
       [
         updateData.exercise_id,
@@ -416,6 +417,7 @@ async function updateExerciseEntry(id, userId, updateData) {
         updateData.image_url || null,
         updateData.distance || null,
         updateData.avg_heart_rate || null,
+        actingUserId,
         id,
         userId,
       ]

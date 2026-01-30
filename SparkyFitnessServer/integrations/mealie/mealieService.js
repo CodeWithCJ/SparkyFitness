@@ -1,8 +1,5 @@
 const { log } = require('../../config/logging');
-let fetch;
-import('node-fetch').then(module => {
-    fetch = module.default;
-});
+// Using native fetch (standard in Node 22+)
 
 class MealieService {
     constructor(baseUrl, apiKey) {
