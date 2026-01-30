@@ -57,7 +57,6 @@ const AppContent: React.FC<AppContentProps> = ({ onShowAboutDialog }) => {
             }
           />
           <Route path="/oidc-callback" element={<OidcCallback />} />
-          <Route path="/error" element={<Auth />} />
           {/* Conditionally render MealManagement based on 'diary' permission */}
           <Route
             path="/meals"
