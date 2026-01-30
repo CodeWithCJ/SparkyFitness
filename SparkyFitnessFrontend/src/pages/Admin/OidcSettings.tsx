@@ -229,17 +229,22 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
           <div className="max-h-[70vh] overflow-y-auto p-4">
             <div className="space-y-4">
               <div>
+                <Label htmlFor="provider_id">{t('admin.oidcSettings.providerId', 'Provider ID (Slug)')}</Label>
+                <Input id="provider_id" value={editedProvider.provider_id || ''} onChange={handleChange} placeholder="e.g. authentik, google, keycloak" />
+                <p className="text-xs text-muted-foreground mt-1">This will be part of your Redirect URI: /auth/sso/callback/YOUR_ID</p>
+              </div>
+              <div>
                 <Label htmlFor="display_name">{t('admin.oidcSettings.displayName', 'Display Name')}</Label>
                 <Input id="display_name" value={editedProvider.display_name || ''} onChange={handleChange} />
               </div>
               <div className="flex items-center justify-between pt-4">
                 <div className="flex items-center space-x-2">
-                    <Switch id="is_active" checked={editedProvider.is_active} onCheckedChange={(c) => handleSwitchChange('is_active', c)} />
-                    <Label htmlFor="is_active">{t('admin.oidcSettings.active', 'Active')}</Label>
+                  <Switch id="is_active" checked={editedProvider.is_active} onCheckedChange={(c) => handleSwitchChange('is_active', c)} />
+                  <Label htmlFor="is_active">{t('admin.oidcSettings.active', 'Active')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <Switch id="auto_register" checked={editedProvider.auto_register || false} onCheckedChange={(c) => handleSwitchChange('auto_register', c)} />
-                    <Label htmlFor="auto_register">{t('admin.oidcSettings.autoRegister', 'Auto Register')}</Label>
+                  <Switch id="auto_register" checked={editedProvider.auto_register || false} onCheckedChange={(c) => handleSwitchChange('auto_register', c)} />
+                  <Label htmlFor="auto_register">{t('admin.oidcSettings.autoRegister', 'Auto Register')}</Label>
                 </div>
               </div>
               <div>
@@ -255,6 +260,11 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
                 <Input id="issuer_url" value={editedProvider.issuer_url} onChange={handleChange} />
               </div>
               <div>
+                <Label htmlFor="domain">{t('admin.oidcSettings.domain', 'Organization Domain')}</Label>
+                <Input id="domain" value={editedProvider.domain || ''} onChange={handleChange} placeholder="e.g. sparkyfitness.com" />
+                <p className="text-xs text-muted-foreground mt-1">Required by Better Auth to identify this provider.</p>
+              </div>
+              <div>
                 <Label htmlFor="client_id">{t('admin.oidcSettings.clientId', 'Client ID')}</Label>
                 <Input id="client_id" value={editedProvider.client_id} onChange={handleChange} autoComplete="off" />
               </div>
@@ -268,7 +278,7 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
               </div>
               <div>
                 <Label htmlFor="redirect_uris">{t('admin.oidcSettings.redirectUri', 'Redirect URI')}</Label>
-                <Input id="redirect_uris" value={editedProvider.redirect_uris.join(', ')} onChange={handleChange} placeholder={t('admin.oidcSettings.redirectUriPlaceholder', { origin: window.location.origin, defaultValue: `e.g., ${window.location.origin}/oidc-callback` })} />
+                <Input id="redirect_uris" value={(editedProvider.redirect_uris || []).join(', ')} onChange={handleChange} placeholder={t('admin.oidcSettings.redirectUriPlaceholder', { origin: window.location.origin, defaultValue: `e.g., ${window.location.origin}/oidc-callback` })} />
               </div>
               <div>
                 <Label htmlFor="token_endpoint_auth_method">{t('admin.oidcSettings.tokenEndpointAuthMethod')}</Label>
@@ -297,17 +307,18 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
               </div>
             </div>
             <div className="text-sm text-muted-foreground mt-4">
-              <p>{t('admin.oidcSettings.redirectUriInfo', 'The Redirect URI for your OIDC provider should be: SPARKY_FITNESS_FRONTEND_URL/oidc-callback')}</p>
-              <div className="flex items-center">
-                <code className="font-mono bg-gray-100 p-1 rounded">{`${window.location.origin}/oidc-callback`}</code>
+              <p>{t('admin.oidcSettings.redirectUriInfo', 'The Redirect URI for your OIDC provider must be configured as follows:')}</p>
+              <div className="flex items-center mt-1 mb-2">
+                <code className="font-mono bg-gray-100 p-1 rounded break-all">{`${window.location.origin}/auth/sso/callback/${editedProvider.provider_id || 'YOUR_PROVIDER_ID'}`}</code>
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
-                  className="ml-2 h-5 w-5"
+                  size="sm"
+                  className="ml-2 h-5 w-5 flex-shrink-0"
                   onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/oidc-callback`);
-                    toast({ title: t('copied', 'Copied!'), description: t('admin.oidcSettings.redirectUriCopied', 'Redirect URI copied to clipboard.') });
+                    const url = `${window.location.origin}/auth/sso/callback/${editedProvider.provider_id || 'YOUR_PROVIDER_ID'}`;
+                    navigator.clipboard.writeText(url);
+                    toast({ title: "Copied", description: "Callback URL copied to clipboard" });
                   }}
                 >
                   <ClipboardCopy className="h-4 w-4" />

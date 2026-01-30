@@ -45,8 +45,6 @@ const moodRoutes = require('./routes/moodRoutes'); // Import Mood routes
 const fastingRoutes = require('./routes/fastingRoutes'); // Import Fasting routes
 const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
 const adminAuthRoutes = require('./routes/adminAuthRoutes'); // Import new admin auth routes
-const { router: openidRoutes, initializeOidcClient } = require('./openidRoutes');
-const oidcSettingsRoutes = require('./routes/oidcSettingsRoutes');
 const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
 const versionRoutes = require('./routes/versionRoutes');
 const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboarding routes
@@ -202,70 +200,18 @@ app.get(
   }
 );
 
-let sessionMiddleware; // Declare sessionMiddleware globally
+app.use(cookieParser());
 
-const configureSessionMiddleware = (pool) => {
-  const session = require("express-session");
-  const pgSession = require("connect-pg-simple")(session);
-
-  sessionMiddleware = session({
-    store: new pgSession({
-      pool: pool, // Connection pool
-      tableName: "session", // Use a table named 'session'
-    }),
-    name: "sparky.sid",
-    secret: process.env.JWT_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    rolling: true, // Reset session expiration on every request to keep user logged in
-    proxy: true, // Trust the proxy in all environments (like Vite dev server)
-    cookie: {
-      path: "/", // Ensure cookie is sent for all paths
-      httpOnly: true,
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      // secure and sameSite will be set dynamically
-    },
-  });
-};
-
-// Initial session middleware configuration
-configureSessionMiddleware(getRawOwnerPool());
-
-// Trust the first proxy
-app.set("trust proxy", 1);
-
-app.use((req, res, next) => sessionMiddleware(req, res, next));
-
-// Dynamically set cookie properties based on protocol
-app.use((req, res, next) => {
-  if (req.session && req.protocol === "https") {
-    req.session.cookie.secure = true;
-    req.session.cookie.sameSite = "none";
-  } else if (req.session) {
-    req.session.cookie.sameSite = "lax";
-  }
-  // log('debug', `[Session Debug] Request Protocol: ${req.protocol}, Secure: ${req.secure}, Host: ${req.headers.host}`); // Commented out for less verbose logging
-  next();
-});
+// Log all incoming requests
 
 // Apply authentication middleware to all routes except auth
 app.use((req, res, next) => {
   // Routes that do not require authentication (e.g., login, register, OIDC flows, health checks)
   const publicRoutes = [
-    "/auth/login",
-    "/auth/register",
-    "/auth/settings",
-    "/auth/forgot-password", // Allow password reset request to be public
-    "/auth/reset-password", // Allow password reset to be public
-    "/auth/mfa", // Allow MFA routes to be public
-    "/auth/request-magic-link", // Allow magic link request to be public
-    "/auth/magic-link-login", // Allow magic link login to be public
+    "/auth", // Allow all Better Auth routes to bypass legacy authentication
     "/api/health-data",
     "/health",
-    "/openid", // All OIDC routes are handled by session, not JWT token
-    "/openid/api/me", // Explicitly allow /openid/api/me as a public route for session check
     "/version", // Allow version endpoint to be public
-    // "/withings/callback", // Withings OAuth callback will now be handled by /api/withings/callback
   ];
 
   // Check if the current request path starts with any of the public routes
@@ -280,17 +226,13 @@ app.use((req, res, next) => {
     return next();
   }
 
-  // Log all requests that reach the authentication middleware
-  //log('debug', `Attempting authentication for route: ${req.path}`);
-
-  // For all other routes, apply JWT token authentication
   authenticate(req, res, next);
 });
 
 // Rate limiting for authentication-related routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 1000, // Increased from 100 to prevent blocking during frequent session re-validations
   message:
     "Too many authentication attempts from this IP, please try again after 15 minutes",
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
@@ -321,36 +263,87 @@ app.use("/exercise-preset-entries", exercisePresetEntryRoutes); // New route
 app.use("/freeexercisedb", freeExerciseDBRoutes); // Add freeExerciseDB routes
 app.use("/api/health-data", healthDataRoutes);
 app.use("/sleep", sleepRoutes);
-app.use("/sleep", sleepRoutes); // Add sleep routes
 app.use("/auth", authRoutes);
-app.use("/user", authRoutes);
 app.use("/health", healthRoutes);
 app.use("/external-providers", externalProviderRoutes); // Renamed route for generic data providers
 app.use("/integrations/garmin", garminRoutes); // Add Garmin integration routes
 app.use("/api/withings", withingsRoutes); // Add Withings integration routes
 log("info", "Withings routes mounted at /api/withings");
+log("info", "About to mount Withings Data routes");
 app.use("/integrations/withings/data", withingsDataRoutes); // Add Withings Data routes
+log("info", "Withings Data routes mounted");
+log("info", "About to mount Fitbit routes");
 app.use("/integrations/fitbit", fitbitRoutes); // Add Fitbit routes
+log("info", "Fitbit routes mounted");
+log("info", "About to mount Mood routes");
 app.use("/mood", moodRoutes); // Add Mood routes
+log("info", "Mood routes mounted");
+log("info", "About to mount Fasting routes");
 app.use("/fasting", fastingRoutes); // Add Fasting routes
-app.use("/admin/oidc-settings", oidcSettingsRoutes); // Admin OIDC settings routes
-app.use("/admin/global-settings", globalSettingsRoutes);
-app.use("/version", versionRoutes); // Version routes
+log("info", "Fasting routes mounted");
+log("info", "About to mount Admin routes");
 app.use("/admin", adminRoutes); // Add admin routes
+log("info", "Admin routes mounted");
+log("info", "About to mount Admin Auth routes");
 app.use("/admin/auth", adminAuthRoutes); // Add admin auth routes
-log("debug", "Registering /openid routes");
-app.use("/openid", openidRoutes); // Import OpenID routes
+log("info", "Admin Auth routes mounted");
+log("info", "About to mount Water Container routes");
 app.use("/water-containers", waterContainerRoutes);
+log("info", "Water Container routes mounted");
+log("info", "About to mount Backup routes");
 app.use("/admin/backup", backupRoutes); // Add backup routes
+log("info", "Backup routes mounted");
+log("info", "About to mount Workout Preset routes");
 app.use("/workout-presets", require("./routes/workoutPresetRoutes")); // Add workout preset routes
+log("info", "Workout Preset routes mounted");
+log("info", "About to mount Workout Plan Template routes");
 app.use(
   "/workout-plan-templates",
   require("./routes/workoutPlanTemplateRoutes")
 ); // Add workout plan template routes
+log("info", "Workout Plan Template routes mounted");
+log("info", "About to mount Review routes");
 app.use("/review", reviewRoutes);
-app.use("/onboarding", onboardingRoutes); // Add onboarding routes
+log("info", "Review routes mounted");
+log("info", "About to mount Custom Nutrient routes");
 app.use("/custom-nutrients", customNutrientRoutes); // Add custom nutrient routes
+log("info", "Custom Nutrient routes mounted");
+log("info", "About to mount Meal Type routes");
 app.use("/meal-types", mealTypeRoutes);
+log("info", "Meal Type routes mounted");
+
+// Mounting missing routes (proxy strips /api prefix)
+app.use("/version", versionRoutes);
+log("info", "version routes mounted");
+app.use("/onboarding", onboardingRoutes);
+log("info", "onboarding routes mounted");
+app.use("/admin/global-settings", globalSettingsRoutes);
+log("info", "Admin Global Settings routes mounted");
+app.use("/admin/oidc-settings", require("./routes/oidcSettingsRoutes"));
+log("info", "Admin OIDC Settings routes mounted");
+
+// --- Better Auth Routes ---
+log("info", "About to mount Better Auth routes");
+// Block new registrations if disabled via environment variable
+app.use("/auth/sign-up", (req, res, next) => {
+  if (process.env.SPARKY_FITNESS_DISABLE_SIGNUP === "true") {
+    log("warn", `Blocking registration attempt for ${req.ip} - Sign-up is disabled.`);
+    return res.status(403).json({
+      error: "Forbidden",
+      message: "Sign-up is currently disabled.",
+    });
+  }
+  next();
+});
+
+try {
+  const { auth } = require("./auth");
+  const { toNodeHandler } = require("better-auth/node");
+  app.use("/auth", toNodeHandler(auth));
+  log("info", "Better Auth routes mounted at /auth");
+} catch (error) {
+  log("error", "Error mounting Better Auth routes: " + error.message);
+}
 
 // Serve Swagger UI
 app.use('/api-docs/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
@@ -375,29 +368,6 @@ app.get('/api-docs', (req, res) => {
   res.redirect('/api-docs/swagger');
 });
 
-
-// Serve Swagger UI
-app.use('/api-docs/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
-
-// Serve Redoc
-app.get(
-  '/api-docs/redoc',
-  redoc({
-    title: 'API Docs',
-    specUrl: '/api-docs/json',
-  })
-);
-
-// Serve the raw JSON spec
-app.get('/api-docs/json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpecs);
-});
-
-// Redirect /api-docs to /api-docs/swagger
-app.get('/api-docs', (req, res) => {
-  res.redirect('/api-docs/swagger');
-});
 
 // Temporary debug route to log incoming requests for meal plan templates
 app.use(
@@ -667,8 +637,6 @@ applyMigrations()
   .then(grantPermissions)
   .then(applyRlsPolicies)
   .then(async () => {
-    // OIDC clients are now initialized on-demand, so no startup initialization is needed.
-
     // Schedule backups after migrations
     scheduleBackups();
     // Schedule Withings syncs after migrations
@@ -710,8 +678,6 @@ applyMigrations()
     log("error", "Failed to apply migrations and start server:", error);
     process.exit(1);
   });
-
-module.exports = { configureSessionMiddleware };
 
 // Centralized error handling middleware - MUST be placed after all routes and other middleware
 app.use(errorHandler);

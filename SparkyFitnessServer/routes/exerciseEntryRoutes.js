@@ -654,7 +654,7 @@ router.put('/:id', authenticate, upload.single('image'), async (req, res, next) 
   updateData.avg_heart_rate = avg_heart_rate;
   // activity_details is already in updateData if present in req.body
   try {
-    const updatedEntry = await exerciseService.updateExerciseEntry(req.userId, id, updateData);
+    const updatedEntry = await exerciseService.updateExerciseEntry(req.userId, req.originalUserId || req.userId, id, updateData);
     res.status(200).json(updatedEntry);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {

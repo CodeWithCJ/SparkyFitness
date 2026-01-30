@@ -6,28 +6,27 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mail, QrCode, KeyRound, Loader2 } from "lucide-react";
-import { apiCall } from '@/services/api';
+import { authClient } from '@/lib/auth-client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
 interface MfaChallengeProps {
     userId: string;
     email: string;
-    mfaTotpEnabled: boolean;
-    mfaEmailEnabled: boolean;
-    needsMfaSetup: boolean;
+    mfaTotpEnabled?: boolean;
+    mfaEmailEnabled?: boolean;
+    needsMfaSetup?: boolean;
     mfaToken?: string;
     onMfaSuccess: () => void;
-    onMfaCancel: () => void; // Callback to return to login or cancel MFA flow
+    onMfaCancel: () => void;
 }
 
 const MfaChallenge: React.FC<MfaChallengeProps> = ({
     userId,
     email,
-    mfaTotpEnabled,
-    mfaEmailEnabled,
-    needsMfaSetup,
-    mfaToken,
+    mfaTotpEnabled = true, // Defaulting to true as Better Auth usually starts with TOTP
+    mfaEmailEnabled = false,
+    needsMfaSetup = false,
     onMfaSuccess,
     onMfaCancel
 }) => {
@@ -41,41 +40,36 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
     const [emailCodeSent, setEmailCodeSent] = useState(false);
     const [activeTab, setActiveTab] = useState(mfaTotpEnabled ? "totp" : (mfaEmailEnabled ? "email" : "recovery"));
 
+
     useEffect(() => {
-        // If critical props are missing, trigger onMfaCancel
-        if (!userId || !email) {
+        // Validation for missing critical info
+        if (!email) {
             toast({
                 title: t('mfaChallenge.error.missingInfo', 'Error'),
-                description: t('mfaChallenge.error.missingAuthInfo', 'Missing authentication information. Please try logging in again.'),
+                description: t('mfaChallenge.error.missingAuthInfo', 'Missing authentication information.'),
                 variant: 'destructive',
             });
             onMfaCancel();
         }
-    }, [userId, email, onMfaCancel, t]);
+    }, [email, onMfaCancel, t]);
 
     const handleVerifyTotp = async () => {
         setLoading(true);
         try {
-            const response = await apiCall('/auth/mfa/verify/totp', {
-                method: 'POST',
-                body: JSON.stringify({ userId, code: totpCode }),
-                headers: mfaToken ? { 'X-MFA-Token': mfaToken } : {},
+            const { data, error } = await authClient.twoFactor.verifyTotp({
+                code: totpCode,
             });
-            if (response.token && response.userId && response.role) {
-                signIn(response.userId, response.userId, response.email || email, response.role, 'password', true, response.fullName);
+
+            if (data?.user) {
+                signIn(data.user.id, data.user.id, data.user.email, (data.user as any).role || 'user', 'password', true, data.user.name);
                 onMfaSuccess();
-            } else {
-                toast({
-                    title: t('mfaChallenge.error.verificationFailed', 'Verification Failed'),
-                    description: t('mfaChallenge.error.totpInvalid', 'Invalid TOTP code. Please try again.'),
-                    variant: 'destructive',
-                });
+            } else if (error) {
+                throw error;
             }
-        } catch (error: any) {
-            console.error('Error verifying TOTP:', error);
+        } catch (err: any) {
             toast({
                 title: t('mfaChallenge.error.verificationFailed', 'Verification Failed'),
-                description: error.message || t('mfaChallenge.error.totpGeneric', 'Failed to verify TOTP code.'),
+                description: err.message || t('mfaChallenge.error.totpInvalid', 'Invalid TOTP code.'),
                 variant: 'destructive',
             });
         } finally {
@@ -86,23 +80,13 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
     const handleSendEmailCode = async () => {
         setLoading(true);
         try {
-            await apiCall('/auth/mfa/request-email-code', {
-                method: 'POST',
-                body: JSON.stringify({ userId }),
-                headers: mfaToken ? { 'X-MFA-Token': mfaToken } : {},
-            });
+            const { error } = await authClient.twoFactor.sendOtp();
+            if (error) throw error;
+
             setEmailCodeSent(true);
-            toast({
-                title: t('mfaChallenge.success.emailCodeSent', 'Email Code Sent'),
-                description: t('mfaChallenge.success.checkEmail', 'A verification code has been sent to your email.'),
-            });
-        } catch (error: any) {
-            console.error('Error requesting email code:', error);
-            toast({
-                title: t('mfaChallenge.error.requestFailed', 'Request Failed'),
-                description: error.message || t('mfaChallenge.error.emailCodeGeneric', 'Failed to send email verification code.'),
-                variant: 'destructive',
-            });
+            toast({ title: "Code Sent", description: "A verification code has been sent to your email." });
+        } catch (err: any) {
+            toast({ title: "Error", description: err.message || "Failed to send code.", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -111,28 +95,18 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
     const handleVerifyEmailCode = async () => {
         setLoading(true);
         try {
-            const response = await apiCall('/auth/mfa/verify-email-code', {
-                method: 'POST',
-                body: { userId, code: emailOtpCode },
-                headers: mfaToken ? { 'X-MFA-Token': mfaToken } : {},
+            const { data, error } = await authClient.twoFactor.verifyOtp({
+                code: emailOtpCode,
             });
-            if (response.token && response.userId && response.role) {
-                signIn(response.userId, response.userId, response.email || email, response.role, 'password', true, response.fullName);
+
+            if (data?.user) {
+                signIn(data.user.id, data.user.id, data.user.email, (data.user as any).role || 'user', 'password', true, data.user.name);
                 onMfaSuccess();
-            } else {
-                toast({
-                    title: t('mfaChallenge.error.verificationFailed', 'Verification Failed'),
-                    description: t('mfaChallenge.error.emailCodeInvalid', 'Invalid email code. Please try again.'),
-                    variant: 'destructive',
-                });
+            } else if (error) {
+                throw error;
             }
-        } catch (error: any) {
-            console.error('Error verifying email code:', error);
-            toast({
-                title: t('mfaChallenge.error.verificationFailed', 'Verification Failed'),
-                description: error.message || t('mfaChallenge.error.emailCodeGeneric', 'Failed to verify email code.'),
-                variant: 'destructive',
-            });
+        } catch (err: any) {
+            toast({ title: "Error", description: err.message || "Invalid email code.", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -141,26 +115,20 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
     const handleVerifyRecoveryCode = async () => {
         setLoading(true);
         try {
-            const response = await apiCall('/auth/mfa/verify-recovery-code', {
-                method: 'POST',
-                body: JSON.stringify({ userId, code: recoveryCode }),
-                headers: mfaToken ? { 'X-MFA-Token': mfaToken } : {},
+            const { data, error } = await authClient.twoFactor.verifyBackupCode({
+                code: recoveryCode,
             });
-            if (response.token && response.userId && response.role) {
-                signIn(response.userId, response.userId, response.email || email, response.role, 'password', true, response.fullName);
+
+            if (data?.user) {
+                signIn(data.user.id, data.user.id, data.user.email, (data.user as any).role || 'user', 'password', true, data.user.name);
                 onMfaSuccess();
-            } else {
-                toast({
-                    title: t('mfaChallenge.error.verificationFailed', 'Verification Failed'),
-                    description: t('mfaChallenge.error.recoveryCodeInvalid', 'Invalid recovery code. Please try again.'),
-                    variant: 'destructive',
-                });
+            } else if (error) {
+                throw error;
             }
-        } catch (error: any) {
-            console.error('Error verifying recovery code:', error);
+        } catch (err: any) {
             toast({
                 title: t('mfaChallenge.error.verificationFailed', 'Verification Failed'),
-                description: error.message || t('mfaChallenge.error.recoveryCodeGeneric', 'Failed to verify recovery code.'),
+                description: err.message || t('mfaChallenge.error.recoveryCodeInvalid', 'Invalid recovery code.'),
                 variant: 'destructive',
             });
         } finally {

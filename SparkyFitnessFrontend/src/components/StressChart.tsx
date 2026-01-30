@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import moment from 'moment';
+import { format, parseISO } from 'date-fns';
 
 interface StressDataPoint {
   time: string;
@@ -25,7 +25,7 @@ const StressChart: React.FC<StressChartProps> = ({ data, title }) => {
 
   // Format data for recharts
   const formattedData = filteredData.map(point => ({
-    name: moment(point.time).format('HH:mm'),
+    name: format(parseISO(point.time), 'HH:mm'),
     Stress: point.stress_level,
   }));
 

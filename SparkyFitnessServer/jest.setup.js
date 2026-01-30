@@ -9,7 +9,6 @@ process.env.SPARKY_FITNESS_DB_PASSWORD = 'test_password';
 process.env.SPARKY_FITNESS_DB_PORT = '5432';
 process.env.SPARKY_FITNESS_APP_DB_USER = 'test_app_user';
 process.env.SPARKY_FITNESS_APP_DB_PASSWORD = 'test_app_password';
-process.env.JWT_SECRET = 'test-jwt-secret-key';
 process.env.ENCRYPTION_KEY = 'test-encryption-key';
 
 // Global test timeout

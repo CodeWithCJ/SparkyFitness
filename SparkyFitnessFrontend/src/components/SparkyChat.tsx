@@ -67,7 +67,7 @@ const SparkyChat = () => {
               </Button>
             </div>
           </SheetHeader>
-          
+
           <div className="flex-1 overflow-hidden">
             <SparkyChatInterface />
           </div>

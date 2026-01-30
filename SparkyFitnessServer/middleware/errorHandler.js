@@ -13,7 +13,7 @@ const errorHandler = (err, req, res, next) => {
 
   // Handle specific error types if needed (e.g., database errors, validation errors)
   switch (err.name) {
-    case "UnauthorizedError": // Example for JWT errors
+    case "UnauthorizedError":
       statusCode = 401;
       message = "Unauthorized: Invalid or missing token.";
       break;

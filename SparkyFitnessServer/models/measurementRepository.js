@@ -1,9 +1,9 @@
-console.log('DEBUG: Loading measurementRepository.js');
+//console.log('DEBUG: Loading measurementRepository.js');
 const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
-async function upsertStepData(userId, createdByUserId, value, date) {
-  const client = await getClient(createdByUserId); // User-specific operation, using createdByUserId for RLS context
+async function upsertStepData(userId, actingUserId, value, date) {
+  const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
     const existingRecord = await client.query(
       'SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2',
@@ -13,14 +13,14 @@ async function upsertStepData(userId, createdByUserId, value, date) {
     let result;
     if (existingRecord.rows.length > 0) {
       const updateResult = await client.query(
-        'UPDATE check_in_measurements SET steps = $1, updated_at = $2, updated_by_user_id = $3 WHERE entry_date = $4 RETURNING *',
-        [value, new Date().toISOString(), createdByUserId, date]
+        'UPDATE check_in_measurements SET steps = $1, updated_at = now(), updated_by_user_id = $2 WHERE entry_date = $3 AND user_id = $4 RETURNING *',
+        [value, actingUserId, date, userId]
       );
       result = updateResult.rows[0];
     } else {
       const insertResult = await client.query(
-        'INSERT INTO check_in_measurements (user_id, entry_date, steps, created_by_user_id, updated_at) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [userId, date, value, createdByUserId, new Date().toISOString()]
+        'INSERT INTO check_in_measurements (user_id, entry_date, steps, created_by_user_id, updated_by_user_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $4, now(), now()) RETURNING *',
+        [userId, date, value, actingUserId]
       );
       result = insertResult.rows[0];
     }
@@ -30,8 +30,8 @@ async function upsertStepData(userId, createdByUserId, value, date) {
   }
 }
 
-async function upsertWaterData(userId, createdByUserId, waterMl, date) {
-  const client = await getClient(createdByUserId); // User-specific operation, using createdByUserId for RLS context
+async function upsertWaterData(userId, actingUserId, waterMl, date) {
+  const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
     const existingRecord = await client.query(
       'SELECT id, water_ml FROM water_intake WHERE user_id = $1 AND entry_date = $2',
@@ -42,13 +42,13 @@ async function upsertWaterData(userId, createdByUserId, waterMl, date) {
     if (existingRecord.rows.length > 0) {
       const updateResult = await client.query(
         'UPDATE water_intake SET water_ml = $1, updated_at = now(), updated_by_user_id = $2 WHERE id = $3 RETURNING *',
-        [waterMl, createdByUserId, existingRecord.rows[0].id]
+        [waterMl, actingUserId, existingRecord.rows[0].id]
       );
       result = updateResult.rows[0];
     } else {
       const insertResult = await client.query(
-        'INSERT INTO water_intake (user_id, entry_date, water_ml, created_by_user_id, created_at, updated_at) VALUES ($1, $2, $3, $4, now(), now()) RETURNING *',
-        [userId, date, waterMl, createdByUserId]
+        'INSERT INTO water_intake (user_id, entry_date, water_ml, created_by_user_id, updated_by_user_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $4, now(), now()) RETURNING *',
+        [userId, date, waterMl, actingUserId]
       );
       result = insertResult.rows[0];
     }
@@ -97,8 +97,8 @@ async function getWaterIntakeEntryOwnerId(id, userId) {
   }
 }
 
-async function updateWaterIntake(id, userId, updatedByUserId, updateData) {
-  const client = await getClient(updatedByUserId); // User-specific operation, using updatedByUserId for RLS context
+async function updateWaterIntake(id, userId, actingUserId, updateData) {
+  const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
     const result = await client.query(
       `UPDATE water_intake SET
@@ -108,7 +108,7 @@ async function updateWaterIntake(id, userId, updatedByUserId, updateData) {
         updated_by_user_id = $3
       WHERE id = $4 AND user_id = $5
       RETURNING *`,
-      [updateData.water_ml, updateData.entry_date, updatedByUserId, id, userId]
+      [updateData.water_ml, updateData.entry_date, actingUserId, id, userId]
     );
     return result.rows[0];
   } finally {
@@ -129,9 +129,9 @@ async function deleteWaterIntake(id, userId) {
   }
 }
 
-async function upsertCheckInMeasurements(userId, createdByUserId, entryDate, measurements) {
+async function upsertCheckInMeasurements(userId, actingUserId, entryDate, measurements) {
   console.log("Incoming measurements:", measurements);
-  const client = await getClient(createdByUserId); // User-specific operation, using createdByUserId for RLS context
+  const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
     let query;
     let values;
@@ -154,12 +154,14 @@ async function upsertCheckInMeasurements(userId, createdByUserId, entryDate, mea
     if (existingRecord.rows.length > 0) {
       const id = existingRecord.rows[0].id;
       const fields = measurementKeys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+      // Add updated_by_user_id to update query
       query = `UPDATE check_in_measurements SET ${fields}, updated_at = now(), updated_by_user_id = $${measurementKeys.length + 1} WHERE id = $${measurementKeys.length + 2} RETURNING *`;
-      values = [...Object.values(filteredMeasurements), createdByUserId, id];
+      values = [...Object.values(filteredMeasurements), actingUserId, id];
     } else {
-      const cols = ['user_id', 'entry_date', ...measurementKeys, 'created_by_user_id', 'created_at', 'updated_at'];
+      // Add updated_by_user_id to insert query
+      const cols = ['user_id', 'entry_date', ...measurementKeys, 'created_by_user_id', 'updated_by_user_id', 'created_at', 'updated_at'];
       const placeholders = cols.map((_, index) => `$${index + 1}`).join(', ');
-      values = [userId, entryDate, ...Object.values(filteredMeasurements), createdByUserId, new Date().toISOString(), new Date().toISOString()];
+      values = [userId, entryDate, ...Object.values(filteredMeasurements), actingUserId, actingUserId, new Date().toISOString(), new Date().toISOString()];
       query = `INSERT INTO check_in_measurements (${cols.join(', ')}) VALUES (${placeholders}) RETURNING *`;
     }
 
@@ -212,13 +214,14 @@ async function updateCheckInMeasurements(userId, actingUserId, entryDate, update
       return null;
     }
 
-    // Correctly construct the values array: first the values for the SET clause, then userId, then entryDate
+    // Correctly construct the values array: first the values for the SET clause, then actingUserId (for audit), then userId, then entryDate
     const updateValues = Object.keys(updateData)
       .filter(key => ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'].includes(key))
       .map(key => updateData[key]);
-    
+
     const values = [...updateValues, actingUserId, userId, entryDate];
 
+    // Add updated_by_user_id to update query
     const query = `
       UPDATE check_in_measurements
       SET ${fieldsToUpdate.join(', ')}, updated_at = now(), updated_by_user_id = $${fieldsToUpdate.length + 1}
@@ -269,8 +272,8 @@ async function createCustomCategory(categoryData) {
   const client = await getClient(categoryData.created_by_user_id); // User-specific operation, using created_by_user_id for RLS context
   try {
     const result = await client.query(
-      `INSERT INTO custom_categories (user_id, name, display_name, frequency, measurement_type, data_type, created_by_user_id, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now()) RETURNING id`,
+      `INSERT INTO custom_categories (user_id, name, display_name, frequency, measurement_type, data_type, created_by_user_id, updated_by_user_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, now(), now()) RETURNING id`,
       [categoryData.user_id, categoryData.name, categoryData.display_name, categoryData.frequency, categoryData.measurement_type, categoryData.data_type, categoryData.created_by_user_id]
     );
     return result.rows[0];
@@ -279,8 +282,8 @@ async function createCustomCategory(categoryData) {
   }
 }
 
-async function updateCustomCategory(id, userId, updatedByUserId, updateData) {
-  const client = await getClient(updatedByUserId); // User-specific operation, using updatedByUserId for RLS context
+async function updateCustomCategory(id, userId, actingUserId, updateData) {
+  const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
     const result = await client.query(
       `UPDATE custom_categories SET
@@ -293,7 +296,7 @@ async function updateCustomCategory(id, userId, updatedByUserId, updateData) {
         updated_by_user_id = $6
       WHERE id = $7 AND user_id = $8
       RETURNING *`,
-      [updateData.name, updateData.display_name, updateData.frequency, updateData.measurement_type, updateData.data_type, updatedByUserId, id, userId]
+      [updateData.name, updateData.display_name, updateData.frequency, updateData.measurement_type, updateData.data_type, actingUserId, id, userId]
     );
     return result.rows[0];
   } finally {
@@ -357,10 +360,10 @@ async function getCustomMeasurementEntries(userId, limit, orderBy, filterObj) { 
       JOIN custom_categories cc ON cm.category_id = cc.id
       WHERE cm.user_id = $1 AND cm.value IS NOT NULL
     `;
-   const queryParams = [userId];
-   let paramIndex = 2;
-   // RLS will handle filtering by user_id, but we keep it here for explicit filtering
-   // in case RLS is disabled or for clarity.
+    const queryParams = [userId];
+    let paramIndex = 2;
+    // RLS will handle filtering by user_id, but we keep it here for explicit filtering
+    // in case RLS is disabled or for clarity.
 
     if (filterObj) {
       if (filterObj.category_id) {
@@ -464,8 +467,8 @@ async function getCustomMeasurementsByDateRange(userId, categoryId, startDate, e
   }
 }
 
-async function upsertCustomMeasurement(userId, createdByUserId, categoryId, value, entryDate, entryHour, entryTimestamp, notes, frequency, source = 'manual') {
-  const client = await getClient(createdByUserId); // User-specific operation, using createdByUserId for RLS context
+async function upsertCustomMeasurement(userId, actingUserId, categoryId, value, entryDate, entryHour, entryTimestamp, notes, frequency, source = 'manual') {
+  const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
     let query;
     let values;
@@ -485,12 +488,13 @@ async function upsertCustomMeasurement(userId, createdByUserId, categoryId, valu
     // For 'Unlimited' and 'All' frequencies, always insert a new entry.
     // For 'Daily' and 'Hourly', check for existing entries to update.
     if (frequency === 'Unlimited' || frequency === 'All') {
+      // Add updated_by_user_id and created_by_user_id to insert query
       query = `
-        INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, notes, created_by_user_id, created_at, updated_at, source)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now(), $9)
+        INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, notes, created_by_user_id, updated_by_user_id, created_at, updated_at, source)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, now(), now(), $9)
         RETURNING *
       `;
-      values = [userId, categoryId, value, entryDate, normalizedEntryHour, normalizedEntryTimestamp, notes, createdByUserId, source];
+      values = [userId, categoryId, value, entryDate, normalizedEntryHour, normalizedEntryTimestamp, notes, actingUserId, source];
     } else {
       // For 'Daily' and 'Hourly', check if an entry already exists for the given user, category, date, hour (if applicable) and source
       let existingEntryQuery = `
@@ -511,7 +515,7 @@ async function upsertCustomMeasurement(userId, createdByUserId, categoryId, valu
       const existingEntry = await client.query(existingEntryQuery, existingEntryValues);
 
       if (existingEntry.rows.length > 0) {
-        // Update existing entry
+        // Update existing entry with updated_by_user_id
         const id = existingEntry.rows[0].id;
         query = `
           UPDATE custom_measurements
@@ -519,15 +523,15 @@ async function upsertCustomMeasurement(userId, createdByUserId, categoryId, valu
           WHERE id = $6
           RETURNING *
         `;
-        values = [value, normalizedEntryTimestamp, notes, createdByUserId, source, id];
+        values = [value, normalizedEntryTimestamp, notes, actingUserId, source, id];
       } else {
-        // Insert new entry
+        // Insert new entry with created_by_user_id and updated_by_user_id
         query = `
-          INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, notes, created_by_user_id, created_at, updated_at, source)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now(), $9)
+          INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_hour, entry_timestamp, notes, created_by_user_id, updated_by_user_id, created_at, updated_at, source)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, now(), now(), $9)
           RETURNING *
         `;
-        values = [userId, categoryId, value, entryDate, normalizedEntryHour, normalizedEntryTimestamp, notes, createdByUserId, source];
+        values = [userId, categoryId, value, entryDate, normalizedEntryHour, normalizedEntryTimestamp, notes, actingUserId, source];
       }
     }
 

@@ -283,7 +283,7 @@ router.put('/:id', authenticate, checkPermissionMiddleware('checkin'), async (re
       stage_events: stage_events,
     };
 
-    const result = await measurementService.updateSleepEntry(req.userId, id, updatedSleepEntryData);
+    const result = await measurementService.updateSleepEntry(req.userId, id, req.originalUserId || req.userId, updatedSleepEntryData);
     res.status(200).json(result);
   } catch (error) {
     log('error', `Error updating sleep entry with ID ${req.params.id}:`, error);

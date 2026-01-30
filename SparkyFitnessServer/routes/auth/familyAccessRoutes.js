@@ -210,6 +210,16 @@ router.get('/family-access', authenticate, async (req, res, next) => {
 router.post('/family-access', authenticate, async (req, res, next) => {
   const entryData = req.body;
 
+  // Normalize access_permissions keys (replace spaces with underscores)
+  if (entryData.access_permissions) {
+    const normalizedPermissions = {};
+    for (const [key, value] of Object.entries(entryData.access_permissions)) {
+      normalizedPermissions[key.replace(/ /g, '_')] = value;
+    }
+    entryData.access_permissions = normalizedPermissions;
+  }
+
+
   if (!entryData.family_user_id || !entryData.family_email || !entryData.access_permissions) {
     return res.status(400).json({ error: 'Family User ID, Family Email, and Access Permissions are required.' });
   }
@@ -277,6 +287,16 @@ router.post('/family-access', authenticate, async (req, res, next) => {
 router.put('/family-access/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
+
+  // Normalize access_permissions keys (replace spaces with underscores)
+  if (updateData.access_permissions) {
+    const normalizedPermissions = {};
+    for (const [key, value] of Object.entries(updateData.access_permissions)) {
+      normalizedPermissions[key.replace(/ /g, '_')] = value;
+    }
+    updateData.access_permissions = normalizedPermissions;
+  }
+
 
   if (!id) {
     return res.status(400).json({ error: 'Family Access ID is required.' });

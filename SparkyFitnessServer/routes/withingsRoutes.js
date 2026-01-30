@@ -78,8 +78,7 @@ router.post('/callback', async (req, res) => {
         // Assuming we can derive userId from the state or a session,
         // for this example, we'll need to pass a placeholder or retrieve it differently.
         // In a production app, 'state' would typically contain a user identifier or a session ID.
-        // For simplicity, let's assume a fixed user ID for now, or pass it through state.
-        // For a proper implementation, the state parameter should be a JWT or encrypted object
+        // For simplicity, let's assume a fixed user ID for now, or pass it through state.        
         // containing the userId, which can be decrypted/verified here.
         const userId = state; // The userId was passed in the state parameter
 

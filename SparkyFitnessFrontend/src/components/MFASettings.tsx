@@ -5,13 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
-import { Eye, EyeOff, Copy, RefreshCw, QrCode, Mail } from "lucide-react";
-import { apiCall } from '@/services/api';
+import { Eye, EyeOff, Copy, RefreshCw, QrCode, Mail, Lock } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { log, UserLoggingLevel } from "@/utils/logging"; // Import the log utility and UserLoggingLevel
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
-import QRCode from "react-qr-code"; // Make sure to install react-qr-code
+import { log } from "@/utils/logging";
+import { usePreferences } from "@/contexts/PreferencesContext";
+import QRCode from "react-qr-code";
 
 interface MFASettingsProps {
     // No props needed for now
@@ -19,9 +19,10 @@ interface MFASettingsProps {
 
 const MFASettings: React.FC<MFASettingsProps> = () => {
     const { t } = useTranslation();
-        const { user } = useAuth();
-        const { loggingLevel } = usePreferences(); // Get loggingLevel from preferences
-        const [loading, setLoading] = useState(false);
+    const { user } = useAuth();
+    const { loggingLevel } = usePreferences();
+    const [loading, setLoading] = useState(false);
+    const { data: session, isPending: sessionLoading, refetch } = authClient.useSession();
 
     const [totpEnabled, setTotpEnabled] = useState(false);
     const [emailMfaEnabled, setEmailMfaEnabled] = useState(false);
@@ -29,53 +30,60 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
     const [totpCode, setTotpCode] = useState("");
     const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
     const [showRecoveryCodes, setShowRecoveryCodes] = useState(false);
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+    const [pendingAction, setPendingAction] = useState<'enableTotp' | 'disableTotp' | 'enableEmail' | 'disableEmail' | 'generateBackup' | null>(null);
 
     useEffect(() => {
-        if (user) {
-            fetchMFAStatus();
+        if (session?.user) {
+            console.log("DEBUG: Session User:", session.user);
+            setTotpEnabled(!!session.user.twoFactorEnabled);
+            // Better Auth doesn't store email_mfa_enabled natively in user object by default,
+            // but we added it to the table. We might need a separate fetch or custom user field.
+            // For now, let's assume it's available via session or a small custom fetch.
+            setEmailMfaEnabled(!!(session.user as any).mfaEmailEnabled);
         }
-    }, [user]);
+    }, [session]);
 
-    const fetchMFAStatus = async () => {
+    const handlePasswordAction = async () => {
+        if (!confirmPassword) {
+            toast({ title: "Error", description: "Password is required.", variant: "destructive" });
+            return;
+        }
+
         setLoading(true);
         try {
-            const data = await apiCall('/auth/mfa/status', { method: 'GET' });
-            log(loggingLevel, "DEBUG", "MFA Status from backend:", data);
-            setTotpEnabled(data.totp_enabled);
-            setEmailMfaEnabled(data.email_mfa_enabled);
+            switch (pendingAction) {
+                case 'enableTotp':
+                    const enableRes = await authClient.twoFactor.enable({ password: confirmPassword });
+                    if (enableRes.error) throw enableRes.error;
+                    setOtpAuthUrl(enableRes.data.totpURI);
+                    setRecoveryCodes(enableRes.data.backupCodes);
+                    toast({ title: "Success", description: "Scan QR code to verify." });
+                    await refetch();
+                    break;
+                case 'disableTotp':
+                    const disableRes = await authClient.twoFactor.disable({ password: confirmPassword });
+                    if (disableRes.error) throw disableRes.error;
+                    toast({ title: "Success", description: "TOTP disabled." });
+                    await refetch();
+                    break;
+                case 'generateBackup':
+                    const backupRes = await authClient.twoFactor.generateBackupCodes({ password: confirmPassword });
+                    if (backupRes.error) throw backupRes.error;
+                    setRecoveryCodes(backupRes.data.backupCodes);
+                    setShowRecoveryCodes(true);
+                    toast({ title: "Success", description: "Backup codes generated." });
+                    await refetch();
+                    break;
+                // Custom Email MFA still needs an endpoint or we adapt Better Auth OTP
+            }
+            setShowPasswordPrompt(false);
+            setConfirmPassword("");
+            setPendingAction(null);
         } catch (error: any) {
-            log(loggingLevel, "ERROR", "Error fetching MFA status:", error);
-            toast({
-                title: "Error",
-                description: `Failed to fetch MFA status: ${error.message}`,
-                variant: "destructive",
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // TOTP MFA Actions
-    const handleEnableTotp = async () => {
-        setLoading(true);
-        try {
-            const data = await apiCall('/auth/mfa/setup/totp', {
-                method: 'POST',
-                body: JSON.stringify({ email: user?.email }),
-            });
-            log(loggingLevel, "DEBUG", "OTP Auth URL from backend:", data.otpauthUrl);
-            setOtpAuthUrl(data.otpauthUrl);
-            toast({
-                title: "TOTP Setup",
-                description: "Scan QR code and enter code to verify.",
-            });
-        } catch (error: any) {
-            log(loggingLevel, "ERROR", "Error initiating TOTP setup:", error);
-            toast({
-                title: "Error",
-                description: `Failed to initiate TOTP setup: ${error.message}`,
-                variant: "destructive",
-            });
+            log(loggingLevel, "ERROR", "MFA Action Error:", error);
+            toast({ title: "Error", description: error.message || "Failed to perform action", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -84,131 +92,56 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
     const handleVerifyTotp = async () => {
         setLoading(true);
         try {
-          const response = await apiCall('/auth/mfa/enable/totp', {
-            method: 'POST',
-            body: JSON.stringify({ code: totpCode }),
-          });
-          log(loggingLevel, "DEBUG", "TOTP Enable response:", response);
-          if (response && response.message) { // Check for a success message from the backend
-            toast({
-              title: "Success",
-              description: response.message, // Use the success message from the backend
-            });
-            setTotpEnabled(true); // Assuming successful enablement
-          } else {
-            // Fallback for unexpected successful response structures
-            toast({
-              title: "Success",
-              description: "TOTP MFA enabled successfully!",
-            });
-            setTotpEnabled(true);
-          }
-          setOtpAuthUrl(null);
-          setTotpCode("");
-          fetchMFAStatus();
-        } catch (error: any) {
-          log(loggingLevel, "ERROR", "Error verifying TOTP:", error);
-          toast({
-            title: "Error",
-            description: `Failed to verify TOTP: ${error.message}`,
-            variant: "destructive",
-          });
-        } finally {
-          setLoading(false);
-        }
-    };
+            const { error } = await authClient.twoFactor.verifyTotp({ code: totpCode });
+            if (error) throw error;
 
-    const handleDisableTotp = async () => {
-        if (!confirm(t('settings.mfa.totpDisableConfirm', 'Are you sure you want to disable Authenticator App (TOTP)?'))) {
-            return;
-        }
-        setLoading(true);
-        try {
-            await apiCall('/auth/mfa/disable/totp', { method: 'POST' });
-            toast({
-                title: "Success",
-                description: "TOTP MFA disabled successfully!",
-            });
-            fetchMFAStatus();
+            toast({ title: "Success", description: "TOTP verified and enabled!" });
+            await refetch();
+            setOtpAuthUrl(null);
+            setTotpCode("");
         } catch (error: any) {
-            log(loggingLevel, "ERROR", "Error disabling TOTP:", error);
-            toast({
-                title: "Error",
-                description: `Failed to disable TOTP: ${error.message}`,
-                variant: "destructive",
-            });
+            log(loggingLevel, "ERROR", "Error verifying TOTP:", error);
+            toast({ title: "Error", description: `Failed to verify TOTP: ${error.message}`, variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
 
-    // Email MFA Actions
     const handleEnableEmailMfa = async () => {
         setLoading(true);
         try {
-            await apiCall('/auth/mfa/enable/email', { method: 'POST' });
-            toast({
-                title: "Success",
-                description: "Email MFA enabled successfully!",
+            const response = await fetch("/auth/mfa/email-toggle", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ enabled: true }),
             });
-            fetchMFAStatus();
+            if (!response.ok) throw new Error("Failed to enable Email MFA");
+
+            toast({ title: "Success", description: "Email MFA enabled!" });
+            // Refresh session to pick up changes - force bypass of local fetch cache
+            await refetch();
         } catch (error: any) {
-            log(loggingLevel, "ERROR", "Error enabling Email MFA:", error);
-            toast({
-                title: "Error",
-                description: `Failed to enable Email MFA: ${error.message}`,
-                variant: "destructive",
-            });
+            toast({ title: "Error", description: error.message, variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
 
     const handleDisableEmailMfa = async () => {
-        if (!confirm(t('settings.mfa.emailDisableConfirm', 'Are you sure you want to disable Email Code MFA?'))) {
-            return;
-        }
         setLoading(true);
         try {
-            await apiCall('/auth/mfa/disable/email', { method: 'POST' });
-            toast({
-                title: "Success",
-                description: "Email MFA disabled successfully!",
+            const response = await fetch("/auth/mfa/email-toggle", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ enabled: false }),
             });
-            fetchMFAStatus();
-        } catch (error: any) {
-            log(loggingLevel, "ERROR", "Error disabling Email MFA:", error);
-            toast({
-                title: "Error",
-                description: `Failed to disable Email MFA: ${error.message}`,
-                variant: "destructive",
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
+            if (!response.ok) throw new Error("Failed to disable Email MFA");
 
-    // Recovery Code Actions
-    const handleGenerateRecoveryCodes = async () => {
-        if (!confirm(t('settings.mfa.recoveryCodeConfirm', 'Generating new recovery codes will invalidate your old ones. Are you sure?'))) {
-            return;
-        }
-        setLoading(true);
-        try {
-            const data = await apiCall('/auth/mfa/recovery-codes', { method: 'POST' });
-            setRecoveryCodes(data.recoveryCodes);
-            setShowRecoveryCodes(true);
-            toast({
-                title: "Success",
-                description: "New recovery codes generated!",
-            });
+            toast({ title: "Success", description: "Email MFA disabled." });
+            // Refresh session to pick up changes - force bypass of local fetch cache
+            await refetch();
         } catch (error: any) {
-            log(loggingLevel, "ERROR", "Error generating recovery codes.", error);
-            toast({
-                title: "Error",
-                description: `Failed to generate recovery codes: ${error.message}`,
-                variant: "destructive",
-            });
+            toast({ title: "Error", description: error.message, variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -216,15 +149,42 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
 
     const copyRecoveryCodes = () => {
         navigator.clipboard.writeText(recoveryCodes.join('\n'));
-        toast({
-            title: "Copied",
-            description: "Recovery codes copied to clipboard.",
-        });
+        toast({ title: "Copied", description: "Recovery codes copied to clipboard." });
     };
 
     return (
         <div className="space-y-6">
             <h3 className="text-lg font-medium">{t('settings.mfa.title', 'Multi-Factor Authentication (MFA)')}</h3>
+
+            {/* Password Confirmation Modal */}
+            {showPasswordPrompt && (
+                <Card className="border-primary">
+                    <CardContent className="p-4 space-y-4">
+                        <div className="flex items-center gap-2 text-primary font-medium">
+                            <Lock className="h-4 w-4" />
+                            <span>{t('settings.mfa.confirmPassword', 'Confirm Password to Continue')}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            {t('settings.mfa.passwordRequired', 'Please enter your account password to modify security settings.')}
+                        </p>
+                        <div className="flex gap-2">
+                            <Input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder={t('settings.mfa.enterPassword', 'Enter password')}
+                                onKeyDown={(e) => e.key === 'Enter' && handlePasswordAction()}
+                            />
+                            <Button onClick={handlePasswordAction} disabled={loading}>
+                                {t('common.confirm', 'Confirm')}
+                            </Button>
+                            <Button variant="ghost" onClick={() => { setShowPasswordPrompt(false); setPendingAction(null); }}>
+                                {t('common.cancel', 'Cancel')}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* TOTP MFA Section */}
             <Card>
@@ -232,18 +192,25 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
                     <div className="flex justify-between items-center">
                         <Label>{t('settings.mfa.totp', 'Authenticator App (TOTP)')}</Label>
                         {totpEnabled ? (
-                            <Button variant="destructive" onClick={handleDisableTotp} disabled={loading}>
+                            <Button
+                                variant="destructive"
+                                onClick={() => { setPendingAction('disableTotp'); setShowPasswordPrompt(true); }}
+                                disabled={loading || showPasswordPrompt}
+                            >
                                 {t('settings.mfa.disable', 'Disable')}
                             </Button>
                         ) : (
-                            <Button onClick={handleEnableTotp} disabled={loading}>
+                            <Button
+                                onClick={() => { setPendingAction('enableTotp'); setShowPasswordPrompt(true); }}
+                                disabled={loading || showPasswordPrompt || otpAuthUrl !== null}
+                            >
                                 {t('settings.mfa.enable', 'Enable')}
                             </Button>
                         )}
                     </div>
                     {otpAuthUrl ? (
-                        <div className="space-y-4">
-                            <p className="text-sm text-muted-foreground">{t('settings.mfa.scanQr', 'Scan the QR code with your authenticator app (e.g., Google Authenticator, Authy) and enter the generated code to verify.')}</p>
+                        <div className="space-y-4 border-t pt-4">
+                            <p className="text-sm text-muted-foreground">{t('settings.mfa.scanQr', 'Scan the QR code with your authenticator app and enter the generated code to verify.')}</p>
                             <div className="flex justify-center p-4 bg-white rounded-md">
                                 <QRCode value={otpAuthUrl} size={128} level="H" />
                             </div>
@@ -257,17 +224,17 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
                                         pattern="[0-9]*"
                                         value={totpCode}
                                         onChange={(e) => setTotpCode(e.target.value)}
-                                        placeholder={t('settings.mfa.enterCode', 'Enter code from app')}
+                                        placeholder={t('settings.mfa.enterCode', 'Enter 6-digit code')}
                                         maxLength={6}
                                     />
                                     <Button onClick={handleVerifyTotp} disabled={loading || totpCode.length !== 6}>
-                                        {t('settings.mfa.verify', 'Verify')}
+                                        {t('settings.mfa.verify', 'Verify & Enable')}
                                     </Button>
                                 </div>
                             </div>
                         </div>
                     ) : totpEnabled ? (
-                        <p className="text-sm text-muted-foreground">{t('settings.mfa.totpEnabled', 'Authenticator App is currently enabled.')}</p>
+                        <p className="text-sm text-success">{t('settings.mfa.totpEnabled', 'Authenticator App is currently enabled.')}</p>
                     ) : (
                         <p className="text-sm text-muted-foreground">{t('settings.mfa.totpDisabled', 'Authenticator App is currently disabled.')}</p>
                     )}
@@ -279,18 +246,20 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
                 <CardContent className="p-4 space-y-4">
                     <div className="flex justify-between items-center">
                         <Label>{t('settings.mfa.emailCode', 'Email Code MFA')}</Label>
-                        {emailMfaEnabled ? (
-                            <Button variant="destructive" onClick={handleDisableEmailMfa} disabled={loading}>
-                                {t('settings.mfa.disable', 'Disable')}
-                            </Button>
-                        ) : (
-                            <Button onClick={handleEnableEmailMfa} disabled={loading}>
-                                {t('settings.mfa.enable', 'Enable')}
-                            </Button>
-                        )}
+                        <div className="flex gap-2">
+                            {emailMfaEnabled ? (
+                                <Button variant="destructive" onClick={handleDisableEmailMfa} disabled={loading}>
+                                    {t('settings.mfa.disable', 'Disable')}
+                                </Button>
+                            ) : (
+                                <Button onClick={handleEnableEmailMfa} disabled={loading}>
+                                    {t('settings.mfa.enable', 'Enable')}
+                                </Button>
+                            )}
+                        </div>
                     </div>
                     {emailMfaEnabled ? (
-                        <p className="text-sm text-muted-foreground">{t('settings.mfa.emailEnabled', 'Email Code MFA is currently enabled. You will receive a code via email to log in.')}</p>
+                        <p className="text-sm text-success">{t('settings.mfa.emailEnabled', 'Email Code MFA is currently enabled.')}</p>
                     ) : (
                         <p className="text-sm text-muted-foreground">{t('settings.mfa.emailDisabled', 'Email Code MFA is currently disabled.')}</p>
                     )}
@@ -303,42 +272,35 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
             <h3 className="text-lg font-medium">{t('settings.mfa.recoveryCodesTitle', 'Recovery Codes')}</h3>
             <Card>
                 <CardContent className="p-4 space-y-4">
-                    <p className="text-sm text-muted-foreground">{t('settings.mfa.recoveryCodesInfo', 'Recovery codes can be used to access your account if you lose access to your primary MFA methods. Store them in a safe place.')}</p>
-                    <Button onClick={handleGenerateRecoveryCodes} disabled={loading}>
+                    <p className="text-sm text-muted-foreground">{t('settings.mfa.recoveryCodesInfo', 'Recovery codes can be used to access your account if you lose access to your primary MFA methods.')}</p>
+                    <Button
+                        onClick={() => { setPendingAction('generateBackup'); setShowPasswordPrompt(true); }}
+                        disabled={loading || showPasswordPrompt}
+                    >
                         <RefreshCw className="h-4 w-4 mr-2" />
                         {t('settings.mfa.generateNewCodes', 'Generate New Recovery Codes')}
                     </Button>
                     {recoveryCodes.length > 0 && (
-                        <div className="space-y-2">
+                        <div className="space-y-2 border-t pt-4">
                             <div className="flex items-center space-x-2">
                                 <Label>{t('settings.mfa.yourRecoveryCodes', 'Your Recovery Codes')}</Label>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setShowRecoveryCodes(!showRecoveryCodes)}
-                                    className="h-auto p-1"
-                                >
+                                <Button variant="ghost" size="sm" onClick={() => setShowRecoveryCodes(!showRecoveryCodes)} className="h-auto p-1">
                                     {showRecoveryCodes ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={copyRecoveryCodes}
-                                    className="h-auto p-1"
-                                >
+                                <Button variant="ghost" size="sm" onClick={copyRecoveryCodes} className="h-auto p-1">
                                     <Copy className="h-4 w-4" />
                                 </Button>
                             </div>
                             <div className="border rounded-md p-3 bg-muted font-mono text-sm">
                                 {showRecoveryCodes ? (
-                                    recoveryCodes.map((code, index) => (
-                                        <p key={index}>{code}</p>
-                                    ))
+                                    <div className="grid grid-cols-2 gap-1">
+                                        {recoveryCodes.map((code, index) => <p key={index}>{code}</p>)}
+                                    </div>
                                 ) : (
                                     <p>********************</p>
                                 )}
                             </div>
-                            <p className="text-sm text-red-500">{t('settings.mfa.saveCodesWarning', 'IMPORTANT: Save these codes in a safe place. They will not be shown again.')}</p>
+                            <p className="text-sm text-red-500 font-medium">{t('settings.mfa.saveCodesWarning', 'IMPORTANT: Save these codes in a safe place. They will not be shown again.')}</p>
                         </div>
                     )}
                 </CardContent>

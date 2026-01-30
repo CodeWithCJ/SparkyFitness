@@ -6,11 +6,13 @@ import { usePreferences } from '../../contexts/PreferencesContext'; // Assuming 
 import { useToast } from '@/hooks/use-toast'; // Import the custom useToast hook
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"; // Import Accordion components
 import { Shield } from "lucide-react"; // Import an icon for the trigger
+import { info, error, debug } from '../../utils/logging';
 
 const BackupSettings: React.FC = () => {
   const { t } = useTranslation();
   const { toast } = useToast(); // Initialize the custom toast hook
   const { signOut } = useAuth(); // Use the signOut function from useAuth
+  const { loggingLevel } = usePreferences();
   const [backupEnabled, setBackupEnabled] = useState<boolean>(false);
   const [backupDays, setBackupDays] = useState<string[]>([]);
   const [backupTime, setBackupTime] = useState<string>('02:00');
@@ -52,7 +54,7 @@ const BackupSettings: React.FC = () => {
         description: t('admin.backupSettings.failedToFetchSettings', 'Failed to fetch backup settings.'),
         variant: 'destructive',
       });
-      console.error('Error fetching backup settings:', error);
+      error(loggingLevel, 'Error fetching backup settings:', error);
     }
   };
 
@@ -93,16 +95,16 @@ const BackupSettings: React.FC = () => {
         description: t('admin.backupSettings.failedToSaveSettings', 'Failed to save backup settings.'),
         variant: 'destructive',
       });
-      console.error('Error saving backup settings:', error);
+      error(loggingLevel, 'Error saving backup settings:', error);
     }
   };
 
   const handleManualBackup = async () => {
     try {
       const response = await api.post('/admin/backup/manual');
-      console.log('API response for manual backup:', response); // Log the full response
+      info(loggingLevel, 'API response for manual backup:', response); // Log the full response
       const message = response?.message || response?.data?.message || 'Backup completed successfully.';
-      console.log('Backup success message:', message);
+      info(loggingLevel, 'Backup success message:', message);
       toast({
         title: t('success', 'Success'),
         description: message,
@@ -111,13 +113,13 @@ const BackupSettings: React.FC = () => {
       await fetchBackupSettings();
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || t('admin.backupSettings.backupFailed', 'Manual backup failed.');
-      console.error('Backup error message:', errorMessage); // Added for debugging
+      error(loggingLevel, 'Backup error message:', errorMessage); // Added for debugging
       toast({
         title: t('admin.backupSettings.error', 'Error'),
         description: errorMessage,
         variant: 'destructive',
       });
-      console.error('Error during manual backup:', error);
+      error(loggingLevel, 'Error during manual backup:', error);
       setLastBackupStatus(`${t('failedOn', 'Failed on')} ${new Date().toLocaleString()}`); // Keep local update for immediate feedback on failure
     }
   };
@@ -136,7 +138,7 @@ const BackupSettings: React.FC = () => {
     }
 
     try {
-      console.log('Initiating backup restore...'); // Added for debugging
+      debug(loggingLevel, 'Initiating backup restore...'); // Added for debugging
       toast({
         title: t('info', 'Info'),
         description: t('admin.backupSettings.restoringBackup', 'Restoring backup... This may take a while.'),
@@ -145,7 +147,7 @@ const BackupSettings: React.FC = () => {
         body: formData,
         isFormData: true,
       });
-      console.log('Backup restore successful.'); // Added for debugging
+      info(loggingLevel, 'Backup restore successful.'); // Added for debugging
       toast({
         title: t('success', 'Success'),
         description: t('admin.backupSettings.restoreSuccess', 'Backup restored successfully! Logging out...'),
@@ -153,13 +155,13 @@ const BackupSettings: React.FC = () => {
       await signOut(); // Log out the user after successful restore
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || t('admin.backupSettings.restoreFailed', 'Backup restore failed.');
-      console.error('Backup restore error message:', errorMessage); // Added for debugging
+      error(loggingLevel, 'Backup restore error message:', errorMessage); // Added for debugging
       toast({
         title: t('admin.backupSettings.error', 'Error'),
         description: errorMessage,
         variant: 'destructive',
       });
-      console.error('Error during backup restore:', error);
+      error(loggingLevel, 'Error during backup restore:', error);
     } finally {
       event.target.value = ''; // Clear the file input
     }

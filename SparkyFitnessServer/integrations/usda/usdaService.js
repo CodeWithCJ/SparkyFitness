@@ -1,8 +1,5 @@
 const { log } = require('../../config/logging');
-let fetch;
-import('node-fetch').then(module => {
-  fetch = module.default;
-});
+// Using native fetch (standard in Node 22+)
 
 const USDA_API_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
 

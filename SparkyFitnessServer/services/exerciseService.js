@@ -202,14 +202,13 @@ async function getExerciseEntryById(authenticatedUserId, id) {
   }
 }
 
-async function updateExerciseEntry(authenticatedUserId, id, updateData) {
+async function updateExerciseEntry(authenticatedUserId, actingUserId, id, updateData) {
   try {
     const existingEntry = await exerciseEntryDb.getExerciseEntryById(id, authenticatedUserId);
     if (!existingEntry) {
       throw new Error('Exercise entry not found.');
     }
 
-    // If a new image is being uploaded or the image is being cleared, delete the old one
     // If a new image is being uploaded or the image is being cleared, delete the old one
     if ((updateData.image_url || updateData.image_url === null) && existingEntry.image_url) {
       const oldImagePath = path.join(__dirname, '..', existingEntry.image_url);
@@ -234,7 +233,7 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
       updateData.calories_burned = existingEntry.calories_burned || 0;
     }
 
-    const updatedEntry = await exerciseEntryDb.updateExerciseEntry(id, authenticatedUserId, {
+    const updatedEntry = await exerciseEntryDb.updateExerciseEntry(id, authenticatedUserId, actingUserId, {
       ...updateData,
       duration_minutes: updateData.duration_minutes || 0,
       sets: updateData.sets || null,
@@ -269,15 +268,15 @@ async function updateExerciseEntry(authenticatedUserId, id, updateData) {
           // Update existing detail
           await activityDetailsRepository.updateActivityDetail(authenticatedUserId, incomingDetail.id, {
             ...incomingDetail,
-            updated_by_user_id: authenticatedUserId,
+            updated_by_user_id: actingUserId,
           });
         } else {
           // Create new detail
           await activityDetailsRepository.createActivityDetail(authenticatedUserId, {
             ...incomingDetail,
             exercise_entry_id: id,
-            created_by_user_id: authenticatedUserId,
-            updated_by_user_id: authenticatedUserId,
+            created_by_user_id: actingUserId,
+            updated_by_user_id: actingUserId,
           });
         }
       }

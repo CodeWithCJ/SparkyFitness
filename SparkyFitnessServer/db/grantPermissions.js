@@ -26,6 +26,14 @@ async function grantPermissions() {
     await client.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO ${appUser}`);
     await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${appUser}`);
     
+    // Grant permissions on all functions in the public schema
+    await client.query(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${appUser}`);
+    await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO ${appUser}`);
+
+    // Grant permissions on all functions in the auth schema
+    await client.query(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA auth TO ${appUser}`);
+    await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT EXECUTE ON FUNCTIONS TO ${appUser}`);
+
     // Grant select on schema_migrations to check applied migrations
     await client.query(`GRANT SELECT ON system.schema_migrations TO ${appUser}`);
 

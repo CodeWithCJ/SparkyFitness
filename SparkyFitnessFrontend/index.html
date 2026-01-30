@@ -32,20 +32,5 @@
     <body>
         <div id="root"></div>
         <script type="module" src="/src/main.tsx"></script>
-        <script>
-            if ("serviceWorker" in navigator) {
-                window.addEventListener("load", () => {
-                    navigator.serviceWorker
-                        .register("/sw.js")
-                        .then((registration) => {})
-                        .catch((registrationError) => {
-                            console.log(
-                                "SW registration failed: ",
-                                registrationError,
-                            );
-                        });
-                });
-            }
-        </script>
     </body>
 </html>
