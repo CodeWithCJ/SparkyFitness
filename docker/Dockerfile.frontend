@@ -9,8 +9,8 @@ RUN npm install
 # Copy the rest of the application source code
 COPY SparkyFitnessFrontend .
 
-# Build the application with NODE_ENV=production
-RUN NODE_ENV=production npm run build
+# Build the application
+RUN npm run build
 
 # Stage 2: Serve the application with Nginx
 FROM nginx:alpine3.22
