@@ -67,7 +67,7 @@ const auth = betterAuth({
     // Advanced session options
     advanced: {
         cookiePrefix: "sparky",
-        useSecureCookies: process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith('https') || false,
+        useSecureCookies: false, // Temporarily set to false for debugging external Nginx cookie handling
         crossSubDomainCookies: {
             enabled: false,
         },
