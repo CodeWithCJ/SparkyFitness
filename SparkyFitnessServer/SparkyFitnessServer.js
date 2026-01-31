@@ -71,7 +71,7 @@ const swaggerSpecs = require('./config/swagger');
 
 
 const app = express();
-app.set('trust proxy', 2);  // Trust two proxy hops (e.g., an external load balancer and an internal Nginx proxy).
+app.set('trust proxy', 1);  // Trust the first proxy immediately in front of me just internal nginx. external not required.
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
 
 console.log(
@@ -216,7 +216,16 @@ app.use((req, res, next) => {
   ];
 
   // Check if the current request path starts with any of the public routes
-  const isPublic = publicRoutes.some((route) => req.path.startsWith(route));
+  let isPublic = false;
+  for (const route of publicRoutes) {
+    if (req.path.startsWith(route)) {
+      log("debug", `[AUTH DEBUG] req.path: ${req.path} startsWith ${route}: true`);
+      isPublic = true;
+      break;
+    } else {
+      log("debug", `[AUTH DEBUG] req.path: ${req.path} startsWith ${route}: false`);
+    }
+  }
 
   if (req.path.includes("withings")) {
     log("error", `[WITHINGS DEBUG] Path: ${req.path}, IsPublic: ${isPublic}`);
