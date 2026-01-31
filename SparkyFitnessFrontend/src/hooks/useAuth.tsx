@@ -43,7 +43,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const prevUser = prevSessionRef.current?.user?.id;
       const newUser = session?.user?.id;
       const isSameUser = prevUser === newUser;
-      
+
       // console.log('[Auth Hook] Session update detected:', {
       //   timestamp: new Date().toLocaleTimeString(),
       //   isSameUser,
@@ -51,7 +51,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       //   newUserId: newUser,
       //   trigger: isSameUser ? 'POTENTIAL UNWANTED REFRESH' : 'USER CHANGED',
       // });
-      
+
       prevSessionRef.current = session;
     }
 
@@ -125,9 +125,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const signOut = useCallback(async () => {
-    await authClient.signOut();
-    setUser(null);
-    window.location.href = '/';
+    try {
+      const { error } = await authClient.signOut();
+      if (error) {
+        console.error("[Auth Hook] SignOut API error:", error);
+        // Fallback: Clear local state anyway and redirect 
+        // to prevent being "stuck" in a buggy session
+      }
+      setUser(null);
+      window.location.href = '/';
+    } catch (err) {
+      console.error("[Auth Hook] SignOut unexpected error:", err);
+      setUser(null);
+      window.location.href = '/';
+    }
   }, []);
 
   const signIn = useCallback((userId: string, activeUserId: string, userEmail: string, userRole: string, authType: 'oidc' | 'password' | 'magic_link', navigateOnSuccess = true, userFullName?: string) => {
@@ -159,7 +170,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (response.ok) {
         const data = await response.json();
         console.info("[Auth Hook] Context switched successfully, new activeUserId:", data.activeUserId);
-        
+
         // Immediately update local state before refreshing session
         setUser(prev => {
           if (!prev) return prev;

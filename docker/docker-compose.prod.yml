@@ -52,6 +52,10 @@ services:
     image: codewithcj/sparkyfitness:latest # Use pre-built image
     ports:
       - "3004:80" # Map host port 8080 to container port 80 (Nginx)
+    environment:
+      SPARKY_FITNESS_SERVER_HOST: ${SPARKY_FITNESS_SERVER_HOST:-sparkyfitness-server}
+      SPARKY_FITNESS_SERVER_PORT: ${SPARKY_FITNESS_SERVER_PORT:-3010}
+      SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL}
     networks:
       - sparkyfitness-network # Use the new named network
     restart: always

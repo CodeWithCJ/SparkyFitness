@@ -67,7 +67,7 @@ const auth = betterAuth({
     // Advanced session options
     advanced: {
         cookiePrefix: "sparky",
-        useSecureCookies: (process.env.SPARKY_FITNESS_SERVER_HOST && process.env.SPARKY_FITNESS_SERVER_HOST.includes('https')) || false,
+        useSecureCookies: process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith('https') || false,
         crossSubDomainCookies: {
             enabled: false,
         },
@@ -150,7 +150,7 @@ const auth = betterAuth({
     // Trust proxy (for Docker/Nginx deployments)
     trustedOrigins: [
         process.env.SPARKY_FITNESS_FRONTEND_URL,
-    ].filter(Boolean),
+    ].filter(Boolean).map(url => url.replace(/\/$/, '')),
 
     plugins: [
         require("better-auth/plugins").magicLink({
