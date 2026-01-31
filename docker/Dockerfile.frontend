@@ -4,13 +4,16 @@ WORKDIR /app/SparkyFitnessFrontend
 
 # Copy package files and install dependencies
 COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/package-lock.json ./
-RUN npm install
+RUN npm ci --prefer-offline --no-audit
+
+# Verify React installation
+RUN npm ls react react-dom 2>&1 || true
 
 # Copy the rest of the application source code
 COPY SparkyFitnessFrontend .
 
-# Build the application
-RUN npm run build
+# Build the application with NODE_ENV=production
+RUN NODE_ENV=production npm run build
 
 # Stage 2: Serve the application with Nginx
 FROM nginx:alpine3.22

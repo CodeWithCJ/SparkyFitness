@@ -76,14 +76,14 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
+              // Large independent packages in their own chunks
               if (id.includes('recharts')) return 'vendor-recharts';
               if (id.includes('leaflet')) return 'vendor-leaflet';
               if (id.includes('@radix-ui')) return 'vendor-radix';
-              if (id.includes('better-auth')) return 'vendor-auth';
               if (id.includes('@ericblade/quagga2') || id.includes('html5-qrcode') || id.includes('@zxing/library')) return 'vendor-scanners';
               if (id.includes('@dnd-kit')) return 'vendor-dnd';
-              if (id.includes('date-fns') || id.includes('zod') || id.includes('i18next')) return 'vendor-utils';
-              if (id.includes('axios')) return 'vendor-axios'; // Create a separate chunk for axios
+              // Everything else (React, utilities, auth, axios) together to avoid dependency issues
+              // This ensures React loads before anything that depends on it
               return 'vendor-others';
             }
           }
@@ -94,8 +94,6 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
-        "react": path.resolve(__dirname, "node_modules/react"),
-        "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
       },
     },
   };
