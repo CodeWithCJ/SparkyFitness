@@ -4,7 +4,7 @@ import { AuthResponse, LoginSettings } from '../types/auth';
 export const requestMagicLink = async (email: string): Promise<void> => {
   const { error } = await authClient.signIn.magicLink({
     email,
-    callbackURL: window.location.origin + '/',
+    callbackURL: window.location.origin,
   });
   if (error) throw error;
 };
@@ -94,8 +94,8 @@ export const logoutUser = async (): Promise<void> => {
 export const initiateOidcLogin = async (providerId: string, requestSignUp: boolean = false) => {
   await authClient.signIn.sso({
     providerId: providerId,
-    callbackURL: window.location.origin + '/',
-    errorCallbackURL: window.location.origin + '/',
+    callbackURL: window.location.origin,
+    errorCallbackURL: window.location.origin,
     requestSignUp: requestSignUp,
   });
 };
