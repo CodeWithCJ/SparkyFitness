@@ -71,6 +71,7 @@ const swaggerSpecs = require('./config/swagger');
 
 
 const app = express();
+app.set('trust proxy', true);
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
 
 console.log(

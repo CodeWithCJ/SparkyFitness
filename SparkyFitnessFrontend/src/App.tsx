@@ -61,10 +61,10 @@ const App = () => {
   useEffect(() => {
     const originalFetch = window.fetch;
 
-    window.fetch = function(...args) {
+    window.fetch = function (...args) {
       const [resource] = args;
       const url = typeof resource === 'string' ? resource : resource.url;
-      
+
       // Only log API calls when tab becomes visible for debugging
       // if ((url?.includes('/api/auth') || url?.includes('/auth/session')) && !document.hidden) {
       //   console.log('[Network] Auth API call:', url);
