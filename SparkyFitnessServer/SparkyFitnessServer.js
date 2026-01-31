@@ -223,9 +223,10 @@ app.use((req, res, next) => {
   }
 
   if (isPublic) {
-    log("debug", `Skipping authentication for public route: ${req.path}`);
+    log("debug", `Skipping authentication for public route: ${req.path}. Full path: ${req.originalUrl}`);
     return next();
   }
+  log("debug", `Attempting authentication for protected route: ${req.path}. Full path: ${req.originalUrl}`);
 
   authenticate(req, res, next);
 });
