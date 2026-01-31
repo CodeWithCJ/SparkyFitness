@@ -44,6 +44,7 @@ const authenticate = async (req, res, next) => {
   // 1. Better Auth Session Check (Primary Identity)
   try {
     const { auth } = require("../auth");
+    log("debug", `AuthMiddleware: Headers received by getSession: ${JSON.stringify(req.headers)}`);
     const session = await auth.api.getSession({
       headers: req.headers,
     });
