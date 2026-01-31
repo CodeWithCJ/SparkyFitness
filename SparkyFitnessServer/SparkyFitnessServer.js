@@ -71,7 +71,7 @@ const swaggerSpecs = require('./config/swagger');
 
 
 const app = express();
-app.set('trust proxy', 2);  // set as 2 as the app has internal nginx and external proxy from end user server)
+app.set('trust proxy', 2);  // Trust two proxy hops (e.g., an external load balancer and an internal Nginx proxy).
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
 
 console.log(
