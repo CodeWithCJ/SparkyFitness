@@ -129,16 +129,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { error } = await authClient.signOut();
       if (error) {
         console.error("[Auth Hook] SignOut API error:", error);
-        // Fallback: Clear local state anyway and redirect 
-        // to prevent being "stuck" in a buggy session
       }
-      setUser(null);
-      window.location.href = '/';
     } catch (err) {
       console.error("[Auth Hook] SignOut unexpected error:", err);
-      setUser(null);
-      window.location.href = '/';
     }
+    setUser(null);
+    window.location.href = '/';
   }, []);
 
   const signIn = useCallback((userId: string, activeUserId: string, userEmail: string, userRole: string, authType: 'oidc' | 'password' | 'magic_link', navigateOnSuccess = true, userFullName?: string) => {
