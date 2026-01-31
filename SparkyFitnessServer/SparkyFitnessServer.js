@@ -71,7 +71,7 @@ const swaggerSpecs = require('./config/swagger');
 
 
 const app = express();
-app.set('trust proxy', true);
+app.set('trust proxy', 2);  // Trust two proxy hops (e.g., an external load balancer and an internal Nginx proxy).
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
 
 console.log(
@@ -101,7 +101,7 @@ app.use(cookieParser());
 // Log all incoming requests
 app.use((req, res, next) => {
   if (req.originalUrl !== "/auth/users/accessible-users") {
-    log("debug", `Incoming request: ${req.method} ${req.originalUrl}`);
+    log("debug", `Incoming request: ${req.method} ${req.originalUrl}, Protocol: ${req.protocol}, Hostname: ${req.hostname}, Headers: ${JSON.stringify(req.headers)}`);
   }
   next();
 });
