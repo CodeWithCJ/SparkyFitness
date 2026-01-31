@@ -141,6 +141,50 @@ const Auth = () => {
     }
   }, [authUser, authLoading, loggingLevel, navigate]);
 
+  const triggerMfaChallenge = async (
+    authResponse: AuthResponse,
+    currentUserEmail: string,
+    handlers: { onMfaSuccess: () => void; onMfaCancel: () => void }
+  ) => {
+    // Only show challenge if at least one factor is enabled or setup is required
+    if (authResponse.mfa_totp_enabled || authResponse.mfa_email_enabled || authResponse.needs_mfa_setup) {
+      info(loggingLevel, "Auth: MFA required. Displaying MFA challenge.");
+
+      // Proactively fetch MFA factors if missing
+      let mfaEmail = authResponse.mfa_email_enabled;
+      let mfaTotp = authResponse.mfa_totp_enabled;
+      const userEmail = authResponse.email || currentUserEmail;
+
+      if (mfaEmail === undefined && userEmail) {
+        try {
+          const factorRes = await fetch(`/auth/mfa-factors?email=${encodeURIComponent(userEmail)}`);
+          if (factorRes.ok) {
+            const factors = await factorRes.json();
+            mfaEmail = factors.mfa_email_enabled;
+            mfaTotp = factors.mfa_totp_enabled;
+          }
+        } catch (e) {
+          error(loggingLevel, "Auth: Failed to fetch MFA factors:", e);
+        }
+      }
+
+      setMfaChallengeProps({
+        userId: authResponse.userId,
+        email: userEmail,
+        mfaTotpEnabled: mfaTotp ?? true,
+        mfaEmailEnabled: mfaEmail ?? false,
+        needsMfaSetup: authResponse.needs_mfa_setup,
+        mfaToken: authResponse.mfaToken,
+        ...handlers,
+      });
+      setShowMfaChallenge(true);
+      return true;
+    }
+
+    info(loggingLevel, "Auth: MFA requested but no factors enabled. Bypassing.");
+    return false;
+  };
+
   const hasAttemptedMagicLinkLogin = useRef(false);
 
   useEffect(() => {
@@ -173,48 +217,19 @@ const Auth = () => {
           const data: AuthResponse = await verifyMagicLink(magicLinkToken);
 
           if (data.status === 'MFA_REQUIRED') {
-            // Only show challenge if at least one factor is enabled or setup is required
-            if (data.mfa_totp_enabled || data.mfa_email_enabled || data.needs_mfa_setup) {
-              info(loggingLevel, "Auth: MFA required after magic link login. Displaying MFA challenge.");
+            const mfaShown = await triggerMfaChallenge(data, email, {
+              onMfaSuccess: () => {
+                setShowMfaChallenge(false);
+                navigate('/');
+              },
+              onMfaCancel: () => {
+                setShowMfaChallenge(false);
+                setLoading(false);
+                navigate('/'); // Redirect back to home page on cancel
+              },
+            });
 
-              // Proactively fetch MFA factors if missing
-              let mfaEmail = data.mfa_email_enabled;
-              let mfaTotp = data.mfa_totp_enabled;
-              const userEmail = data.email || email;
-
-              if (mfaEmail === undefined && userEmail) {
-                try {
-                  const factorRes = await fetch(`/auth/mfa-factors?email=${encodeURIComponent(userEmail)}`);
-                  if (factorRes.ok) {
-                    const factors = await factorRes.json();
-                    mfaEmail = factors.mfa_email_enabled;
-                    mfaTotp = factors.mfa_totp_enabled;
-                  }
-                } catch (e) {
-                  error(loggingLevel, "Auth: Failed to fetch MFA factors:", e);
-                }
-              }
-
-              setMfaChallengeProps({
-                userId: data.userId,
-                email: userEmail,
-                mfaTotpEnabled: mfaTotp ?? true,
-                mfaEmailEnabled: mfaEmail ?? false,
-                needsMfaSetup: data.needs_mfa_setup,
-                mfaToken: data.mfaToken,
-                onMfaSuccess: () => {
-                  setShowMfaChallenge(false);
-                  navigate('/');
-                },
-                onMfaCancel: () => {
-                  setShowMfaChallenge(false);
-                  setLoading(false);
-                  navigate('/'); // Redirect back to home page on cancel
-                },
-              });
-              setShowMfaChallenge(true);
-            } else {
-              info(loggingLevel, "Auth: MFA requested after magic link but no factors enabled. Bypassing.");
+            if (!mfaShown) {
               signIn(data.userId, data.userId, data.email || email, data.role || 'user', 'magic_link', true, data.fullName);
             }
           } else {
@@ -327,51 +342,19 @@ const Auth = () => {
       const data: AuthResponse = await loginUser(email, password);
 
       if (data.status === 'MFA_REQUIRED' || data.twoFactorRedirect) {
-        // Only show challenge if at least one factor is enabled or setup is required
-        if (data.mfa_totp_enabled || data.mfa_email_enabled || data.needs_mfa_setup) {
-          info(loggingLevel, "Auth: MFA required for sign in. Displaying MFA challenge.");
+        const mfaShown = await triggerMfaChallenge(data, email, {
+          onMfaSuccess: () => {
+            setLoading(true);
+            // We don't hide the challenge explicitly to avoid flashing the login form
+            navigate('/');
+          },
+          onMfaCancel: () => {
+            setShowMfaChallenge(false);
+            setLoading(false);
+          },
+        });
 
-          // Proactively fetch MFA factors if missing
-          let mfaEmail = data.mfa_email_enabled;
-          let mfaTotp = data.mfa_totp_enabled;
-          const userEmail = data.email || email;
-
-          if (mfaEmail === undefined && userEmail) {
-            try {
-              const factorRes = await fetch(`/auth/mfa-factors?email=${encodeURIComponent(userEmail)}`);
-              if (factorRes.ok) {
-                const factors = await factorRes.json();
-                mfaEmail = factors.mfa_email_enabled;
-                mfaTotp = factors.mfa_totp_enabled;
-              }
-            } catch (e) {
-              error(loggingLevel, "Auth: Failed to fetch MFA factors:", e);
-            }
-          }
-
-          setMfaChallengeProps({
-            userId: data.userId,
-            email: userEmail,
-            mfaTotpEnabled: mfaTotp ?? true,
-            mfaEmailEnabled: mfaEmail ?? false,
-            needsMfaSetup: data.needs_mfa_setup,
-            mfaToken: data.mfaToken,
-            onMfaSuccess: () => {
-              setLoading(true);
-              // We don't hide the challenge explicitly to avoid flashing the login form
-              navigate('/');
-            },
-            onMfaCancel: () => {
-              setShowMfaChallenge(false);
-              setLoading(false);
-            },
-          });
-          setShowMfaChallenge(true);
-          setLoading(false);
-          return;
-        } else {
-          info(loggingLevel, "Auth: MFA requested but no factors enabled. Bypassing.");
-        }
+        if (mfaShown) return;
       }
 
       info(loggingLevel, "Auth: Sign in successful.");
