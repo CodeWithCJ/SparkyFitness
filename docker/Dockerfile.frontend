@@ -4,10 +4,7 @@ WORKDIR /app/SparkyFitnessFrontend
 
 # Copy package files and install dependencies
 COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/package-lock.json ./
-RUN npm ci --prefer-offline --no-audit
-
-# Verify React installation
-RUN npm ls react react-dom 2>&1 || true
+RUN npm install
 
 # Copy the rest of the application source code
 COPY SparkyFitnessFrontend .
