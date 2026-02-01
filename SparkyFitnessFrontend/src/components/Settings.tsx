@@ -26,7 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar as CalendarIcon } from "lucide-react"; // Import CalendarIcon
 import { Calendar } from "@/components/ui/calendar"; // Import Calendar component
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Import Popover components
-import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles, QrCode, Mail, BookOpen, UtensilsCrossed } from "lucide-react";
+import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles, QrCode, Mail, BookOpen, UtensilsCrossed, X } from "lucide-react";
 import { apiCall } from '@/services/api'; // Assuming a common API utility
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
@@ -132,7 +132,9 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   const [showApiKey, setShowApiKey] = useState<string | null>(null); // Stores the ID of the key to show
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null); // New state to show secret key once
   const [newApiKeyDescription, setNewApiKeyDescription] = useState<string>("");
+  const [newApiKeyExpiresIn, setNewApiKeyExpiresIn] = useState<number | null>(null);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
+  const [cleaningUpKeys, setCleaningUpKeys] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -223,6 +225,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     try {
       const { data, error } = await authClient.apiKey.create({
         name: newApiKeyDescription || "New API Key",
+        expiresIn: newApiKeyExpiresIn || undefined,
       });
       if (error) throw error;
 
@@ -259,8 +262,8 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     }
     setLoading(true); // Use general loading for this
     try {
-      const { error } = await authClient.apiKey.revoke({
-        id: apiKeyId,
+      const { error } = await authClient.apiKey.delete({
+        keyId: apiKeyId,
       });
       if (error) throw error;
 
@@ -278,6 +281,57 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleApiKey = async (apiKeyId: string, enabled: boolean) => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { error } = await authClient.apiKey.update({
+        keyId: apiKeyId,
+        enabled: enabled,
+      });
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `API key ${enabled ? "enabled" : "disabled"} successfully!`,
+      });
+      loadApiKeys();
+    } catch (error: any) {
+      console.error("Error toggling API key:", error);
+      toast({
+        title: "Error",
+        description: `Failed to update API key: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCleanupExpiredKeys = async () => {
+    if (!user) return;
+    setCleaningUpKeys(true);
+    try {
+      const { error } = await (authClient.apiKey as any).deleteAllExpiredApiKeys({});
+      if (error) throw error;
+
+      toast({
+        title: "Cleanup Complete",
+        description: "All expired API keys have been removed.",
+      });
+      loadApiKeys();
+    } catch (error: any) {
+      console.error("Error cleaning up API keys:", error);
+      toast({
+        title: "Error",
+        description: `Failed to cleanup keys: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setCleaningUpKeys(false);
     }
   };
 
@@ -382,13 +436,12 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
 
     setLoading(true);
     try {
-      await apiCall("/auth/update-password", {
-        method: "POST",
-        body: JSON.stringify({
-          currentPassword: passwordForm.current_password, // If needed for verification
-          newPassword: passwordForm.new_password,
-        }),
+      const { error } = await authClient.changePassword({
+        newPassword: passwordForm.new_password,
+        currentPassword: passwordForm.current_password,
+        revokeOtherSessions: true,
       });
+      if (error) throw error;
 
       toast({
         title: "Success",
@@ -403,7 +456,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
       console.error("Error updating password:", error);
       toast({
         title: "Error",
-        description: `Failed to update password: ${error.message}`,
+        description: `Failed to update password: ${error.message || (error.error && error.error.message) || "Unknown error"}`,
         variant: "destructive",
       });
     } finally {
@@ -423,12 +476,10 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
 
     setLoading(true);
     try {
-      await apiCall("/auth/update-email", {
-        method: "POST",
-        body: JSON.stringify({
-          newEmail: newEmail,
-        }),
+      const { error } = await authClient.changeEmail({
+        newEmail: newEmail,
       });
+      if (error) throw error;
 
       toast({
         title: "Success",
@@ -439,7 +490,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
       console.error("Error updating email:", error);
       toast({
         title: "Error",
-        description: `Failed to update email: ${error.message}`,
+        description: `Failed to update email: ${error.message || (error.error && error.error.message) || "Unknown error"}`,
         variant: "destructive",
       });
     } finally {
@@ -1321,34 +1372,80 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             )}
 
             <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                placeholder={t(
-                  "settings.apiKeyManagement.descriptionPlaceholder",
-                  "Name (e.g., 'iPhone Health Shortcut')"
-                )}
-                value={newApiKeyDescription}
-                onChange={(e) => setNewApiKeyDescription(e.target.value)}
-                className="flex-grow"
-              />
-              <Button
-                onClick={handleGenerateApiKey}
-                disabled={generatingApiKey}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {generatingApiKey
-                  ? t("settings.apiKeyManagement.generating", "Generating...")
-                  : t(
-                    "settings.apiKeyManagement.generateNewKey",
-                    "Generate New Key"
-                  )}
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="flex-grow space-y-2 w-full">
+                  <Label htmlFor="api-key-description">
+                    {t(
+                      "settings.apiKeyManagement.descriptionLabel",
+                      "Description (e.g., 'iPhone Health Shortcut')"
+                    )}
+                  </Label>
+                  <Input
+                    id="api-key-description"
+                    value={newApiKeyDescription}
+                    onChange={(e) => setNewApiKeyDescription(e.target.value)}
+                    placeholder={t(
+                      "settings.apiKeyManagement.placeholder",
+                      "Description (e.g., 'iPhone Health Shortcut')"
+                    )}
+                  />
+                </div>
+                <div className="space-y-2 w-full sm:w-48">
+                  <Label htmlFor="api-key-expiry">
+                    {t("settings.apiKeyManagement.expiresIn", "Expires In")}
+                  </Label>
+                  <Select
+                    value={newApiKeyExpiresIn?.toString() || "null"}
+                    onValueChange={(val) => setNewApiKeyExpiresIn(val === "null" ? null : parseInt(val))}
+                  >
+                    <SelectTrigger id="api-key-expiry">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="null">{t("settings.apiKeyManagement.never", "Never")}</SelectItem>
+                      <SelectItem value={(60 * 60 * 24 * 7).toString()}>{t("settings.apiKeyManagement.7days", "7 Days")}</SelectItem>
+                      <SelectItem value={(60 * 60 * 24 * 30).toString()}>{t("settings.apiKeyManagement.30days", "30 Days")}</SelectItem>
+                      <SelectItem value={(60 * 60 * 24 * 90).toString()}>{t("settings.apiKeyManagement.90days", "90 Days")}</SelectItem>
+                      <SelectItem value={(60 * 60 * 24 * 365).toString()}>{t("settings.apiKeyManagement.1year", "1 Year")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={handleGenerateApiKey}
+                  disabled={generatingApiKey}
+                  className="w-full sm:w-auto"
+                >
+                  <KeyRound className="h-4 w-4 mr-2" />
+                  {generatingApiKey
+                    ? t(
+                      "settings.apiKeyManagement.generating",
+                      "Generating..."
+                    )
+                    : t(
+                      "settings.apiKeyManagement.generate",
+                      "Generate New Key"
+                    )}
+                </Button>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={handleCleanupExpiredKeys}
+                  disabled={cleaningUpKeys}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  {cleaningUpKeys ? t("common.processing", "Processing...") : t("settings.apiKeyManagement.cleanupExpired", "Cleanup Expired Keys")}
+                </Button>
+              </div>
             </div>
 
-            <Separator />
-
-            <div className="space-y-3">
+            {/* API Key List */}
+            <div className="space-y-4">
               {apiKeys.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-center text-sm text-muted-foreground py-4">
                   {t(
                     "settings.apiKeyManagement.noApiKeys",
                     "No API keys generated yet."
@@ -1358,16 +1455,23 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 apiKeys.map((key) => (
                   <div
                     key={key.id}
-                    className="flex items-center space-x-2 p-2 border rounded-md"
+                    className={`flex items-center space-x-4 p-3 border rounded-md ${!key.enabled ? 'bg-muted/50 opacity-80' : ''}`}
                   >
-                    <div className="flex-grow">
-                      <p className="font-medium">
-                        {key.name ||
-                          t(
-                            "settings.apiKeyManagement.noDescription",
-                            "No Description"
-                          )}
-                      </p>
+                    <div className="flex-grow space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">
+                          {key.name ||
+                            t(
+                              "settings.apiKeyManagement.noDescription",
+                              "No Description"
+                            )}
+                        </p>
+                        {!key.enabled && (
+                          <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border uppercase font-bold">
+                            {t("settings.apiKeyManagement.disabled", "Disabled")}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span className="font-mono text-xs">
                           {key.id}
@@ -1378,26 +1482,42 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                           size={14}
                         />
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {t("settings.apiKeyManagement.created", "Created:")}{" "}
-                        {key.createdAt ? new Date(key.createdAt).toLocaleDateString() : 'N/A'}
-                        {key.lastUsedAt &&
-                          ` | ${t(
-                            "settings.apiKeyManagement.lastUsed",
-                            "Last Used:"
-                          )} ${new Date(
-                            key.lastUsedAt
-                          ).toLocaleDateString()}`}
-                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <p>
+                          {t("settings.apiKeyManagement.created", "Created:")}{" "}
+                          {key.createdAt ? new Date(key.createdAt).toLocaleDateString() : 'N/A'}
+                        </p>
+                        {key.expiresAt && (
+                          <p className={new Date(key.expiresAt) < new Date() ? 'text-destructive font-semibold' : ''}>
+                            {t("settings.apiKeyManagement.expires", "Expires:")}{" "}
+                            {new Date(key.expiresAt).toLocaleDateString()}
+                          </p>
+                        )}
+                        {key.lastUsedAt && (
+                          <p>
+                            {t("settings.apiKeyManagement.lastUsed", "Last Used:")}{" "}
+                            {new Date(key.lastUsedAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDeleteApiKey(key.id)}
-                      disabled={loading}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={key.enabled}
+                        onCheckedChange={(checked) => handleToggleApiKey(key.id, checked)}
+                        disabled={loading}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteApiKey(key.id)}
+                        disabled={loading}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))
               )}

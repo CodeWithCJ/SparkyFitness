@@ -21,6 +21,51 @@ const authPool = new Pool({
     port: process.env.SPARKY_FITNESS_DB_PORT || 5432,
 });
 
+const apiKeyPlugin = require("better-auth/plugins").apiKey({
+    schema: {
+        apikey: {
+            modelName: "api_key",
+            fields: {
+                id: "id",
+                name: "name",
+                key: "key",
+                userId: "user_id",
+                token: "key", // Better Auth sometimes looks for 'token'
+                metadata: "metadata",
+                createdAt: "created_at",
+                updatedAt: "updated_at",
+                expiresAt: "expires_at",
+                start: "start",
+                prefix: "prefix",
+                refillInterval: "refill_interval",
+                refillAmount: "refill_amount",
+                lastRefillAt: "last_refill_at",
+                enabled: "enabled",
+                rateLimitEnabled: "rate_limit_enabled",
+                rateLimitTimeWindow: "rate_limit_time_window",
+                rateLimitMax: "rate_limit_max",
+                requestCount: "request_count",
+                remaining: "remaining",
+                lastRequest: "last_request",
+                permissions: "permissions",
+            }
+        }
+    }
+});
+
+// FIX: Better Auth v1.4.17 is missing paths for these endpoints in the library definition.
+// We patch the plugin instance BEFORE passing it to betterAuth so the internal router picks it up.
+if (apiKeyPlugin.endpoints) {
+    if (apiKeyPlugin.endpoints.deleteAllExpiredApiKeys) {
+        apiKeyPlugin.endpoints.deleteAllExpiredApiKeys.path = "/api-key/delete-all-expired-api-keys";
+        apiKeyPlugin.endpoints.deleteAllExpiredApiKeys.method = "POST";
+    }
+    if (apiKeyPlugin.endpoints.verifyApiKey) {
+        apiKeyPlugin.endpoints.verifyApiKey.path = "/api-key/verify";
+        apiKeyPlugin.endpoints.verifyApiKey.method = "POST";
+    }
+}
+
 const auth = betterAuth({
     database: authPool,
     secret: Buffer.from(process.env.BETTER_AUTH_SECRET || "default_dev_secret_CHANGE_ME", 'base64'),
@@ -68,7 +113,7 @@ const auth = betterAuth({
     // Advanced session options
     advanced: {
         cookiePrefix: "sparky",
-        useSecureCookies: true,
+        useSecureCookies: process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("https"),
         crossSubDomainCookies: {
             enabled: false,
         },
@@ -220,7 +265,7 @@ const auth = betterAuth({
                 }
             }
         }),
-        require("better-auth/plugins").apiKey(),
+        apiKeyPlugin
     ]
 });
 

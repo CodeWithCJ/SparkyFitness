@@ -144,7 +144,7 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     // If active user is the logged-in user
     if (!activeUserId || activeUserId === user.id) {
-info(loggingLevel, "ActiveUserProvider: Acting on own behalf, name:", user.fullName || user.email);
+      info(loggingLevel, "ActiveUserProvider: Acting on own behalf, name:", user.fullName || user.email);
       setActiveUserName(user.fullName || user.email || 'You');
     } else {
       // If acting on behalf of someone else, look up their name from accessible users

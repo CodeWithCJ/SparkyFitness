@@ -20,6 +20,11 @@ export default defineConfig(({ mode }) => {
           target: "http://localhost:3010",
           changeOrigin: true,
         },
+        "/health-data": {
+          target: "http://localhost:3010",
+          changeOrigin: true,
+          rewrite: (path) => `/api${path}`, // Add /api/ prefix
+        },
         "/api": {
           target: "http://localhost:3010",
           changeOrigin: true,
