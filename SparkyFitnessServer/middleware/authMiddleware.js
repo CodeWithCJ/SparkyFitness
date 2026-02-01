@@ -4,8 +4,8 @@ const { getClient, getSystemClient } = require("../db/poolManager"); // Import g
 const { canAccessUserData } = require("../utils/permissionUtils");
 
 const tryAuthenticateWithApiKey = async (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const apiKey = authHeader && authHeader.split(" ")[1]; // Bearer API_KEY
+  // Prefer Authorization header, then x-api-key
+  const apiKey = (req.headers["authorization"]?.split(" ")[1]) || req.headers["x-api-key"];
 
   if (!apiKey) {
     return null; // No API key found
@@ -15,16 +15,18 @@ const tryAuthenticateWithApiKey = async (req, res, next) => {
   try {
     client = await getSystemClient(); // Use system client for API key validation
     const result = await client.query(
-      'SELECT user_id FROM user_api_keys WHERE api_key = $1 AND is_active = TRUE',
+      'SELECT user_id, permissions FROM user_api_keys WHERE api_key = $1 AND is_active = TRUE',
       [apiKey]
     );
 
     if (result.rows.length > 0) {
-      log("debug", `Authentication: API Key valid. User ID: ${result.rows[0].user_id}`);
-      return result.rows[0].user_id;
+      const data = result.rows[0];
+      log("debug", `Authentication: Legacy API Key valid. User ID: ${data.user_id}`);
+      req.permissions = data.permissions || {}; // Store permissions for legacy keys
+      return data.user_id;
     }
   } catch (error) {
-    log("error", "Error during API Key authentication:", error);
+    log("error", "Error during Legacy API Key authentication:", error);
   } finally {
     if (client) {
       client.release();
@@ -41,25 +43,25 @@ const authenticate = async (req, res, next) => {
 
   log("debug", `authenticate middleware: req.path = ${req.path}`);
 
-  // 1. Better Auth Session Check (Primary Identity)
+  // 1. Better Auth Session & API Key Check (Unified Identity)
   try {
     const { auth } = require("../auth");
-    log("debug", `AuthMiddleware: Headers received by getSession: ${JSON.stringify(req.headers)}`);
+
+    // getSession natively handles both Browser Cookies and Authorization: Bearer <API_KEY>
     const session = await auth.api.getSession({
       headers: req.headers,
     });
 
     if (session && session.user) {
-      log("debug", `Authentication: Better Auth session valid. User ID: ${session.user.id}`);
+      log("debug", `Authentication: Better Auth identity valid. User ID: ${session.user.id}`);
       req.authenticatedUserId = session.user.id;
       req.originalUserId = req.authenticatedUserId;
-      req.user = session.user; // Full user object for convenience
+      req.user = session.user; // Full user object (includes role)
 
-      // Check for 'sparky_active_user_id' cookie for context switching
+      // Handle 'sparky_active_user_id' cookie for context switching
       const activeUserId = req.cookies.sparky_active_user_id;
       if (activeUserId && activeUserId !== req.authenticatedUserId) {
         const { canAccessUserData } = require("../utils/permissionUtils");
-        // Broad check: Do they have AT LEAST one of the major permissions for this user?
         const [hasReports, hasDiary, hasCheckin] = await Promise.all([
           canAccessUserData(activeUserId, 'reports', req.authenticatedUserId),
           canAccessUserData(activeUserId, 'diary', req.authenticatedUserId),
@@ -71,8 +73,7 @@ const authenticate = async (req, res, next) => {
           log("info", `Authentication: Context switched. User ${req.authenticatedUserId} acting as ${req.activeUserId}`);
         } else {
           log("warn", `Authentication: Context access denied for User ${req.authenticatedUserId} -> ${activeUserId}`);
-          req.activeUserId = req.authenticatedUserId; // Fallback to self
-          // Optionally clear the cookie if invalid
+          req.activeUserId = req.authenticatedUserId;
         }
       } else {
         req.activeUserId = req.authenticatedUserId;
@@ -80,8 +81,10 @@ const authenticate = async (req, res, next) => {
 
       req.userId = req.activeUserId; // RLS context
 
-      // LAZY INITIALIZATION: Ensure user has profile and goals
-      // This is necessary for users created directly via Better Auth or OIDC
+      // Support for scoping (for future broad API key use)
+      req.permissions = session.session?.metadata?.permissions || { "*": true };
+
+      // Ensure user initialization
       try {
         await userRepository.ensureUserInitialization(session.user.id, session.user.name);
       } catch (err) {
@@ -91,21 +94,22 @@ const authenticate = async (req, res, next) => {
       return next();
     }
   } catch (error) {
-    log("error", "Error checking Better Auth session:", error);
+    log("error", "Error checking Better Auth identity:", error);
   }
 
-  // 2. Try to authenticate with API Key (for Mobile/Integrations)
-  const userIdFromApiKey = await tryAuthenticateWithApiKey(req, res, next);
-  if (userIdFromApiKey) {
-    req.authenticatedUserId = userIdFromApiKey;
-    req.activeUserId = userIdFromApiKey;
-    req.originalUserId = userIdFromApiKey;
-    req.userId = userIdFromApiKey;
+  // 2. Legacy API Key Fallback (for Mobile/Integrations)
+  const userIdFromLegacyKey = await tryAuthenticateWithApiKey(req, res, next);
+  if (userIdFromLegacyKey) {
+    req.authenticatedUserId = userIdFromLegacyKey;
+    req.activeUserId = userIdFromLegacyKey;
+    req.originalUserId = userIdFromLegacyKey;
+    req.userId = userIdFromLegacyKey;
+    // req.permissions is already set by tryAuthenticateWithApiKey
     return next();
   }
 
-  // If no authentication method succeeded
-  log("warn", "Authentication: No valid session or API key provided.");
+  // If no auth succeeded
+  log("warn", `Authentication: No valid identity provided for ${req.path}`);
   return res.status(401).json({ error: "Authentication required." });
 };
 

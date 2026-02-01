@@ -97,6 +97,27 @@ app.use(
 // Increased limit to 50mb to accommodate image uploads
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
+try {
+  const { auth } = require("./auth");
+  const { toNodeHandler } = require("better-auth/node");
+
+  // Block new registrations if disabled via environment variable
+  app.use("/auth/sign-up", (req, res, next) => {
+    if (process.env.SPARKY_FITNESS_DISABLE_SIGNUP === "true") {
+      log("warn", `Blocking registration attempt for ${req.ip} - Sign-up is disabled.`);
+      return res.status(403).json({
+        error: "Forbidden",
+        message: "Sign-up is currently disabled.",
+      });
+    }
+    next();
+  });
+
+  app.use(toNodeHandler(auth));
+  log("info", "Better Auth handler mounted at root");
+} catch (error) {
+  log("error", "Error mounting Better Auth routes: " + error.message);
+}
 
 // Log all incoming requests
 app.use((req, res, next) => {
@@ -210,7 +231,6 @@ app.use((req, res, next) => {
   // Routes that do not require authentication (e.g., login, register, OIDC flows, health checks)
   const publicRoutes = [
     "/auth", // Allow all Better Auth routes to bypass legacy authentication
-    "/api/health-data",
     "/health",
     "/version", // Allow version endpoint to be public
   ];
@@ -333,28 +353,7 @@ log("info", "Admin Global Settings routes mounted");
 app.use("/admin/oidc-settings", require("./routes/oidcSettingsRoutes"));
 log("info", "Admin OIDC Settings routes mounted");
 
-// --- Better Auth Routes ---
-log("info", "About to mount Better Auth routes");
-// Block new registrations if disabled via environment variable
-app.use("/auth/sign-up", (req, res, next) => {
-  if (process.env.SPARKY_FITNESS_DISABLE_SIGNUP === "true") {
-    log("warn", `Blocking registration attempt for ${req.ip} - Sign-up is disabled.`);
-    return res.status(403).json({
-      error: "Forbidden",
-      message: "Sign-up is currently disabled.",
-    });
-  }
-  next();
-});
-
-try {
-  const { auth } = require("./auth");
-  const { toNodeHandler } = require("better-auth/node");
-  app.use("/auth", toNodeHandler(auth));
-  log("info", "Better Auth routes mounted at /auth");
-} catch (error) {
-  log("error", "Error mounting Better Auth routes: " + error.message);
-}
+// --- Better Auth Routes moved up ---
 
 // Serve Swagger UI
 app.use('/api-docs/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));

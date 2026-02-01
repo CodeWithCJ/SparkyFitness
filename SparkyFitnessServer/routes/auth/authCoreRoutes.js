@@ -82,17 +82,12 @@ router.get('/mfa-factors', async (req, res) => {
         const user = await userRepository.findUserByEmail(email);
 
         if (!user) {
-            // Return defaults for security to not leak if user exists or not
-            return res.json({
-                mfa_totp_enabled: true,
-                mfa_email_enabled: false
-            });
+            return res.json({ mfa_totp_enabled: false, mfa_email_enabled: false });
         }
 
-        const settings = await userRepository.getMfaSettings(user.id);
         res.json({
-            mfa_totp_enabled: settings.totp_enabled,
-            mfa_email_enabled: settings.email_mfa_enabled
+            mfa_totp_enabled: user.two_factor_enabled || false,
+            mfa_email_enabled: user.mfa_email_enabled || false
         });
     } catch (error) {
         log('error', `[AUTH CORE] MFA Factors Error: ${error.message}`);

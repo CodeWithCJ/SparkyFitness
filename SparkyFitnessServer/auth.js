@@ -219,6 +219,7 @@ const auth = betterAuth({
                 }
             }
         }),
+        require("better-auth/plugins").apiKey(),
     ]
 });
 
