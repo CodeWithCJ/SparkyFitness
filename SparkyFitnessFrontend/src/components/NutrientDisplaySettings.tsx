@@ -177,14 +177,14 @@ const NutrientDisplaySettings: React.FC = () => {
     return (
         <div className="space-y-4">
             <Tabs value={activePlatformTab} onValueChange={(value) => setActivePlatformTab(value as 'desktop' | 'mobile')}>
-                <TabsList>
+                <TabsList className='h-10 '>
                     <TabsTrigger value="desktop">Desktop</TabsTrigger>
                     <TabsTrigger value="mobile">Mobile</TabsTrigger>
                 </TabsList>
                 {['desktop', 'mobile'].map(platform => (
                     <TabsContent key={platform} value={platform}>
                         <Tabs value={activeViewGroupTab} onValueChange={setActiveViewGroupTab}>
-                            <TabsList>
+                            <TabsList className='h-10 '>
                                 {viewGroups.map(group => (
                                     <TabsTrigger key={group.id} value={group.id}>{group.name}</TabsTrigger>
                                 ))}

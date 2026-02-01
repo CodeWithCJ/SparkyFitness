@@ -347,27 +347,38 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-1"> {/* Adjusted gap for tighter spacing */}
+        <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap  mb-2">
+          {/* Left section */}
+          <div className="flex items-center gap-2 shrink-0">
             <img
               src="/images/SparkyFitness.png"
               alt="SparkyFitness Logo"
-              className="h-12 w-auto"
+              className="h-14 w-auto"
             />
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground dark:text-slate-300">
-              SparkyFitness
-            </h1>
-            <GitHubStarCounter owner="CodeWithCJ" repo="SparkyFitness" />
-            <GitHubSponsorButton owner="CodeWithCJ" />
+
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground dark:text-slate-300">
+                SparkyFitness
+              </h1>
+
+              <div className="flex items-center gap-1">
+                <GitHubStarCounter owner="CodeWithCJ" repo="SparkyFitness" />
+                <GitHubSponsorButton owner="CodeWithCJ" />
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Right section */}
+          <div className="flex items-center gap-3 shrink-0">
             <ProfileSwitcher />
+
             <span className="text-sm text-muted-foreground hidden sm:inline">
               Welcome {activeUserName}
             </span>
 
             <GlobalNotificationIcon />
             <ThemeToggle />
+
             <Button
               variant="outline"
               size="sm"
@@ -381,7 +392,6 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
             </Button>
           </div>
         </div>
-
         <Tabs
           value={activeTab}
           onValueChange={(value) => {
@@ -394,7 +404,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
           }}
           className="space-y-6"
         >
-          <TabsList className={`hidden sm:grid w-full gap-1 ${gridClass}`}>
+          <TabsList className={`h-10 hidden sm:grid w-full gap-1 ${gridClass}`}>
             {availableTabs.map(({ value, label, icon: Icon }) => (
               <TabsTrigger
                 key={value}
