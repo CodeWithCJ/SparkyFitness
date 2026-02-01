@@ -72,10 +72,10 @@ const auth = betterAuth({
 
 
     // Base URL configuration - MUST use public frontend URL for OIDC to work
-    baseURL: (process.env.SPARKY_FITNESS_FRONTEND_URL?.replace(/\/$/, '') || "http://localhost:8080") + "/auth",
+    baseURL: (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("http") ? process.env.SPARKY_FITNESS_FRONTEND_URL : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`)?.replace(/\/$/, '') + "/auth",
 
     onAPIError: {
-        errorURL: new URL('/error', (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080").replace(/\/$/, '') + '/').toString(),
+        errorURL: new URL('/error', (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("http") ? process.env.SPARKY_FITNESS_FRONTEND_URL : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`)?.replace(/\/$/, '') + '/').toString(),
     },
 
     basePath: "/auth",
