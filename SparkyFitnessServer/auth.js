@@ -1,5 +1,6 @@
 const { betterAuth } = require("better-auth");
 const { Pool } = require("pg");
+console.log("[AUTH] auth.js module is being loaded...");
 
 // Create a dedicated pool for Better Auth
 /*
@@ -219,24 +220,7 @@ const auth = betterAuth({
                 }
             }
         }),
-        require("better-auth/plugins").apiKey({
-            schema: {
-                apiKey: {
-                    modelName: "api_key",
-                    fields: {
-                        id: "id",
-                        name: "name",
-                        key: "key",
-                        userId: "user_id",
-                        metadata: "metadata",
-                        createdAt: "created_at",
-                        updatedAt: "updated_at",
-                        expiresAt: "expires_at",
-                        lastUsedAt: "last_used_at",
-                    }
-                }
-            }
-        }),
+        require("better-auth/plugins").apiKey(),
     ]
 });
 
