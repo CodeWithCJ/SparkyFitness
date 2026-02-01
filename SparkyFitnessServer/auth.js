@@ -67,7 +67,7 @@ const auth = betterAuth({
     // Advanced session options
     advanced: {
         cookiePrefix: "sparky",
-        useSecureCookies: false, // Temporarily set to false for debugging external Nginx cookie handling
+        useSecureCookies: true,
         crossSubDomainCookies: {
             enabled: false,
         },
