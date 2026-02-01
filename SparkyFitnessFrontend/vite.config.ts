@@ -12,11 +12,6 @@ export default defineConfig(({ mode }) => {
       port: 8080,
       allowedHosts: true, // Allow all hosts in development to prevent HMR connection failures
       proxy: {
-        "/api/withings": { // New proxy rule for Withings API calls
-          target: "http://localhost:3010",
-          changeOrigin: true,
-          // No rewrite needed, as the backend expects /api/withings
-        },
         "/api-docs": {
           target: "http://localhost:3010",
           changeOrigin: true,
@@ -28,12 +23,6 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: "http://localhost:3010",
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ""),
-        },
-        "/health-data": {
-          target: "http://localhost:3010",
-          changeOrigin: true,
-          rewrite: (path) => `/api${path}`, // Add /api/ prefix
         },
         "/uploads": {
           target: "http://localhost:3010",

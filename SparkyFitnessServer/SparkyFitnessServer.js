@@ -97,6 +97,12 @@ app.use(
 // Increased limit to 50mb to accommodate image uploads
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
+
+// Log all incoming requests - MOVED TO TOP FOR DEBUGGING
+app.use((req, res, next) => {
+  log("info", `Incoming request: ${req.method} ${req.originalUrl} (Path: ${req.path})`);
+  next();
+});
 try {
   const { auth } = require("./auth");
   const { toNodeHandler } = require("better-auth/node");
@@ -113,19 +119,17 @@ try {
     next();
   });
 
-  app.use(toNodeHandler(auth));
-  log("info", "Better Auth handler mounted at root");
+  // Mount Better Auth handler - Root level catch-all for /auth and /auth/*
+  app.all("/auth*", (req, res) => {
+    log("debug", `Better Auth handler triggered: ${req.method} ${req.originalUrl}`);
+    return toNodeHandler(auth)(req, res);
+  });
+  log("info", "Better Auth handler mounted at root for /auth*");
 } catch (error) {
   log("error", "Error mounting Better Auth routes: " + error.message);
 }
 
-// Log all incoming requests
-app.use((req, res, next) => {
-  if (req.originalUrl !== "/auth/users/accessible-users") {
-    log("debug", `Incoming request: ${req.method} ${req.originalUrl}, Protocol: ${req.protocol}, Hostname: ${req.hostname}, Headers: ${JSON.stringify(req.headers)}`);
-  }
-  next();
-});
+
 
 // Serve static files from the 'uploads' directory
 // This middleware will first try to serve the file if it exists locally.
@@ -222,7 +226,7 @@ app.get(
   }
 );
 
-app.use(cookieParser());
+
 
 // Log all incoming requests
 
@@ -230,9 +234,11 @@ app.use(cookieParser());
 app.use((req, res, next) => {
   // Routes that do not require authentication (e.g., login, register, OIDC flows, health checks)
   const publicRoutes = [
-    "/auth", // Allow all Better Auth routes to bypass legacy authentication
-    "/health",
-    "/version", // Allow version endpoint to be public
+    "/auth", // Better Auth internal routes
+    "/api/auth", // My custom auth routes (settings, etc)
+    "/api/health",
+    "/api/version",
+    "/api/onboarding",
   ];
 
   // Check if the current request path starts with any of the public routes
@@ -260,6 +266,9 @@ app.use((req, res, next) => {
   authenticate(req, res, next);
 });
 
+// Test route to verify server is up and routing
+app.get("/api/ping", (req, res) => res.json({ status: "ok", time: new Date().toISOString() }));
+
 // Rate limiting for authentication-related routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -274,84 +283,83 @@ const authLimiter = rateLimit({
 app.use("/auth/", authLimiter);
 
 // Link all routes
-app.use("/chat", chatRoutes);
-app.use("/foods", foodRoutes);
-app.use("/food-entries", foodEntryRoutes); // Add this line
-app.use("/food-entry-meals", foodEntryMealRoutes); // New: Mount FoodEntryMeal routes
-app.use("/meals", mealRoutes);
-app.use("/reports", reportRoutes);
-app.use("/user-preferences", preferenceRoutes);
-app.use("/preferences/nutrient-display", nutrientDisplayPreferenceRoutes);
-app.use("/measurements", measurementRoutes);
-app.use("/goals", goalRoutes);
-app.use("/user-goals", goalRoutes);
-app.use("/goal-presets", goalPresetRoutes);
-app.use("/weekly-goal-plans", weeklyGoalPlanRoutes);
-app.use("/meal-plan-templates", mealPlanTemplateRoutes);
-app.use("/exercises", exerciseRoutes);
-app.use("/exercise-entries", exerciseEntryRoutes);
-app.use("/exercise-preset-entries", exercisePresetEntryRoutes); // New route
-app.use("/freeexercisedb", freeExerciseDBRoutes); // Add freeExerciseDB routes
+app.use("/api/chat", chatRoutes);
+app.use("/api/foods", foodRoutes);
+app.use("/api/food-entries", foodEntryRoutes);
+app.use("/api/food-entry-meals", foodEntryMealRoutes);
+app.use("/api/meals", mealRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/user-preferences", preferenceRoutes);
+app.use("/api/preferences/nutrient-display", nutrientDisplayPreferenceRoutes);
+app.use("/api/measurements", measurementRoutes);
+app.use("/api/goals", goalRoutes);
+app.use("/api/user-goals", goalRoutes);
+app.use("/api/goal-presets", goalPresetRoutes);
+app.use("/api/weekly-goal-plans", weeklyGoalPlanRoutes);
+app.use("/api/meal-plan-templates", mealPlanTemplateRoutes);
+app.use("/api/exercises", exerciseRoutes);
+app.use("/api/exercise-entries", exerciseEntryRoutes);
+app.use("/api/exercise-preset-entries", exercisePresetEntryRoutes);
+app.use("/api/freeexercisedb", freeExerciseDBRoutes);
 app.use("/api/health-data", healthDataRoutes);
-app.use("/sleep", sleepRoutes);
-app.use("/auth", authRoutes);
-app.use("/health", healthRoutes);
-app.use("/external-providers", externalProviderRoutes); // Renamed route for generic data providers
-app.use("/integrations/garmin", garminRoutes); // Add Garmin integration routes
-app.use("/api/withings", withingsRoutes); // Add Withings integration routes
+app.use("/api/sleep", sleepRoutes);
+app.use("/api/auth", authRoutes); // My custom auth routes
+app.use("/api/health", healthRoutes);
+app.use("/api/external-providers", externalProviderRoutes);
+app.use("/api/integrations/garmin", garminRoutes);
+app.use("/api/withings", withingsRoutes);
+
+// Consolidate all system/admin routes here
+app.use("/api/version", versionRoutes);
+app.use("/api/onboarding", onboardingRoutes);
+app.use("/api/admin/global-settings", globalSettingsRoutes);
+app.use("/api/admin/oidc-settings", require("./routes/oidcSettingsRoutes"));
+app.use("/api/admin/backup", backupRoutes);
+app.use("/api/admin/auth", adminAuthRoutes); // Add Withings integration routes
 log("info", "Withings routes mounted at /api/withings");
 log("info", "About to mount Withings Data routes");
-app.use("/integrations/withings/data", withingsDataRoutes); // Add Withings Data routes
-log("info", "Withings Data routes mounted");
+app.use("/api/integrations/withings/data", withingsDataRoutes);
+log("info", "Withings Data routes mounted at /api/integrations/withings/data");
 log("info", "About to mount Fitbit routes");
-app.use("/integrations/fitbit", fitbitRoutes); // Add Fitbit routes
-log("info", "Fitbit routes mounted");
+app.use("/api/integrations/fitbit", fitbitRoutes);
+log("info", "Fitbit routes mounted at /api/integrations/fitbit");
 log("info", "About to mount Mood routes");
-app.use("/mood", moodRoutes); // Add Mood routes
-log("info", "Mood routes mounted");
+app.use("/api/mood", moodRoutes);
+log("info", "Mood routes mounted at /api/mood");
 log("info", "About to mount Fasting routes");
-app.use("/fasting", fastingRoutes); // Add Fasting routes
-log("info", "Fasting routes mounted");
+app.use("/api/fasting", fastingRoutes);
+log("info", "Fasting routes mounted at /api/fasting");
 log("info", "About to mount Admin routes");
-app.use("/admin", adminRoutes); // Add admin routes
-log("info", "Admin routes mounted");
+app.use("/api/admin", adminRoutes);
+log("info", "Admin routes mounted at /api/admin");
 log("info", "About to mount Admin Auth routes");
-app.use("/admin/auth", adminAuthRoutes); // Add admin auth routes
-log("info", "Admin Auth routes mounted");
+app.use("/api/admin/auth", adminAuthRoutes);
+log("info", "Admin Auth routes mounted at /api/admin/auth");
 log("info", "About to mount Water Container routes");
-app.use("/water-containers", waterContainerRoutes);
-log("info", "Water Container routes mounted");
-log("info", "About to mount Backup routes");
-app.use("/admin/backup", backupRoutes); // Add backup routes
-log("info", "Backup routes mounted");
+app.use("/api/water-containers", waterContainerRoutes);
+log("info", "Water Container routes mounted at /api/water-containers");
+log("info", "Backup routes removed from individual mounting - now in consolidated block");
 log("info", "About to mount Workout Preset routes");
-app.use("/workout-presets", require("./routes/workoutPresetRoutes")); // Add workout preset routes
-log("info", "Workout Preset routes mounted");
+app.use("/api/workout-presets", require("./routes/workoutPresetRoutes"));
+log("info", "Workout Preset routes mounted at /api/workout-presets");
 log("info", "About to mount Workout Plan Template routes");
 app.use(
-  "/workout-plan-templates",
+  "/api/workout-plan-templates",
   require("./routes/workoutPlanTemplateRoutes")
-); // Add workout plan template routes
-log("info", "Workout Plan Template routes mounted");
+);
+log("info", "Workout Plan Template routes mounted at /api/workout-plan-templates");
 log("info", "About to mount Review routes");
-app.use("/review", reviewRoutes);
-log("info", "Review routes mounted");
+app.use("/api/review", reviewRoutes);
+log("info", "Review routes mounted at /api/review");
 log("info", "About to mount Custom Nutrient routes");
-app.use("/custom-nutrients", customNutrientRoutes); // Add custom nutrient routes
-log("info", "Custom Nutrient routes mounted");
+app.use("/api/custom-nutrients", customNutrientRoutes);
+log("info", "Custom Nutrient routes mounted at /api/custom-nutrients");
 log("info", "About to mount Meal Type routes");
-app.use("/meal-types", mealTypeRoutes);
-log("info", "Meal Type routes mounted");
+app.use("/api/meal-types", mealTypeRoutes);
+log("info", "Meal Type routes mounted at /api/meal-types");
 
-// Mounting missing routes (proxy strips /api prefix)
-app.use("/version", versionRoutes);
-log("info", "version routes mounted");
-app.use("/onboarding", onboardingRoutes);
-log("info", "onboarding routes mounted");
-app.use("/admin/global-settings", globalSettingsRoutes);
-log("info", "Admin Global Settings routes mounted");
-app.use("/admin/oidc-settings", require("./routes/oidcSettingsRoutes"));
-log("info", "Admin OIDC Settings routes mounted");
+// Consolidated core API routes mounted above
+log("info", "All API routes consolidated and mounted under /api");
 
 // --- Better Auth Routes moved up ---
 
@@ -694,7 +702,7 @@ app.use(errorHandler);
 
 // Catch-all for 404 Not Found - MUST be placed after all routes and error handlers
 app.use((req, res, next) => {
-  // For any unhandled routes, return a JSON 404 response
+  log("warn", `Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     error: "Not Found",
     message: `The requested URL ${req.originalUrl} was not found on this server.`,

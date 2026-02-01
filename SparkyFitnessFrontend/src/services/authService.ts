@@ -101,7 +101,7 @@ export const initiateOidcLogin = async (providerId: string, requestSignUp: boole
 };
 
 export const getOidcProviders = async (): Promise<any[]> => {
-  const response = await fetch('/auth/settings');
+  const response = await fetch('/api/auth/settings');
   if (!response.ok) return [];
   const data = await response.json();
   return data.oidc?.providers || [];
@@ -113,7 +113,7 @@ export const checkOidcAvailability = async (): Promise<boolean> => {
 };
 
 export const getLoginSettings = async (): Promise<LoginSettings> => {
-  const response = await fetch('/auth/settings');
+  const response = await fetch('/api/auth/settings');
   if (!response.ok) {
     return {
       email: { enabled: true },

@@ -29,6 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles, QrCode, Mail, BookOpen, UtensilsCrossed } from "lucide-react";
 import { apiCall } from '@/services/api'; // Assuming a common API utility
 import { useAuth } from "@/hooks/useAuth";
+import { authClient } from "@/lib/auth-client";
 import { toast } from "@/hooks/use-toast";
 import FamilyAccessManager from "./FamilyAccessManager";
 import AIServiceSettings from "./AIServiceSettings";
@@ -129,6 +130,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   // State for API Key Management
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [showApiKey, setShowApiKey] = useState<string | null>(null); // Stores the ID of the key to show
+  const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null); // New state to show secret key once
   const [newApiKeyDescription, setNewApiKeyDescription] = useState<string>("");
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
 
@@ -201,9 +203,8 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   const loadApiKeys = async () => {
     if (!user) return;
     try {
-      const data = await apiCall(`/auth/user-api-keys`, {
-        method: "GET",
-      });
+      const { data, error } = await authClient.apiKey.list();
+      if (error) throw error;
       setApiKeys(data || []);
     } catch (error: any) {
       console.error("Error loading API keys:", error);
@@ -218,18 +219,23 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   const handleGenerateApiKey = async () => {
     if (!user) return;
     setGeneratingApiKey(true);
+    setNewlyCreatedKey(null);
     try {
-      const data = await apiCall("/auth/user/generate-api-key", {
-        method: "POST",
-        body: JSON.stringify({ description: newApiKeyDescription || null }),
+      const { data, error } = await authClient.apiKey.create({
+        name: newApiKeyDescription || "New API Key",
       });
+      if (error) throw error;
+
+      if (data) {
+        setNewlyCreatedKey(data.key);
+      }
 
       toast({
         title: "Success",
-        description: "New API key generated successfully!",
+        description: "New API key generated successfully! Please copy it now as it won't be shown again.",
       });
       setNewApiKeyDescription("");
-      loadApiKeys(); // Reload keys to show the new one
+      loadApiKeys(); // Reload keys to show the new one in the list
     } catch (error: any) {
       console.error("Error generating API key:", error);
       toast({
@@ -253,10 +259,10 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     }
     setLoading(true); // Use general loading for this
     try {
-      await apiCall(`/auth/user/api-key/${apiKeyId}`, {
-        method: "DELETE",
-        body: JSON.stringify({}), // Send userId in body for DELETE
+      const { error } = await authClient.apiKey.revoke({
+        id: apiKeyId,
       });
+      if (error) throw error;
 
       toast({
         title: "Success",
@@ -1277,11 +1283,48 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               )}
               color="blue"
             />
+            {newlyCreatedKey && (
+              <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-md mb-4">
+                <p className="text-sm font-bold text-yellow-800 dark:text-yellow-200 mb-1">
+                  {t("settings.apiKeyManagement.newKeyGenerated", "New API Key Generated!")}
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-2">
+                  {t("settings.apiKeyManagement.copyWarning", "Copy this key now. For security, it will NOT be shown again.")}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    readOnly
+                    value={newlyCreatedKey}
+                    className="font-mono text-xs bg-background"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(newlyCreatedKey);
+                      toast({
+                        title: t("settings.apiKeyManagement.copied", "Copied!"),
+                        description: t("settings.apiKeyManagement.apiKeyCopied", "API key copied to clipboard."),
+                      });
+                    }}
+                  >
+                    <ClipboardCopy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setNewlyCreatedKey(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 placeholder={t(
                   "settings.apiKeyManagement.descriptionPlaceholder",
-                  "Description (e.g., 'iPhone Health Shortcut')"
+                  "Name (e.g., 'iPhone Health Shortcut')"
                 )}
                 value={newApiKeyDescription}
                 onChange={(e) => setNewApiKeyDescription(e.target.value)}
@@ -1319,7 +1362,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   >
                     <div className="flex-grow">
                       <p className="font-medium">
-                        {key.description ||
+                        {key.name ||
                           t(
                             "settings.apiKeyManagement.noDescription",
                             "No Description"
@@ -1327,56 +1370,24 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                       </p>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span className="font-mono text-xs">
-                          {showApiKey === key.id
-                            ? key.api_key
-                            : "********************"}
+                          {key.id}
                         </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setShowApiKey(showApiKey === key.id ? null : key.id)
-                          }
-                          className="h-auto p-1"
-                        >
-                          {showApiKey === key.id ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            navigator.clipboard.writeText(key.api_key);
-                            toast({
-                              title: t(
-                                "settings.apiKeyManagement.copied",
-                                "Copied!"
-                              ),
-                              description: t(
-                                "settings.apiKeyManagement.apiKeyCopied",
-                                "API key copied to clipboard."
-                              ),
-                            });
-                          }}
-                          className="h-auto p-1"
-                        >
-                          <ClipboardCopy className="h-4 w-4" />
-                        </Button>
+                        <TooltipWarning
+                          warningMsg={t("settings.apiKeyManagement.idOnlyInfo", "Only the Key ID is shown for security.")}
+                          color="blue"
+                          size={14}
+                        />
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {t("settings.apiKeyManagement.created", "Created:")}{" "}
-                        {new Date(key.created_at).toLocaleDateString()}
-                        {key.last_used_at &&
+                        {key.createdAt ? new Date(key.createdAt).toLocaleDateString() : 'N/A'}
+                        {key.lastUsedAt &&
                           ` | ${t(
                             "settings.apiKeyManagement.lastUsed",
                             "Last Used:"
                           )} ${new Date(
-                            key.last_used_at
+                            key.lastUsedAt
                           ).toLocaleDateString()}`}
-                        {/* Removed Inactive status as per user request */}
                       </p>
                     </div>
                     <Button

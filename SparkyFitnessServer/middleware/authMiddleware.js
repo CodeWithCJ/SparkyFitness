@@ -3,38 +3,6 @@ const userRepository = require("../models/userRepository"); // Import userReposi
 const { getClient, getSystemClient } = require("../db/poolManager"); // Import getClient and getSystemClient
 const { canAccessUserData } = require("../utils/permissionUtils");
 
-const tryAuthenticateWithApiKey = async (req, res, next) => {
-  // Prefer Authorization header, then x-api-key
-  const apiKey = (req.headers["authorization"]?.split(" ")[1]) || req.headers["x-api-key"];
-
-  if (!apiKey) {
-    return null; // No API key found
-  }
-
-  let client;
-  try {
-    client = await getSystemClient(); // Use system client for API key validation
-    const result = await client.query(
-      'SELECT user_id, permissions FROM user_api_keys WHERE api_key = $1 AND is_active = TRUE',
-      [apiKey]
-    );
-
-    if (result.rows.length > 0) {
-      const data = result.rows[0];
-      log("debug", `Authentication: Legacy API Key valid. User ID: ${data.user_id}`);
-      req.permissions = data.permissions || {}; // Store permissions for legacy keys
-      return data.user_id;
-    }
-  } catch (error) {
-    log("error", "Error during Legacy API Key authentication:", error);
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
-  return null;
-};
-
 const authenticate = async (req, res, next) => {
   // Allow public access to the /api/auth/settings endpoint
   if (req.path === "/settings") {
@@ -97,18 +65,7 @@ const authenticate = async (req, res, next) => {
     log("error", "Error checking Better Auth identity:", error);
   }
 
-  // 2. Legacy API Key Fallback (for Mobile/Integrations)
-  const userIdFromLegacyKey = await tryAuthenticateWithApiKey(req, res, next);
-  if (userIdFromLegacyKey) {
-    req.authenticatedUserId = userIdFromLegacyKey;
-    req.activeUserId = userIdFromLegacyKey;
-    req.originalUserId = userIdFromLegacyKey;
-    req.userId = userIdFromLegacyKey;
-    // req.permissions is already set by tryAuthenticateWithApiKey
-    return next();
-  }
-
-  // If no auth succeeded
+  // No valid authentication found
   log("warn", `Authentication: No valid identity provided for ${req.path}`);
   return res.status(401).json({ error: "Authentication required." });
 };

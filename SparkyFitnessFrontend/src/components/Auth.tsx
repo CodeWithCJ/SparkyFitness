@@ -157,7 +157,7 @@ const Auth = () => {
 
       if (mfaEmail === undefined && userEmail) {
         try {
-          const factorRes = await fetch(`/auth/mfa-factors?email=${encodeURIComponent(userEmail)}`);
+          const factorRes = await fetch(`/api/auth/mfa-factors?email=${encodeURIComponent(userEmail)}`);
           if (factorRes.ok) {
             const factors = await factorRes.json();
             mfaEmail = factors.mfa_email_enabled;

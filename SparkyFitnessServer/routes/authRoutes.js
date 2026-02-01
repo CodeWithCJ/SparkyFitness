@@ -17,6 +17,6 @@ router.post('/sign-out', (req, res, next) => {
     next();
 });
 
-router.use(require('./auth/apiKeyRoutes'));
+// router.use(require('./auth/apiKeyRoutes'));
 
 module.exports = router;

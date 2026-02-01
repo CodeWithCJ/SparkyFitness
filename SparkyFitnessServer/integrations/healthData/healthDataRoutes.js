@@ -10,15 +10,6 @@ const sleepRepository = require('../../models/sleepRepository'); // Import sleep
 // Mount the new mobile health data routes
 router.use('/mobile_data', mobileHealthDataRoutes);
 
-// Middleware to authenticate API key for health data submission
-// Middleware to check for health data write permission (now using global req.permissions)
-router.use((req, res, next) => {
-  if (req.permissions?.["*"] || req.permissions?.health_data_write) {
-    return next();
-  }
-  return res.status(403).json({ error: "Forbidden: Missing health_data_write permission" });
-});
-
 // Endpoint for receiving health data
 router.post('/', async (req, res, next) => {
   let healthDataArray = [];

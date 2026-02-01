@@ -85,32 +85,6 @@ async function findUserIdByEmail(email) {
   }
 }
 
-async function generateApiKey(userId, newApiKey, description) {
-  const client = await getClient(userId); // User-specific operation
-  try {
-    const result = await client.query(
-      `INSERT INTO user_api_keys (user_id, api_key, description, permissions, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, now(), now()) RETURNING id, api_key, description, created_at, is_active`,
-      [userId, newApiKey, description, { health_data_write: true }] // Default permission
-    );
-    return result.rows[0];
-  } finally {
-    client.release();
-  }
-}
-
-async function deleteApiKey(apiKeyId, userId) {
-  const client = await getClient(userId); // User-specific operation
-  try {
-    const result = await client.query(
-      'DELETE FROM user_api_keys WHERE id = $1 AND user_id = $2 RETURNING id',
-      [apiKeyId, userId]
-    );
-    return result.rowCount > 0;
-  } finally {
-    client.release();
-  }
-}
 
 async function getAccessibleUsers(userId) {
   const client = await getSystemClient(); // System client for bypassing RLS
@@ -171,18 +145,6 @@ async function updateUserProfile(userId, full_name, phone_number, date_of_birth,
   }
 }
 
-async function getUserApiKeys(userId) {
-  const client = await getClient(userId); // User-specific operation
-  try {
-    const result = await client.query(
-      'SELECT id, description, api_key, created_at, last_used_at, is_active FROM user_api_keys WHERE user_id = $1 ORDER BY created_at DESC',
-      [userId]
-    );
-    return result.rows;
-  } finally {
-    client.release();
-  }
-}
 
 async function updateUserPassword(userId, hashedPassword) {
   const client = await getClient(userId); // User-specific operation
@@ -556,12 +518,9 @@ module.exports = {
   findUserByEmail,
   findUserById,
   findUserIdByEmail,
-  generateApiKey,
-  deleteApiKey,
   getAccessibleUsers,
   getUserProfile,
   updateUserProfile,
-  getUserApiKeys,
   updateUserPassword,
   updateUserEmail,
   getUserRole,

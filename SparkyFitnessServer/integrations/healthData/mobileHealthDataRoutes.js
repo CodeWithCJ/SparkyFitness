@@ -4,15 +4,6 @@ const { getClient, getSystemClient } = require('../../db/poolManager');
 const { log } = require('../../config/logging');
 const measurementService = require('../../services/measurementService');
 
-// Middleware to authenticate API key for health data submission
-// Middleware to check for health data write permission (now using global req.permissions)
-router.use((req, res, next) => {
-  if (req.permissions?.["*"] || req.permissions?.health_data_write) {
-    return next();
-  }
-  return res.status(403).json({ error: "Forbidden: Missing health_data_write permission" });
-});
-
 // Endpoint for receiving mobile health data
 router.post('/mobile_data', async (req, res, next) => {
   let mobileHealthDataArray = [];
