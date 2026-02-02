@@ -58,6 +58,8 @@ services:
       - ../SparkyFitnessServer:/app/SparkyFitnessServer # Mount source for live reloading
       - /app/SparkyFitnessServer/node_modules # Preserve node_modules
       - ./backups:/app/SparkyFitnessServer/backup # Mount volume for backups
+      - ./uploads:/app/SparkyFitnessServer/uploads # Mount volume for Profile pictures and excercise images
+      - ./backups:/app/SparkyFitnessServer/backup # Mount volume for backups
 
   sparkyfitness-frontend:
     env_file: ../.env

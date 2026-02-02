@@ -9,7 +9,7 @@ const authenticate = async (req, res, next) => {
     return next();
   }
 
-  log("debug", `authenticate middleware: req.path = ${req.path}`);
+  log("debug", `authenticate middleware: req.path = ${req.path}, req.headers.cookie = ${req.headers.cookie}`);
 
   // 1. Better Auth Session & API Key Check (Unified Identity)
   try {
