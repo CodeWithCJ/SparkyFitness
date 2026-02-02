@@ -2,9 +2,9 @@
 -- PostgreSQL database dump
 --
 
-\restrict xWGmAxeRWG8UyIOXBjdoqxpM9tvXgchKZR1uBHwcNFwqR2zhLyYx6Ndtecsmgqr
+\restrict j37msPUPLnM89GHmDrl81V4vVwSN6BJ0xECvTJAYXv6kPTeHjRbbgi9INb11rUI
 
--- Dumped from database version 15.14
+-- Dumped from database version 15.15
 -- Dumped by pg_dump version 18.0
 
 SET statement_timeout = 0;
@@ -265,7 +265,7 @@ BEGIN
         DROP POLICY IF EXISTS %1$s_all_policy ON public.%1$s;
         CREATE POLICY %1$s_all_policy ON public.%1$s
         FOR ALL
-        TO sparky_app
+        TO PUBLIC
         USING (user_id = current_setting(''app.user_id'')::uuid)
         WITH CHECK (user_id = current_setting(''app.user_id'')::uuid);
     ', table_name);
@@ -285,7 +285,7 @@ BEGIN
         DROP POLICY IF EXISTS %1$s_all_policy ON public.%1$s;
         CREATE POLICY %1$s_all_policy ON public.%1$s
         FOR ALL
-        TO sparky_app
+        TO PUBLIC
         USING (id = current_setting(''app.user_id'')::uuid)
         WITH CHECK (id = current_setting(''app.user_id'')::uuid);
     ', table_name);
@@ -374,28 +374,6 @@ CREATE FUNCTION public.find_user_by_email(p_email text) RETURNS uuid
         RETURN v_user_id;
     END;
     $$;
-
-
---
--- Name: generate_user_api_key(uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.generate_user_api_key(p_user_id uuid, p_description text DEFAULT NULL::text) RETURNS text
-    LANGUAGE plpgsql
-    AS $$
-declare
-  new_api_key text;
-begin
-  -- Generate a random UUID and use it as the API key
-  new_api_key := gen_random_uuid();
-
-  -- Insert the new API key into the user_api_keys table with default permissions for health data write
-  insert into public.user_api_keys (user_id, api_key, description, permissions)
-  values (p_user_id, new_api_key, p_description, '{"health_data_write": true}'::jsonb);
-
-  return new_api_key;
-end;
-$$;
 
 
 --
@@ -633,36 +611,6 @@ $$;
 
 
 --
--- Name: revoke_all_user_api_keys(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.revoke_all_user_api_keys(p_user_id uuid) RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-begin
-  update public.user_api_keys
-  set is_active = false, updated_at = now()
-  where user_id = p_user_id;
-end;
-$$;
-
-
---
--- Name: revoke_user_api_key(uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.revoke_user_api_key(p_user_id uuid, p_api_key text) RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-begin
-  update public.user_api_keys
-  set is_active = false, updated_at = now()
-  where user_id = p_user_id and api_key = p_api_key;
-end;
-$$;
-
-
---
 -- Name: set_app_context(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -855,6 +803,43 @@ CREATE TABLE public.ai_service_settings (
     api_key_iv text,
     api_key_tag text
 );
+
+
+--
+-- Name: api_key; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_key (
+    id text NOT NULL,
+    name text,
+    key text NOT NULL,
+    user_id uuid NOT NULL,
+    metadata text,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    expires_at timestamp with time zone,
+    last_used_at timestamp with time zone,
+    start text,
+    prefix text,
+    refill_interval integer,
+    refill_amount integer,
+    last_refill_at timestamp with time zone,
+    enabled boolean DEFAULT true,
+    rate_limit_enabled boolean DEFAULT true,
+    rate_limit_time_window integer,
+    rate_limit_max integer,
+    request_count integer DEFAULT 0,
+    remaining integer,
+    last_request timestamp with time zone,
+    permissions text
+);
+
+
+--
+-- Name: TABLE api_key; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.api_key IS 'Better Auth API key table - replaces legacy user_api_keys';
 
 
 --
@@ -1550,11 +1535,11 @@ CREATE TABLE public.oidc_providers (
     token_endpoint_auth_method text DEFAULT 'client_secret_post'::text NOT NULL,
     response_types text[] DEFAULT ARRAY['code'::text] NOT NULL,
     is_active boolean DEFAULT true NOT NULL,
+    auto_register boolean DEFAULT false NOT NULL,
     display_name text,
     logo_url text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    auto_register boolean DEFAULT false NOT NULL,
     signing_algorithm character varying(50) DEFAULT 'RS256'::character varying,
     profile_signing_algorithm character varying(50),
     timeout integer DEFAULT 3500
@@ -1768,26 +1753,10 @@ CREATE TABLE public.sso_provider (
     userinfo_endpoint text,
     scopes text,
     additional_config text,
+    domain text DEFAULT 'default.internal'::text NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    domain text NOT NULL,
-    oidc_config text,
-    saml_config text
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
-
-
---
--- Name: TABLE sso_provider; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.sso_provider IS 'Better Auth native SSO provider configuration table';
-
-
---
--- Name: COLUMN sso_provider.oidc_config; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.sso_provider.oidc_config IS 'JSON configuration for Better Auth OIDC providers';
 
 
 --
@@ -1815,19 +1784,17 @@ CREATE TABLE public."user" (
     name text,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    role text DEFAULT 'user'::text,
     two_factor_enabled boolean DEFAULT false,
-    two_factor_secret text,
-    two_factor_backup_codes text,
+    banned boolean DEFAULT false,
+    ban_reason text,
+    ban_expires timestamp with time zone,
+    role text DEFAULT 'user'::text,
     mfa_email_enabled boolean DEFAULT false,
     mfa_enforced boolean DEFAULT false,
     email_mfa_code text,
     email_mfa_expires_at timestamp with time zone,
     magic_link_token text,
-    magic_link_expires timestamp with time zone,
-    banned boolean DEFAULT false,
-    ban_reason text,
-    ban_expires timestamp with time zone
+    magic_link_expires timestamp with time zone
 );
 
 
@@ -1836,44 +1803,6 @@ CREATE TABLE public."user" (
 --
 
 COMMENT ON TABLE public."user" IS 'Better Auth user table - migrated from auth.users';
-
-
---
--- Name: COLUMN "user".two_factor_enabled; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public."user".two_factor_enabled IS 'Better Auth: Whether MFA is enabled';
-
-
---
--- Name: COLUMN "user".two_factor_secret; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public."user".two_factor_secret IS 'Better Auth: Encrypted MFA secret';
-
-
---
--- Name: COLUMN "user".two_factor_backup_codes; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public."user".two_factor_backup_codes IS 'Better Auth: JSON array of recovery codes';
-
-
---
--- Name: user_api_keys; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.user_api_keys (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    api_key text NOT NULL,
-    description text,
-    permissions jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    last_used_at timestamp with time zone,
-    is_active boolean DEFAULT true NOT NULL
-);
 
 
 --
@@ -2526,6 +2455,14 @@ ALTER TABLE ONLY public.admin_activity_logs
 
 
 --
+-- Name: api_key api_key_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_key
+    ADD CONSTRAINT api_key_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: backup_settings backup_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2806,6 +2743,14 @@ ALTER TABLE ONLY public.two_factor
 
 
 --
+-- Name: two_factor two_factor_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.two_factor
+    ADD CONSTRAINT two_factor_user_id_key UNIQUE (user_id);
+
+
+--
 -- Name: mood_entries unique_user_date; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3015,6 +2960,27 @@ CREATE INDEX idx_ai_service_settings_active ON public.ai_service_settings USING 
 --
 
 CREATE INDEX idx_ai_service_settings_user_id ON public.ai_service_settings USING btree (user_id);
+
+
+--
+-- Name: idx_api_key_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_key_key ON public.api_key USING btree (key);
+
+
+--
+-- Name: idx_api_key_prefix; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_key_prefix ON public.api_key USING btree (prefix);
+
+
+--
+-- Name: idx_api_key_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_key_user_id ON public.api_key USING btree (user_id);
 
 
 --
@@ -3291,6 +3257,13 @@ CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.mood_entries FOR EACH ROW E
 
 
 --
+-- Name: user_custom_nutrients set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_custom_nutrients FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
 -- Name: user_nutrient_display_preferences set_user_nutrient_display_preferences_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3417,6 +3390,14 @@ ALTER TABLE ONLY public.admin_activity_logs
 
 ALTER TABLE ONLY public.admin_activity_logs
     ADD CONSTRAINT admin_activity_logs_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: api_key api_key_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_key
+    ADD CONSTRAINT api_key_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3980,14 +3961,6 @@ ALTER TABLE ONLY public.two_factor
 
 
 --
--- Name: user_api_keys user_api_keys_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_api_keys
-    ADD CONSTRAINT user_api_keys_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
-
-
---
 -- Name: user_custom_nutrients user_custom_nutrients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4242,12 +4215,6 @@ ALTER TABLE public.external_data_providers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.family_access ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: fasting_logs; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.fasting_logs ENABLE ROW LEVEL SECURITY;
-
---
 -- Name: food_entries; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4489,6 +4456,13 @@ CREATE POLICY owner_policy ON public.ai_service_settings USING ((user_id = publi
 
 
 --
+-- Name: api_key owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.api_key USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
 -- Name: fasting_logs owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -4547,13 +4521,6 @@ CREATE POLICY owner_policy ON public.profiles USING ((id = public.current_user_i
 --
 
 CREATE POLICY owner_policy ON public.sparky_chat_history USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
-
-
---
--- Name: user_api_keys owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY owner_policy ON public.user_api_keys USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
 
 
 --
@@ -4835,12 +4802,6 @@ CREATE POLICY select_policy ON public.workout_presets FOR SELECT USING (public.h
 ALTER TABLE public.sparky_chat_history ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: user_api_keys; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.user_api_keys ENABLE ROW LEVEL SECURITY;
-
---
 -- Name: user_goals; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4928,8 +4889,6 @@ ALTER TABLE public.workout_presets ENABLE ROW LEVEL SECURITY;
 -- Name: SCHEMA auth; Type: ACL; Schema: -; Owner: -
 --
 
-GRANT USAGE ON SCHEMA auth TO sparky_app;
-GRANT USAGE ON SCHEMA auth TO sparky_test;
 GRANT USAGE ON SCHEMA auth TO sparky_uat;
 
 
@@ -4937,9 +4896,6 @@ GRANT USAGE ON SCHEMA auth TO sparky_uat;
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: -
 --
 
-GRANT USAGE ON SCHEMA public TO sparky_app;
-GRANT USAGE ON SCHEMA public TO sparky_test;
-GRANT USAGE ON SCHEMA public TO sparky;
 GRANT USAGE ON SCHEMA public TO sparky_uat;
 
 
@@ -4947,8 +4903,6 @@ GRANT USAGE ON SCHEMA public TO sparky_uat;
 -- Name: SCHEMA system; Type: ACL; Schema: -; Owner: -
 --
 
-GRANT USAGE ON SCHEMA system TO sparky_app;
-GRANT USAGE ON SCHEMA system TO sparky_test;
 GRANT USAGE ON SCHEMA system TO sparky_uat;
 
 
@@ -5146,13 +5100,6 @@ GRANT ALL ON FUNCTION public.gen_salt(text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.gen_salt(text, integer) TO sparky_uat;
-
-
---
--- Name: FUNCTION generate_user_api_key(p_user_id uuid, p_description text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.generate_user_api_key(p_user_id uuid, p_description text) TO sparky_uat;
 
 
 --
@@ -5387,20 +5334,6 @@ GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text) TO sparky_
 
 
 --
--- Name: FUNCTION revoke_all_user_api_keys(p_user_id uuid); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.revoke_all_user_api_keys(p_user_id uuid) TO sparky_uat;
-
-
---
--- Name: FUNCTION revoke_user_api_key(p_user_id uuid, p_api_key text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.revoke_user_api_key(p_user_id uuid, p_api_key text) TO sparky_uat;
-
-
---
 -- Name: FUNCTION set_app_context(p_user_id uuid, p_authenticated_user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
@@ -5523,8 +5456,6 @@ GRANT ALL ON FUNCTION public.uuid_ns_x500() TO sparky_uat;
 -- Name: TABLE users; Type: ACL; Schema: auth; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_uat;
 
 
@@ -5532,8 +5463,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_uat;
 -- Name: TABLE account; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_uat;
 
 
@@ -5541,8 +5470,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_uat;
 -- Name: TABLE admin_activity_logs; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_uat;
 
 
@@ -5550,17 +5477,20 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_
 -- Name: TABLE ai_service_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_uat;
+
+
+--
+-- Name: TABLE api_key; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO sparky_uat;
 
 
 --
 -- Name: TABLE backup_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_uat;
 
 
@@ -5568,8 +5498,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_uat;
 -- Name: SEQUENCE backup_settings_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_uat;
 
 
@@ -5577,8 +5505,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_uat;
 -- Name: TABLE check_in_measurements; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_uat;
 
 
@@ -5586,8 +5512,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO spark
 -- Name: TABLE custom_categories; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_uat;
 
 
@@ -5595,8 +5519,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_ua
 -- Name: TABLE custom_measurements; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_uat;
 
 
@@ -5604,8 +5526,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_
 -- Name: TABLE exercise_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_uat;
 
 
@@ -5613,8 +5533,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_uat
 -- Name: TABLE exercise_entry_activity_details; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_uat;
 
 
@@ -5622,8 +5540,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_detail
 -- Name: TABLE exercise_entry_sets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_uat;
 
 
@@ -5631,8 +5547,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_
 -- Name: SEQUENCE exercise_entry_sets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_uat;
 
 
@@ -5640,8 +5554,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_uat;
 -- Name: TABLE exercise_preset_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_uat;
 
 
@@ -5649,8 +5561,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO spa
 -- Name: TABLE exercises; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_uat;
 
 
@@ -5658,8 +5568,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_uat;
 -- Name: TABLE external_data_providers; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_uat;
 
 
@@ -5667,8 +5575,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO spa
 -- Name: TABLE external_provider_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_uat;
 
 
@@ -5676,8 +5582,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO spa
 -- Name: TABLE family_access; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_uat;
 
 
@@ -5685,8 +5589,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_uat;
 -- Name: TABLE fasting_logs; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE public.fasting_logs TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_uat;
 
 
@@ -5694,8 +5596,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_uat;
 -- Name: TABLE food_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_uat;
 
 
@@ -5703,8 +5603,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_uat;
 -- Name: TABLE food_entry_meals; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_uat;
 
 
@@ -5712,8 +5610,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_uat
 -- Name: TABLE food_variants; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_uat;
 
 
@@ -5721,8 +5617,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_uat;
 -- Name: TABLE foods; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_uat;
 
 
@@ -5730,8 +5624,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_uat;
 -- Name: TABLE global_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_uat;
 
 
@@ -5739,8 +5631,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_uat;
 -- Name: TABLE goal_presets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_uat;
 
 
@@ -5748,8 +5638,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_uat;
 -- Name: TABLE meal_foods; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_uat;
 
 
@@ -5757,8 +5645,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_uat;
 -- Name: TABLE meal_plan_template_assignments; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_uat;
 
 
@@ -5766,8 +5652,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments
 -- Name: TABLE meal_plan_templates; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_uat;
 
 
@@ -5775,8 +5659,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_
 -- Name: TABLE meal_plans; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_uat;
 
 
@@ -5784,8 +5666,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_uat;
 -- Name: TABLE meal_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_uat;
 
 
@@ -5793,8 +5673,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_uat;
 -- Name: TABLE meals; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_uat;
 
 
@@ -5802,8 +5680,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_uat;
 -- Name: TABLE mood_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_uat;
 
 
@@ -5811,8 +5687,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_uat;
 -- Name: TABLE oidc_providers; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_uat;
 
 
@@ -5820,8 +5694,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_uat;
 -- Name: SEQUENCE oidc_providers_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_uat;
 
 
@@ -5829,8 +5701,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_uat;
 -- Name: TABLE onboarding_data; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_uat;
 
 
@@ -5838,8 +5708,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_uat;
 -- Name: TABLE onboarding_status; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_uat;
 
 
@@ -5847,8 +5715,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_ua
 -- Name: TABLE passkey; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO sparky_uat;
 
 
@@ -5856,8 +5722,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO sparky_uat;
 -- Name: TABLE pg_stat_statements; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_uat;
 
 
@@ -5865,8 +5729,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_u
 -- Name: TABLE pg_stat_statements_info; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO sparky_uat;
 
 
@@ -5874,8 +5736,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO spa
 -- Name: TABLE profiles; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_uat;
 
 
@@ -5883,8 +5743,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_uat;
 -- Name: TABLE session; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_uat;
 
 
@@ -5892,8 +5750,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_uat;
 -- Name: TABLE sleep_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_uat;
 
 
@@ -5901,8 +5757,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_uat;
 -- Name: TABLE sleep_entry_stages; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_uat;
 
 
@@ -5910,8 +5764,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_u
 -- Name: TABLE sparky_chat_history; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_uat;
 
 
@@ -5919,8 +5771,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_
 -- Name: TABLE sso_provider; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO sparky_uat;
 
 
@@ -5928,8 +5778,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO sparky_uat;
 -- Name: TABLE two_factor; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO sparky_uat;
 
 
@@ -5937,26 +5785,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO sparky_uat;
 -- Name: TABLE "user"; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO sparky_uat;
-
-
---
--- Name: TABLE user_api_keys; Type: ACL; Schema: public; Owner: -
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_api_keys TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_api_keys TO sparky_test;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_api_keys TO sparky_uat;
 
 
 --
 -- Name: TABLE user_custom_nutrients; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_uat;
 
 
@@ -5964,8 +5799,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO spark
 -- Name: TABLE user_goals; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_uat;
 
 
@@ -5973,8 +5806,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_uat;
 -- Name: TABLE user_ignored_updates; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_uat;
 
 
@@ -5982,8 +5813,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky
 -- Name: TABLE user_nutrient_display_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_uat;
 
 
@@ -5991,8 +5820,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferen
 -- Name: SEQUENCE user_nutrient_display_preferences_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_uat;
 
 
@@ -6000,8 +5827,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq T
 -- Name: TABLE user_oidc_links; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_uat;
 
 
@@ -6009,8 +5834,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_uat;
 -- Name: SEQUENCE user_oidc_links_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_uat;
 
 
@@ -6018,8 +5841,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_uat;
 -- Name: TABLE user_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_uat;
 
 
@@ -6027,8 +5848,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_uat
 -- Name: TABLE user_water_containers; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_uat;
 
 
@@ -6036,8 +5855,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO spark
 -- Name: SEQUENCE user_water_containers_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_uat;
 
 
@@ -6045,8 +5862,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_uat
 -- Name: TABLE verification; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO sparky_uat;
 
 
@@ -6054,8 +5869,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO sparky_uat;
 -- Name: TABLE water_intake; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_uat;
 
 
@@ -6063,8 +5876,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_uat;
 -- Name: TABLE weekly_goal_plans; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_uat;
 
 
@@ -6072,8 +5883,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_ua
 -- Name: TABLE workout_plan_assignment_sets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_uat;
 
 
@@ -6081,8 +5890,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets T
 -- Name: SEQUENCE workout_plan_assignment_sets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_uat;
 
 
@@ -6090,8 +5897,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO spa
 -- Name: TABLE workout_plan_template_assignments; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_uat;
 
 
@@ -6099,8 +5904,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignme
 -- Name: SEQUENCE workout_plan_template_assignments_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_uat;
 
 
@@ -6108,8 +5911,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq T
 -- Name: TABLE workout_plan_templates; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_uat;
 
 
@@ -6117,8 +5918,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO spar
 -- Name: SEQUENCE workout_plan_templates_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_uat;
 
 
@@ -6126,8 +5925,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_ua
 -- Name: TABLE workout_preset_exercise_sets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_uat;
 
 
@@ -6135,8 +5932,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets T
 -- Name: SEQUENCE workout_preset_exercise_sets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_uat;
 
 
@@ -6144,8 +5939,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO spa
 -- Name: TABLE workout_preset_exercises; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_uat;
 
 
@@ -6153,8 +5946,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sp
 -- Name: SEQUENCE workout_preset_exercises_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_uat;
 
 
@@ -6162,8 +5953,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_
 -- Name: TABLE workout_presets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_uat;
 
 
@@ -6171,8 +5960,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_uat;
 -- Name: SEQUENCE workout_presets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_uat;
 
 
@@ -6180,8 +5967,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_uat;
 -- Name: TABLE schema_migrations; Type: ACL; Schema: system; Owner: -
 --
 
-GRANT SELECT ON TABLE system.schema_migrations TO sparky_app;
-GRANT SELECT ON TABLE system.schema_migrations TO sparky_test;
 GRANT SELECT ON TABLE system.schema_migrations TO sparky_uat;
 
 
@@ -6196,9 +5981,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS T
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: auth; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_test;
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
 
 
@@ -6206,9 +5988,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELE
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_test;
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_uat;
 
 
@@ -6223,9 +6002,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_test;
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
 
 
@@ -6233,5 +6009,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict xWGmAxeRWG8UyIOXBjdoqxpM9tvXgchKZR1uBHwcNFwqR2zhLyYx6Ndtecsmgqr
+\unrestrict j37msPUPLnM89GHmDrl81V4vVwSN6BJ0xECvTJAYXv6kPTeHjRbbgi9INb11rUI
 

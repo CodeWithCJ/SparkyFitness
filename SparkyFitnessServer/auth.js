@@ -166,7 +166,7 @@ const auth = betterAuth({
         accountLinking: {
             enabled: true,
             // Include OIDC provider IDs that should be trusted for automatic account linking
-            trustedProviders: ["oidc-1769396938049"],
+            trustedProviders: [], // This will be populated asynchronously
         },
         fields: {
             id: "id",
@@ -232,7 +232,7 @@ const auth = betterAuth({
         require("@better-auth/sso").sso({
             modelName: "sso_provider", // Map to my snake_case table
             trustEmailVerified: true, // Trust that OIDC provider emails are verified
-            disableImplicitSignUp: true, // Force frontend to explicitly request sign-up
+            disableImplicitSignUp: false, // Allow implicit sign-up for OIDC users
             fields: {
                 id: "id",
                 providerId: "provider_id",

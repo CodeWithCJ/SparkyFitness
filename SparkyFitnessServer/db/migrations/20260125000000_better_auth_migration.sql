@@ -96,7 +96,8 @@ CREATE TABLE IF NOT EXISTS "sso_provider" (
     additional_config TEXT, -- Stores extra fields like logo_url, display_name as JSON
     domain TEXT NOT NULL DEFAULT 'default.internal', -- Added domain column with default
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    oidc_config TEXT
 );
 
 
