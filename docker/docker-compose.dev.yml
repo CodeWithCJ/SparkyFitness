@@ -70,7 +70,7 @@ services:
       SPARKY_FITNESS_SERVER_HOST: sparkyfitness-server
       SPARKY_FITNESS_SERVER_PORT: 3010
     ports:
-      - "3004:80" # Map host 3004 to container 80 (Nginx)
+      - "8080:80" # Map host 3004 to container 80 (Nginx)
     volumes:
       # Mount nginx config to allow tweaking routing without rebuilding image (requires container restart)
       - ./nginx.conf:/etc/nginx/templates/default.conf.template
