@@ -1,22 +1,19 @@
 const express = require('express');
 const router = express.Router();
 
-// Import the modularized routes
-router.use(require('./auth/authCoreRoutes'));
-router.use(require('./auth/userProfileRoutes'));
-router.use(require('./auth/familyAccessRoutes'));
-// Intercept logout to clear context cookie
-router.post('/sign-out', (req, res, next) => {
-    res.clearCookie('sparky_active_user_id', { path: '/' });
-    next(); // Pass to Better Auth or return success? Better Auth is mounted at /auth, so this might collide or needs to be "before".
-    // Actually, standard router.use means this runs if matched. 
-    // Let's make it a specific endpoint that the frontend calls, OR a middleware that intercepts.
-    // Ideally, the frontend calls /api/auth/sign-out. 
-    // If we return here, Better Auth won't get usage. 
-    // Let's just clear cookie and move on.
-    next();
-});
+/**
+ * LEGACY AUTH ROUTES
+ * Most routes have been migrated to the /api/identity namespace
+ * or offloaded to native Better Auth handlers.
+ * 
+ * This router remains primarily for any legacy fallbacks or 
+ * authentication-specific logic that doesn't fit in the core engine.
+ */
 
-// router.use(require('./auth/apiKeyRoutes'));
+// Better Auth's engine is mounted at /api/auth in SparkyFitnessServer.js
+const authCoreRoutes = require('./auth/authCoreRoutes');
+
+// Custom Sparky Public Discovery Routes
+router.use('/', authCoreRoutes);
 
 module.exports = router;

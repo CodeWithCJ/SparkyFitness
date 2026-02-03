@@ -38,7 +38,7 @@ interface FamilyAccessPayload {
 }
 
 export const loadFamilyAccess = async (currentUserId: string): Promise<FamilyAccess[]> => {
-  const data = await apiCall(`/auth/family-access`, {
+  const data = await apiCall(`/identity/family-access`, {
     method: 'GET',
     suppress404Toast: true,
   });
@@ -73,35 +73,35 @@ export const loadFamilyAccess = async (currentUserId: string): Promise<FamilyAcc
 };
 
 export const findUserByEmail = async (email: string): Promise<string | null> => {
-  const response = await apiCall(`/auth/users/find-by-email?email=${encodeURIComponent(email)}`, {
+  const response = await apiCall(`/identity/users/find-by-email?email=${encodeURIComponent(email)}`, {
     method: 'GET',
   });
   return response.userId || null;
 };
 
 export const createFamilyAccess = async (payload: FamilyAccessPayload): Promise<FamilyAccess> => {
-  return apiCall('/auth/family-access', {
+  return apiCall('/identity/family-access', {
     method: 'POST',
     body: payload,
   });
 };
 
 export const updateFamilyAccess = async (id: string, payload: Partial<FamilyAccessPayload>): Promise<FamilyAccess> => {
-  return apiCall(`/auth/family-access/${id}`, {
+  return apiCall(`/identity/family-access/${id}`, {
     method: 'PUT',
     body: payload,
   });
 };
 
 export const toggleFamilyAccessActiveStatus = async (id: string, isActive: boolean): Promise<FamilyAccess> => {
-  return apiCall(`/auth/family-access/${id}`, {
+  return apiCall(`/identity/family-access/${id}`, {
     method: 'PUT',
     body: { is_active: isActive },
   });
 };
 
 export const deleteFamilyAccess = async (id: string): Promise<void> => {
-  return apiCall(`/auth/family-access/${id}`, {
+  return apiCall(`/identity/family-access/${id}`, {
     method: 'DELETE',
   });
 };

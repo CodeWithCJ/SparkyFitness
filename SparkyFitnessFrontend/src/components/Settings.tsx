@@ -339,7 +339,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     if (!user) return;
 
     try {
-      const data = await apiCall(`/auth/profiles`, {
+      const data = await apiCall(`/identity/profiles`, {
         method: "GET",
       });
       setProfile(data);
@@ -365,7 +365,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
 
     setLoading(true);
     try {
-      await apiCall(`/auth/profiles`, {
+      await apiCall(`/identity/profiles`, {
         method: "PUT", // Or PATCH, depending on backend implementation
         body: JSON.stringify({
           full_name: profileForm.full_name,
@@ -531,7 +531,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     formData.append("avatar", file);
 
     try {
-      const response = await apiCall("/auth/profiles/avatar", {
+      const response = await apiCall("/identity/profiles/avatar", {
         method: "POST",
         body: formData,
         isFormData: true, // Indicate that the body is FormData
@@ -1479,7 +1479,6 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                         <TooltipWarning
                           warningMsg={t("settings.apiKeyManagement.idOnlyInfo", "Only the Key ID is shown for security.")}
                           color="blue"
-                          size={14}
                         />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -1542,12 +1541,12 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 </p>
                 <div className="flex gap-4 mt-2">
                   <Button variant="outline" asChild>
-                    <a href="/api-docs/swagger" target="_blank" rel="noopener noreferrer">
+                    <a href="/api/api-docs/swagger" target="_blank" rel="noopener noreferrer">
                       Swagger UI (Interactive)
                     </a>
                   </Button>
                   <Button variant="outline" asChild>
-                    <a href="/api-docs/redoc" target="_blank" rel="noopener noreferrer">
+                    <a href="/api/api-docs/redoc" target="_blank" rel="noopener noreferrer">
                       Redoc (Read-only)
                     </a>
                   </Button>

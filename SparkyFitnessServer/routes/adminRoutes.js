@@ -412,4 +412,42 @@ router.post('/users/:userId/reset-password', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /admin/users/{userId}/mfa/reset:
+ *   post:
+ *     summary: Reset MFA for a user
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the user to reset MFA for.
+ *     responses:
+ *       200:
+ *         description: MFA reset successfully.
+ *       404:
+ *         description: User not found.
+ */
+router.post('/users/:userId/mfa/reset', async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const user = await userRepository.findUserById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    await authService.resetUserMfa(req.userId, userId);
+    res.status(200).json({ message: 'MFA reset successfully.' });
+  } catch (error) {
+    log('error', `Error resetting MFA for user ${req.params.userId} in adminRoutes:`, error);
+    next(error);
+  }
+});
+
 module.exports = router;

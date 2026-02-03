@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Fetch Authoritative Data (Active Context)
       // This runs on every session update to ensure we are strictly in sync with the backend.
       import('../services/api').then(({ apiCall }) => {
-        apiCall('/auth/user').then((realUserData: any) => {
+        apiCall('/identity/user').then((realUserData: any) => {
           setUser(prev => {
             if (!prev) return prev;
             if (prev.activeUserId === realUserData.activeUserId &&
@@ -157,7 +157,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const switchContext = useCallback(async (targetUserId: string) => {
     try {
       console.info("[Auth Hook] Switching context to:", targetUserId);
-      const response = await fetch('/api/auth/switch-context', {
+      const response = await fetch('/api/identity/switch-context', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUserId }),

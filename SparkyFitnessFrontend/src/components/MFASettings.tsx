@@ -110,7 +110,7 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
     const handleEnableEmailMfa = async () => {
         setLoading(true);
         try {
-            const response = await fetch("/api/auth/mfa/email-toggle", {
+            const response = await fetch("/api/identity/mfa/email-toggle", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ enabled: true }),
@@ -130,7 +130,7 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
     const handleDisableEmailMfa = async () => {
         setLoading(true);
         try {
-            const response = await fetch("/api/auth/mfa/email-toggle", {
+            const response = await fetch("/api/identity/mfa/email-toggle", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ enabled: false }),

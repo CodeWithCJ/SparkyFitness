@@ -12,14 +12,6 @@ export default defineConfig(({ mode }) => {
       port: 8080,
       allowedHosts: true, // Allow all hosts in development to prevent HMR connection failures
       proxy: {
-        "/api-docs": {
-          target: "http://localhost:3010",
-          changeOrigin: true,
-        },
-        "/auth": {
-          target: "http://localhost:3010",
-          changeOrigin: true,
-        },
         "/health-data": {
           target: "http://localhost:3010",
           changeOrigin: true,

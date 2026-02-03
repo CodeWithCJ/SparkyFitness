@@ -43,7 +43,7 @@ const upload = multer({
 
 /**
  * @swagger
- * /auth/user:
+ * /identity/user:
  *   get:
  *     summary: Get current user's information
  *     tags: [Identity & Security]
@@ -84,7 +84,7 @@ router.get('/user', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/switch-context:
+ * /identity/switch-context:
  *   post:
  *     summary: Switch active user context
  *     tags: [Identity & Security]
@@ -138,7 +138,7 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/users/find-by-email:
+ * /identity/users/find-by-email:
  *   get:
  *     summary: Find a user by email
  *     tags: [Identity & Security]
@@ -181,7 +181,7 @@ router.get('/users/find-by-email', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/profiles:
+ * /identity/profiles:
  *   get:
  *     summary: Get the current user's profile
  *     tags: [Identity & Security]
@@ -212,7 +212,7 @@ router.get('/profiles', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/profiles:
+ * /identity/profiles:
  *   put:
  *     summary: Update the current user's profile
  *     tags: [Identity & Security]
@@ -267,7 +267,7 @@ router.put('/profiles', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/update-password:
+ * /identity/update-password:
  *   post:
  *     summary: Update user password
  *     tags: [Identity & Security]
@@ -320,7 +320,7 @@ router.post('/update-password', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/update-email:
+ * /identity/update-email:
  *   post:
  *     summary: Update user email
  *     tags: [Identity & Security]
@@ -378,7 +378,7 @@ router.post('/update-email', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/profiles/avatar:
+ * /identity/profiles/avatar:
  *   post:
  *     summary: Upload user avatar
  *     tags: [Identity & Security]
@@ -436,7 +436,7 @@ router.post('/profiles/avatar', authenticate, upload.single('avatar'), async (re
 
 /**
  * @swagger
- * /auth/profiles/avatar/{filename}:
+ * /identity/profiles/avatar/{filename}:
  *   get:
  *     summary: Get user avatar image
  *     tags: [Identity & Security]
@@ -486,7 +486,7 @@ router.get('/profiles/avatar/:filename', authenticate, (req, res, next) => {
 
 /**
  * @swagger
- * /auth/mfa/email-toggle:
+ * /identity/mfa/email-toggle:
  *   post:
  *     summary: Toggle Email MFA
  *     tags: [Identity & Security]

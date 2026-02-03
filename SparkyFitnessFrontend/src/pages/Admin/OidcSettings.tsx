@@ -169,6 +169,41 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
   const { t } = useTranslation();
   const [editedProvider, setEditedProvider] = useState<OidcProvider>(provider);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [isManualRedirectUri, setIsManualRedirectUri] = useState(false);
+  const [baseUrlOverride, setBaseUrlOverride] = useState('');
+
+  const suffix = `/api/auth/sso/callback/${editedProvider.provider_id || 'YOUR_ID'}`;
+
+  // Initialize baseUrlOverride if provider has a custom one
+  useEffect(() => {
+    if (provider.redirect_uris?.[0]) {
+      try {
+        const url = new URL(provider.redirect_uris[0]);
+        const defaultOrigin = window.location.origin;
+        if (url.origin !== defaultOrigin) {
+          setIsManualRedirectUri(true);
+          setBaseUrlOverride(url.origin);
+        }
+      } catch (e) {
+        // Not a standard URL, might be relative or malformed
+      }
+    }
+  }, [provider]);
+
+  // Sync the actual provider field whenever inputs change
+  useEffect(() => {
+    const base = isManualRedirectUri ? (baseUrlOverride || window.location.origin) : window.location.origin;
+    // ensure no trailing slash
+    const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+    const fullUri = `${cleanBase}${suffix}`;
+
+    if (editedProvider.redirect_uris?.[0] !== fullUri) {
+      setEditedProvider(prev => ({
+        ...prev,
+        redirect_uris: [fullUri]
+      }));
+    }
+  }, [baseUrlOverride, isManualRedirectUri, suffix, editedProvider.redirect_uris]);
 
   const handleResetToDefaults = () => {
     setEditedProvider(prev => ({
@@ -231,7 +266,7 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
               <div>
                 <Label htmlFor="provider_id">{t('admin.oidcSettings.providerId', 'Provider ID (Slug)')}</Label>
                 <Input id="provider_id" value={editedProvider.provider_id || ''} onChange={handleChange} placeholder="e.g. authentik, google, keycloak" />
-                <p className="text-xs text-muted-foreground mt-1">This will be part of your Redirect URI: /auth/sso/callback/YOUR_ID</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('admin.oidcSettings.providerIdInfo')}</p>
               </div>
               <div>
                 <Label htmlFor="display_name">{t('admin.oidcSettings.displayName', 'Display Name')}</Label>
@@ -262,7 +297,7 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
               <div>
                 <Label htmlFor="domain">{t('admin.oidcSettings.domain', 'Organization Domain')}</Label>
                 <Input id="domain" value={editedProvider.domain || ''} onChange={handleChange} placeholder="e.g. sparkyfitness.com" />
-                <p className="text-xs text-muted-foreground mt-1">Required by Better Auth to identify this provider.</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('admin.oidcSettings.domainInfo')}</p>
               </div>
               <div>
                 <Label htmlFor="client_id">{t('admin.oidcSettings.clientId', 'Client ID')}</Label>
@@ -276,9 +311,72 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
                 <Label htmlFor="scope">{t('admin.oidcSettings.scope', 'Scope')}</Label>
                 <Input id="scope" value={editedProvider.scope} onChange={handleChange} />
               </div>
-              <div>
-                <Label htmlFor="redirect_uris">{t('admin.oidcSettings.redirectUri', 'Redirect URI')}</Label>
-                <Input id="redirect_uris" value={(editedProvider.redirect_uris || []).join(', ')} onChange={handleChange} placeholder={t('admin.oidcSettings.redirectUriPlaceholder', { origin: window.location.origin, defaultValue: `e.g., ${window.location.origin}/oidc-callback` })} />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">{t('admin.oidcSettings.redirectUri', 'Redirect URI')}</Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="manual_redirect"
+                      checked={isManualRedirectUri}
+                      onCheckedChange={(checked) => {
+                        if (checked && !window.confirm("WARNING: Changing the Base URL is only for advanced setups (proxies/custom domains). Incorrect values will break your login flow. Are you sure you want to proceed?")) {
+                          return;
+                        }
+                        setIsManualRedirectUri(checked);
+                        if (!checked) setBaseUrlOverride('');
+                      }}
+                      className="h-4 w-8"
+                    />
+                    <Label htmlFor="manual_redirect" className="text-xs text-muted-foreground">Expert Mode: Custom Domain</Label>
+                  </div>
+                </div>
+
+                <div className="group relative">
+                  <div className="flex items-stretch border rounded-md overflow-hidden bg-muted/30 focus-within:ring-1 focus-within:ring-primary">
+                    <div className="flex-1 flex min-w-0">
+                      <Input
+                        id="redirect_base_url"
+                        value={isManualRedirectUri ? baseUrlOverride : window.location.origin}
+                        onChange={(e) => setBaseUrlOverride(e.target.value)}
+                        readOnly={!isManualRedirectUri}
+                        className={`border-0 rounded-none h-10 shadow-none focus-visible:ring-0 px-3 ${!isManualRedirectUri ? "bg-transparent cursor-not-allowed opacity-60" : "bg-background"}`}
+                        placeholder="https://fitness.example.com"
+                      />
+                      <div className="bg-muted px-3 flex items-center text-xs font-mono text-muted-foreground border-l border-r whitespace-nowrap select-none">
+                        {suffix}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-none hover:bg-muted border-l transition-colors"
+                      title="Copy full Redirect URI"
+                      onClick={() => {
+                        const base = isManualRedirectUri ? (baseUrlOverride || window.location.origin) : window.location.origin;
+                        const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+                        const fullUri = `${cleanBase}${suffix}`;
+                        navigator.clipboard.writeText(fullUri);
+                        toast({ title: t('copied', 'Copied'), description: t('admin.oidcSettings.callbackUrlCopied') });
+                      }}
+                    >
+                      <ClipboardCopy className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {isManualRedirectUri && baseUrlOverride && !baseUrlOverride.startsWith('http') && (
+                    <p className="text-[10px] text-red-500 mt-1 font-medium italic">
+                      ⚠️ URL must start with http:// or https://
+                    </p>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  {!isManualRedirectUri
+                    ? "✓ Automatically synced with your current URL. Path suffix is locked for routing safety."
+                    : "⚠️ Expert: Ensure your Base URL is reachable from the internet for the OIDC provider to return data."
+                  }
+                </p>
               </div>
               <div>
                 <Label htmlFor="token_endpoint_auth_method">{t('admin.oidcSettings.tokenEndpointAuthMethod')}</Label>
@@ -307,23 +405,6 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
               </div>
             </div>
             <div className="text-sm text-muted-foreground mt-4">
-              <p>{t('admin.oidcSettings.redirectUriInfo', 'The Redirect URI for your OIDC provider must be configured as follows:')}</p>
-              <div className="flex items-center mt-1 mb-2">
-                <code className="font-mono bg-gray-100 p-1 rounded break-all">{`${window.location.origin}/auth/sso/callback/${editedProvider.provider_id || 'YOUR_PROVIDER_ID'}`}</code>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="ml-2 h-5 w-5 flex-shrink-0"
-                  onClick={() => {
-                    const url = `${window.location.origin}/auth/sso/callback/${editedProvider.provider_id || 'YOUR_PROVIDER_ID'}`;
-                    navigator.clipboard.writeText(url);
-                    toast({ title: "Copied", description: "Callback URL copied to clipboard" });
-                  }}
-                >
-                  <ClipboardCopy className="h-4 w-4" />
-                </Button>
-              </div>
               <p className="mt-1">{t('admin.oidcSettings.localhostWarning', 'Ensure your OIDC provider allows localhost or your local IP for development.')}</p>
               <p className="mt-2">{t('admin.oidcSettings.proxyWarning', 'If using a proxy like Nginx Proxy Manager, ensure the following headers are configured:')}</p>
               <div className="relative group mt-2">

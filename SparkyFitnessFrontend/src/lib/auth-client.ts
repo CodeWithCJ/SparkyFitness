@@ -4,8 +4,8 @@ import { ssoClient } from "@better-auth/sso/client";
 import { passkeyClient } from "@better-auth/passkey/client";
 
 export const authClient = createAuthClient({
-    // Use /auth as the base URL. Vite proxy will handle the redirection to the backend.
-    baseURL: window.location.origin + "/auth",
+    // Use /api/auth as the base URL.
+    baseURL: window.location.origin + "/api/auth",
     plugins: [
         magicLinkClient(),
         adminClient(),

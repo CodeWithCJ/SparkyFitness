@@ -5,7 +5,7 @@ import { apiCall } from './api'; // Import apiCall
 // Function to fetch current user details from the backend
 const fetchCurrentUser = async () => {
   try {
-    const user = await apiCall(`/auth/user`);
+    const user = await apiCall(`/identity/user`);
     return { user };
   } catch (error) {
     console.error("Error fetching current user:", error);
@@ -86,12 +86,12 @@ class DocumentationService {
     debug(loggingLevel, 'DocumentationService: Scanning app features.');
     const features = await this.scanAppFeatures();
     info(loggingLevel, 'DocumentationService: App features scanned successfully.');
-    
+
     // Get database schema info
     debug(loggingLevel, 'DocumentationService: Getting database schema.');
     const schema = await this.getDatabaseSchema();
     info(loggingLevel, 'DocumentationService: Database schema retrieved successfully.');
-    
+
     // Get user permissions if authenticated
     debug(loggingLevel, 'DocumentationService: Getting user permissions.');
     const permissions = await this.getUserPermissions(loggingLevel);
@@ -278,7 +278,7 @@ class DocumentationService {
   private formatContextForAI(contextData: AIContextData, queryType?: string, loggingLevel?: UserLoggingLevel): string {
     debug(loggingLevel, 'DocumentationService: Formatting context for AI with queryType:', queryType);
     let context = `# SparkyFitness App Context\n\n`;
-    
+
     context += `## App Overview\n`;
     context += `SparkyFitness is a nutrition and fitness tracking app with AI assistance.\n`;
     context += `Current features: ${contextData.currentFeatures.length} active features\n`;
@@ -287,8 +287,8 @@ class DocumentationService {
     // Filter features based on query type
     let relevantFeatures = contextData.currentFeatures;
     if (queryType) {
-      relevantFeatures = contextData.currentFeatures.filter(f => 
-        f.category === queryType || 
+      relevantFeatures = contextData.currentFeatures.filter(f =>
+        f.category === queryType ||
         f.name.toLowerCase().includes(queryType.toLowerCase()) ||
         f.description.toLowerCase().includes(queryType.toLowerCase())
       );

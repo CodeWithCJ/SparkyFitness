@@ -7,7 +7,7 @@ const oidcProviderRepository = require('../models/oidcProviderRepository');
 
 /**
  * @swagger
- * /oidc-settings:
+ * /admin/oidc-settings:
  *   get:
  *     summary: Get all OIDC Providers (Admin Only)
  */
@@ -23,7 +23,7 @@ router.get('/', isAdmin, async (req, res) => {
 
 /**
  * @swagger
- * /oidc-settings/{id}:
+ * /admin/oidc-settings/{id}:
  *   get:
  *     summary: Get a single OIDC Provider by ID (Admin Only)
  */
@@ -45,7 +45,7 @@ router.get('/:id', isAdmin, async (req, res) => {
 
 /**
  * @swagger
- * /oidc-settings:
+ * /admin/oidc-settings:
  *   post:
  *     summary: Create a new OIDC Provider (Admin Only)
  */
@@ -62,7 +62,7 @@ router.post('/', isAdmin, async (req, res) => {
 
 /**
  * @swagger
- * /oidc-settings/{id}:
+ * /admin/oidc-settings/{id}:
  *   put:
  *     summary: Update an OIDC Provider (Admin Only)
  */
@@ -79,7 +79,7 @@ router.put('/:id', isAdmin, async (req, res) => {
 
 /**
  * @swagger
- * /oidc-settings/{id}:
+ * /admin/oidc-settings/{id}:
  *   delete:
  *     summary: DELETE an OIDC Provider (Admin Only)
  */
@@ -95,7 +95,7 @@ router.delete('/:id', isAdmin, async (req, res) => {
 
 /**
  * @swagger
- * /oidc-settings/{id}/logo:
+ * /admin/oidc-settings/{id}/logo:
  *   post:
  *     summary: POST a logo for an OIDC Provider (Admin Only)
  */

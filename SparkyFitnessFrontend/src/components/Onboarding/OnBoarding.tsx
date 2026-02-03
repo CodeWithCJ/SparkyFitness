@@ -192,7 +192,7 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
     useEffect(() => {
         const fetchExistingData = async () => {
             try {
-                const profileResponse = await apiCall('/auth/profiles', {
+                const profileResponse = await apiCall('/identity/profiles', {
                     method: 'GET',
                     suppress404Toast: true,
                 });
@@ -419,7 +419,7 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
         const todayStr = format(new Date(), 'yyyy-MM-dd');
 
         try {
-            await apiCall(`/auth/profiles`, {
+            await apiCall(`/identity/profiles`, {
                 method: 'PUT',
                 body: JSON.stringify({
                     gender: formData.sex,

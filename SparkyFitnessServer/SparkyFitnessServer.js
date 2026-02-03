@@ -105,10 +105,22 @@ try {
   const { toNodeHandler } = require("better-auth/node");
   const betterAuthHandler = toNodeHandler(auth);
 
-  // Catch ALL requests starting with /auth early.
+  // Catch ALL requests starting with /api/auth early.
   // We use a manual check to avoid Express 5 routing complexities.
-  app.use((req, res, next) => {
-    if (req.originalUrl.startsWith("/auth")) {
+  app.use(async (req, res, next) => {
+    if (req.originalUrl.startsWith("/api/auth")) {
+      // 1. Skip interceptor for discovery routes - let them fall through to authRoutes.js
+      const isDiscovery = req.path === "/api/auth/settings" || req.path === "/api/auth/mfa-factors";
+      if (isDiscovery) {
+        return next();
+      }
+
+      // 2. Manual Sign-Out Cleanup: Clear sparky_active_user_id cookie
+      if (req.method === "POST" && req.path === "/sign-out") {
+        console.log("[AUTH HANDLER] Manual Cleanup: Clearing sparky_active_user_id on logout");
+        res.clearCookie('sparky_active_user_id', { path: '/' });
+      }
+
       console.log(`[AUTH HANDLER] Intercepted request: ${req.method} ${req.originalUrl}`);
       return betterAuthHandler(req, res);
     }
@@ -128,11 +140,45 @@ app.use((req, res, next) => {
 // Serve static files from the 'uploads' directory
 const UPLOADS_BASE_DIR = path.join(__dirname, "uploads");
 console.log("SparkyFitnessServer UPLOADS_BASE_DIR:", UPLOADS_BASE_DIR);
+// Mount at both paths for compatibility during transition
+app.use("/api/uploads", express.static(UPLOADS_BASE_DIR));
 app.use("/uploads", express.static(UPLOADS_BASE_DIR));
 
 // On-demand image serving route
+/**
+ * @swagger
+ * /uploads/exercises/{exerciseId}/{imageFileName}:
+ *   get:
+ *     summary: serve exercise images
+ *     tags: [Utility]
+ *     parameters:
+ *       - in: path
+ *         name: exerciseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the exercise.
+ *       - in: path
+ *         name: imageFileName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The filename of the image.
+ *     responses:
+ *       200:
+ *         description: The image file.
+ *         content:
+ *           image/*:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Image not found.
+ *       500:
+ *         description: Server error.
+ */
 app.get(
-  "/uploads/exercises/:exerciseId/:imageFileName",
+  ["/api/uploads/exercises/:exerciseId/:imageFileName", "/uploads/exercises/:exerciseId/:imageFileName"],
   async (req, res, next) => {
     const { exerciseId, imageFileName } = req.params;
     const localImagePath = path.join(
@@ -190,11 +236,13 @@ app.get(
 // Apply authentication middleware to all protected routes
 app.use((req, res, next) => {
   const publicRoutes = [
-    "/auth",
-    "/api/auth",
+    "/api/auth/settings",
+    "/api/auth/mfa-factors",
     "/api/health",
     "/api/version",
     "/api/onboarding",
+    "/api/uploads",
+    "/uploads",
   ];
 
   let isPublic = publicRoutes.some(route => req.path.startsWith(route));
@@ -241,6 +289,7 @@ app.use("/api/freeexercisedb", freeExerciseDBRoutes);
 app.use("/api/health-data", healthDataRoutes);
 app.use("/api/sleep", sleepRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/identity", require('./routes/identityRoutes'));
 app.use("/api/health", healthRoutes);
 app.use("/api/external-providers", externalProviderRoutes);
 app.use("/api/integrations/garmin", garminRoutes);
@@ -265,10 +314,10 @@ app.use("/api/custom-nutrients", customNutrientRoutes);
 app.use("/api/meal-types", mealTypeRoutes);
 
 // Swagger
-app.use('/api-docs/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
-app.get('/api-docs/redoc', redoc({ title: 'API Docs', specUrl: '/api-docs/json' }));
-app.get('/api-docs/json', (req, res) => res.json(swaggerSpecs));
-app.get('/api-docs', (req, res) => res.redirect('/api-docs/swagger'));
+app.use('/api/api-docs/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+app.get('/api/api-docs/redoc', redoc({ title: 'API Docs', specUrl: '/api/api-docs/json' }));
+app.get('/api/api-docs/json', (req, res) => res.json(swaggerSpecs));
+app.get('/api/api-docs', (req, res) => res.redirect('/api/api-docs/swagger'));
 
 // Backup scheduling
 const scheduleBackups = async () => {
@@ -335,6 +384,7 @@ applyMigrations()
     app.listen(PORT, () => {
       console.log(`DEBUG: Server started and listening on port ${PORT}`);
       log("info", `SparkyFitnessServer listening on port ${PORT}`);
+      console.log('View API documentation at: /api/api-docs/swagger');
     });
   })
   .catch((error) => {

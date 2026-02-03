@@ -1,4 +1,5 @@
 const { betterAuth } = require("better-auth");
+const { APIError } = require("better-auth/api");
 const { Pool } = require("pg");
 console.log("[AUTH] auth.js module is being loaded...");
 
@@ -72,13 +73,13 @@ const auth = betterAuth({
 
 
     // Base URL configuration - MUST use public frontend URL for OIDC to work
-    baseURL: (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("http") ? process.env.SPARKY_FITNESS_FRONTEND_URL : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`)?.replace(/\/$/, '') + "/auth",
+    baseURL: (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("http") ? process.env.SPARKY_FITNESS_FRONTEND_URL : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`)?.replace(/\/$/, '') + "/api/auth",
 
     onAPIError: {
         errorURL: new URL('/error', (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("http") ? process.env.SPARKY_FITNESS_FRONTEND_URL : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`)?.replace(/\/$/, '') + '/').toString(),
     },
 
-    basePath: "/auth",
+    basePath: "/api/auth",
 
     // Email/Password authentication
     emailAndPassword: {
@@ -114,6 +115,7 @@ const auth = betterAuth({
     advanced: {
         cookiePrefix: "sparky",
         useSecureCookies: process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("https"),
+        trustProxy: true,
         crossSubDomainCookies: {
             enabled: false,
         },
@@ -197,6 +199,81 @@ const auth = betterAuth({
     trustedOrigins: [
         process.env.SPARKY_FITNESS_FRONTEND_URL,
     ].filter(Boolean).map(url => url.replace(/\/$/, '')),
+
+    databaseHooks: {
+        user: {
+            create: {
+                before: async (user, ctx) => {
+                    console.log(`[AUTH DEBUG] user.create.before hook triggered. Path: ${ctx.path}`);
+
+                    // 1. MASTER TOGGLE: Global signup blockade
+                    if (process.env.SPARKY_FITNESS_DISABLE_SIGNUP === 'true') {
+                        console.log("[AUTH] Blocking signup: SPARKY_FITNESS_DISABLE_SIGNUP is true");
+                        throw new APIError("BAD_REQUEST", {
+                            message: "Signups are currently disabled by the administrator.",
+                        });
+                    }
+
+                    // 2. PER-PROVIDER TOGGLE: SSO auto_register check
+                    // SSO callback paths are /sso/callback/[providerId]
+                    if (ctx.path.includes("/sso/callback/")) {
+                        // Better Auth might use :providerId in ctx.path, so we check ctx.params or the request URL
+                        let providerId = ctx.params?.providerId;
+
+                        // Fallback: Extract from the actual request URL if template is used in ctx.path
+                        if (!providerId || providerId === ":providerId") {
+                            const url = new URL(ctx.request.url, "http://localhost");
+                            const pathParts = url.pathname.split("/");
+                            providerId = pathParts[pathParts.length - 1];
+                        }
+
+                        console.log(`[AUTH] Verifying auto-register for SSO provider: ${providerId} (Original Path: ${ctx.path})`);
+
+                        try {
+                            const oidcProviderRepository = require("./models/oidcProviderRepository");
+                            const provider = await oidcProviderRepository.getOidcProviderById(providerId);
+
+                            if (provider) {
+                                console.log(`[AUTH DEBUG] Provider found: ${provider.provider_id}. auto_register: ${provider.auto_register} (Type: ${typeof provider.auto_register})`);
+                            } else {
+                                console.log(`[AUTH DEBUG] No provider found in DB for ID: ${providerId}`);
+                            }
+
+                            if (provider && provider.auto_register === false) {
+                                console.log(`[AUTH] Blocking SSO registration: auto_register is disabled for ${providerId}`);
+                                throw new APIError("BAD_REQUEST", {
+                                    message: "New account registration is disabled for this login provider.",
+                                });
+                            }
+                        } catch (error) {
+                            // Re-throw APIErrors, log others
+                            if (error instanceof APIError) throw error;
+                            console.error("[AUTH] Error during auto_register check:", error);
+                        }
+                    }
+
+                    return { data: user };
+                },
+                after: async (user) => {
+                    console.log(`[AUTH] Hook: User created, initializing Sparky data for ${user.id}`);
+                    try {
+                        const { ensureUserInitialization } = require("./models/userRepository");
+                        // We use the user.name or email if name is missing for the profile
+                        await ensureUserInitialization(user.id, user.name || user.email.split('@')[0]);
+
+                        // Also initialize default nutrient preferences
+                        const { createDefaultNutrientPreferencesForUser } = require("./services/nutrientDisplayPreferenceService");
+                        await createDefaultNutrientPreferencesForUser(user.id);
+
+                        console.log(`[AUTH] Hook: Initialization complete for ${user.id}`);
+                    } catch (error) {
+                        console.error(`[AUTH] Hook Error: Failed to initialize user ${user.id}:`, error);
+                        // We don't throw here to avoid blocking the signup, but we log the failure
+                    }
+                }
+            }
+        }
+    },
 
     plugins: [
         require("better-auth/plugins").magicLink({

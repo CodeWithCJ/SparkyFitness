@@ -5,7 +5,7 @@ const { auth } = require('../../auth');
 
 /**
  * @swagger
- * /auth/user/generate-api-key:
+ * /identity/user/generate-api-key:
  *   post:
  *     summary: Generate an API key for the current user
  *     tags: [Identity & Security]
@@ -60,7 +60,7 @@ router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/user/api-key/{apiKeyId}:
+ * /identity/user/api-key/{apiKeyId}:
  *   delete:
  *     summary: Delete an API key
  *     tags: [Identity & Security]
@@ -97,7 +97,7 @@ router.delete('/user/api-key/:apiKeyId', authenticate, async (req, res, next) =>
 
 /**
  * @swagger
- * /auth/user-api-keys:
+ * /identity/user-api-keys:
  *   get:
  *     summary: Get the current user's API keys
  *     tags: [Identity & Security]
