@@ -2,12 +2,14 @@ services:
   sparkyfitness-db:
     image: postgres:15-alpine
     restart: always
+    env_file:
+      - ../.env
     environment:
       POSTGRES_DB: ${SPARKY_FITNESS_DB_NAME:?Variable is required and must be set}
       POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:?Variable is required and must be set}
       POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
     volumes:
-      - ./postgresql:/var/lib/postgresql/data
+      - ./docker_volume/postgresql:/var/lib/postgresql/data
     networks:
       - sparkyfitness-network
     ports:
@@ -49,6 +51,8 @@ services:
     volumes:
       - ../SparkyFitnessServer:/app/SparkyFitnessServer
       - /app/SparkyFitnessServer/node_modules
+      - ./docker_volume/uploads:/app/SparkyFitnessServer/uploads
+      - ./docker_volume/backup:/app/SparkyFitnessServer/backup
     networks:
       - sparkyfitness-network
     ports:
@@ -60,7 +64,7 @@ services:
   sparkyfitness-frontend:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.frontend
+      dockerfile: docker/Dockerfile.frontend.dev
     environment:
       SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL:-http://localhost:3004}
       SPARKY_FITNESS_SERVER_HOST: sparkyfitness-server

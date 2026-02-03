@@ -57,3 +57,6 @@ SparkyFitnessGarmin/mock_data/
 SparkyFitnessServer/mock_data/
 
 WIP/
+
+# Docker Volume
+docker/docker_volume/

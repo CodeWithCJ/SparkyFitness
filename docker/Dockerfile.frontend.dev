@@ -1,0 +1,44 @@
+# Stage 1: Build the React application
+FROM node:20-slim AS builder
+WORKDIR /app/SparkyFitnessFrontend
+
+# Copy package files and install dependencies
+COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/package-lock.json ./
+RUN npm install
+
+# Copy the rest of the application source code
+COPY SparkyFitnessFrontend .
+
+# Build the application
+RUN npm run build
+
+# Stage 2: Serve the application with Nginx
+FROM nginx:alpine3.22
+
+# Install bash for console access and gettext for envsubst, and dos2unix for line ending fix for Windows devs
+RUN apk add --no-cache bash gettext dos2unix
+
+# Copy the build output from the builder stage
+COPY --from=builder /app/SparkyFitnessFrontend/dist /usr/share/nginx/html
+
+# Copy the nginx configuration template
+COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
+
+# Copy and set up the entrypoint script
+COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
+# Fix potential CRLF line endings from Windows hosts
+RUN dos2unix /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
+
+# Set default values for environment variables
+ENV SPARKY_FITNESS_SERVER_HOST=sparkyfitness-server
+ENV SPARKY_FITNESS_SERVER_PORT=3010
+ENV NGINX_RATE_LIMIT=5r/s
+
+# Expose port 80
+EXPOSE 80
+
+# Healthcheck
+HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["curl", "http://127.0.0.1"]
+
+# Start with our custom entrypoint
+CMD ["/docker-entrypoint.sh"]
