@@ -27,12 +27,19 @@ const authPool = new Pool({
 const dynamicTrustedProviders = [];
 
 // Function to sync trusted providers from database
+// Function to sync trusted providers from database
 async function syncTrustedProviders() {
     try {
+        console.log('[AUTH DEBUG] Starting syncTrustedProviders...');
+
+        // Log all providers for debugging
+        const all = await authPool.query('SELECT provider_id, additional_config FROM sso_provider');
+        console.log('[AUTH DEBUG] All Providers in DB:', all.rows.map(r => ({ id: r.provider_id, config: typeof r.additional_config === 'string' ? r.additional_config : JSON.stringify(r.additional_config) })));
+
         const result = await authPool.query(
             `SELECT provider_id FROM sso_provider 
-             WHERE (additional_config->>'auto_register')::boolean = true 
-             AND (additional_config->>'is_active')::boolean = true`
+             WHERE (additional_config->>'auto_register')::text = 'true' 
+             AND (additional_config->>'is_active')::text = 'true'`
         );
         const providers = result.rows.map(row => row.provider_id);
 
@@ -196,9 +203,11 @@ const auth = betterAuth({
     account: {
         accountLinking: {
             enabled: true,
-            // Trust providers based on database configuration (auto_register flag)
-            // Points to a persistent array reference that is updated at runtime
-            trustedProviders: dynamicTrustedProviders,
+            // Use a getter to ensure Better Auth always checks the current state of our dynamic list
+            get trustedProviders() {
+                console.log(`[AUTH DEBUG] Better Auth is checking trustedProviders. Current list:`, dynamicTrustedProviders);
+                return dynamicTrustedProviders;
+            }
         },
         fields: {
             id: "id",
