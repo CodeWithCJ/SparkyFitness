@@ -69,7 +69,7 @@ export const loginUser = async (email: string, password: string): Promise<AuthRe
 };
 
 export const requestPasswordReset = async (email: string): Promise<void> => {
-  const { error } = await (authClient as any).forgetPassword({
+  const { error } = await authClient.requestPasswordReset({
     email,
     redirectTo: window.location.origin + '/reset-password',
   });
