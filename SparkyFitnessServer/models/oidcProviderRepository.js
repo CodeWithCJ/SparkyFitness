@@ -307,6 +307,30 @@ async function deleteOidcProvider(id) {
     }
 }
 
+async function getActiveOidcProviderIds() {
+    const client = await getSystemClient();
+    try {
+        const result = await client.query('SELECT provider_id, additional_config FROM "sso_provider"');
+
+        return result.rows.filter(row => {
+            let config = row.additional_config;
+            if (typeof config === 'string') {
+                try {
+                    config = JSON.parse(config);
+                } catch (e) {
+                    log('error', `Failed to parse config for ${row.provider_id}:`, e);
+                    return false;
+                }
+            }
+            // Trust if active (default to true if field is missing)
+            const isActive = config && config.is_active !== false;
+            return isActive;
+        }).map(row => row.provider_id);
+    } finally {
+        client.release();
+    }
+}
+
 async function setProviderLogo(id, logoUrl) {
     const client = await getSystemClient();
     try {
@@ -326,6 +350,7 @@ async function setProviderLogo(id, logoUrl) {
 module.exports = {
     getOidcProviders,
     getOidcProviderById,
+    getActiveOidcProviderIds,
     createOidcProvider,
     updateOidcProvider,
     deleteOidcProvider,

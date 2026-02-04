@@ -27,21 +27,11 @@ const authPool = new Pool({
 const dynamicTrustedProviders = [];
 
 // Function to sync trusted providers from database
-// Function to sync trusted providers from database
 async function syncTrustedProviders() {
     try {
-        console.log('[AUTH DEBUG] Starting syncTrustedProviders...');
-
-        // Log all providers for debugging
-        const all = await authPool.query('SELECT provider_id, additional_config FROM sso_provider');
-        console.log('[AUTH DEBUG] All Providers in DB:', all.rows.map(r => ({ id: r.provider_id, config: typeof r.additional_config === 'string' ? r.additional_config : JSON.stringify(r.additional_config) })));
-
-        const result = await authPool.query(
-            `SELECT provider_id FROM sso_provider 
-             WHERE (additional_config->>'auto_register')::text = 'true' 
-             AND (additional_config->>'is_active')::text = 'true'`
-        );
-        const providers = result.rows.map(row => row.provider_id);
+        // Use lazy require to avoid circular dependency with oidcProviderRepository
+        const oidcProviderRepository = require('./models/oidcProviderRepository');
+        const providers = await oidcProviderRepository.getActiveOidcProviderIds();
 
         // Update the array without changing the reference
         dynamicTrustedProviders.length = 0;
