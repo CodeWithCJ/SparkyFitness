@@ -22,6 +22,35 @@ const authPool = new Pool({
     port: process.env.SPARKY_FITNESS_DB_PORT || 5432,
 });
 
+// Persistent array reference for trusted providers
+// Mutation of this array will be visible to Better Auth since it holds the reference
+const dynamicTrustedProviders = [];
+
+// Function to sync trusted providers from database
+async function syncTrustedProviders() {
+    try {
+        const result = await authPool.query(
+            `SELECT provider_id FROM sso_provider 
+             WHERE (additional_config->>'auto_register')::boolean = true 
+             AND (additional_config->>'is_active')::boolean = true`
+        );
+        const providers = result.rows.map(row => row.provider_id);
+
+        // Update the array without changing the reference
+        dynamicTrustedProviders.length = 0;
+        dynamicTrustedProviders.push(...providers);
+
+        console.log('[AUTH] Synced trusted SSO providers for auto-linking:', dynamicTrustedProviders);
+        return dynamicTrustedProviders;
+    } catch (error) {
+        console.error('[AUTH] Error syncing trusted providers:', error);
+        return dynamicTrustedProviders;
+    }
+}
+
+// Initial sync on startup
+syncTrustedProviders().catch(err => console.error('[AUTH] Startup sync failed:', err));
+
 const apiKeyPlugin = require("better-auth/plugins").apiKey({
     schema: {
         apikey: {
@@ -167,8 +196,9 @@ const auth = betterAuth({
     account: {
         accountLinking: {
             enabled: true,
-            // Include OIDC provider IDs that should be trusted for automatic account linking
-            trustedProviders: [], // This will be populated asynchronously
+            // Trust providers based on database configuration (auto_register flag)
+            // Points to a persistent array reference that is updated at runtime
+            trustedProviders: dynamicTrustedProviders,
         },
         fields: {
             id: "id",
@@ -272,6 +302,28 @@ const auth = betterAuth({
                     }
                 }
             }
+        },
+        account: {
+            create: {
+                before: async (account, ctx) => {
+                    console.log(`[AUTH DEBUG] account.create.before hook triggered`);
+                    console.log(`[AUTH DEBUG] Account data:`, JSON.stringify({
+                        providerId: account.providerId,
+                        accountId: account.accountId,
+                        userId: account.userId,
+                        path: ctx.path
+                    }));
+                    return { data: account };
+                },
+                after: async (account) => {
+                    console.log(`[AUTH DEBUG] account.create.after hook - Account link created successfully`);
+                    console.log(`[AUTH DEBUG] Created account:`, JSON.stringify({
+                        id: account.id,
+                        providerId: account.providerId,
+                        userId: account.userId
+                    }));
+                }
+            }
         }
     },
 
@@ -346,4 +398,4 @@ const auth = betterAuth({
     ]
 });
 
-module.exports = { auth };
+module.exports = { auth, syncTrustedProviders };

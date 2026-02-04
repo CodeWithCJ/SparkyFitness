@@ -45,7 +45,7 @@ async function getOidcProviders() {
         );
         return result.rows.map(row => {
             const config = row.additional_config ? JSON.parse(row.additional_config) : {};
-            const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080") + "/auth";
+            const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
             return {
                 id: row.id,
                 provider_id: row.provider_id,
@@ -62,7 +62,7 @@ async function getOidcProviders() {
                 timeout: config.timeout || 30000,
                 ...config,
                 // Force correct redirectURI for Better Auth
-                redirectURI: `${baseUrl}/sso/callback/${row.provider_id}`
+                redirectURI: `${baseUrl}/api/auth/sso/callback/${row.provider_id}`
             };
         });
     } finally {
@@ -82,7 +82,7 @@ async function getOidcProviderById(id) {
 
         const config = row.additional_config ? JSON.parse(row.additional_config) : {};
 
-        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080") + "/auth";
+        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
         const provider = {
             id: row.id,
             provider_id: row.provider_id,
@@ -100,7 +100,7 @@ async function getOidcProviderById(id) {
             timeout: config.timeout || 30000,
             ...config,
             // Force correct redirectURI for Better Auth
-            redirectURI: `${baseUrl}/sso/callback/${row.provider_id}`
+            redirectURI: `${baseUrl}/api/auth/sso/callback/${row.provider_id}`
         };
 
         let endSessionEndpoint = null;
@@ -155,7 +155,7 @@ async function createOidcProvider(providerData) {
         const endpoints = await fetchOidcEndpoints(discoveryEndpoint);
 
         // Construct native oidcConfig for Better Auth
-        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080") + "/auth";
+        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
         const oidcConfig = JSON.stringify({
             issuer: providerData.issuer_url,
             clientId: providerData.client_id,
@@ -163,7 +163,7 @@ async function createOidcProvider(providerData) {
             scopes: (providerData.scope || 'openid email profile').split(' ').filter(Boolean),
             discoveryEndpoint: discoveryEndpoint,
             pkce: true,
-            redirectURI: `${baseUrl}/sso/callback/${providerId}`,
+            redirectURI: `${baseUrl}/api/auth/sso/callback/${providerId}`,
             // Add endpoints from discovery
             jwksEndpoint: endpoints.jwksEndpoint,
             tokenEndpoint: endpoints.tokenEndpoint,
@@ -194,6 +194,14 @@ async function createOidcProvider(providerData) {
                 oidcConfig
             ]
         );
+        // Refresh Better Auth trusted providers after creation
+        try {
+            const { syncTrustedProviders } = require('../auth');
+            await syncTrustedProviders();
+        } catch (err) {
+            log('error', 'Failed to refresh trusted providers after creation:', err);
+        }
+
         return result.rows[0];
     } finally {
         client.release();
@@ -226,7 +234,7 @@ async function updateOidcProvider(id, providerData) {
         const endpoints = await fetchOidcEndpoints(discoveryEndpoint);
 
         // Construct native oidcConfig for Better Auth
-        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080") + "/auth";
+        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
         const providerIdToUse = providerData.provider_id || id;
         const oidcConfig = JSON.stringify({
             issuer: providerData.issuer_url,
@@ -235,7 +243,7 @@ async function updateOidcProvider(id, providerData) {
             scopes: (providerData.scope || 'openid email profile').split(' ').filter(Boolean),
             discoveryEndpoint: discoveryEndpoint,
             pkce: true,
-            redirectURI: `${baseUrl}/sso/callback/${providerIdToUse}`,
+            redirectURI: `${baseUrl}/api/auth/sso/callback/${providerIdToUse}`,
             // Add endpoints from discovery
             jwksEndpoint: endpoints.jwksEndpoint,
             tokenEndpoint: endpoints.tokenEndpoint,
@@ -267,6 +275,15 @@ async function updateOidcProvider(id, providerData) {
             providerIdToUse,
             id
         ]);
+
+        // Refresh Better Auth trusted providers after update
+        try {
+            const { syncTrustedProviders } = require('../auth');
+            await syncTrustedProviders();
+        } catch (err) {
+            log('error', 'Failed to refresh trusted providers after update:', err);
+        }
+
         return result.rows[0];
     } finally {
         client.release();
@@ -277,6 +294,14 @@ async function deleteOidcProvider(id) {
     const client = await getSystemClient();
     try {
         await client.query('DELETE FROM "sso_provider" WHERE id::text = $1 OR provider_id = $1', [id]);
+
+        // Refresh Better Auth trusted providers after deletion
+        try {
+            const { syncTrustedProviders } = require('../auth');
+            await syncTrustedProviders();
+        } catch (err) {
+            log('error', 'Failed to refresh trusted providers after deletion:', err);
+        }
     } finally {
         client.release();
     }
