@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Switch, Image } from 'react-native';
+import { View, Text, Switch, Image, Platform, TouchableOpacity } from 'react-native';
 import styles from '../screens/SettingsScreenStyles';
 import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER } from '../constants/HealthMetrics';
 import { useTheme } from '../contexts/ThemeContext';
@@ -36,6 +36,8 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   const { colors } = useTheme();
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showHealthKitDetails, setShowHealthKitDetails] = useState(false);
+  const [showHealthConnectDetails, setShowHealthConnectDetails] = useState(false);
 
   useEffect(() => {
     loadCollapsedCategories()
@@ -89,6 +91,45 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   return (
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Health Data to Sync</Text>
+      {Platform.OS === 'ios' && (
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
+            Apple Health (HealthKit)
+          </Text>
+          <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 18 }}>
+Reads selected data from Apple Health and syncs it to your self-hosted server.
+          </Text>
+          {showHealthKitDetails && (
+            <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 18, marginTop: 6 }}>
+SparkyFitness reads the health data you select below using Apple Health (HealthKit). If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).
+{'\n'}Manage or remove access in Settings → Health → Data Access & Devices → SparkyFitnessMobile</Text>
+          )}
+          <TouchableOpacity onPress={() => setShowHealthKitDetails(prev => !prev)} activeOpacity={0.7}>
+            <Text style={{ fontSize: 13, color: colors.primary, marginTop: 4 }}>
+              {showHealthKitDetails ? 'Show less' : 'Learn more'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {Platform.OS === 'android' && (
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
+            Health Connect
+          </Text>
+          <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 18 }}>
+Reads selected data from Health Connect and syncs it to your self-hosted server.
+          </Text>
+          {showHealthConnectDetails && (
+            <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 18, marginTop: 6 }}>
+SparkyFitness reads the health data you select below using Health Connect. If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).</Text>
+          )}
+          <TouchableOpacity onPress={() => setShowHealthConnectDetails(prev => !prev)} activeOpacity={0.7}>
+            <Text style={{ fontSize: 13, color: colors.primary, marginTop: 4 }}>
+              {showHealthConnectDetails ? 'Show less' : 'Learn more'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <View style={[styles.settingItem]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
           <Text
