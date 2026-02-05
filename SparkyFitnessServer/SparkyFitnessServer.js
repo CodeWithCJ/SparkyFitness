@@ -327,6 +327,19 @@ const scheduleBackups = async () => {
   });
 };
 
+// Session cleanup scheduling
+const scheduleSessionCleanup = async () => {
+  const { cleanupSessions } = require("./auth");
+  // Run every day at 3 AM
+  cron.schedule("0 3 * * *", async () => {
+    try {
+      await cleanupSessions();
+    } catch (error) {
+      console.error("[CRON] Session cleanup failed:", error);
+    }
+  });
+};
+
 // Withings sync
 const scheduleWithingsSyncs = async () => {
   cron.schedule("0 * * * *", async () => {
@@ -371,6 +384,7 @@ applyMigrations()
   .then(applyRlsPolicies)
   .then(async () => {
     scheduleBackups();
+    scheduleSessionCleanup();
     scheduleWithingsSyncs();
     scheduleGarminSyncs();
     scheduleFitbitSyncs();

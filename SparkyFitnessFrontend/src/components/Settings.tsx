@@ -26,7 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar as CalendarIcon } from "lucide-react"; // Import CalendarIcon
 import { Calendar } from "@/components/ui/calendar"; // Import Calendar component
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Import Popover components
-import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles, QrCode, Mail, BookOpen, UtensilsCrossed, X } from "lucide-react";
+import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles, QrCode, Mail, BookOpen, UtensilsCrossed, X, Target, Flame } from "lucide-react";
 import { apiCall } from '@/services/api'; // Assuming a common API utility
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
@@ -101,8 +101,6 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     setWaterDisplayUnit,
     language,
     setLanguage,
-    calorieGoalAdjustmentMode,
-    setCalorieGoalAdjustmentMode, // Add new preference
   } = usePreferences();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [avatarObjectURL, setAvatarObjectURL] = useState<string | null>(null); // State to hold the object URL for the avatar
@@ -1146,57 +1144,6 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <CalculationSettings />
-
-            {/* Calorie Goal Adjustment Mode */}
-            <Separator className="my-6" />
-            <h3 className="text-lg font-semibold mb-2">
-              {t(
-                "settings.calorieGoalAdjustment.title",
-                "Calorie Goal Adjustment"
-              )}
-            </h3>
-            <div className="flex flex-col space-y-2">
-              <RadioGroup
-                value={calorieGoalAdjustmentMode}
-                onValueChange={(value: "dynamic" | "fixed") =>
-                  setCalorieGoalAdjustmentMode(value)
-                }
-                className="flex flex-col space-y-1"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="dynamic" id="dynamic-goal" />
-                  <Label htmlFor="dynamic-goal">
-                    <span className="font-medium">
-                      {t(
-                        "settings.calorieGoalAdjustment.dynamicGoal",
-                        "Dynamic Goal"
-                      )}
-                      :
-                    </span>{" "}
-                    {t(
-                      "settings.calorieGoalAdjustment.dynamicGoalDescription",
-                      "Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily."
-                    )}
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="fixed" id="fixed-goal" />
-                  <Label htmlFor="fixed-goal">
-                    <span className="font-medium">
-                      {t(
-                        "settings.calorieGoalAdjustment.fixedGoal",
-                        "Fixed Goal"
-                      )}
-                      :
-                    </span>{" "}
-                    {t(
-                      "settings.calorieGoalAdjustment.fixedGoalDescription",
-                      "Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target."
-                    )}
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
           </AccordionContent>
         </AccordionItem>
 
