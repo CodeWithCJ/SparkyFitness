@@ -997,9 +997,9 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
             activity_id = activity["activityId"]
             
             # calculate active calories
-            cal = activity.get("calories") or 0
-            bmr = activity.get("bmrCalories") or 0
-            active_calories = cal - bmr
+            cal = activity.get("calories") or 0.0
+            bmr = activity.get("bmrCalories") or 0.0
+            active_calories = max(0.0, cal - bmr)
 
             try:
                 activity_details = garmin.get_activity_details(activity_id)
