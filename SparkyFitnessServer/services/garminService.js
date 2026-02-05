@@ -311,8 +311,8 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
       }
 
       let perExerciseCaloriesBurned = 0;
-      if (totalActiveDurationSeconds > 0 && activity.calories) {
-        perExerciseCaloriesBurned = (totalDuration / totalActiveDurationSeconds) * activity.calories;
+      if (totalActiveDurationSeconds > 0 && activity.active_calories) {
+        perExerciseCaloriesBurned = (totalDuration / totalActiveDurationSeconds) * activity.active_calories;
       }
 
 
@@ -442,7 +442,7 @@ async function processGarminSimpleActivity(userId, activityData) {
   const exerciseEntryData = {
     exercise_id: exercise.id,
     duration_minutes: activity.duration || 0,
-    calories_burned: activity.calories || 0,
+    calories_burned: activity.active_calories || 0,
     entry_date: entryDate,
     notes: `Garmin Activity: ${activity.activityName} (${activity.activityType?.typeKey})`,
     distance: activity.distance,

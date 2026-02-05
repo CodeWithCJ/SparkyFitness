@@ -995,6 +995,12 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
         detailed_activities = []
         for activity in converted_activities:
             activity_id = activity["activityId"]
+            
+            # calculate active calories
+            cal = activity.get("calories") or 0.0
+            bmr = activity.get("bmrCalories") or 0.0
+            active_calories = max(0.0, cal - bmr)
+
             try:
                 activity_details = garmin.get_activity_details(activity_id)
                 activity_splits = garmin.get_activity_splits(activity_id)
@@ -1024,7 +1030,8 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
                     "activity": {
                         **activity,
                         "cadence": extracted_cadence,
-                        "power": extracted_power
+                        "power": extracted_power,
+                        "active_calories": active_calories,
                     },
                     "details": json.dumps(clean_garmin_data(activity_details)) if activity_details else None,
                     "splits": json.dumps(clean_garmin_data(activity_splits)) if activity_splits else None,
