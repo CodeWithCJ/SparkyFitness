@@ -269,7 +269,7 @@ const DailyProgress = ({
         );
         const age = (userProfile as any)?.date_of_birth
           ? new Date().getFullYear() -
-            new Date((userProfile as any).date_of_birth).getFullYear()
+          new Date((userProfile as any).date_of_birth).getFullYear()
           : 0;
         const gender = (userProfile as any)?.gender;
 
@@ -404,38 +404,37 @@ const DailyProgress = ({
     );
   }
 
-  const totalCaloriesBurned = totalOtherExerciseCaloriesBurned + activeOrStepsCaloriesToAdd;
+  const bmrCalories = includeBmrInNetCalories && bmr ? bmr : 0;
+  const finalTotalCaloriesBurned = totalOtherExerciseCaloriesBurned + activeOrStepsCaloriesToAdd + bmrCalories;
+
   info(
     loggingLevel,
-    "DailyProgress: Total calories burned (Other Exercise + Active/Steps):",
-    totalCaloriesBurned,
+    "DailyProgress: Final Total calories burned (Exercise + Active/Steps + BMR?):",
+    finalTotalCaloriesBurned,
   );
-
-  const bmrCalories = includeBmrInNetCalories && bmr ? bmr : 0;
-  const finalTotalCaloriesBurned = totalCaloriesBurned + bmrCalories;
 
   let netCalories: number;
   let caloriesRemaining: number;
 
+  // Net Calories is always Eaten - Burned (Total) for metabolic visibility
+  netCalories = Math.round(dailyIntake.calories) - finalTotalCaloriesBurned;
+
   if (calorieGoalAdjustmentMode === 'dynamic') {
-    // Dynamic Goal: burned calories are added to the daily calorie goal
-    // Formula: Remaining = Goal + Burned - Eaten
-    // Effectively, netCalories in this context is Eaten - Burned
-    netCalories = Math.round(dailyIntake.calories) - finalTotalCaloriesBurned;
+    // Dynamic Goal: burned calories are effectively added to the budget
+    // Formula: Remaining = Goal - Net  => Goal - (Eaten - Burned) => Goal + Burned - Eaten
     caloriesRemaining = dailyGoals.calories - netCalories;
   } else {
-    // Fixed Goal: daily calorie goal remains constant regardless of exercise
+    // Fixed Goal: daily calorie goal remains constant
     // Formula: Remaining = Goal - Eaten
-    netCalories = Math.round(dailyIntake.calories); // Only eaten calories count towards net
-    caloriesRemaining = dailyGoals.calories - dailyIntake.calories;
+    caloriesRemaining = dailyGoals.calories - Math.round(dailyIntake.calories);
   }
 
   const calorieProgress = Math.max(
     0,
-    (netCalories / dailyGoals.calories) * 100,
+    ((calorieGoalAdjustmentMode === 'dynamic' ? netCalories : Math.round(dailyIntake.calories)) / dailyGoals.calories) * 100,
   );
   debug(loggingLevel, "DailyProgress: Calculated progress values:", {
-    totalCaloriesBurned,
+    finalTotalCaloriesBurned,
     netCalories,
     caloriesRemaining,
     calorieProgress,
@@ -445,13 +444,12 @@ const DailyProgress = ({
   // Convert all displayed energy values to the user's preferred unit
   const displayedCaloriesRemaining = Math.round(convertEnergy(caloriesRemaining, 'kcal', energyUnit));
   const displayedDailyIntakeCalories = Math.round(convertEnergy(dailyIntake.calories, 'kcal', energyUnit));
-  const displayedTotalCaloriesBurned = Math.round(convertEnergy(totalCaloriesBurned, 'kcal', energyUnit));
+  const displayedFinalTotalCaloriesBurned = Math.round(convertEnergy(finalTotalCaloriesBurned, 'kcal', energyUnit));
   const displayedDailyGoalCalories = Math.round(convertEnergy(dailyGoals.calories, 'kcal', energyUnit));
   const displayedExerciseCalories = Math.round(convertEnergy(exerciseCalories, 'kcal', energyUnit));
   const displayedActiveCaloriesFromExercise = Math.round(convertEnergy(activeCaloriesFromExercise, 'kcal', energyUnit));
   const displayedStepsCalories = Math.round(convertEnergy(stepsCalories, 'kcal', energyUnit));
   const displayedBmr = bmr ? Math.round(convertEnergy(bmr, 'kcal', energyUnit)) : 0;
-  const displayedFinalTotalCaloriesBurned = Math.round(convertEnergy(finalTotalCaloriesBurned, 'kcal', energyUnit));
   const displayedNetCalories = Math.round(convertEnergy(netCalories, 'kcal', energyUnit));
 
 
@@ -515,7 +513,7 @@ const DailyProgress = ({
                   <div className="space-y-1">
                     <div className="flex items-center justify-center text-lg font-bold text-orange-600">
                       <Flame className="w-4 h-4 mr-1" />
-                      {displayedTotalCaloriesBurned}
+                      {displayedFinalTotalCaloriesBurned}
                     </div>
                     <div className="text-xs text-gray-500">{t('exercise.dailyProgress.burned', 'burned')} {getEnergyUnitString(energyUnit)}</div>
                   </div>
@@ -534,7 +532,7 @@ const DailyProgress = ({
                   {bmr && !isNaN(bmr) && (
                     <p>{t('exercise.dailyProgress.bmrCalories', 'BMR: {{bmr}} {{energyUnit}}', { bmr: displayedBmr, energyUnit: getEnergyUnitString(energyUnit) })}</p>
                   )}
-                  <p>{t('exercise.dailyProgress.totalCaloriesBurned', 'Total: {{totalCaloriesBurned}} {{energyUnit}}', { totalCaloriesBurned: displayedTotalCaloriesBurned, energyUnit: getEnergyUnitString(energyUnit) })}</p>
+                  <p>{t('exercise.dailyProgress.totalCaloriesBurned', 'Total: {{totalCaloriesBurned}} {{energyUnit}}', { totalCaloriesBurned: displayedFinalTotalCaloriesBurned, energyUnit: getEnergyUnitString(energyUnit) })}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -585,7 +583,6 @@ const DailyProgress = ({
               {t('exercise.dailyProgress.netEnergy', 'Net Energy: {{netCalories}}', { netCalories: displayedNetCalories, energyUnit: getEnergyUnitString(energyUnit) })}
             </div>
             <div className="text-xs dark:text-black text-gray-600">
-              {displayedDailyIntakeCalories} eaten - {displayedFinalTotalCaloriesBurned}{" "}
               {t('exercise.dailyProgress.netEnergyBreakdown', '{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned', { dailyIntakeCalories: displayedDailyIntakeCalories, finalTotalCaloriesBurned: displayedFinalTotalCaloriesBurned, energyUnit: getEnergyUnitString(energyUnit) })}
             </div>
           </div>

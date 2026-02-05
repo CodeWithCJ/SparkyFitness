@@ -397,4 +397,24 @@ const auth = betterAuth({
     ]
 });
 
-module.exports = { auth, syncTrustedProviders };
+/**
+ * Proactive session cleanup
+ * Deletes expired sessions from the database to maintain performance.
+ * Better Auth doesn't do this automatically on every request for performance reasons.
+ */
+async function cleanupSessions() {
+    console.log("[AUTH] Running proactive session cleanup...");
+    const client = await authPool.connect();
+    try {
+        const result = await client.query('DELETE FROM "session" WHERE expires_at < NOW()');
+        console.log(`[AUTH] Cleanup complete. Removed ${result.rowCount} expired sessions.`);
+        return result.rowCount;
+    } catch (error) {
+        console.error("[AUTH] Session cleanup failed:", error);
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+module.exports = { auth, syncTrustedProviders, cleanupSessions };

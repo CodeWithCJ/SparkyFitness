@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Save } from "lucide-react";
+import { Save, Flame, UtensilsCrossed, Target, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { info, error as logError } from '@/utils/logging';
 import { useTranslation } from "react-i18next";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   FatBreakdownAlgorithm,
   MineralCalculationAlgorithm,
@@ -35,8 +36,11 @@ const CalculationSettings = () => {
     vitaminCalculationAlgorithm: contextVitaminCalculationAlgorithm,
     sugarCalculationAlgorithm: contextSugarCalculationAlgorithm,
     saveAllPreferences,
+    calorieGoalAdjustmentMode: contextCalorieGoalAdjustmentMode,
     loggingLevel
   } = usePreferences();
+
+  const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode] = useState<"dynamic" | "fixed">(contextCalorieGoalAdjustmentMode || "dynamic");
 
   const [bmrAlgorithm, setBmrAlgorithm] = useState<BmrAlgorithm>(contextBmrAlgorithm || BmrAlgorithm.MIFFLIN_ST_JEOR);
   const [bodyFatAlgorithm, setBodyFatAlgorithm] = useState<BodyFatAlgorithm>(contextBodyFatAlgorithm || BodyFatAlgorithm.US_NAVY);
@@ -71,11 +75,14 @@ const CalculationSettings = () => {
     if (contextSugarCalculationAlgorithm) {
       setSugarCalculationAlgorithm(contextSugarCalculationAlgorithm);
     }
+    if (contextCalorieGoalAdjustmentMode) {
+      setCalorieGoalAdjustmentMode(contextCalorieGoalAdjustmentMode);
+    }
     // Since preferences are loaded by the PreferencesProvider at a higher level,
     // we can assume they are available by the time this component renders.
     // Set isLoading to false after initial render with context values.
     setIsLoading(false);
-  }, [contextBmrAlgorithm, contextBodyFatAlgorithm, contextIncludeBmrInNetCalories, contextFatBreakdownAlgorithm, contextMineralCalculationAlgorithm, contextVitaminCalculationAlgorithm, contextSugarCalculationAlgorithm]);
+  }, [contextBmrAlgorithm, contextBodyFatAlgorithm, contextIncludeBmrInNetCalories, contextFatBreakdownAlgorithm, contextMineralCalculationAlgorithm, contextVitaminCalculationAlgorithm, contextSugarCalculationAlgorithm, contextCalorieGoalAdjustmentMode]);
 
 
   const handleSave = async () => {
@@ -90,6 +97,7 @@ const CalculationSettings = () => {
         mineralCalculationAlgorithm: mineralCalculationAlgorithm,
         vitaminCalculationAlgorithm: vitaminCalculationAlgorithm,
         sugarCalculationAlgorithm: sugarCalculationAlgorithm,
+        calorieGoalAdjustmentMode: calorieGoalAdjustmentMode,
       });
       toast({
         title: t("calculationSettings.saveSuccess", "Success"),
@@ -207,6 +215,109 @@ const CalculationSettings = () => {
           </p>
         </div>
 
+        {/* Calorie Goal Adjustment mode */}
+        <div className="pt-4 border-t">
+          <Label className="text-base font-semibold mb-2 block">
+            {t("settings.calorieGoalAdjustment.title", "Daily Calorie Goal Adjustment")}
+          </Label>
+          <RadioGroup
+            value={calorieGoalAdjustmentMode}
+            onValueChange={(value: "dynamic" | "fixed") =>
+              setCalorieGoalAdjustmentMode(value)
+            }
+            className="flex flex-col space-y-1 mb-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="dynamic" id="dynamic-goal" />
+              <Label htmlFor="dynamic-goal" className="cursor-pointer">
+                <span className="font-medium">
+                  {t(
+                    "settings.calorieGoalAdjustment.dynamicGoal",
+                    "Dynamic Goal"
+                  )}
+                  :
+                </span>{" "}
+                {t(
+                  "settings.calorieGoalAdjustment.dynamicGoalDescription",
+                  "Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily."
+                )}
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="fixed" id="fixed-goal" />
+              <Label htmlFor="fixed-goal" className="cursor-pointer">
+                <span className="font-medium">
+                  {t(
+                    "settings.calorieGoalAdjustment.fixedGoal",
+                    "Fixed Goal"
+                  )}
+                  :
+                </span>{" "}
+                {t(
+                  "settings.calorieGoalAdjustment.fixedGoalDescription",
+                  "Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target."
+                )}
+              </Label>
+            </div>
+          </RadioGroup>
+
+          {/* Dynamic Calculation Explanation Box */}
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl space-y-4">
+            <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200 font-semibold">
+              <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <span>{t('settings.calculationExplanation.title', 'How your calories will be calculated')}</span>
+            </div>
+
+            <div className="grid gap-3 text-sm">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 p-1.5 bg-orange-100 dark:bg-orange-900/40 rounded-lg">
+                  <Flame className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">{t('settings.calculationExplanation.burnedTitle', 'Burned Calories')}</p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {includeBmrInNetCalories
+                      ? t('settings.calculationExplanation.burnedBmr', 'Activity + BMR (Your base metabolism)')
+                      : t('settings.calculationExplanation.burnedActivity', 'Activity (Exercise & Steps only)')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 p-1.5 bg-green-100 dark:bg-green-900/40 rounded-lg">
+                  <UtensilsCrossed className="w-4 h-4 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">{t('settings.calculationExplanation.netTitle', 'Net Energy')}</p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {t('settings.calculationExplanation.netFormula', 'Eaten - Total Burned')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 p-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                  <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">{t('settings.calculationExplanation.remainingTitle', 'Remaining Calories')}</p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {calorieGoalAdjustmentMode === 'dynamic'
+                      ? t('settings.calculationExplanation.remainingDynamic', 'Daily Goal - Net Energy (Your goal grows as you move)')
+                      : t('settings.calculationExplanation.remainingFixed', 'Daily Goal - Eaten (Activity does not change your budget)')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 text-xs text-blue-700/70 dark:text-blue-300/60 italic border-t border-blue-100 dark:border-blue-800">
+              {calorieGoalAdjustmentMode === 'dynamic'
+                ? t('settings.calculationExplanation.dynamicFootnote', '* Ideal for fueling workouts and active recovery.')
+                : t('settings.calculationExplanation.fixedFootnote', '* Ideal for strict caloric deficits and weight management.')}
+            </div>
+          </div>
+        </div>
+
         {/* Nutrient Calculation Algorithms */}
         <div className="border-t pt-4 mt-4">
           <h3 className="text-lg font-semibold mb-4">Nutrient Calculation Algorithms</h3>
@@ -289,8 +400,8 @@ const CalculationSettings = () => {
           <Save className="h-4 w-4 mr-2" />
           {isSaving ? t("common.saving", "Saving...") : t("common.savePreferences", "Save Preferences")}
         </Button>
-      </CardContent>
-    </Card>
+      </CardContent >
+    </Card >
   );
 };
 
