@@ -1,0 +1,23 @@
+name: Attach Docker Assets to Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  attach_assets:
+    name: Attach Docker Compose and Env
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to upload release assets
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            docker/docker-compose.prod.yml
+            docker/.env.example
