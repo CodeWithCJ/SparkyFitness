@@ -139,7 +139,6 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
           title: t("common.success", "Success"),
           description: t("exercise.exerciseSearch.addExternalExerciseSuccess", "{{exerciseName}} added to your exercises. You can now log it from the diary page.", { exerciseName: exercise.name }),
         });
-        onExerciseSelect(newExercise, 'external'); // Call onExerciseSelect to trigger logging in parent
       }
       return newExercise;
     } catch (error) {
