@@ -240,12 +240,19 @@ app.use((req, res, next) => {
     "/api/auth/mfa-factors",
     "/api/health",
     "/api/version",
-    "/api/onboarding",
     "/api/uploads",
     "/uploads",
   ];
 
-  let isPublic = publicRoutes.some(route => req.path.startsWith(route));
+  let isPublic = publicRoutes.some(route => {
+    // Exact match or subpath match with trailing slash to prevent partial matches
+    // e.g. "/api/health" matches "/api/health" and "/api/health/" but NOT "/api/health-data"
+    // e.g. "/api/onboarding" matches "/api/onboarding" and "/api/onboarding/step1"
+    if (req.path === route || req.path.startsWith(route + '/')) {
+      return true;
+    }
+    return false;
+  });
 
   if (isPublic) {
     return next();
