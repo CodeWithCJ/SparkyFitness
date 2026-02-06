@@ -269,7 +269,7 @@ const ExternalProviderSettings = () => {
   const handleConnectWithings = async (providerId: string) => {
     setLoading(true);
     try {
-      const response = await apiCall(`/api/withings/authorize`, {
+      const response = await apiCall(`/withings/authorize`, {
         method: 'GET',
       });
       if (response && response.authUrl) {
