@@ -95,7 +95,7 @@ if (apiKeyPlugin.endpoints) {
 
 const auth = betterAuth({
     database: authPool,
-    secret: Buffer.from(process.env.BETTER_AUTH_SECRET || "default_dev_secret_CHANGE_ME", 'base64'),
+    secret: Buffer.from(process.env.BETTER_AUTH_SECRET, 'base64'),
 
 
     // Base URL configuration - MUST use public frontend URL for OIDC to work
