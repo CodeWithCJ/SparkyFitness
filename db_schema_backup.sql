@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict j37msPUPLnM89GHmDrl81V4vVwSN6BJ0xECvTJAYXv6kPTeHjRbbgi9INb11rUI
+\restrict 2PSpSOUyB9DcXDaUgSOQgxYZHshSL4TkaZF7GNU8x2HN0OtmZliFGrU3d9ewiff
 
 -- Dumped from database version 15.15
 -- Dumped by pg_dump version 18.0
@@ -982,7 +982,8 @@ CREATE TABLE public.exercise_entries (
     images text,
     distance numeric,
     avg_heart_rate integer,
-    exercise_preset_entry_id uuid
+    exercise_preset_entry_id uuid,
+    sort_order integer DEFAULT 0
 );
 
 
@@ -1755,7 +1756,8 @@ CREATE TABLE public.sso_provider (
     additional_config text,
     domain text DEFAULT 'default.internal'::text NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    oidc_config text
 );
 
 
@@ -2131,6 +2133,7 @@ CREATE TABLE public.workout_plan_template_assignments (
     exercise_id uuid,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    sort_order integer DEFAULT 0,
     CONSTRAINT chk_workout_assignment_type CHECK ((((workout_preset_id IS NOT NULL) AND (exercise_id IS NULL)) OR ((workout_preset_id IS NULL) AND (exercise_id IS NOT NULL))))
 );
 
@@ -2241,7 +2244,8 @@ CREATE TABLE public.workout_preset_exercises (
     exercise_id uuid NOT NULL,
     image_url text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    sort_order integer DEFAULT 0
 );
 
 
@@ -6009,5 +6013,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict j37msPUPLnM89GHmDrl81V4vVwSN6BJ0xECvTJAYXv6kPTeHjRbbgi9INb11rUI
+\unrestrict 2PSpSOUyB9DcXDaUgSOQgxYZHshSL4TkaZF7GNU8x2HN0OtmZliFGrU3d9ewiff
 

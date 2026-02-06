@@ -84,8 +84,8 @@ const SortableSetItem = React.memo(({ t, set, exerciseIndex, setIndex, onSetChan
           </div>
           <div className="md:col-span-1">
             <Label htmlFor={`duration-${exerciseIndex}-${set.id}`} className="flex items-center">
-                            <Hourglass className="h-4 w-4 mr-1" style={{ color: '#f97316' }} /> {t('workoutPresetForm.durationLabel', 'Duration (min)')}
-                          </Label>            <Input id={`duration-${exerciseIndex}-${set.id}`} type="number" value={set.duration ?? ''} onChange={(e) => onSetChange(exerciseIndex, setIndex, 'duration', Number(e.target.value))} />
+              <Hourglass className="h-4 w-4 mr-1" style={{ color: '#f97316' }} /> {t('workoutPresetForm.durationLabel', 'Duration (min)')}
+            </Label>            <Input id={`duration-${exerciseIndex}-${set.id}`} type="number" value={set.duration ?? ''} onChange={(e) => onSetChange(exerciseIndex, setIndex, 'duration', Number(e.target.value))} />
           </div>
           <div className="md:col-span-1">
             <Label htmlFor={`rest-${exerciseIndex}-${set.id}`} className="flex items-center">
@@ -107,6 +107,80 @@ const SortableSetItem = React.memo(({ t, set, exerciseIndex, setIndex, onSetChan
         <Label htmlFor={`notes-${exerciseIndex}-${set.id}`}>{t('workoutPresetForm.notesLabel', 'Notes')}</Label>
         <Textarea id={`notes-${exerciseIndex}-${set.id}`} value={set.notes ?? ''} onChange={(e) => onSetChange(exerciseIndex, setIndex, 'notes', e.target.value)} />
       </div>
+    </div>
+  );
+});
+
+const SortableExerciseItem = React.memo(({
+  ex,
+  exerciseIndex,
+  handleRemoveExercise,
+  handleSetChange,
+  handleDuplicateSet,
+  handleRemoveSet,
+  handleAddSet,
+  weightUnit,
+  t
+}: {
+  ex: WorkoutPresetExercise,
+  exerciseIndex: number,
+  handleRemoveExercise: Function,
+  handleSetChange: Function,
+  handleDuplicateSet: Function,
+  handleRemoveSet: Function,
+  handleAddSet: Function,
+  weightUnit: string,
+  t: any
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: ex.id! });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="border p-4 rounded-md space-y-4 bg-card" {...attributes}>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <div {...listeners}>
+            <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
+          </div>
+          <h4 className="font-semibold">{ex.exercise_name}</h4>
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => handleRemoveExercise(exerciseIndex)}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <SortableContext items={ex.sets.map(s => s.id!)}>
+        <div className="space-y-2">
+          {ex.sets.map((set, setIndex) => (
+            <SortableSetItem
+              key={set.id}
+              t={t}
+              set={set}
+              exerciseIndex={exerciseIndex}
+              setIndex={setIndex}
+              onSetChange={handleSetChange}
+              onDuplicateSet={handleDuplicateSet}
+              onRemoveSet={handleRemoveSet}
+              weightUnit={weightUnit}
+            />
+          ))}
+        </div>
+      </SortableContext>
+      <Button type="button" variant="outline" onClick={() => handleAddSet(exerciseIndex)}>
+        <Plus className="h-4 w-4 mr-2" /> {t('workoutPresetForm.addSetButton', 'Add Set')}
+      </Button>
+      <ExerciseHistoryDisplay exerciseId={ex.exercise_id} />
     </div>
   );
 });
@@ -134,9 +208,11 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
       setExercises(
         initialPreset?.exercises.map(ex => ({
           ...ex,
+          id: ex.id ? String(ex.id) : crypto.randomUUID(), // Ensure stable ID for DND
           sets: ex.sets.map(set => ({
             ...set,
-            weight: parseFloat(convertWeight(set.weight, 'kg', weightUnit).toFixed(2))
+            id: set.id ? String(set.id) : crypto.randomUUID(), // Ensure stable ID for sets too
+            weight: parseFloat(convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(2))
           }))
         })) || []
       );
@@ -145,11 +221,12 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
 
   const handleAddExercise = (exercise: Exercise) => {
     const newExercise: WorkoutPresetExercise = {
+      id: crypto.randomUUID(), // Stable ID for DND
       exercise_id: exercise.id,
       exercise_name: exercise.name,
       image_url: exercise.images && exercise.images.length > 0 ? exercise.images[0] : "",
       exercise: exercise,
-      sets: [{ id: Date.now().toString(), set_number: 1, set_type: 'Working Set', reps: 10, weight: 0 }],
+      sets: [{ id: crypto.randomUUID(), set_number: 1, set_type: 'Working Set', reps: 10, weight: 0 }],
     };
     setExercises((prev) => [...prev, newExercise]);
     setIsAddExerciseDialogOpen(false);
@@ -187,7 +264,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         const lastSet = exercise.sets[exercise.sets.length - 1];
         const newSet: WorkoutPresetSet = {
           ...lastSet,
-          id: Date.now().toString(),
+          id: crypto.randomUUID(),
           set_number: exercise.sets.length + 1,
         };
         return {
@@ -208,7 +285,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         const setToDuplicate = sets[setIndex];
         const newSets = [
           ...sets.slice(0, setIndex + 1),
-          { ...setToDuplicate, id: Date.now().toString() },
+          { ...setToDuplicate, id: crypto.randomUUID() },
           ...sets.slice(setIndex + 1)
         ].map((s, i) => ({ ...s, set_number: i + 1 }));
         return { ...exercise, sets: newSets };
@@ -243,32 +320,46 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
     if (!over || active.id === over.id) {
       return;
     }
-  
-    setExercises((exercises) => {
-      const newExercises = [...exercises];
-      const activeExerciseIndex = newExercises.findIndex((ex) =>
-        ex.sets.some((s) => s.id === active.id)
-      );
-      const overExerciseIndex = newExercises.findIndex((ex) =>
-        ex.sets.some((s) => s.id === over.id)
-      );
-  
-      if (activeExerciseIndex === -1 || overExerciseIndex === -1 || activeExerciseIndex !== overExerciseIndex) {
-        return newExercises; // Only handle reordering within the same exercise
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    setExercises((prevExercises) => {
+      const newExercises = [...prevExercises];
+
+      // Try reordering exercises first
+      const activeExerciseIdx = newExercises.findIndex(ex => String(ex.id) === activeId);
+      const overExerciseIdx = newExercises.findIndex(ex => String(ex.id) === overId);
+
+      if (activeExerciseIdx !== -1 && overExerciseIdx !== -1) {
+        return arrayMove(newExercises, activeExerciseIdx, overExerciseIdx).map((ex, index) => ({
+          ...ex,
+          sort_order: index
+        }));
       }
-  
-      const exercise = newExercises[activeExerciseIndex];
-      const oldIndex = exercise.sets.findIndex((s) => s.id === active.id);
-      const newIndex = exercise.sets.findIndex((s) => s.id === over.id);
-  
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const reorderedSets = arrayMove(exercise.sets, oldIndex, newIndex);
-        newExercises[activeExerciseIndex] = {
-          ...exercise,
-          sets: reorderedSets.map((set, index) => ({ ...set, set_number: index + 1 })),
-        };
+
+      // If not exercises, check if it's a set reorder within the same exercise
+      const activeSetParentIdx = newExercises.findIndex((ex) =>
+        ex.sets.some((s) => String(s.id) === activeId)
+      );
+      const overSetParentIdx = newExercises.findIndex((ex) =>
+        ex.sets.some((s) => String(s.id) === overId)
+      );
+
+      if (activeSetParentIdx !== -1 && overSetParentIdx !== -1 && activeSetParentIdx === overSetParentIdx) {
+        const exercise = newExercises[activeSetParentIdx];
+        const oldSetIdx = exercise.sets.findIndex((s) => String(s.id) === activeId);
+        const newSetIdx = exercise.sets.findIndex((s) => String(s.id) === overId);
+
+        if (oldSetIdx !== -1 && newSetIdx !== -1) {
+          const reorderedSets = arrayMove(exercise.sets, oldSetIdx, newSetIdx);
+          newExercises[activeSetParentIdx] = {
+            ...exercise,
+            sets: reorderedSets.map((set, index) => ({ ...set, set_number: index + 1 })),
+          };
+        }
       }
-  
+
       return newExercises;
     });
   };
@@ -287,8 +378,9 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
       name,
       description,
       is_public: isPublic,
-      exercises: exercises.map(ex => ({
+      exercises: exercises.map((ex, index) => ({
         ...ex,
+        sort_order: index,
         sets: ex.sets.map(set => ({
           ...set,
           weight: convertWeight(set.weight, weightUnit, 'kg')
@@ -347,39 +439,24 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
             />
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <div className="space-y-2">
-                {exercises.map((ex, exerciseIndex) => (
-                  <div key={ex.exercise_id || `ex-${exerciseIndex}`} className="border p-4 rounded-md space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h4 className="font-semibold">{ex.exercise_name}</h4>
-                      <Button variant="ghost" size="icon" onClick={() => handleRemoveExercise(exerciseIndex)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <SortableContext items={ex.sets.map(s => s.id!)}>
-                      <div className="space-y-2">
-                        {ex.sets.map((set, setIndex) => (
-                          <SortableSetItem
-                            key={set.id}
-                            t={t}
-                            set={set}
-                            exerciseIndex={exerciseIndex}
-                            setIndex={setIndex}
-                            onSetChange={handleSetChange}
-                            onDuplicateSet={handleDuplicateSet}
-                            onRemoveSet={handleRemoveSet}
-                            weightUnit={weightUnit}
-                          />
-                        ))}
-                      </div>
-                    </SortableContext>
-                    <Button type="button" variant="outline" onClick={() => handleAddSet(exerciseIndex)}>
-                      <Plus className="h-4 w-4 mr-2" /> {t('workoutPresetForm.addSetButton', 'Add Set')}
-                    </Button>
-                    <ExerciseHistoryDisplay exerciseId={ex.exercise_id} />
-                  </div>
-                ))}
-              </div>
+              <SortableContext items={exercises.map((ex) => ex.id as string)}>
+                <div className="space-y-4">
+                  {exercises.map((ex, exerciseIndex) => (
+                    <SortableExerciseItem
+                      key={ex.id}
+                      ex={ex}
+                      exerciseIndex={exerciseIndex}
+                      handleRemoveExercise={handleRemoveExercise}
+                      handleSetChange={handleSetChange}
+                      handleDuplicateSet={handleDuplicateSet}
+                      handleRemoveSet={handleRemoveSet}
+                      handleAddSet={handleAddSet}
+                      weightUnit={weightUnit}
+                      t={t}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
             </DndContext>
           </div>
         </div>
