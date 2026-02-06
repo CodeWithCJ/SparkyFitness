@@ -287,6 +287,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
       }
     }
 
+    let exerciseSortOrder = 0;
     for (const exerciseName in groupedExercises) {
       const { exerciseDetails, sets, totalDuration, startTime, endTime } = groupedExercises[exerciseName];
 
@@ -346,7 +347,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
         exercise_preset_entry_id: newExercisePresetEntry.id, // Link to preset entry
         avg_heart_rate: perExerciseAvgHeartRate ? Math.round(perExerciseAvgHeartRate) : null, // Round to nearest whole number or keep null
       };
-      await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, userId, 'garmin', newExercisePresetEntry.id);
+      await exerciseEntryRepository.createExerciseEntry(userId, { ...exerciseEntryData, sort_order: exerciseSortOrder }, userId, 'garmin', newExercisePresetEntry.id);
 
       const existingExerciseInPreset = workoutPreset.exercises?.find(e => e.exercise_id === exercise.id);
 
@@ -356,9 +357,11 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
           workoutPreset.id,
           exercise.id,
           null, // image_url
-          isNewWorkoutPreset ? sets : [] // Only add sets to the preset if it's a new preset
+          isNewWorkoutPreset ? sets : [], // Only add sets to the preset if it's a new preset
+          exerciseSortOrder
         );
       }
+      exerciseSortOrder++;
     }
   }
 }
@@ -379,6 +382,7 @@ async function processGarminWorkoutDefinition(userId, workoutData) {
   }
 
   if (workoutData.workoutSegments && Array.isArray(workoutData.workoutSegments)) {
+    let exerciseSortOrder = 0;
     for (const segment of workoutData.workoutSegments) {
       if (segment.workoutSteps && Array.isArray(segment.workoutSteps)) {
         for (const step of segment.workoutSteps) {
@@ -411,7 +415,8 @@ async function processGarminWorkoutDefinition(userId, workoutData) {
                 notes: individualStep.description || '',
               }];
 
-              await workoutPresetRepository.addExerciseToWorkoutPreset(userId, workoutPreset.id, exercise.id, null, sets);
+              await workoutPresetRepository.addExerciseToWorkoutPreset(userId, workoutPreset.id, exercise.id, null, sets, exerciseSortOrder);
+              exerciseSortOrder++;
             }
           }
         }
