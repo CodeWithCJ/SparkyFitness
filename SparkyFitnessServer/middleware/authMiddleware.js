@@ -15,7 +15,17 @@ const authenticate = async (req, res, next) => {
   try {
     const { auth } = require("../auth");
 
-    // getSession natively handles both Browser Cookies and Authorization: Bearer <API_KEY>
+    // Support Bearer token from mobile app by mapping it to x-api-key
+    // Better Auth's API Key plugin defaults to looking for 'x-api-key'
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+      const token = req.headers.authorization.split(' ')[1];
+      if (token) {
+        req.headers['x-api-key'] = token;
+        log("debug", "Authentication: Mapped Bearer token to x-api-key header for Better Auth.");
+      }
+    }
+
+    // getSession natively handles both Browser Cookies and Authorization: Bearer <API_KEY> (if configured)
     const session = await auth.api.getSession({
       headers: req.headers,
     });
