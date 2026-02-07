@@ -59,8 +59,9 @@ SparkyFitness can sync data from multiple health and fitness platforms:
 
 - **Apple Health** (iOS)
 - **Google Health Connect** (Android)
-- **Fitbit API**
-- **Garmin API**
+- **Fitbit**
+- **Garmin Connect**
+- **Withings**
 
 Integrations automatically sync activity data such as steps, workouts, and sleep, along with health metrics like weight and body measurements, to your SparkyFitness server.
 
