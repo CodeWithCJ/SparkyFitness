@@ -164,9 +164,9 @@ const auth = betterAuth({
             updatedAt: "updated_at",
         },
         additionalFields: {
-            twoFactorEnabled: {
+            mfaTotpEnabled: {
                 type: "boolean",
-                fieldName: "two_factor_enabled",
+                fieldName: "mfa_totp_enabled",
                 required: false,
                 defaultValue: false,
                 returned: true
@@ -174,6 +174,13 @@ const auth = betterAuth({
             mfaEmailEnabled: {
                 type: "boolean",
                 fieldName: "mfa_email_enabled",
+                required: false,
+                defaultValue: false,
+                returned: true
+            },
+            twoFactorEnabled: {
+                type: "boolean",
+                fieldName: "two_factor_enabled",
                 required: false,
                 defaultValue: false,
                 returned: true
@@ -324,7 +331,7 @@ const auth = betterAuth({
                     }));
                 }
             }
-        }
+        },
     },
 
     plugins: [

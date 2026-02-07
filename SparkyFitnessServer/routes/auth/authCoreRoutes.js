@@ -86,7 +86,7 @@ router.get('/mfa-factors', async (req, res) => {
         }
 
         res.json({
-            mfa_totp_enabled: user.two_factor_enabled || false,
+            mfa_totp_enabled: user.mfa_totp_enabled || false,
             mfa_email_enabled: user.mfa_email_enabled || false
         });
     } catch (error) {
