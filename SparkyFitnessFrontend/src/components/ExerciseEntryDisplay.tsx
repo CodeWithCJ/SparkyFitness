@@ -83,8 +83,8 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
                 {` • Sets: ${String(exerciseEntry.sets.length)}`}
                 {exerciseEntry.sets.map((set, index) => (
                   <span key={index}>
-                    {set.reps && ` • Reps: ${String(set.reps)}`}
-                    {set.weight && ` • Weight: ${convertWeight(set.weight, 'kg', weightUnit).toFixed(1)} ${weightUnit}`}
+                    {Number.isFinite(set.reps) && ` • Reps: ${String(set.reps)}`}
+                    {Number.isFinite(set.weight) && ` • Weight: ${convertWeight(set.weight, 'kg', weightUnit).toFixed(1)} ${weightUnit}`}
                   </span>
                 ))}
               </>
