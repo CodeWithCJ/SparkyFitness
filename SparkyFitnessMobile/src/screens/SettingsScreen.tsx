@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Alert, Text, ScrollView, Platform, TouchableOpacity } from 'react-native';
 import styles from './SettingsScreenStyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig } from '../services/storage';
+import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig, loadBackgroundSyncEnabled, saveBackgroundSyncEnabled } from '../services/storage';
 import type { ServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
-import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference, loadSyncDuration, loadStringPreference } from '../services/healthConnectService';
-import type { SyncInterval } from '../services/healthconnect/preferences';
+import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference } from '../services/healthConnectService';
+import { configureBackgroundSync, stopBackgroundSync } from '../services/backgroundSyncService';
 import { checkServerConnection } from '../services/api';
 import { HEALTH_METRICS } from '../constants/HealthMetrics';
 import type { HealthMetric } from '../constants/HealthMetrics';
@@ -35,9 +35,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   );
   const [isAllMetricsEnabled, setIsAllMetricsEnabled] = useState<boolean>(false);
 
-  const [syncDuration, setSyncDuration] = useState<SyncInterval>('24h');
-  const [fourHourSyncTime, setFourHourSyncTime] = useState<string>('00:00');
-  const [dailySyncTime, setDailySyncTime] = useState<string>('00:00');
+  const [isBackgroundSyncEnabled, setIsBackgroundSyncEnabled] = useState<boolean>(true);
   const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
   const [currentConfigId, setCurrentConfigId] = useState<string | null>(null);
@@ -78,18 +76,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     const allEnabled = HEALTH_METRICS.every(metric => newHealthMetricStates[metric.stateKey]);
     setIsAllMetricsEnabled(allEnabled);
 
-    const duration = await loadSyncDuration();
-    // loadSyncDuration returns SyncDuration, but SyncFrequency uses SyncInterval
-    // Only accept valid SyncInterval values, default to '24h'
-    const validIntervals: SyncInterval[] = ['1h', '4h', '24h'];
-    const loadedInterval = validIntervals.includes(duration as SyncInterval) ? (duration as SyncInterval) : '24h';
-    setSyncDuration(loadedInterval);
-
-    const fourHourTime = await loadStringPreference('fourHourSyncTime');
-    setFourHourSyncTime(fourHourTime !== null ? fourHourTime : '00:00');
-
-    const dailyTime = await loadStringPreference('dailySyncTime');
-    setDailySyncTime(dailyTime !== null ? dailyTime : '00:00');
+    const bgSyncEnabled = await loadBackgroundSyncEnabled();
+    setIsBackgroundSyncEnabled(bgSyncEnabled);
 
     await initHealthConnect();
 
@@ -289,12 +277,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           />
 
           <SyncFrequency
-            syncDuration={syncDuration}
-            setSyncDuration={setSyncDuration}
-            fourHourSyncTime={fourHourSyncTime}
-            setFourHourSyncTime={setFourHourSyncTime}
-            dailySyncTime={dailySyncTime}
-            setDailySyncTime={setDailySyncTime}
+            isEnabled={isBackgroundSyncEnabled}
+            onToggle={async (newValue) => {
+              setIsBackgroundSyncEnabled(newValue);
+              await saveBackgroundSyncEnabled(newValue);
+              if (newValue) {
+                await configureBackgroundSync();
+              } else {
+                await stopBackgroundSync();
+              }
+            }}
           />
 
           <AppearanceSettings

@@ -48,6 +48,8 @@ export const getAggregatedTotalCaloriesByDate = HealthKit.getAggregatedTotalCalo
 export const getAggregatedDistanceByDate = HealthKit.getAggregatedDistanceByDate;
 export const getAggregatedFloorsClimbedByDate = HealthKit.getAggregatedFloorsClimbedByDate;
 
+export const aggregateSleepSessions = HealthKitAggregation.aggregateSleepSessions;
+
 export const transformHealthRecords = HealthKitTransformation.transformHealthRecords;
 
 export const saveHealthPreference = HealthKitPreferences.saveHealthPreference;

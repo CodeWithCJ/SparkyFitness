@@ -584,13 +584,28 @@ const requestWritePermissions = async (): Promise<boolean> => {
       permissionsToRequest as unknown as Parameters<typeof requestPermission>[0]
     );
 
-    const allGranted = permissionsToRequest.every((requested) =>
+    const granted = permissionsToRequest.filter((requested) =>
       permissions.some(
         (p) => p.recordType === requested.recordType && p.accessType === 'write'
       )
     );
 
-    return allGranted;
+    const denied = permissionsToRequest.filter((requested) =>
+      !permissions.some(
+        (p) => p.recordType === requested.recordType && p.accessType === 'write'
+      )
+    );
+
+    if (denied.length > 0) {
+      const deniedTypes = denied.map((p) => p.recordType).join(', ');
+      addLog(`[SeedHealthData] Some write permissions not returned: ${deniedTypes}. Will attempt to seed anyway.`, 'WARNING');
+    }
+
+    addLog(`[SeedHealthData] ${granted.length}/${permissionsToRequest.length} write permissions confirmed`, 'INFO');
+
+    // Return true if at least some permissions were granted.
+    // Individual record insertions will fail gracefully if a specific permission is missing.
+    return granted.length > 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[SeedHealthData] Failed to request write permissions: ${message}`, 'ERROR');

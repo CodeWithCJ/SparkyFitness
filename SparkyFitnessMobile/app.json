@@ -2,7 +2,7 @@
   "expo": {
     "name": "SparkyFitnessMobile",
     "slug": "sparkyfitnessmobile",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "scheme": "sparkyfitnessmobile",
     "orientation": "portrait",
     "icon": "./assets/icons/appstore.png",
@@ -22,7 +22,6 @@
           "background": true
         }
       ],
-      "react-native-background-fetch",
       "expo-health-connect",
       [
         "expo-build-properties",
@@ -37,7 +36,8 @@
       "react-native-health-connect",
       "expo-web-browser",
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-background-task"
     ],
     "experiments": {
       "reactCompiler": true
