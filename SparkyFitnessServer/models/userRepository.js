@@ -35,7 +35,8 @@ async function findUserByEmail(email) {
   const client = await getSystemClient(); // System client for finding user by email (authentication)
   try {
     const result = await client.query(
-      `SELECT u.id, u.email, acc.password AS password_hash, u.role, true as is_active, p.full_name
+      `SELECT u.id, u.email, acc.password AS password_hash, u.role, true as is_active, p.full_name,
+              u.two_factor_enabled, u.mfa_totp_enabled, u.mfa_email_enabled
        FROM "user" u
        LEFT JOIN "account" acc ON u.id = acc.user_id AND acc.provider_id = 'credential'
        LEFT JOIN profiles p ON u.id = p.id
@@ -55,7 +56,8 @@ async function findUserById(userId) {
     const result = await client.query(
       `SELECT u.id, u.email, u.role, u.created_at, p.full_name,
               tf.secret as mfa_secret,
-              u.two_factor_enabled as mfa_totp_enabled,
+              u.two_factor_enabled,
+              u.mfa_totp_enabled,
               u.mfa_email_enabled,
               tf.backup_codes as mfa_recovery_codes,
               u.mfa_enforced,
@@ -409,8 +411,9 @@ async function updateUserMfaSettings(userId, mfaSecret, mfaTotpEnabled, mfaEmail
   try {
     const query = `
       UPDATE "user"
-      SET two_factor_enabled = COALESCE($2, two_factor_enabled),
+      SET mfa_totp_enabled = COALESCE($2, mfa_totp_enabled),
           mfa_email_enabled = COALESCE($3, mfa_email_enabled),
+          two_factor_enabled = (COALESCE($2, mfa_totp_enabled) OR COALESCE($3, mfa_email_enabled)),
           mfa_enforced = COALESCE($4, mfa_enforced),
           email_mfa_code = COALESCE($5, email_mfa_code),
           email_mfa_expires_at = COALESCE($6, email_mfa_expires_at),
@@ -450,12 +453,12 @@ async function getMfaSettings(userId) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
-      'SELECT two_factor_enabled, mfa_email_enabled, mfa_enforced FROM "user" WHERE id = $1',
+      'SELECT mfa_totp_enabled, mfa_email_enabled, mfa_enforced FROM "user" WHERE id = $1',
       [userId]
     );
     const settings = result.rows[0];
     return {
-      totp_enabled: settings?.two_factor_enabled || false,
+      totp_enabled: settings?.mfa_totp_enabled || false,
       email_mfa_enabled: settings?.mfa_email_enabled || false,
       mfa_enforced: settings?.mfa_enforced || false
     };

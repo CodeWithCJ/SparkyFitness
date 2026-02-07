@@ -516,7 +516,7 @@ router.post('/mfa/email-toggle', authenticate, async (req, res, next) => {
     await authService.updateUserMfaSettings(
       req.authenticatedUserId,
       undefined,      // mfaSecret
-      globalMfaState, // two_factor_enabled
+      totpEnabled,    // mfa_totp_enabled (specifically TOTP)
       enabled,        // mfaEmailEnabled
       undefined,      // mfaRecoveryCodes
       undefined,      // mfaEnforced

@@ -122,6 +122,7 @@ try {
       }
 
       console.log(`[AUTH HANDLER] Intercepted request: ${req.method} ${req.originalUrl}`);
+
       return betterAuthHandler(req, res);
     }
     next();
