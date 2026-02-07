@@ -31,13 +31,13 @@
 
 # SparkyFitness
 
-A self hosted, privacy-first alternative to MyFitnessPal. Track nutrition, exercise, body metrics, and health data while keeping full control of your data.
+A self-hosted, privacy-first alternative to MyFitnessPal. Track nutrition, exercise, body metrics, and health data while keeping full control of your data.
 
 
-![Screenshot](./docs/public/web_screenshot.png)
+![Screenshot](docs/public/web_screenshot.png)
 
 
-SparkyFitness is a self hosted fitness tracking platform made up of:
+SparkyFitness is a self-hosted fitness tracking platform made up of:
 
 - A backend server (API + data storage)
 - A web-based frontend
@@ -104,7 +104,7 @@ For full installation guides, configuration options, and development docs, pleas
 - **[Installation Guide](https://codewithcj.github.io/SparkyFitness/install/docker-compose)** - Deployment and configurations
 - **[Features Overview](https://codewithcj.github.io/SparkyFitness/features)** - Complete feature documentation
 - **[Development Workflow](https://codewithcj.github.io/SparkyFitness/developer/getting-started)** - Developer guide and contribution process
-- **[iOS App Info](https://github.com/CodeWithCJ/SparkyFitness/wiki/Apple-Health-Integration)** and **[Android App Info](https://github.com/CodeWithCJ/SparkyFitness/wiki/Apple-Health-Integration)**
+- **[iOS App Info](https://github.com/CodeWithCJ/SparkyFitness/wiki/Apple-Health-Integration)** and **[Android App Info](https://github.com/CodeWithCJ/SparkyFitness/wiki/Android-Mobile-App)**
 
 ### Need Help?
 
