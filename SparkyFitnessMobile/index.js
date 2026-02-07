@@ -5,13 +5,9 @@
 import { Platform, LogBox } from 'react-native';
 import App from './App';
 import { registerRootComponent } from 'expo';
-import BackgroundFetch from 'react-native-background-fetch';
-import { HeadlessTask } from './src/services/backgroundSyncService';
+import './src/services/backgroundSyncService';
 
 //LogBox.ignoreAllLogs(true);
-
-// Register your HeadlessTask
-BackgroundFetch.registerHeadlessTask(HeadlessTask);
 
 // Development-only override: force HealthKit to run on the iOS simulator for testing.
 // Set to true only in __DEV__ so production builds are unaffected.
