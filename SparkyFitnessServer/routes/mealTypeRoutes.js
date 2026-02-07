@@ -219,11 +219,11 @@ router.put("/:id", async (req, res) => {
   try {
     const userId = req.userId;
     const { id } = req.params;
-    const { name, sort_order } = req.body;
+    const { name, sort_order, is_visible } = req.body;
 
     const updatedMealType = await updateMealType(
       id,
-      { name, sort_order },
+      { name, sort_order, is_visible },
       userId
     );
 

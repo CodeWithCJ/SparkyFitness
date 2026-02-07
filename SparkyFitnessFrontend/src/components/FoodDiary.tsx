@@ -983,7 +983,7 @@ const FoodDiary = ({
               <div className="text-center p-4 text-muted-foreground">Loading meal types...</div>
             )}
 
-            {availableMealTypes.map((mealTypeObj) => (
+            {availableMealTypes.filter((meal) => meal.is_visible).map((mealTypeObj) => (
               <MealCard
                 key={`meal-${mealTypeObj.id}-${externalRefreshTrigger}`}
                 // Pass the name for display and data retrieval, internally we handle the ID via handleFoodSelect
