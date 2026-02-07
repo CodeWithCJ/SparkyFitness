@@ -110,7 +110,7 @@ mkdir sparkyfitness && cd sparkyfitness
 
 # 2. Download Docker files only
 curl -o docker-compose.yml https://github.com/CodeWithCJ/SparkyFitness/releases/latest/download/docker-compose.prod.yml
-curl -o .env https://github.com/CodeWithCJ/SparkyFitness/releases/latest/download/.env.example
+curl -L -o .env https://github.com/CodeWithCJ/SparkyFitness/releases/latest/download/default.env.example
 
 # 3. (Optional) Edit .env to customize your setup
 # e.g., update database credentials, ports, etc.
