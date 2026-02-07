@@ -124,7 +124,7 @@ export const configureBackgroundSync = async (): Promise<void> => {
     }
 
     await BackgroundTask.registerTaskAsync(BACKGROUND_TASK_NAME, {
-      minimumInterval: 15, // minutes (15 is minimum allowed; iOS treats as a hint)
+      minimumInterval: 120, // minutes; Android respects this roughly, iOS treats it as a hint
     });
     const status = await BackgroundTask.getStatusAsync();
     if (status === BackgroundTask.BackgroundTaskStatus.Available) {

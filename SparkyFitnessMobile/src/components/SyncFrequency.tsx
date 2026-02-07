@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Switch } from 'react-native';
+import { View, Text, Switch, Platform } from 'react-native';
 import styles from '../screens/SettingsScreenStyles';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -23,6 +23,11 @@ const SyncFrequency: React.FC<SyncFrequencyProps> = ({ isEnabled, onToggle }) =>
           thumbColor="#FFFFFF"
         />
       </View>
+      {Platform.OS === 'ios' && (
+        <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 18, marginTop: 4 }}>
+          When enabled, the app will update in the background when your phone allows it. Manually syncing will always update right away.
+        </Text>
+      )}
     </View>
   );
 };
