@@ -9,7 +9,8 @@
     "start": "expo start",
     "test": "jest --watchAll",
     "test:run": "jest",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --maxWorkers=2"
   },
   "dependencies": {
     "@bottom-tabs/react-navigation": "^1.1.0",
