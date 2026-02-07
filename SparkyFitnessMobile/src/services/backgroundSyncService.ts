@@ -4,8 +4,6 @@ import { syncHealthData, HealthDataPayload } from './api';
 import { addLog } from './LogService';
 import {
   loadHealthPreference,
-  loadStringPreference,
-  loadSyncDuration,
   getAggregatedStepsByDate,
   getAggregatedActiveCaloriesByDate,
   readSleepSessionRecords,
@@ -13,41 +11,17 @@ import {
   readExerciseSessionRecords,
   readWorkoutRecords,
 } from './healthConnectService';
-import { saveLastSyncedTime } from './storage';
-import { SyncInterval } from './healthconnect/preferences';
+import { loadLastSyncedTime, saveLastSyncedTime, loadBackgroundSyncEnabled } from './storage';
 
 const BACKGROUND_TASK_NAME = 'healthDataSync';
 
-/**
- * Calculates the date range for background sync based on the sync duration.
- *
- * @param now - The current time to base calculations on
- * @param syncDuration - The sync duration ('1h', '4h', or '24h')
- * @returns Object containing startDate and endDate for the sync query
- */
-export const calculateSyncDateRange = (
-  now: Date,
-  syncDuration: '1h' | '4h' | '24h'
-): { startDate: Date; endDate: Date } => {
-  const startDate = new Date(now);
-  const endDate = new Date(now);
+// Health records (sleep, workouts, etc.) can arrive in HealthKit/Health Connect hours
+// after the event. We overlap session queries by this amount so late-arriving records
+// whose event timestamps fall before lastSyncedTime are still picked up. The server
+// upserts by record identity, so duplicates are harmless.
+const SESSION_OVERLAP_MS = 6 * 60 * 60 * 1000; // 6 hours
 
-  if (syncDuration === '1h') {
-    // True rolling 1h window - exactly 1 hour ago to now
-    startDate.setTime(now.getTime() - (1 * 60 * 60 * 1000));
-  } else if (syncDuration === '4h') {
-    // True rolling 4h window - exactly 4 hours ago to now
-    startDate.setTime(now.getTime() - (4 * 60 * 60 * 1000));
-  } else if (syncDuration === '24h') {
-    // True rolling 24h window - exactly 24 hours ago to now
-    // This matches the foreground sync behavior for consistency
-    startDate.setTime(now.getTime() - (24 * 60 * 60 * 1000));
-  }
-
-  return { startDate, endDate };
-};
-
-const performBackgroundSync = async (taskId: string, bypassTimeCheck = false): Promise<void> => {
+const performBackgroundSync = async (taskId: string): Promise<void> => {
   console.log('[BackgroundSync] taskId', taskId);
   addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'INFO');
 
@@ -59,94 +33,68 @@ const performBackgroundSync = async (taskId: string, bypassTimeCheck = false): P
     const isExerciseSessionEnabled = await loadHealthPreference<boolean>('isExerciseSessionSyncEnabled');
     const isWorkoutEnabled = await loadHealthPreference<boolean>('isWorkoutSyncEnabled');
 
-    const syncDuration = await loadSyncDuration() as SyncInterval; // Background sync uses SyncInterval ('1h', '4h', '24h')
-    const fourHourSyncTime = await loadStringPreference('fourHourSyncTime') ?? '00:00';
-    const dailySyncTime = await loadStringPreference('dailySyncTime') ?? '00:00';
-
-    let shouldSync = bypassTimeCheck;
     const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    let syncReason = bypassTimeCheck ? 'manual sync' : '';
+    const lastSyncedTimeStr = await loadLastSyncedTime();
+    const lastSyncedDate = lastSyncedTimeStr ? new Date(lastSyncedTimeStr) : new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const endDate = now;
 
-    if (!bypassTimeCheck && syncDuration === '1h') {
-      shouldSync = true; // Sync every hour
-      syncReason = 'hourly sync enabled';
-    } else if (!bypassTimeCheck && syncDuration === '4h') {
-      const [h, m] = fourHourSyncTime.split(':').map(Number);
-      // Check if current hour is on a 4-hour interval from the configured start hour
-      // e.g., if configured to 05:00, syncs at 5, 9, 13, 17, 21, 1
-      if ((currentHour - h + 24) % 4 === 0 && currentMinute >= m && currentMinute < m + 15) {
-        shouldSync = true;
-        syncReason = `4-hour sync window (configured: ${fourHourSyncTime})`;
-      } else {
-        addLog(`[Background Sync] Skipping: outside 4-hour sync window (current: ${currentHour}:${currentMinute}, configured: ${fourHourSyncTime})`, 'DEBUG');
-      }
-    } else if (!bypassTimeCheck && syncDuration === '24h') {
-      const [h, m] = dailySyncTime.split(':').map(Number);
-      if (currentHour === h && currentMinute >= m && currentMinute < m + 15) { // Sync within 15 mins of configured time
-        shouldSync = true;
-        syncReason = `daily sync window (configured: ${dailySyncTime})`;
-      } else {
-        addLog(`[Background Sync] Skipping: outside daily sync window (current: ${currentHour}:${currentMinute}, configured: ${dailySyncTime})`, 'DEBUG');
-      }
+    // Session metrics use an overlap window to catch late-arriving records whose
+    // event timestamps predate lastSyncedTime (e.g. overnight sleep synced next morning).
+    const sessionStartDate = new Date(lastSyncedDate.getTime() - SESSION_OVERLAP_MS);
+
+    // Aggregated metrics (steps, calories) produce per-day totals. Use start-of-day
+    // so we always send complete daily values rather than partial-window slices.
+    const aggregatedStartDate = new Date(sessionStartDate);
+    aggregatedStartDate.setHours(0, 0, 0, 0);
+
+    addLog(`[Background Sync] Syncing sessions from ${sessionStartDate.toISOString()}, aggregated from ${aggregatedStartDate.toISOString()} to ${endDate.toISOString()}`, 'DEBUG');
+
+    const allAggregatedData: HealthDataPayload = [];
+    const collectedCounts: string[] = [];
+
+    if (isStepsEnabled) {
+      const aggregatedStepsData = await getAggregatedStepsByDate(aggregatedStartDate, endDate);
+      allAggregatedData.push(...aggregatedStepsData);
+      if (aggregatedStepsData.length > 0) collectedCounts.push(`steps: ${aggregatedStepsData.length}`);
     }
 
-    if (shouldSync) {
-      addLog(`[Background Sync] Proceeding with sync: ${syncReason}`, 'DEBUG');
-      const { startDate, endDate } = calculateSyncDateRange(now, syncDuration);
+    if (isActiveCaloriesEnabled) {
+      const aggregatedActiveCaloriesData = await getAggregatedActiveCaloriesByDate(aggregatedStartDate, endDate);
+      allAggregatedData.push(...aggregatedActiveCaloriesData);
+      if (aggregatedActiveCaloriesData.length > 0) collectedCounts.push(`calories: ${aggregatedActiveCaloriesData.length}`);
+    }
 
-      const allAggregatedData: HealthDataPayload = [];
-      const collectedCounts: string[] = [];
+    if (isSleepSessionEnabled) {
+      const sleepRecords = await readSleepSessionRecords(sessionStartDate, endDate);
+      allAggregatedData.push(...(sleepRecords as HealthDataPayload));
+      if (sleepRecords.length > 0) collectedCounts.push(`sleep: ${sleepRecords.length}`);
+    }
 
-      if (isStepsEnabled) {
-        const aggregatedStepsData = await getAggregatedStepsByDate(startDate, endDate);
-        allAggregatedData.push(...aggregatedStepsData);
-        if (aggregatedStepsData.length > 0) collectedCounts.push(`steps: ${aggregatedStepsData.length}`);
-      }
+    if (isStressEnabled) {
+      const stressRecords = await readStressRecords(sessionStartDate, endDate);
+      allAggregatedData.push(...(stressRecords as HealthDataPayload));
+      if (stressRecords.length > 0) collectedCounts.push(`stress: ${stressRecords.length}`);
+    }
 
-      if (isActiveCaloriesEnabled) {
-        const aggregatedActiveCaloriesData = await getAggregatedActiveCaloriesByDate(startDate, endDate);
-        allAggregatedData.push(...aggregatedActiveCaloriesData);
-        if (aggregatedActiveCaloriesData.length > 0) collectedCounts.push(`calories: ${aggregatedActiveCaloriesData.length}`);
-      }
+    if (isExerciseSessionEnabled) {
+      const exerciseRecords = await readExerciseSessionRecords(sessionStartDate, endDate);
+      allAggregatedData.push(...(exerciseRecords as HealthDataPayload));
+      if (exerciseRecords.length > 0) collectedCounts.push(`exercise: ${exerciseRecords.length}`);
+    }
 
-      if (isSleepSessionEnabled) {
-        const sleepRecords = await readSleepSessionRecords(startDate, endDate);
-        // Sleep records are already aggregated by session, no further aggregation needed
-        allAggregatedData.push(...(sleepRecords as HealthDataPayload));
-        if (sleepRecords.length > 0) collectedCounts.push(`sleep: ${sleepRecords.length}`);
-      }
+    if (isWorkoutEnabled) {
+      const workoutRecords = await readWorkoutRecords(sessionStartDate, endDate);
+      allAggregatedData.push(...(workoutRecords as HealthDataPayload));
+      if (workoutRecords.length > 0) collectedCounts.push(`workouts: ${workoutRecords.length}`);
+    }
 
-      if (isStressEnabled) {
-        const stressRecords = await readStressRecords(startDate, endDate);
-        // Stress records are individual measurements, no further aggregation needed
-        allAggregatedData.push(...(stressRecords as HealthDataPayload));
-        if (stressRecords.length > 0) collectedCounts.push(`stress: ${stressRecords.length}`);
-      }
-
-      if (isExerciseSessionEnabled) {
-        const exerciseRecords = await readExerciseSessionRecords(startDate, endDate);
-        // Exercise records are individual sessions, no further aggregation needed
-        allAggregatedData.push(...(exerciseRecords as HealthDataPayload));
-        if (exerciseRecords.length > 0) collectedCounts.push(`exercise: ${exerciseRecords.length}`);
-      }
-
-      if (isWorkoutEnabled) {
-        const workoutRecords = await readWorkoutRecords(startDate, endDate);
-        // Workout records are individual sessions, no further aggregation needed
-        allAggregatedData.push(...(workoutRecords as HealthDataPayload));
-        if (workoutRecords.length > 0) collectedCounts.push(`workouts: ${workoutRecords.length}`);
-      }
-
-      if (allAggregatedData.length > 0) {
-        addLog(`[Background Sync] Collected ${allAggregatedData.length} records (${collectedCounts.join(', ')})`, 'DEBUG');
-        await syncHealthData(allAggregatedData);
-        await saveLastSyncedTime();
-        addLog(`[Background Sync] Sync completed successfully`, 'SUCCESS');
-      } else {
-        addLog(`[Background Sync] No health data collected to sync`, 'DEBUG');
-      }
+    if (allAggregatedData.length > 0) {
+      addLog(`[Background Sync] Collected ${allAggregatedData.length} records (${collectedCounts.join(', ')})`, 'DEBUG');
+      await syncHealthData(allAggregatedData);
+      await saveLastSyncedTime();
+      addLog(`[Background Sync] Sync completed successfully`, 'SUCCESS');
+    } else {
+      addLog(`[Background Sync] No health data collected to sync`, 'DEBUG');
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -168,12 +116,19 @@ TaskManager.defineTask(BACKGROUND_TASK_NAME, async () => {
 
 export const configureBackgroundSync = async (): Promise<void> => {
   try {
+    const enabled = await loadBackgroundSyncEnabled();
+    if (!enabled) {
+      await BackgroundTask.unregisterTaskAsync(BACKGROUND_TASK_NAME).catch(() => {});
+      addLog('[Background Sync] Background sync disabled, task unregistered', 'INFO');
+      return;
+    }
+
     await BackgroundTask.registerTaskAsync(BACKGROUND_TASK_NAME, {
       minimumInterval: 15, // minutes (15 is minimum allowed; iOS treats as a hint)
     });
     const status = await BackgroundTask.getStatusAsync();
     if (status === BackgroundTask.BackgroundTaskStatus.Available) {
-      addLog('[Background Sync] Background task registered successfully', 'INFO');
+      // addLog('[Background Sync] Background task registered successfully', 'INFO');
     } else {
       addLog('[Background Sync] Background task registration skipped (restricted environment)', 'WARNING');
     }
@@ -193,5 +148,5 @@ export const stopBackgroundSync = async (): Promise<void> => {
 };
 
 export const triggerManualSync = async (): Promise<void> => {
-  await performBackgroundSync('manual-sync', true);
+  await performBackgroundSync('manual-sync');
 };

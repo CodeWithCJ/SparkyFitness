@@ -13,6 +13,7 @@ const SERVER_CONFIGS_KEY = 'serverConfigs';
 const ACTIVE_SERVER_CONFIG_ID_KEY = 'activeServerConfigId';
 const TIME_RANGE_KEY = 'timeRange';
 const LAST_SYNCED_TIME_KEY = 'lastSyncedTime';
+const BACKGROUND_SYNC_ENABLED_KEY = 'backgroundSyncEnabled';
 
 /**
  * Saves a new server configuration or updates an existing one.
@@ -146,6 +147,25 @@ export const saveLastSyncedTime = async (): Promise<string | null> => {
   } catch (error) {
     console.error('Failed to save sync time.', error);
     return null;
+  }
+};
+
+export const saveBackgroundSyncEnabled = async (enabled: boolean): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(BACKGROUND_SYNC_ENABLED_KEY, JSON.stringify(enabled));
+  } catch (error) {
+    console.error('Failed to save background sync enabled preference.', error);
+  }
+};
+
+export const loadBackgroundSyncEnabled = async (): Promise<boolean> => {
+  try {
+    const value = await AsyncStorage.getItem(BACKGROUND_SYNC_ENABLED_KEY);
+    if (value === null) return true; // Default to enabled for backwards compat
+    return JSON.parse(value) as boolean;
+  } catch (error) {
+    console.error('Failed to load background sync enabled preference.', error);
+    return true;
   }
 };
 
