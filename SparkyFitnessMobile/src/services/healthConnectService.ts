@@ -113,6 +113,9 @@ export const getAggregatedFloorsClimbedByDate = async (
   return Object.entries(byDate).map(([date, value]) => ({ date, value: Math.round(value), type: 'floors_climbed' }));
 };
 
+// Android handles sleep aggregation in its transformation layer, so this is a passthrough
+export const aggregateSleepSessions = (records: unknown[]): unknown[] => records;
+
 export const transformHealthRecords = HealthConnectTransformation.transformHealthRecords;
 
 export const saveHealthPreference = HealthConnectPreferences.saveHealthPreference;
