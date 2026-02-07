@@ -66,6 +66,24 @@ describe('seedHealthData.ts (Android)', () => {
       expect(mockInsertRecords).not.toHaveBeenCalled();
     });
 
+    test('proceeds with seeding when only some permissions are granted', async () => {
+      // Simulate Health Connect returning only a subset of requested permissions
+      mockRequestPermission.mockResolvedValue([
+        { accessType: 'write', recordType: 'Steps' },
+        { accessType: 'write', recordType: 'Weight' },
+      ]);
+
+      const result = await seedService.seedHealthData(7);
+
+      expect(result.success).toBe(true);
+      expect(mockInsertRecords).toHaveBeenCalled();
+      // Should log a warning about missing permissions
+      expect(mockAddLog).toHaveBeenCalledWith(
+        expect.stringContaining('Some write permissions not returned'),
+        'WARNING'
+      );
+    });
+
     test('returns error when requestPermission throws', async () => {
       mockRequestPermission.mockRejectedValue(new Error('Permission denied'));
 
