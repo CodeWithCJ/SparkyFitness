@@ -37,7 +37,7 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
     useEffect(() => {
         if (session?.user) {
             console.log("DEBUG: Session User:", session.user);
-            setTotpEnabled(!!session.user.twoFactorEnabled);
+            setTotpEnabled(!!(session.user as any).mfaTotpEnabled);
             // Better Auth doesn't store email_mfa_enabled natively in user object by default,
             // but we added it to the table. We might need a separate fetch or custom user field.
             // For now, let's assume it's available via session or a small custom fetch.
@@ -65,6 +65,10 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
                 case 'disableTotp':
                     const disableRes = await authClient.twoFactor.disable({ password: confirmPassword });
                     if (disableRes.error) throw disableRes.error;
+
+                    // Explicitly sync the mfa_totp_enabled flag
+                    await fetch("/api/auth/totp/sync-after-disable", { method: "POST" });
+
                     toast({ title: "Success", description: "TOTP disabled." });
                     await refetch();
                     break;
@@ -94,6 +98,7 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
         try {
             const { error } = await authClient.twoFactor.verifyTotp({ code: totpCode });
             if (error) throw error;
+
 
             toast({ title: "Success", description: "TOTP verified and enabled!" });
             await refetch();

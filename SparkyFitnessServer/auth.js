@@ -49,6 +49,7 @@ async function syncTrustedProviders() {
 syncTrustedProviders().catch(err => console.error('[AUTH] Startup sync failed:', err));
 
 const apiKeyPlugin = require("better-auth/plugins").apiKey({
+    enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
     schema: {
         apikey: {
             modelName: "api_key",
@@ -95,7 +96,7 @@ if (apiKeyPlugin.endpoints) {
 
 const auth = betterAuth({
     database: authPool,
-    secret: Buffer.from(process.env.BETTER_AUTH_SECRET || "default_dev_secret_CHANGE_ME", 'base64'),
+    secret: Buffer.from(process.env.BETTER_AUTH_SECRET, 'base64'),
 
 
     // Base URL configuration - MUST use public frontend URL for OIDC to work
@@ -163,9 +164,9 @@ const auth = betterAuth({
             updatedAt: "updated_at",
         },
         additionalFields: {
-            twoFactorEnabled: {
+            mfaTotpEnabled: {
                 type: "boolean",
-                fieldName: "two_factor_enabled",
+                fieldName: "mfa_totp_enabled",
                 required: false,
                 defaultValue: false,
                 returned: true
@@ -173,6 +174,13 @@ const auth = betterAuth({
             mfaEmailEnabled: {
                 type: "boolean",
                 fieldName: "mfa_email_enabled",
+                required: false,
+                defaultValue: false,
+                returned: true
+            },
+            twoFactorEnabled: {
+                type: "boolean",
+                fieldName: "two_factor_enabled",
                 required: false,
                 defaultValue: false,
                 returned: true
@@ -323,7 +331,7 @@ const auth = betterAuth({
                     }));
                 }
             }
-        }
+        },
     },
 
     plugins: [

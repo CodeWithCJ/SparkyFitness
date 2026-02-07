@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 2PSpSOUyB9DcXDaUgSOQgxYZHshSL4TkaZF7GNU8x2HN0OtmZliFGrU3d9ewiff
+\restrict caPYqiQ8y1UqUPpirBHhS0afJx4iTF0Nc3PWk1hIdZf2p9DctMeCY44jYxZLzXp
 
 -- Dumped from database version 15.15
 -- Dumped by pg_dump version 18.0
@@ -623,6 +623,24 @@ BEGIN
   
   -- app.authenticated_user_id is the actual logged-in user
   PERFORM set_config('app.authenticated_user_id', p_authenticated_user_id::text, false);
+END;
+$$;
+
+
+--
+-- Name: set_first_user_as_admin(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_first_user_as_admin() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    -- If there are no users in the table yet, this is the first user
+    IF NOT EXISTS (SELECT 1 FROM "user") THEN
+        NEW.role := 'admin';
+        RAISE NOTICE 'First user detected: %, assigning admin role.', NEW.id;
+    END IF;
+    RETURN NEW;
 END;
 $$;
 
@@ -1796,7 +1814,8 @@ CREATE TABLE public."user" (
     email_mfa_code text,
     email_mfa_expires_at timestamp with time zone,
     magic_link_token text,
-    magic_link_expires timestamp with time zone
+    magic_link_expires timestamp with time zone,
+    mfa_totp_enabled boolean DEFAULT false
 );
 
 
@@ -3244,6 +3263,13 @@ CREATE UNIQUE INDEX unique_backup_settings_row ON public.backup_settings USING b
 --
 
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+
+--
+-- Name: user ensure_first_user_is_admin; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ensure_first_user_is_admin BEFORE INSERT ON public."user" FOR EACH ROW EXECUTE FUNCTION public.set_first_user_as_admin();
 
 
 --
@@ -5345,6 +5371,13 @@ GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_use
 
 
 --
+-- Name: FUNCTION set_first_user_as_admin(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO sparky_uat;
+
+
+--
 -- Name: FUNCTION set_updated_at_timestamp(); Type: ACL; Schema: public; Owner: -
 --
 
@@ -6013,5 +6046,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2PSpSOUyB9DcXDaUgSOQgxYZHshSL4TkaZF7GNU8x2HN0OtmZliFGrU3d9ewiff
+\unrestrict caPYqiQ8y1UqUPpirBHhS0afJx4iTF0Nc3PWk1hIdZf2p9DctMeCY44jYxZLzXp
 

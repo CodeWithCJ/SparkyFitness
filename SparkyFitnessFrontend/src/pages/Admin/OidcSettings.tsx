@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { PlusCircle, Edit, Trash2, ClipboardCopy } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 
 const OidcSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -380,16 +381,31 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
               </div>
               <div>
                 <Label htmlFor="token_endpoint_auth_method">{t('admin.oidcSettings.tokenEndpointAuthMethod')}</Label>
-                <select
-                  id="token_endpoint_auth_method"
+		<Select
                   value={editedProvider.token_endpoint_auth_method}
-                  onChange={(e) => setEditedProvider(prev => ({ ...prev, token_endpoint_auth_method: e.target.value }))}
-                  className="w-full p-2 border rounded"
+                  onValueChange={(value) =>
+                    setEditedProvider((prev) => ({
+                      ...prev,
+                      token_endpoint_auth_method: value,
+                    }))
+                  }
                 >
-                  <option value="client_secret_post">client_secret_post</option>
-                  <option value="client_secret_basic">client_secret_basic</option>
-                  <option value="none">none</option>
-                </select>
+                  <SelectTrigger
+                    id="token_endpoint_auth_method"
+                    className="w-full p-2 border rounded"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="client_secret_post">
+                      client_secret_post
+                    </SelectItem>
+                    <SelectItem value="client_secret_basic">
+                      client_secret_basic
+                    </SelectItem>
+                    <SelectItem value="none">none</SelectItem>
+                  </SelectContent>
+                </Select> 
               </div>
               <div>
                 <Label htmlFor="signing_algorithm">{t('admin.oidcSettings.idTokenSignedAlg', 'ID Token Signed Alg')}</Label>
@@ -408,7 +424,7 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
               <p className="mt-1">{t('admin.oidcSettings.localhostWarning', 'Ensure your OIDC provider allows localhost or your local IP for development.')}</p>
               <p className="mt-2">{t('admin.oidcSettings.proxyWarning', 'If using a proxy like Nginx Proxy Manager, ensure the following headers are configured:')}</p>
               <div className="relative group mt-2">
-                <pre id="proxy-config-code" className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">
+                <pre id="proxy-config-code" className="bg-muted p-2 rounded text-xs overflow-x-auto">
                   <code>
                     proxy_set_header Host $host;{'\n'}
                     proxy_set_header X-Real-IP $remote_addr;{'\n'}

@@ -146,8 +146,14 @@ const Auth = () => {
     currentUserEmail: string,
     handlers: { onMfaSuccess: () => void; onMfaCancel: () => void }
   ) => {
-    // Only show challenge if at least one factor is enabled or setup is required
-    if (authResponse.mfa_totp_enabled || authResponse.mfa_email_enabled || authResponse.needs_mfa_setup) {
+    // CRITICAL: If twoFactorRedirect is true, we MUST show the challenge
+    // Even if factor flags are missing, we default to showing the challenge
+    const shouldShowChallenge = authResponse.mfa_totp_enabled ||
+      authResponse.mfa_email_enabled ||
+      authResponse.needs_mfa_setup ||
+      authResponse.twoFactorRedirect;
+
+    if (shouldShowChallenge) {
       info(loggingLevel, "Auth: MFA required. Displaying MFA challenge.");
 
       // Proactively fetch MFA factors if missing
@@ -155,7 +161,7 @@ const Auth = () => {
       let mfaTotp = authResponse.mfa_totp_enabled;
       const userEmail = authResponse.email || currentUserEmail;
 
-      if (mfaEmail === undefined && userEmail) {
+      if ((mfaEmail === undefined || mfaTotp === undefined) && userEmail) {
         try {
           const factorRes = await fetch(`/api/auth/mfa-factors?email=${encodeURIComponent(userEmail)}`);
           if (factorRes.ok) {
@@ -165,6 +171,8 @@ const Auth = () => {
           }
         } catch (e) {
           error(loggingLevel, "Auth: Failed to fetch MFA factors:", e);
+          // Default to TOTP if we can't fetch factors but MFA is required
+          mfaTotp = true;
         }
       }
 
@@ -181,7 +189,7 @@ const Auth = () => {
       return true;
     }
 
-    info(loggingLevel, "Auth: MFA requested but no factors enabled. Bypassing.");
+    info(loggingLevel, "Auth: MFA not required. Bypassing.");
     return false;
   };
 
@@ -354,7 +362,10 @@ const Auth = () => {
           },
         });
 
-        if (mfaShown) return;
+        if (mfaShown) {
+          setLoading(false); // CRITICAL: Allow MFA challenge to be visible
+          return;
+        }
       }
 
       info(loggingLevel, "Auth: Sign in successful.");
