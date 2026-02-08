@@ -743,7 +743,7 @@ const Reports = () => {
         <div>{t('reports.loadingReports', "Loading reports...")}</div>
       ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="flex w-full justify-start overflow-x-auto overflow-y-hidden h-auto p-1 bg-muted/50 no-scrollbar">
+            <TabsList className="flex w-full justify-start overflow-x-auto h-auto p-1 bg-muted/50 no-scrollbar">
               <TabsTrigger value="charts" className="flex items-center gap-2 shrink-0 px-4 py-2">
                 <BarChart3 className="w-4 h-4" />
                 <span className="text-sm">{t('reports.chartsTab', "Charts")}</span>
