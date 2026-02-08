@@ -12,15 +12,32 @@ const { log } = require('../config/logging');
  */
 function calculateBodyFatNavy(gender, height, waist, neck, hips) {
   log('info', `Calculating body fat with Navy method for ${gender}`);
+
+  // Constants for centimeter to inch conversion
+  const CM_TO_INCH = 1 / 2.54;
+
   if (gender === 'male') {
     if (!height || !waist || !neck) throw new Error('Height, waist, and neck measurements are required for males.');
+
+    const heightIn = height * CM_TO_INCH;
+    const waistIn = waist * CM_TO_INCH;
+    const neckIn = neck * CM_TO_INCH;
+
+    // Imperial formula constants are used, so input must be in inches
     // Formula for men: BFP = 86.010 * log10(waist - neck) - 70.041 * log10(height) + 36.76
-    const bfp = 86.010 * Math.log10(waist - neck) - 70.041 * Math.log10(height) + 36.76;
+    const bfp = 86.010 * Math.log10(waistIn - neckIn) - 70.041 * Math.log10(heightIn) + 36.76;
     return parseFloat(bfp.toFixed(2));
   } else if (gender === 'female') {
     if (!height || !waist || !neck || !hips) throw new Error('Height, waist, neck, and hips measurements are required for females.');
+
+    const heightIn = height * CM_TO_INCH;
+    const waistIn = waist * CM_TO_INCH;
+    const neckIn = neck * CM_TO_INCH;
+    const hipsIn = hips * CM_TO_INCH;
+
+    // Imperial formula constants are used, so input must be in inches
     // Formula for women: BFP = 163.205 * log10(waist + hips - neck) - 97.684 * log10(height) - 78.387
-    const bfp = 163.205 * Math.log10(waist + hips - neck) - 97.684 * Math.log10(height) - 78.387;
+    const bfp = 163.205 * Math.log10(waistIn + hipsIn - neckIn) - 97.684 * Math.log10(heightIn) - 78.387;
     return parseFloat(bfp.toFixed(2));
   } else {
     throw new Error("Invalid gender provided. Must be 'male' or 'female'.");
@@ -42,7 +59,7 @@ function calculateBodyFatBmi(weight, height, age, gender) {
   }
   const heightInMeters = height / 100;
   const bmi = weight / (heightInMeters * heightInMeters);
-  
+
   let bfp;
   if (gender === 'male') {
     // Formula for men: BFP = 1.20 * BMI + 0.23 * Age - 16.2
@@ -51,7 +68,7 @@ function calculateBodyFatBmi(weight, height, age, gender) {
     // Formula for women: BFP = 1.20 * BMI + 0.23 * Age - 5.4
     bfp = 1.20 * bmi + 0.23 * age - 5.4;
   }
-  
+
   return parseFloat(bfp.toFixed(2));
 }
 

@@ -378,15 +378,13 @@ const MealCard = ({
 
                 debug(
                   loggingLevel,
-                  `MealCard: Rendering item: ${
-                    isFoodEntryMeal
-                      ? (item as FoodEntryMeal).name
-                      : (item as FoodEntry).food_name
+                  `MealCard: Rendering item: ${isFoodEntryMeal
+                    ? (item as FoodEntryMeal).name
+                    : (item as FoodEntry).food_name
                   }, GI Value: ${giValue}, quickInfoNutrients includes GI: ${quickInfoNutrients.includes(
                     "glycemic_index"
-                  )}, giValue is valid: ${
-                    giValue != null &&
-                    validGiValues.includes(giValue as GlycemicIndex)
+                  )}, giValue is valid: ${giValue != null &&
+                  validGiValues.includes(giValue as GlycemicIndex)
                   }`
                 );
 
@@ -404,7 +402,7 @@ const MealCard = ({
                         </span>
                         {(isFoodEntryMeal &&
                           (item as FoodEntryMeal).description) ||
-                        (isFoodEntry && (item as FoodEntry).brand_name) ? (
+                          (isFoodEntry && (item as FoodEntry).brand_name) ? (
                           <Badge variant="secondary" className="text-xs w-fit">
                             {isFoodEntryMeal
                               ? (item as FoodEntryMeal).description
@@ -432,7 +430,7 @@ const MealCard = ({
                           )}
                       </div>
                       <div
-                        className={`flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600 dark:text-gray-400`}
+                        className={`grid grid-cols-${visibleNutrientsForGrid.length} gap-x-4 text-xs sm:text-sm mt-2`}
                       >
                         {visibleNutrientsForGrid.map((nutrient) => {
                           const details = nutrientDetails[nutrient];
@@ -444,22 +442,24 @@ const MealCard = ({
                             entryNutrition.custom_nutrients?.[nutrient] ??
                             0;
                           return (
-                            <div key={nutrient} className="whitespace-nowrap">
-                              <span className={`font-medium ${details.color}`}>
+                            <div key={nutrient} className="text-center">
+                              <div className={`font-medium ${details.color}`}>
                                 {typeof value === "number"
                                   ? nutrient === "calories"
                                     ? Math.round(
-                                        convertEnergy(value, "kcal", energyUnit)
-                                      )
+                                      convertEnergy(value, "kcal", energyUnit)
+                                    )
                                     : value.toFixed(
-                                        nutrient === "calories" ? 0 : 1
-                                      )
+                                      nutrient === "calories" ? 0 : 1
+                                    )
                                   : value}
                                 {nutrient === "calories"
                                   ? getEnergyUnitString(energyUnit)
                                   : details.unit}
-                              </span>{" "}
-                              {details.label}
+                              </div>
+                              <div className="text-[10px] sm:text-xs text-gray-500">
+                                {details.label}
+                              </div>
                             </div>
                           );
                         })}
@@ -526,8 +526,8 @@ const MealCard = ({
                           {typeof value === "number"
                             ? nutrient === "calories"
                               ? Math.round(
-                                  convertEnergy(value, "kcal", energyUnit)
-                                )
+                                convertEnergy(value, "kcal", energyUnit)
+                              )
                               : value.toFixed(nutrient === "calories" ? 0 : 1)
                             : value}
                           {nutrient === "calories"
