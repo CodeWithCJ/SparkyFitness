@@ -77,7 +77,7 @@ const PermissionRoute = ({
 }) => {
   const { hasPermission, isActingOnBehalf } = useActiveUser();
 
-  if (hasPermission(permission) || !isActingOnBehalf) {
+  if (hasPermission(permission)) {
     return <>{children}</>;
   }
 
