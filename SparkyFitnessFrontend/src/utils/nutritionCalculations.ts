@@ -1,5 +1,5 @@
 
-import { Food, FoodVariant, FoodEntry } from '@/types/food'; // Import from central types file
+import { FoodEntry } from '@/types/food'; // Import from central types file
 
 // Utility functions for nutrition calculations
 

@@ -20,7 +20,7 @@ import { Plus, Edit, Trash2, Eye, Filter, Share2, Lock } from 'lucide-react';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
-import { debug, info, warn, error } from '@/utils/logging';
+import { error } from '@/utils/logging';
 import { Meal, MealFood, MealPayload } from '@/types/meal';
 import { getMeals, deleteMeal, getMealById, MealFilter, getMealDeletionImpact, updateMeal } from '@/services/mealService';
 import { MealDeletionImpact } from '@/types/meal';

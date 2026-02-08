@@ -1,5 +1,4 @@
 import { apiCall } from './api';
-import { GoalPreset } from './goalPresetService';
 
 export interface WeeklyGoalPlan {
   id?: string;

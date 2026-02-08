@@ -1,9 +1,9 @@
 import { api } from './api';
 import { MoodEntry } from '@/types/mood';
-import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
+import { debug, info, error } from '@/utils/logging'; // Import logging utility
 import { getUserLoggingLevel } from "@/utils/userPreferences";
 
-import { format } from 'date-fns'; // Import format from date-fns
+// Import format from date-fns
 
 export const saveMoodEntry = async (moodValue: number, notes: string, entryDate: string): Promise<MoodEntry> => {
   try {

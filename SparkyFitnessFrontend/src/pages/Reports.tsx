@@ -1,9 +1,9 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, ScatterChart, Scatter } from 'recharts'; // Added ScatterChart, Scatter
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'; // Added ScatterChart, Scatter
 import { BarChart3, TrendingUp, Activity, Dumbbell, BedDouble } from "lucide-react"; // Added Dumbbell and BedDouble
 import { getFastingDataRange, FastingLog } from '@/services/fastingService';
 import { FastingReport } from '@/components/reports/FastingReport';
@@ -29,7 +29,7 @@ const HIDDEN_CUSTOM_METRICS = [
   'Average Overnight HRV',  // Shown in Sleep tab HRV card
 ];
 import StressChart from "@/components/StressChart"; // Import StressChart
-import {  debug, info, warn, error, UserLoggingLevel } from "@/utils/logging";
+import {  debug, info, warn, error } from "@/utils/logging";
 import {  parseISO  } from 'date-fns'; // Import format, parseISO, addDays from date-fns
 import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
 import { calculateSmartYAxisDomain, getChartConfig } from "@/utils/chartUtils";
@@ -41,12 +41,11 @@ import {
   DailyFoodEntry,
   CustomCategory,
   CustomMeasurementData,
-  DailyExerciseEntry, // Import DailyExerciseEntry
-  ExerciseProgressData, // Import ExerciseProgressData
+  DailyExerciseEntry, // Import ExerciseProgressData
   ExerciseDashboardData, // Import new type for dashboard data
 } from '@/services/reportsService';
 import { MoodEntry, StressDataPoint } from '@/types';
-import { getExerciseDashboardData, getSleepAnalyticsData } from '@/services/reportsService';
+import { getExerciseDashboardData } from '@/services/reportsService';
 import { getRawStressData } from '@/services/customMeasurementService';
 import { getMoodEntries } from '@/services/moodService';
 import { customNutrientService } from "@/services/customNutrientService";

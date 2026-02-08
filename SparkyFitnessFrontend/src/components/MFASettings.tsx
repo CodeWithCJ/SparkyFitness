@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
-import { Eye, EyeOff, Copy, RefreshCw, QrCode, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Copy, RefreshCw, Lock } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";

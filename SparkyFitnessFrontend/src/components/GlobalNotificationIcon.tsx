@@ -10,7 +10,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 
 const GlobalNotificationIcon: React.FC = () => {
   const { user } = useAuth();

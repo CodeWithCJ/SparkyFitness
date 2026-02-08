@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Dumbbell, Edit, Trash2, Settings, Play } from "lucide-react";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { ExerciseEntry } from "@/services/exerciseEntryService";
 import { Exercise } from "@/services/exerciseService";
 import { formatMinutesToHHMM } from "@/utils/timeFormatters"; // Import the new utility function

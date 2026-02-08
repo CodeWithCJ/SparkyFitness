@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import MealBuilder from './MealBuilder';
 import { FoodEntryMeal, MealFood } from '@/types/meal'; // Import FoodEntryMeal directly
-import { debug, error, warn } from '@/utils/logging';
+import { debug, warn } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useTranslation } from "react-i18next";
 
 interface EditMealFoodEntryDialogProps {
   foodEntry: FoodEntryMeal; // Updated to accept FoodEntryMeal
@@ -14,7 +13,6 @@ interface EditMealFoodEntryDialogProps {
 }
 
 const EditMealFoodEntryDialog = ({ foodEntry, open, onOpenChange, onSave }: EditMealFoodEntryDialogProps) => {
-  const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
   const [initialMealFoods, setInitialMealFoods] = useState<MealFood[]>([]);
   const [loading, setLoading] = useState(true);

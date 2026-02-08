@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Download } from "lucide-react";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { debug, info, warn, error } from "@/utils/logging";
+import { debug, info } from "@/utils/logging";
 import { parseISO } from "date-fns";
 import { formatNutrientValue, getNutrientUnit } from '@/lib/utils';
 import { formatWeight } from '@/utils/numberFormatting';
@@ -227,7 +227,7 @@ const ReportsTables = ({
   );
 
   const filteredExerciseEntries = useMemo(() => {
-    let sortableItems = [...sortedExerciseEntries];
+    const sortableItems = [...sortedExerciseEntries];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) {

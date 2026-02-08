@@ -11,7 +11,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from '@/utils/logging';
 
-import { GlycemicIndex, Food } from "@/types/food";
+import { GlycemicIndex } from "@/types/food";
 import { UserCustomNutrient } from "@/types/customNutrient";
 import { customNutrientService } from "@/services/customNutrientService";
 

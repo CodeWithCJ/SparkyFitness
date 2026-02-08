@@ -57,11 +57,11 @@ import CustomCategoryManager from "@/components/CustomCategoryManager";
 import MealTypeManager from "@/components/MealTypeManager";
 import { CustomCategory } from "@/services/customCategoryService";
 import ExternalProviderSettings from "@/components/ExternalProviderSettings"; // Import ExternalProviderSettings
-import GarminConnectSettings from "@/components/GarminConnectSettings"; // Import GarminConnectSettings
+// Import GarminConnectSettings
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 import NutrientDisplaySettings from "@/components/NutrientDisplaySettings"; // Import NutrientDisplaySettings
 import WaterContainerManager from "@/components/WaterContainerManager"; // Import WaterContainerManager
-import { parse } from "date-fns"; // Import parse for parsing user-entered date strings
+// Import parse for parsing user-entered date strings
 import {
   Accordion,
   AccordionItem,

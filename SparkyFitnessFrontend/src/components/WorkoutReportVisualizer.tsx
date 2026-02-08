@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkoutData } from './ActivityReportVisualizer';
 import SetPerformanceAnalysisChart from './reports/SetPerformanceAnalysisChart';
-import PrProgressionChart from './reports/PrProgressionChart';
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { formatNumber } from "@/utils/numberFormatting";
 import { FaDumbbell, FaClock, FaWeightHanging, FaRedo, FaTrophy, FaWeight, FaChartLine } from 'react-icons/fa'; // Import icons

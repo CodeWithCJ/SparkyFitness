@@ -1,7 +1,6 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useTranslation } from "react-i18next";
 
 interface EndFastDialogProps {
     isOpen: boolean;
@@ -14,7 +13,6 @@ interface EndFastDialogProps {
 }
 
 const EndFastDialog: React.FC<EndFastDialogProps> = ({ isOpen, onClose, onEnd, durationFormatted, initialStartISO = null, initialEndISO = null }) => {
-    const { t } = useTranslation();
     const formatForLocalInput = (d: Date) => {
         const pad = (n: number) => String(n).padStart(2, '0');
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;

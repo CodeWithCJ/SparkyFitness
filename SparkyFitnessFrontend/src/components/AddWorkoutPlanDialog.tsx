@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -13,12 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { WorkoutPlanTemplate, WorkoutPlanAssignment, WorkoutPreset, WorkoutPresetSet } from "@/types/workout";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Plus, X, Repeat, Weight, Timer, ListOrdered, CalendarDays, GripVertical, Copy, Dumbbell, Hourglass, Clipboard } from "lucide-react";
+import { Plus, X, Repeat, Timer, ListOrdered, GripVertical, Copy, Dumbbell, Clipboard } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getWorkoutPresets } from "@/services/workoutPresetService";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { loadExercises } from "@/services/exerciseService";
 import { Exercise } from "@/services/exerciseSearchService";
 import { useAuth } from "@/hooks/useAuth";

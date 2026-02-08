@@ -19,7 +19,7 @@ const FastingContext = createContext<FastingContextType | undefined>(undefined);
 export const FastingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [activeFast, setActiveFast] = useState<FastingLog | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+     
     const { user, loading: authLoading } = useAuth(); // Authenticated if user is not null
     const isAuthenticated = !!user;
     const loggingLevel = getUserLoggingLevel();

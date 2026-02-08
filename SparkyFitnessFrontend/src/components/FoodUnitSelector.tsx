@@ -189,7 +189,7 @@ const FoodUnitSelector = ({
       quantity
     });
 
-    let nutrientValuesPerReferenceSize = {
+    const nutrientValuesPerReferenceSize = {
       calories: selectedVariant.calories || 0, // kcal
       protein: selectedVariant.protein || 0,
       carbs: selectedVariant.carbs || 0,
@@ -208,7 +208,7 @@ const FoodUnitSelector = ({
       calcium: selectedVariant.calcium || 0,
       iron: selectedVariant.iron || 0,
     };
-    let effectiveReferenceSize = selectedVariant.serving_size || 100;
+    const effectiveReferenceSize = selectedVariant.serving_size || 100;
 
     // Calculate total nutrition: (nutrient_value_per_reference_size / effective_reference_size) * quantity_consumed
     const result = {

@@ -1,13 +1,12 @@
 
-import { useState, useEffect, useMemo, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import { useTranslation } from "react-i18next";
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { parseISO, subDays, addDays, format } from "date-fns";
+import { parseISO, subDays } from "date-fns";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
 import { loadMiniNutritionTrendData, DayData } from '@/services/miniNutritionTrendsService';
 import { formatNutrientValue } from '@/lib/utils';
 
@@ -71,7 +70,7 @@ const MiniNutritionTrends = ({ selectedDate, refreshTrigger, customNutrients = [
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const nutrientName = payload[0].dataKey;
-      let nutrientValue = payload[0].value;
+      const nutrientValue = payload[0].value;
 
       const unitString = nutrientName === 'calories' ? getEnergyUnitString(energyUnit) : '';
       const convertedValue = nutrientName === 'calories' ? Math.round(convertEnergy(nutrientValue, 'kcal', energyUnit)) : nutrientValue;

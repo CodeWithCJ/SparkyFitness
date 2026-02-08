@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { debug, info, warn, error } from '@/utils/logging';
+import { info } from '@/utils/logging';
 
 type ThemeSetting = 'light' | 'dark' | 'system';
 type ResolvedTheme = 'light' | 'dark';

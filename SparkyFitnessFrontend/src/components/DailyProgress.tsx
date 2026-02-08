@@ -13,15 +13,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from "@/utils/logging";
-import { format, parseISO, addDays } from "date-fns"; // Import format, parseISO, and addDays from date-fns
 import { calculateFoodEntryNutrition } from "@/utils/nutritionCalculations"; // Import the new utility function
 import {
   getGoalsForDate,
   getFoodEntriesForDate,
   getExerciseEntriesForDate,
   getCheckInMeasurementsForDate,
-  Goals,
-  ExerciseEntry,
   CheckInMeasurement,
 } from "@/services/dailyProgressService";
 import { GroupedExerciseEntry } from "@/services/exerciseEntryService"; // Corrected import path
@@ -385,7 +382,7 @@ const DailyProgress = ({
   // Calculate total calories burned based on user's refined logic:
   // Sum all exercise calories *except* those explicitly categorized as "Active Calories".
   // Then, add either the "Active Calories" (if present and greater than 0) or the "stepsCalories" (if "Active Calories" are 0 or not present).
-  let totalOtherExerciseCaloriesBurned = Math.round(Number(exerciseCalories)); // This now holds 'otherExerciseCalories'
+  const totalOtherExerciseCaloriesBurned = Math.round(Number(exerciseCalories)); // This now holds 'otherExerciseCalories'
 
   let activeOrStepsCaloriesToAdd = 0;
   if (activeCaloriesFromExercise > 0) {

@@ -5,9 +5,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import ZoomableChart from "../ZoomableChart";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { debug, info, warn, error } from "@/utils/logging";
+import { info } from "@/utils/logging";
 import { parseISO, format } from "date-fns"; // Import parseISO, format
-import { calculateSmartYAxisDomain, excludeIncompleteDay, getChartConfig, shouldExcludeIncompleteDay } from "@/utils/chartUtils";
+import { calculateSmartYAxisDomain, excludeIncompleteDay, getChartConfig } from "@/utils/chartUtils";
 import { UserCustomNutrient } from "@/types/customNutrient"; // Import UserCustomNutrient
 interface NutritionData {
   date: string;

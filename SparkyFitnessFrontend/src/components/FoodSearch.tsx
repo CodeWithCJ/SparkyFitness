@@ -2,12 +2,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { debug, info, warn, error } from '@/utils/logging';
+import { debug, info } from '@/utils/logging';
 
 // This component is deprecated and replaced by EnhancedFoodSearch.tsx
 // Keeping it for reference or if there's a specific need for a simpler version.

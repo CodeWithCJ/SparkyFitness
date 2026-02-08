@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { toast } from "sonner";
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
-import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
+import { debug } from '@/utils/logging'; // Import logging utility
 import {
   getCustomCategories,
   getCustomMeasurements,

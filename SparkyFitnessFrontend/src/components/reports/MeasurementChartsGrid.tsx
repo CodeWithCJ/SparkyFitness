@@ -6,7 +6,7 @@ import { Scale, Activity } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import ZoomableChart from "../ZoomableChart";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { debug, info, warn, error } from "@/utils/logging";
+import { info, error } from "@/utils/logging";
 import { parseISO } from "date-fns"; // Import parseISO
 import { calculateSmartYAxisDomain, getChartConfig } from "@/utils/chartUtils";
 

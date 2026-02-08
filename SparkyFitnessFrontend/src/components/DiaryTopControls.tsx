@@ -5,7 +5,7 @@ import DailyProgress from "./DailyProgress";
 import MiniNutritionTrends from "./MiniNutritionTrends";
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 import { useIsMobile } from "@/hooks/use-mobile";
-import { debug, info, warn, error } from "@/utils/logging"; // Import logging utility
+import { debug } from "@/utils/logging"; // Import logging utility
 import { useTranslation } from "react-i18next";
 
 import { UserCustomNutrient } from "@/types/customNutrient"; // Add import

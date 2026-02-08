@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Save, Flame, UtensilsCrossed, Target, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { info, error as logError } from '@/utils/logging';
+import { error as logError } from '@/utils/logging';
 import { useTranslation } from "react-i18next";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
