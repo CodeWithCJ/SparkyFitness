@@ -73,6 +73,24 @@ const authenticate = async (req, res, next) => {
     }
   } catch (error) {
     log("error", "Error checking Better Auth identity:", error);
+
+    const code = error?.body?.code;
+    if (code === "RATE_LIMITED") {
+      const retryAfterMs = error.body?.details?.tryAgainIn;
+      if (retryAfterMs) {
+        res.set("Retry-After", String(Math.ceil(retryAfterMs / 1000)));
+      }
+      return res.status(429).json({ error: "Rate limit exceeded." });
+    }
+    if (code === "KEY_DISABLED") {
+      return res.status(403).json({ error: "API key is disabled." });
+    }
+    if (code === "KEY_EXPIRED") {
+      return res.status(401).json({ error: "API key has expired." });
+    }
+    if (code === "USAGE_EXCEEDED") {
+      return res.status(429).json({ error: "API key usage limit exceeded." });
+    }
   }
 
   // No valid authentication found
