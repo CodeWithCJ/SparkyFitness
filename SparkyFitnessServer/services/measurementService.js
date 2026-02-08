@@ -1,6 +1,43 @@
 //console.log('DEBUG: Loading measurementService.js');
 const { log } = require('../config/logging'); // Import the logger utility
 const measurementRepository = require('../models/measurementRepository');
+
+/**
+ * Default units for health metric types when not provided by client (e.g. HealthConnect sync).
+ * Ensures graphs and UI show a unit instead of "N/A". Aligned with mobile HealthMetrics and API usage.
+ */
+const DEFAULT_UNITS_BY_HEALTH_TYPE = {
+  step: 'steps', steps: 'steps',
+  heart_rate: 'bpm', HeartRate: 'bpm',
+  'Active Calories': 'kcal', ActiveCaloriesBurned: 'kcal',
+  total_calories: 'kcal', TotalCaloriesBurned: 'kcal',
+  distance: 'm', Distance: 'm',
+  floors_climbed: 'count', FloorsClimbed: 'count',
+  weight: 'kg', Weight: 'kg',
+  sleep_session: 'min', SleepSession: 'min',
+  stress: 'level', Stress: 'level',
+  blood_pressure: 'mmHg', BloodPressure: 'mmHg',
+  basal_metabolic_rate: 'kcal', BasalMetabolicRate: 'kcal',
+  blood_glucose: 'mmol/L', BloodGlucose: 'mmol/L',
+  body_fat: '%', BodyFat: '%',
+  body_temperature: 'celsius', BodyTemperature: 'celsius',
+  resting_heart_rate: 'bpm', RestingHeartRate: 'bpm',
+  respiratory_rate: 'breaths/min', RespiratoryRate: 'breaths/min',
+  oxygen_saturation: 'percent', OxygenSaturation: '%', BloodOxygenSaturation: '%',
+  vo2_max: 'ml/min/kg', Vo2Max: 'ml/min/kg',
+  height: 'm', Height: 'm',
+  hydration: 'L', Hydration: 'L',
+  lean_body_mass: 'kg', LeanBodyMass: 'kg',
+  basal_body_temperature: 'celsius', BasalBodyTemperature: 'celsius',
+  elevation_gained: 'm', ElevationGained: 'm',
+  bone_mass: 'kg', BoneMass: 'kg',
+  speed: 'm/s', Speed: 'm/s',
+  power: 'watts', Power: 'watts',
+  steps_cadence: 'spm', StepsCadence: 'steps_per_second',
+  cycling_pedaling_cadence: 'rpm', CyclingPedalingCadence: 'rpm',
+  blood_alcohol_content: 'percent', BloodAlcoholContent: '%',
+  nutrition: 'kcal', Nutrition: 'kcal',
+};
 const userRepository = require('../models/userRepository');
 const exerciseRepository = require('../models/exerciseRepository'); // For active calories
 const sleepRepository = require('../models/sleepRepository'); // Import sleepRepository
@@ -271,8 +308,12 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           break;
         default:
           // Handle as custom measurement
-          // Get or create custom category first to check its data_type
-          const category = await getOrCreateCustomCategory(userId, actingUserId, type, dataType, measurementType);
+          // Use unit from payload (e.g. HealthConnect sends "unit") or default so UI does not show "N/A"
+          const unitFromPayload = dataEntry.unit ?? dataEntry.measurementType;
+          const resolvedMeasurementType = (unitFromPayload && String(unitFromPayload).trim() !== '')
+            ? String(unitFromPayload).trim()
+            : (DEFAULT_UNITS_BY_HEALTH_TYPE[type] || 'N/A');
+          const category = await getOrCreateCustomCategory(userId, actingUserId, type, dataType, resolvedMeasurementType);
           if (!category || !category.id) {
             errors.push({ error: `Failed to get or create custom category for type: ${type}`, entry: dataEntry });
             break;
