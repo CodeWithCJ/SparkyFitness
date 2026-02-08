@@ -23,7 +23,7 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   body_temperature: 'celsius', BodyTemperature: 'celsius',
   resting_heart_rate: 'bpm', RestingHeartRate: 'bpm',
   respiratory_rate: 'breaths/min', RespiratoryRate: 'breaths/min',
-  oxygen_saturation: 'percent', OxygenSaturation: '%', BloodOxygenSaturation: '%',
+  oxygen_saturation: '%', OxygenSaturation: '%', BloodOxygenSaturation: '%',
   vo2_max: 'ml/min/kg', Vo2Max: 'ml/min/kg',
   height: 'm', Height: 'm',
   hydration: 'L', Hydration: 'L',
