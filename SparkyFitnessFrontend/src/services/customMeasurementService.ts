@@ -73,7 +73,7 @@ export const getRawStressData = async (userId?: string): Promise<StressDataPoint
     console.warn('Raw Stress Data category not found.');
     return [];
   }
-  console.log('Identified rawStressCategory:', rawStressCategory);
+  // console.log('Identified rawStressCategory:', rawStressCategory);
 
   const params = new URLSearchParams({ category_id: rawStressCategory.id });
   if (userId) params.append('userId', userId);
@@ -86,7 +86,7 @@ export const getRawStressData = async (userId?: string): Promise<StressDataPoint
   );
 
   let allStressDataPoints: StressDataPoint[] = [];
-  console.log('Custom measurements received for raw stress data:', customMeasurements);
+  // console.log('Custom measurements received for raw stress data:', customMeasurements);
 
   customMeasurements.forEach(measurement => {
     try {
