@@ -238,9 +238,27 @@ const auth = betterAuth({
     },
 
     // Trust proxy (for Docker/Nginx deployments)
-    trustedOrigins: [
-        process.env.SPARKY_FITNESS_FRONTEND_URL,
-    ].filter(Boolean).map(url => url.replace(/\/$/, '')),
+    trustedOrigins: (() => {
+        const origins = [process.env.SPARKY_FITNESS_FRONTEND_URL];
+
+        // If private network CORS is allowed, we automatically trust localhost
+        if (process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true') {
+            origins.push("http://localhost:8080");
+            origins.push("http://127.0.0.1:8080");
+
+            // Add any extra origins manually configured (comma-separated list)
+            if (process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS) {
+                const extras = process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS
+                    .split(',')
+                    .map(o => o.trim());
+                origins.push(...extras);
+            }
+        }
+
+        return [...new Set(origins)] // Remove duplicates
+            .filter(Boolean)
+            .map(url => url.replace(/\/$/, ''));
+    })(),
 
     databaseHooks: {
         user: {
