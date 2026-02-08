@@ -69,11 +69,12 @@ services:
       SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL:-http://localhost:3004}
       SPARKY_FITNESS_SERVER_HOST: sparkyfitness-server
       SPARKY_FITNESS_SERVER_PORT: 3010
+      VITE_BACKEND_HOST: sparkyfitness-server
     ports:
-      - "8080:80" # Map host 3004 to container 80 (Nginx)
+      - "8080:8080" # Map host port 8080 to vite port 8080
     volumes:
-      # Mount nginx config to allow tweaking routing without rebuilding image (requires container restart)
-      - ./nginx.conf:/etc/nginx/templates/default.conf.template
+      - ../SparkyFitnessFrontend:/app # mount directory for auto refresh
+      - /app/node_modules # prevent node modules override in container
     networks:
       - sparkyfitness-network
     restart: always
