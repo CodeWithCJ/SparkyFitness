@@ -6,6 +6,9 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
+
+  const backendHost = process.env.VITE_BACKEND_HOST || "localhost";
+  const target = `http://${backendHost}:3010`;
   return {
     server: {
       host: "::",
@@ -13,16 +16,16 @@ export default defineConfig(({ mode }) => {
       allowedHosts: true, // Allow all hosts in development to prevent HMR connection failures
       proxy: {
         "/health-data": {
-          target: "http://localhost:3010",
+          target: target,
           changeOrigin: true,
           rewrite: (path) => `/api${path}`, // Add /api/ prefix
         },
         "/api": {
-          target: "http://localhost:3010",
+          target: target,
           changeOrigin: true,
         },
         "/uploads": {
-          target: "http://localhost:3010",
+          target: target,
           changeOrigin: true,
         },
       },

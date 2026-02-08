@@ -11,7 +11,7 @@ COPY package*.json ./
 
 # Install app dependencies
 # Using npm ci for reproducible builds
-RUN npm ci
+RUN npm install
 
 # Copy the rest of your application's code
 COPY . .
