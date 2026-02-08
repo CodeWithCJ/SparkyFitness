@@ -341,7 +341,7 @@ const MealCard = ({
                         )}
                       </div>
                       <div
-                        className={`grid grid-cols-${visibleNutrientsForGrid.length} gap-x-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400`}
+                        className={`flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600 dark:text-gray-400`}
                       >
                         {visibleNutrientsForGrid.map((nutrient) => {
                           const details = nutrientDetails[nutrient];
