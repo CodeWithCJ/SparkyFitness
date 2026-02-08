@@ -310,9 +310,12 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           // Handle as custom measurement
           // Use unit from payload (e.g. HealthConnect sends "unit") or default so UI does not show "N/A"
           const unitFromPayload = dataEntry.unit ?? dataEntry.measurementType;
-          const resolvedMeasurementType = (unitFromPayload && String(unitFromPayload).trim() !== '')
-            ? String(unitFromPayload).trim()
-            : (DEFAULT_UNITS_BY_HEALTH_TYPE[type] || 'N/A');
+          let resolvedMeasurementType;
+          if (unitFromPayload && typeof unitFromPayload === 'string' && unitFromPayload.trim()) {
+            resolvedMeasurementType = unitFromPayload.trim();
+          } else {
+            resolvedMeasurementType = DEFAULT_UNITS_BY_HEALTH_TYPE[type] || 'N/A';
+          }
           const category = await getOrCreateCustomCategory(userId, actingUserId, type, dataType, resolvedMeasurementType);
           if (!category || !category.id) {
             errors.push({ error: `Failed to get or create custom category for type: ${type}`, entry: dataEntry });
