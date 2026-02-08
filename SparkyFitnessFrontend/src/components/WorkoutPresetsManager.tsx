@@ -248,7 +248,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeletePreset(preset.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeletePreset(String(preset.id)) }>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
@@ -280,7 +280,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
         <WorkoutPresetForm
           isOpen={isEditDialogOpen}
           onClose={() => { setIsEditDialogOpen(false); setSelectedPreset(null); }}
-          onSave={(updatedData) => handleUpdatePreset(selectedPreset.id, updatedData)}
+          onSave={(updatedData) => handleUpdatePreset(String(selectedPreset.id), updatedData)}
           initialPreset={selectedPreset}
         />
       )}

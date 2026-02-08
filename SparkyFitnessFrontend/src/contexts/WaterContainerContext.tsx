@@ -24,7 +24,7 @@ export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({ chil
   const fetchAndSetActiveContainer = async () => {
     try {
       if (!currentUserId) return;
-      const fetchedContainers = await getWaterContainers(currentUserId);
+      const fetchedContainers = await getWaterContainers();
 
       let primary = fetchedContainers.find(c => c.is_primary);
       if (!primary && fetchedContainers.length > 0) {
@@ -33,7 +33,7 @@ export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({ chil
         // Update this in the backend as well
         await setPrimaryWaterContainer(primary.id);
         // Re-fetch to get the updated primary status
-        const updatedContainers = await getWaterContainers(currentUserId);
+        const updatedContainers = await getWaterContainers();
         primary = updatedContainers.find(c => c.id === primary.id); // Get the updated primary
       }
 

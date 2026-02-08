@@ -81,7 +81,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         }
       } else if (source === 'food-diary' && foodEntryId) { // Use foodEntryId for food-diary editing
         try {
-          const loggedMeal = await getFoodEntryMealWithComponents(activeUserId, foodEntryId);
+          const loggedMeal = await getFoodEntryMealWithComponents(foodEntryId);
           if (loggedMeal) {
             const quantity = loggedMeal.quantity || 1;
             setMealName(loggedMeal.name);

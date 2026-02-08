@@ -1,5 +1,5 @@
 import { api } from './api';
-import { MealPlanTemplate, MealDayPreset } from '@/types/meal';
+import { MealPlanTemplate } from '@/types/meal';
 
 export const getMealPlanTemplates = async (userId: string): Promise<MealPlanTemplate[]> => {
     return await api.get(`/meal-plan-templates?userId=${userId}`);
@@ -17,7 +17,7 @@ export const deleteMealPlanTemplate = async (userId: string, templateId: string)
     await api.delete(`/meal-plan-templates/${templateId}?userId=${userId}`);
 };
 
-export const getMealDayPresets = async (userId: string): Promise<MealDayPreset[]> => {
+export const getMealDayPresets = async (userId: string): Promise<[]> => {
     const response = await api.get(`/meal-plan-templates/presets?userId=${userId}`);
     return response.data;
 };
