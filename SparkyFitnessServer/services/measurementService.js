@@ -33,7 +33,7 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   bone_mass: 'kg', BoneMass: 'kg',
   speed: 'm/s', Speed: 'm/s',
   power: 'watts', Power: 'watts',
-  steps_cadence: 'spm', StepsCadence: 'steps_per_second',
+  steps_cadence: 'steps_per_second', StepsCadence: 'steps_per_second',
   cycling_pedaling_cadence: 'rpm', CyclingPedalingCadence: 'rpm',
   blood_alcohol_content: 'percent', BloodAlcoholContent: '%',
   nutrition: 'kcal', Nutrition: 'kcal',
