@@ -22,12 +22,23 @@ describe('corsHelper', () => {
 
     it('should recognize localhost', () => {
       expect(isPrivateNetworkAddress('localhost')).toBe(true);
-      expect(isPrivateNetworkAddress('0.0.0.0')).toBe(true);
     });
 
     it('should recognize IPv6 loopback', () => {
       expect(isPrivateNetworkAddress('::1')).toBe(true);
       expect(isPrivateNetworkAddress('[::1]')).toBe(true);
+    });
+
+    it('should recognize expanded IPv6 private addresses', () => {
+      // Full IPv6 without :: compression
+      expect(isPrivateNetworkAddress('fc00:0000:0000:0000:0000:0000:0000:0001')).toBe(true);
+      expect(isPrivateNetworkAddress('fe80:0000:0000:0000:0000:0000:0000:0001')).toBe(true);
+    });
+
+    it('should recognize bracketed IPv6 with ports', () => {
+      expect(isPrivateNetworkAddress('[::1]:8080')).toBe(true);
+      expect(isPrivateNetworkAddress('[fe80::1]:3000')).toBe(true);
+      expect(isPrivateNetworkAddress('[fc00::1]:443')).toBe(true);
     });
 
     it('should ignore port numbers', () => {
@@ -44,6 +55,11 @@ describe('corsHelper', () => {
       expect(isPrivateNetworkAddress(null)).toBe(false);
       expect(isPrivateNetworkAddress(undefined)).toBe(false);
       expect(isPrivateNetworkAddress('')).toBe(false);
+    });
+
+    it('should reject malformed bracketed addresses', () => {
+      expect(isPrivateNetworkAddress('[::1')).toBe(false); // Missing closing bracket
+      expect(isPrivateNetworkAddress('[abc[def]:8080')).toBe(false); // Nested brackets
     });
   });
 

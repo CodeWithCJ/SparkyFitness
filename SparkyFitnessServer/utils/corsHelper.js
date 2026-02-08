@@ -12,39 +12,52 @@ function isPrivateNetworkAddress(host) {
 
   // Remove port if present - handle both IPv4 and IPv6
   let hostname = host.toLowerCase();
-  
-  // Detect IPv6 (contains ::) and handle appropriately
-  if (hostname.includes('::')) {
-    // IPv6 address - either [::1]:3000 or ::1
-    if (hostname.startsWith('[')) {
-      // Bracketed form: extract what's inside brackets
-      hostname = hostname.split(']')[0] + ']';
+
+  // Check for bracketed IPv6 format first [ipv6]:port
+  if (hostname.startsWith('[')) {
+    // Extract IPv6 from brackets: [2001:db8::1]:8080 -> [2001:db8::1]
+    const closingBracket = hostname.indexOf(']');
+    if (closingBracket === -1) {
+      // Malformed: opening bracket without closing bracket
+      return false;
     }
-    // else: plain IPv6 like ::1, keep as-is
+    hostname = hostname.substring(0, closingBracket + 1);
   } else {
-    // IPv4 or hostname - remove port by splitting on first colon
-    hostname = hostname.split(':')[0];
+    // Cache split result to avoid redundant operation
+    const parts = hostname.split(':');
+    if (parts.length > 2) {
+      // Multiple colons = IPv6 (not IPv4:port)
+      // Keep as-is since it's already without brackets/port
+      // e.g., 2001:db8:85a3::8a2e:370:7334
+    } else if (parts.length === 2) {
+      // Single colon = IPv4:port or plain hostname
+      // Split to remove port: 192.168.1.1:3000 -> 192.168.1.1
+      hostname = parts[0];
+    }
+    // else: no colon, keep hostname as-is
   }
 
-  // IPv4 private ranges
+  // IPv4 private ranges (limit to 1-3 digits per octet for validation)
   const ipv4Patterns = [
-    /^127\.\d+\.\d+\.\d+$/, // 127.0.0.0/8 (loopback)
-    /^10\.\d+\.\d+\.\d+$/, // 10.0.0.0/8
-    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/, // 172.16.0.0/12
-    /^192\.168\.\d+\.\d+$/, // 192.168.0.0/16
-    /^169\.254\.\d+\.\d+$/, // 169.254.0.0/16 (link-local)
+    /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/, // 127.0.0.0/8 (loopback)
+    /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/, // 10.0.0.0/8
+    /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/, // 172.16.0.0/12
+    /^192\.168\.\d{1,3}\.\d{1,3}$/, // 192.168.0.0/16
+    /^169\.254\.\d{1,3}\.\d{1,3}$/, // 169.254.0.0/16 (link-local)
   ];
 
-  // IPv6 private addresses
+  // IPv6 private addresses (limit quantifiers to prevent ReDoS)
   const ipv6Patterns = [
     /^::1$/i, // ::1 (loopback)
     /^\[::1\]$/i, // [::1] (loopback in URL form)
-    /^fc[0-9a-f:]+$/i, // fc00::/7 (unique local)
-    /^fe[0-9a-f:]+$/i, // fe00::/9 and fe80::/10 (link-local and multicast)
+    /^fc[0-9a-f:]{1,100}$/i, // fc00::/7 (unique local, max 100 chars)
+    /^\[fc[0-9a-f:]{1,100}\]$/i, // [fc00::/7] (unique local, bracketed)
+    /^fe[0-9a-f:]{1,100}$/i, // fe00::/9 and fe80::/10 (link-local)
+    /^\[fe[0-9a-f:]{1,100}\]$/i, // [fe00::/9 and fe80::/10] (link-local, bracketed)
   ];
 
-  // Check localhost
-  if (hostname === 'localhost' || hostname === '0.0.0.0') {
+  // Check localhost (0.0.0.0 removed - ambiguous in CORS context)
+  if (hostname === 'localhost') {
     return true;
   }
 
@@ -70,9 +83,15 @@ function isPrivateNetworkAddress(host) {
 function createCorsOriginChecker(configuredFrontendUrl, allowPrivateNetworks = false) {
   const allowedOrigins = [];
 
-  // Add configured frontend URL
+  // Add configured frontend URL with validation
   if (configuredFrontendUrl) {
-    allowedOrigins.push(configuredFrontendUrl);
+    try {
+      // Validate URL format
+      new URL(configuredFrontendUrl);
+      allowedOrigins.push(configuredFrontendUrl);
+    } catch (err) {
+      console.warn(`Invalid configured frontend URL: ${configuredFrontendUrl}`);
+    }
   }
 
   return (origin, callback) => {
