@@ -13,16 +13,16 @@ export default defineConfig(({ mode }) => {
       allowedHosts: true, // Allow all hosts in development to prevent HMR connection failures
       proxy: {
         "/health-data": {
-          target: "http://localhost:3010",
+          target: "http://sparkyfitness-server:3010",
           changeOrigin: true,
           rewrite: (path) => `/api${path}`, // Add /api/ prefix
         },
         "/api": {
-          target: "http://localhost:3010",
+          target: "http://sparkyfitness-server:3010",
           changeOrigin: true,
         },
         "/uploads": {
-          target: "http://localhost:3010",
+          target: "http://sparkyfitness-server:3010",
           changeOrigin: true,
         },
       },
