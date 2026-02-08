@@ -12,6 +12,8 @@ import {
   Dumbbell, // Used for Exercises
   Target, // Used for Goals
   Shield,
+  Plus,
+  X,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -109,7 +111,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
   }, [isActingOnBehalf, hasWritePermission, t]);
 
   const availableTabs = useMemo(() => {
-    debug(loggingLevel, "MainLayout: Calculating available tabs.", {
+    debug(loggingLevel, "MainLayout: Calculating available tabs (desktop).", {
       isActingOnBehalf,
       hasPermission,
       hasWritePermission,
@@ -117,7 +119,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
     const tabs = [];
     if (!isActingOnBehalf) {
       tabs.push(
-        { value: "/", label: t("nav.diary"), icon: Home }, // Changed value to "/" for root route
+        { value: "/", label: t("nav.diary"), icon: Home },
         { value: "/checkin", label: t("nav.checkin"), icon: Activity },
         { value: "/reports", label: t("nav.reports"), icon: BarChart3 },
         { value: "/foods", label: t("nav.foods"), icon: Utensils },
@@ -161,11 +163,62 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
     t,
   ]);
 
-  // Handle navigation from AddComp to specific routes
+  const availableMobileTabs = useMemo(() => {
+    debug(loggingLevel, "MainLayout: Calculating available tabs (mobile).", {
+      isActingOnBehalf,
+      hasPermission,
+      hasWritePermission,
+      isAddCompOpen,
+    });
+    const mobileTabs = [];
+    if (!isActingOnBehalf) {
+      mobileTabs.push(
+        { value: "/", label: t("nav.diary"), icon: Home },
+        { value: "/reports", label: t("nav.reports"), icon: BarChart3 },
+        {
+          value: "Add",
+          label: t("common.add", "Add"),
+          icon: isAddCompOpen ? X : Plus,
+        },
+        { value: "/settings", label: t("nav.settings"), icon: SettingsIcon },
+      );
+    } else {
+      if (hasWritePermission("diary")) {
+        mobileTabs.push({ value: "/", label: t("nav.diary"), icon: Home });
+      }
+      if (hasWritePermission("checkin")) {
+        mobileTabs.push({
+          value: "/checkin",
+          label: t("nav.checkin"),
+          icon: Activity,
+        });
+      }
+      if (hasPermission("reports")) {
+        mobileTabs.push({
+          value: "/reports",
+          label: t("nav.reports"),
+          icon: BarChart3,
+        });
+      }
+    }
+    if (user?.role === "admin" && !isActingOnBehalf) {
+      mobileTabs.push({ value: "/admin", label: t("nav.admin"), icon: Shield });
+    }
+    return mobileTabs;
+  }, [
+    isActingOnBehalf,
+    hasPermission,
+    hasWritePermission,
+    loggingLevel,
+    user?.role,
+    isAddCompOpen,
+    t,
+  ]);
+
   const handleNavigateFromAddComp = useCallback(
     (value: string) => {
       info(loggingLevel, `MainLayout: Navigating to ${value} from AddComp.`);
-      navigate(value); // Use React Router's navigate
+      navigate(value);
       setIsAddCompOpen(false);
     },
     [loggingLevel, navigate],
@@ -195,9 +248,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
   };
 
   const gridClass = getGridClass(availableTabs.length);
-  const mobileGridClass = getGridClass(availableTabs.length); // Placeholder, will need refinement
+  const mobileGridClass = getGridClass(availableMobileTabs.length);
 
-  const location = useLocation(); // To highlight active navigation item
+  const location = useLocation();
 
   return (
     <div className="min-h-screen bg-background">
@@ -258,14 +311,24 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
         <nav
           className={`grid w-full gap-1 fixed bottom-0 left-0 right-0 sm:hidden bg-background border-t py-2 px-2 h-14 z-50 ${mobileGridClass}`}
         >
-          {availableTabs.map(({ value, label, icon: Icon }) => (
+          {availableMobileTabs.map(({ value, label, icon: Icon }) => (
             <Button
               key={value}
               variant="ghost"
               className={`flex flex-col items-center gap-1 py-2 ${
-                location.pathname === value ? "text-primary" : ""
+                location.pathname ===
+                (value === "Add" ? location.pathname : value)
+                  ? "text-primary"
+                  : ""
               }`}
-              onClick={() => navigate(value)}
+              onClick={() => {
+                if (value === "Add") {
+                  setIsAddCompOpen((prev) => !prev);
+                } else {
+                  setIsAddCompOpen(false);
+                  navigate(value);
+                }
+              }}
             >
               <Icon className="h-8 w-8" />
             </Button>
@@ -296,3 +359,4 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
 };
 
 export default MainLayout;
+
