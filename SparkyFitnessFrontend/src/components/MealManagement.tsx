@@ -280,7 +280,7 @@ const MealManagement: React.FC = () => {
             <div className="space-y-4">
               {filteredMeals.map(meal => (
                 <Card key={meal.id}>
-                  <CardContent className="p-4 flex items-center justify-between">
+                  <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h3 className="text-lg font-semibold">
                         {meal.name}
@@ -289,7 +289,7 @@ const MealManagement: React.FC = () => {
                       <p className="text-sm text-muted-foreground">{meal.description || t('mealManagement.noDescription', { defaultValue: 'No description' })}</p>
 
                       {/* Nutrition Display */}
-                      <div className="flex gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex flex-wrap gap-x-5 mt-2 text-sm text-gray-600 dark:text-gray-400">
                         {(() => {
                           let totalCalories = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
                           if (meal.foods) {

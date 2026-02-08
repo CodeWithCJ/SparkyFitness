@@ -454,7 +454,7 @@ const FoodDatabaseManager: React.FC = () => {
             {t("foodDatabaseManager.foodDatabase", "Food Database")}
           </CardTitle>
           <Button
-            size={isMobile ? "icon" : "default"} // Nutzt Icon-Größe auf Mobile
+            size={isMobile ? "icon" : "default"}
             onClick={() => setShowFoodSearchDialog(true)}
             className="shrink-0"
             title={t("foodDatabaseManager.addNewFood", "Add New Food")}
