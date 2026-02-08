@@ -1,4 +1,3 @@
-import React from 'react';
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
