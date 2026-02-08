@@ -15,12 +15,11 @@ async function createMealType(data, userId) {
   );
   const client = await getClient(userId);
   try {
-    // We default sort_order to 100 if not provided, putting custom meals at the end by default
     const sortOrder = data.sort_order !== undefined ? data.sort_order : 100;
 
     const result = await client.query(
-      `INSERT INTO meal_types (name, user_id, sort_order)
-       VALUES ($1, $2, $3)
+      `INSERT INTO meal_types (name, user_id, sort_order, is_visible)
+       VALUES ($1, $2, $3, TRUE)
        RETURNING *`,
       [data.name, userId, sortOrder]
     );
@@ -43,9 +42,18 @@ async function getAllMealTypes(userId) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT * FROM meal_types 
-       WHERE user_id = $1 OR user_id IS NULL 
-       ORDER BY sort_order ASC, id ASC`,
+      `SELECT 
+         mt.id,
+         mt.name,
+         mt.sort_order,
+         mt.user_id,
+         mt.created_at,
+         COALESCE(umv.is_visible, mt.is_visible) AS is_visible
+       FROM meal_types mt
+       LEFT JOIN user_meal_visibilities umv 
+         ON mt.id = umv.meal_type_id AND umv.user_id = $1
+       WHERE mt.user_id = $1 OR mt.user_id IS NULL 
+       ORDER BY mt.sort_order ASC, mt.id ASC`,
       [userId]
     );
     return result.rows;
@@ -62,9 +70,14 @@ async function getMealTypeById(mealTypeId, userId) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT * FROM meal_types 
-       WHERE id = $1 
-         AND (user_id = $2 OR user_id IS NULL)`,
+      `SELECT 
+         mt.*,
+         COALESCE(umv.is_visible, mt.is_visible) AS is_visible
+       FROM meal_types mt
+       LEFT JOIN user_meal_visibilities umv 
+         ON mt.id = umv.meal_type_id AND umv.user_id = $2
+       WHERE mt.id = $1 
+         AND (mt.user_id = $2 OR mt.user_id IS NULL)`,
       [mealTypeId, userId]
     );
     return result.rows[0];
@@ -73,12 +86,6 @@ async function getMealTypeById(mealTypeId, userId) {
   }
 }
 
-/**
- * Updates a meal type.
- * CRITICAL: This query includes "AND user_id = $4".
- * This prevents a user from renaming "Breakfast" (System default where user_id is NULL).
- * Only custom meals created by the user can be updated.
- */
 async function updateMealType(mealTypeId, data, userId) {
   log(
     "info",
@@ -88,30 +95,49 @@ async function updateMealType(mealTypeId, data, userId) {
   );
   const client = await getClient(userId);
   try {
-    const result = await client.query(
-      `UPDATE meal_types 
-       SET 
-         name = COALESCE($1, name),
-         sort_order = COALESCE($2, sort_order)
-       WHERE id = $3 AND user_id = $4
-       RETURNING *`,
-      [data.name, data.sort_order, mealTypeId, userId]
-    );
-
-    if (result.rows.length === 0) {
-      // Check if it exists as a system default
-      const checkSystem = await client.query(
-        "SELECT id FROM meal_types WHERE id = $1 AND user_id IS NULL",
-        [mealTypeId]
+    await client.query("BEGIN");
+    //console.log(data);
+    //console.log(data.is_visible);
+    if (data.is_visible !== undefined) {
+      await client.query(
+        `INSERT INTO user_meal_visibilities (user_id, meal_type_id, is_visible)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, meal_type_id) 
+         DO UPDATE SET is_visible = EXCLUDED.is_visible`,
+        [userId, mealTypeId, data.is_visible]
       );
-      if (checkSystem.rows.length > 0) {
-        throw new Error("Cannot edit system default meal types.");
-      }
-      throw new Error("Meal type not found or access denied.");
     }
 
-    return result.rows[0];
+    if (data.name !== undefined || data.sort_order !== undefined) {
+      const updateResult = await client.query(
+        `UPDATE meal_types 
+         SET 
+           name = COALESCE($1, name),
+           sort_order = COALESCE($2, sort_order)
+         WHERE id = $3 AND user_id = $4
+         RETURNING *`,
+        [data.name, data.sort_order, mealTypeId, userId]
+      );
+
+      if (updateResult.rows.length === 0) {
+        const check = await client.query(
+          "SELECT 1 FROM meal_types WHERE id = $1 AND user_id IS NULL",
+          [mealTypeId]
+        );
+        if (check.rows.length > 0) {
+          throw new Error(
+            "Cannot rename or reorder system default meal types."
+          );
+        }
+        throw new Error("Meal type not found or access denied.");
+      }
+    }
+
+    await client.query("COMMIT");
+
+    return await getMealTypeById(mealTypeId, userId);
   } catch (error) {
+    await client.query("ROLLBACK");
     log("error", "Error updating meal type:", error);
     throw error;
   } finally {
@@ -119,18 +145,10 @@ async function updateMealType(mealTypeId, data, userId) {
   }
 }
 
-/**
- * Deletes a meal type.
- * CRITICAL: Checks "AND user_id = $2".
- * Prevents deleting system defaults.
- */
 async function deleteMealType(mealTypeId, userId) {
   log("info", `deleteMealType in mealType.js: id: ${mealTypeId}`);
   const client = await getClient(userId);
   try {
-    // Optional: Check if used in food_entries before deleting?
-    // Usually ON DELETE RESTRICT in DB handles this, but we can check here nicely.
-
     const result = await client.query(
       `DELETE FROM meal_types 
        WHERE id = $1 AND user_id = $2
@@ -139,7 +157,6 @@ async function deleteMealType(mealTypeId, userId) {
     );
 
     if (result.rowCount === 0) {
-      // Check if it was a system default
       const checkSystem = await client.query(
         "SELECT id FROM meal_types WHERE id = $1 AND user_id IS NULL",
         [mealTypeId]
@@ -147,14 +164,12 @@ async function deleteMealType(mealTypeId, userId) {
       if (checkSystem.rows.length > 0) {
         throw new Error("Cannot delete system default meal types.");
       }
-      return false; // Not found or not owned
+      return false;
     }
 
     return true;
   } catch (error) {
-    // specialized error message if DB constraint prevents deletion
     if (error.code === "23503") {
-      // foreign_key_violation
       throw new Error(
         "Cannot delete this meal type because it contains food entries."
       );

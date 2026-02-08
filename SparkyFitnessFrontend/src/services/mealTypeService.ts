@@ -5,6 +5,13 @@ export interface MealTypeDefinition {
   name: string;
   sort_order: number;
   user_id: string | null;
+  is_visible?: boolean;
+}
+
+export interface MealTypeUpdate {
+  name?: string;
+  sort_order?: number;
+  is_visible?: boolean;
 }
 
 export const getMealTypes = async (): Promise<MealTypeDefinition[]> => {
@@ -27,11 +34,11 @@ export const createMealType = async (data: {
 
 export const updateMealType = async (
   id: string,
-  data: { name?: string; sort_order?: number }
+  updates: MealTypeUpdate
 ): Promise<MealTypeDefinition> => {
   const response = await apiCall(`/meal-types/${id}`, {
     method: "PUT",
-    body: data,
+    body: updates,
   });
   return response;
 };

@@ -219,7 +219,7 @@ const AddExerciseDialog = ({ open, onOpenChange, onExerciseAdded, mode, onWorkou
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="flex w-full justify-center flex-wrap">
+          <TabsList className="h-10 flex w-full justify-center flex-wrap">
             {mode !== 'database-manager' && <TabsTrigger value="my-exercises">{t('exercise.addExerciseDialog.myExercisesTab', 'My Exercises')}</TabsTrigger>}
             {(mode === 'diary' || mode === 'workout-plan') && <TabsTrigger value="workout-preset">{t('exercise.addExerciseDialog.workoutPresetTab', 'Workout Preset')}</TabsTrigger>}
             <TabsTrigger value="online">{t('exercise.addExerciseDialog.onlineTab', 'Online')}</TabsTrigger>

@@ -147,7 +147,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
             </CardHeader>
             <CardContent className="space-y-4">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="h-10 grid w-full grid-cols-3">
                         {mfaTotpEnabled && (
                             <TabsTrigger value="totp" disabled={needsMfaSetup}>
                                 <QrCode className="h-4 w-4 mr-2" /> {t('mfaChallenge.totpTab', 'App Code')}
