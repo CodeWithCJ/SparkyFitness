@@ -68,6 +68,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const redoc = require('redoc-express');
 const swaggerSpecs = require('./config/swagger');
+const { createCorsOriginChecker } = require('./utils/corsHelper');
 
 
 const app = express();
@@ -78,10 +79,15 @@ console.log(
   `DEBUG: SPARKY_FITNESS_FRONTEND_URL is: ${process.env.SPARKY_FITNESS_FRONTEND_URL}`
 );
 
-// Use cors middleware to allow requests from your frontend
+const allowPrivateNetworks = process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true';
+if (allowPrivateNetworks) {
+  console.warn('[SECURITY] Private network CORS is ENABLED. Ensure this is only on self-hosted/private networks.');
+}
+
+// Use cors middleware to allow requests from your frontend (and optionally private networks)
 app.use(
   cors({
-    origin: process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080",
+    origin: createCorsOriginChecker(process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080", allowPrivateNetworks),
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
       "Content-Type",
@@ -243,6 +249,7 @@ app.use((req, res, next) => {
     "/api/version",
     "/api/uploads",
     "/uploads",
+    "/api/ping",
   ];
 
   let isPublic = publicRoutes.some(route => {

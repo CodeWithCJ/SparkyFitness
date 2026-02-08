@@ -1,3 +1,6 @@
+// Load environment variables from root .env file
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+
 // Test environment configuration
 process.env.NODE_ENV = 'test';
 
