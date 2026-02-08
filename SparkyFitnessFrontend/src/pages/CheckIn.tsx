@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,10 +8,10 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { toast } from "@/hooks/use-toast";
-import CheckInPreferences from "./CheckInPreferences";
+import CheckInPreferences from "../components/CheckInPreferences";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
-import MoodMeter from "./MoodMeter"; // Import MoodMeter component
+import MoodMeter from "@/components/MoodMeter"; // Import MoodMeter component
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { Trash2, ClipboardList } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
@@ -37,8 +38,8 @@ import { calculateBodyFatBmi, calculateBodyFatNavy } from '@/services/bodyCompos
 import { getUserPreferences } from '@/services/preferenceService';
 import { userManagementService } from "@/services/userManagementService";
 import { api } from '@/services/api'; // Import the API service
-import SleepEntrySection from './SleepEntrySection'; // Import SleepEntrySection
-import HomeDashboardFasting from './HomeDashboardFasting'; // Import Fasting Widget
+import SleepEntrySection from '../components/SleepEntrySection'; // Import SleepEntrySection
+import HomeDashboardFasting from '../components/HomeDashboardFasting'; // Import Fasting Widget
 import { getFastingHistory } from '@/services/fastingService'; // Import fasting history service
 import { Timer, Activity } from 'lucide-react'; // Icons
 

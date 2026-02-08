@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,20 +6,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, ScatterChart, Scatter } from 'recharts'; // Added ScatterChart, Scatter
 import { BarChart3, TrendingUp, Activity, Dumbbell, BedDouble } from "lucide-react"; // Added Dumbbell and BedDouble
 import { getFastingDataRange, FastingLog } from '@/services/fastingService';
-import { FastingReport } from './reports/FastingReport';
+import { FastingReport } from '@/components/reports/FastingReport';
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import ZoomableChart from "./ZoomableChart";
-import ReportsControls from "./reports/ReportsControls";
-import NutritionChartsGrid from "./reports/NutritionChartsGrid";
-import MeasurementChartsGrid from "./reports/MeasurementChartsGrid";
-import ReportsTables from "./reports/ReportsTables";
-import ExerciseReportsDashboard from "./reports/ExerciseReportsDashboard"; // Import ExerciseReportsDashboard
-import SleepReport from "./reports/SleepReport"; // Import SleepReport
-import BodyBatteryCard, { BODY_BATTERY_METRICS } from "./reports/BodyBatteryCard"; // Import BodyBatteryCard
-import RespirationCard, { RESPIRATION_METRICS } from "./reports/RespirationCard"; // Import RespirationCard
+import ZoomableChart from "@/components/ZoomableChart";
+import ReportsControls from "@/components/reports/ReportsControls";
+import NutritionChartsGrid from "@/components/reports/NutritionChartsGrid";
+import MeasurementChartsGrid from "@/components/reports/MeasurementChartsGrid";
+import ReportsTables from "@/components/reports/ReportsTables";
+import ExerciseReportsDashboard from "@/components/reports/ExerciseReportsDashboard"; // Import ExerciseReportsDashboard
+import SleepReport from "@/components/reports/SleepReport"; // Import SleepReport
+import BodyBatteryCard, { BODY_BATTERY_METRICS } from "@/components/reports/BodyBatteryCard"; // Import BodyBatteryCard
+import RespirationCard, { RESPIRATION_METRICS } from "@/components/reports/RespirationCard"; // Import RespirationCard
 
 // Metrics to hide from the custom measurements charts (shown in dedicated cards instead)
 const HIDDEN_CUSTOM_METRICS = [
@@ -27,7 +28,7 @@ const HIDDEN_CUSTOM_METRICS = [
   'Average SpO2',  // Shown in Sleep tab SpO2 card
   'Average Overnight HRV',  // Shown in Sleep tab HRV card
 ];
-import StressChart from "./StressChart"; // Import StressChart
+import StressChart from "@/components/StressChart"; // Import StressChart
 import { log, debug, info, warn, error, UserLoggingLevel } from "@/utils/logging";
 import { format, parseISO, addDays } from 'date-fns'; // Import format, parseISO, addDays from date-fns
 import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
@@ -59,7 +60,7 @@ import { getRawStressData } from '@/services/customMeasurementService';
 import { getMoodEntries } from '@/services/moodService';
 import { customNutrientService } from "@/services/customNutrientService";
 import { UserCustomNutrient } from "@/types/customNutrient";
-import MoodChart from './MoodChart';
+import MoodChart from '@/components/MoodChart';
 
 interface ExtendedNutritionData extends NutritionData {
   [key: string]: number | string; // Add index signature for custom nutrients

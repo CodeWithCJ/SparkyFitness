@@ -8,22 +8,21 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format, parseISO, addDays } from "date-fns";
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import DiaryTopControls from "./DiaryTopControls";
-import MealCard from "./MealCard";
-import ExerciseCard from "./ExerciseCard";
-import EditFoodEntryDialog from "./EditFoodEntryDialog";
-import EnhancedCustomFoodForm from "./EnhancedCustomFoodForm";
-import FoodUnitSelector from "./FoodUnitSelector";
-import CopyFoodEntryDialog from "./CopyFoodEntryDialog";
-import ConvertToMealDialog from "./ConvertToMealDialog";
-import ExerciseSearch from "./ExerciseSearch";
-import EditMealFoodEntryDialog from "./EditMealFoodEntryDialog";
-import LogMealDialog from "./LogMealDialog";
+import DiaryTopControls from "../components/DiaryTopControls";
+import MealCard from "../components/MealCard";
+import ExerciseCard from "../components/ExerciseCard";
+import EditFoodEntryDialog from "../components/EditFoodEntryDialog";
+import EnhancedCustomFoodForm from "../components/EnhancedCustomFoodForm";
+import FoodUnitSelector from "../components/FoodUnitSelector";
+import CopyFoodEntryDialog from "../components/CopyFoodEntryDialog";
+import ConvertToMealDialog from "../components/ConvertToMealDialog";
+import ExerciseSearch from "../components/ExerciseSearch";
+import EditMealFoodEntryDialog from "../components/EditMealFoodEntryDialog";
+import LogMealDialog from "../components/LogMealDialog";
 import { debug, info, warn, error } from "@/utils/logging";
 import { calculateFoodEntryNutrition } from "@/utils/nutritionCalculations";
 import { toast } from "@/hooks/use-toast";
@@ -53,8 +52,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PresetExercise, WorkoutPreset } from "@/types/workout";
-import AddExerciseDialog from "./AddExerciseDialog";
-import AddWorkoutPresetDialog from "./AddWorkoutPresetDialog";
+import AddExerciseDialog from "../components/AddExerciseDialog";
+import AddWorkoutPresetDialog from "../components/AddWorkoutPresetDialog";
 
 import { customNutrientService } from "@/services/customNutrientService"; // Add import
 import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
@@ -79,21 +78,8 @@ interface MealTotals {
   [key: string]: any; // Allow custom nutrients
 }
 
-interface FoodDiaryProps {
-  selectedDate: string;
-  onDateChange: (date: string) => void;
-  refreshTrigger: number;
-  initialExercisesToLog?: PresetExercise[];
-  onExercisesLogged: () => void;
-}
 
-const FoodDiary = ({
-  selectedDate,
-  onDateChange,
-  refreshTrigger: externalRefreshTrigger,
-  initialExercisesToLog,
-  onExercisesLogged,
-}: FoodDiaryProps) => {
+const Diary = () => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
   const {
@@ -104,13 +90,11 @@ const FoodDiary = ({
     energyUnit,
     convertEnergy,
   } = usePreferences();
-  debug(loggingLevel, "FoodDiary component rendered for date:", selectedDate);
   const getEnergyUnitString = (unit: "kcal" | "kJ"): string => {
     return unit === "kcal"
       ? t("common.kcalUnit", "kcal")
       : t("common.kJUnit", "kJ");
   };
-  const [date, setDate] = useState<Date>(new Date(selectedDate));
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
   const [foodEntryMeals, setFoodEntryMeals] = useState<FoodEntryMeal[]>([]); // New state for logged meals
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
@@ -120,6 +104,16 @@ const FoodDiary = ({
   const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>(
     []
   ); // Add state for custom nutrients
+  const [selectedDate, setSelectedDate] = useState(
+    formatDateInUserTimezone(new Date(), "yyyy-MM-dd")
+  );
+  const [date, setDate] = useState<Date>(new Date(selectedDate));
+  debug(loggingLevel, "FoodDiary component rendered for date:", selectedDate);
+  const [externalRefreshTrigger, setFoodDiaryRefreshTrigger] = useState<number>(0);
+    const [exercisesToLogFromPreset, setExercisesToLogFromPreset] = useState<
+    PresetExercise[] | undefined
+  >(undefined);
+
   const [dayTotals, setDayTotals] = useState<MealTotals>({
     calories: 0,
     protein: 0,
@@ -149,9 +143,6 @@ const FoodDiary = ({
     useState(false);
   const [convertToMealSourceMealType, setConvertToMealSourceMealType] =
     useState<string>("");
-  const [exercisesToLogFromPreset, setExercisesToLogFromPreset] = useState<
-    PresetExercise[]
-  >([]);
 
   const [availableMealTypes, setAvailableMealTypes] = useState<
     MealTypeDefinition[]
@@ -665,10 +656,10 @@ const FoodDiary = ({
         setDate(newDate);
         const dateString = formatDateInUserTimezone(newDate, "yyyy-MM-dd");
         info(loggingLevel, "Date selected:", dateString);
-        onDateChange(dateString);
+        setSelectedDate(dateString);
       }
     },
-    [debug, loggingLevel, setDate, formatDateInUserTimezone, info, onDateChange]
+    [debug, loggingLevel, setDate, formatDateInUserTimezone, info, setSelectedDate]
   );
 
   const handlePreviousDay = useCallback(() => {
@@ -967,7 +958,7 @@ const FoodDiary = ({
         <>
           <DiaryTopControls
             selectedDate={selectedDate}
-            onDateChange={onDateChange}
+            onDateChange={setSelectedDate}
             dayTotals={dayTotals}
             goals={goals}
             onGoalsUpdated={handleDataChange}
@@ -1010,8 +1001,8 @@ const FoodDiary = ({
             <ExerciseCard
               selectedDate={selectedDate}
               onExerciseChange={handleDataChange}
-              initialExercisesToLog={initialExercisesToLog}
-              onExercisesLogged={onExercisesLogged}
+              initialExercisesToLog={exercisesToLogFromPreset}
+              onExercisesLogged={() => setExercisesToLogFromPreset(undefined)}
               key={`exercise-${externalRefreshTrigger}`}
             />
           </div>
@@ -1177,4 +1168,4 @@ const FoodDiary = ({
   );
 };
 
-export default FoodDiary;
+export default Diary;
