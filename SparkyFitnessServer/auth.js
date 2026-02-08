@@ -50,6 +50,11 @@ syncTrustedProviders().catch(err => console.error('[AUTH] Startup sync failed:',
 
 const apiKeyPlugin = require("better-auth/plugins").apiKey({
     enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
+    rateLimit: {
+        enabled: true,
+        timeWindow: 60_000,    // 1 minute
+        maxRequests: 100,      // 100 req/min (Better Auth defaults to 10/day)
+    },
     schema: {
         apikey: {
             modelName: "api_key",
