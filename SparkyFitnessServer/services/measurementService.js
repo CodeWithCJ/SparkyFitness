@@ -35,7 +35,7 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   power: 'watts', Power: 'watts',
   steps_cadence: 'steps_per_second', StepsCadence: 'steps_per_second',
   cycling_pedaling_cadence: 'rpm', CyclingPedalingCadence: 'rpm',
-  blood_alcohol_content: 'percent', BloodAlcoholContent: '%',
+  blood_alcohol_content: '%', BloodAlcoholContent: '%',
   nutrition: 'kcal', Nutrition: 'kcal',
 };
 const userRepository = require('../models/userRepository');
