@@ -14,6 +14,7 @@ interface AccessibleUser {
     checkin: boolean; // Mapped from can_manage_checkin
     reports: boolean; // Mapped from can_view_reports
     food_list: boolean; // Mapped from can_view_food_library
+    calorie: boolean;
   };
   access_end_date: string | null;
 }
