@@ -76,9 +76,11 @@ function createCorsOriginChecker(configuredFrontendUrl, allowPrivateNetworks = f
   }
 
   return (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, Postman)
+    // Reject requests with no origin for security
+    // Non-browser clients (mobile apps, API clients) should use JWT/API key authentication
     if (!origin) {
-      return callback(null, true);
+      console.info('CORS: Rejected request with no Origin header');
+      return callback(null, false);
     }
 
     // Check if origin matches configured frontend URL
@@ -101,7 +103,11 @@ function createCorsOriginChecker(configuredFrontendUrl, allowPrivateNetworks = f
       return callback(null, false);
     }
 
-    // Reject if not allowed (silent rejection - CORS will return 403 without the header)
+    // Reject if not allowed - log for security monitoring and debugging
+    const rejectionReason = allowPrivateNetworks 
+      ? 'origin not in allowlist and not a private network'
+      : 'origin not in allowlist (private networks disabled)';
+    console.info(`CORS: Rejected origin ${origin} - ${rejectionReason}`);
     return callback(null, false);
   };
 }

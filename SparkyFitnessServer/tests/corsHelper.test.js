@@ -57,11 +57,11 @@ describe('corsHelper', () => {
       });
     });
 
-    it('should allow requests with no origin', (done) => {
+    it('should reject requests with no origin for security', (done) => {
       const checker = createCorsOriginChecker('http://localhost:8080', false);
       checker(undefined, (err, allowed) => {
         expect(err).toBeNull();
-        expect(allowed).toBe(true);
+        expect(allowed).toBe(false);
         done();
       });
     });
