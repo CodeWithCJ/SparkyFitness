@@ -142,7 +142,7 @@ async function createFood(foodData) {
     const foodResult = await client.query(
       `INSERT INTO foods (
         name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, is_quick_food, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type`,
       [
         foodData.name,
         sanitizeBoolean(foodData.is_custom) ?? true,
@@ -235,7 +235,7 @@ async function getFoodById(foodId, userId) {
   try {
     const result = await client.query(
       `SELECT
-        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public,
+        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
         json_build_object(
           'id', fv.id,
           'serving_size', fv.serving_size,
@@ -358,7 +358,7 @@ async function getFoodsWithPagination(
 
     let query = `
       SELECT DISTINCT ON (f.id, f.name, f.brand)
-        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public,
+        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
         json_build_object(
           'id', fv.id,
           'serving_size', fv.serving_size,
@@ -451,7 +451,7 @@ async function findFoodByNameAndBrand(name, brand, userId) {
   try {
     const result = await client.query(
       `SELECT
-        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public,
+        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
         fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
         json_build_object(
           'id', fv.id,

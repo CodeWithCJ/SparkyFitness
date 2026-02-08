@@ -114,13 +114,41 @@ const options = {
               type: 'string',
               description: 'The name of the food.',
             },
-            data: {
-              type: 'object',
-              description: 'Nutritional data and other details of the food.',
+            default_variant: {
+              $ref: '#/components/schemas/FoodVariant',
+              description: 'The default nutritional variant for this food.',
             },
             is_public: {
               type: 'boolean',
               description: 'Indicates if the food is publicly available.',
+            },
+            brand: {
+              type: 'string',
+              description: 'The brand name of the food.',
+            },
+            barcode: {
+              type: 'string',
+              description: 'The barcode of the food.',
+            },
+            provider_type: {
+              type: 'string',
+              description: 'The type of provider (e.g., "mealie").',
+            },
+            provider_external_id: {
+              type: 'string',
+              description: 'The external ID from the provider.',
+            },
+            is_custom: {
+              type: 'boolean',
+              description: 'Indicates if the food is a custom entry created by the user.',
+            },
+            shared_with_public: {
+              type: 'boolean',
+              description: 'Indicates if the food is shared with the public.',
+            },
+            is_quick_food: {
+              type: 'boolean',
+              description: 'Indicates if the food is marked for quick access.',
             },
             created_at: {
               type: 'string',
@@ -133,7 +161,7 @@ const options = {
               description: 'The date and time when the food was last updated.',
             },
           },
-          required: ['id', 'user_id', 'name', 'data'],
+          required: ['id', 'user_id', 'name'],
         },
         FoodVariant: {
           type: 'object',

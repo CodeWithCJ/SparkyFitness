@@ -25,6 +25,8 @@ interface FoodPayload {
   is_custom?: boolean;
   user_id?: string;
   shared_with_public?: boolean;
+  provider_external_id?: string;
+  provider_type?: string;
   saturated_fat?: number;
   polyunsaturated_fat?: number;
   monounsaturated_fat?: number;

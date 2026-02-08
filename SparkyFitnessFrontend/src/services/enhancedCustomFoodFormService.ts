@@ -16,7 +16,11 @@ export const saveFood = async (foodData: Food, variants: FoodVariant[], userId: 
     // Update existing food
     savedFood = await apiCall(`/foods/${foodId}`, {
       method: 'PUT',
-      body: foodData,
+      body: {
+        ...foodData,
+        provider_external_id: foodData.provider_external_id,
+        provider_type: foodData.provider_type,
+      },
     });
 
     // Fetch existing variants to determine what to update/delete/insert
@@ -107,6 +111,8 @@ export const saveFood = async (foodData: Food, variants: FoodVariant[], userId: 
       user_id: userId,
       is_custom: true,
       is_quick_food: foodData.is_quick_food || false,
+      provider_external_id: foodData.provider_external_id,
+      provider_type: foodData.provider_type,
       // Pass primary variant details to createFood, which will create the default variant
       serving_size: primaryVariant.serving_size,
       serving_unit: primaryVariant.serving_unit,
