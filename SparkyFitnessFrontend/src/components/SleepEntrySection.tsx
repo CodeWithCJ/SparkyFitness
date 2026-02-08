@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { format, parseISO, differenceInMinutes, addDays } from 'date-fns';
+import { parseISO, differenceInMinutes, addDays } from 'date-fns';
 import { SleepEntry, SleepStageEvent } from '@/types';
 import SleepTimelineEditor from './SleepTimelineEditor';
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   getWaterContainers,
   createWaterContainer,
-  updateWaterContainer,
   deleteWaterContainer,
   setPrimaryWaterContainer,
   WaterContainer,

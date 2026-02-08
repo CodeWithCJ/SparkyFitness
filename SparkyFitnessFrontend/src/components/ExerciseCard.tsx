@@ -2,36 +2,19 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Plus, Dumbbell, Edit, Trash2, Settings, Play, XCircle, ChevronDown, ChevronUp } from "lucide-react"; // Added ChevronDown, ChevronUp
+import { Dumbbell } from "lucide-react"; // Added ChevronDown, ChevronUp
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import EditExerciseEntryDialog from "./EditExerciseEntryDialog";
 import ExercisePlaybackModal from "./ExercisePlaybackModal"; // Import the new modal
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 import { debug, info, warn, error } from "@/utils/logging"; // Import logging utility
-import { parseISO, addDays } from "date-fns"; // Import parseISO and addDays
 import { toast } from "@/hooks/use-toast"; // Import toast
 import {
   fetchExerciseEntries,
@@ -45,18 +28,17 @@ import {
   getSuggestedExercises,
   loadExercises,
   createExercise,
-  updateExercise, // Import updateExercise
   Exercise,
   ExerciseOwnershipFilter,
 } from "@/services/exerciseService";
 import { WorkoutPresetSet, WorkoutPreset, PresetExercise } from "@/types/workout"; // Import PresetExercise
 import { getExerciseById } from "@/services/exerciseService"; // Import getExerciseById
 import { formatMinutesToHHMM } from "@/utils/timeFormatters"; // Import the new utility function
-
-// New imports for refactored components
 import ExerciseEntryDisplay from "./ExerciseEntryDisplay";
 import ExercisePresetEntryDisplay from "./ExercisePresetEntryDisplay";
 import EditExerciseDatabaseDialog from "./EditExerciseDatabaseDialog"; // New import
+import AddExerciseDialog from "./AddExerciseDialog"; // Import AddExerciseDialog
+import LogExerciseEntryDialog from "./LogExerciseEntryDialog"; // Import LogExerciseEntryDialog
 
 
 // Extend Exercise with optional logging fields for pre-population
@@ -79,13 +61,6 @@ interface PresetExerciseToLog extends Exercise {
   weight: number;
   exercise_name: string;
 }
-import ExerciseSearch from "./ExerciseSearch"; // New import for ExerciseSearch
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"; // New import for tabs
-import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
-import AddExerciseDialog from "./AddExerciseDialog"; // Import AddExerciseDialog
-
-import LogExerciseEntryDialog from "./LogExerciseEntryDialog"; // Import LogExerciseEntryDialog
 
 interface ExerciseCardProps {
   selectedDate: string;

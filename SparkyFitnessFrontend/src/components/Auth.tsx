@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Zap, Loader2, Fingerprint } from "lucide-react";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { debug, info, warn, error } from "@/utils/logging";
+import { debug, info, error } from "@/utils/logging";
 import { authClient } from "@/lib/auth-client";
 import {
   registerUser,

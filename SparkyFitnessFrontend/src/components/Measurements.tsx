@@ -1,5 +1,4 @@
 
-import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import CustomMeasurements from "./CustomMeasurements";

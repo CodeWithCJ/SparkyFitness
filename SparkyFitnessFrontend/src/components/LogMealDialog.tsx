@@ -1,8 +1,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import MealBuilder from './MealBuilder';
-import { Meal, MealFood } from '@/types/meal';
-import { debug } from '@/utils/logging';
+import { Meal } from '@/types/meal';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
 interface LogMealDialogProps {

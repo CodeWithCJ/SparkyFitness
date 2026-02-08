@@ -8,10 +8,10 @@ import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TrendingUp } from "lucide-react";
-import { parseISO, subDays, addDays, format } from "date-fns"; // Import parseISO, subDays, addDays, format
+import { parseISO, subDays, format } from "date-fns"; // Import parseISO, subDays, addDays, format
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 import { loadNutritionTrendData, DayData } from '@/services/nutritionTrendService';
-import { calculateSmartYAxisDomain, excludeIncompleteDay, getChartConfig } from "@/utils/chartUtils";
+import { calculateSmartYAxisDomain, excludeIncompleteDay } from "@/utils/chartUtils";
 
 interface NutritionTrendChartProps {
   selectedDate: string;

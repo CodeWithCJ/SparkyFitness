@@ -12,11 +12,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Plus,
   Edit,
   Trash2,
-  Settings,
-  Copy,
   History,
   Utensils,
   ClipboardCopy,
@@ -25,12 +22,11 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import EnhancedFoodSearch from "./EnhancedFoodSearch";
-import EnhancedCustomFoodForm from "./EnhancedCustomFoodForm";
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 import { useIsMobile } from "@/hooks/use-mobile";
-import { debug, info, warn, error } from "@/utils/logging"; // Import logging utility
+import { debug, info } from "@/utils/logging"; // Import logging utility
 
-import type { Food, FoodVariant, FoodEntry, GlycemicIndex } from "@/types/food";
+import type { Food, FoodEntry, GlycemicIndex } from "@/types/food";
 import { Meal, FoodEntryMeal } from '@/types/meal'; // Import FoodEntryMeal
 
 interface MealTotals {
@@ -153,11 +149,11 @@ const MealCard = ({
 
   const defaultNutrients = ["calories", "protein", "carbs", "fat", "dietary_fiber"];
 
-  let quickInfoNutrients = quickInfoPreferences
+  const quickInfoNutrients = quickInfoPreferences
     ? quickInfoPreferences.visible_nutrients
     : defaultNutrients;
 
-  let foodDatabaseNutrients = foodDatabasePreferences
+  const foodDatabaseNutrients = foodDatabasePreferences
     ? foodDatabasePreferences.visible_nutrients
     : defaultNutrients;
 

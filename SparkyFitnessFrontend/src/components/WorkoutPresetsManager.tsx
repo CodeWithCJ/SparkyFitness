@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Share2, Lock, Repeat, Weight, Timer, ListOrdered, CalendarPlus } from "lucide-react";
+import { Plus, Edit, Trash2, Share2, Lock, ListOrdered, CalendarPlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useAuth } from "@/hooks/useAuth";
-import { debug, info, warn, error } from '@/utils/logging';
+import { debug, info, error } from '@/utils/logging';
 import {
   getWorkoutPresets,
   createWorkoutPreset,

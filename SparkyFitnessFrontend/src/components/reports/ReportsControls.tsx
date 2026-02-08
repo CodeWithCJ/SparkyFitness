@@ -1,17 +1,13 @@
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { debug, info, warn, error } from "@/utils/logging";
-import { format, parseISO } from 'date-fns'; // Import format and parseISO from date-fns
+import { debug, info } from "@/utils/logging";
+import { format  } from 'date-fns'; // Import format and parseISO from date-fns
 
 
 

@@ -4,7 +4,6 @@ import { format, parseISO, differenceInMinutes, addMinutes, isSameMinute, isBefo
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; // Added Input import
 import { Label } from "@/components/ui/label"; // Added Label import
-import { Slider } from "@/components/ui/slider";
 import { SleepStageEvent, SLEEP_STAGE_COLORS } from '@/types';
 
 interface SleepTimelineEditorProps {

@@ -1,7 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ResponsiveContainer } from 'recharts';
 import { SleepChartData, SLEEP_STAGE_COLORS } from '@/types';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import ZoomableChart from '../ZoomableChart';

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 
@@ -11,13 +10,12 @@ import { Plus, Edit, Trash2, CalendarDays } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { debug, info, warn, error } from '@/utils/logging';
+import { error } from '@/utils/logging';
 import {
   getWorkoutPlanTemplates,
   createWorkoutPlanTemplate,
   updateWorkoutPlanTemplate,
   deleteWorkoutPlanTemplate,
-  getActiveWorkoutPlanForDate,
 } from '@/services/workoutPlanTemplateService'; // Assuming this service exists
 import { WorkoutPlanTemplate } from '@/types/workout'; // Import the WorkoutPlanTemplate interface
 import AddWorkoutPlanDialog from "./AddWorkoutPlanDialog";

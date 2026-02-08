@@ -12,7 +12,7 @@ import SetPerformanceAnalysisChart from "./SetPerformanceAnalysisChart";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { log, info, error } from "@/utils/logging";
+import { info, error } from "@/utils/logging";
 import ActivityReportVisualizer from "../ActivityReportVisualizer"; // Import ActivityReportVisualizer
 import {
   ExerciseDashboardData,
@@ -20,7 +20,7 @@ import {
 } from '@/services/reportsService';
 import { getExerciseProgressData } from '@/services/exerciseEntryService';
 import { getAvailableEquipment, getAvailableMuscleGroups, getAvailableExercises } from '@/services/exerciseSearchService';
-import { addDays, subDays, addMonths, subMonths, addYears, subYears, parseISO } from 'date-fns';
+import { subDays, subYears, parseISO } from 'date-fns';
 
 import { formatNumber, formatWeight } from "@/utils/numberFormatting";
 

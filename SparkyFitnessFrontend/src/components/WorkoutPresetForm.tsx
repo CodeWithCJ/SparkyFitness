@@ -10,7 +10,7 @@ import { WorkoutPreset, WorkoutPresetExercise, WorkoutPresetSet } from "@/types/
 import { Exercise } from "@/services/exerciseService";
 import AddExerciseDialog from "./AddExerciseDialog";
 import ExerciseHistoryDisplay from "./ExerciseHistoryDisplay";
-import { Plus, X, Repeat, Weight, Timer, ListOrdered, GripVertical, Copy, Dumbbell, Hourglass } from "lucide-react";
+import { Plus, X, Repeat, Timer, GripVertical, Copy, Dumbbell, Hourglass } from "lucide-react";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useToast } from "@/hooks/use-toast";
 import { debug } from "@/utils/logging";

@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { debug, info, warn, error } from '@/utils/logging';
+import { debug, info, error } from '@/utils/logging';
 import { format, parseISO, startOfDay } from 'date-fns';
 
-import { API_BASE_URL } from "@/services/api";
 
 // Function to fetch user preferences from the backend
 import { apiCall } from '@/services/api';
@@ -159,25 +158,25 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // --- Utilities ---
 
   const convertWeight = useCallback((value: number | string | null | undefined, from: 'kg' | 'lbs', to: 'kg' | 'lbs') => {
-    let numValue = typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
+    const numValue = typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
     if (isNaN(numValue) || from === to) return numValue;
     return from === 'kg' ? numValue * 2.20462 : numValue / 2.20462;
   }, []);
 
   const convertMeasurement = useCallback((value: number | string | null | undefined, from: 'cm' | 'inches', to: 'cm' | 'inches') => {
-    let numValue = typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
+    const numValue = typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
     if (isNaN(numValue) || from === to) return numValue;
     return from === 'cm' ? numValue / 2.54 : numValue * 2.54;
   }, []);
 
   const convertDistance = useCallback((value: number | string | null | undefined, from: 'km' | 'miles', to: 'km' | 'miles') => {
-    let numValue = typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
+    const numValue = typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
     if (isNaN(numValue) || from === to) return numValue;
     return from === 'km' ? numValue * 0.621371 : numValue / 0.621371;
   }, []);
 
   const convertEnergy = useCallback((value: number | string | null | undefined, fromUnit: EnergyUnit, toUnit: EnergyUnit) => {
-    let numValue = typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
+    const numValue = typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
     if (isNaN(numValue) || fromUnit === toUnit) return numValue;
     return fromUnit === 'kcal' ? numValue * KCAL_TO_KJ : numValue / KCAL_TO_KJ;
   }, []);

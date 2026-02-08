@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react"; // Import React
-import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +38,6 @@ interface EditGoalsProps {
 }
 
 const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: EditGoalsProps) => {
-  const { t } = useTranslation();
   const { user } = useAuth();
   const {
     formatDate,

@@ -1,6 +1,6 @@
 import { apiCall } from './api';
 
-import { Food, FoodDeletionImpact, FoodSearchResult, FoodVariant, GlycemicIndex } from '@/types/food';
+import { Food, FoodDeletionImpact, FoodSearchResult, FoodVariant } from '@/types/food';
 
 export type FoodFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
 

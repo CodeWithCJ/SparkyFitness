@@ -6,7 +6,7 @@ import { usePreferences } from '../../contexts/PreferencesContext'; // Assuming 
 import { useToast } from '@/hooks/use-toast'; // Import the custom useToast hook
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"; // Import Accordion components
 import { Shield } from "lucide-react"; // Import an icon for the trigger
-import { info, error, debug } from '../../utils/logging';
+import { info, debug } from '../../utils/logging';
 
 const BackupSettings: React.FC = () => {
   const { t } = useTranslation();

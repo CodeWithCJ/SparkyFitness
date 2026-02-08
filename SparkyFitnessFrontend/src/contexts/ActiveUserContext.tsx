@@ -39,7 +39,6 @@ export const useActiveUser = () => {
   return context;
 };
 
-import { NavigateFunction } from 'react-router-dom';
 
 export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading, refreshUser, switchContext } = useAuth(); // Add refreshUser and switchContext from useAuth

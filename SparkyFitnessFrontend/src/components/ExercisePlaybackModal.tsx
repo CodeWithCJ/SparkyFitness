@@ -19,7 +19,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Exercise } from "@/services/exerciseService";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { debug, info, warn, error } from "@/utils/logging";
+import { debug, info, warn } from "@/utils/logging";
 
 interface ExercisePlaybackModalProps {
   isOpen: boolean;

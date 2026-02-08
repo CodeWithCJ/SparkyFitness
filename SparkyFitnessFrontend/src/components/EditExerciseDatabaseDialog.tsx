@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { updateExercise, Exercise } from "@/services/exerciseService";
-import { debug, error } from "@/utils/logging";
+import { error } from "@/utils/logging";
 import { usePreferences } from "@/contexts/PreferencesContext";
 
 interface EditExerciseDatabaseDialogProps {

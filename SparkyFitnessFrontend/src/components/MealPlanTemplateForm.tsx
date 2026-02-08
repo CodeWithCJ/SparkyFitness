@@ -11,7 +11,7 @@ import { debug, error } from '@/utils/logging'; // Import logging functions
 import { toast } from '@/hooks/use-toast';
 import { MealPlanTemplate, Meal, MealPlanTemplateAssignment } from '@/types/meal';
 import { Food, FoodVariant } from '@/types/food';
-import { getMeals, getMealById } from '@/services/mealService';
+import { getMealById } from '@/services/mealService';
 import { getFoodById } from '@/services/foodService';
 import MealSelection from './MealSelection';
 import FoodSearchDialog from './FoodSearchDialog';

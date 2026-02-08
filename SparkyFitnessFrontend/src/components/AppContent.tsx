@@ -1,16 +1,13 @@
 import React from "react";
 import {
-  BrowserRouter,
   Routes,
   Route,
   Navigate,
-  useNavigate,
 } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { ActiveUserProvider, useActiveUser } from "@/contexts/ActiveUserContext"; // Import useActiveUser
-import { usePreferences } from "@/contexts/PreferencesContext";
+import { useActiveUser } from "@/contexts/ActiveUserContext"; // Import useActiveUser
 import { useAuth } from "@/hooks/useAuth"; // Import useAuth
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
@@ -27,7 +24,6 @@ interface AppContentProps {
 }
 
 const AppContent: React.FC<AppContentProps> = ({ onShowAboutDialog }) => {
-  const { loggingLevel } = usePreferences();
   const { user, loading } = useAuth();
   const { hasPermission, isActingOnBehalf } = useActiveUser(); // Use useActiveUser
 

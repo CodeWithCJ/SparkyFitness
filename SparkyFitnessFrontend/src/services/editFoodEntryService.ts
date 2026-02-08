@@ -1,6 +1,5 @@
 import { apiCall } from './api';
-import { getFoodById } from './foodService';
-import { Food, FoodVariant, FoodEntry } from '@/types/food'; // Import Food type
+import { FoodVariant } from '@/types/food'; // Import Food type
 
 export const loadFoodVariants = async (foodId: string): Promise<FoodVariant[]> => {
   return apiCall(`/foods/food-variants?food_id=${foodId}`, {

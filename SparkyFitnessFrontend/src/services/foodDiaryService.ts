@@ -1,6 +1,5 @@
 import { apiCall } from './api';
 
-import { Food, FoodVariant } from '@/types/food';
 import { FoodEntry } from '@/types/food'; // Import FoodEntry from food.d.ts
 import { ExpandedGoals } from '@/types/goals'; // Import ExpandedGoals
 
