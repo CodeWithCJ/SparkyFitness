@@ -739,34 +739,32 @@ const Reports = () => {
       ) : (
         <div>{t('reports.loadingDateControls', "Loading date controls...")}</div> // Or a loading spinner
       )}
-
       {loading ? (
         <div>{t('reports.loadingReports', "Loading reports...")}</div>
       ) : (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="charts" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              {t('reports.chartsTab', "Charts")}
-            </TabsTrigger>
-            <TabsTrigger value="fasting" className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              {t('reports.fasting.insightsTab', "Fasting Insights")}
-            </TabsTrigger>
-            <TabsTrigger value="exercise-charts" className="flex items-center gap-2">
-              <Dumbbell className="w-4 h-4" />
-              {t('reports.exerciseProgressTab', "Exercise Progress")}
-            </TabsTrigger>
-            <TabsTrigger value="sleep-analytics" className="flex items-center gap-2">
-              <BedDouble className="w-4 h-4" />
-              {t('reports.sleepTab', "Sleep")}
-            </TabsTrigger>
-            <TabsTrigger value="table" className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              {t('reports.tableTab', "Table View")}
-            </TabsTrigger>
-          </TabsList>
-
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="flex w-full justify-start overflow-x-auto h-auto p-1 bg-muted/50 no-scrollbar">
+              <TabsTrigger value="charts" className="flex items-center gap-2 shrink-0 px-4 py-2">
+                <BarChart3 className="w-4 h-4" />
+                <span className="text-sm">{t('reports.chartsTab', "Charts")}</span>
+              </TabsTrigger>
+              <TabsTrigger value="fasting" className="flex items-center gap-2 shrink-0 px-4 py-2">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-sm">{t('reports.fasting.insightsTab', "Fasting")}</span>
+              </TabsTrigger>
+              <TabsTrigger value="exercise-charts" className="flex items-center gap-2 shrink-0 px-4 py-2">
+                <Dumbbell className="w-4 h-4" />
+                <span className="text-sm">{t('reports.exerciseProgressTab', "Exercise")}</span>
+              </TabsTrigger>
+              <TabsTrigger value="sleep-analytics" className="flex items-center gap-2 shrink-0 px-4 py-2">
+                <BedDouble className="w-4 h-4" />
+                <span className="text-sm">{t('reports.sleepTab', "Sleep")}</span>
+              </TabsTrigger>
+              <TabsTrigger value="table" className="flex items-center gap-2 shrink-0 px-4 py-2">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-sm">{t('reports.tableTab', "Table")}</span>
+              </TabsTrigger>
+            </TabsList>
           <TabsContent value="charts" className="space-y-6">
             <NutritionChartsGrid nutritionData={nutritionData} customNutrients={customNutrients} />
             <MeasurementChartsGrid

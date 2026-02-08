@@ -11,7 +11,8 @@ import { toast } from '@/hooks/use-toast';
 import { MealPlanTemplate } from '@/types/meal';
 import { getMealPlanTemplates, createMealPlanTemplate, updateMealPlanTemplate, deleteMealPlanTemplate } from '@/services/mealPlanTemplateService';
 import MealPlanTemplateForm from './MealPlanTemplateForm';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Plus, Trash2 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const MealPlanCalendar: React.FC = () => {
     const { t } = useTranslation();
@@ -21,7 +22,7 @@ const MealPlanCalendar: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<MealPlanTemplate | undefined>(undefined);
-
+    const isMobile = useIsMobile();
     const fetchTemplates = async () => {
         if (!activeUserId) return;
         setIsLoading(true);
@@ -117,10 +118,22 @@ const MealPlanCalendar: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">{t('mealPlanCalendar.title')}</h1>
-                <Button onClick={handleCreate}>{t('mealPlanCalendar.createNewPlan')}</Button>
-            </div>
+      <div className="flex justify-between items-center gap-2 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight ml-3">
+          {t('mealPlanCalendar.title')}
+        </h1>
+        <Button 
+          onClick={handleCreate}
+          size={isMobile ? "icon" : "default"}
+          className="shrink-0 mr-6"
+          title={t('mealPlanCalendar.createNewPlan')}
+        >
+          <Plus className={isMobile ? "h-5 w-5" : "h-4 w-4 mr-2"} />
+          {!isMobile && (
+            <span>{t('mealPlanCalendar.createNewPlan')}</span>
+          )}
+        </Button>
+      </div>
             {isLoading ? (
                 <p>{t('mealPlanCalendar.loadingTemplates')}</p>
             ) : (
