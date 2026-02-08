@@ -96,8 +96,8 @@ async function updateMealType(mealTypeId, data, userId) {
   const client = await getClient(userId);
   try {
     await client.query("BEGIN");
-    console.log(data);
-    console.log(data.is_visible);
+    //console.log(data);
+    //console.log(data.is_visible);
     if (data.is_visible !== undefined) {
       await client.query(
         `INSERT INTO user_meal_visibilities (user_id, meal_type_id, is_visible)
