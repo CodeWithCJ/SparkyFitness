@@ -69,6 +69,7 @@ services:
       SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL:-http://localhost:3004}
       SPARKY_FITNESS_SERVER_HOST: sparkyfitness-server
       SPARKY_FITNESS_SERVER_PORT: 3010
+      VITE_BACKEND_HOST: sparkyfitness-server
     ports:
       - "8080:8080" # Map host port 8080 to vite port 8080
     volumes:
