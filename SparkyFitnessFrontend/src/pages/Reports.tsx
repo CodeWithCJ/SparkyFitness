@@ -29,8 +29,8 @@ const HIDDEN_CUSTOM_METRICS = [
   'Average Overnight HRV',  // Shown in Sleep tab HRV card
 ];
 import StressChart from "@/components/StressChart"; // Import StressChart
-import {  debug, info, warn, error } from "@/utils/logging";
-import {  parseISO  } from 'date-fns'; // Import format, parseISO, addDays from date-fns
+import { debug, info, warn, error } from "@/utils/logging";
+import { parseISO } from 'date-fns'; // Import format, parseISO, addDays from date-fns
 import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
 import { calculateSmartYAxisDomain, getChartConfig } from "@/utils/chartUtils";
 
@@ -741,29 +741,29 @@ const Reports = () => {
       {loading ? (
         <div>{t('reports.loadingReports', "Loading reports...")}</div>
       ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="flex w-full justify-start overflow-x-auto h-auto p-1 bg-muted/50 no-scrollbar">
-              <TabsTrigger value="charts" className="flex items-center gap-2 shrink-0 px-4 py-2">
-                <BarChart3 className="w-4 h-4" />
-                <span className="text-sm">{t('reports.chartsTab', "Charts")}</span>
-              </TabsTrigger>
-              <TabsTrigger value="fasting" className="flex items-center gap-2 shrink-0 px-4 py-2">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm">{t('reports.fasting.insightsTab', "Fasting")}</span>
-              </TabsTrigger>
-              <TabsTrigger value="exercise-charts" className="flex items-center gap-2 shrink-0 px-4 py-2">
-                <Dumbbell className="w-4 h-4" />
-                <span className="text-sm">{t('reports.exerciseProgressTab', "Exercise")}</span>
-              </TabsTrigger>
-              <TabsTrigger value="sleep-analytics" className="flex items-center gap-2 shrink-0 px-4 py-2">
-                <BedDouble className="w-4 h-4" />
-                <span className="text-sm">{t('reports.sleepTab', "Sleep")}</span>
-              </TabsTrigger>
-              <TabsTrigger value="table" className="flex items-center gap-2 shrink-0 px-4 py-2">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm">{t('reports.tableTab', "Table")}</span>
-              </TabsTrigger>
-            </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="flex w-full justify-start overflow-x-auto h-auto p-1 bg-slate-200/60 dark:bg-muted/50 no-scrollbar">
+            <TabsTrigger value="charts" className="flex items-center gap-2 shrink-0 px-4 py-2">
+              <BarChart3 className="w-4 h-4" />
+              <span className="text-sm">{t('reports.chartsTab', "Charts")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="fasting" className="flex items-center gap-2 shrink-0 px-4 py-2">
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-sm">{t('reports.fasting.insightsTab', "Fasting")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="exercise-charts" className="flex items-center gap-2 shrink-0 px-4 py-2">
+              <Dumbbell className="w-4 h-4" />
+              <span className="text-sm">{t('reports.exerciseProgressTab', "Exercise")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="sleep-analytics" className="flex items-center gap-2 shrink-0 px-4 py-2">
+              <BedDouble className="w-4 h-4" />
+              <span className="text-sm">{t('reports.sleepTab', "Sleep")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="table" className="flex items-center gap-2 shrink-0 px-4 py-2">
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-sm">{t('reports.tableTab', "Table")}</span>
+            </TabsTrigger>
+          </TabsList>
           <TabsContent value="charts" className="space-y-6">
             <NutritionChartsGrid nutritionData={nutritionData} customNutrients={customNutrients} />
             <MeasurementChartsGrid

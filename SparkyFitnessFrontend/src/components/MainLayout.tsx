@@ -295,16 +295,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
             </Button>
           </div>
         </div>
-        <nav className={`hidden sm:grid w-full gap-1 ${gridClass} mb-6`}>
+        <nav className={`hidden sm:grid w-full gap-1 ${gridClass} mb-6 bg-slate-200/60 dark:bg-muted/50 p-1 rounded-lg`}>
           {availableTabs.map(({ value, label, icon: Icon }) => (
             <Button
               key={value}
               variant="ghost"
-              className={`flex items-center gap-2 hover:bg-slate-200 dark:hover:bg-slate-900 ${
-                location.pathname === value
-                  ? "bg-accent text-accent-foreground"
-                  : ""
-              }`}
+              className={`flex items-center gap-2 hover:bg-background/50 transition-all ${location.pathname === value
+                ? "bg-background shadow-sm text-foreground"
+                : "text-muted-foreground"
+                }`}
               onClick={() => navigate(value)}
             >
               <Icon className="h-4 w-4" />
@@ -321,12 +320,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
             <Button
               key={value}
               variant="ghost"
-              className={`flex flex-col items-center gap-1 py-2 ${
-                location.pathname ===
+              className={`flex flex-col items-center gap-1 py-2 ${location.pathname ===
                 (value === "Add" ? location.pathname : value)
-                  ? "text-primary"
-                  : ""
-              }`}
+                ? "text-primary"
+                : ""
+                }`}
               onClick={() => {
                 if (value === "Add") {
                   setIsAddCompOpen((prev) => !prev);
