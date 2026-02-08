@@ -449,16 +449,20 @@ const FoodDatabaseManager: React.FC = () => {
     <div className="space-y-6">
       {/* Food Database Section */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-2xl font-bold">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
             {t("foodDatabaseManager.foodDatabase", "Food Database")}
           </CardTitle>
           <Button
-            className="whitespace-nowrap"
+            size={isMobile ? "icon" : "default"} // Nutzt Icon-Größe auf Mobile
             onClick={() => setShowFoodSearchDialog(true)}
+            className="shrink-0"
+            title={t("foodDatabaseManager.addNewFood", "Add New Food")}
           >
-            <Plus className="w-4 h-4 mr-2" />
-            {t("foodDatabaseManager.addNewFood", "Add New Food")}
+            <Plus className={isMobile ? "w-5 h-5" : "w-4 h-4 mr-2"} />
+            {!isMobile && (
+              <span>{t("foodDatabaseManager.addNewFood", "Add New Food")}</span>
+            )}
           </Button>
         </CardHeader>
         <CardContent>
@@ -587,10 +591,11 @@ const FoodDatabaseManager: React.FC = () => {
                   {foods.map((food) => (
                     <div
                       key={food.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4"
+                      className="flex flex-col p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-3"
                     >
-                      <div className="flex-1">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="font-medium">{food.name}</span>
                           {food.brand && (
                             <Badge
@@ -611,56 +616,9 @@ const FoodDatabaseManager: React.FC = () => {
                             </Badge>
                           )}
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {t("foodDatabaseManager.perServing", {
-                            servingSize:
-                              food.default_variant?.serving_size || 0,
-                            servingUnit:
-                              food.default_variant?.serving_unit || "",
-                            defaultValue: `Per ${food.default_variant?.serving_size || 0} ${food.default_variant?.serving_unit || ""}`,
-                          })}
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div
-                          className={`grid grid-flow-col-dense gap-x-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400`}
-                        >
-                          {visibleNutrients.map((nutrient) => {
-                            const details = nutrientDetails[nutrient];
-                            if (!details) return null;
-                            const value =
-                              (food.default_variant?.[
-                                nutrient as keyof FoodVariant
-                              ] as number) || 0; // This value is in kcal
-                            return (
-                              <div key={nutrient} className="whitespace-nowrap">
-                                <span
-                                  className={`font-medium ${details.color}`}
-                                >
-                                  {typeof value === "number"
-                                    ? nutrient === "calories"
-                                      ? Math.round(
-                                          convertEnergy(
-                                            value,
-                                            "kcal",
-                                            energyUnit,
-                                          ),
-                                        )
-                                      : value.toFixed(
-                                          nutrient === "calories" ? 0 : 1,
-                                        )
-                                    : value}
-                                  {nutrient === "calories"
-                                    ? getEnergyUnitString(energyUnit)
-                                    : details.unit}
-                                </span>{" "}
-                                {details.label}
-                              </div>
-                            );
-                          })}
                         </div>
                         {/* Action Buttons */}
-                        <div className="flex items-center space-x-2 justify-end">
+                        <div className="flex items-center gap-1 shrink-0">
                           {/* Share/Lock Button */}
                           <TooltipProvider>
                             <Tooltip>
@@ -761,6 +719,52 @@ const FoodDatabaseManager: React.FC = () => {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {t("foodDatabaseManager.perServing", {
+                            servingSize:
+                              food.default_variant?.serving_size || 0,
+                            servingUnit:
+                              food.default_variant?.serving_unit || "",
+                            defaultValue: `Per ${food.default_variant?.serving_size || 0} ${food.default_variant?.serving_unit || ""}`,
+                          })}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-2">
+                          {visibleNutrients.map((nutrient) => {
+                            const details = nutrientDetails[nutrient];
+                            if (!details) return null;
+                            const value =
+                              (food.default_variant?.[
+                                nutrient as keyof FoodVariant
+                              ] as number) || 0; // This value is in kcal
+                            return (
+                              <div key={nutrient} className="whitespace-nowrap">
+                                <span
+                                  className={`font-medium ${details.color}`}
+                                >
+                                  {typeof value === "number"
+                                    ? nutrient === "calories"
+                                      ? Math.round(
+                                          convertEnergy(
+                                            value,
+                                            "kcal",
+                                            energyUnit,
+                                          ),
+                                        )
+                                      : value.toFixed(
+                                          nutrient === "calories" ? 0 : 1,
+                                        )
+                                    : value}
+                                  {nutrient === "calories"
+                                    ? getEnergyUnitString(energyUnit)
+                                    : details.unit}
+                                </span>{" "}
+                                {details.label}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>

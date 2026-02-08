@@ -27,6 +27,7 @@ import { MealDeletionImpact } from '@/types/meal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import MealBuilder from './MealBuilder';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // This component is now a standalone library for managing meal templates.
 // Interactions with the meal plan calendar are handled by the calendar itself.
@@ -42,6 +43,7 @@ const MealManagement: React.FC = () => {
   const [viewingMeal, setViewingMeal] = useState<Meal & { foods?: MealFood[] } | null>(null);
   const [deletionImpact, setDeletionImpact] = useState<MealDeletionImpact | null>(null);
   const [mealToDelete, setMealToDelete] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const fetchMeals = useCallback(async () => {
     if (!activeUserId) return;
@@ -231,10 +233,20 @@ const MealManagement: React.FC = () => {
   return (
     <TooltipProvider>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-2xl font-bold">{t('mealManagement.manageMeals', 'Meal Management')}</CardTitle>
-          <Button onClick={handleCreateNewMeal}>
-            <Plus className="mr-2 h-4 w-4" /> {t('mealManagement.createNewMeal', 'Create New Meal')}
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-4">
+          <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
+            {t('mealManagement.manageMeals', 'Meal Management')}
+          </CardTitle>
+          <Button 
+            onClick={handleCreateNewMeal}
+            size={isMobile ? "icon" : "default"}
+            className="shrink-0"
+            title={t('mealManagement.createNewMeal', 'Create New Meal')}
+          >
+            <Plus className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
+            {!isMobile && (
+              <span>{t('mealManagement.createNewMeal', 'Create New Meal')}</span>
+            )}
           </Button>
         </CardHeader>
         <CardContent>
