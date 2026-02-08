@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { usePreferences } from "@/contexts/PreferencesContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AddCompItem {
   value: string;
@@ -45,6 +46,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const {
     isActingOnBehalf,
     hasPermission,
@@ -265,8 +267,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
             <h1 className="text-xl sm:text-2xl font-bold text-foreground dark:text-slate-300">
               SparkyFitness
             </h1>
-            <GitHubStarCounter owner="CodeWithCJ" repo="SparkyFitness" />
-            <GitHubSponsorButton owner="CodeWithCJ" />
+            {!isMobile && (
+              <>
+                <GitHubStarCounter owner="CodeWithCJ" repo="SparkyFitness" />
+                <GitHubSponsorButton owner="CodeWithCJ" />
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <ProfileSwitcher />
@@ -349,14 +355,27 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
         onNavigate={handleNavigateFromAddComp}
       />
 
-      <footer className="hidden sm:block text-center text-muted-foreground text-sm py-4">
-        <p className="cursor-pointer underline" onClick={onShowAboutDialog}>
-          SparkyFitness v{appVersion}
-        </p>
+      <footer className="text-center text-muted-foreground text-sm py-4">
+        {isMobile ? (
+          <div className="flex flex-col items-center gap-2 mb-14">
+            <div className="flex justify-center gap-2">
+              <GitHubStarCounter owner="CodeWithCJ" repo="SparkyFitness" />
+              <GitHubSponsorButton owner="CodeWithCJ" />
+            </div>
+            <p className="cursor-pointer underline" onClick={onShowAboutDialog}>
+              SparkyFitness v{appVersion}
+            </p>
+          </div>
+        ) : (
+          <div className="flex justify-center items-center gap-4">
+            <p className="cursor-pointer underline" onClick={onShowAboutDialog}>
+              SparkyFitness v{appVersion}
+            </p>
+          </div>
+        )}
       </footer>
     </div>
   );
 };
 
 export default MainLayout;
-
