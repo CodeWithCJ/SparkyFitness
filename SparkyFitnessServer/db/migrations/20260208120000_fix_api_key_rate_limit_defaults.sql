@@ -3,8 +3,9 @@ UPDATE public.api_key
 SET rate_limit_time_window = 60000,
     rate_limit_max = 100,
     request_count = 0
-WHERE rate_limit_time_window = 86400000
-  AND rate_limit_max = 10;
+WHERE (rate_limit_time_window = 86400000 AND rate_limit_max = 10)
+   OR rate_limit_time_window IS NULL
+   OR rate_limit_max IS NULL;
 
 -- Set column defaults so manual INSERTs also get sane values
 ALTER TABLE public.api_key
