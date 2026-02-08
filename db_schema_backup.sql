@@ -2,9 +2,9 @@
 -- PostgreSQL database dump
 --
 
-\restrict lr6tlMX4ey7W3hR4jvKanDe8eOAdZPgJ5zc4HggjLgCgmCDe9r6gt2BzOHe8koo
+\restrict caPYqiQ8y1UqUPpirBHhS0afJx4iTF0Nc3PWk1hIdZf2p9DctMeCY44jYxZLzXp
 
--- Dumped from database version 15.14
+-- Dumped from database version 15.15
 -- Dumped by pg_dump version 18.0
 
 SET statement_timeout = 0;
@@ -76,35 +76,51 @@ COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UU
 
 
 --
+-- Name: authenticated_user_id(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.authenticated_user_id() RETURNS uuid
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT NULLIF(current_setting('app.authenticated_user_id', true), '')::uuid;
+$$;
+
+
+--
 -- Name: can_access_user_data(uuid, text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, authenticated_user_id uuid) RETURNS boolean
+CREATE FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) RETURNS boolean
     LANGUAGE plpgsql STABLE
     AS $$
 BEGIN
-  -- If accessing own data, always allow
-  IF target_user_id = authenticated_user_id THEN
-    RETURN true;
+  -- Self access
+  IF target_user_id = auth_user_id THEN
+    RETURN TRUE;
   END IF;
 
-  -- Check if current user has family access with the required permission
+  -- Family access check
   RETURN EXISTS (
     SELECT 1
     FROM public.family_access fa
-    WHERE fa.family_user_id = authenticated_user_id
+    WHERE fa.family_user_id = auth_user_id
       AND fa.owner_user_id = target_user_id
-      AND fa.is_active = true
-      AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+      AND fa.is_active = TRUE
+      AND (fa.access_end_date IS NULL OR fa.access_end_date > NOW())
       AND (
-        -- Direct permission check
-        (fa.access_permissions->permission_type)::boolean = true
+        (fa.access_permissions->>permission_type)::BOOLEAN = TRUE
         OR
-        -- Inheritance: reports permission grants read access to calorie and checkin
-        (permission_type IN ('calorie', 'checkin') AND (fa.access_permissions->>'reports')::boolean = true)
+        -- Mapping for common permission names
+        (permission_type = 'diary' AND (fa.access_permissions->>'can_manage_diary')::BOOLEAN = TRUE)
         OR
-        -- Inheritance: food_list permission grants read access to calorie data (foods table)
-        (permission_type = 'calorie' AND (fa.access_permissions->>'food_list')::boolean = true)
+        (permission_type = 'checkin' AND (fa.access_permissions->>'can_manage_checkin')::BOOLEAN = TRUE)
+        OR
+        (permission_type = 'reports' AND (fa.access_permissions->>'can_view_reports')::BOOLEAN = TRUE)
+        OR
+        -- Inheritance: reports permission grants read access to others
+        (permission_type IN ('calorie', 'diary', 'mood', 'sleep', 'exercise', 'water', 'checkin')
+         AND (COALESCE((fa.access_permissions->>'reports')::BOOLEAN, FALSE)
+              OR COALESCE((fa.access_permissions->>'can_view_reports')::BOOLEAN, FALSE)))
       )
   );
 END;
@@ -249,7 +265,7 @@ BEGIN
         DROP POLICY IF EXISTS %1$s_all_policy ON public.%1$s;
         CREATE POLICY %1$s_all_policy ON public.%1$s
         FOR ALL
-        TO sparky_app
+        TO PUBLIC
         USING (user_id = current_setting(''app.user_id'')::uuid)
         WITH CHECK (user_id = current_setting(''app.user_id'')::uuid);
     ', table_name);
@@ -269,7 +285,7 @@ BEGIN
         DROP POLICY IF EXISTS %1$s_all_policy ON public.%1$s;
         CREATE POLICY %1$s_all_policy ON public.%1$s
         FOR ALL
-        TO sparky_app
+        TO PUBLIC
         USING (id = current_setting(''app.user_id'')::uuid)
         WITH CHECK (id = current_setting(''app.user_id'')::uuid);
     ', table_name);
@@ -345,42 +361,19 @@ $$;
 --
 
 CREATE FUNCTION public.find_user_by_email(p_email text) RETURNS uuid
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
     AS $$
-DECLARE
-    user_id uuid;
-BEGIN
-    -- This function runs with elevated privileges to find users by email
-    SELECT id INTO user_id
-    FROM auth.users
-    WHERE email = p_email
-    LIMIT 1;
+    DECLARE
+        v_user_id UUID;
+    BEGIN
+        SELECT id INTO v_user_id
+        FROM public."user"
+        WHERE LOWER(email) = LOWER(p_email)
+        LIMIT 1;
 
-    RETURN user_id;
-END;
-$$;
-
-
---
--- Name: generate_user_api_key(uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.generate_user_api_key(p_user_id uuid, p_description text DEFAULT NULL::text) RETURNS text
-    LANGUAGE plpgsql
-    AS $$
-declare
-  new_api_key text;
-begin
-  -- Generate a random UUID and use it as the API key
-  new_api_key := gen_random_uuid();
-
-  -- Insert the new API key into the user_api_keys table with default permissions for health data write
-  insert into public.user_api_keys (user_id, api_key, description, permissions)
-  values (p_user_id, new_api_key, p_description, '{"health_data_write": true}'::jsonb);
-
-  return new_api_key;
-end;
-$$;
+        RETURN v_user_id;
+    END;
+    $$;
 
 
 --
@@ -388,24 +381,24 @@ $$;
 --
 
 CREATE FUNCTION public.get_accessible_users(p_user_id uuid) RETURNS TABLE(user_id uuid, full_name text, email text, permissions jsonb, access_end_date timestamp with time zone)
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql STABLE
     AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    fa.owner_user_id,
-    p.full_name,
-    au.email::text, -- Get email from auth.users and explicitly cast to text
-    fa.access_permissions,
-    fa.access_end_date
-  FROM public.family_access fa
-  JOIN public.profiles p ON p.id = fa.owner_user_id
-  JOIN auth.users au ON au.id = fa.owner_user_id -- Join with auth.users
-  WHERE fa.family_user_id = p_user_id
-    AND fa.is_active = true
-    AND (fa.access_end_date IS NULL OR fa.access_end_date > now());
-END;
-$$;
+    BEGIN
+      RETURN QUERY
+      SELECT
+        fa.owner_user_id,
+        p.full_name,
+        u.email::TEXT,
+        fa.access_permissions,
+        fa.access_end_date
+      FROM public.family_access fa
+      JOIN public.profiles p ON p.id = fa.owner_user_id
+      JOIN public."user" u ON u.id = fa.owner_user_id
+      WHERE fa.family_user_id = p_user_id
+        AND fa.is_active = true
+        AND (fa.access_end_date IS NULL OR fa.access_end_date > now());
+    END;
+    $$;
 
 
 --
@@ -478,7 +471,7 @@ $$;
 CREATE FUNCTION public.has_diary_access(owner_uuid uuid) RETURNS boolean
     LANGUAGE sql STABLE
     AS $$
-  SELECT current_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_diary');
+  SELECT authenticated_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_diary');
 $$;
 
 
@@ -492,7 +485,7 @@ CREATE FUNCTION public.has_family_access(owner_uuid uuid, perm text) RETURNS boo
   SELECT EXISTS (
     SELECT 1 FROM public.family_access fa
     WHERE fa.owner_user_id = owner_uuid
-    AND fa.family_user_id = current_user_id()
+    AND fa.family_user_id = authenticated_user_id()
     AND fa.is_active = true
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND (fa.access_permissions ->> perm)::boolean = true
@@ -510,7 +503,7 @@ CREATE FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) RETUR
   SELECT EXISTS (
     SELECT 1 FROM public.family_access fa
     WHERE fa.owner_user_id = owner_uuid
-    AND fa.family_user_id = current_user_id()
+    AND fa.family_user_id = authenticated_user_id()
     AND fa.is_active = true
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND EXISTS (
@@ -528,7 +521,7 @@ $$;
 CREATE FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) RETURNS boolean
     LANGUAGE sql STABLE
     AS $$
-  SELECT current_user_id() = owner_uuid OR is_shared OR has_family_access_or(owner_uuid, perms);
+  SELECT authenticated_user_id() = owner_uuid OR is_shared OR has_family_access_or(owner_uuid, perms);
 $$;
 
 
@@ -618,32 +611,37 @@ $$;
 
 
 --
--- Name: revoke_all_user_api_keys(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: set_app_context(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.revoke_all_user_api_keys(p_user_id uuid) RETURNS void
-    LANGUAGE plpgsql
+CREATE FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
     AS $$
-begin
-  update public.user_api_keys
-  set is_active = false, updated_at = now()
-  where user_id = p_user_id;
-end;
+BEGIN
+  -- app.user_id is used by RLS to determine whose data is being accessed
+  PERFORM set_config('app.user_id', p_user_id::text, false);
+  
+  -- app.authenticated_user_id is the actual logged-in user
+  PERFORM set_config('app.authenticated_user_id', p_authenticated_user_id::text, false);
+END;
 $$;
 
 
 --
--- Name: revoke_user_api_key(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: set_first_user_as_admin(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.revoke_user_api_key(p_user_id uuid, p_api_key text) RETURNS void
+CREATE FUNCTION public.set_first_user_as_admin() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
-begin
-  update public.user_api_keys
-  set is_active = false, updated_at = now()
-  where user_id = p_user_id and api_key = p_api_key;
-end;
+BEGIN
+    -- If there are no users in the table yet, this is the first user
+    IF NOT EXISTS (SELECT 1 FROM "user") THEN
+        NEW.role := 'admin';
+        RAISE NOTICE 'First user detected: %, assigning admin role.', NEW.id;
+    END IF;
+    RETURN NEW;
+END;
 $$;
 
 
@@ -763,6 +761,34 @@ CREATE TABLE auth.users (
 
 
 --
+-- Name: account; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    account_id text NOT NULL,
+    provider_id text NOT NULL,
+    user_id uuid NOT NULL,
+    access_token text,
+    refresh_token text,
+    id_token text,
+    access_token_expires_at timestamp without time zone,
+    refresh_token_expires_at timestamp without time zone,
+    scope text,
+    password text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: TABLE account; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.account IS 'Better Auth account table - stores credentials and OIDC links';
+
+
+--
 -- Name: admin_activity_logs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -795,6 +821,43 @@ CREATE TABLE public.ai_service_settings (
     api_key_iv text,
     api_key_tag text
 );
+
+
+--
+-- Name: api_key; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_key (
+    id text NOT NULL,
+    name text,
+    key text NOT NULL,
+    user_id uuid NOT NULL,
+    metadata text,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    expires_at timestamp with time zone,
+    last_used_at timestamp with time zone,
+    start text,
+    prefix text,
+    refill_interval integer,
+    refill_amount integer,
+    last_refill_at timestamp with time zone,
+    enabled boolean DEFAULT true,
+    rate_limit_enabled boolean DEFAULT true,
+    rate_limit_time_window integer,
+    rate_limit_max integer,
+    request_count integer DEFAULT 0,
+    remaining integer,
+    last_request timestamp with time zone,
+    permissions text
+);
+
+
+--
+-- Name: TABLE api_key; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.api_key IS 'Better Auth API key table - replaces legacy user_api_keys';
 
 
 --
@@ -937,7 +1000,8 @@ CREATE TABLE public.exercise_entries (
     images text,
     distance numeric,
     avg_heart_rate integer,
-    exercise_preset_entry_id uuid
+    exercise_preset_entry_id uuid,
+    sort_order integer DEFAULT 0
 );
 
 
@@ -1102,7 +1166,8 @@ CREATE TABLE public.external_provider_types (
     id character varying(50) NOT NULL,
     display_name character varying(100) NOT NULL,
     description text,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    is_strictly_private boolean DEFAULT false
 );
 
 
@@ -1467,7 +1532,9 @@ CREATE TABLE public.mood_entries (
     notes text,
     entry_date date DEFAULT CURRENT_DATE NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by_user_id uuid,
+    updated_by_user_id uuid
 );
 
 
@@ -1487,11 +1554,11 @@ CREATE TABLE public.oidc_providers (
     token_endpoint_auth_method text DEFAULT 'client_secret_post'::text NOT NULL,
     response_types text[] DEFAULT ARRAY['code'::text] NOT NULL,
     is_active boolean DEFAULT true NOT NULL,
+    auto_register boolean DEFAULT false NOT NULL,
     display_name text,
     logo_url text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    auto_register boolean DEFAULT false NOT NULL,
     signing_algorithm character varying(50) DEFAULT 'RS256'::character varying,
     profile_signing_algorithm character varying(50),
     timeout integer DEFAULT 3500
@@ -1554,6 +1621,25 @@ CREATE TABLE public.onboarding_status (
 
 
 --
+-- Name: passkey; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.passkey (
+    id text NOT NULL,
+    name text,
+    public_key text NOT NULL,
+    user_id uuid NOT NULL,
+    credential_id text NOT NULL,
+    counter integer NOT NULL,
+    device_type text NOT NULL,
+    backed_up boolean NOT NULL,
+    transports text,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    aaguid text
+);
+
+
+--
 -- Name: profiles; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1576,10 +1662,22 @@ CREATE TABLE public.profiles (
 --
 
 CREATE TABLE public.session (
-    sid character varying NOT NULL,
-    sess json NOT NULL,
-    expire timestamp(6) without time zone NOT NULL
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    expires_at timestamp without time zone NOT NULL,
+    token text NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    ip_address text,
+    user_agent text,
+    user_id uuid NOT NULL
 );
+
+
+--
+-- Name: TABLE session; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.session IS 'Better Auth session table';
 
 
 --
@@ -1613,7 +1711,9 @@ CREATE TABLE public.sleep_entries (
     restless_moments_count integer,
     avg_overnight_hrv numeric,
     body_battery_change numeric,
-    resting_heart_rate numeric
+    resting_heart_rate numeric,
+    created_by_user_id uuid,
+    updated_by_user_id uuid
 );
 
 
@@ -1630,7 +1730,9 @@ CREATE TABLE public.sleep_entry_stages (
     end_time timestamp with time zone NOT NULL,
     duration_in_seconds integer NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id uuid,
+    updated_by_user_id uuid
 );
 
 
@@ -1654,20 +1756,74 @@ CREATE TABLE public.sparky_chat_history (
 
 
 --
--- Name: user_api_keys; Type: TABLE; Schema: public; Owner: -
+-- Name: sso_provider; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.user_api_keys (
+CREATE TABLE public.sso_provider (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    api_key text NOT NULL,
-    description text,
-    permissions jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    last_used_at timestamp with time zone,
-    is_active boolean DEFAULT true NOT NULL
+    provider_id text NOT NULL,
+    issuer text NOT NULL,
+    client_id text NOT NULL,
+    client_secret text,
+    discovery_endpoint text,
+    authorization_endpoint text,
+    token_endpoint text,
+    jwks_endpoint text,
+    userinfo_endpoint text,
+    scopes text,
+    additional_config text,
+    domain text DEFAULT 'default.internal'::text NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    oidc_config text
 );
+
+
+--
+-- Name: two_factor; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.two_factor (
+    id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    secret text,
+    backup_codes text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: user; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public."user" (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    email text NOT NULL,
+    email_verified boolean DEFAULT false NOT NULL,
+    name text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    two_factor_enabled boolean DEFAULT false,
+    banned boolean DEFAULT false,
+    ban_reason text,
+    ban_expires timestamp with time zone,
+    role text DEFAULT 'user'::text,
+    mfa_email_enabled boolean DEFAULT false,
+    mfa_enforced boolean DEFAULT false,
+    email_mfa_code text,
+    email_mfa_expires_at timestamp with time zone,
+    magic_link_token text,
+    magic_link_expires timestamp with time zone,
+    mfa_totp_enabled boolean DEFAULT false
+);
+
+
+--
+-- Name: TABLE "user"; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public."user" IS 'Better Auth user table - migrated from auth.users';
 
 
 --
@@ -1886,6 +2042,27 @@ ALTER SEQUENCE public.user_water_containers_id_seq OWNED BY public.user_water_co
 
 
 --
+-- Name: verification; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.verification (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    identifier text NOT NULL,
+    value text NOT NULL,
+    expires_at timestamp without time zone NOT NULL,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone
+);
+
+
+--
+-- Name: TABLE verification; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.verification IS 'Better Auth verification table';
+
+
+--
 -- Name: water_intake; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1975,6 +2152,7 @@ CREATE TABLE public.workout_plan_template_assignments (
     exercise_id uuid,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    sort_order integer DEFAULT 0,
     CONSTRAINT chk_workout_assignment_type CHECK ((((workout_preset_id IS NOT NULL) AND (exercise_id IS NULL)) OR ((workout_preset_id IS NULL) AND (exercise_id IS NOT NULL))))
 );
 
@@ -2085,7 +2263,8 @@ CREATE TABLE public.workout_preset_exercises (
     exercise_id uuid NOT NULL,
     image_url text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    sort_order integer DEFAULT 0
 );
 
 
@@ -2283,11 +2462,27 @@ ALTER TABLE ONLY auth.users
 
 
 --
+-- Name: account account_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account
+    ADD CONSTRAINT account_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: admin_activity_logs admin_activity_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_activity_logs
     ADD CONSTRAINT admin_activity_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: api_key api_key_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_key
+    ADD CONSTRAINT api_key_pkey PRIMARY KEY (id);
 
 
 --
@@ -2507,11 +2702,27 @@ ALTER TABLE ONLY public.onboarding_status
 
 
 --
+-- Name: passkey passkey_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkey
+    ADD CONSTRAINT passkey_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: session session_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.session
-    ADD CONSTRAINT session_pkey PRIMARY KEY (sid);
+    ADD CONSTRAINT session_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: session session_token_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.session
+    ADD CONSTRAINT session_token_key UNIQUE (token);
 
 
 --
@@ -2528,6 +2739,38 @@ ALTER TABLE ONLY public.sleep_entries
 
 ALTER TABLE ONLY public.sleep_entry_stages
     ADD CONSTRAINT sleep_entry_stages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sso_provider sso_provider_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sso_provider
+    ADD CONSTRAINT sso_provider_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sso_provider sso_provider_provider_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sso_provider
+    ADD CONSTRAINT sso_provider_provider_id_key UNIQUE (provider_id);
+
+
+--
+-- Name: two_factor two_factor_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.two_factor
+    ADD CONSTRAINT two_factor_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: two_factor two_factor_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.two_factor
+    ADD CONSTRAINT two_factor_user_id_key UNIQUE (user_id);
 
 
 --
@@ -2560,6 +2803,14 @@ ALTER TABLE ONLY public.external_data_providers
 
 ALTER TABLE ONLY public.user_custom_nutrients
     ADD CONSTRAINT user_custom_nutrients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user user_email_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."user"
+    ADD CONSTRAINT user_email_key UNIQUE (email);
 
 
 --
@@ -2603,6 +2854,14 @@ ALTER TABLE ONLY public.user_oidc_links
 
 
 --
+-- Name: user user_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."user"
+    ADD CONSTRAINT user_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: user_preferences user_preferences_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2616,6 +2875,14 @@ ALTER TABLE ONLY public.user_preferences
 
 ALTER TABLE ONLY public.user_water_containers
     ADD CONSTRAINT user_water_containers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: verification verification_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.verification
+    ADD CONSTRAINT verification_pkey PRIMARY KEY (id);
 
 
 --
@@ -2698,10 +2965,10 @@ CREATE INDEX idx_magic_link_token ON auth.users USING btree (magic_link_token);
 
 
 --
--- Name: IDX_session_expire; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_account_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "IDX_session_expire" ON public.session USING btree (expire);
+CREATE INDEX idx_account_user_id ON public.account USING btree (user_id);
 
 
 --
@@ -2716,6 +2983,27 @@ CREATE INDEX idx_ai_service_settings_active ON public.ai_service_settings USING 
 --
 
 CREATE INDEX idx_ai_service_settings_user_id ON public.ai_service_settings USING btree (user_id);
+
+
+--
+-- Name: idx_api_key_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_key_key ON public.api_key USING btree (key);
+
+
+--
+-- Name: idx_api_key_prefix; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_key_prefix ON public.api_key USING btree (prefix);
+
+
+--
+-- Name: idx_api_key_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_key_user_id ON public.api_key USING btree (user_id);
 
 
 --
@@ -2845,6 +3133,20 @@ CREATE INDEX idx_foods_provider_external_id_provider_type ON public.foods USING 
 
 
 --
+-- Name: idx_session_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_session_token ON public.session USING btree (token);
+
+
+--
+-- Name: idx_session_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_session_user_id ON public.session USING btree (user_id);
+
+
+--
 -- Name: idx_sleep_entries_entry_date; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2929,6 +3231,13 @@ CREATE INDEX idx_user_ignored_updates_variant_id ON public.user_ignored_updates 
 
 
 --
+-- Name: idx_verification_identifier; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_verification_identifier ON public.verification USING btree (identifier);
+
+
+--
 -- Name: idx_workout_preset_exercise_sets_preset_exercise_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2957,6 +3266,13 @@ CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXEC
 
 
 --
+-- Name: user ensure_first_user_is_admin; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ensure_first_user_is_admin BEFORE INSERT ON public."user" FOR EACH ROW EXECUTE FUNCTION public.set_first_user_as_admin();
+
+
+--
 -- Name: profiles on_profile_created; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -2968,6 +3284,13 @@ CREATE TRIGGER on_profile_created AFTER INSERT ON public.profiles FOR EACH ROW E
 --
 
 CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.mood_entries FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: user_custom_nutrients set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_custom_nutrients FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
 
 
 --
@@ -3076,11 +3399,19 @@ CREATE TRIGGER update_workout_presets_timestamp BEFORE UPDATE ON public.workout_
 
 
 --
+-- Name: account account_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account
+    ADD CONSTRAINT account_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: admin_activity_logs admin_activity_logs_admin_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_activity_logs
-    ADD CONSTRAINT admin_activity_logs_admin_user_id_fkey FOREIGN KEY (admin_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT admin_activity_logs_admin_user_id_fkey FOREIGN KEY (admin_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3088,7 +3419,15 @@ ALTER TABLE ONLY public.admin_activity_logs
 --
 
 ALTER TABLE ONLY public.admin_activity_logs
-    ADD CONSTRAINT admin_activity_logs_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT admin_activity_logs_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: api_key api_key_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_key
+    ADD CONSTRAINT api_key_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3096,7 +3435,7 @@ ALTER TABLE ONLY public.admin_activity_logs
 --
 
 ALTER TABLE ONLY public.check_in_measurements
-    ADD CONSTRAINT check_in_measurements_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT check_in_measurements_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3104,7 +3443,7 @@ ALTER TABLE ONLY public.check_in_measurements
 --
 
 ALTER TABLE ONLY public.check_in_measurements
-    ADD CONSTRAINT check_in_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT check_in_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3112,7 +3451,7 @@ ALTER TABLE ONLY public.check_in_measurements
 --
 
 ALTER TABLE ONLY public.custom_categories
-    ADD CONSTRAINT custom_categories_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT custom_categories_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3120,7 +3459,7 @@ ALTER TABLE ONLY public.custom_categories
 --
 
 ALTER TABLE ONLY public.custom_categories
-    ADD CONSTRAINT custom_categories_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT custom_categories_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3128,7 +3467,7 @@ ALTER TABLE ONLY public.custom_categories
 --
 
 ALTER TABLE ONLY public.custom_measurements
-    ADD CONSTRAINT custom_measurements_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT custom_measurements_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3136,7 +3475,7 @@ ALTER TABLE ONLY public.custom_measurements
 --
 
 ALTER TABLE ONLY public.custom_measurements
-    ADD CONSTRAINT custom_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT custom_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3144,7 +3483,7 @@ ALTER TABLE ONLY public.custom_measurements
 --
 
 ALTER TABLE ONLY public.exercise_entries
-    ADD CONSTRAINT exercise_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT exercise_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3160,7 +3499,7 @@ ALTER TABLE ONLY public.exercise_entries
 --
 
 ALTER TABLE ONLY public.exercise_entries
-    ADD CONSTRAINT exercise_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT exercise_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3176,7 +3515,7 @@ ALTER TABLE ONLY public.exercise_entries
 --
 
 ALTER TABLE ONLY public.exercise_entry_activity_details
-    ADD CONSTRAINT exercise_entry_activity_details_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT exercise_entry_activity_details_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3200,7 +3539,7 @@ ALTER TABLE ONLY public.exercise_entry_activity_details
 --
 
 ALTER TABLE ONLY public.exercise_entry_activity_details
-    ADD CONSTRAINT exercise_entry_activity_details_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT exercise_entry_activity_details_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3216,7 +3555,7 @@ ALTER TABLE ONLY public.exercise_entry_sets
 --
 
 ALTER TABLE ONLY public.exercise_preset_entries
-    ADD CONSTRAINT exercise_preset_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT exercise_preset_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3224,7 +3563,7 @@ ALTER TABLE ONLY public.exercise_preset_entries
 --
 
 ALTER TABLE ONLY public.exercise_preset_entries
-    ADD CONSTRAINT exercise_preset_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT exercise_preset_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3244,11 +3583,27 @@ ALTER TABLE ONLY public.external_data_providers
 
 
 --
+-- Name: family_access family_access_family_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.family_access
+    ADD CONSTRAINT family_access_family_user_id_fkey FOREIGN KEY (family_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: family_access family_access_owner_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.family_access
+    ADD CONSTRAINT family_access_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: fasting_logs fasting_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.fasting_logs
-    ADD CONSTRAINT fasting_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fasting_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3304,7 +3659,7 @@ ALTER TABLE ONLY public.food_variants
 --
 
 ALTER TABLE ONLY public.food_entries
-    ADD CONSTRAINT food_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT food_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3336,7 +3691,7 @@ ALTER TABLE ONLY public.food_entries
 --
 
 ALTER TABLE ONLY public.food_entries
-    ADD CONSTRAINT food_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT food_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3344,7 +3699,7 @@ ALTER TABLE ONLY public.food_entries
 --
 
 ALTER TABLE ONLY public.food_entries
-    ADD CONSTRAINT food_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT food_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3352,7 +3707,7 @@ ALTER TABLE ONLY public.food_entries
 --
 
 ALTER TABLE ONLY public.food_entry_meals
-    ADD CONSTRAINT food_entry_meals_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT food_entry_meals_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3376,7 +3731,7 @@ ALTER TABLE ONLY public.food_entry_meals
 --
 
 ALTER TABLE ONLY public.food_entry_meals
-    ADD CONSTRAINT food_entry_meals_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT food_entry_meals_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3384,7 +3739,7 @@ ALTER TABLE ONLY public.food_entry_meals
 --
 
 ALTER TABLE ONLY public.food_entry_meals
-    ADD CONSTRAINT food_entry_meals_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT food_entry_meals_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3392,7 +3747,7 @@ ALTER TABLE ONLY public.food_entry_meals
 --
 
 ALTER TABLE ONLY public.goal_presets
-    ADD CONSTRAINT goal_presets_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT goal_presets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3440,7 +3795,7 @@ ALTER TABLE ONLY public.meal_plan_template_assignments
 --
 
 ALTER TABLE ONLY public.meal_plan_templates
-    ADD CONSTRAINT meal_plan_templates_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT meal_plan_templates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3472,7 +3827,7 @@ ALTER TABLE ONLY public.meal_plans
 --
 
 ALTER TABLE ONLY public.meal_plans
-    ADD CONSTRAINT meal_plans_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT meal_plans_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3488,7 +3843,7 @@ ALTER TABLE ONLY public.meal_plans
 --
 
 ALTER TABLE ONLY public.meal_types
-    ADD CONSTRAINT meal_types_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT meal_types_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3496,7 +3851,23 @@ ALTER TABLE ONLY public.meal_types
 --
 
 ALTER TABLE ONLY public.meals
-    ADD CONSTRAINT meals_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT meals_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: mood_entries mood_entries_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mood_entries
+    ADD CONSTRAINT mood_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: mood_entries mood_entries_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mood_entries
+    ADD CONSTRAINT mood_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id);
 
 
 --
@@ -3504,7 +3875,7 @@ ALTER TABLE ONLY public.meals
 --
 
 ALTER TABLE ONLY public.mood_entries
-    ADD CONSTRAINT mood_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT mood_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3520,7 +3891,7 @@ ALTER TABLE ONLY public.meal_plan_template_assignments
 --
 
 ALTER TABLE ONLY public.onboarding_data
-    ADD CONSTRAINT onboarding_data_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT onboarding_data_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3528,7 +3899,47 @@ ALTER TABLE ONLY public.onboarding_data
 --
 
 ALTER TABLE ONLY public.onboarding_status
-    ADD CONSTRAINT onboarding_status_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT onboarding_status_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: passkey passkey_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkey
+    ADD CONSTRAINT passkey_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: profiles profiles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.profiles
+    ADD CONSTRAINT profiles_user_id_fkey FOREIGN KEY (id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: session session_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.session
+    ADD CONSTRAINT session_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sleep_entries sleep_entries_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entries
+    ADD CONSTRAINT sleep_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: sleep_entries sleep_entries_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entries
+    ADD CONSTRAINT sleep_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id);
 
 
 --
@@ -3536,7 +3947,15 @@ ALTER TABLE ONLY public.onboarding_status
 --
 
 ALTER TABLE ONLY public.sleep_entries
-    ADD CONSTRAINT sleep_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT sleep_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sleep_entry_stages sleep_entry_stages_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entry_stages
+    ADD CONSTRAINT sleep_entry_stages_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
 
 
 --
@@ -3548,11 +3967,27 @@ ALTER TABLE ONLY public.sleep_entry_stages
 
 
 --
+-- Name: sleep_entry_stages sleep_entry_stages_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entry_stages
+    ADD CONSTRAINT sleep_entry_stages_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id);
+
+
+--
 -- Name: sleep_entry_stages sleep_entry_stages_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sleep_entry_stages
-    ADD CONSTRAINT sleep_entry_stages_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT sleep_entry_stages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: two_factor two_factor_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.two_factor
+    ADD CONSTRAINT two_factor_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3560,7 +3995,7 @@ ALTER TABLE ONLY public.sleep_entry_stages
 --
 
 ALTER TABLE ONLY public.user_custom_nutrients
-    ADD CONSTRAINT user_custom_nutrients_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT user_custom_nutrients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3568,7 +4003,7 @@ ALTER TABLE ONLY public.user_custom_nutrients
 --
 
 ALTER TABLE ONLY public.user_ignored_updates
-    ADD CONSTRAINT user_ignored_updates_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT user_ignored_updates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3576,7 +4011,7 @@ ALTER TABLE ONLY public.user_ignored_updates
 --
 
 ALTER TABLE ONLY public.user_nutrient_display_preferences
-    ADD CONSTRAINT user_nutrient_display_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT user_nutrient_display_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3592,7 +4027,7 @@ ALTER TABLE ONLY public.user_oidc_links
 --
 
 ALTER TABLE ONLY public.user_oidc_links
-    ADD CONSTRAINT user_oidc_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT user_oidc_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3600,7 +4035,7 @@ ALTER TABLE ONLY public.user_oidc_links
 --
 
 ALTER TABLE ONLY public.user_water_containers
-    ADD CONSTRAINT user_water_containers_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT user_water_containers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3608,7 +4043,7 @@ ALTER TABLE ONLY public.user_water_containers
 --
 
 ALTER TABLE ONLY public.water_intake
-    ADD CONSTRAINT water_intake_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT water_intake_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3616,7 +4051,7 @@ ALTER TABLE ONLY public.water_intake
 --
 
 ALTER TABLE ONLY public.water_intake
-    ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3672,7 +4107,7 @@ ALTER TABLE ONLY public.weekly_goal_plans
 --
 
 ALTER TABLE ONLY public.weekly_goal_plans
-    ADD CONSTRAINT weekly_goal_plans_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT weekly_goal_plans_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3720,7 +4155,7 @@ ALTER TABLE ONLY public.workout_plan_template_assignments
 --
 
 ALTER TABLE ONLY public.workout_plan_templates
-    ADD CONSTRAINT workout_plan_templates_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT workout_plan_templates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3752,7 +4187,7 @@ ALTER TABLE ONLY public.workout_preset_exercises
 --
 
 ALTER TABLE ONLY public.workout_presets
-    ADD CONSTRAINT workout_presets_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT workout_presets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -3808,12 +4243,6 @@ ALTER TABLE public.external_data_providers ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.family_access ENABLE ROW LEVEL SECURITY;
-
---
--- Name: fasting_logs; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.fasting_logs ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: food_entries; Type: ROW SECURITY; Schema: public; Owner: -
@@ -4057,6 +4486,13 @@ CREATE POLICY owner_policy ON public.ai_service_settings USING ((user_id = publi
 
 
 --
+-- Name: api_key owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.api_key USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
 -- Name: fasting_logs owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -4115,13 +4551,6 @@ CREATE POLICY owner_policy ON public.profiles USING ((id = public.current_user_i
 --
 
 CREATE POLICY owner_policy ON public.sparky_chat_history USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
-
-
---
--- Name: user_api_keys owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY owner_policy ON public.user_api_keys USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
 
 
 --
@@ -4305,7 +4734,9 @@ CREATE POLICY select_policy ON public.exercises FOR SELECT USING (public.has_lib
 -- Name: external_data_providers select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.external_data_providers FOR SELECT USING (((public.current_user_id() = user_id) OR ((provider_type <> ALL (ARRAY['garmin'::text, 'fitbit'::text, 'withings'::text, 'health'::text])) AND (shared_with_public OR public.has_family_access_or(user_id, ARRAY['can_view_food_library'::text, 'can_view_exercise_library'::text])))));
+CREATE POLICY select_policy ON public.external_data_providers FOR SELECT USING (((public.current_user_id() = user_id) OR ((EXISTS ( SELECT 1
+   FROM public.external_provider_types ept
+  WHERE (((ept.id)::text = external_data_providers.provider_type) AND (ept.is_strictly_private = false)))) AND (shared_with_public OR public.has_family_access_or(user_id, ARRAY['can_view_food_library'::text, 'can_view_exercise_library'::text])))));
 
 
 --
@@ -4401,12 +4832,6 @@ CREATE POLICY select_policy ON public.workout_presets FOR SELECT USING (public.h
 ALTER TABLE public.sparky_chat_history ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: user_api_keys; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.user_api_keys ENABLE ROW LEVEL SECURITY;
-
---
 -- Name: user_goals; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4494,8 +4919,6 @@ ALTER TABLE public.workout_presets ENABLE ROW LEVEL SECURITY;
 -- Name: SCHEMA auth; Type: ACL; Schema: -; Owner: -
 --
 
-GRANT USAGE ON SCHEMA auth TO sparky_app;
-GRANT USAGE ON SCHEMA auth TO sparky_test;
 GRANT USAGE ON SCHEMA auth TO sparky_uat;
 
 
@@ -4503,9 +4926,6 @@ GRANT USAGE ON SCHEMA auth TO sparky_uat;
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: -
 --
 
-GRANT USAGE ON SCHEMA public TO sparky_app;
-GRANT USAGE ON SCHEMA public TO sparky_test;
-GRANT USAGE ON SCHEMA public TO sparky;
 GRANT USAGE ON SCHEMA public TO sparky_uat;
 
 
@@ -4513,26 +4933,580 @@ GRANT USAGE ON SCHEMA public TO sparky_uat;
 -- Name: SCHEMA system; Type: ACL; Schema: -; Owner: -
 --
 
-GRANT USAGE ON SCHEMA system TO sparky_app;
-GRANT USAGE ON SCHEMA system TO sparky_test;
 GRANT USAGE ON SCHEMA system TO sparky_uat;
+
+
+--
+-- Name: FUNCTION armor(bytea); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.armor(bytea) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION armor(bytea, text[], text[]); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.armor(bytea, text[], text[]) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION authenticated_user_id(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.authenticated_user_id() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION clear_old_chat_history(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.clear_old_chat_history() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION create_default_external_data_providers(p_user_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uuid) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION create_diary_policy(table_name text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION create_library_policy(table_name text, shared_column text, permissions text[]); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION create_owner_centric_all_policy(table_name text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION create_owner_centric_id_policy(table_name text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION create_owner_policy(table_name text, id_column text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION create_user_centric_policy(table_name text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION create_user_preferences(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.create_user_preferences() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION crypt(text, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.crypt(text, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION current_user_id(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.current_user_id() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION dearmor(text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.dearmor(text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION decrypt(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.decrypt(bytea, bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION decrypt_iv(bytea, bytea, bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.decrypt_iv(bytea, bytea, bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION digest(bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.digest(bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION digest(text, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.digest(text, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION encrypt(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.encrypt(bytea, bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION encrypt_iv(bytea, bytea, bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.encrypt_iv(bytea, bytea, bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION find_user_by_email(p_email text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION gen_random_bytes(integer); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.gen_random_bytes(integer) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION gen_random_uuid(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.gen_random_uuid() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION gen_salt(text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.gen_salt(text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION gen_salt(text, integer); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.gen_salt(text, integer) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION get_accessible_users(p_user_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION get_goals_for_date(p_user_id uuid, p_date date); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION handle_new_user(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.handle_new_user() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION has_diary_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION has_family_access(owner_uuid uuid, perm text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION has_family_access_or(owner_uuid uuid, perms text[]); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION hmac(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.hmac(bytea, bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION hmac(text, text, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.hmac(text, text, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT blk_read_time double precision, OUT blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT blk_read_time double precision, OUT blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pg_stat_statements_info(OUT dealloc bigint, OUT stats_reset timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pg_stat_statements_info(OUT dealloc bigint, OUT stats_reset timestamp with time zone) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pg_stat_statements_reset(userid oid, dbid oid, queryid bigint); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pg_stat_statements_reset(userid oid, dbid oid, queryid bigint) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_armor_headers(text, OUT key text, OUT value text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_armor_headers(text, OUT key text, OUT value text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_key_id(bytea); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_key_id(bytea) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_pub_decrypt(bytea, bytea); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_pub_decrypt(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_pub_decrypt(bytea, bytea, text, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_pub_decrypt_bytea(bytea, bytea); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_pub_decrypt_bytea(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_pub_decrypt_bytea(bytea, bytea, text, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_pub_encrypt(text, bytea); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_pub_encrypt(text, bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_pub_encrypt_bytea(bytea, bytea); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_pub_encrypt_bytea(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_sym_decrypt(bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_sym_decrypt(bytea, text, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_sym_decrypt_bytea(bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_sym_decrypt_bytea(bytea, text, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_sym_encrypt(text, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_sym_encrypt(text, text, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_sym_encrypt_bytea(bytea, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION pgp_sym_encrypt_bytea(bytea, text, text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION set_app_context(p_user_id uuid, p_authenticated_user_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION set_first_user_as_admin(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION set_updated_at_timestamp(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION set_user_id(user_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION trigger_set_timestamp(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION update_external_data_providers_updated_at(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION update_timestamp(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.update_timestamp() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION update_updated_at_column(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.update_updated_at_column() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION uuid_generate_v1(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.uuid_generate_v1() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION uuid_generate_v1mc(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.uuid_generate_v1mc() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION uuid_generate_v3(namespace uuid, name text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.uuid_generate_v3(namespace uuid, name text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION uuid_generate_v4(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.uuid_generate_v4() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION uuid_generate_v5(namespace uuid, name text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.uuid_generate_v5(namespace uuid, name text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION uuid_nil(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.uuid_nil() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION uuid_ns_dns(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.uuid_ns_dns() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION uuid_ns_oid(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.uuid_ns_oid() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION uuid_ns_url(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.uuid_ns_url() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION uuid_ns_x500(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.uuid_ns_x500() TO sparky_uat;
 
 
 --
 -- Name: TABLE users; Type: ACL; Schema: auth; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_uat;
+
+
+--
+-- Name: TABLE account; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_uat;
 
 
 --
 -- Name: TABLE admin_activity_logs; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_uat;
 
 
@@ -4540,17 +5514,20 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_
 -- Name: TABLE ai_service_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_uat;
+
+
+--
+-- Name: TABLE api_key; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO sparky_uat;
 
 
 --
 -- Name: TABLE backup_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_uat;
 
 
@@ -4558,8 +5535,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_uat;
 -- Name: SEQUENCE backup_settings_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_uat;
 
 
@@ -4567,8 +5542,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_uat;
 -- Name: TABLE check_in_measurements; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_uat;
 
 
@@ -4576,8 +5549,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO spark
 -- Name: TABLE custom_categories; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_uat;
 
 
@@ -4585,8 +5556,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_ua
 -- Name: TABLE custom_measurements; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_uat;
 
 
@@ -4594,8 +5563,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_
 -- Name: TABLE exercise_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_uat;
 
 
@@ -4603,8 +5570,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_uat
 -- Name: TABLE exercise_entry_activity_details; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_uat;
 
 
@@ -4612,8 +5577,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_detail
 -- Name: TABLE exercise_entry_sets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_uat;
 
 
@@ -4621,8 +5584,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_
 -- Name: SEQUENCE exercise_entry_sets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_uat;
 
 
@@ -4630,8 +5591,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_uat;
 -- Name: TABLE exercise_preset_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_uat;
 
 
@@ -4639,8 +5598,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO spa
 -- Name: TABLE exercises; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_uat;
 
 
@@ -4648,8 +5605,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_uat;
 -- Name: TABLE external_data_providers; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_uat;
 
 
@@ -4657,8 +5612,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO spa
 -- Name: TABLE external_provider_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_uat;
 
 
@@ -4666,8 +5619,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO spa
 -- Name: TABLE family_access; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_uat;
 
 
@@ -4675,8 +5626,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_uat;
 -- Name: TABLE fasting_logs; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE public.fasting_logs TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_uat;
 
 
@@ -4684,8 +5633,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_uat;
 -- Name: TABLE food_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_uat;
 
 
@@ -4693,8 +5640,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_uat;
 -- Name: TABLE food_entry_meals; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_uat;
 
 
@@ -4702,8 +5647,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_uat
 -- Name: TABLE food_variants; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_uat;
 
 
@@ -4711,8 +5654,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_uat;
 -- Name: TABLE foods; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_uat;
 
 
@@ -4720,8 +5661,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_uat;
 -- Name: TABLE global_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_uat;
 
 
@@ -4729,8 +5668,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_uat;
 -- Name: TABLE goal_presets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_uat;
 
 
@@ -4738,8 +5675,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_uat;
 -- Name: TABLE meal_foods; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_uat;
 
 
@@ -4747,8 +5682,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_uat;
 -- Name: TABLE meal_plan_template_assignments; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_uat;
 
 
@@ -4756,8 +5689,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments
 -- Name: TABLE meal_plan_templates; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_uat;
 
 
@@ -4765,8 +5696,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_
 -- Name: TABLE meal_plans; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_uat;
 
 
@@ -4774,8 +5703,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_uat;
 -- Name: TABLE meal_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_uat;
 
 
@@ -4783,8 +5710,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_uat;
 -- Name: TABLE meals; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_uat;
 
 
@@ -4792,8 +5717,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_uat;
 -- Name: TABLE mood_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_uat;
 
 
@@ -4801,8 +5724,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_uat;
 -- Name: TABLE oidc_providers; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_uat;
 
 
@@ -4810,8 +5731,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_uat;
 -- Name: SEQUENCE oidc_providers_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_uat;
 
 
@@ -4819,8 +5738,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_uat;
 -- Name: TABLE onboarding_data; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_uat;
 
 
@@ -4828,17 +5745,20 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_uat;
 -- Name: TABLE onboarding_status; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_uat;
+
+
+--
+-- Name: TABLE passkey; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO sparky_uat;
 
 
 --
 -- Name: TABLE pg_stat_statements; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_uat;
 
 
@@ -4846,8 +5766,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_u
 -- Name: TABLE pg_stat_statements_info; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO sparky_uat;
 
 
@@ -4855,8 +5773,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO spa
 -- Name: TABLE profiles; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_uat;
 
 
@@ -4864,8 +5780,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_uat;
 -- Name: TABLE session; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_uat;
 
 
@@ -4873,8 +5787,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_uat;
 -- Name: TABLE sleep_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_uat;
 
 
@@ -4882,8 +5794,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_uat;
 -- Name: TABLE sleep_entry_stages; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_uat;
 
 
@@ -4891,26 +5801,34 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_u
 -- Name: TABLE sparky_chat_history; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_uat;
 
 
 --
--- Name: TABLE user_api_keys; Type: ACL; Schema: public; Owner: -
+-- Name: TABLE sso_provider; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_api_keys TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_api_keys TO sparky_test;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_api_keys TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO sparky_uat;
+
+
+--
+-- Name: TABLE two_factor; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO sparky_uat;
+
+
+--
+-- Name: TABLE "user"; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO sparky_uat;
 
 
 --
 -- Name: TABLE user_custom_nutrients; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_uat;
 
 
@@ -4918,8 +5836,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO spark
 -- Name: TABLE user_goals; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_uat;
 
 
@@ -4927,8 +5843,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_uat;
 -- Name: TABLE user_ignored_updates; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_uat;
 
 
@@ -4936,8 +5850,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky
 -- Name: TABLE user_nutrient_display_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_uat;
 
 
@@ -4945,8 +5857,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferen
 -- Name: SEQUENCE user_nutrient_display_preferences_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_uat;
 
 
@@ -4954,8 +5864,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq T
 -- Name: TABLE user_oidc_links; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_uat;
 
 
@@ -4963,8 +5871,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_uat;
 -- Name: SEQUENCE user_oidc_links_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_uat;
 
 
@@ -4972,8 +5878,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_uat;
 -- Name: TABLE user_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_uat;
 
 
@@ -4981,8 +5885,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_uat
 -- Name: TABLE user_water_containers; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_uat;
 
 
@@ -4990,17 +5892,20 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO spark
 -- Name: SEQUENCE user_water_containers_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_uat;
+
+
+--
+-- Name: TABLE verification; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO sparky_uat;
 
 
 --
 -- Name: TABLE water_intake; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_uat;
 
 
@@ -5008,8 +5913,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_uat;
 -- Name: TABLE weekly_goal_plans; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_uat;
 
 
@@ -5017,8 +5920,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_ua
 -- Name: TABLE workout_plan_assignment_sets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_uat;
 
 
@@ -5026,8 +5927,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets T
 -- Name: SEQUENCE workout_plan_assignment_sets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_uat;
 
 
@@ -5035,8 +5934,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO spa
 -- Name: TABLE workout_plan_template_assignments; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_uat;
 
 
@@ -5044,8 +5941,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignme
 -- Name: SEQUENCE workout_plan_template_assignments_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_uat;
 
 
@@ -5053,8 +5948,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq T
 -- Name: TABLE workout_plan_templates; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_uat;
 
 
@@ -5062,8 +5955,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO spar
 -- Name: SEQUENCE workout_plan_templates_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_uat;
 
 
@@ -5071,8 +5962,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_ua
 -- Name: TABLE workout_preset_exercise_sets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_uat;
 
 
@@ -5080,8 +5969,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets T
 -- Name: SEQUENCE workout_preset_exercise_sets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_uat;
 
 
@@ -5089,8 +5976,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO spa
 -- Name: TABLE workout_preset_exercises; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_uat;
 
 
@@ -5098,8 +5983,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sp
 -- Name: SEQUENCE workout_preset_exercises_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_uat;
 
 
@@ -5107,8 +5990,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_
 -- Name: TABLE workout_presets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_app;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_test;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_uat;
 
 
@@ -5116,8 +5997,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_uat;
 -- Name: SEQUENCE workout_presets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_app;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_test;
 GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_uat;
 
 
@@ -5125,18 +6004,20 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_uat;
 -- Name: TABLE schema_migrations; Type: ACL; Schema: system; Owner: -
 --
 
-GRANT SELECT ON TABLE system.schema_migrations TO sparky_app;
-GRANT SELECT ON TABLE system.schema_migrations TO sparky_test;
 GRANT SELECT ON TABLE system.schema_migrations TO sparky_uat;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: auth; Owner: -
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO sparky_uat;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: auth; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_test;
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
 
 
@@ -5144,19 +6025,20 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELE
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_test;
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_uat;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: -
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO sparky_uat;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_test;
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
 
 
@@ -5164,5 +6046,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict lr6tlMX4ey7W3hR4jvKanDe8eOAdZPgJ5zc4HggjLgCgmCDe9r6gt2BzOHe8koo
+\unrestrict caPYqiQ8y1UqUPpirBHhS0afJx4iTF0Nc3PWk1hIdZf2p9DctMeCY44jYxZLzXp
 

@@ -56,7 +56,7 @@ router.use(isAdmin);
 router.get('/users', async (req, res, next) => {
   try {
     const { limit = 10, offset = 0, searchTerm = '' } = req.query;
-    const users = await authService.getAllUsers(parseInt(limit), parseInt(offset), searchTerm);
+    const users = await userRepository.getAllUsers(parseInt(limit), parseInt(offset), searchTerm);
     res.status(200).json(users);
   } catch (error) {
     log('error', 'Error fetching all users in adminRoutes:', error);
@@ -112,7 +112,7 @@ router.delete('/users/:userId', async (req, res, next) => {
       return res.status(403).json({ error: 'Cannot delete the primary admin user.' });
     }
 
-    const success = await authService.deleteUser(userId);
+    const success = await userRepository.deleteUser(userId);
     if (success) {
       await logAdminAction(req.userId, userId, 'USER_DELETED', { deletedUserId: userId });
       res.status(200).json({ message: 'User deleted successfully.' });
@@ -191,7 +191,7 @@ router.put('/users/:userId/status', async (req, res, next) => {
       return res.status(403).json({ error: 'Cannot change status of the primary admin user.' });
     }
 
-    const success = await authService.updateUserStatus(userId, isActive);
+    const success = await userRepository.updateUserStatus(userId, isActive);
     if (success) {
       await logAdminAction(req.userId, userId, 'USER_STATUS_UPDATED', { targetUserId: userId, newStatus: isActive });
       res.status(200).json({ message: `User status updated to ${isActive ? 'active' : 'inactive'}.` });
@@ -271,7 +271,7 @@ router.put('/users/:userId/role', async (req, res, next) => {
       return res.status(403).json({ error: 'Cannot change role of the primary admin user from admin.' });
     }
 
-    const success = await authService.updateUserRole(userId, role);
+    const success = await userRepository.updateUserRole(userId, role);
     if (success) {
       await logAdminAction(req.userId, userId, 'USER_ROLE_UPDATED', { targetUserId: userId, newRole: role });
       res.status(200).json({ message: `User role updated to ${role}.` });
@@ -341,7 +341,7 @@ router.put('/users/:userId/full-name', async (req, res, next) => {
       return res.status(400).json({ error: 'Full name is required.' });
     }
 
-    const success = await authService.updateUserFullName(userId, fullName);
+    const success = await userRepository.updateUserFullName(userId, fullName);
     if (success) {
       await logAdminAction(req.userId, userId, 'USER_FULL_NAME_UPDATED', { targetUserId: userId, newFullName: fullName });
       res.status(200).json({ message: 'User full name updated successfully.' });
@@ -392,18 +392,60 @@ router.put('/users/:userId/full-name', async (req, res, next) => {
 router.post('/users/:userId/reset-password', async (req, res, next) => {
   try {
     const { userId } = req.params;
-    // To initiate a password reset, we need the user's email.
-    // We can fetch the user by userId to get their email.
-    const user = await authService.getUser(userId);
+    // For password reset via Better Auth, we use their API
+    const user = await userRepository.findUserById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    await authService.forgotPassword(user.email);
+    const { auth } = require('../auth');
+    await auth.api.forgetPassword({
+      email: user.email,
+      redirectTo: (process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080') + '/reset-password'
+    });
+
     await logAdminAction(req.userId, userId, 'USER_PASSWORD_RESET_INITIATED', { targetUserId: userId, email: user.email });
     res.status(200).json({ message: 'Password reset email sent to user.' });
   } catch (error) {
     log('error', `Error initiating password reset for user ${req.params.userId} in adminRoutes:`, error);
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /admin/users/{userId}/mfa/reset:
+ *   post:
+ *     summary: Reset MFA for a user
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the user to reset MFA for.
+ *     responses:
+ *       200:
+ *         description: MFA reset successfully.
+ *       404:
+ *         description: User not found.
+ */
+router.post('/users/:userId/mfa/reset', async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const user = await userRepository.findUserById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    await authService.resetUserMfa(req.userId, userId);
+    res.status(200).json({ message: 'MFA reset successfully.' });
+  } catch (error) {
+    log('error', `Error resetting MFA for user ${req.params.userId} in adminRoutes:`, error);
     next(error);
   }
 });

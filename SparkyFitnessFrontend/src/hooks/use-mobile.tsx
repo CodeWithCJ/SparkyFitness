@@ -1,5 +1,5 @@
 import * as React from "react"
-import { debug, info, warn, error } from '@/utils/logging';
+import { debug, info } from '@/utils/logging';
 import { usePreferences } from "@/contexts/PreferencesContext";
 
 const MOBILE_BREAKPOINT = 768

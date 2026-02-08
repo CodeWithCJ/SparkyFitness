@@ -55,7 +55,7 @@ export function calculateSmartYAxisDomain(
   // Use min-max with margin for better visibility of trends
   const margin = range * marginPercent;
   let domainMin = min - margin;
-  let domainMax = max + margin;
+  const domainMax = max + margin;
 
   if (forceMin !== undefined) {
     domainMin = forceMin;

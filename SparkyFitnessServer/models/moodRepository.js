@@ -11,7 +11,7 @@ async function createOrUpdateMoodEntry(userId, moodValue, notes, entryDate) {
            notes = EXCLUDED.notes,
            updated_at = NOW()
        RETURNING id, user_id, mood_value, notes, entry_date, created_at, updated_at`,
-       [userId, moodValue, notes, entryDate]
+      [userId, moodValue, notes, entryDate]
     );
     return result.rows[0];
   } finally {
@@ -95,7 +95,7 @@ async function getMoodEntryByDate(userId, entryDate) {
       `SELECT id, user_id, mood_value, notes, entry_date, created_at, updated_at
        FROM mood_entries
        WHERE user_id = $1 AND entry_date = $2`,
-       [userId, entryDate]
+      [userId, entryDate]
     );
     if (result.rows[0]) {
       log('debug', `Found mood entry:`, result.rows[0]);

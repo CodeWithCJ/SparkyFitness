@@ -45,12 +45,12 @@ export const userManagementService = {
   },
 
   resetUserMfa: async (userId: string): Promise<void> => {
-    await api.post(`/admin/auth/users/${userId}/mfa/reset`);
+    await api.post(`/admin/users/${userId}/mfa/reset`);
   },
 
   getUserProfile: async (userId: string): Promise<UserProfile> => {
     try {
-      const response = await api.get(`/auth/profiles`);
+      const response = await api.get(`/identity/profiles`);
       return response;
     } catch (error) {
       console.error('Error fetching user profile:', error);

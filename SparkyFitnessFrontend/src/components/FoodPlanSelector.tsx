@@ -6,7 +6,7 @@ import { Search } from 'lucide-react';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
-import { debug, error } from '@/utils/logging';
+import { error } from '@/utils/logging';
 import { Food, FoodVariant, FoodSearchResult } from '@/types/food'; // Import FoodSearchResult
 import { searchFoods } from '@/services/foodService';
 import FoodUnitSelector from '@/components/FoodUnitSelector';

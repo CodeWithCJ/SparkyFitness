@@ -391,6 +391,10 @@ async function updateSleepEntry(userId, entryId, updateData) {
         if (body_battery_change !== undefined) { updateFields.push(`body_battery_change = $${paramIndex++} `); updateValues.push(body_battery_change); }
         if (resting_heart_rate !== undefined) { updateFields.push(`resting_heart_rate = $${paramIndex++} `); updateValues.push(resting_heart_rate); }
 
+        // Add updated_by_user_id
+        updateFields.push(`updated_by_user_id = $${paramIndex++}`);
+        updateValues.push(actingUserId);
+
         updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
 
         if (updateFields.length === 1 && updateFields[0].includes('updated_at') && !stage_events) { // Only updated_at, no other fields to update
@@ -419,10 +423,10 @@ async function updateSleepEntry(userId, entryId, updateData) {
             // Delete existing stage events for this entry
             await client.query('DELETE FROM sleep_entry_stages WHERE entry_id = $1 AND user_id = $2', [entryId, userId]);
 
-            // Insert new stage events
+            // Insert new stage events with audit columns
             const stageEventInsertQuery = `
-                INSERT INTO sleep_entry_stages(entry_id, user_id, stage_type, start_time, end_time, duration_in_seconds)
-        VALUES($1, $2, $3, $4, $5, $6);
+                INSERT INTO sleep_entry_stages(entry_id, user_id, stage_type, start_time, end_time, duration_in_seconds, created_by_user_id, updated_by_user_id)
+        VALUES($1, $2, $3, $4, $5, $6, $7, $7);
         `;
             for (const event of stage_events) {
                 await client.query(stageEventInsertQuery, [
@@ -431,7 +435,8 @@ async function updateSleepEntry(userId, entryId, updateData) {
                     event.stage_type,
                     event.start_time,
                     event.end_time,
-                    event.duration_in_seconds
+                    event.duration_in_seconds,
+                    actingUserId // Use actingUserId for creation/update
                 ]);
             }
             log('info', `Updated sleep stage events for entry ${entryId}.`);

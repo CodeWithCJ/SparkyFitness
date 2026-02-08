@@ -1,4 +1,4 @@
-import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
+import { debug, info, error } from '@/utils/logging'; // Import logging utility
 import { apiCall } from '@/services/api';
 
 // Helper function to convert File to Base64

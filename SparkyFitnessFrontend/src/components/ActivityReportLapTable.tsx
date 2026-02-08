@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { FaClock, FaRoute, FaWalking, FaFire, FaHeartbeat, FaRunning, FaCalendarAlt, FaRoad, FaHourglassHalf, FaFlag } from 'react-icons/fa';
+import { FaClock, FaRoute, FaWalking, FaFire, FaHeartbeat, FaRunning, FaRoad, FaHourglassHalf, FaFlag } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 
 interface LapTableProps {

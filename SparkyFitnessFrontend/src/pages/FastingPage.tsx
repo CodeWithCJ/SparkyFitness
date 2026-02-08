@@ -4,20 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FastingTimerRing from '@/components/fasting/FastingTimerRing';
 import FastingZoneBar from '@/components/fasting/FastingZoneBar';
 import EndFastDialog from '@/components/fasting/EndFastDialog';
 import { parseISO, addHours, differenceInMinutes } from 'date-fns';
 import { Play, Square, History, BarChart } from 'lucide-react';
 import { getFastingHistory, FastingLog, getFastingStats, FastingStats } from '@/services/fastingService';
-import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
 import { FASTING_PRESETS } from '@/constants/fastingPresets';
 
 const FastingPage: React.FC = () => {
-    const { t } = useTranslation();
     const { formatDateInUserTimezone } = usePreferences();
     const { activeFast, startFast, endFast, isLoading } = useFasting();
     const [selectedPresetId, setSelectedPresetId] = useState<string>('16-8');

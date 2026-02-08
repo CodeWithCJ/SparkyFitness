@@ -6,6 +6,8 @@ import { CombinedSleepData, SleepStageEvent } from '@/types';
 import { Button } from '../ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { debug } from '@/utils/logging'; // Import logging utility
+import { getUserLoggingLevel } from '@/utils/userPreferences'; // Import user logging level
 
 interface SleepAnalyticsTableProps {
   combinedSleepData: CombinedSleepData[];
@@ -14,7 +16,8 @@ interface SleepAnalyticsTableProps {
  
 const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({ combinedSleepData, onExport }) => {
   const { t } = useTranslation();
-  console.log("SleepAnalyticsTable received combinedSleepData:", combinedSleepData);
+  const loggingLevel = getUserLoggingLevel();
+  debug(loggingLevel, "SleepAnalyticsTable received combinedSleepData:", combinedSleepData);
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
   const [areAllRowsExpanded, setAreAllRowsExpanded] = React.useState(false);

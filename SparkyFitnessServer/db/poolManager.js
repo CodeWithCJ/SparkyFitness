@@ -55,12 +55,15 @@ function _getRawAppPool() {
   return appPoolInstance;
 }
 
-async function getClient(userId) {
+async function getClient(userId, authenticatedUserId = null) {
   if (!userId) {
     throw new Error("userId is required for getClient to ensure RLS is applied.");
   }
   const client = await _getRawAppPool().connect();
-  await client.query(`SELECT public.set_user_id($1)`, [userId]);
+  // If authenticatedUserId is not provided, it means the user is acting as themselves.
+  // In this case, the authenticated actor IS the target user.
+  const actualAuthUserId = authenticatedUserId || userId;
+  await client.query(`SELECT public.set_app_context($1, $2)`, [userId, actualAuthUserId]);
   return client;
 }
 

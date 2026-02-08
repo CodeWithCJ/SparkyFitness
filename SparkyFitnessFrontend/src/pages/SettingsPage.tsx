@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import { useLocation } from "react-router-dom"; // Import useLocation
 import { useTranslation } from "react-i18next";
 import { formatDateToYYYYMMDD } from "@/lib/utils"; // Import the new utility function
@@ -7,7 +7,6 @@ import {
   getSupportedLanguages,
   getLanguageDisplayName,
 } from "@/utils/languageUtils"; // Import language utilities
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,27 +19,49 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Added import
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Calendar as CalendarIcon } from "lucide-react"; // Import CalendarIcon
 import { Calendar } from "@/components/ui/calendar"; // Import Calendar component
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Import Popover components
-import { Save, Upload, User, Settings as SettingsIcon, Lock, Camera, ClipboardCopy, Copy, Eye, EyeOff, KeyRound, Trash2, Droplet, ListChecks, Users, Tag, Cloud, Sparkles, QrCode, Mail, BookOpen, UtensilsCrossed } from "lucide-react";
-import { apiCall } from '@/services/api'; // Assuming a common API utility
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"; // Import Popover components
+import {
+  Save,
+  User,
+  Settings as SettingsIcon,
+  Lock,
+  Camera,
+  ClipboardCopy,
+  KeyRound,
+  Trash2,
+  Droplet,
+  ListChecks,
+  Users,
+  Tag,
+  Cloud,
+  Sparkles,
+  BookOpen,
+  UtensilsCrossed,
+  X,
+} from "lucide-react";
+import { apiCall } from "@/services/api"; // Assuming a common API utility
 import { useAuth } from "@/hooks/useAuth";
+import { authClient } from "@/lib/auth-client";
 import { toast } from "@/hooks/use-toast";
-import FamilyAccessManager from "./FamilyAccessManager";
-import AIServiceSettings from "./AIServiceSettings";
-import CustomCategoryManager from "./CustomCategoryManager";
-import MealTypeManager from "./MealTypeManager";
+import FamilyAccessManager from "@/components/FamilyAccessManager";
+import AIServiceSettings from "@/components/AIServiceSettings";
+import CustomCategoryManager from "@/components/CustomCategoryManager";
+import MealTypeManager from "@/components/MealTypeManager";
 import { CustomCategory } from "@/services/customCategoryService";
-import ExternalProviderSettings from "./ExternalProviderSettings"; // Import ExternalProviderSettings
-import GarminConnectSettings from "./GarminConnectSettings"; // Import GarminConnectSettings
+import ExternalProviderSettings from "@/components/ExternalProviderSettings"; // Import ExternalProviderSettings
+// Import GarminConnectSettings
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
-import NutrientDisplaySettings from "./NutrientDisplaySettings"; // Import NutrientDisplaySettings
-import WaterContainerManager from "./WaterContainerManager"; // Import WaterContainerManager
-import { parse } from "date-fns"; // Import parse for parsing user-entered date strings
+import NutrientDisplaySettings from "@/components/NutrientDisplaySettings"; // Import NutrientDisplaySettings
+import WaterContainerManager from "@/components/WaterContainerManager"; // Import WaterContainerManager
+// Import parse for parsing user-entered date strings
 import {
   Accordion,
   AccordionItem,
@@ -48,9 +69,10 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion"; // Import Accordion components
 import CalculationSettings from "@/pages/CalculationSettings";
-import TooltipWarning from "./TooltipWarning";
-import MFASettings from "./MFASettings"; // Import MFASettings component
+import TooltipWarning from "@/components/TooltipWarning";
+import MFASettings from "@/components/MFASettings"; // Import MFASettings component
 import CustomNutrientsSettings from "@/pages/CustomNutrientsSettings";
+import PasskeySettings from "@/components/PasskeySettings";
 
 interface Profile {
   id: string;
@@ -73,7 +95,7 @@ interface SettingsProps {
   onShowAboutDialog: () => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
+const Settings = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const {
@@ -88,10 +110,10 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     dateFormat,
     setDateFormat,
     loggingLevel,
-    setLoggingLevel,
     itemDisplayLimit,
     setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
-    autoScaleOpenFoodFactsImports, setAutoScaleOpenFoodFactsImports, // Add auto-scale preference
+    autoScaleOpenFoodFactsImports,
+    setAutoScaleOpenFoodFactsImports, // Add auto-scale preference
     loadPreferences: loadUserPreferencesFromContext, // Rename to avoid conflict
     saveAllPreferences, // Add saveAllPreferences from context
     formatDate, // Destructure formatDate
@@ -99,14 +121,12 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     setWaterDisplayUnit,
     language,
     setLanguage,
-    calorieGoalAdjustmentMode,
-    setCalorieGoalAdjustmentMode, // Add new preference
   } = usePreferences();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [avatarObjectURL, setAvatarObjectURL] = useState<string | null>(null); // State to hold the object URL for the avatar
   // Remove local preferences state as it's now managed by PreferencesContext
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>(
-    []
+    [],
   );
   const [localLoggingLevel, setLocalLoggingLevel] = useState(loggingLevel);
   const [profileForm, setProfileForm] = useState({
@@ -128,8 +148,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   // State for API Key Management
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [showApiKey, setShowApiKey] = useState<string | null>(null); // Stores the ID of the key to show
+  const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null); // New state to show secret key once
   const [newApiKeyDescription, setNewApiKeyDescription] = useState<string>("");
+  const [newApiKeyExpiresIn, setNewApiKeyExpiresIn] = useState<number | null>(
+    null,
+  );
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
+  const [cleaningUpKeys, setCleaningUpKeys] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -200,9 +225,8 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   const loadApiKeys = async () => {
     if (!user) return;
     try {
-      const data = await apiCall(`/auth/user-api-keys`, {
-        method: "GET",
-      });
+      const { data, error } = await authClient.apiKey.list();
+      if (error) throw error;
       setApiKeys(data || []);
     } catch (error: any) {
       console.error("Error loading API keys:", error);
@@ -217,18 +241,25 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   const handleGenerateApiKey = async () => {
     if (!user) return;
     setGeneratingApiKey(true);
+    setNewlyCreatedKey(null);
     try {
-      const data = await apiCall("/auth/user/generate-api-key", {
-        method: "POST",
-        body: JSON.stringify({ description: newApiKeyDescription || null }),
+      const { data, error } = await authClient.apiKey.create({
+        name: newApiKeyDescription || "New API Key",
+        expiresIn: newApiKeyExpiresIn || undefined,
       });
+      if (error) throw error;
+
+      if (data) {
+        setNewlyCreatedKey(data.key);
+      }
 
       toast({
         title: "Success",
-        description: "New API key generated successfully!",
+        description:
+          "New API key generated successfully! Please copy it now as it won't be shown again.",
       });
       setNewApiKeyDescription("");
-      loadApiKeys(); // Reload keys to show the new one
+      loadApiKeys(); // Reload keys to show the new one in the list
     } catch (error: any) {
       console.error("Error generating API key:", error);
       toast({
@@ -245,17 +276,17 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     if (!user) return;
     if (
       !confirm(
-        "Are you sure you want to delete this API key? This action cannot be undone."
+        "Are you sure you want to delete this API key? This action cannot be undone.",
       )
     ) {
       return;
     }
     setLoading(true); // Use general loading for this
     try {
-      await apiCall(`/auth/user/api-key/${apiKeyId}`, {
-        method: "DELETE",
-        body: JSON.stringify({}), // Send userId in body for DELETE
+      const { error } = await authClient.apiKey.delete({
+        keyId: apiKeyId,
       });
+      if (error) throw error;
 
       toast({
         title: "Success",
@@ -274,11 +305,64 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     }
   };
 
+  const handleToggleApiKey = async (apiKeyId: string, enabled: boolean) => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { error } = await authClient.apiKey.update({
+        keyId: apiKeyId,
+        enabled: enabled,
+      });
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `API key ${enabled ? "enabled" : "disabled"} successfully!`,
+      });
+      loadApiKeys();
+    } catch (error: any) {
+      console.error("Error toggling API key:", error);
+      toast({
+        title: "Error",
+        description: `Failed to update API key: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCleanupExpiredKeys = async () => {
+    if (!user) return;
+    setCleaningUpKeys(true);
+    try {
+      const { error } = await (
+        authClient.apiKey as any
+      ).deleteAllExpiredApiKeys({});
+      if (error) throw error;
+
+      toast({
+        title: "Cleanup Complete",
+        description: "All expired API keys have been removed.",
+      });
+      loadApiKeys();
+    } catch (error: any) {
+      console.error("Error cleaning up API keys:", error);
+      toast({
+        title: "Error",
+        description: `Failed to cleanup keys: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setCleaningUpKeys(false);
+    }
+  };
+
   const loadProfile = async () => {
     if (!user) return;
 
     try {
-      const data = await apiCall(`/auth/profiles`, {
+      const data = await apiCall(`/identity/profiles`, {
         method: "GET",
       });
       setProfile(data);
@@ -304,7 +388,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
 
     setLoading(true);
     try {
-      await apiCall(`/auth/profiles`, {
+      await apiCall(`/identity/profiles`, {
         method: "PUT", // Or PATCH, depending on backend implementation
         body: JSON.stringify({
           full_name: profileForm.full_name,
@@ -375,13 +459,12 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
 
     setLoading(true);
     try {
-      await apiCall("/auth/update-password", {
-        method: "POST",
-        body: JSON.stringify({
-          currentPassword: passwordForm.current_password, // If needed for verification
-          newPassword: passwordForm.new_password,
-        }),
+      const { error } = await authClient.changePassword({
+        newPassword: passwordForm.new_password,
+        currentPassword: passwordForm.current_password,
+        revokeOtherSessions: true,
       });
+      if (error) throw error;
 
       toast({
         title: "Success",
@@ -396,7 +479,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
       console.error("Error updating password:", error);
       toast({
         title: "Error",
-        description: `Failed to update password: ${error.message}`,
+        description: `Failed to update password: ${error.message || (error.error && error.error.message) || "Unknown error"}`,
         variant: "destructive",
       });
     } finally {
@@ -416,12 +499,10 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
 
     setLoading(true);
     try {
-      await apiCall("/auth/update-email", {
-        method: "POST",
-        body: JSON.stringify({
-          newEmail: newEmail,
-        }),
+      const { error } = await authClient.changeEmail({
+        newEmail: newEmail,
       });
+      if (error) throw error;
 
       toast({
         title: "Success",
@@ -432,7 +513,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
       console.error("Error updating email:", error);
       toast({
         title: "Error",
-        description: `Failed to update email: ${error.message}`,
+        description: `Failed to update email: ${error.message || (error.error && error.error.message) || "Unknown error"}`,
         variant: "destructive",
       });
     } finally {
@@ -441,7 +522,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   };
 
   const handleImageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (!event.target.files || !event.target.files[0] || !user) return;
 
@@ -473,7 +554,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
     formData.append("avatar", file);
 
     try {
-      const response = await apiCall("/auth/profiles/avatar", {
+      const response = await apiCall("/identity/profiles/avatar", {
         method: "POST",
         body: formData,
         isFormData: true, // Indicate that the body is FormData
@@ -507,12 +588,19 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
   };
 
   const queryParams = new URLSearchParams(location.search);
-  const defaultExpanded = queryParams.get('section') === 'integrations' ? ["food-and-exercise-data-providers"] : [];
+  const defaultExpanded =
+    queryParams.get("section") === "integrations"
+      ? ["food-and-exercise-data-providers"]
+      : [];
 
   return (
     <div className="space-y-6 w-full">
       {/* Removed redundant Settings heading */}
-      <Accordion type="multiple" className="w-full" defaultValue={defaultExpanded}>
+      <Accordion
+        type="multiple"
+        className="w-full"
+        defaultValue={defaultExpanded}
+      >
         {/* Profile Information */}
         <AccordionItem
           value="profile-information"
@@ -522,7 +610,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.profileInformation.description",
-              "Manage your personal information and profile picture"
+              "Manage your personal information and profile picture",
             )}
           >
             <User className="h-5 w-5" />
@@ -555,13 +643,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                       <Camera className="h-4 w-4 mr-2" />
                       {uploadingImage
                         ? t(
-                          "settings.profileInformation.uploading",
-                          "Uploading..."
-                        )
+                            "settings.profileInformation.uploading",
+                            "Uploading...",
+                          )
                         : t(
-                          "settings.profileInformation.changePhoto",
-                          "Change Photo"
-                        )}
+                            "settings.profileInformation.changePhoto",
+                            "Change Photo",
+                          )}
                     </span>
                   </Button>
                 </Label>
@@ -575,7 +663,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 <p className="text-xs text-muted-foreground mt-1">
                   {t(
                     "settings.profileInformation.photoSize",
-                    "PNG, JPG up to 5MB"
+                    "PNG, JPG up to 5MB",
                   )}
                 </p>
               </div>
@@ -599,7 +687,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   }
                   placeholder={t(
                     "settings.profileInformation.enterFullName",
-                    "Enter your full name"
+                    "Enter your full name",
                   )}
                 />
               </div>
@@ -618,7 +706,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   }
                   placeholder={t(
                     "settings.profileInformation.enterPhoneNumber",
-                    "Enter your phone number"
+                    "Enter your phone number",
                   )}
                 />
               </div>
@@ -626,7 +714,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 <Label htmlFor="date_of_birth">
                   {t(
                     "settings.profileInformation.dateOfBirth",
-                    "Date of Birth"
+                    "Date of Birth",
                   )}
                 </Label>
                 <Popover>
@@ -642,7 +730,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                         <span>
                           {t(
                             "settings.profileInformation.pickADate",
-                            "Pick a date"
+                            "Pick a date",
                           )}
                         </span>
                       )}
@@ -682,7 +770,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                     <SelectValue
                       placeholder={t(
                         "settings.profileInformation.selectGender",
-                        "Select Gender"
+                        "Select Gender",
                       )}
                     />
                   </SelectTrigger>
@@ -711,7 +799,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   }
                   placeholder={t(
                     "settings.profileInformation.tellAboutYourself",
-                    "Tell us about yourself"
+                    "Tell us about yourself",
                   )}
                   rows={3}
                 />
@@ -735,7 +823,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.preferences.description",
-              "Customize your app settings and display preferences"
+              "Customize your app settings and display preferences",
             )}
           >
             <SettingsIcon className="h-5 w-5" />
@@ -792,7 +880,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 <Label htmlFor="measurement_unit">
                   {t(
                     "settings.preferences.measurementUnit",
-                    "Measurement Unit"
+                    "Measurement Unit",
                   )}
                 </Label>
                 <Select
@@ -806,7 +894,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                     <SelectItem value="cm">
                       {t(
                         "settings.preferences.centimeters",
-                        "Centimeters (cm)"
+                        "Centimeters (cm)",
                       )}
                     </SelectItem>
                     <SelectItem value="inches">
@@ -860,14 +948,14 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 <Label htmlFor="logging_level">
                   {t(
                     "settings.preferences.loggingLevel",
-                    "Minimum Logging Level"
+                    "Minimum Logging Level",
                   )}
                 </Label>
                 <Select
                   value={localLoggingLevel}
                   onValueChange={(value) =>
                     setLocalLoggingLevel(
-                      value as "DEBUG" | "INFO" | "WARN" | "ERROR" | "SILENT"
+                      value as "DEBUG" | "INFO" | "WARN" | "ERROR" | "SILENT",
                     )
                   }
                 >
@@ -897,7 +985,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 <Label htmlFor="item_display_limit">
                   {t(
                     "settings.preferences.itemDisplayLimit",
-                    "Search/Recent/Top Limit"
+                    "Search/Recent/Top Limit",
                   )}
                 </Label>
                 <Select
@@ -954,9 +1042,17 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               </div>
               <div className="flex items-center justify-between col-span-2 py-2">
                 <div className="space-y-0.5">
-                  <Label htmlFor="auto-scale-openfoodfacts">{t('settings.preferences.autoScaleOpenFoodFacts', 'Auto-scale OpenFoodFacts Imports')}</Label>
+                  <Label htmlFor="auto-scale-openfoodfacts">
+                    {t(
+                      "settings.preferences.autoScaleOpenFoodFacts",
+                      "Auto-scale OpenFoodFacts Imports",
+                    )}
+                  </Label>
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.preferences.autoScaleOpenFoodFactsHint', 'When enabled, nutrition values from OpenFoodFacts will be automatically scaled from per-100g to the product\'s serving size.')}
+                    {t(
+                      "settings.preferences.autoScaleOpenFoodFactsHint",
+                      "When enabled, nutrition values from OpenFoodFacts will be automatically scaled from per-100g to the product's serving size.",
+                    )}
                   </p>
                 </div>
                 <Switch
@@ -983,7 +1079,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.waterTracking.description",
-              "Configure your water intake tracking settings"
+              "Configure your water intake tracking settings",
             )}
           >
             <Droplet className="h-5 w-5" />
@@ -994,7 +1090,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               <Label htmlFor="water_display_unit">
                 {t(
                   "settings.waterTracking.waterDisplayUnit",
-                  "Water Display Unit"
+                  "Water Display Unit",
                 )}
               </Label>
               <Select
@@ -1008,13 +1104,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   <SelectItem value="ml">
                     {t(
                       "settings.waterTracking.milliliters",
-                      "Milliliters (ml)"
+                      "Milliliters (ml)",
                     )}
                   </SelectItem>
                   <SelectItem value="oz">
                     {t(
                       "settings.waterTracking.fluidOunces",
-                      "Fluid Ounces (oz)"
+                      "Fluid Ounces (oz)",
                     )}
                   </SelectItem>
                   <SelectItem value="cup">
@@ -1028,9 +1124,9 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               {loading
                 ? t("settings.profileInformation.saving", "Saving...")
                 : t(
-                  "settings.waterTracking.saveWaterDisplayUnit",
-                  "Save Water Display Unit"
-                )}
+                    "settings.waterTracking.saveWaterDisplayUnit",
+                    "Save Water Display Unit",
+                  )}
             </Button>
             <Separator />
             <WaterContainerManager />
@@ -1061,7 +1157,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.nutrientDisplay.description",
-              "Choose which nutrients to display in food and meal views"
+              "Choose which nutrients to display in food and meal views",
             )}
           >
             <ListChecks className="h-5 w-5" />
@@ -1080,7 +1176,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.calculationSettings.description",
-              "Manage BMR and Body Fat calculation preferences"
+              "Manage BMR and Body Fat calculation preferences",
             )}
           >
             <SettingsIcon className="h-5 w-5" />
@@ -1088,57 +1184,6 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <CalculationSettings />
-
-            {/* Calorie Goal Adjustment Mode */}
-            <Separator className="my-6" />
-            <h3 className="text-lg font-semibold mb-2">
-              {t(
-                "settings.calorieGoalAdjustment.title",
-                "Calorie Goal Adjustment"
-              )}
-            </h3>
-            <div className="flex flex-col space-y-2">
-              <RadioGroup
-                value={calorieGoalAdjustmentMode}
-                onValueChange={(value: "dynamic" | "fixed") =>
-                  setCalorieGoalAdjustmentMode(value)
-                }
-                className="flex flex-col space-y-1"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="dynamic" id="dynamic-goal" />
-                  <Label htmlFor="dynamic-goal">
-                    <span className="font-medium">
-                      {t(
-                        "settings.calorieGoalAdjustment.dynamicGoal",
-                        "Dynamic Goal"
-                      )}
-                      :
-                    </span>{" "}
-                    {t(
-                      "settings.calorieGoalAdjustment.dynamicGoalDescription",
-                      "Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily."
-                    )}
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="fixed" id="fixed-goal" />
-                  <Label htmlFor="fixed-goal">
-                    <span className="font-medium">
-                      {t(
-                        "settings.calorieGoalAdjustment.fixedGoal",
-                        "Fixed Goal"
-                      )}
-                      :
-                    </span>{" "}
-                    {t(
-                      "settings.calorieGoalAdjustment.fixedGoalDescription",
-                      "Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target."
-                    )}
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
           </AccordionContent>
         </AccordionItem>
 
@@ -1147,7 +1192,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.familyAccess.description",
-              "Manage access to your data for family members"
+              "Manage access to your data for family members",
             )}
           >
             <Users className="h-5 w-5" />
@@ -1166,7 +1211,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.customCategories.description",
-              "Create and manage custom measurement categories"
+              "Create and manage custom measurement categories",
             )}
           >
             <Tag className="h-5 w-5" />
@@ -1185,7 +1230,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.customMeals.description",
-              "Create and manage custom meals types"
+              "Create and manage custom meals types",
             )}
           >
             <UtensilsCrossed className="h-5 w-5" />
@@ -1204,20 +1249,20 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.foodExerciseDataProviders.description",
-              "Configure external food and exercise data sources and synchronize data with Garmin Connect"
+              "Configure external food and exercise data sources and synchronize data with Garmin Connect",
             )}
           >
             <Cloud className="h-5 w-5" />
             {t(
               "settings.foodExerciseDataProviders.title",
-              "Food & Exercise Data Providers"
+              "Food & Exercise Data Providers",
             )}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <TooltipWarning
               warningMsg={t(
                 "settings.foodExerciseDataProviders.invalidKeyLengthWarning",
-                'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.'
+                'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.',
               )}
             />
             <ExternalProviderSettings />
@@ -1230,7 +1275,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.aiService.description",
-              "Manage settings for AI-powered features"
+              "Manage settings for AI-powered features",
             )}
           >
             <Sparkles className="h-5 w-5" />
@@ -1240,7 +1285,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             <TooltipWarning
               warningMsg={t(
                 "settings.aiService.invalidKeyLengthWarning",
-                'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.'
+                'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.',
               )}
             />
             <AIServiceSettings />
@@ -1255,7 +1300,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.apiKeyManagement.description",
-              "Generate and manage API keys for external integrations"
+              "Generate and manage API keys for external integrations",
             )}
           >
             <KeyRound className="h-5 w-5" />
@@ -1265,127 +1310,242 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
             <p className="text-sm text-muted-foreground">
               {t(
                 "settings.apiKeyManagement.infoText",
-                "Generate API keys to securely submit data from external applications like iPhone Shortcuts. These keys are tied to your account and can be revoked at any time."
+                "Generate API keys to securely submit data from external applications like iPhone Shortcuts. These keys are tied to your account and can be revoked at any time.",
               )}
             </p>
 
             <TooltipWarning
               warningMsg={t(
                 "settings.apiKeyManagement.wikiWarning",
-                "Refer to the Wiki page in Github for sample setup instructions for iPhone and Android."
+                "Refer to the Wiki page in Github for sample setup instructions for iPhone and Android.",
               )}
               color="blue"
             />
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                placeholder={t(
-                  "settings.apiKeyManagement.descriptionPlaceholder",
-                  "Description (e.g., 'iPhone Health Shortcut')"
-                )}
-                value={newApiKeyDescription}
-                onChange={(e) => setNewApiKeyDescription(e.target.value)}
-                className="flex-grow"
-              />
-              <Button
-                onClick={handleGenerateApiKey}
-                disabled={generatingApiKey}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {generatingApiKey
-                  ? t("settings.apiKeyManagement.generating", "Generating...")
-                  : t(
-                    "settings.apiKeyManagement.generateNewKey",
-                    "Generate New Key"
+            {newlyCreatedKey && (
+              <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-md mb-4">
+                <p className="text-sm font-bold text-yellow-800 dark:text-yellow-200 mb-1">
+                  {t(
+                    "settings.apiKeyManagement.newKeyGenerated",
+                    "New API Key Generated!",
                   )}
-              </Button>
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-2">
+                  {t(
+                    "settings.apiKeyManagement.copyWarning",
+                    "Copy this key now. For security, it will NOT be shown again.",
+                  )}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    readOnly
+                    value={newlyCreatedKey}
+                    className="font-mono text-xs bg-background"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(newlyCreatedKey);
+                      toast({
+                        title: t("settings.apiKeyManagement.copied", "Copied!"),
+                        description: t(
+                          "settings.apiKeyManagement.apiKeyCopied",
+                          "API key copied to clipboard.",
+                        ),
+                      });
+                    }}
+                  >
+                    <ClipboardCopy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setNewlyCreatedKey(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="flex-grow space-y-2 w-full">
+                  <Label htmlFor="api-key-description">
+                    {t(
+                      "settings.apiKeyManagement.descriptionLabel",
+                      "Description (e.g., 'iPhone Health Shortcut')",
+                    )}
+                  </Label>
+                  <Input
+                    id="api-key-description"
+                    value={newApiKeyDescription}
+                    onChange={(e) => setNewApiKeyDescription(e.target.value)}
+                    placeholder={t(
+                      "settings.apiKeyManagement.placeholder",
+                      "Description (e.g., 'iPhone Health Shortcut')",
+                    )}
+                  />
+                </div>
+                <div className="space-y-2 w-full sm:w-48">
+                  <Label htmlFor="api-key-expiry">
+                    {t("settings.apiKeyManagement.expiresIn", "Expires In")}
+                  </Label>
+                  <Select
+                    value={newApiKeyExpiresIn?.toString() || "null"}
+                    onValueChange={(val) =>
+                      setNewApiKeyExpiresIn(
+                        val === "null" ? null : parseInt(val),
+                      )
+                    }
+                  >
+                    <SelectTrigger id="api-key-expiry">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="null">
+                        {t("settings.apiKeyManagement.never", "Never")}
+                      </SelectItem>
+                      <SelectItem value={(60 * 60 * 24 * 7).toString()}>
+                        {t("settings.apiKeyManagement.7days", "7 Days")}
+                      </SelectItem>
+                      <SelectItem value={(60 * 60 * 24 * 30).toString()}>
+                        {t("settings.apiKeyManagement.30days", "30 Days")}
+                      </SelectItem>
+                      <SelectItem value={(60 * 60 * 24 * 90).toString()}>
+                        {t("settings.apiKeyManagement.90days", "90 Days")}
+                      </SelectItem>
+                      <SelectItem value={(60 * 60 * 24 * 365).toString()}>
+                        {t("settings.apiKeyManagement.1year", "1 Year")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={handleGenerateApiKey}
+                  disabled={generatingApiKey}
+                  className="w-full sm:w-auto"
+                >
+                  <KeyRound className="h-4 w-4 mr-2" />
+                  {generatingApiKey
+                    ? t("settings.apiKeyManagement.generating", "Generating...")
+                    : t(
+                        "settings.apiKeyManagement.generate",
+                        "Generate New Key",
+                      )}
+                </Button>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={handleCleanupExpiredKeys}
+                  disabled={cleaningUpKeys}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  {cleaningUpKeys
+                    ? t("common.processing", "Processing...")
+                    : t(
+                        "settings.apiKeyManagement.cleanupExpired",
+                        "Cleanup Expired Keys",
+                      )}
+                </Button>
+              </div>
             </div>
 
-            <Separator />
-
-            <div className="space-y-3">
+            {/* API Key List */}
+            <div className="space-y-4">
               {apiKeys.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-center text-sm text-muted-foreground py-4">
                   {t(
                     "settings.apiKeyManagement.noApiKeys",
-                    "No API keys generated yet."
+                    "No API keys generated yet.",
                   )}
                 </p>
               ) : (
                 apiKeys.map((key) => (
                   <div
                     key={key.id}
-                    className="flex items-center space-x-2 p-2 border rounded-md"
+                    className={`flex items-center space-x-4 p-3 border rounded-md ${!key.enabled ? "bg-muted/50 opacity-80" : ""}`}
                   >
-                    <div className="flex-grow">
-                      <p className="font-medium">
-                        {key.description ||
-                          t(
-                            "settings.apiKeyManagement.noDescription",
-                            "No Description"
-                          )}
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span className="font-mono text-xs">
-                          {showApiKey === key.id
-                            ? key.api_key
-                            : "********************"}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setShowApiKey(showApiKey === key.id ? null : key.id)
-                          }
-                          className="h-auto p-1"
-                        >
-                          {showApiKey === key.id ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            navigator.clipboard.writeText(key.api_key);
-                            toast({
-                              title: t(
-                                "settings.apiKeyManagement.copied",
-                                "Copied!"
-                              ),
-                              description: t(
-                                "settings.apiKeyManagement.apiKeyCopied",
-                                "API key copied to clipboard."
-                              ),
-                            });
-                          }}
-                          className="h-auto p-1"
-                        >
-                          <ClipboardCopy className="h-4 w-4" />
-                        </Button>
+                    <div className="flex-grow space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">
+                          {key.name ||
+                            t(
+                              "settings.apiKeyManagement.noDescription",
+                              "No Description",
+                            )}
+                        </p>
+                        {!key.enabled && (
+                          <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border uppercase font-bold">
+                            {t(
+                              "settings.apiKeyManagement.disabled",
+                              "Disabled",
+                            )}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {t("settings.apiKeyManagement.created", "Created:")}{" "}
-                        {new Date(key.created_at).toLocaleDateString()}
-                        {key.last_used_at &&
-                          ` | ${t(
-                            "settings.apiKeyManagement.lastUsed",
-                            "Last Used:"
-                          )} ${new Date(
-                            key.last_used_at
-                          ).toLocaleDateString()}`}
-                        {/* Removed Inactive status as per user request */}
-                      </p>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span className="font-mono text-xs">{key.id}</span>
+                        <TooltipWarning
+                          warningMsg={t(
+                            "settings.apiKeyManagement.idOnlyInfo",
+                            "Only the Key ID is shown for security.",
+                          )}
+                          color="blue"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <p>
+                          {t("settings.apiKeyManagement.created", "Created:")}{" "}
+                          {key.createdAt
+                            ? new Date(key.createdAt).toLocaleDateString()
+                            : "N/A"}
+                        </p>
+                        {key.expiresAt && (
+                          <p
+                            className={
+                              new Date(key.expiresAt) < new Date()
+                                ? "text-destructive font-semibold"
+                                : ""
+                            }
+                          >
+                            {t("settings.apiKeyManagement.expires", "Expires:")}{" "}
+                            {new Date(key.expiresAt).toLocaleDateString()}
+                          </p>
+                        )}
+                        {key.lastUsedAt && (
+                          <p>
+                            {t(
+                              "settings.apiKeyManagement.lastUsed",
+                              "Last Used:",
+                            )}{" "}
+                            {new Date(key.lastUsedAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDeleteApiKey(key.id)}
-                      disabled={loading}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={key.enabled}
+                        onCheckedChange={(checked) =>
+                          handleToggleApiKey(key.id, checked)
+                        }
+                        disabled={loading}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteApiKey(key.id)}
+                        disabled={loading}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))
               )}
@@ -1393,29 +1553,44 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="developer-resources" className="border rounded-lg mb-4">
+        <AccordionItem
+          value="developer-resources"
+          className="border rounded-lg mb-4"
+        >
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t('settings.developerResources.description', 'Access API documentation and resources')}
+            description={t(
+              "settings.developerResources.description",
+              "Access API documentation and resources",
+            )}
           >
             <BookOpen className="h-5 w-5" />
-            {t('settings.developerResources.title', 'Developer Resources')}
+            {t("settings.developerResources.title", "Developer Resources")}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <div className="grid gap-4">
               <div className="flex flex-col space-y-2">
                 <h4 className="font-medium">API Documentation</h4>
                 <p className="text-sm text-muted-foreground">
-                  Explore the SparkyFitness API documentation to build integrations or understand the platform better.
+                  Explore the SparkyFitness API documentation to build
+                  integrations or understand the platform better.
                 </p>
                 <div className="flex gap-4 mt-2">
                   <Button variant="outline" asChild>
-                    <a href="/api-docs/swagger" target="_blank" rel="noopener noreferrer">
+                    <a
+                      href="/api/api-docs/swagger"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Swagger UI (Interactive)
                     </a>
                   </Button>
                   <Button variant="outline" asChild>
-                    <a href="/api-docs/redoc" target="_blank" rel="noopener noreferrer">
+                    <a
+                      href="/api/api-docs/redoc"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Redoc (Read-only)
                     </a>
                   </Button>
@@ -1425,12 +1600,15 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="account-security" className="border rounded-lg mb-4">
+        <AccordionItem
+          value="account-security"
+          className="border rounded-lg mb-4"
+        >
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               "settings.accountSecurity.description",
-              "Change your email or password and manage MFA"
+              "Change your email or password and manage MFA",
             )}
           >
             <Lock className="h-5 w-5" />
@@ -1450,7 +1628,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder={t(
                     "settings.accountSecurity.enterNewEmail",
-                    "Enter new email address"
+                    "Enter new email address",
                   )}
                 />
                 <Button
@@ -1464,7 +1642,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               <p className="text-xs text-muted-foreground mt-1">
                 {t(
                   "settings.accountSecurity.verifyNewEmail",
-                  "You'll need to verify your new email address"
+                  "You'll need to verify your new email address",
                 )}
               </p>
             </div>
@@ -1482,7 +1660,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
               <h3 className="text-lg font-medium">
                 {t(
                   "settings.accountSecurity.changePassword",
-                  "Change Password"
+                  "Change Password",
                 )}
               </h3>
               {/* Hidden username field for password managers */}
@@ -1515,7 +1693,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                     }
                     placeholder={t(
                       "settings.accountSecurity.enterNewPassword",
-                      "Enter new password"
+                      "Enter new password",
                     )}
                   />
                 </div>
@@ -1523,7 +1701,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                   <Label htmlFor="confirm_password">
                     {t(
                       "settings.accountSecurity.confirmNewPassword",
-                      "Confirm New Password"
+                      "Confirm New Password",
                     )}
                   </Label>
                   <Input
@@ -1539,7 +1717,7 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                     }
                     placeholder={t(
                       "settings.accountSecurity.confirmNewPassword",
-                      "Confirm New Password"
+                      "Confirm New Password",
                     )}
                   />
                 </div>
@@ -1556,11 +1734,13 @@ const Settings: React.FC<SettingsProps> = ({ onShowAboutDialog }) => {
                 {loading
                   ? t("settings.accountSecurity.updating", "Updating...")
                   : t(
-                    "settings.accountSecurity.updatePassword",
-                    "Update Password"
-                  )}
+                      "settings.accountSecurity.updatePassword",
+                      "Update Password",
+                    )}
               </Button>
             </form>
+            <Separator />
+            <PasskeySettings />
             <Separator />
             <MFASettings />
           </AccordionContent>

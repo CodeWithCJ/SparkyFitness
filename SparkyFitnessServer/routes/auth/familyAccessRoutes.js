@@ -6,7 +6,7 @@ const { log } = require('../../config/logging');
 
 /**
  * @swagger
- * /auth/users/accessible-users:
+ * /identity/users/accessible-users:
  *   get:
  *     summary: Get accessible users
  *     tags: [Identity & Security]
@@ -28,7 +28,7 @@ router.get('/users/accessible-users', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/access/can-access-user-data:
+ * /identity/access/can-access-user-data:
  *   get:
  *     summary: Check if the current user can access another user's data
  *     tags: [Identity & Security]
@@ -68,7 +68,7 @@ router.get('/access/can-access-user-data', authenticate, async (req, res, next) 
 
 /**
  * @swagger
- * /auth/access/check-family-access:
+ * /identity/access/check-family-access:
  *   get:
  *     summary: Check family access permissions
  *     tags: [Identity & Security]
@@ -108,7 +108,7 @@ router.get('/access/check-family-access', authenticate, async (req, res, next) =
 
 /**
  * @swagger
- * /auth/family-access:
+ * /identity/family-access:
  *   get:
  *     summary: Get family access entries
  *     tags: [Identity & Security]
@@ -166,7 +166,7 @@ router.get('/family-access', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/family-access:
+ * /identity/family-access:
  *   post:
  *     summary: Create a new family access entry
  *     tags: [Identity & Security]
@@ -210,6 +210,16 @@ router.get('/family-access', authenticate, async (req, res, next) => {
 router.post('/family-access', authenticate, async (req, res, next) => {
   const entryData = req.body;
 
+  // Normalize access_permissions keys (replace spaces with underscores)
+  if (entryData.access_permissions) {
+    const normalizedPermissions = {};
+    for (const [key, value] of Object.entries(entryData.access_permissions)) {
+      normalizedPermissions[key.replace(/ /g, '_')] = value;
+    }
+    entryData.access_permissions = normalizedPermissions;
+  }
+
+
   if (!entryData.family_user_id || !entryData.family_email || !entryData.access_permissions) {
     return res.status(400).json({ error: 'Family User ID, Family Email, and Access Permissions are required.' });
   }
@@ -227,7 +237,7 @@ router.post('/family-access', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/family-access/{id}:
+ * /identity/family-access/{id}:
  *   put:
  *     summary: Update a family access entry
  *     tags: [Identity & Security]
@@ -278,6 +288,16 @@ router.put('/family-access/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
 
+  // Normalize access_permissions keys (replace spaces with underscores)
+  if (updateData.access_permissions) {
+    const normalizedPermissions = {};
+    for (const [key, value] of Object.entries(updateData.access_permissions)) {
+      normalizedPermissions[key.replace(/ /g, '_')] = value;
+    }
+    updateData.access_permissions = normalizedPermissions;
+  }
+
+
   if (!id) {
     return res.status(400).json({ error: 'Family Access ID is required.' });
   }
@@ -298,7 +318,7 @@ router.put('/family-access/:id', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/family-access/{id}:
+ * /identity/family-access/{id}:
  *   delete:
  *     summary: Delete a family access entry
  *     tags: [Identity & Security]

@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Dumbbell, Edit, Trash2, Settings, Play } from "lucide-react";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { ExerciseEntry } from "@/services/exerciseEntryService";
 import { Exercise } from "@/services/exerciseService";
 import { formatMinutesToHHMM } from "@/utils/timeFormatters"; // Import the new utility function
@@ -83,8 +82,8 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
                 {` • Sets: ${String(exerciseEntry.sets.length)}`}
                 {exerciseEntry.sets.map((set, index) => (
                   <span key={index}>
-                    {set.reps && ` • Reps: ${String(set.reps)}`}
-                    {set.weight && ` • Weight: ${convertWeight(set.weight, 'kg', weightUnit).toFixed(1)} ${weightUnit}`}
+                    {Number.isFinite(set.reps) && ` • Reps: ${String(set.reps)}`}
+                    {Number.isFinite(set.weight) && ` • Weight: ${convertWeight(set.weight, 'kg', weightUnit).toFixed(1)} ${weightUnit}`}
                   </span>
                 ))}
               </>

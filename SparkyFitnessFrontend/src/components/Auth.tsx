@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +12,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Zap } from "lucide-react";
+import { Zap, Loader2, Fingerprint } from "lucide-react";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { debug, info, warn, error } from "@/utils/logging";
+import { debug, info, error } from "@/utils/logging";
+import { authClient } from "@/lib/auth-client";
 import {
   registerUser,
   loginUser,
@@ -33,8 +34,14 @@ import MfaChallenge from "../pages/MfaChallenge"; // Import the MfaChallenge com
 const Auth = () => {
   const navigate = useNavigate();
   const { loggingLevel } = usePreferences();
-  const { signIn } = useAuth();
+  const { signIn, user: authUser, loading: authLoading } = useAuth();
   debug(loggingLevel, "Auth: Component rendered.");
+
+  // Debugging Mount/Unmount
+  useEffect(() => {
+    // console.log("DEBUG: Auth.tsx MOUNTED");
+    // return () => console.log("DEBUG: Auth.tsx UNMOUNTED");
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -56,6 +63,12 @@ const Auth = () => {
 
   useEffect(() => {
     const fetchAuthSettings = async () => {
+      // PREVENT AUTO-REDIRECT: If we already have a user or are still loading auth status
+      if (authUser || authLoading) {
+        console.log("Auth Page: Guard triggered - user session already active or loading.");
+        return;
+      }
+
       try {
         const settings = await getLoginSettings();
         setLoginSettings(settings);
@@ -64,8 +77,16 @@ const Auth = () => {
           const providers = await getOidcProviders();
           setOidcProviders(providers);
 
-          if (!settings.email.enabled && providers.length === 1) {
-            initiateOidcLogin(providers[0].id);
+          // AUTO-REDIRECT LOGIC: Only when email is disabled and exactly 1 OIDC provider is active
+          if (!settings.email.enabled && providers.length === 1 && !authUser && !authLoading) {
+            console.log("Auth Page: Auto-redirecting to OIDC provider:", providers[0].id);
+            // Safety timeout to catch any late-arriving sessions
+            const timer = setTimeout(() => {
+              if (!authUser) {
+                initiateOidcLogin(providers[0].id, providers[0].auto_register);
+              }
+            }, 800);
+            return () => clearTimeout(timer);
           }
         }
       } catch (err) {
@@ -78,14 +99,125 @@ const Auth = () => {
       }
     };
     fetchAuthSettings();
-  }, [loggingLevel]);
+  }, [loggingLevel, authUser, authLoading]);
+
+  // Passkey Conditional UI (Autofill)
+  useEffect(() => {
+    const initPasskeyAutofill = async () => {
+      // @ts-ignore
+      if (window.PublicKeyCredential && PublicKeyCredential.isConditionalMediationAvailable) {
+        // @ts-ignore
+        const isAvailable = await PublicKeyCredential.isConditionalMediationAvailable();
+        if (isAvailable) {
+          debug(loggingLevel, "Auth: Passkey Conditional UI available. Starting autofill prompt.");
+          try {
+            await authClient.signIn.passkey({
+              autoFill: true,
+              fetchOptions: {
+                onSuccess() {
+                  info(loggingLevel, "Auth: Passkey autofill successful.");
+                  navigate("/");
+                },
+                onError(ctx) {
+                  // Silently ignore "Authentication was not completed" which is usually a cancel/timeout
+                  if (ctx.error.message?.includes("Authentication was not completed")) {
+                    debug(loggingLevel, "Auth: Passkey autofill dismissed or timed out.");
+                    return;
+                  }
+                  error(loggingLevel, "Auth: Passkey autofill error:", ctx.error);
+                }
+              }
+            });
+          } catch (err) {
+            // Silently fail for autofill
+            debug(loggingLevel, "Auth: Passkey autofill silently ignored or failed.");
+          }
+        }
+      }
+    };
+    // Only attempt if not already logged in
+    if (!authUser && !authLoading) {
+      initPasskeyAutofill();
+    }
+  }, [authUser, authLoading, loggingLevel, navigate]);
+
+  const triggerMfaChallenge = async (
+    authResponse: AuthResponse,
+    currentUserEmail: string,
+    handlers: { onMfaSuccess: () => void; onMfaCancel: () => void }
+  ) => {
+    // CRITICAL: If twoFactorRedirect is true, we MUST show the challenge
+    // Even if factor flags are missing, we default to showing the challenge
+    const shouldShowChallenge = authResponse.mfa_totp_enabled ||
+      authResponse.mfa_email_enabled ||
+      authResponse.needs_mfa_setup ||
+      authResponse.twoFactorRedirect;
+
+    if (shouldShowChallenge) {
+      info(loggingLevel, "Auth: MFA required. Displaying MFA challenge.");
+
+      // Proactively fetch MFA factors if missing
+      let mfaEmail = authResponse.mfa_email_enabled;
+      let mfaTotp = authResponse.mfa_totp_enabled;
+      const userEmail = authResponse.email || currentUserEmail;
+
+      if ((mfaEmail === undefined || mfaTotp === undefined) && userEmail) {
+        try {
+          const factorRes = await fetch(`/api/auth/mfa-factors?email=${encodeURIComponent(userEmail)}`);
+          if (factorRes.ok) {
+            const factors = await factorRes.json();
+            mfaEmail = factors.mfa_email_enabled;
+            mfaTotp = factors.mfa_totp_enabled;
+          }
+        } catch (e) {
+          error(loggingLevel, "Auth: Failed to fetch MFA factors:", e);
+          // Default to TOTP if we can't fetch factors but MFA is required
+          mfaTotp = true;
+        }
+      }
+
+      setMfaChallengeProps({
+        userId: authResponse.userId,
+        email: userEmail,
+        mfaTotpEnabled: mfaTotp ?? true,
+        mfaEmailEnabled: mfaEmail ?? false,
+        needsMfaSetup: authResponse.needs_mfa_setup,
+        mfaToken: authResponse.mfaToken,
+        ...handlers,
+      });
+      setShowMfaChallenge(true);
+      return true;
+    }
+
+    info(loggingLevel, "Auth: MFA not required. Bypassing.");
+    return false;
+  };
+
+  const hasAttemptedMagicLinkLogin = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const magicLinkToken = params.get('token');
+    const authError = params.get('error');
     const path = window.location.pathname;
 
-    if (path === '/login/magic-link' && magicLinkToken) {
+    // Handle authentication errors from redirects
+    if (authError) {
+      const errorMsg = authError === 'signup disabled'
+        ? "New registrations are currently disabled for this provider."
+        : `Authentication failed: ${authError}`;
+
+      toast({
+        title: "Login Error",
+        description: errorMsg,
+        variant: "destructive",
+      });
+      // Clear the error from URL by redirecting to base path
+      navigate('/');
+    }
+
+    if (path === '/login/magic-link' && magicLinkToken && !hasAttemptedMagicLinkLogin.current) {
+      hasAttemptedMagicLinkLogin.current = true;
       info(loggingLevel, "Auth: Attempting magic link login.");
       setLoading(true);
       const handleMagicLinkLogin = async () => {
@@ -93,14 +225,7 @@ const Auth = () => {
           const data: AuthResponse = await verifyMagicLink(magicLinkToken);
 
           if (data.status === 'MFA_REQUIRED') {
-            info(loggingLevel, "Auth: MFA required after magic link login. Displaying MFA challenge.");
-            setMfaChallengeProps({
-              userId: data.userId,
-              email: data.email || email,
-              mfaTotpEnabled: data.mfa_totp_enabled,
-              mfaEmailEnabled: data.mfa_email_enabled,
-              needsMfaSetup: data.needs_mfa_setup,
-              mfaToken: data.mfaToken,
+            const mfaShown = await triggerMfaChallenge(data, email, {
               onMfaSuccess: () => {
                 setShowMfaChallenge(false);
                 navigate('/');
@@ -108,10 +233,13 @@ const Auth = () => {
               onMfaCancel: () => {
                 setShowMfaChallenge(false);
                 setLoading(false);
-                navigate('/login'); // Redirect back to login page on cancel
+                navigate('/'); // Redirect back to home page on cancel
               },
             });
-            setShowMfaChallenge(true);
+
+            if (!mfaShown) {
+              signIn(data.userId, data.userId, data.email || email, data.role || 'user', 'magic_link', true, data.fullName);
+            }
           } else {
             info(loggingLevel, "Auth: Magic link login successful.");
             toast({
@@ -127,7 +255,7 @@ const Auth = () => {
             description: err.message || "Magic link is invalid or has expired.",
             variant: "destructive",
           });
-          window.location.replace('/login'); // Force a full page reload to clear state
+          window.location.replace('/'); // Force a full page reload to clear state
         } finally {
           setLoading(false);
         }
@@ -221,27 +349,23 @@ const Auth = () => {
     try {
       const data: AuthResponse = await loginUser(email, password);
 
-      if (data.status === 'MFA_REQUIRED') {
-        info(loggingLevel, "Auth: MFA required for sign in. Displaying MFA challenge.");
-        setMfaChallengeProps({
-          userId: data.userId,
-          email: data.email || email, // Use data.email if available, otherwise fallback to input email
-          mfaTotpEnabled: data.mfa_totp_enabled,
-          mfaEmailEnabled: data.mfa_email_enabled,
-          needsMfaSetup: data.needs_mfa_setup,
-          mfaToken: data.mfaToken,
+      if (data.status === 'MFA_REQUIRED' || data.twoFactorRedirect) {
+        const mfaShown = await triggerMfaChallenge(data, email, {
           onMfaSuccess: () => {
-            setShowMfaChallenge(false); // Hide MFA challenge on success
-            navigate('/'); // Navigate to dashboard or home page
+            setLoading(true);
+            // We don't hide the challenge explicitly to avoid flashing the login form
+            navigate('/');
           },
           onMfaCancel: () => {
-            setShowMfaChallenge(false); // Hide MFA challenge on cancel
-            setLoading(false); // Reset loading state
+            setShowMfaChallenge(false);
+            setLoading(false);
           },
         });
-        setShowMfaChallenge(true);
-        setLoading(false); // Stop loading as MFA challenge is now displayed
-        return;
+
+        if (mfaShown) {
+          setLoading(false); // CRITICAL: Allow MFA challenge to be visible
+          return;
+        }
       }
 
       info(loggingLevel, "Auth: Sign in successful.");
@@ -263,10 +387,38 @@ const Auth = () => {
     debug(loggingLevel, "Auth: Sign in loading state set to false.");
   };
 
+  const handlePasskeySignIn = async () => {
+    info(loggingLevel, "Auth: Attempting Passkey sign-in.");
+    setLoading(true);
+    try {
+      const { data, error } = await authClient.signIn.passkey();
+      if (error) throw error;
+
+      info(loggingLevel, "Auth: Passkey sign-in successful.");
+      toast({ title: "Success", description: "Logged in with Passkey!" });
+      navigate("/");
+    } catch (err: any) {
+      error(loggingLevel, "Auth: Passkey sign-in failed:", err);
+      toast({
+        title: "Passkey Error",
+        description: err.message || "Failed to sign in with Passkey. Ensure your device supports it.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-        {showMfaChallenge ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-300">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-6" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Almost there!</h2>
+            <p className="text-muted-foreground animate-pulse text-sm">Securing your family dashboard...</p>
+          </div>
+        ) : showMfaChallenge ? (
           <MfaChallenge {...mfaChallengeProps} />
         ) : (
           <Card className="w-full max-w-md dark:bg-gray-">
@@ -328,7 +480,7 @@ const Auth = () => {
                             setEmail(e.target.value);
                           }}
                           required
-                          autoComplete="username"
+                          autoComplete="username webauthn"
                         />
                       </div>
                       <div className="space-y-2 relative">
@@ -346,7 +498,7 @@ const Auth = () => {
                             setPassword(e.target.value);
                           }}
                           required
-                          autoComplete="current-password"
+                          autoComplete="current-password webauthn"
                         />
                         <PasswordToggle showPassword={showPassword} passwordToggleHandler={passwordToggleHandler} />
                       </div>
@@ -372,10 +524,18 @@ const Auth = () => {
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
                         <span className="bg-background px-2 text-muted-foreground">
-                          Or continue with
+                          Or sign in with
                         </span>
                       </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      className="w-full bg-primary/5 hover:bg-primary/10 border-primary/20 flex items-center justify-center mb-2"
+                      onClick={handlePasskeySignIn}
+                      disabled={loading}
+                    >
+                      <Fingerprint className="h-4 w-4 mr-2 text-primary" /> Sign in with Passkey
+                    </Button>
                     <Button
                       variant="outline"
                       className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center mb-2"
@@ -390,7 +550,7 @@ const Auth = () => {
                             key={provider.id}
                             variant="outline"
                             className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
-                            onClick={() => initiateOidcLogin(provider.id)}
+                            onClick={() => initiateOidcLogin(provider.id, provider.auto_register)}
                           >
                             {provider.logo_url && (
                               <img src={provider.logo_url} alt={`${provider.display_name} logo`} className="h-5 w-5 mr-2" />

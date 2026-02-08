@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useFasting } from '@/contexts/FastingContext';
 import FastingTimerRing from './fasting/FastingTimerRing';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Play, Timer, Square, TrendingUp, History } from 'lucide-react';
+import { Play, Timer, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

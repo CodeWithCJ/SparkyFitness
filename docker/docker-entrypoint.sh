@@ -5,10 +5,16 @@ echo "Starting SparkyFitness Frontend with environment variables:"
 echo "  SPARKY_FITNESS_SERVER_HOST=${SPARKY_FITNESS_SERVER_HOST}"
 echo "  SPARKY_FITNESS_SERVER_PORT=${SPARKY_FITNESS_SERVER_PORT}"
 echo "  NGINX_RATE_LIMIT=${NGINX_RATE_LIMIT:-5r/s}"
+echo "  SPARKY_FITNESS_FRONTEND_URL=${SPARKY_FITNESS_FRONTEND_URL}"
 
 # Substitute environment variables in the nginx template
 echo "Generating nginx configuration from template..."
-envsubst "\$SPARKY_FITNESS_SERVER_HOST \$SPARKY_FITNESS_SERVER_PORT \$NGINX_RATE_LIMIT" < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
+envsubst "\$SPARKY_FITNESS_SERVER_HOST \$SPARKY_FITNESS_SERVER_PORT \$NGINX_RATE_LIMIT \$SPARKY_FITNESS_FRONTEND_URL" < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
+
+# Print the generated nginx configuration for debugging
+echo "--- Generated Nginx Configuration ---"
+cat /etc/nginx/conf.d/default.conf
+echo "-------------------------------------"
 
 # Test that substitution worked properly
 echo "Testing nginx configuration substitution..."

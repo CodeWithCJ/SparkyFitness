@@ -3,18 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, X, Search, Edit } from 'lucide-react';
+import { Plus, X, Edit } from 'lucide-react';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
-import { debug, info, warn, error } from '@/utils/logging';
-import { Food, FoodVariant, FoodSearchResult } from '@/types/food';
+import { warn, error } from '@/utils/logging';
+import { Food, FoodVariant } from '@/types/food';
 import { Meal, MealFood, MealPayload } from '@/types/meal';
 import { createMeal, updateMeal, getMealById } from '@/services/mealService';
-import { searchFoods } from '@/services/foodService';
 import { createFoodEntryMeal, updateFoodEntryMeal, getFoodEntryMealWithComponents } from '@/services/foodEntryService'; // New imports
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import FoodSearchDialog from './FoodSearchDialog';
@@ -83,7 +81,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         }
       } else if (source === 'food-diary' && foodEntryId) { // Use foodEntryId for food-diary editing
         try {
-          const loggedMeal = await getFoodEntryMealWithComponents(activeUserId, foodEntryId);
+          const loggedMeal = await getFoodEntryMealWithComponents(foodEntryId);
           if (loggedMeal) {
             const quantity = loggedMeal.quantity || 1;
             setMealName(loggedMeal.name);

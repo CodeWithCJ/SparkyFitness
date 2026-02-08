@@ -1,6 +1,43 @@
-console.log('DEBUG: Loading measurementService.js');
+//console.log('DEBUG: Loading measurementService.js');
 const { log } = require('../config/logging'); // Import the logger utility
 const measurementRepository = require('../models/measurementRepository');
+
+/**
+ * Default units for health metric types when not provided by client (e.g. HealthConnect sync).
+ * Ensures graphs and UI show a unit instead of "N/A". Aligned with mobile HealthMetrics and API usage.
+ */
+const DEFAULT_UNITS_BY_HEALTH_TYPE = {
+  step: 'steps', steps: 'steps',
+  heart_rate: 'bpm', HeartRate: 'bpm',
+  'Active Calories': 'kcal', ActiveCaloriesBurned: 'kcal',
+  total_calories: 'kcal', TotalCaloriesBurned: 'kcal',
+  distance: 'm', Distance: 'm',
+  floors_climbed: 'count', FloorsClimbed: 'count',
+  weight: 'kg', Weight: 'kg',
+  sleep_session: 'min', SleepSession: 'min',
+  stress: 'level', Stress: 'level',
+  blood_pressure: 'mmHg', BloodPressure: 'mmHg',
+  basal_metabolic_rate: 'kcal', BasalMetabolicRate: 'kcal',
+  blood_glucose: 'mmol/L', BloodGlucose: 'mmol/L',
+  body_fat: '%', BodyFat: '%',
+  body_temperature: 'celsius', BodyTemperature: 'celsius',
+  resting_heart_rate: 'bpm', RestingHeartRate: 'bpm',
+  respiratory_rate: 'breaths/min', RespiratoryRate: 'breaths/min',
+  oxygen_saturation: '%', OxygenSaturation: '%', BloodOxygenSaturation: '%',
+  vo2_max: 'ml/min/kg', Vo2Max: 'ml/min/kg',
+  height: 'm', Height: 'm',
+  hydration: 'L', Hydration: 'L',
+  lean_body_mass: 'kg', LeanBodyMass: 'kg',
+  basal_body_temperature: 'celsius', BasalBodyTemperature: 'celsius',
+  elevation_gained: 'm', ElevationGained: 'm',
+  bone_mass: 'kg', BoneMass: 'kg',
+  speed: 'm/s', Speed: 'm/s',
+  power: 'watts', Power: 'watts',
+  steps_cadence: 'steps_per_second', StepsCadence: 'steps_per_second',
+  cycling_pedaling_cadence: 'rpm', CyclingPedalingCadence: 'rpm',
+  blood_alcohol_content: '%', BloodAlcoholContent: '%',
+  nutrition: 'kcal', Nutrition: 'kcal',
+};
 const userRepository = require('../models/userRepository');
 const exerciseRepository = require('../models/exerciseRepository'); // For active calories
 const sleepRepository = require('../models/sleepRepository'); // Import sleepRepository
@@ -271,8 +308,15 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           break;
         default:
           // Handle as custom measurement
-          // Get or create custom category first to check its data_type
-          const category = await getOrCreateCustomCategory(userId, actingUserId, type, dataType, measurementType);
+          // Use unit from payload (e.g. HealthConnect sends "unit") or default so UI does not show "N/A"
+          const unitFromPayload = dataEntry.unit ?? dataEntry.measurementType;
+          let resolvedMeasurementType;
+          if (unitFromPayload && typeof unitFromPayload === 'string' && unitFromPayload.trim()) {
+            resolvedMeasurementType = unitFromPayload.trim();
+          } else {
+            resolvedMeasurementType = DEFAULT_UNITS_BY_HEALTH_TYPE[type] || 'N/A';
+          }
+          const category = await getOrCreateCustomCategory(userId, actingUserId, type, dataType, resolvedMeasurementType);
           if (!category || !category.id) {
             errors.push({ error: `Failed to get or create custom category for type: ${type}`, entry: dataEntry });
             break;
@@ -951,6 +995,7 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
     };
     log('debug', `[processSleepEntry] entryToUpsert before upsert:`, entryToUpsert);
 
+    // Pass actingUserId to upsertSleepEntry
     const newSleepEntry = await sleepRepository.upsertSleepEntry(userId, actingUserId, entryToUpsert);
 
     if (stage_events && stage_events.length > 0) {
@@ -962,10 +1007,11 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
       for (const stageEvent of stage_events) {
         // Round duration for each stage event
         const duration = Math.round(Number(stageEvent.duration_in_seconds)) || 0;
+        // Pass actingUserId to upsertSleepStageEvent
         await sleepRepository.upsertSleepStageEvent(userId, newSleepEntry.id, {
           ...stageEvent,
           duration_in_seconds: duration
-        });
+        }, actingUserId);
       }
     }
     return newSleepEntry;
@@ -975,7 +1021,7 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
   }
 }
 
-async function updateSleepEntry(userId, entryId, updateData) {
+async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
   try {
     const { stage_events, bedtime, wake_time, duration_in_seconds, sleep_score: incomingSleepScore, ...entryDetails } = updateData;
 
@@ -1017,7 +1063,8 @@ async function updateSleepEntry(userId, entryId, updateData) {
     log('debug', `[updateSleepEntry] updatedEntryDetails before update:`, updatedEntryDetails);
 
     // Update the main sleep entry details
-    const updatedEntry = await sleepRepository.updateSleepEntry(userId, entryId, updatedEntryDetails);
+    // Pass actingUserId provided in the arguments
+    const updatedEntry = await sleepRepository.updateSleepEntry(userId, entryId, actingUserId, updatedEntryDetails);
 
     // Handle stage events if provided
     if (stage_events !== undefined) {
@@ -1027,7 +1074,8 @@ async function updateSleepEntry(userId, entryId, updateData) {
       // Then, insert the new stage events
       if (stage_events.length > 0) {
         for (const stageEvent of stage_events) {
-          await sleepRepository.upsertSleepStageEvent(userId, entryId, stageEvent);
+          // Pass actingUserId (assuming upsertSleepStageEvent now takes it)
+          await sleepRepository.upsertSleepStageEvent(userId, entryId, stageEvent, actingUserId);
         }
       }
     }

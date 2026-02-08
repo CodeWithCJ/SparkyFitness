@@ -6,76 +6,86 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
+
+  const backendHost = process.env.VITE_BACKEND_HOST || "localhost";
+  const target = `http://${backendHost}:3010`;
   return {
     server: {
       host: "::",
       port: 8080,
-      allowedHosts: ['localhost', '127.0.0.1'], // Hardcoded for debugging
+      allowedHosts: true, // Allow all hosts in development to prevent HMR connection failures
       proxy: {
-      "/api/withings": { // New proxy rule for Withings API calls
-        target: "http://localhost:3010",
-        changeOrigin: true,
-        // No rewrite needed, as the backend expects /api/withings
-      },
-      "/api-docs": {
-        target: "http://localhost:3010",
-        changeOrigin: true,
-      },
-      "/api": {
-        target: "http://localhost:3010",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
-      },
-      "/health-data": {
-        target: "http://localhost:3010",
-        changeOrigin: true,
-        rewrite: (path) => `/api${path}`, // Add /api/ prefix
-      },
-      "/openid": {
-        target: "http://localhost:3010",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/openid/, "/openid"), // Keep the /openid prefix
-      },
-      "/uploads": {
-        target: "http://localhost:3010",
-        changeOrigin: true,
+        "/health-data": {
+          target: target,
+          changeOrigin: true,
+          rewrite: (path) => `/api${path}`, // Add /api/ prefix
+        },
+        "/api": {
+          target: target,
+          changeOrigin: true,
+        },
+        "/uploads": {
+          target: target,
+          changeOrigin: true,
+        },
       },
     },
-  },
-  plugins: [
-    react(),
-    mode === "development" && componentTagger(),
-    VitePWA({
-      registerType: "autoUpdate",
-      manifest: {
-        name: "SparkyFitness",
-        short_name: "SparkyFitness",
-        description: "Your personal fitness companion",
-        theme_color: "#000000",
-        icons: [
-          {
-            src: "images/icons/icon-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "images/icons/icon-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-        ],
+    plugins: [
+      react(),
+      mode === "development" && componentTagger(),
+      // Temporarily disabled for development to debug refresh issue
+      // mode === "production" && VitePWA({...})
+      mode === "production" && VitePWA({
+        registerType: "prompt",
+        manifest: {
+          name: "SparkyFitness",
+          short_name: "SparkyFitness",
+          description: "Your personal fitness companion",
+          theme_color: "#000000",
+          icons: [
+            {
+              src: "images/icons/icon-192x192.png",
+              sizes: "192x192",
+              type: "image/png",
+            },
+            {
+              src: "images/icons/icon-512x512.png",
+              sizes: "512x512",
+              type: "image/png",
+            },
+          ],
+        },
+        workbox: {
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+          navigateFallback: '/index.html',
+          navigateFallbackDenylist: [/^\/api/, /^\/uploads/], // Don't serve index.html for API or Uploads
+        },
+      }),
+    ].filter(Boolean),
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              // Large independent packages in their own chunks
+              if (id.includes('recharts')) return 'vendor-recharts';
+              if (id.includes('leaflet')) return 'vendor-leaflet';
+              if (id.includes('@radix-ui')) return 'vendor-radix';
+              if (id.includes('@ericblade/quagga2') || id.includes('html5-qrcode') || id.includes('@zxing/library')) return 'vendor-scanners';
+              if (id.includes('@dnd-kit')) return 'vendor-dnd';
+              // Everything else (React, utilities, auth, axios) together to avoid dependency issues
+              // This ensures React loads before anything that depends on it
+              return 'vendor-others';
+            }
+          }
+        },
       },
-      workbox: {
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
-      },
-    }),
-  ].filter(Boolean),
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "react": path.resolve(__dirname, "node_modules/react"),
-      "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
+      chunkSizeWarningLimit: 1000,
     },
-  },
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
+    },
   };
 });

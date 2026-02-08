@@ -36,7 +36,7 @@ async function getFamilyAccessEntriesByOwner(ownerUserId) {
               p_owner.full_name AS owner_full_name, p_family.full_name AS family_full_name
        FROM family_access fa
        LEFT JOIN profiles p_owner ON fa.owner_user_id = p_owner.id
-       LEFT JOIN auth.users au ON au.id = fa.owner_user_id
+       LEFT JOIN public."user" u ON u.id = fa.owner_user_id
        LEFT JOIN profiles p_family ON fa.family_user_id = p_family.id
        WHERE fa.owner_user_id = $1
        ORDER BY fa.created_at DESC`,
@@ -55,10 +55,10 @@ async function getFamilyAccessEntriesByUserId(userId) {
       `SELECT fa.id, fa.owner_user_id, fa.family_user_id, fa.family_email, fa.access_permissions,
               fa.access_start_date, fa.access_end_date, fa.is_active, fa.status,
               p_owner.full_name AS owner_full_name, p_family.full_name AS family_full_name,
-              au.email as owner_email
+              u.email as owner_email
        FROM family_access fa
        LEFT JOIN profiles p_owner ON fa.owner_user_id = p_owner.id
-       LEFT JOIN auth.users au ON au.id = fa.owner_user_id
+       LEFT JOIN public."user" u ON u.id = fa.owner_user_id
        LEFT JOIN profiles p_family ON fa.family_user_id = p_family.id
        WHERE fa.owner_user_id = $1 OR fa.family_user_id = $1
        ORDER BY fa.created_at DESC`,

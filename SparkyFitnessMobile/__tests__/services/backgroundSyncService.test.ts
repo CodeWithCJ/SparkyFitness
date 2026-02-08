@@ -1,151 +1,517 @@
-import { calculateSyncDateRange } from '../../src/services/backgroundSyncService';
+import { triggerManualSync } from '../../src/services/backgroundSyncService';
 
-describe('calculateSyncDateRange', () => {
-  describe('1h sync duration', () => {
-    test('at 3:30pm, syncs exactly 1 hour ago to now (rolling window)', () => {
-      const now = new Date('2024-06-15T15:30:00');
-      const { startDate, endDate } = calculateSyncDateRange(now, '1h');
+jest.mock('../../src/services/LogService', () => ({
+  addLog: jest.fn(),
+}));
 
-      // True rolling window: exactly 1 hour before now
-      expect(startDate.getHours()).toBe(14); // 2:30pm
-      expect(startDate.getMinutes()).toBe(30);
-      expect(startDate.getSeconds()).toBe(0);
-      expect(endDate.getHours()).toBe(15);
-      expect(endDate.getMinutes()).toBe(30);
+jest.mock('../../src/services/api', () => ({
+  syncHealthData: jest.fn(),
+}));
+
+jest.mock('../../src/services/storage', () => ({
+  loadLastSyncedTime: jest.fn(),
+  saveLastSyncedTime: jest.fn(),
+  loadBackgroundSyncEnabled: jest.fn(),
+}));
+
+jest.mock('../../src/constants/HealthMetrics', () => ({
+  HEALTH_METRICS: [
+    { id: 'steps', recordType: 'Steps', preferenceKey: 'isStepsSyncEnabled', label: 'Steps' },
+    { id: 'active-calories', recordType: 'ActiveCaloriesBurned', preferenceKey: 'isActiveCaloriesSyncEnabled', label: 'Active Calories' },
+    { id: 'total-calories', recordType: 'TotalCaloriesBurned', preferenceKey: 'isTotalCaloriesSyncEnabled', label: 'Total Calories' },
+    { id: 'distance', recordType: 'Distance', preferenceKey: 'isDistanceSyncEnabled', label: 'Distance' },
+    { id: 'floors', recordType: 'FloorsClimbed', preferenceKey: 'isFloorsClimbedSyncEnabled', label: 'Floors' },
+    { id: 'heart-rate', recordType: 'HeartRate', preferenceKey: 'isHeartRateSyncEnabled', label: 'Heart Rate' },
+    { id: 'sleep', recordType: 'SleepSession', preferenceKey: 'isSleepSyncEnabled', label: 'Sleep' },
+    { id: 'weight', recordType: 'Weight', preferenceKey: 'isWeightSyncEnabled', label: 'Weight' },
+  ],
+}));
+
+jest.mock('../../src/services/healthConnectService', () => ({
+  loadHealthPreference: jest.fn(),
+  readHealthRecords: jest.fn(),
+  transformHealthRecords: jest.fn((data) => data),
+  aggregateSleepSessions: jest.fn((data) => data),
+  aggregateHeartRateByDate: jest.fn((data) => data),
+  getAggregatedStepsByDate: jest.fn(),
+  getAggregatedActiveCaloriesByDate: jest.fn(),
+  getAggregatedTotalCaloriesByDate: jest.fn(),
+  getAggregatedDistanceByDate: jest.fn(),
+  getAggregatedFloorsClimbedByDate: jest.fn(),
+}));
+
+const api = require('../../src/services/api') as { syncHealthData: jest.Mock };
+const storage = require('../../src/services/storage') as {
+  loadLastSyncedTime: jest.Mock;
+  saveLastSyncedTime: jest.Mock;
+  loadBackgroundSyncEnabled: jest.Mock;
+};
+const healthService = require('../../src/services/healthConnectService') as {
+  loadHealthPreference: jest.Mock;
+  readHealthRecords: jest.Mock;
+  transformHealthRecords: jest.Mock;
+  aggregateSleepSessions: jest.Mock;
+  aggregateHeartRateByDate: jest.Mock;
+  getAggregatedStepsByDate: jest.Mock;
+  getAggregatedActiveCaloriesByDate: jest.Mock;
+  getAggregatedTotalCaloriesByDate: jest.Mock;
+  getAggregatedDistanceByDate: jest.Mock;
+  getAggregatedFloorsClimbedByDate: jest.Mock;
+};
+
+describe('performBackgroundSync (via triggerManualSync)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2024-01-15T14:30:00Z'));
+    jest.spyOn(console, 'log').mockImplementation();
+    api.syncHealthData.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  describe('Date windows', () => {
+    test('uses 24h ago when no prior sync exists', async () => {
+      storage.loadLastSyncedTime.mockResolvedValue(null);
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+
+      await triggerManualSync();
+
+      const now = new Date('2024-01-15T14:30:00Z');
+      const expectedSessionStart = new Date(now.getTime() - 24 * 60 * 60 * 1000 - 6 * 60 * 60 * 1000);
+      const expectedAggregatedStart = new Date(expectedSessionStart);
+      expectedAggregatedStart.setHours(0, 0, 0, 0);
+
+      expect(healthService.getAggregatedStepsByDate).toHaveBeenCalledWith(
+        expectedAggregatedStart,
+        now
+      );
     });
 
-    test('at 11pm, startDate is exactly 10pm', () => {
-      const now = new Date('2024-06-15T23:00:00');
-      const { startDate, endDate } = calculateSyncDateRange(now, '1h');
+    test('uses lastSyncedTime with 6h overlap for session queries', async () => {
+      const lastSynced = new Date('2024-01-15T08:00:00Z');
+      storage.loadLastSyncedTime.mockResolvedValue(lastSynced.toISOString());
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.readHealthRecords.mockResolvedValue([{ value: 72 }]);
 
-      expect(startDate.getHours()).toBe(22);
-      expect(startDate.getMinutes()).toBe(0);
-      expect(endDate.getHours()).toBe(23);
-      expect(endDate.getMinutes()).toBe(0);
+      await triggerManualSync();
+
+      const now = new Date('2024-01-15T14:30:00Z');
+      const expectedSessionStart = new Date(lastSynced.getTime() - 6 * 60 * 60 * 1000);
+
+      expect(healthService.readHealthRecords).toHaveBeenCalledWith(
+        'HeartRate',
+        expectedSessionStart,
+        now
+      );
     });
 
-    test('at 12:15am, startDate is 11:15pm previous day', () => {
-      const now = new Date('2024-06-15T00:15:00');
-      const { startDate, endDate } = calculateSyncDateRange(now, '1h');
+    test('uses start-of-day for aggregated metrics', async () => {
+      const lastSynced = new Date('2024-01-15T08:00:00Z');
+      storage.loadLastSyncedTime.mockResolvedValue(lastSynced.toISOString());
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
 
-      expect(startDate.getHours()).toBe(23);
-      expect(startDate.getMinutes()).toBe(15); // Exact time, not rounded
-      expect(startDate.getDate()).toBe(14); // Previous day
-      expect(endDate.getDate()).toBe(15); // Current day
-      expect(endDate.getHours()).toBe(0);
-    });
+      await triggerManualSync();
 
-    test('preserves exact time for rolling window', () => {
-      const now = new Date('2024-06-15T14:30:45.123');
-      const { startDate, endDate } = calculateSyncDateRange(now, '1h');
+      const now = new Date('2024-01-15T14:30:00Z');
+      const sessionStart = new Date(lastSynced.getTime() - 6 * 60 * 60 * 1000);
+      const expectedAggregatedStart = new Date(sessionStart);
+      expectedAggregatedStart.setHours(0, 0, 0, 0);
 
-      expect(startDate.getHours()).toBe(13);
-      expect(startDate.getMinutes()).toBe(30);
-      expect(startDate.getSeconds()).toBe(45);
-      expect(startDate.getMilliseconds()).toBe(123);
-      expect(endDate.getTime()).toBe(now.getTime());
+      expect(healthService.getAggregatedStepsByDate).toHaveBeenCalledWith(
+        expectedAggregatedStart,
+        now
+      );
     });
   });
 
-  describe('4h sync duration', () => {
-    test('at 6pm, syncs exactly 4 hours ago to now (rolling window)', () => {
-      const now = new Date('2024-06-15T18:00:00');
-      const { startDate, endDate } = calculateSyncDateRange(now, '4h');
-
-      expect(startDate.getHours()).toBe(14);
-      expect(startDate.getMinutes()).toBe(0);
-      expect(endDate.getHours()).toBe(18);
-      expect(endDate.getMinutes()).toBe(0);
+  describe('Metric routing', () => {
+    beforeEach(() => {
+      storage.loadLastSyncedTime.mockResolvedValue(new Date('2024-01-15T08:00:00Z').toISOString());
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+      healthService.getAggregatedActiveCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedTotalCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedDistanceByDate.mockResolvedValue([]);
+      healthService.getAggregatedFloorsClimbedByDate.mockResolvedValue([]);
+      healthService.readHealthRecords.mockResolvedValue([]);
     });
 
-    test('at 3pm, startDate is exactly 11am', () => {
-      const now = new Date('2024-06-15T15:00:00');
-      const { startDate, endDate } = calculateSyncDateRange(now, '4h');
+    test('routes Steps to getAggregatedStepsByDate', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isStepsSyncEnabled')
+      );
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
 
-      expect(startDate.getHours()).toBe(11);
-      expect(startDate.getMinutes()).toBe(0);
-      expect(endDate.getHours()).toBe(15);
+      await triggerManualSync();
+
+      expect(healthService.getAggregatedStepsByDate).toHaveBeenCalled();
+      expect(healthService.readHealthRecords).not.toHaveBeenCalledWith('Steps', expect.any(Date), expect.any(Date));
+      expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
+        [{ value: 5000 }],
+        expect.objectContaining({ recordType: 'Steps' })
+      );
     });
 
-    test('at 2am, startDate is exactly 10pm previous day', () => {
-      const now = new Date('2024-06-15T02:00:00');
-      const { startDate, endDate } = calculateSyncDateRange(now, '4h');
+    test('routes ActiveCaloriesBurned to getAggregatedActiveCaloriesByDate', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isActiveCaloriesSyncEnabled')
+      );
+      healthService.getAggregatedActiveCaloriesByDate.mockResolvedValue([{ value: 300 }]);
 
-      expect(startDate.getHours()).toBe(22);
-      expect(startDate.getMinutes()).toBe(0);
-      expect(startDate.getDate()).toBe(14); // Previous day
-      expect(endDate.getDate()).toBe(15);
-      expect(endDate.getHours()).toBe(2);
+      await triggerManualSync();
+
+      expect(healthService.getAggregatedActiveCaloriesByDate).toHaveBeenCalled();
+      expect(healthService.readHealthRecords).not.toHaveBeenCalledWith('ActiveCaloriesBurned', expect.any(Date), expect.any(Date));
+      expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
+        [{ value: 300 }],
+        expect.objectContaining({ recordType: 'ActiveCaloriesBurned' })
+      );
     });
 
-    test('preserves exact time for rolling window', () => {
-      const now = new Date('2024-06-15T14:30:45.123');
-      const { startDate, endDate } = calculateSyncDateRange(now, '4h');
+    test('routes TotalCaloriesBurned to getAggregatedTotalCaloriesByDate', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isTotalCaloriesSyncEnabled')
+      );
+      healthService.getAggregatedTotalCaloriesByDate.mockResolvedValue([{ value: 1800 }]);
 
-      expect(startDate.getHours()).toBe(10);
-      expect(startDate.getMinutes()).toBe(30);
-      expect(startDate.getSeconds()).toBe(45);
-      expect(startDate.getMilliseconds()).toBe(123);
-      expect(endDate.getTime()).toBe(now.getTime());
+      await triggerManualSync();
+
+      expect(healthService.getAggregatedTotalCaloriesByDate).toHaveBeenCalled();
+      expect(healthService.readHealthRecords).not.toHaveBeenCalledWith('TotalCaloriesBurned', expect.any(Date), expect.any(Date));
+      expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
+        [{ value: 1800 }],
+        expect.objectContaining({ recordType: 'TotalCaloriesBurned' })
+      );
+    });
+
+    test('routes Distance to getAggregatedDistanceByDate', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isDistanceSyncEnabled')
+      );
+      healthService.getAggregatedDistanceByDate.mockResolvedValue([{ value: 5.2 }]);
+
+      await triggerManualSync();
+
+      expect(healthService.getAggregatedDistanceByDate).toHaveBeenCalled();
+      expect(healthService.readHealthRecords).not.toHaveBeenCalledWith('Distance', expect.any(Date), expect.any(Date));
+      expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
+        [{ value: 5.2 }],
+        expect.objectContaining({ recordType: 'Distance' })
+      );
+    });
+
+    test('routes FloorsClimbed to getAggregatedFloorsClimbedByDate', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isFloorsClimbedSyncEnabled')
+      );
+      healthService.getAggregatedFloorsClimbedByDate.mockResolvedValue([{ value: 10 }]);
+
+      await triggerManualSync();
+
+      expect(healthService.getAggregatedFloorsClimbedByDate).toHaveBeenCalled();
+      expect(healthService.readHealthRecords).not.toHaveBeenCalledWith('FloorsClimbed', expect.any(Date), expect.any(Date));
+      expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
+        [{ value: 10 }],
+        expect.objectContaining({ recordType: 'FloorsClimbed' })
+      );
+    });
+
+    test('routes HeartRate through readHealthRecords then aggregateHeartRateByDate', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isHeartRateSyncEnabled')
+      );
+      const rawHeartRate = [{ value: 72 }, { value: 75 }];
+      const aggregatedHeartRate = [{ avg: 73.5 }];
+      healthService.readHealthRecords.mockResolvedValue(rawHeartRate);
+      healthService.aggregateHeartRateByDate.mockReturnValue(aggregatedHeartRate);
+
+      await triggerManualSync();
+
+      expect(healthService.readHealthRecords).toHaveBeenCalledWith('HeartRate', expect.any(Date), expect.any(Date));
+      expect(healthService.aggregateHeartRateByDate).toHaveBeenCalledWith(rawHeartRate);
+      expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
+        aggregatedHeartRate,
+        expect.objectContaining({ recordType: 'HeartRate' })
+      );
+    });
+
+    test('routes SleepSession through readHealthRecords then aggregateSleepSessions', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isSleepSyncEnabled')
+      );
+      const rawSleep = [{ duration: 28800 }];
+      const aggregatedSleep = [{ totalDuration: 28800 }];
+      healthService.readHealthRecords.mockResolvedValue(rawSleep);
+      healthService.aggregateSleepSessions.mockReturnValue(aggregatedSleep);
+
+      await triggerManualSync();
+
+      expect(healthService.readHealthRecords).toHaveBeenCalledWith('SleepSession', expect.any(Date), expect.any(Date));
+      expect(healthService.aggregateSleepSessions).toHaveBeenCalledWith(rawSleep);
+      expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
+        aggregatedSleep,
+        expect.objectContaining({ recordType: 'SleepSession' })
+      );
+    });
+
+    test('routes Weight through readHealthRecords without post-processing', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isWeightSyncEnabled')
+      );
+      const rawWeight = [{ value: 75.5 }];
+      healthService.readHealthRecords.mockResolvedValue(rawWeight);
+
+      await triggerManualSync();
+
+      expect(healthService.readHealthRecords).toHaveBeenCalledWith('Weight', expect.any(Date), expect.any(Date));
+      expect(healthService.aggregateHeartRateByDate).not.toHaveBeenCalled();
+      expect(healthService.aggregateSleepSessions).not.toHaveBeenCalled();
+      expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
+        rawWeight,
+        expect.objectContaining({ recordType: 'Weight' })
+      );
     });
   });
 
-  describe('24h sync duration', () => {
-    test('syncs exactly 24 hours ago to now (rolling window)', () => {
-      const now = new Date('2024-06-15T10:00:00');
-      const { startDate, endDate } = calculateSyncDateRange(now, '24h');
-
-      // startDate should be exactly 24 hours before now
-      expect(startDate.getDate()).toBe(14);
-      expect(startDate.getHours()).toBe(10); // Same hour as now, but yesterday
-      expect(startDate.getMinutes()).toBe(0);
-      expect(startDate.getSeconds()).toBe(0);
-
-      // endDate should be now
-      expect(endDate.getDate()).toBe(15);
-      expect(endDate.getHours()).toBe(10);
-      expect(endDate.getMinutes()).toBe(0);
+  describe('Filtering', () => {
+    beforeEach(() => {
+      storage.loadLastSyncedTime.mockResolvedValue(new Date('2024-01-15T08:00:00Z').toISOString());
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+      healthService.getAggregatedActiveCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedTotalCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedDistanceByDate.mockResolvedValue([]);
+      healthService.getAggregatedFloorsClimbedByDate.mockResolvedValue([]);
+      healthService.readHealthRecords.mockResolvedValue([]);
     });
 
-    test('works correctly at midnight (spans to previous day)', () => {
-      const now = new Date('2024-06-15T00:00:00');
-      const { startDate, endDate } = calculateSyncDateRange(now, '24h');
+    test('skips disabled metrics', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled' ? Promise.resolve(true) : Promise.resolve(false);
+      });
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
 
-      // 24 hours before midnight June 15 is midnight June 14
-      expect(startDate.getDate()).toBe(14);
-      expect(startDate.getHours()).toBe(0);
-      expect(endDate.getDate()).toBe(15);
-      expect(endDate.getHours()).toBe(0);
+      await triggerManualSync();
+
+      expect(healthService.getAggregatedStepsByDate).toHaveBeenCalled();
+      expect(healthService.getAggregatedActiveCaloriesByDate).not.toHaveBeenCalled();
+      expect(healthService.readHealthRecords).not.toHaveBeenCalled();
     });
 
-    test('preserves exact time for rolling window', () => {
-      const now = new Date('2024-06-15T14:30:45.123');
-      const { startDate, endDate } = calculateSyncDateRange(now, '24h');
+    test('skips raw metrics with empty results', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled' || key === 'isHeartRateSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.readHealthRecords.mockResolvedValue([]);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
 
-      // startDate should be exactly 24 hours ago with same time
-      expect(startDate.getDate()).toBe(14);
-      expect(startDate.getHours()).toBe(14);
-      expect(startDate.getMinutes()).toBe(30);
-      expect(startDate.getSeconds()).toBe(45);
-      expect(startDate.getMilliseconds()).toBe(123);
+      await triggerManualSync();
 
-      // endDate should match now exactly
-      expect(endDate.getTime()).toBe(now.getTime());
+      expect(healthService.transformHealthRecords).toHaveBeenCalledTimes(1);
+      expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
+        [{ value: 5000 }],
+        expect.objectContaining({ recordType: 'Steps' })
+      );
+    });
+
+    test('skips raw metrics with null results', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled' || key === 'isHeartRateSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.readHealthRecords.mockResolvedValue(null);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+
+      await triggerManualSync();
+
+      expect(healthService.transformHealthRecords).toHaveBeenCalledTimes(1);
+      expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
+        [{ value: 5000 }],
+        expect.objectContaining({ recordType: 'Steps' })
+      );
+    });
+
+    test('skips metrics with empty transformed results', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled' || key === 'isHeartRateSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.readHealthRecords.mockResolvedValue([{ value: 72 }]);
+      healthService.transformHealthRecords.mockImplementation((data, metric) => {
+        if (metric.recordType === 'Steps') return data;
+        return [];
+      });
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
     });
   });
 
-  describe('endDate behavior', () => {
-    test('for all durations (1h/4h/24h), endDate equals now', () => {
-      const now = new Date('2024-06-15T10:30:45.123');
+  describe('API call', () => {
+    beforeEach(() => {
+      storage.loadLastSyncedTime.mockResolvedValue(new Date('2024-01-15T08:00:00Z').toISOString());
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+      healthService.getAggregatedActiveCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedTotalCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedDistanceByDate.mockResolvedValue([]);
+      healthService.getAggregatedFloorsClimbedByDate.mockResolvedValue([]);
+      healthService.readHealthRecords.mockResolvedValue([]);
+    });
 
-      const result1h = calculateSyncDateRange(now, '1h');
-      expect(result1h.endDate.getTime()).toBe(now.getTime());
+    test('sends collected data and saves timestamp when data exists', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled' || key === 'isHeartRateSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.readHealthRecords.mockImplementation((type: string) => {
+        if (type === 'HeartRate') return Promise.resolve([{ value: 72 }, { value: 75 }]);
+        return Promise.resolve([]);
+      });
+      healthService.aggregateHeartRateByDate.mockImplementation((data) => data);
+      healthService.transformHealthRecords.mockImplementation((data) => data);
+      api.syncHealthData.mockResolvedValue(undefined);
 
-      const result4h = calculateSyncDateRange(now, '4h');
-      expect(result4h.endDate.getTime()).toBe(now.getTime());
+      await triggerManualSync();
 
-      const result24h = calculateSyncDateRange(now, '24h');
-      expect(result24h.endDate.getTime()).toBe(now.getTime());
+      expect(api.syncHealthData).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          { value: 5000 },
+          { value: 72 },
+        ])
+      );
+      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+    });
+
+    test('does not call API or save timestamp when no data collected', async () => {
+      healthService.loadHealthPreference.mockResolvedValue(false);
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).not.toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+
+    test('propagates error when api.syncHealthData throws', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isStepsSyncEnabled')
+      );
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.transformHealthRecords.mockImplementation((data) => data);
+      api.syncHealthData.mockRejectedValue(new Error('Network error'));
+
+      await expect(triggerManualSync()).rejects.toThrow('Network error');
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+
+    test('does not call API when all metrics return empty', async () => {
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+      healthService.readHealthRecords.mockResolvedValue([]);
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).not.toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Per-metric errors', () => {
+    beforeEach(() => {
+      storage.loadLastSyncedTime.mockResolvedValue(new Date('2024-01-15T08:00:00Z').toISOString());
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+      healthService.getAggregatedActiveCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedTotalCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedDistanceByDate.mockResolvedValue([]);
+      healthService.getAggregatedFloorsClimbedByDate.mockResolvedValue([]);
+      healthService.readHealthRecords.mockResolvedValue([]);
+    });
+
+    test('continues with remaining metrics when one throws', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled' || key === 'isHeartRateSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.getAggregatedStepsByDate.mockRejectedValue(new Error('Steps fetch failed'));
+      healthService.readHealthRecords.mockImplementation((type: string) => {
+        if (type === 'HeartRate') return Promise.resolve([{ value: 72 }]);
+        return Promise.resolve([]);
+      });
+      healthService.aggregateHeartRateByDate.mockImplementation((data) => data);
+      healthService.transformHealthRecords.mockImplementation((data) => data);
+
+      await triggerManualSync();
+
+      expect(healthService.readHealthRecords).toHaveBeenCalled();
+      expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 72 }]);
+      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+    });
+
+    test('completes sync even when all metrics throw', async () => {
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockRejectedValue(new Error('Aggregation failed'));
+      healthService.readHealthRecords.mockRejectedValue(new Error('Read failed'));
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).not.toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+
+    test('continues when aggregation post-processing throws', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled' || key === 'isHeartRateSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.readHealthRecords.mockImplementation((type: string) => {
+        if (type === 'HeartRate') return Promise.resolve([{ value: 72 }]);
+        return Promise.resolve([]);
+      });
+      healthService.aggregateHeartRateByDate.mockImplementation(() => {
+        throw new Error('Aggregation logic failed');
+      });
+      healthService.transformHealthRecords.mockImplementation((data) => data);
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
+      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+    });
+
+    test('continues when transformation throws', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled' || key === 'isHeartRateSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.readHealthRecords.mockImplementation((type: string) => {
+        if (type === 'HeartRate') return Promise.resolve([{ value: 72 }]);
+        return Promise.resolve([]);
+      });
+      healthService.aggregateHeartRateByDate.mockImplementation((data) => data);
+      healthService.transformHealthRecords.mockImplementation((data, metric) => {
+        if (metric.recordType === 'HeartRate') throw new Error('Transform failed');
+        return data;
+      });
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
+      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
     });
   });
 });

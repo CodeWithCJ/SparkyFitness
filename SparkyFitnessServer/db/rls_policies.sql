@@ -44,7 +44,7 @@ BEGIN
     'mood_entries',
     'profiles',
     'sparky_chat_history',
-    'user_api_keys',
+    'api_key',
     'user_goals',
     'user_ignored_updates',
     'user_nutrient_display_preferences',
@@ -73,13 +73,59 @@ AS $function$
   SELECT (current_setting('app.user_id'::text))::uuid;
 $function$;
 
+CREATE OR REPLACE FUNCTION authenticated_user_id() RETURNS uuid
+LANGUAGE sql STABLE
+AS $function$
+  SELECT NULLIF(current_setting('app.authenticated_user_id', true), '')::uuid;
+$function$;
+
+
+ CREATE OR REPLACE FUNCTION public.get_accessible_users(p_user_id UUID)
+    RETURNS TABLE(
+        user_id UUID,
+        full_name TEXT,
+        email TEXT,
+        permissions JSONB,
+        access_end_date TIMESTAMP WITH TIME ZONE
+    ) AS $func$
+    BEGIN
+      RETURN QUERY
+      SELECT
+        fa.owner_user_id,
+        p.full_name,
+        u.email::TEXT,
+        fa.access_permissions,
+        fa.access_end_date
+      FROM public.family_access fa
+      JOIN public.profiles p ON p.id = fa.owner_user_id
+      JOIN public."user" u ON u.id = fa.owner_user_id
+      WHERE fa.family_user_id = p_user_id
+        AND fa.is_active = true
+        AND (fa.access_end_date IS NULL OR fa.access_end_date > now());
+    END;
+    $func$ LANGUAGE plpgsql STABLE;
+
+ CREATE OR REPLACE FUNCTION public.find_user_by_email(p_email TEXT)
+    RETURNS UUID AS $func$
+    DECLARE
+        v_user_id UUID;
+    BEGIN
+        SELECT id INTO v_user_id
+        FROM public."user"
+        WHERE LOWER(email) = LOWER(p_email)
+        LIMIT 1;
+
+        RETURN v_user_id;
+    END;
+    $func$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
 CREATE OR REPLACE FUNCTION has_family_access(owner_uuid uuid, perm text) RETURNS bool
 LANGUAGE sql STABLE
 AS $function$
   SELECT EXISTS (
     SELECT 1 FROM public.family_access fa
     WHERE fa.owner_user_id = owner_uuid
-    AND fa.family_user_id = current_user_id()
+    AND fa.family_user_id = authenticated_user_id()
     AND fa.is_active = true
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND (fa.access_permissions ->> perm)::boolean = true
@@ -92,7 +138,7 @@ AS $function$
   SELECT EXISTS (
     SELECT 1 FROM public.family_access fa
     WHERE fa.owner_user_id = owner_uuid
-    AND fa.family_user_id = current_user_id()
+    AND fa.family_user_id = authenticated_user_id()
     AND fa.is_active = true
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND EXISTS (
@@ -105,14 +151,64 @@ $function$;
 CREATE OR REPLACE FUNCTION has_diary_access(owner_uuid uuid) RETURNS bool
 LANGUAGE sql STABLE
 AS $function$
-  SELECT current_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_diary');
+  SELECT authenticated_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_diary');
 $function$;
 
 CREATE OR REPLACE FUNCTION has_library_access_with_public(owner_uuid uuid, is_shared bool, perms text[]) RETURNS bool
 LANGUAGE sql STABLE
 AS $function$
-  SELECT current_user_id() = owner_uuid OR is_shared OR has_family_access_or(owner_uuid, perms);
+  SELECT authenticated_user_id() = owner_uuid OR is_shared OR has_family_access_or(owner_uuid, perms);
 $function$;
+
+CREATE OR REPLACE FUNCTION public.set_app_context(p_user_id UUID, p_authenticated_user_id UUID)
+RETURNS void AS $$
+BEGIN
+  -- app.user_id is used by RLS to determine whose data is being accessed
+  PERFORM set_config('app.user_id', p_user_id::text, false);
+  
+  -- app.authenticated_user_id is the actual logged-in user
+  PERFORM set_config('app.authenticated_user_id', p_authenticated_user_id::text, false);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP FUNCTION IF EXISTS public.can_access_user_data(UUID, TEXT, UUID);
+CREATE OR REPLACE FUNCTION public.can_access_user_data(
+    target_user_id UUID,
+    permission_type TEXT,
+    auth_user_id UUID
+) RETURNS BOOLEAN AS $func$
+BEGIN
+  -- Self access
+  IF target_user_id = auth_user_id THEN
+    RETURN TRUE;
+  END IF;
+
+  -- Family access check
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.family_access fa
+    WHERE fa.family_user_id = auth_user_id
+      AND fa.owner_user_id = target_user_id
+      AND fa.is_active = TRUE
+      AND (fa.access_end_date IS NULL OR fa.access_end_date > NOW())
+      AND (
+        (fa.access_permissions->>permission_type)::BOOLEAN = TRUE
+        OR
+        -- Mapping for common permission names
+        (permission_type = 'diary' AND (fa.access_permissions->>'can_manage_diary')::BOOLEAN = TRUE)
+        OR
+        (permission_type = 'checkin' AND (fa.access_permissions->>'can_manage_checkin')::BOOLEAN = TRUE)
+        OR
+        (permission_type = 'reports' AND (fa.access_permissions->>'can_view_reports')::BOOLEAN = TRUE)
+        OR
+        -- Inheritance: reports permission grants read access to others
+        (permission_type IN ('calorie', 'diary', 'mood', 'sleep', 'exercise', 'water', 'checkin')
+         AND (COALESCE((fa.access_permissions->>'reports')::BOOLEAN, FALSE)
+              OR COALESCE((fa.access_permissions->>'can_view_reports')::BOOLEAN, FALSE)))
+      )
+  );
+END;
+$func$ LANGUAGE plpgsql STABLE;
 
 -- Step 4: Define generic policy creation functions.
 CREATE OR REPLACE FUNCTION create_owner_policy(table_name text, id_column text DEFAULT 'user_id') RETURNS void
@@ -178,7 +274,7 @@ SELECT create_owner_policy('meal_plans');
 SELECT create_owner_policy('mood_entries');
 SELECT create_owner_policy('profiles', 'id');
 SELECT create_owner_policy('sparky_chat_history');
-SELECT create_owner_policy('user_api_keys');
+SELECT create_owner_policy('api_key');
 SELECT create_owner_policy('user_goals');
 SELECT create_owner_policy('user_nutrient_display_preferences');
 SELECT create_owner_policy('user_oidc_links');

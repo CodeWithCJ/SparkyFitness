@@ -8,17 +8,13 @@ import { useAuth } from "@/hooks/useAuth"; // New import
 import { debug, info, warn, error } from '@/utils/logging';
 import { apiCall } from '@/services/api'; // Import apiCall
 import { searchExercises as searchExercisesService, searchExternalExercises, addExternalExerciseToUserExercises, addNutritionixExercise, addFreeExerciseDBExercise, Exercise, getRecentExercises, getTopExercises } from '@/services/exerciseSearchService'; // Added getRecentExercises, getTopExercises
-import { createExercise } from '@/services/exerciseService'; // New import for creating custom exercises
 import { getFreeExerciseDBMuscleGroups, getFreeExerciseDBEquipment } from '@/services/freeExerciseDBSchemaService'; // New import
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Loader2, Search, ChevronLeft, ChevronRight, Volume2, XCircle } from "lucide-react"; // Added Loader2, Search, ChevronLeft, ChevronRight, Volume2, XCircle
+import { Plus, Loader2, Search, ChevronLeft, ChevronRight, Volume2 } from "lucide-react"; // Added Loader2, Search, ChevronLeft, ChevronRight, Volume2, XCircle
 import { useToast } from "@/hooks/use-toast";
 import { getExternalDataProviders, DataProvider, getProviderCategory } from '@/services/externalProviderService'; // New import
 import { Badge } from "@/components/ui/badge";
 import { Share2, Users } from "lucide-react";
 import BodyMapFilter from './BodyMapFilter'; // Import BodyMapFilter
-import { Textarea } from "@/components/ui/textarea"; // New import
-import { Label } from "@/components/ui/label"; // New import
 
 interface ExerciseSearchProps {
   onExerciseSelect: (exercise: Exercise, sourceMode: 'internal' | 'external') => void;
@@ -139,7 +135,6 @@ const ExerciseSearch = ({ onExerciseSelect, showInternalTab = true, selectedDate
           title: t("common.success", "Success"),
           description: t("exercise.exerciseSearch.addExternalExerciseSuccess", "{{exerciseName}} added to your exercises. You can now log it from the diary page.", { exerciseName: exercise.name }),
         });
-        onExerciseSelect(newExercise, 'external'); // Call onExerciseSelect to trigger logging in parent
       }
       return newExercise;
     } catch (error) {

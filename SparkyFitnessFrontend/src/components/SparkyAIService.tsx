@@ -1,5 +1,4 @@
 import { apiCall } from '@/services/api';
-import { FoodOption } from "@/services/Chatbot/Chatbot_types";
 
 interface AIServiceConfig {
   service_name: string;

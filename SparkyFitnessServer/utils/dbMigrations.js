@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { getSystemClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
+const { grantPermissions } = require('../db/grantPermissions'); // Import grantPermissions
 
 const migrationsDir = path.join(__dirname, '../db/migrations');
 
@@ -55,6 +56,9 @@ async function applyMigrations() {
         log('info', `Migration already applied: ${file}`);
       }
     }
+    // After all migrations are applied, grant necessary permissions to the app user
+    await grantPermissions();
+    log('info', 'Permissions granted to application user.');
   } catch (error) {
     log('error', 'Error applying migrations:', error);
     process.exit(1); // Exit if migrations fail

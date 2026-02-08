@@ -1,0 +1,46 @@
+{
+    "nav": {
+        "diary": "Щоденник",
+        "checkin": "Відмітка",
+        "reports": "Звіти",
+        "foods": "Їжа",
+        "goals": "Цілі",
+        "settings": "Налаштування",
+        "admin": "Адміністратор"
+    },
+    "aboutDialog": {
+        "title": "Про SparkyFitness",
+        "description1": "SparkyFitness: Створено для сімей. Працює на базі штучного інтелекту. Відстежуйте харчування, фізичну форму, воду та здоров'я — разом.",
+        "applicationVersion": "Версія програми: ",
+        "joinDiscord": "Доєднуйтесь до нашого Discord: ",
+        "discordLink": "discord.gg/vcnMT5cPEA",
+        "moreInfoVisit": "Для додактової інформації відвідайте ",
+        "githubRepo": "GitHub репозиторій",
+        "technologiesUsed": "Використані технології:",
+        "frontend": "Фронтенд:",
+        "backend": "Бекенд:",
+        "externalApis": "Зовнішні API:",
+        "wgerApi": "API Wger (дані про вправи)",
+        "foodDataApis": "API даних про продукти:",
+        "nutritionixApi": "API Nutritionix",
+        "fatsecretApi": "API FatSecret",
+        "openFoodFactsApi": "API Open Food Facts",
+        "gotIt": "Зрозуміло",
+        "close": "Закрити"
+    },
+    "exercise": {
+        "title": "Вправи",
+        "addExerciseDialog": {
+            "title": "Додати вправу",
+            "description": "Додайте нову вправу до своєї бази даних, створивши власну вправу або імпортувавши її.",
+            "myExercisesTab": "Мої вправи",
+            "workoutPresetTab": "Пре-налаштовані тренування",
+            "onlineTab": "Онлайн",
+            "addCustomTab": "Додати власну",
+            "importCSVTab": "Імпорт CSV",
+            "nameLabel": "Ім'я",
+            "categoryLabel": "Категорія",
+            "selectCategoryPlaceholder": "Обрати категорію"
+        }
+    }
+}

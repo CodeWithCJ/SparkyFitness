@@ -26,7 +26,7 @@ services:
       # Uncomment the line below and comment the line above to use a file-based secret
       # SPARKY_FITNESS_API_ENCRYPTION_KEY_FILE: /run/secrets/sparkyfitness_api_key
 
-      JWT_SECRET: ${JWT_SECRET:?Variable is required and must be set}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Variable is required and must be set}
       # Uncomment the line below and comment the line above to use a file-based secret
       # JWT_SECRET_FILE: /run/secrets/sparkyfitness_jwt_secret
       SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL:-http://0.0.0.0:3004}
@@ -52,6 +52,10 @@ services:
     image: codewithcj/sparkyfitness:latest # Use pre-built image
     ports:
       - "3004:80" # Map host port 8080 to container port 80 (Nginx)
+    environment:
+      SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL}
+      SPARKY_FITNESS_SERVER_HOST: sparkyfitness-server # Internal Docker service name for the backend
+      SPARKY_FITNESS_SERVER_PORT: 3010 # Port the backend server listens on
     networks:
       - sparkyfitness-network # Use the new named network
     restart: always

@@ -42,3 +42,6 @@ SparkyFitnessMobile/.expo
 SparkyFitnessServer/uploads/
 SparkyFitnessServer/backup/
 SparkyFitnessServer/temp_uploads/
+
+# Docker Volume
+docker/docker_volume/

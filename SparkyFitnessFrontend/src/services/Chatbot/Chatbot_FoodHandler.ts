@@ -80,7 +80,7 @@ export const processFoodInput = async (data: {
     debug(userLoggingLevel, 'Exact search results:', exactFoods);
 
     let existingFoods = exactFoods;
-    let broadError = null;
+    const broadError = null;
 
     // If no exact match found, try a broader case-insensitive search
     if (!existingFoods || existingFoods.length === 0) {
@@ -127,7 +127,7 @@ export const processFoodInput = async (data: {
 
       // If no unit mismatch, proceed with insertion
       info(userLoggingLevel, 'Inserting food entry...');
-      let insertError = null;
+      const insertError = null;
       try {
         await apiCall('/food-entries', {
           method: 'POST',
@@ -336,7 +336,7 @@ export const addFoodOption = async (optionIndex: number, originalMetadata: any, 
         entryDate: dateToUse,
         variantId
     });
-    let entryError = null;
+    const entryError = null;
     try {
       await apiCall('/food-entries', {
         method: 'POST',

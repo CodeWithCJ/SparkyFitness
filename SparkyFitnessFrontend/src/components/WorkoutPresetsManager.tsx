@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Share2, Lock, Repeat, Weight, Timer, ListOrdered, CalendarPlus } from "lucide-react";
+import { Plus, Edit, Trash2, Share2, Lock, ListOrdered, CalendarPlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useAuth } from "@/hooks/useAuth";
-import { debug, info, warn, error } from '@/utils/logging';
+import { debug, info, error } from '@/utils/logging';
 import {
   getWorkoutPresets,
   createWorkoutPreset,
@@ -248,7 +248,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeletePreset(preset.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeletePreset(String(preset.id)) }>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
@@ -280,7 +280,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // R
         <WorkoutPresetForm
           isOpen={isEditDialogOpen}
           onClose={() => { setIsEditDialogOpen(false); setSelectedPreset(null); }}
-          onSave={(updatedData) => handleUpdatePreset(selectedPreset.id, updatedData)}
+          onSave={(updatedData) => handleUpdatePreset(String(selectedPreset.id), updatedData)}
           initialPreset={selectedPreset}
         />
       )}

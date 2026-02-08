@@ -634,11 +634,21 @@ const MainScreen: React.FC<MainScreenProps> = ({ navigation }) => {
 
         {/* Last Synced Time - always reserve space to prevent layout shift */}
         <View>
-          <Text style={{ color: colors.textMuted, textAlign: 'center', marginBottom: 16 }}>
+          <Text style={{ color: colors.textMuted, textAlign: 'center', marginBottom: 4 }}>
             {lastSyncedTimeLoaded
               ? formatRelativeTime(lastSyncedTime ? new Date(lastSyncedTime) : null)
               : ' '}
           </Text>
+          {Platform.OS === 'ios' && (
+            <Text style={{ color: colors.textMuted, textAlign: 'center', fontSize: 12, marginBottom: 16 }}>
+              Source: Apple Health (HealthKit)
+            </Text>
+          )}
+          {Platform.OS === 'android' && (
+            <Text style={{ color: colors.textMuted, textAlign: 'center', fontSize: 12, marginBottom: 16 }}>
+              Source: Health Connect
+            </Text>
+          )}
         </View>
 
         {/* Time Range */}

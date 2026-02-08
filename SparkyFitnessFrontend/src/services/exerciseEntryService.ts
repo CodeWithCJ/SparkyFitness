@@ -5,6 +5,8 @@ import { parseJsonArray } from './exerciseService'; // Import parseJsonArray
 import { ExerciseProgressData } from './reportsService'; // Import ExerciseProgressData
 import { WorkoutPresetSet } from '@/types/workout';
 import { ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor'; // New import
+import { debug } from '@/utils/logging'; // Import logging utility
+import { getUserLoggingLevel } from '@/utils/userPreferences'; // Import user logging level
 
 export interface ExerciseEntry {
   id: string;
@@ -66,6 +68,7 @@ export interface GroupedExerciseEntry {
 
 
 export const fetchExerciseEntries = async (selectedDate: string): Promise<GroupedExerciseEntry[]> => {
+  const loggingLevel = getUserLoggingLevel();
   const response = await getDailyExerciseEntries(selectedDate);
 
   const parsedEntries: GroupedExerciseEntry[] = response.map((entry: any) => {
@@ -117,7 +120,7 @@ export const fetchExerciseEntries = async (selectedDate: string): Promise<Groupe
     }
   });
 
-  console.log('DEBUG', 'fetchExerciseEntries: Parsed entries with activity details:', parsedEntries);
+  debug(loggingLevel, 'fetchExerciseEntries: Parsed entries with activity details:', parsedEntries);
   return parsedEntries;
 };
 
@@ -204,8 +207,9 @@ export const updateExerciseEntry = async (entryId: string, payload: {
   activity_details?: { id?: string; provider_name?: string; detail_type: string; detail_data: string; }[]; // New field
 }): Promise<ExerciseEntry> => {
   const { imageFile, ...entryData } = payload;
-  console.log('updateExerciseEntry payload:', payload);
-  console.log('updateExerciseEntry entryData:', entryData);
+  const loggingLevel = getUserLoggingLevel();
+  debug(loggingLevel, 'updateExerciseEntry payload:', payload);
+  debug(loggingLevel, 'updateExerciseEntry entryData:', entryData);
 
   if (imageFile) {
     const formData = new FormData();

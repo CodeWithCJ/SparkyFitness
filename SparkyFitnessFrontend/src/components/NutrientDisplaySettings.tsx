@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -8,7 +7,6 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { apiCall } from '@/services/api';
 import { toast } from "@/hooks/use-toast";
 import { customNutrientService } from "@/services/customNutrientService";
-import { UserCustomNutrient } from "@/types/customNutrient";
 
 const baseNutrients = [
     'calories', 'protein', 'carbs', 'fat', 'dietary_fiber', 'sugars', 'sodium',

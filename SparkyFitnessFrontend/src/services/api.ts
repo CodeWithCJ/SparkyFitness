@@ -107,7 +107,7 @@ export async function apiCall(endpoint: string, options?: ApiCallOptions): Promi
         });
         if (errorMessage.includes('Authentication: Invalid or expired token.')) {
           localStorage.removeItem('token');
-          window.location.reload();
+          // window.location.reload(); // Removed aggressive reload, causing loops
         }
         throw new Error(errorMessage);
       }

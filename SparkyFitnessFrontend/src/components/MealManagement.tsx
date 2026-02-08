@@ -20,13 +20,14 @@ import { Plus, Edit, Trash2, Eye, Filter, Share2, Lock } from 'lucide-react';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
-import { debug, info, warn, error } from '@/utils/logging';
+import { error } from '@/utils/logging';
 import { Meal, MealFood, MealPayload } from '@/types/meal';
 import { getMeals, deleteMeal, getMealById, MealFilter, getMealDeletionImpact, updateMeal } from '@/services/mealService';
 import { MealDeletionImpact } from '@/types/meal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import MealBuilder from './MealBuilder';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // This component is now a standalone library for managing meal templates.
 // Interactions with the meal plan calendar are handled by the calendar itself.
@@ -42,6 +43,7 @@ const MealManagement: React.FC = () => {
   const [viewingMeal, setViewingMeal] = useState<Meal & { foods?: MealFood[] } | null>(null);
   const [deletionImpact, setDeletionImpact] = useState<MealDeletionImpact | null>(null);
   const [mealToDelete, setMealToDelete] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const fetchMeals = useCallback(async () => {
     if (!activeUserId) return;
@@ -231,10 +233,20 @@ const MealManagement: React.FC = () => {
   return (
     <TooltipProvider>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-2xl font-bold">{t('mealManagement.manageMeals', 'Meal Management')}</CardTitle>
-          <Button onClick={handleCreateNewMeal}>
-            <Plus className="mr-2 h-4 w-4" /> {t('mealManagement.createNewMeal', 'Create New Meal')}
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-4">
+          <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
+            {t('mealManagement.manageMeals', 'Meal Management')}
+          </CardTitle>
+          <Button 
+            onClick={handleCreateNewMeal}
+            size={isMobile ? "icon" : "default"}
+            className="shrink-0"
+            title={t('mealManagement.createNewMeal', 'Create New Meal')}
+          >
+            <Plus className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
+            {!isMobile && (
+              <span>{t('mealManagement.createNewMeal', 'Create New Meal')}</span>
+            )}
           </Button>
         </CardHeader>
         <CardContent>
@@ -268,7 +280,7 @@ const MealManagement: React.FC = () => {
             <div className="space-y-4">
               {filteredMeals.map(meal => (
                 <Card key={meal.id}>
-                  <CardContent className="p-4 flex items-center justify-between">
+                  <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h3 className="text-lg font-semibold">
                         {meal.name}
@@ -277,7 +289,7 @@ const MealManagement: React.FC = () => {
                       <p className="text-sm text-muted-foreground">{meal.description || t('mealManagement.noDescription', { defaultValue: 'No description' })}</p>
 
                       {/* Nutrition Display */}
-                      <div className="flex gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex flex-wrap gap-x-5 mt-2 text-sm text-gray-600 dark:text-gray-400">
                         {(() => {
                           let totalCalories = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
                           if (meal.foods) {

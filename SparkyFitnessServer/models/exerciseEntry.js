@@ -94,6 +94,7 @@ async function _updateExerciseEntryWithClient(client, id, userId, updateData, up
     image_url: updateData.image_url === null ? null : (updateData.image_url !== undefined ? updateData.image_url : currentEntry.image_url),
     distance: updateData.distance !== undefined ? updateData.distance : currentEntry.distance,
     avg_heart_rate: updateData.avg_heart_rate !== undefined ? updateData.avg_heart_rate : currentEntry.avg_heart_rate,
+    sort_order: updateData.sort_order !== undefined ? updateData.sort_order : currentEntry.sort_order,
     // Snapshot fields - these should ideally come from the exercise itself if exercise_id is updated
     exercise_name: updateData.exercise_name || currentEntry.exercise_name,
     calories_per_hour: updateData.calories_per_hour || currentEntry.calories_per_hour,
@@ -156,8 +157,9 @@ async function _updateExerciseEntryWithClient(client, id, userId, updateData, up
       secondary_muscles = $21,
       instructions = $22,
       images = $23,
+      sort_order = $24,
       updated_at = now()
-    WHERE id = $24 AND user_id = $25
+    WHERE id = $25 AND user_id = $26
     RETURNING id`,
     [
       mergedData.exercise_id,
@@ -183,6 +185,7 @@ async function _updateExerciseEntryWithClient(client, id, userId, updateData, up
       mergedData.secondary_muscles ? JSON.stringify(mergedData.secondary_muscles) : null,
       mergedData.instructions ? JSON.stringify(mergedData.instructions) : null,
       mergedData.images ? JSON.stringify(mergedData.images) : null,
+      mergedData.sort_order || 0,
       id,
       userId,
     ]
@@ -217,10 +220,20 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
     const skipDuplicateCheck = ['HealthKit', 'HealthConnect'].includes(entrySource);
     let existingEntryResult;
     if (!exercisePresetEntryId && !skipDuplicateCheck) {
-      existingEntryResult = await client.query(
-        'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id IS NULL',
-        [userId, entryData.exercise_id, entryData.entry_date, entrySource]
-      );
+      if (entryData.workout_plan_assignment_id) {
+        // If it's linked to a workout plan assignment, it's unique by that assignment ID and date.
+        existingEntryResult = await client.query(
+          'SELECT id FROM exercise_entries WHERE user_id = $1 AND workout_plan_assignment_id = $2 AND entry_date = $3',
+          [userId, entryData.workout_plan_assignment_id, entryData.entry_date]
+        );
+      } else {
+        // For manual entries (no assignment), keep traditional uniqueness check by exercise_id and date.
+        // We explicitly ensure workout_plan_assignment_id is NULL to avoid matching template-generated entries.
+        existingEntryResult = await client.query(
+          'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id IS NULL AND workout_plan_assignment_id IS NULL',
+          [userId, entryData.exercise_id, entryData.entry_date, entrySource]
+        );
+      }
     }
 
     let newEntryId;
@@ -251,8 +264,8 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
            workout_plan_assignment_id, image_url, created_by_user_id,
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
-           distance, avg_heart_rate, exercise_preset_entry_id
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) RETURNING id`,
+           distance, avg_heart_rate, exercise_preset_entry_id, sort_order
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) RETURNING id`,
         [
           userId,
           entryData.exercise_id,
@@ -279,6 +292,7 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
           entryData.distance || null, // Ensure distance is not undefined
           entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
           exercisePresetEntryId, // New parameter
+          entryData.sort_order || 0,
         ]
       );
       newEntryId = entryResult.rows[0].id;
@@ -387,7 +401,7 @@ async function getExerciseEntryOwnerId(id, userId) {
   }
 }
 
-async function updateExerciseEntry(id, userId, updateData) {
+async function updateExerciseEntry(id, userId, actingUserId, updateData) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
@@ -403,8 +417,10 @@ async function updateExerciseEntry(id, userId, updateData) {
         image_url = $7,
         distance = COALESCE($8, distance),
         avg_heart_rate = COALESCE($9, avg_heart_rate),
+        sort_order = COALESCE($10, sort_order),
+        updated_by_user_id = $11,
         updated_at = now()
-      WHERE id = $10 AND user_id = $11
+      WHERE id = $12 AND user_id = $13
       RETURNING id`,
       [
         updateData.exercise_id,
@@ -416,6 +432,8 @@ async function updateExerciseEntry(id, userId, updateData) {
         updateData.image_url || null,
         updateData.distance || null,
         updateData.avg_heart_rate || null,
+        updateData.sort_order !== undefined ? updateData.sort_order : null,
+        actingUserId,
         id,
         userId,
       ]
@@ -493,7 +511,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
           ) AS activity_details
         FROM exercise_entries ee
         WHERE ee.user_id = $1 AND ee.entry_date = $2
-        ORDER BY ee.created_at ASC`,
+        ORDER BY ee.sort_order ASC, ee.created_at ASC`,
       [userId, selectedDate]
     );
     const allExerciseEntries = individualEntriesResult.rows;
@@ -555,6 +573,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
       if (entry.exercise_preset_entry_id && groupedEntries.has(entry.exercise_preset_entry_id)) {
         const preset = groupedEntries.get(entry.exercise_preset_entry_id);
         preset.exercises.push(entry);
+        preset.exercises.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || new Date(a.created_at) - new Date(b.created_at)); // Ensure sub-exercises are sorted
         preset.total_duration_minutes += entry.duration_minutes || 0; // Sum duration for the preset
       } else {
         // Add individual exercises that are not part of any preset
@@ -576,8 +595,8 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
     const finalEntries = Array.from(finalEntriesMap.values()); // Convert map values to an array
 
 
-    // Sort final entries by created_at for consistent display
-    finalEntries.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    // Sort final entries by sort_order then created_at for consistent display
+    finalEntries.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || new Date(a.created_at) - new Date(b.created_at));
 
     log('debug', `getExerciseEntriesByDate: Returning grouped entries for user ${userId} on ${selectedDate}:`, finalEntries);
     return finalEntries;

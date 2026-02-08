@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast"; // Import toast
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { debug, info, warn, error } from '@/utils/logging';
+import { debug, info, error } from '@/utils/logging';
 import { formatWeight } from '@/utils/numberFormatting';
 import { fetchExerciseDetails } from '@/services/editExerciseEntryService';
 import { updateExerciseEntry, ExerciseEntry } from '@/services/exerciseEntryService';

@@ -2,91 +2,84 @@ services:
   sparkyfitness-db:
     image: postgres:15-alpine
     restart: always
+    env_file:
+      - ../.env
     environment:
-      POSTGRES_DB: ${SPARKY_FITNESS_DB_NAME:-sparkyfitness_db}
-      POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
-      POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:-changeme_db_password}
+      POSTGRES_DB: ${SPARKY_FITNESS_DB_NAME:?Variable is required and must be set}
+      POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:?Variable is required and must be set}
+      POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
     volumes:
-      - ./postgresql:/var/lib/postgresql/data
+      - ./docker_volume/postgresql:/var/lib/postgresql/data
     networks:
       - sparkyfitness-network
     ports:
-      - "5432:5432" # Expose database port for local development
+      - "5432:5432"
 
   sparkyfitness-server:
     build:
       context: ../SparkyFitnessServer
-      dockerfile: ../docker/Dockerfile.backend
+      dockerfile: ../docker/Dockerfile.backend.dev
+    command: npm run start
+    env_file:
+      - ../.env
     environment:
-      SPARKY_FITNESS_LOG_LEVEL: ${SPARKY_FITNESS_LOG_LEVEL:-INFO}
+      SPARKY_FITNESS_LOG_LEVEL: ${SPARKY_FITNESS_LOG_LEVEL}
       SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
-      SPARKY_FITNESS_DB_HOST: sparkyfitness-db
-      SPARKY_FITNESS_DB_NAME: ${SPARKY_FITNESS_DB_NAME:-sparkyfitness_db}
-      SPARKY_FITNESS_DB_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:-changeme_db_password}
-      SPARKY_FITNESS_DB_PORT: 5432
-      SPARKY_FITNESS_APP_DB_USER: ${SPARKY_FITNESS_APP_DB_USER:-sparky_app}
-      SPARKY_FITNESS_APP_DB_PASSWORD: ${SPARKY_FITNESS_APP_DB_PASSWORD:-changeme_app_password}
-      SPARKY_FITNESS_API_ENCRYPTION_KEY: ${SPARKY_FITNESS_API_ENCRYPTION_KEY:-changeme_replace_with_a_64_character_hex_string}
+      SPARKY_FITNESS_DB_HOST: ${SPARKY_FITNESS_DB_HOST:-sparkyfitness-db}
+      SPARKY_FITNESS_DB_NAME: ${SPARKY_FITNESS_DB_NAME}
+      SPARKY_FITNESS_DB_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
+      SPARKY_FITNESS_APP_DB_USER: ${SPARKY_FITNESS_APP_DB_USER:-sparkyapp}
+      SPARKY_FITNESS_APP_DB_PASSWORD: ${SPARKY_FITNESS_APP_DB_PASSWORD:?Variable is required and must be set}
+      SPARKY_FITNESS_DB_PORT: ${SPARKY_FITNESS_DB_PORT:-5432}
+      SPARKY_FITNESS_API_ENCRYPTION_KEY: ${SPARKY_FITNESS_API_ENCRYPTION_KEY:?Variable is required and must be set}
       # Uncomment the line below and comment the line above to use a file-based secret
       # SPARKY_FITNESS_API_ENCRYPTION_KEY_FILE: /run/secrets/sparkyfitness_api_key
 
-      JWT_SECRET: ${JWT_SECRET:-changeme_replace_with_a_strong_jwt_secret}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Variable is required and must be set}
       # Uncomment the line below and comment the line above to use a file-based secret
       # JWT_SECRET_FILE: /run/secrets/sparkyfitness_jwt_secret
-      SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL:-http://localhost:8080}
-      SPARKY_FITNESS_DISABLE_SIGNUP: ${SPARKY_FITNESS_DISABLE_SIGNUP:-false}
-      SPARKY_FITNESS_ADMIN_EMAIL: ${SPARKY_FITNESS_ADMIN_EMAIL}
-      SPARKY_FITNESS_FORCE_EMAIL_LOGIN: ${SPARKY_FITNESS_FORCE_EMAIL_LOGIN:-true}
+      SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL:-http://localhost:3004}
+      SPARKY_FITNESS_DISABLE_SIGNUP: ${SPARKY_FITNESS_DISABLE_SIGNUP}
+      SPARKY_FITNESS_ADMIN_EMAIL: ${SPARKY_FITNESS_ADMIN_EMAIL} #User with this email can access the admin panel
       SPARKY_FITNESS_EMAIL_HOST: ${SPARKY_FITNESS_EMAIL_HOST}
       SPARKY_FITNESS_EMAIL_PORT: ${SPARKY_FITNESS_EMAIL_PORT}
       SPARKY_FITNESS_EMAIL_SECURE: ${SPARKY_FITNESS_EMAIL_SECURE}
       SPARKY_FITNESS_EMAIL_USER: ${SPARKY_FITNESS_EMAIL_USER}
       SPARKY_FITNESS_EMAIL_PASS: ${SPARKY_FITNESS_EMAIL_PASS}
       SPARKY_FITNESS_EMAIL_FROM: ${SPARKY_FITNESS_EMAIL_FROM}
-      NODE_ENV: ${NODE_ENV:-development}
       GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:8000 # Add Garmin microservice URL
+    volumes:
+      - ../SparkyFitnessServer:/app/SparkyFitnessServer
+      - /app/SparkyFitnessServer/node_modules
+      - ./docker_volume/uploads:/app/SparkyFitnessServer/uploads
+      - ./docker_volume/backup:/app/SparkyFitnessServer/backup
     networks:
       - sparkyfitness-network
     ports:
-      - "3010:3010" # Expose backend port for local development
+      - "3010:3010"
     restart: always
     depends_on:
       - sparkyfitness-db
-    volumes:
-      - ../SparkyFitnessServer:/app/SparkyFitnessServer # Mount source for live reloading
-      - /app/SparkyFitnessServer/node_modules # Preserve node_modules
-      - ./backups:/app/SparkyFitnessServer/backup # Mount volume for backups
 
   sparkyfitness-frontend:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.frontend
+      dockerfile: docker/Dockerfile.frontend.dev
     environment:
-      SPARKY_FITNESS_SERVER_HOST: ${SPARKY_FITNESS_SERVER_HOST:-sparkyfitness-server}
-      SPARKY_FITNESS_SERVER_PORT: ${SPARKY_FITNESS_SERVER_PORT:-3010}
+      SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL:-http://localhost:3004}
+      SPARKY_FITNESS_SERVER_HOST: sparkyfitness-server
+      SPARKY_FITNESS_SERVER_PORT: 3010
+      VITE_BACKEND_HOST: sparkyfitness-server
     ports:
-      - "${SPARKY_FITNESS_FRONTEND_PORT:-8080}:80" # Configurable frontend port
+      - "8080:8080" # Map host port 8080 to vite port 8080
+    volumes:
+      - ../SparkyFitnessFrontend:/app # mount directory for auto refresh
+      - /app/node_modules # prevent node modules override in container
     networks:
       - sparkyfitness-network
     restart: always
     depends_on:
       - sparkyfitness-server
-      - sparkyfitness-garmin # Frontend depends on Garmin microservice
-
-  sparkyfitness-garmin:
-    build:
-      context: ../SparkyFitnessGarmin
-      dockerfile: ../docker/Dockerfile.garmin_microservice
-    environment:
-      GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:${GARMIN_SERVICE_PORT:-8000}
-      GARMIN_SERVICE_PORT: ${GARMIN_SERVICE_PORT:-8000}
-      GARMIN_SERVICE_IS_CN: ${GARMIN_SERVICE_IS_CN:-false}  # set to true for China region. Everything else should be false. Optional - defaults to false
-    networks:
-      - sparkyfitness-network
-    restart: unless-stopped
-    volumes:
-      - ../SparkyFitnessGarmin:/app/SparkyFitnessGarmin # Mount source for live reloading
-      - /app/SparkyFitnessGarmin/venv # Preserve virtual environment
 
 networks:
   sparkyfitness-network:

@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Copy } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePreferences } from "@/contexts/PreferencesContext";
@@ -30,7 +29,12 @@ import { customNutrientService } from "@/services/customNutrientService";
 
 type NumericFoodVariantKeys = Exclude<
   keyof FoodVariant,
-  "id" | "serving_unit" | "is_default" | "is_locked" | "glycemic_index" | "custom_nutrients"
+  | "id"
+  | "serving_unit"
+  | "is_default"
+  | "is_locked"
+  | "glycemic_index"
+  | "custom_nutrients"
 >;
 
 const nutrientFields: NumericFoodVariantKeys[] = [
@@ -89,8 +93,10 @@ const foodVariantToFormVariant = (variant: FoodVariant): FormFoodVariant => ({
   carbs: variant.carbs === 0 ? "" : variant.carbs,
   fat: variant.fat === 0 ? "" : variant.fat,
   saturated_fat: variant.saturated_fat === 0 ? "" : variant.saturated_fat,
-  polyunsaturated_fat: variant.polyunsaturated_fat === 0 ? "" : variant.polyunsaturated_fat,
-  monounsaturated_fat: variant.monounsaturated_fat === 0 ? "" : variant.monounsaturated_fat,
+  polyunsaturated_fat:
+    variant.polyunsaturated_fat === 0 ? "" : variant.polyunsaturated_fat,
+  monounsaturated_fat:
+    variant.monounsaturated_fat === 0 ? "" : variant.monounsaturated_fat,
   trans_fat: variant.trans_fat === 0 ? "" : variant.trans_fat,
   cholesterol: variant.cholesterol === 0 ? "" : variant.cholesterol,
   sodium: variant.sodium === 0 ? "" : variant.sodium,
@@ -103,9 +109,25 @@ const foodVariantToFormVariant = (variant: FoodVariant): FormFoodVariant => ({
   iron: variant.iron === 0 ? "" : variant.iron,
 });
 
-const sanitizeGlycemicIndexFrontend = (gi: string | null | undefined): GlycemicIndex => {
-  const allowedGICategories: GlycemicIndex[] = ['None', 'Very Low', 'Low', 'Medium', 'High', 'Very High'];
-  if (gi === null || gi === undefined || gi === '' || gi === "0" || gi === "0.0" || !allowedGICategories.includes(gi as GlycemicIndex)) {
+const sanitizeGlycemicIndexFrontend = (
+  gi: string | null | undefined,
+): GlycemicIndex => {
+  const allowedGICategories: GlycemicIndex[] = [
+    "None",
+    "Very Low",
+    "Low",
+    "Medium",
+    "High",
+    "Very High",
+  ];
+  if (
+    gi === null ||
+    gi === undefined ||
+    gi === "" ||
+    gi === "0" ||
+    gi === "0.0" ||
+    !allowedGICategories.includes(gi as GlycemicIndex)
+  ) {
     return "None";
   }
   return gi as GlycemicIndex;
@@ -151,23 +173,28 @@ const EnhancedCustomFoodForm = ({
   visibleNutrients: passedVisibleNutrients,
 }: EnhancedCustomFoodFormProps) => {
   const { user } = useAuth();
-  const { nutrientDisplayPreferences, energyUnit, convertEnergy } = usePreferences();
+  const { nutrientDisplayPreferences, energyUnit, convertEnergy } =
+    usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? "mobile" : "desktop";
 
-  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal' ? "kcal" : "kJ"; // Using simple strings here, can be replaced with t() if i18n is available
+  const getEnergyUnitString = (unit: "kcal" | "kJ"): string => {
+    return unit === "kcal" ? "kcal" : "kJ"; // Using simple strings here, can be replaced with t() if i18n is available
   };
   const [loading, setLoading] = useState(false);
   const [variants, setVariants] = useState<FormFoodVariant[]>([]);
-  const [originalVariants, setOriginalVariants] = useState<FormFoodVariant[]>([]); // State to hold original, immutable variants
+  const [originalVariants, setOriginalVariants] = useState<FormFoodVariant[]>(
+    [],
+  ); // State to hold original, immutable variants
   const [variantErrors, setVariantErrors] = useState<string[]>([]); // State to hold errors for each variant
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [syncFoodId, setSyncFoodId] = useState<string | null>(null);
-  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>([]);
+  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>(
+    [],
+  );
 
   const foodDatabasePreferences = nutrientDisplayPreferences.find(
-    (p) => p.view_group === "food_database" && p.platform === platform
+    (p) => p.view_group === "food_database" && p.platform === platform,
   );
   const visibleNutrients =
     passedVisibleNutrients ||
@@ -193,7 +220,8 @@ const EnhancedCustomFoodForm = ({
         console.error("Failed to fetch custom nutrients", error);
         toast({
           title: "Error",
-          description: "Could not load custom nutrients. Please try again later.",
+          description:
+            "Could not load custom nutrients. Please try again later.",
           variant: "destructive",
         });
       }
@@ -210,11 +238,13 @@ const EnhancedCustomFoodForm = ({
         is_quick_food: food.is_quick_food || false,
       });
       if (food.variants && food.variants.length > 0) {
-        const mappedVariants = food.variants.map((v) => foodVariantToFormVariant({
-          ...v,
-          is_locked: false,
-          glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
-        }));
+        const mappedVariants = food.variants.map((v) =>
+          foodVariantToFormVariant({
+            ...v,
+            is_locked: false,
+            glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
+          }),
+        );
         setVariants(mappedVariants);
         setOriginalVariants(JSON.parse(JSON.stringify(mappedVariants))); // Deep copy for original values
         setVariantErrors(new Array(food.variants.length).fill(null)); // Initialize errors for existing variants
@@ -227,7 +257,9 @@ const EnhancedCustomFoodForm = ({
         brand: "",
         is_quick_food: false,
       });
-      const mappedInitialVariants = initialVariants.map(foodVariantToFormVariant);
+      const mappedInitialVariants = initialVariants.map(
+        foodVariantToFormVariant,
+      );
       setVariants(mappedInitialVariants);
       setOriginalVariants(JSON.parse(JSON.stringify(mappedInitialVariants))); // Deep copy for original values
       setVariantErrors(new Array(initialVariants.length).fill(null)); // Initialize errors for initial variants
@@ -264,7 +296,7 @@ const EnhancedCustomFoodForm = ({
       };
 
       if (customNutrients && customNutrients.length > 0) {
-        customNutrients.forEach(nutrient => {
+        customNutrients.forEach((nutrient) => {
           if (defaultVariant.custom_nutrients) {
             defaultVariant.custom_nutrients[nutrient.name] = "";
           }
@@ -305,14 +337,18 @@ const EnhancedCustomFoodForm = ({
         }
 
         if (defaultVariant) {
-          loadedVariants.push(foodVariantToFormVariant({ ...defaultVariant, is_locked: false }));
+          loadedVariants.push(
+            foodVariantToFormVariant({ ...defaultVariant, is_locked: false }),
+          );
           loadedVariants = loadedVariants.concat(
             data
               .filter((v) => v.id !== defaultVariant?.id)
-              .map((v) => foodVariantToFormVariant({ ...v, is_locked: false }))
+              .map((v) => foodVariantToFormVariant({ ...v, is_locked: false })),
           );
         } else {
-          loadedVariants = data.map((v) => foodVariantToFormVariant({ ...v, is_locked: false }));
+          loadedVariants = data.map((v) =>
+            foodVariantToFormVariant({ ...v, is_locked: false }),
+          );
         }
       } else {
         // If no variants are returned, initialize with a single default variant
@@ -405,7 +441,7 @@ const EnhancedCustomFoodForm = ({
     };
 
     if (customNutrients) {
-      customNutrients.forEach(nutrient => {
+      customNutrients.forEach((nutrient) => {
         if (newVariant.custom_nutrients) {
           newVariant.custom_nutrients[nutrient.name] = "";
         }
@@ -413,7 +449,10 @@ const EnhancedCustomFoodForm = ({
     }
 
     setVariants((prevVariants) => [...prevVariants, newVariant]);
-    setOriginalVariants((prevOriginal) => [...prevOriginal, JSON.parse(JSON.stringify(newVariant))]); // Add deep copy to original variants
+    setOriginalVariants((prevOriginal) => [
+      ...prevOriginal,
+      JSON.parse(JSON.stringify(newVariant)),
+    ]); // Add deep copy to original variants
     setVariantErrors((prevErrors) => [...prevErrors, null]); // Add a null error for the new variant
   };
 
@@ -427,7 +466,10 @@ const EnhancedCustomFoodForm = ({
       glycemic_index: variantToDuplicate.glycemic_index, // Duplicate GI as well
     };
     setVariants((prevVariants) => [...prevVariants, newVariant]);
-    setOriginalVariants((prevOriginal) => [...prevOriginal, JSON.parse(JSON.stringify(newVariant))]); // Add deep copy to original variants
+    setOriginalVariants((prevOriginal) => [
+      ...prevOriginal,
+      JSON.parse(JSON.stringify(newVariant)),
+    ]); // Add deep copy to original variants
     setVariantErrors((prevErrors) => [...prevErrors, null]); // Add a null error for the duplicated variant
   };
 
@@ -449,7 +491,7 @@ const EnhancedCustomFoodForm = ({
   const updateVariant = (
     index: number,
     field: keyof FormFoodVariant | string, // Allow string for custom nutrients
-    value: string | number | boolean | GlycemicIndex
+    value: string | number | boolean | GlycemicIndex,
   ) => {
     const updatedVariants = [...variants];
     const updatedOriginalVariants = [...originalVariants]; // Get a mutable copy of original variants
@@ -457,9 +499,11 @@ const EnhancedCustomFoodForm = ({
     let newVariant: FormFoodVariant;
 
     // Handle nutrient fields - allow empty string, convert to number if not empty
-    const isNutrientField = nutrientFields.includes(field as NumericFoodVariantKeys);
+    const isNutrientField = nutrientFields.includes(
+      field as NumericFoodVariantKeys,
+    );
 
-    if (customNutrients.some(nutrient => nutrient.name === field)) {
+    if (customNutrients.some((nutrient) => nutrient.name === field)) {
       // Custom nutrients - allow empty string
       const processedValue = value === "" ? "" : Number(value);
       newVariant = {
@@ -467,14 +511,20 @@ const EnhancedCustomFoodForm = ({
         custom_nutrients: {
           ...currentVariant.custom_nutrients,
           [field]: processedValue,
-        }
+        },
       };
     } else if (isNutrientField) {
       // Standard nutrient fields - allow empty string
       const processedValue = value === "" ? "" : Number(value);
-      newVariant = { ...currentVariant, [field as keyof FormFoodVariant]: processedValue };
+      newVariant = {
+        ...currentVariant,
+        [field as keyof FormFoodVariant]: processedValue,
+      };
     } else {
-      newVariant = { ...currentVariant, [field as keyof FormFoodVariant]: value };
+      newVariant = {
+        ...currentVariant,
+        [field as keyof FormFoodVariant]: value,
+      };
     }
 
     const updatedErrors = [...variantErrors];
@@ -491,8 +541,8 @@ const EnhancedCustomFoodForm = ({
     }
 
     // Convert calories input from display unit (energyUnit) to internal kcal
-    if (field === "calories" && value !== "" && typeof value === 'number') {
-      newVariant.calories = convertEnergy(value, energyUnit, 'kcal');
+    if (field === "calories" && value !== "" && typeof value === "number") {
+      newVariant.calories = convertEnergy(value, energyUnit, "kcal");
     }
 
     // If this variant is set to be the default, ensure all others are not
@@ -509,9 +559,9 @@ const EnhancedCustomFoodForm = ({
       const originalVariant = updatedOriginalVariants[index]; // Use the corresponding original variant
       const originalServingSize = originalVariant.serving_size; // Use the stored original serving size
       const newServingSize = Number(value);
-
-      if (originalServingSize > 0 && newServingSize >= 0) {
-        const ratio = newServingSize / originalServingSize;
+      const original = Number(originalServingSize);
+      if (!isNaN(original) && original > 0 && newServingSize >= 0) {
+        const ratio = newServingSize / original;
         newVariant.is_locked = true; // Ensure is_locked is true if scaling is applied
 
         const nutrientFields: NumericFoodVariantKeys[] = [
@@ -535,9 +585,11 @@ const EnhancedCustomFoodForm = ({
         ];
 
         nutrientFields.forEach((nutrientField) => {
-          const originalNutrientValue = originalVariant[nutrientField] as number;
+          const originalNutrientValue = originalVariant[
+            nutrientField
+          ] as number;
           newVariant[nutrientField] = Number(
-            (originalNutrientValue * ratio).toFixed(2)
+            (originalNutrientValue * ratio).toFixed(2),
           );
         });
       }
@@ -545,7 +597,8 @@ const EnhancedCustomFoodForm = ({
       // If a nutrient field is manually edited, update its value in originalVariants as well
       // This ensures manual overrides are preserved as the new "original"
       const originalToUpdate = { ...updatedOriginalVariants[index] };
-      (originalToUpdate[field as NumericFoodVariantKeys] as number) = newVariant[field as NumericFoodVariantKeys] as number; // Use the potentially converted newVariant value
+      (originalToUpdate[field as NumericFoodVariantKeys] as number) =
+        newVariant[field as NumericFoodVariantKeys] as number; // Use the potentially converted newVariant value
       updatedOriginalVariants[index] = originalToUpdate;
       setOriginalVariants(updatedOriginalVariants);
     }
@@ -560,7 +613,7 @@ const EnhancedCustomFoodForm = ({
 
     // Perform validation for all variants before submission
     const newVariantErrors: string[] = variants.map((variant) => {
-      if (isNaN(variant.serving_size) || variant.serving_size <= 0) {
+      if (isNaN(Number(variant.serving_size)) || Number(variant.serving_size) <= 0) {
         return "Serving size must be a positive number.";
       }
       return "";
@@ -621,12 +674,18 @@ const EnhancedCustomFoodForm = ({
       // Convert form variants (with possible empty strings) to proper FoodVariant (with numbers)
       const variantsToSave = variants.map(formVariantToFoodVariant);
 
-      const savedFood = await saveFood(foodData, variantsToSave, user.id, food?.id);
+      const savedFood = await saveFood(
+        foodData,
+        variantsToSave,
+        user.id,
+        food?.id,
+      );
 
       toast({
         title: "Success",
-        description: `Food ${food && food.id ? "updated" : "saved"
-          } successfully with ${variants.length} unit variant(s)`,
+        description: `Food ${
+          food && food.id ? "updated" : "saved"
+        } successfully with ${variants.length} unit variant(s)`,
       });
 
       if (food?.id && user?.id === food.user_id) {
@@ -814,7 +873,9 @@ const EnhancedCustomFoodForm = ({
                       {/* Serving Size and Unit */}
                       <div className="flex items-end gap-2">
                         <div className="flex flex-col">
-                          <Label htmlFor={`serving-size-${index}`}>Serving Size</Label>
+                          <Label htmlFor={`serving-size-${index}`}>
+                            Serving Size
+                          </Label>
                           <Input
                             id={`serving-size-${index}`}
                             type="number"
@@ -824,21 +885,26 @@ const EnhancedCustomFoodForm = ({
                               updateVariant(
                                 index,
                                 "serving_size",
-                                Number(e.target.value)
+                                Number(e.target.value),
                               )
                             }
                             className="w-24" // Fixed width for input
                           />
                         </div>
                         <div className="flex flex-col">
-                          <Label htmlFor={`serving-unit-${index}`}>Unit Type</Label>
+                          <Label htmlFor={`serving-unit-${index}`}>
+                            Unit Type
+                          </Label>
                           <Select
                             value={variant.serving_unit}
                             onValueChange={(value) =>
                               updateVariant(index, "serving_unit", value)
                             }
                           >
-                            <SelectTrigger id={`serving-unit-${index}`} className="w-32">
+                            <SelectTrigger
+                              id={`serving-unit-${index}`}
+                              className="w-32"
+                            >
                               {" "}
                               {/* Fixed width for select */}
                               <SelectValue />
@@ -869,7 +935,11 @@ const EnhancedCustomFoodForm = ({
                             id={`is-default-${index}`}
                             checked={variant.is_default || false}
                             onChange={(e) =>
-                              updateVariant(index, "is_default", e.target.checked)
+                              updateVariant(
+                                index,
+                                "is_default",
+                                e.target.checked,
+                              )
                             }
                             className="form-checkbox h-4 w-4 text-blue-600"
                           />
@@ -886,7 +956,11 @@ const EnhancedCustomFoodForm = ({
                             id={`is-locked-${index}`}
                             checked={variant.is_locked || false}
                             onChange={(e) =>
-                              updateVariant(index, "is_locked", e.target.checked)
+                              updateVariant(
+                                index,
+                                "is_locked",
+                                e.target.checked,
+                              )
                             }
                             className="form-checkbox h-4 w-4 text-blue-600"
                           />
@@ -932,12 +1006,19 @@ const EnhancedCustomFoodForm = ({
                       {/* Glycemic Index for this variant */}
                       {visibleNutrients.includes("glycemic_index") && (
                         <div className="mt-4">
-                          <Label htmlFor={`glycemic_index-${index}`}>Glycemic Index (GI)</Label>
+                          <Label htmlFor={`glycemic_index-${index}`}>
+                            Glycemic Index (GI)
+                          </Label>
                           <Select
                             value={variant.glycemic_index || "None"}
-                            onValueChange={(value: GlycemicIndex) => updateVariant(index, "glycemic_index", value)}
+                            onValueChange={(value: GlycemicIndex) =>
+                              updateVariant(index, "glycemic_index", value)
+                            }
                           >
-                            <SelectTrigger id={`glycemic_index-${index}`} className="w-[180px]">
+                            <SelectTrigger
+                              id={`glycemic_index-${index}`}
+                              className="w-[180px]"
+                            >
                               <SelectValue placeholder="Select GI" />
                             </SelectTrigger>
                             <SelectContent>
@@ -946,14 +1027,18 @@ const EnhancedCustomFoodForm = ({
                               <SelectItem value="Low">Low</SelectItem>
                               <SelectItem value="Medium">Medium</SelectItem>
                               <SelectItem value="High">High</SelectItem>
-                              <SelectItem value="Very High">Very High</SelectItem>
+                              <SelectItem value="Very High">
+                                Very High
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       )}
 
                       {/* Main Macros: Responsive Grid (1 col on mobile, 2 on sm, 3 on md, 4 on lg) */}
-                      {(["calories", "protein", "carbs", "fat"].some(nutrient => visibleNutrients.includes(nutrient))) && (
+                      {["calories", "protein", "carbs", "fat"].some(
+                        (nutrient) => visibleNutrients.includes(nutrient),
+                      ) && (
                         <div className="mt-4">
                           <h5 className="text-sm font-medium text-gray-700 mb-3">
                             Main Nutrients
@@ -961,15 +1046,27 @@ const EnhancedCustomFoodForm = ({
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {visibleNutrients.includes("calories") && (
                               <div>
-                                <Label>Calories ({getEnergyUnitString(energyUnit)})</Label>
+                                <Label>
+                                  Calories ({getEnergyUnitString(energyUnit)})
+                                </Label>
                                 <Input
                                   type="number"
-                                  value={variant.calories === "" ? "" : Math.round(convertEnergy(variant.calories, 'kcal', energyUnit))}
+                                  value={
+                                    variant.calories === ""
+                                      ? ""
+                                      : Math.round(
+                                          convertEnergy(
+                                            variant.calories,
+                                            "kcal",
+                                            energyUnit,
+                                          ),
+                                        )
+                                  }
                                   onChange={(e) =>
                                     updateVariant(
                                       index,
                                       "calories",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -988,7 +1085,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "protein",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1007,7 +1104,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "carbs",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1023,11 +1120,7 @@ const EnhancedCustomFoodForm = ({
                                   step="0.1"
                                   value={variant.fat}
                                   onChange={(e) =>
-                                    updateVariant(
-                                      index,
-                                      "fat",
-                                      e.target.value
-                                    )
+                                    updateVariant(index, "fat", e.target.value)
                                   }
                                   placeholder="0"
                                   disabled={variant.is_locked}
@@ -1039,7 +1132,14 @@ const EnhancedCustomFoodForm = ({
                       )}
 
                       {/* Detailed Fat Information: Responsive Grid */}
-                      {(["saturated_fat", "polyunsaturated_fat", "monounsaturated_fat", "trans_fat"].some(nutrient => visibleNutrients.includes(nutrient))) && (
+                      {[
+                        "saturated_fat",
+                        "polyunsaturated_fat",
+                        "monounsaturated_fat",
+                        "trans_fat",
+                      ].some((nutrient) =>
+                        visibleNutrients.includes(nutrient),
+                      ) && (
                         <div>
                           <h5 className="text-sm font-medium text-gray-700 mb-3">
                             Fat Breakdown
@@ -1056,7 +1156,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "saturated_fat",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1064,7 +1164,9 @@ const EnhancedCustomFoodForm = ({
                                 />
                               </div>
                             )}
-                            {visibleNutrients.includes("polyunsaturated_fat") && (
+                            {visibleNutrients.includes(
+                              "polyunsaturated_fat",
+                            ) && (
                               <div>
                                 <Label>Polyunsaturated Fat (g)</Label>
                                 <Input
@@ -1075,7 +1177,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "polyunsaturated_fat",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1083,7 +1185,9 @@ const EnhancedCustomFoodForm = ({
                                 />
                               </div>
                             )}
-                            {visibleNutrients.includes("monounsaturated_fat") && (
+                            {visibleNutrients.includes(
+                              "monounsaturated_fat",
+                            ) && (
                               <div>
                                 <Label>Monounsaturated Fat (g)</Label>
                                 <Input
@@ -1094,7 +1198,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "monounsaturated_fat",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1113,7 +1217,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "trans_fat",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1126,7 +1230,14 @@ const EnhancedCustomFoodForm = ({
                       )}
 
                       {/* Minerals and Other Nutrients: Responsive Grid */}
-                      {(["cholesterol", "sodium", "potassium", "dietary_fiber"].some(nutrient => visibleNutrients.includes(nutrient))) && (
+                      {[
+                        "cholesterol",
+                        "sodium",
+                        "potassium",
+                        "dietary_fiber",
+                      ].some((nutrient) =>
+                        visibleNutrients.includes(nutrient),
+                      ) && (
                         <div>
                           <h5 className="text-sm font-medium text-gray-700 mb-3">
                             Minerals & Other
@@ -1143,7 +1254,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "cholesterol",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1162,7 +1273,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "sodium",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1181,7 +1292,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "potassium",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1200,7 +1311,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "dietary_fiber",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1213,7 +1324,9 @@ const EnhancedCustomFoodForm = ({
                       )}
 
                       {/* Sugars and Vitamins: Responsive Grid */}
-                      {(["sugars", "vitamin_a", "vitamin_c", "calcium"].some(nutrient => visibleNutrients.includes(nutrient))) && (
+                      {["sugars", "vitamin_a", "vitamin_c", "calcium"].some(
+                        (nutrient) => visibleNutrients.includes(nutrient),
+                      ) && (
                         <div>
                           <h5 className="text-sm font-medium text-gray-700 mb-3">
                             Sugars & Vitamins
@@ -1230,7 +1343,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "sugars",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1249,7 +1362,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "vitamin_a",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1268,7 +1381,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "vitamin_c",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1287,7 +1400,7 @@ const EnhancedCustomFoodForm = ({
                                     updateVariant(
                                       index,
                                       "calcium",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="0"
@@ -1310,11 +1423,7 @@ const EnhancedCustomFoodForm = ({
                                 step="0.1"
                                 value={variant.iron}
                                 onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    "iron",
-                                    e.target.value
-                                  )
+                                  updateVariant(index, "iron", e.target.value)
                                 }
                                 placeholder="0"
                                 disabled={variant.is_locked}
@@ -1324,34 +1433,46 @@ const EnhancedCustomFoodForm = ({
                         </div>
                       </div>
                     </div>
-                    {customNutrients && customNutrients.length > 0 && customNutrients.some(n => visibleNutrients.includes(n.name)) && (
-                      <div>
-                        <h5 className="text-sm font-medium text-gray-700 mb-3">
-                          Custom Nutrients
-                        </h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {customNutrients.filter(n => visibleNutrients.includes(n.name)).map((nutrient) => (
-                            <div key={nutrient.id}>
-                              <Label>{nutrient.name} ({nutrient.unit})</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={variant.custom_nutrients?.[nutrient.name] ?? ''}
-                                onChange={(e) =>
-                                  updateVariant(
-                                    index,
-                                    nutrient.name,
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="0"
-                                disabled={variant.is_locked}
-                              />
-                            </div>
-                          ))}
+                    {customNutrients &&
+                      customNutrients.length > 0 &&
+                      customNutrients.some((n) =>
+                        visibleNutrients.includes(n.name),
+                      ) && (
+                        <div>
+                          <h5 className="text-sm font-medium text-gray-700 mb-3">
+                            Custom Nutrients
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {customNutrients
+                              .filter((n) => visibleNutrients.includes(n.name))
+                              .map((nutrient) => (
+                                <div key={nutrient.id}>
+                                  <Label>
+                                    {nutrient.name} ({nutrient.unit})
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={
+                                      variant.custom_nutrients?.[
+                                        nutrient.name
+                                      ] ?? ""
+                                    }
+                                    onChange={(e) =>
+                                      updateVariant(
+                                        index,
+                                        nutrient.name,
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="0"
+                                    disabled={variant.is_locked}
+                                  />
+                                </div>
+                              ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </Card>
                 ))}
               </div>

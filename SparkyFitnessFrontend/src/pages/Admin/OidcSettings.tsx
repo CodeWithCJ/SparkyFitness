@@ -5,11 +5,12 @@ import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { PlusCircle, Edit, Trash2, ClipboardCopy } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 
 const OidcSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -169,6 +170,41 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
   const { t } = useTranslation();
   const [editedProvider, setEditedProvider] = useState<OidcProvider>(provider);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [isManualRedirectUri, setIsManualRedirectUri] = useState(false);
+  const [baseUrlOverride, setBaseUrlOverride] = useState('');
+
+  const suffix = `/api/auth/sso/callback/${editedProvider.provider_id || 'YOUR_ID'}`;
+
+  // Initialize baseUrlOverride if provider has a custom one
+  useEffect(() => {
+    if (provider.redirect_uris?.[0]) {
+      try {
+        const url = new URL(provider.redirect_uris[0]);
+        const defaultOrigin = window.location.origin;
+        if (url.origin !== defaultOrigin) {
+          setIsManualRedirectUri(true);
+          setBaseUrlOverride(url.origin);
+        }
+      } catch (e) {
+        // Not a standard URL, might be relative or malformed
+      }
+    }
+  }, [provider]);
+
+  // Sync the actual provider field whenever inputs change
+  useEffect(() => {
+    const base = isManualRedirectUri ? (baseUrlOverride || window.location.origin) : window.location.origin;
+    // ensure no trailing slash
+    const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+    const fullUri = `${cleanBase}${suffix}`;
+
+    if (editedProvider.redirect_uris?.[0] !== fullUri) {
+      setEditedProvider(prev => ({
+        ...prev,
+        redirect_uris: [fullUri]
+      }));
+    }
+  }, [baseUrlOverride, isManualRedirectUri, suffix, editedProvider.redirect_uris]);
 
   const handleResetToDefaults = () => {
     setEditedProvider(prev => ({
@@ -204,7 +240,7 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    let providerToSave = { ...editedProvider };
+    const providerToSave = { ...editedProvider };
 
     if (logoFile && providerToSave.id) {
       try {
@@ -229,17 +265,22 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
           <div className="max-h-[70vh] overflow-y-auto p-4">
             <div className="space-y-4">
               <div>
+                <Label htmlFor="provider_id">{t('admin.oidcSettings.providerId', 'Provider ID (Slug)')}</Label>
+                <Input id="provider_id" value={editedProvider.provider_id || ''} onChange={handleChange} placeholder="e.g. authentik, google, keycloak" />
+                <p className="text-xs text-muted-foreground mt-1">{t('admin.oidcSettings.providerIdInfo')}</p>
+              </div>
+              <div>
                 <Label htmlFor="display_name">{t('admin.oidcSettings.displayName', 'Display Name')}</Label>
                 <Input id="display_name" value={editedProvider.display_name || ''} onChange={handleChange} />
               </div>
               <div className="flex items-center justify-between pt-4">
                 <div className="flex items-center space-x-2">
-                    <Switch id="is_active" checked={editedProvider.is_active} onCheckedChange={(c) => handleSwitchChange('is_active', c)} />
-                    <Label htmlFor="is_active">{t('admin.oidcSettings.active', 'Active')}</Label>
+                  <Switch id="is_active" checked={editedProvider.is_active} onCheckedChange={(c) => handleSwitchChange('is_active', c)} />
+                  <Label htmlFor="is_active">{t('admin.oidcSettings.active', 'Active')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <Switch id="auto_register" checked={editedProvider.auto_register || false} onCheckedChange={(c) => handleSwitchChange('auto_register', c)} />
-                    <Label htmlFor="auto_register">{t('admin.oidcSettings.autoRegister', 'Auto Register')}</Label>
+                  <Switch id="auto_register" checked={editedProvider.auto_register || false} onCheckedChange={(c) => handleSwitchChange('auto_register', c)} />
+                  <Label htmlFor="auto_register">{t('admin.oidcSettings.autoRegister', 'Auto Register')}</Label>
                 </div>
               </div>
               <div>
@@ -255,6 +296,11 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
                 <Input id="issuer_url" value={editedProvider.issuer_url} onChange={handleChange} />
               </div>
               <div>
+                <Label htmlFor="domain">{t('admin.oidcSettings.domain', 'Organization Domain')}</Label>
+                <Input id="domain" value={editedProvider.domain || ''} onChange={handleChange} placeholder="e.g. sparkyfitness.com" />
+                <p className="text-xs text-muted-foreground mt-1">{t('admin.oidcSettings.domainInfo')}</p>
+              </div>
+              <div>
                 <Label htmlFor="client_id">{t('admin.oidcSettings.clientId', 'Client ID')}</Label>
                 <Input id="client_id" value={editedProvider.client_id} onChange={handleChange} autoComplete="off" />
               </div>
@@ -266,22 +312,100 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
                 <Label htmlFor="scope">{t('admin.oidcSettings.scope', 'Scope')}</Label>
                 <Input id="scope" value={editedProvider.scope} onChange={handleChange} />
               </div>
-              <div>
-                <Label htmlFor="redirect_uris">{t('admin.oidcSettings.redirectUri', 'Redirect URI')}</Label>
-                <Input id="redirect_uris" value={editedProvider.redirect_uris.join(', ')} onChange={handleChange} placeholder={t('admin.oidcSettings.redirectUriPlaceholder', { origin: window.location.origin, defaultValue: `e.g., ${window.location.origin}/oidc-callback` })} />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">{t('admin.oidcSettings.redirectUri', 'Redirect URI')}</Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="manual_redirect"
+                      checked={isManualRedirectUri}
+                      onCheckedChange={(checked) => {
+                        if (checked && !window.confirm("WARNING: Changing the Base URL is only for advanced setups (proxies/custom domains). Incorrect values will break your login flow. Are you sure you want to proceed?")) {
+                          return;
+                        }
+                        setIsManualRedirectUri(checked);
+                        if (!checked) setBaseUrlOverride('');
+                      }}
+                      className="h-4 w-8"
+                    />
+                    <Label htmlFor="manual_redirect" className="text-xs text-muted-foreground">Expert Mode: Custom Domain</Label>
+                  </div>
+                </div>
+
+                <div className="group relative">
+                  <div className="flex items-stretch border rounded-md overflow-hidden bg-muted/30 focus-within:ring-1 focus-within:ring-primary">
+                    <div className="flex-1 flex min-w-0">
+                      <Input
+                        id="redirect_base_url"
+                        value={isManualRedirectUri ? baseUrlOverride : window.location.origin}
+                        onChange={(e) => setBaseUrlOverride(e.target.value)}
+                        readOnly={!isManualRedirectUri}
+                        className={`border-0 rounded-none h-10 shadow-none focus-visible:ring-0 px-3 ${!isManualRedirectUri ? "bg-transparent cursor-not-allowed opacity-60" : "bg-background"}`}
+                        placeholder="https://fitness.example.com"
+                      />
+                      <div className="bg-muted px-3 flex items-center text-xs font-mono text-muted-foreground border-l border-r whitespace-nowrap select-none">
+                        {suffix}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-none hover:bg-muted border-l transition-colors"
+                      title="Copy full Redirect URI"
+                      onClick={() => {
+                        const base = isManualRedirectUri ? (baseUrlOverride || window.location.origin) : window.location.origin;
+                        const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+                        const fullUri = `${cleanBase}${suffix}`;
+                        navigator.clipboard.writeText(fullUri);
+                        toast({ title: t('copied', 'Copied'), description: t('admin.oidcSettings.callbackUrlCopied') });
+                      }}
+                    >
+                      <ClipboardCopy className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {isManualRedirectUri && baseUrlOverride && !baseUrlOverride.startsWith('http') && (
+                    <p className="text-[10px] text-red-500 mt-1 font-medium italic">
+                      ⚠️ URL must start with http:// or https://
+                    </p>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  {!isManualRedirectUri
+                    ? "✓ Automatically synced with your current URL. Path suffix is locked for routing safety."
+                    : "⚠️ Expert: Ensure your Base URL is reachable from the internet for the OIDC provider to return data."
+                  }
+                </p>
               </div>
               <div>
                 <Label htmlFor="token_endpoint_auth_method">{t('admin.oidcSettings.tokenEndpointAuthMethod')}</Label>
-                <select
-                  id="token_endpoint_auth_method"
+		<Select
                   value={editedProvider.token_endpoint_auth_method}
-                  onChange={(e) => setEditedProvider(prev => ({ ...prev, token_endpoint_auth_method: e.target.value }))}
-                  className="w-full p-2 border rounded"
+                  onValueChange={(value) =>
+                    setEditedProvider((prev) => ({
+                      ...prev,
+                      token_endpoint_auth_method: value,
+                    }))
+                  }
                 >
-                  <option value="client_secret_post">client_secret_post</option>
-                  <option value="client_secret_basic">client_secret_basic</option>
-                  <option value="none">none</option>
-                </select>
+                  <SelectTrigger
+                    id="token_endpoint_auth_method"
+                    className="w-full p-2 border rounded"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="client_secret_post">
+                      client_secret_post
+                    </SelectItem>
+                    <SelectItem value="client_secret_basic">
+                      client_secret_basic
+                    </SelectItem>
+                    <SelectItem value="none">none</SelectItem>
+                  </SelectContent>
+                </Select> 
               </div>
               <div>
                 <Label htmlFor="signing_algorithm">{t('admin.oidcSettings.idTokenSignedAlg', 'ID Token Signed Alg')}</Label>
@@ -297,26 +421,10 @@ const ProviderDialog: React.FC<{ provider: OidcProvider; onSave: (provider: Oidc
               </div>
             </div>
             <div className="text-sm text-muted-foreground mt-4">
-              <p>{t('admin.oidcSettings.redirectUriInfo', 'The Redirect URI for your OIDC provider should be: SPARKY_FITNESS_FRONTEND_URL/oidc-callback')}</p>
-              <div className="flex items-center">
-                <code className="font-mono bg-gray-100 p-1 rounded">{`${window.location.origin}/oidc-callback`}</code>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="ml-2 h-5 w-5"
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/oidc-callback`);
-                    toast({ title: t('copied', 'Copied!'), description: t('admin.oidcSettings.redirectUriCopied', 'Redirect URI copied to clipboard.') });
-                  }}
-                >
-                  <ClipboardCopy className="h-4 w-4" />
-                </Button>
-              </div>
               <p className="mt-1">{t('admin.oidcSettings.localhostWarning', 'Ensure your OIDC provider allows localhost or your local IP for development.')}</p>
               <p className="mt-2">{t('admin.oidcSettings.proxyWarning', 'If using a proxy like Nginx Proxy Manager, ensure the following headers are configured:')}</p>
               <div className="relative group mt-2">
-                <pre id="proxy-config-code" className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">
+                <pre id="proxy-config-code" className="bg-muted p-2 rounded text-xs overflow-x-auto">
                   <code>
                     proxy_set_header Host $host;{'\n'}
                     proxy_set_header X-Real-IP $remote_addr;{'\n'}

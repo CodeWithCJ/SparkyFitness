@@ -14,6 +14,7 @@ interface AccessibleUser {
     checkin: boolean; // Mapped from can_manage_checkin
     reports: boolean; // Mapped from can_view_reports
     food_list: boolean; // Mapped from can_view_food_library
+    calorie: boolean;
   };
   access_end_date: string | null;
 }
@@ -39,7 +40,6 @@ export const useActiveUser = () => {
   return context;
 };
 
-import { NavigateFunction } from 'react-router-dom';
 
 export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading, refreshUser, switchContext } = useAuth(); // Add refreshUser and switchContext from useAuth
@@ -77,11 +77,9 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
     info(loggingLevel, "ActiveUserProvider: Loading accessible users for user:", user.id);
 
-    const currentActiveUserId = initialActiveUserId || activeUserId;
-
     // Fetch accessible users for the logged-in user
     try {
-      const data = await apiCall(`/auth/users/accessible-users`);
+      const data = await apiCall(`/identity/users/accessible-users`);
 
       info(loggingLevel, 'ActiveUserProvider: Accessible users data received:', data);
 
@@ -112,25 +110,11 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }));
 
       setAccessibleUsers(transformedData);
-
-      // Set active user name based on the loaded accessible users or the current user
-      if (currentActiveUserId && currentActiveUserId !== user.id) {
-        const activeUser = transformedData.find(u => u.user_id === currentActiveUserId);
-        if (activeUser) {
-          setActiveUserName(activeUser.full_name || activeUser.email || 'Family Member');
-        } else {
-          // Fallback if the contextual active user is no longer accessible
-          setActiveUserId(user.id);
-          setActiveUserName(user.fullName || user.email || 'You');
-        }
-      } else {
-        // Acting on own behalf
-        setActiveUserName(user.fullName || user.email || 'You');
-      }
+      // NOTE: activeUserName is now updated by a dedicated effect that watches activeUserId
     } catch (err) {
       error(loggingLevel, 'ActiveUserProvider: Unexpected error loading accessible users:', err);
     }
-  }, [user, activeUserId, loggingLevel]);
+  }, [user, loggingLevel]);
 
   // Effect to re-load accessible users when the main user changes or on initial load
   useEffect(() => {
@@ -139,20 +123,58 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [user, loading]); // Remove loadAccessibleUsers from dependency array
 
+  // Sync activeUserId from auth context when it changes (e.g., after context switch)
+  useEffect(() => {
+    if (user && user.activeUserId && user.activeUserId !== activeUserId) {
+      debug(loggingLevel, "ActiveUserProvider: Detected activeUserId change in auth context, updating local state from:", activeUserId, "to:", user.activeUserId);
+      setActiveUserId(user.activeUserId);
+      // Reload accessible users to ensure we have the latest data
+      loadAccessibleUsers(user.activeUserId);
+    }
+  }, [user?.activeUserId, user?.id, activeUserId, loggingLevel]);
+
+  // Dedicated effect to update activeUserName whenever activeUserId changes
+  useEffect(() => {
+    if (!user) {
+      setActiveUserName(null);
+      return;
+    }
+
+    info(loggingLevel, "ActiveUserProvider: Updating active user name for activeUserId:", activeUserId);
+
+    // If active user is the logged-in user
+    if (!activeUserId || activeUserId === user.id) {
+      info(loggingLevel, "ActiveUserProvider: Acting on own behalf, name:", user.fullName || user.email);
+      setActiveUserName(user.fullName || user.email || 'You');
+    } else {
+      // If acting on behalf of someone else, look up their name from accessible users
+      const activeUser = accessibleUsers.find(u => u.user_id === activeUserId);
+      if (activeUser) {
+        info(loggingLevel, "ActiveUserProvider: Found family member name:", activeUser.full_name || activeUser.email);
+        setActiveUserName(activeUser.full_name || activeUser.email || 'Family Member');
+      } else {
+        // If not found, show a generic name
+        info(loggingLevel, "ActiveUserProvider: Active user not found in accessible users, showing generic name");
+        setActiveUserName('Family Member');
+      }
+    }
+  }, [activeUserId, user, accessibleUsers, loggingLevel]);
+
   const switchToUser = async (userId: string | null) => {
     if (!user) {
       warn(loggingLevel, "ActiveUserProvider: Attempted to switch user without a logged-in user.");
       return;
     }
-    info(loggingLevel, "ActiveUserProvider: Attempting to switch active user to:", userId);
+    info(loggingLevel, "ActiveUserProvider: Attempting to switch active user from:", activeUserId, "to:", userId);
 
     const targetUserId = userId || user.id; // Default to own user ID if null is passed
 
     try {
       await switchContext(targetUserId);
-      info(loggingLevel, "ActiveUserProvider: Profile switch successful.");
+      info(loggingLevel, "ActiveUserProvider: Profile switch successful. New activeUserId should be:", targetUserId);
     } catch (err) {
       error(loggingLevel, "ActiveUserProvider: Failed to switch profile context:", err);
+      throw err;
     }
   };
 

@@ -1,105 +1,131 @@
 const { getSystemClient } = require('../db/poolManager');
-const { encrypt, decrypt, ENCRYPTION_KEY } = require('../security/encryption');
 const { log } = require('../config/logging');
-const fetch = global.fetch || require('node-fetch'); // Import node-fetch, use global fetch if available
-const NodeCache = require('node-cache'); // Import node-cache for caching discovery documents
+// Use native fetch (available in Node 20+) status: %SAME% summary: %SAME% task_name: %SAME%
+const NodeCache = require('node-cache');
 
-const discoveryCache = new NodeCache({ stdTTL: 3600 }); // Cache discovery documents for 1 hour
+const discoveryCache = new NodeCache({ stdTTL: 3600 });
+
+/**
+ * Fetches OIDC endpoints from the discovery document
+ * @param {string} discoveryEndpoint - The OIDC discovery endpoint URL
+ * @returns {Promise<Object>} Object containing jwksEndpoint, tokenEndpoint, authorizationEndpoint, userInfoEndpoint
+ */
+async function fetchOidcEndpoints(discoveryEndpoint) {
+    let discoveryDocument = discoveryCache.get(discoveryEndpoint);
+
+    if (!discoveryDocument) {
+        try {
+            const response = await fetch(discoveryEndpoint);
+            if (response.ok) {
+                discoveryDocument = await response.json();
+                discoveryCache.set(discoveryEndpoint, discoveryDocument);
+            } else {
+                log('error', `Failed to fetch discovery document from ${discoveryEndpoint}: ${response.status}`);
+                return {};
+            }
+        } catch (e) {
+            log('error', `Error fetching discovery from ${discoveryEndpoint}:`, e);
+            return {};
+        }
+    }
+
+    return {
+        jwksEndpoint: discoveryDocument.jwks_uri,
+        tokenEndpoint: discoveryDocument.token_endpoint,
+        authorizationEndpoint: discoveryDocument.authorization_endpoint,
+        userInfoEndpoint: discoveryDocument.userinfo_endpoint,
+    };
+}
 
 async function getOidcProviders() {
-    const client = await getSystemClient(); // System-level operation
+    const client = await getSystemClient();
     try {
         const result = await client.query(
-            `SELECT 
-                id, issuer_url, client_id,
-                redirect_uris, scope, token_endpoint_auth_method, response_types, is_active,
-                display_name, logo_url, auto_register,
-                signing_algorithm, profile_signing_algorithm, timeout
-            FROM oidc_providers
-            ORDER BY id ASC`
+            `SELECT * FROM "sso_provider" ORDER BY created_at ASC`
         );
-        // Ensure a default timeout if not set or too low
-        result.rows.forEach(row => {
-            if (!row.timeout || row.timeout < 15000) {
-                row.timeout = 15000; // Default to 15 seconds
-            }
+        return result.rows.map(row => {
+            const config = row.additional_config ? JSON.parse(row.additional_config) : {};
+            const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
+            return {
+                id: row.id,
+                provider_id: row.provider_id,
+                issuer_url: row.issuer,
+                domain: row.domain,
+                client_id: row.client_id,
+                scope: row.scopes,
+                is_active: config.is_active !== undefined ? config.is_active : true,
+                redirect_uris: config.redirect_uris || [],
+                response_types: config.response_types || ['code'],
+                token_endpoint_auth_method: config.token_endpoint_auth_method || 'client_secret_post',
+                signing_algorithm: config.signing_algorithm || 'RS256',
+                profile_signing_algorithm: config.profile_signing_algorithm || 'none',
+                timeout: config.timeout || 30000,
+                ...config,
+                // Force correct redirectURI for Better Auth
+                redirectURI: `${baseUrl}/api/auth/sso/callback/${row.provider_id}`
+            };
         });
-        return result.rows;
     } finally {
         client.release();
     }
 }
 
 async function getOidcProviderById(id) {
-    const client = await getSystemClient(); // System-level operation
+    const client = await getSystemClient();
     try {
         const result = await client.query(
-            `SELECT
-                id, issuer_url, client_id,
-                encrypted_client_secret, client_secret_iv, client_secret_tag,
-                redirect_uris, scope, token_endpoint_auth_method, response_types, is_active,
-                display_name, logo_url, auto_register,
-                signing_algorithm, profile_signing_algorithm, timeout
-            FROM oidc_providers
-            WHERE id = $1`,
+            `SELECT * FROM "sso_provider" WHERE id::text = $1 OR provider_id = $1`,
             [id]
         );
-        const provider = result.rows[0];
+        const row = result.rows[0];
+        if (!row) return null;
 
-        if (!provider) {
-            return null;
-        }
+        const config = row.additional_config ? JSON.parse(row.additional_config) : {};
 
-        // Ensure a default timeout if not set or too low
-        if (!provider.timeout || provider.timeout < 15000) {
-            provider.timeout = 15000; // Default to 15 seconds
-        }
+        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
+        const provider = {
+            id: row.id,
+            provider_id: row.provider_id,
+            issuer_url: row.issuer,
+            domain: row.domain,
+            client_id: row.client_id,
+            client_secret: row.client_secret,
+            scope: row.scopes,
+            is_active: config.is_active !== undefined ? config.is_active : true,
+            redirect_uris: config.redirect_uris || [],
+            response_types: config.response_types || ['code'],
+            token_endpoint_auth_method: config.token_endpoint_auth_method || 'client_secret_post',
+            signing_algorithm: config.signing_algorithm || 'RS256',
+            profile_signing_algorithm: config.profile_signing_algorithm || 'none',
+            timeout: config.timeout || 30000,
+            ...config,
+            // Force correct redirectURI for Better Auth
+            redirectURI: `${baseUrl}/api/auth/sso/callback/${row.provider_id}`
+        };
 
-        let decryptedClientSecret = null;
-        if (provider.encrypted_client_secret && provider.client_secret_iv && provider.client_secret_tag) {
-            try {
-                decryptedClientSecret = await decrypt(
-                    provider.encrypted_client_secret,
-                    provider.client_secret_iv,
-                    provider.client_secret_tag,
-                    ENCRYPTION_KEY
-                );
-            } catch (e) {
-                log('error', `Error decrypting OIDC client secret for provider ${id}:`, e);
-            }
-        }
-
-        // Fetch OIDC discovery document to get end_session_endpoint
         let endSessionEndpoint = null;
         if (provider.issuer_url) {
             const discoveryUrl = `${provider.issuer_url}/.well-known/openid-configuration`;
             let discoveryDocument = discoveryCache.get(discoveryUrl);
-
             if (!discoveryDocument) {
                 try {
-                    const discoveryResponse = await fetch(discoveryUrl);
-                    if (discoveryResponse.ok) {
-                        discoveryDocument = await discoveryResponse.json();
+                    const response = await fetch(discoveryUrl);
+                    if (response.ok) {
+                        discoveryDocument = await response.json();
                         discoveryCache.set(discoveryUrl, discoveryDocument);
-                    } else {
-                        log('warn', `Failed to fetch OIDC discovery document from ${discoveryUrl}: ${discoveryResponse.statusText}`);
                     }
                 } catch (e) {
-                    log('error', `Error fetching OIDC discovery document from ${discoveryUrl}:`, e);
+                    log('error', `Repo: Error fetching discovery from ${discoveryUrl}:`, e);
                 }
             }
-
-            if (discoveryDocument && discoveryDocument.end_session_endpoint) {
+            if (discoveryDocument) {
                 endSessionEndpoint = discoveryDocument.end_session_endpoint;
-            } else {
-                log('warn', `end_session_endpoint not found in discovery document for ${provider.issuer_url}`);
             }
         }
 
         return {
             ...provider,
-            client_secret: decryptedClientSecret,
-            end_session_endpoint: endSessionEndpoint, // Add the discovered endpoint
+            end_session_endpoint: endSessionEndpoint
         };
     } finally {
         client.release();
@@ -107,47 +133,75 @@ async function getOidcProviderById(id) {
 }
 
 async function createOidcProvider(providerData) {
-    const client = await getSystemClient(); // System-level operation
+    const client = await getSystemClient();
     try {
-        let encryptedClientSecret = null;
-        let clientSecretIv = null;
-        let clientSecretTag = null;
+        const config = JSON.stringify({
+            display_name: providerData.display_name,
+            logo_url: providerData.logo_url,
+            auto_register: providerData.auto_register || false,
+            is_active: providerData.is_active !== undefined ? providerData.is_active : true,
+            redirect_uris: providerData.redirect_uris || [],
+            response_types: providerData.response_types || ['code'],
+            token_endpoint_auth_method: providerData.token_endpoint_auth_method || 'client_secret_post',
+            signing_algorithm: providerData.signing_algorithm || 'RS256',
+            profile_signing_algorithm: providerData.profile_signing_algorithm || 'none',
+            timeout: providerData.timeout || 30000
+        });
 
-        if (providerData.client_secret) {
-            const encrypted = await encrypt(providerData.client_secret, ENCRYPTION_KEY);
-            encryptedClientSecret = encrypted.encryptedText;
-            clientSecretIv = encrypted.iv;
-            clientSecretTag = encrypted.tag;
-        }
+        const providerId = providerData.provider_id || `oidc-${Date.now()}`;
+        const discoveryEndpoint = providerData.issuer_url + '/.well-known/openid-configuration';
+
+        // Fetch OIDC endpoints from discovery document
+        const endpoints = await fetchOidcEndpoints(discoveryEndpoint);
+
+        // Construct native oidcConfig for Better Auth
+        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
+        const oidcConfig = JSON.stringify({
+            issuer: providerData.issuer_url,
+            clientId: providerData.client_id,
+            clientSecret: providerData.client_secret,
+            scopes: (providerData.scope || 'openid email profile').split(' ').filter(Boolean),
+            discoveryEndpoint: discoveryEndpoint,
+            pkce: true,
+            redirectURI: `${baseUrl}/api/auth/sso/callback/${providerId}`,
+            // Add endpoints from discovery
+            jwksEndpoint: endpoints.jwksEndpoint,
+            tokenEndpoint: endpoints.tokenEndpoint,
+            authorizationEndpoint: endpoints.authorizationEndpoint,
+            userInfoEndpoint: endpoints.userInfoEndpoint,
+        });
 
         const result = await client.query(
-            `INSERT INTO oidc_providers (
-                issuer_url, client_id,
-                encrypted_client_secret, client_secret_iv, client_secret_tag,
-                redirect_uris, scope, token_endpoint_auth_method, response_types, is_active,
-                display_name, logo_url, auto_register,
-                signing_algorithm, profile_signing_algorithm, timeout
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            `INSERT INTO "sso_provider" 
+            (provider_id, issuer, domain, client_id, client_secret, scopes, discovery_endpoint, 
+             authorization_endpoint, token_endpoint, jwks_endpoint, userinfo_endpoint, 
+             additional_config, oidc_config)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             RETURNING id`,
             [
+                providerId,
                 providerData.issuer_url,
+                providerData.domain || `${providerId}.internal`,
                 providerData.client_id,
-                encryptedClientSecret,
-                clientSecretIv,
-                clientSecretTag,
-                providerData.redirect_uris,
-                providerData.scope,
-                providerData.token_endpoint_auth_method,
-                providerData.response_types,
-                providerData.is_active,
-                providerData.display_name,
-                providerData.logo_url,
-                providerData.auto_register,
-                providerData.signing_algorithm,
-                providerData.profile_signing_algorithm,
-                providerData.timeout,
+                providerData.client_secret,
+                providerData.scope || 'openid email profile',
+                discoveryEndpoint,
+                endpoints.authorizationEndpoint,
+                endpoints.tokenEndpoint,
+                endpoints.jwksEndpoint,
+                endpoints.userInfoEndpoint,
+                config,
+                oidcConfig
             ]
         );
+        // Refresh Better Auth trusted providers after creation
+        try {
+            const { syncTrustedProviders } = require('../auth');
+            await syncTrustedProviders();
+        } catch (err) {
+            log('error', 'Failed to refresh trusted providers after creation:', err);
+        }
+
         return result.rows[0];
     } finally {
         client.release();
@@ -155,54 +209,81 @@ async function createOidcProvider(providerData) {
 }
 
 async function updateOidcProvider(id, providerData) {
-    const client = await getSystemClient(); // System-level operation
+    const client = await getSystemClient();
     try {
-        const existingProvider = await getOidcProviderById(id);
-        if (!existingProvider) {
-            throw new Error('Provider not found');
+        const existing = await getOidcProviderById(id);
+        const config = JSON.stringify({
+            display_name: providerData.display_name,
+            logo_url: providerData.logo_url,
+            auto_register: providerData.auto_register || false,
+            is_active: providerData.is_active !== undefined ? providerData.is_active : true,
+            redirect_uris: providerData.redirect_uris || [],
+            response_types: providerData.response_types || ['code'],
+            token_endpoint_auth_method: providerData.token_endpoint_auth_method || 'client_secret_post',
+            signing_algorithm: providerData.signing_algorithm || 'RS256',
+            profile_signing_algorithm: providerData.profile_signing_algorithm || 'none',
+            timeout: providerData.timeout || 30000
+        });
+
+        const discoveryEndpoint = providerData.issuer_url + '/.well-known/openid-configuration';
+        const clientSecret = (providerData.client_secret && providerData.client_secret !== '*****')
+            ? providerData.client_secret
+            : existing.client_secret;
+
+        // Fetch OIDC endpoints from discovery document
+        const endpoints = await fetchOidcEndpoints(discoveryEndpoint);
+
+        // Construct native oidcConfig for Better Auth
+        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
+        const providerIdToUse = providerData.provider_id || id;
+        const oidcConfig = JSON.stringify({
+            issuer: providerData.issuer_url,
+            clientId: providerData.client_id,
+            clientSecret: clientSecret,
+            scopes: (providerData.scope || 'openid email profile').split(' ').filter(Boolean),
+            discoveryEndpoint: discoveryEndpoint,
+            pkce: true,
+            redirectURI: `${baseUrl}/api/auth/sso/callback/${providerIdToUse}`,
+            // Add endpoints from discovery
+            jwksEndpoint: endpoints.jwksEndpoint,
+            tokenEndpoint: endpoints.tokenEndpoint,
+            authorizationEndpoint: endpoints.authorizationEndpoint,
+            userInfoEndpoint: endpoints.userInfoEndpoint,
+        });
+
+        const query = `
+            UPDATE "sso_provider" 
+            SET issuer=$1, domain=$2, client_id=$3, client_secret=$4, scopes=$5, discovery_endpoint=$6, 
+                authorization_endpoint=$7, token_endpoint=$8, jwks_endpoint=$9, userinfo_endpoint=$10,
+                additional_config=$11, oidc_config=$12, provider_id=$13, updated_at=NOW() 
+            WHERE id::text=$14 OR provider_id=$14
+            RETURNING id`;
+
+        const result = await client.query(query, [
+            providerData.issuer_url,
+            providerData.domain,
+            providerData.client_id,
+            clientSecret,
+            providerData.scope || 'openid email profile',
+            discoveryEndpoint,
+            endpoints.authorizationEndpoint,
+            endpoints.tokenEndpoint,
+            endpoints.jwksEndpoint,
+            endpoints.userInfoEndpoint,
+            config,
+            oidcConfig,
+            providerIdToUse,
+            id
+        ]);
+
+        // Refresh Better Auth trusted providers after update
+        try {
+            const { syncTrustedProviders } = require('../auth');
+            await syncTrustedProviders();
+        } catch (err) {
+            log('error', 'Failed to refresh trusted providers after update:', err);
         }
 
-        let encryptedClientSecret = existingProvider.encrypted_client_secret;
-        let clientSecretIv = existingProvider.client_secret_iv;
-        let clientSecretTag = existingProvider.client_secret_tag;
-
-        if (providerData.client_secret && providerData.client_secret !== '*****') {
-            const encrypted = await encrypt(providerData.client_secret, ENCRYPTION_KEY);
-            encryptedClientSecret = encrypted.encryptedText;
-            clientSecretIv = encrypted.iv;
-            clientSecretTag = encrypted.tag;
-        }
-
-        const result = await client.query(
-            `UPDATE oidc_providers SET
-                issuer_url = $1, client_id = $2,
-                encrypted_client_secret = $3, client_secret_iv = $4, client_secret_tag = $5,
-                redirect_uris = $6, scope = $7, token_endpoint_auth_method = $8, response_types = $9, is_active = $10,
-                display_name = $11, logo_url = $12, auto_register = $13,
-                signing_algorithm = $14, profile_signing_algorithm = $15, timeout = $16,
-                updated_at = NOW()
-            WHERE id = $17
-            RETURNING id`,
-            [
-                providerData.issuer_url,
-                providerData.client_id,
-                encryptedClientSecret,
-                clientSecretIv,
-                clientSecretTag,
-                providerData.redirect_uris,
-                providerData.scope,
-                providerData.token_endpoint_auth_method,
-                providerData.response_types,
-                providerData.is_active,
-                providerData.display_name,
-                providerData.logo_url,
-                providerData.auto_register,
-                providerData.signing_algorithm,
-                providerData.profile_signing_algorithm,
-                providerData.timeout,
-                id,
-            ]
-        );
         return result.rows[0];
     } finally {
         client.release();
@@ -210,9 +291,57 @@ async function updateOidcProvider(id, providerData) {
 }
 
 async function deleteOidcProvider(id) {
-    const client = await getSystemClient(); // System-level operation
+    const client = await getSystemClient();
     try {
-        await client.query('DELETE FROM oidc_providers WHERE id = $1', [id]);
+        await client.query('DELETE FROM "sso_provider" WHERE id::text = $1 OR provider_id = $1', [id]);
+
+        // Refresh Better Auth trusted providers after deletion
+        try {
+            const { syncTrustedProviders } = require('../auth');
+            await syncTrustedProviders();
+        } catch (err) {
+            log('error', 'Failed to refresh trusted providers after deletion:', err);
+        }
+    } finally {
+        client.release();
+    }
+}
+
+async function getActiveOidcProviderIds() {
+    const client = await getSystemClient();
+    try {
+        const result = await client.query('SELECT provider_id, additional_config FROM "sso_provider"');
+
+        return result.rows.filter(row => {
+            let config = row.additional_config;
+            if (typeof config === 'string') {
+                try {
+                    config = JSON.parse(config);
+                } catch (e) {
+                    log('error', `Failed to parse config for ${row.provider_id}:`, e);
+                    return false;
+                }
+            }
+            // Trust if active (default to true if field is missing)
+            const isActive = config && config.is_active !== false;
+            return isActive;
+        }).map(row => row.provider_id);
+    } finally {
+        client.release();
+    }
+}
+
+async function setProviderLogo(id, logoUrl) {
+    const client = await getSystemClient();
+    try {
+        const result = await client.query('SELECT additional_config FROM "sso_provider" WHERE id::text = $1', [id]);
+        if (result.rows.length > 0) {
+            const config = result.rows[0].additional_config ? JSON.parse(result.rows[0].additional_config) : {};
+            config.logo_url = logoUrl;
+            await client.query('UPDATE "sso_provider" SET additional_config = $1 WHERE id::text = $2', [JSON.stringify(config), id]);
+            return true;
+        }
+        return false;
     } finally {
         client.release();
     }
@@ -221,7 +350,9 @@ async function deleteOidcProvider(id) {
 module.exports = {
     getOidcProviders,
     getOidcProviderById,
+    getActiveOidcProviderIds,
     createOidcProvider,
     updateOidcProvider,
     deleteOidcProvider,
+    setProviderLogo,
 };

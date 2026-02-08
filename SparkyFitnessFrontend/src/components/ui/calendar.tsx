@@ -1,11 +1,8 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
-import { format } from "date-fns"; // Import format from date-fns
-
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select components
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   yearsRange?: number;

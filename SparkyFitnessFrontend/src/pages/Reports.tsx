@@ -1,24 +1,25 @@
-import { useState, useEffect, useCallback } from "react";
+
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, ScatterChart, Scatter } from 'recharts'; // Added ScatterChart, Scatter
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'; // Added ScatterChart, Scatter
 import { BarChart3, TrendingUp, Activity, Dumbbell, BedDouble } from "lucide-react"; // Added Dumbbell and BedDouble
 import { getFastingDataRange, FastingLog } from '@/services/fastingService';
-import { FastingReport } from './reports/FastingReport';
+import { FastingReport } from '@/components/reports/FastingReport';
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import ZoomableChart from "./ZoomableChart";
-import ReportsControls from "./reports/ReportsControls";
-import NutritionChartsGrid from "./reports/NutritionChartsGrid";
-import MeasurementChartsGrid from "./reports/MeasurementChartsGrid";
-import ReportsTables from "./reports/ReportsTables";
-import ExerciseReportsDashboard from "./reports/ExerciseReportsDashboard"; // Import ExerciseReportsDashboard
-import SleepReport from "./reports/SleepReport"; // Import SleepReport
-import BodyBatteryCard, { BODY_BATTERY_METRICS } from "./reports/BodyBatteryCard"; // Import BodyBatteryCard
-import RespirationCard, { RESPIRATION_METRICS } from "./reports/RespirationCard"; // Import RespirationCard
+import ZoomableChart from "@/components/ZoomableChart";
+import ReportsControls from "@/components/reports/ReportsControls";
+import NutritionChartsGrid from "@/components/reports/NutritionChartsGrid";
+import MeasurementChartsGrid from "@/components/reports/MeasurementChartsGrid";
+import ReportsTables from "@/components/reports/ReportsTables";
+import ExerciseReportsDashboard from "@/components/reports/ExerciseReportsDashboard"; // Import ExerciseReportsDashboard
+import SleepReport from "@/components/reports/SleepReport"; // Import SleepReport
+import BodyBatteryCard, { BODY_BATTERY_METRICS } from "@/components/reports/BodyBatteryCard"; // Import BodyBatteryCard
+import RespirationCard, { RESPIRATION_METRICS } from "@/components/reports/RespirationCard"; // Import RespirationCard
 
 // Metrics to hide from the custom measurements charts (shown in dedicated cards instead)
 const HIDDEN_CUSTOM_METRICS = [
@@ -27,18 +28,11 @@ const HIDDEN_CUSTOM_METRICS = [
   'Average SpO2',  // Shown in Sleep tab SpO2 card
   'Average Overnight HRV',  // Shown in Sleep tab HRV card
 ];
-import StressChart from "./StressChart"; // Import StressChart
-import { log, debug, info, warn, error, UserLoggingLevel } from "@/utils/logging";
-import { format, parseISO, addDays } from 'date-fns'; // Import format, parseISO, addDays from date-fns
+import StressChart from "@/components/StressChart"; // Import StressChart
+import {  debug, info, warn, error } from "@/utils/logging";
+import {  parseISO  } from 'date-fns'; // Import format, parseISO, addDays from date-fns
 import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
 import { calculateSmartYAxisDomain, getChartConfig } from "@/utils/chartUtils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"; // Import Select components
 
 import {
   loadReportsData,
@@ -47,19 +41,16 @@ import {
   DailyFoodEntry,
   CustomCategory,
   CustomMeasurementData,
-  DailyExerciseEntry, // Import DailyExerciseEntry
-  ExerciseProgressData, // Import ExerciseProgressData
+  DailyExerciseEntry, // Import ExerciseProgressData
   ExerciseDashboardData, // Import new type for dashboard data
 } from '@/services/reportsService';
-import { SleepAnalyticsData, MoodEntry, StressDataPoint } from '@/types';
-import { getExerciseProgressData } from '@/services/exerciseEntryService';
-import { getExerciseDashboardData, getSleepAnalyticsData } from '@/services/reportsService';
-import { getCategories as getCustomCategories } from '@/services/customCategoryService';
+import { MoodEntry, StressDataPoint } from '@/types';
+import { getExerciseDashboardData } from '@/services/reportsService';
 import { getRawStressData } from '@/services/customMeasurementService';
 import { getMoodEntries } from '@/services/moodService';
 import { customNutrientService } from "@/services/customNutrientService";
 import { UserCustomNutrient } from "@/types/customNutrient";
-import MoodChart from './MoodChart';
+import MoodChart from '@/components/MoodChart';
 
 interface ExtendedNutritionData extends NutritionData {
   [key: string]: number | string; // Add index signature for custom nutrients
@@ -747,34 +738,32 @@ const Reports = () => {
       ) : (
         <div>{t('reports.loadingDateControls', "Loading date controls...")}</div> // Or a loading spinner
       )}
-
       {loading ? (
         <div>{t('reports.loadingReports', "Loading reports...")}</div>
       ) : (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="h-auto grid w-full grid-cols-2 sm:grid-cols-5">
-            <TabsTrigger value="charts" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              {t('reports.chartsTab', "Charts")}
-            </TabsTrigger>
-            <TabsTrigger value="fasting" className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              {t('reports.fasting.insightsTab', "Fasting Insights")}
-            </TabsTrigger>
-            <TabsTrigger value="exercise-charts" className="flex items-center gap-2">
-              <Dumbbell className="w-4 h-4" />
-              {t('reports.exerciseProgressTab', "Exercise Progress")}
-            </TabsTrigger>
-            <TabsTrigger value="sleep-analytics" className="flex items-center gap-2">
-              <BedDouble className="w-4 h-4" />
-              {t('reports.sleepTab', "Sleep")}
-            </TabsTrigger>
-            <TabsTrigger value="table" className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              {t('reports.tableTab', "Table View")}
-            </TabsTrigger>
-          </TabsList>
-
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="flex w-full justify-start overflow-x-auto h-auto p-1 bg-muted/50 no-scrollbar">
+              <TabsTrigger value="charts" className="flex items-center gap-2 shrink-0 px-4 py-2">
+                <BarChart3 className="w-4 h-4" />
+                <span className="text-sm">{t('reports.chartsTab', "Charts")}</span>
+              </TabsTrigger>
+              <TabsTrigger value="fasting" className="flex items-center gap-2 shrink-0 px-4 py-2">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-sm">{t('reports.fasting.insightsTab', "Fasting")}</span>
+              </TabsTrigger>
+              <TabsTrigger value="exercise-charts" className="flex items-center gap-2 shrink-0 px-4 py-2">
+                <Dumbbell className="w-4 h-4" />
+                <span className="text-sm">{t('reports.exerciseProgressTab', "Exercise")}</span>
+              </TabsTrigger>
+              <TabsTrigger value="sleep-analytics" className="flex items-center gap-2 shrink-0 px-4 py-2">
+                <BedDouble className="w-4 h-4" />
+                <span className="text-sm">{t('reports.sleepTab', "Sleep")}</span>
+              </TabsTrigger>
+              <TabsTrigger value="table" className="flex items-center gap-2 shrink-0 px-4 py-2">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-sm">{t('reports.tableTab', "Table")}</span>
+              </TabsTrigger>
+            </TabsList>
           <TabsContent value="charts" className="space-y-6">
             <NutritionChartsGrid nutritionData={nutritionData} customNutrients={customNutrients} />
             <MeasurementChartsGrid

@@ -12,11 +12,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Plus,
   Edit,
   Trash2,
-  Settings,
-  Copy,
   History,
   Utensils,
   ClipboardCopy,
@@ -25,13 +22,12 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import EnhancedFoodSearch from "./EnhancedFoodSearch";
-import EnhancedCustomFoodForm from "./EnhancedCustomFoodForm";
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 import { useIsMobile } from "@/hooks/use-mobile";
-import { debug, info, warn, error } from "@/utils/logging"; // Import logging utility
+import { debug, info } from "@/utils/logging"; // Import logging utility
 
 import type { Food, FoodVariant, FoodEntry, GlycemicIndex } from "@/types/food";
-import { Meal, FoodEntryMeal } from "@/types/meal"; // Import FoodEntryMeal
+import { Meal, FoodEntryMeal } from "@/types/meal";
 
 interface MealTotals {
   calories: number;
@@ -189,11 +185,11 @@ const MealCard = ({
     "dietary_fiber",
   ];
 
-  let quickInfoNutrients = quickInfoPreferences
+  const quickInfoNutrients = quickInfoPreferences
     ? quickInfoPreferences.visible_nutrients
     : defaultNutrients;
 
-  let foodDatabaseNutrients = foodDatabasePreferences
+  const foodDatabaseNutrients = foodDatabasePreferences
     ? foodDatabasePreferences.visible_nutrients
     : defaultNutrients;
 
@@ -436,7 +432,7 @@ const MealCard = ({
                           )}
                       </div>
                       <div
-                        className={`grid grid-cols-${visibleNutrientsForGrid.length} gap-x-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400`}
+                        className={`flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600 dark:text-gray-400`}
                       >
                         {visibleNutrientsForGrid.map((nutrient) => {
                           const details = nutrientDetails[nutrient];

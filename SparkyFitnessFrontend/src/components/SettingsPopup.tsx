@@ -1,9 +1,15 @@
-
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Settings as SettingsIcon } from "lucide-react";
-import Settings from "./Settings";
+import Settings from "@/pages/SettingsPage";
 
 const SettingsPopup = () => {
   const [isOpen, setIsOpen] = useState(false);

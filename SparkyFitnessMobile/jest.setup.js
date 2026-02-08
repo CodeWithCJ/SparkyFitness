@@ -64,12 +64,22 @@ jest.mock('react-native-health-connect', () => ({
   },
 }));
 
-// Mock react-native-background-fetch
-jest.mock('react-native-background-fetch', () => ({
-  configure: jest.fn(),
-  scheduleTask: jest.fn(),
-  finish: jest.fn(),
-  STATUS_AVAILABLE: 2,
+// Mock expo-task-manager
+jest.mock('expo-task-manager', () => ({
+  defineTask: jest.fn(),
+  isTaskDefined: jest.fn(() => true),
+  isTaskRegisteredAsync: jest.fn(() => Promise.resolve(false)),
+  unregisterTaskAsync: jest.fn(() => Promise.resolve()),
+}));
+
+// Mock expo-background-task
+jest.mock('expo-background-task', () => ({
+  registerTaskAsync: jest.fn(() => Promise.resolve()),
+  unregisterTaskAsync: jest.fn(() => Promise.resolve()),
+  getStatusAsync: jest.fn(() => Promise.resolve(2)),
+  triggerTaskWorkerForTestingAsync: jest.fn(() => Promise.resolve(true)),
+  BackgroundTaskStatus: { Restricted: 1, Available: 2 },
+  BackgroundTaskResult: { Success: 1, Failed: 2 },
 }));
 
 // Mock @react-native-async-storage/async-storage

@@ -1,7 +1,3 @@
-
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -9,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { cn } from "@/lib/utils";
-import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
+import { debug, info, warn } from '@/utils/logging'; // Import logging utility
 import { format } from 'date-fns'; // Import format from date-fns
 import { useTranslation } from "react-i18next";
 

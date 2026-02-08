@@ -1,39 +1,7 @@
-const jwt = require("jsonwebtoken");
 const { log } = require("../config/logging");
-const { JWT_SECRET } = require("../security/encryption");
 const userRepository = require("../models/userRepository"); // Import userRepository
 const { getClient, getSystemClient } = require("../db/poolManager"); // Import getClient and getSystemClient
 const { canAccessUserData } = require("../utils/permissionUtils");
-
-const tryAuthenticateWithApiKey = async (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const apiKey = authHeader && authHeader.split(" ")[1]; // Bearer API_KEY
-
-  if (!apiKey) {
-    return null; // No API key found
-  }
-
-  let client;
-  try {
-    client = await getSystemClient(); // Use system client for API key validation
-    const result = await client.query(
-      'SELECT user_id FROM user_api_keys WHERE api_key = $1 AND is_active = TRUE',
-      [apiKey]
-    );
-
-    if (result.rows.length > 0) {
-      log("debug", `Authentication: API Key valid. User ID: ${result.rows[0].user_id}`);
-      return result.rows[0].user_id;
-    }
-  } catch (error) {
-    log("error", "Error during API Key authentication:", error);
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
-  return null;
-};
 
 const authenticate = async (req, res, next) => {
   // Allow public access to the /api/auth/settings endpoint
@@ -41,148 +9,116 @@ const authenticate = async (req, res, next) => {
     return next();
   }
 
-  log("debug", `authenticate middleware: req.path = ${req.path}`);
+  //log("debug", `authenticate middleware: req.path = ${req.path}, req.headers.cookie = ${req.headers.cookie}`);
 
-  // Allow MFA challenge related routes to be authenticated with a special MFA token
-  // This token is short-lived and only grants access to MFA endpoints.
-  // Handle MFA challenge routes with a special MFA token
-  if (req.originalUrl.startsWith("/auth/mfa/") && (req.originalUrl.includes("/request-email-code") || req.originalUrl.includes("/verify") || req.originalUrl.includes("/verify-email-code"))) {
-    log("debug", "authenticate middleware: Path matches MFA challenge route.");
-    // Access headers in a case-insensitive way to handle potential variations
-    const mfaToken = req.headers['x-mfa-token'] || req.headers['X-MFA-Token'];
+  // 1. Better Auth Session & API Key Check (Unified Identity)
+  try {
+    const { auth } = require("../auth");
 
-    if (mfaToken) {
-      try {
-        const decoded = jwt.verify(mfaToken, JWT_SECRET);
-        if (decoded.purpose === 'mfa_challenge') {
-          req.userId = decoded.userId;
-          return next();
-        }
-      } catch (err) {
-        log("warn", `Authentication: Invalid or expired MFA challenge token. Error: ${err.message}`);
-        return res.status(401).json({ error: "Authentication: Invalid or expired MFA token." });
+    // Support Bearer token from mobile app by mapping it to x-api-key
+    // Better Auth's API Key plugin defaults to looking for 'x-api-key'
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+      const token = req.headers.authorization.split(' ')[1];
+      if (token) {
+        req.headers['x-api-key'] = token;
+        log("debug", "Authentication: Mapped Bearer token to x-api-key header for Better Auth.");
       }
-    } else {
-      log("warn", "authenticate middleware: X-MFA-Token is missing for MFA challenge route.");
     }
-  }
 
-  // 1. Check for JWT token in cookie
-  const token = req.cookies.token;
+    // getSession natively handles both Browser Cookies and Authorization: Bearer <API_KEY> (if configured)
+    const session = await auth.api.getSession({
+      headers: req.headers,
+    });
 
-  if (token) {
-    try {
-      const payload = jwt.verify(token, JWT_SECRET);
-      req.authenticatedUserId = payload.userId;
-      req.activeUserId = payload.activeUserId || payload.userId;
+    if (session && session.user) {
+      log("debug", `Authentication: Better Auth identity valid. User ID: ${session.user.id}`);
+      req.authenticatedUserId = session.user.id;
       req.originalUserId = req.authenticatedUserId;
-      req.userId = req.activeUserId; // RLS context
+      req.user = session.user; // Full user object (includes role)
 
-      if (req.activeUserId !== req.authenticatedUserId) {
-        // Broad check: Do they have AT LEAST one of the major permissions for this user?
+      // Handle 'sparky_active_user_id' cookie for context switching
+      const activeUserId = req.cookies.sparky_active_user_id;
+      if (activeUserId && activeUserId !== req.authenticatedUserId) {
+        const { canAccessUserData } = require("../utils/permissionUtils");
         const [hasReports, hasDiary, hasCheckin] = await Promise.all([
-          canAccessUserData(req.activeUserId, 'reports', req.authenticatedUserId),
-          canAccessUserData(req.activeUserId, 'diary', req.authenticatedUserId),
-          canAccessUserData(req.activeUserId, 'checkin', req.authenticatedUserId)
+          canAccessUserData(activeUserId, 'reports', req.authenticatedUserId),
+          canAccessUserData(activeUserId, 'diary', req.authenticatedUserId),
+          canAccessUserData(activeUserId, 'checkin', req.authenticatedUserId)
         ]);
 
-        if (!hasReports && !hasDiary && !hasCheckin) {
-          log("warn", `Authentication: Context access revoked for User ${req.authenticatedUserId} -> ${req.activeUserId}`);
-          return res.status(403).json({ error: "Access to the active user context has been revoked or is insufficient." });
+        if (hasReports || hasDiary || hasCheckin) {
+          req.activeUserId = activeUserId;
+          log("info", `Authentication: Context switched. User ${req.authenticatedUserId} acting as ${req.activeUserId}`);
+        } else {
+          log("warn", `Authentication: Context access denied for User ${req.authenticatedUserId} -> ${activeUserId}`);
+          req.activeUserId = req.authenticatedUserId;
         }
+      } else {
+        req.activeUserId = req.authenticatedUserId;
       }
 
-      log("debug", `Authentication: JWT token valid. User ID: ${req.userId} (Original: ${req.originalUserId})`);
+      req.userId = req.activeUserId; // RLS context
+
+      // Support for scoping (for future broad API key use)
+      req.permissions = session.session?.metadata?.permissions || { "*": true };
+
+      // Ensure user initialization
+      try {
+        await userRepository.ensureUserInitialization(session.user.id, session.user.name);
+      } catch (err) {
+        log("error", `Lazy Initialization failed for user ${session.user.id}:`, err);
+      }
+
       return next();
-    } catch (err) {
-      log("warn", "Authentication: JWT token invalid or expired.", err.message);
     }
-  }
+  } catch (error) {
+    log("error", "Error checking Better Auth identity:", error);
 
-  // 2. Check for session-based authentication (for OIDC)
-  if (req.session && req.session.user && req.session.user.userId) {
-    req.authenticatedUserId = req.session.user.userId;
-    req.activeUserId = req.session.user.activeUserId || req.session.user.userId;
-    req.originalUserId = req.authenticatedUserId;
-    req.userId = req.activeUserId;
-
-    if (req.activeUserId !== req.authenticatedUserId) {
-      const [hasReports, hasDiary, hasCheckin] = await Promise.all([
-        canAccessUserData(req.activeUserId, 'reports', req.authenticatedUserId),
-        canAccessUserData(req.activeUserId, 'diary', req.authenticatedUserId),
-        canAccessUserData(req.activeUserId, 'checkin', req.authenticatedUserId)
-      ]);
-
-      if (!hasReports && !hasDiary && !hasCheckin) {
-        log("warn", `Authentication: Session context access revoked for User ${req.authenticatedUserId} -> ${req.activeUserId}`);
-        return res.status(403).json({ error: "Access to the active user context has been revoked or is insufficient." });
+    const code = error?.body?.code;
+    if (code === "RATE_LIMITED") {
+      const retryAfterMs = error.body?.details?.tryAgainIn;
+      if (retryAfterMs) {
+        res.set("Retry-After", String(Math.ceil(retryAfterMs / 1000)));
       }
+      return res.status(429).json({ error: "Rate limit exceeded." });
     }
-
-    log("debug", `Authentication: Session valid. User ID: ${req.userId}`);
-    return next();
+    if (code === "KEY_DISABLED") {
+      return res.status(403).json({ error: "API key is disabled." });
+    }
+    if (code === "KEY_EXPIRED") {
+      return res.status(401).json({ error: "API key has expired." });
+    }
+    if (code === "USAGE_EXCEEDED") {
+      return res.status(429).json({ error: "API key usage limit exceeded." });
+    }
   }
 
-  // 3. Try to authenticate with API Key
-  const userIdFromApiKey = await tryAuthenticateWithApiKey(req, res, next);
-  if (userIdFromApiKey) {
-    req.authenticatedUserId = userIdFromApiKey;
-    req.activeUserId = userIdFromApiKey;
-    req.originalUserId = userIdFromApiKey;
-    req.userId = userIdFromApiKey;
-    return next();
-  }
-
-  // If no authentication method succeeded
-  log("warn", "Authentication: No token, active session, or valid API key provided.");
-  return res.status(401).json({ error: "Authentication: No token, active session, or valid API key provided." });
+  // No valid authentication found
+  log("warn", `Authentication: No valid identity provided for ${req.path}`);
+  return res.status(401).json({ error: "Authentication required." });
 };
 
 
 const isAdmin = async (req, res, next) => {
   if (!req.userId) {
-    log(
-      "warn",
-      "Admin Check: No user ID found in request. User not authenticated."
-    );
-    return res
-      .status(401)
-      .json({ error: "Admin Check: Authentication required." });
+    return res.status(401).json({ error: "Authentication required." });
   }
 
-  try {
-    // Prioritize environment variable for super-admin check
-    if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
-      const user = await userRepository.findUserById(req.userId);
-      if (user && user.email === process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
-        log("debug", `Admin Check: Super-admin ${user.email} granted access.`);
-        return next();
-      }
-    }
-
-    const userRole = await userRepository.getUserRole(req.userId);
-    if (userRole === "admin") {
-      next();
-    } else {
-      log(
-        "warn",
-        `Admin Check: User ${req.userId} with role '${userRole}' attempted to access admin resource.`
-      );
-      return res
-        .status(403)
-        .json({
-          error: "Admin Check: Access denied. Admin privileges required.",
-        });
-    }
-  } catch (error) {
-    log(
-      "error",
-      `Admin Check: Error checking user role for user ${req.userId}: ${error.message}`
-    );
-    return res
-      .status(500)
-      .json({ error: "Admin Check: Internal server error during role check." });
+  // 1. Super-admin override
+  if (process.env.SPARKY_FITNESS_ADMIN_EMAIL && req.user?.email === process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
+    return next();
   }
+
+  // 2. Native Better Auth Role Check
+  // Note: Better Auth stores role in the session/user object if configured
+  const userRole = req.user?.role || await userRepository.getUserRole(req.userId);
+
+  if (userRole === "admin") {
+    return next();
+  }
+
+  log("warn", `Admin Check: Access denied for User ${req.userId} (Role: ${userRole})`);
+  return res.status(403).json({ error: "Admin access required." });
 };
 
 const authorize = (requiredPermission) => {

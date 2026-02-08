@@ -21,7 +21,7 @@ import { createExercise, Exercise } from "@/services/exerciseService";
 import { WorkoutPreset } from "@/types/workout"; // Import WorkoutPreset type
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { PlusCircle, XCircle } from "lucide-react";
+import { XCircle } from "lucide-react";
 import { apiCall } from "@/services/api"; // Import apiCall
 
 interface AddExerciseDialogProps {

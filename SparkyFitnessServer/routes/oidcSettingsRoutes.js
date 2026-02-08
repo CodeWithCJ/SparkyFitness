@@ -1,224 +1,103 @@
 const express = require('express');
 const router = express.Router();
-const oidcProviderRepository = require('../models/oidcProviderRepository');
 const { log } = require('../config/logging');
 const { isAdmin } = require('../middleware/authMiddleware');
-const { initializeOidcClient, clearOidcClientCache } = require('../openidRoutes');
 const oidcLogoUpload = require('../middleware/oidcLogoUpload');
+const oidcProviderRepository = require('../models/oidcProviderRepository');
 
 /**
  * @swagger
- * /oidc-settings:
+ * /admin/oidc-settings:
  *   get:
  *     summary: Get all OIDC Providers (Admin Only)
- *     tags: [External Integrations]
- *     security:
- *       - cookieAuth: []
- *     responses:
- *       200:
- *         description: List of OIDC providers.
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/OidcProvider'
  */
 router.get('/', isAdmin, async (req, res) => {
     try {
         const providers = await oidcProviderRepository.getOidcProviders();
         res.json(providers);
     } catch (error) {
-        log('error', `Error getting OIDC providers: ${error.message}`);
+        log('error', `[OIDC SETTINGS] GET Error: ${error.message}`);
         res.status(500).json({ message: 'Error retrieving OIDC providers' });
     }
 });
 
 /**
  * @swagger
- * /oidc-settings/{id}:
+ * /admin/oidc-settings/{id}:
  *   get:
  *     summary: Get a single OIDC Provider by ID (Admin Only)
- *     tags: [External Integrations]
- *     security:
- *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     responses:
- *       200:
- *         description: The OIDC provider.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/OidcProvider'
  */
 router.get('/:id', isAdmin, async (req, res) => {
     try {
         const provider = await oidcProviderRepository.getOidcProviderById(req.params.id);
         if (provider) {
-            // Return all data except the decrypted secret for editing purposes
-            // The provider object from the repository now includes all fields
-            const { encrypted_client_secret, client_secret_iv, client_secret_tag, ...safeProvider } = provider;
-            res.json({ ...safeProvider, client_secret: '*****' }); // Use placeholder
+            // Mask the secret for display
+            provider.client_secret = '*****';
+            res.json(provider);
         } else {
             res.status(404).json({ message: 'OIDC provider not found' });
         }
     } catch (error) {
-        log('error', `Error getting OIDC provider: ${error.message}`);
+        log('error', `[OIDC SETTINGS] GET/:id Error: ${error.message}`);
         res.status(500).json({ message: 'Error retrieving OIDC provider' });
     }
 });
 
 /**
  * @swagger
- * /oidc-settings:
+ * /admin/oidc-settings:
  *   post:
  *     summary: Create a new OIDC Provider (Admin Only)
- *     tags: [External Integrations]
- *     security:
- *       - cookieAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/OidcProvider'
- *     responses:
- *       201:
- *         description: Created successfully.
  */
 router.post('/', isAdmin, async (req, res) => {
     try {
-        const providerData = req.body;
-        if (!providerData.issuer_url || !providerData.client_id || !providerData.redirect_uris || !providerData.scope) {
-            log('warn', 'Missing required OIDC provider fields in create request.');
-            return res.status(400).json({ message: 'Missing required OIDC provider fields.' });
-        }
-
-        const newProvider = await oidcProviderRepository.createOidcProvider(providerData);
-        log('info', `OIDC provider created successfully with ID: ${newProvider.id}.`);
-
-        // No need to initialize client here, it will be done on demand
-        res.status(201).json({ message: 'OIDC provider created successfully', id: newProvider.id });
+        const result = await oidcProviderRepository.createOidcProvider(req.body);
+        log('info', `[OIDC SETTINGS] Provider created with ID: ${result.id}`);
+        res.status(201).json({ message: 'OIDC provider created successfully', id: result.id });
     } catch (error) {
-        log('error', `Error creating OIDC provider: ${error.message}`);
-        res.status(500).json({ message: 'Error creating OIDC provider' });
+        log('error', `[OIDC SETTINGS] POST Error: ${error.message}`);
+        res.status(500).json({ message: 'Error creating OIDC provider: ' + error.message });
     }
 });
 
 /**
  * @swagger
- * /oidc-settings/{id}:
+ * /admin/oidc-settings/{id}:
  *   put:
  *     summary: Update an OIDC Provider (Admin Only)
- *     tags: [External Integrations]
- *     security:
- *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/OidcProvider'
- *     responses:
- *       200:
- *         description: Updated successfully.
  */
 router.put('/:id', isAdmin, async (req, res) => {
     try {
-        const providerData = req.body;
-        const { id } = req.params;
-
-        if (!providerData.issuer_url || !providerData.client_id || !providerData.redirect_uris || !providerData.scope) {
-            log('warn', 'Missing required OIDC provider fields in update request.');
-            return res.status(400).json({ message: 'Missing required OIDC provider fields.' });
-        }
-
-        const updatedProvider = await oidcProviderRepository.updateOidcProvider(id, providerData);
-        log('info', `OIDC provider ${id} updated successfully. Clearing OIDC client cache.`);
-
-        // Clear the specific client from cache so it's re-initialized on next use
-        clearOidcClientCache(id);
-
-        res.status(200).json({ message: 'OIDC provider updated successfully', id: updatedProvider.id });
+        await oidcProviderRepository.updateOidcProvider(req.params.id, req.body);
+        log('info', `[OIDC SETTINGS] Provider ${req.params.id} updated.`);
+        res.status(200).json({ message: 'OIDC provider updated successfully' });
     } catch (error) {
-        log('error', `Error updating OIDC provider: ${error.message}`);
-        res.status(500).json({ message: 'Error updating OIDC provider' });
+        log('error', `[OIDC SETTINGS] PUT Error: ${error.message}`);
+        res.status(500).json({ message: 'Error updating OIDC provider: ' + error.message });
     }
 });
 
 /**
  * @swagger
- * /oidc-settings/{id}:
+ * /admin/oidc-settings/{id}:
  *   delete:
  *     summary: DELETE an OIDC Provider (Admin Only)
- *     tags: [External Integrations]
- *     security:
- *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     responses:
- *       200:
- *         description: Deleted successfully.
  */
 router.delete('/:id', isAdmin, async (req, res) => {
     try {
-        const { id } = req.params;
-        await oidcProviderRepository.deleteOidcProvider(id);
-        log('info', `OIDC provider ${id} deleted successfully. Clearing OIDC client cache.`);
-
-        // Clear the client from cache
-        clearOidcClientCache(id);
-
+        await oidcProviderRepository.deleteOidcProvider(req.params.id);
         res.status(200).json({ message: 'OIDC provider deleted successfully' });
     } catch (error) {
-        log('error', `Error deleting OIDC provider: ${error.message}`);
+        log('error', `[OIDC SETTINGS] DELETE Error: ${error.message}`);
         res.status(500).json({ message: 'Error deleting OIDC provider' });
     }
 });
 
 /**
  * @swagger
- * /oidc-settings/{id}/logo:
+ * /admin/oidc-settings/{id}/logo:
  *   post:
  *     summary: POST a logo for an OIDC Provider (Admin Only)
- *     tags: [External Integrations]
- *     security:
- *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               logo: { type: 'string', format: 'binary' }
- *     responses:
- *       200:
- *         description: Logo uploaded successfully.
  */
 router.post('/:id/logo', isAdmin, oidcLogoUpload.single('logo'), async (req, res) => {
     const { id } = req.params;
@@ -227,17 +106,16 @@ router.post('/:id/logo', isAdmin, oidcLogoUpload.single('logo'), async (req, res
     }
 
     try {
-        const provider = await oidcProviderRepository.getOidcProviderById(id);
-        if (!provider) {
-            return res.status(404).json({ message: 'Provider not found.' });
-        }
         const logoUrl = `/uploads/oidc/${req.file.filename}`;
-        const updatedProvider = { ...provider, logo_url: logoUrl };
-        await oidcProviderRepository.updateOidcProvider(id, updatedProvider);
-        log('info', `Logo for OIDC provider ${id} updated successfully.`);
-        res.status(200).json({ message: 'Logo uploaded successfully', logoUrl });
+        const success = await oidcProviderRepository.setProviderLogo(id, logoUrl);
+
+        if (success) {
+            res.status(200).json({ message: 'Logo uploaded successfully', logoUrl });
+        } else {
+            res.status(404).json({ message: 'OIDC provider not found' });
+        }
     } catch (error) {
-        log('error', `Error uploading logo for OIDC provider ${id}: ${error.message}`);
+        log('error', `[OIDC SETTINGS] LOGO Error: ${error.message}`);
         res.status(500).json({ message: 'Error uploading logo' });
     }
 });

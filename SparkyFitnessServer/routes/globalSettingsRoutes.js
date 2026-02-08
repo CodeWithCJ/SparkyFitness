@@ -6,7 +6,7 @@ const { isAdmin } = require('../middleware/authMiddleware');
 
 /**
  * @swagger
- * /global-settings:
+ * /admin/global-settings:
  *   get:
  *     summary: GET Global Authentication Settings (Admin Only)
  *     tags: [System & Admin]
@@ -32,7 +32,7 @@ router.get('/', isAdmin, async (req, res) => {
 
 /**
  * @swagger
- * /global-settings:
+ * /admin/global-settings:
  *   put:
  *     summary: Update Global Authentication Settings (Admin Only)
  *     tags: [System & Admin]

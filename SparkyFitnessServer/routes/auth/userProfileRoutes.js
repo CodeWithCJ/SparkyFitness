@@ -43,7 +43,7 @@ const upload = multer({
 
 /**
  * @swagger
- * /auth/user:
+ * /identity/user:
  *   get:
  *     summary: Get current user's information
  *     tags: [Identity & Security]
@@ -56,18 +56,27 @@ const upload = multer({
  */
 router.get('/user', authenticate, async (req, res, next) => {
   try {
-    const user = await authService.getUser(req.authenticatedUserId || req.userId);
+    // Fetch both the logged-in user and the active context user
+    const [authenticatedUser, activeUser] = await Promise.all([
+      authService.getUser(req.authenticatedUserId),
+      authService.getUser(req.userId)
+    ]);
+
     res.status(200).json({
-      userId: user.id,
-      activeUserId: req.activeUserId || user.id,
-      email: user.email,
-      fullName: user.full_name, // Map database column to camelCase
-      role: user.role,
-      created_at: user.created_at
+      // The actual logged-in user
+      authenticatedUserId: authenticatedUser.id,
+      authenticatedUserEmail: authenticatedUser.email,
+      role: authenticatedUser.role,
+
+      // The user context we are currently operating in
+      activeUserId: activeUser.id,
+      activeUserEmail: activeUser.email,
+      activeUserFullName: activeUser.full_name
     });
   } catch (error) {
-    if (error.message === 'User not found.') {
-      return res.status(404).json({ error: error.message });
+    // Use a more specific error check if available from the service layer
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: 'User not found.' });
     }
     next(error);
   }
@@ -75,7 +84,7 @@ router.get('/user', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/switch-context:
+ * /identity/switch-context:
  *   post:
  *     summary: Switch active user context
  *     tags: [Identity & Security]
@@ -107,20 +116,14 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
   }
 
   try {
-    const { token, activeUserId } = await authService.switchUserContext(req.authenticatedUserId, targetUserId);
+    const { activeUserId } = await authService.switchUserContext(req.authenticatedUserId, targetUserId);
 
-    // Synchronize session for OIDC users if it exists
-    if (req.session && req.session.user) {
-      req.session.user.activeUserId = activeUserId;
-      log('info', `Synchronized OIDC session activeUserId to: ${activeUserId}`);
-    }
-
-    // Set the new token in the cookie
-    res.cookie('token', token, {
+    // Set the new active user ID in the cookie
+    res.cookie('sparky_active_user_id', activeUserId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000
+      path: '/'
     });
 
     res.status(200).json({ message: 'Context switched successfully.', activeUserId });
@@ -135,7 +138,7 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/users/find-by-email:
+ * /identity/users/find-by-email:
  *   get:
  *     summary: Find a user by email
  *     tags: [Identity & Security]
@@ -178,7 +181,7 @@ router.get('/users/find-by-email', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/profiles:
+ * /identity/profiles:
  *   get:
  *     summary: Get the current user's profile
  *     tags: [Identity & Security]
@@ -191,13 +194,16 @@ router.get('/users/find-by-email', authenticate, async (req, res, next) => {
  */
 router.get('/profiles', authenticate, async (req, res, next) => {
   try {
-    const profile = await authService.getUserProfile(req.userId, req.userId);
+    // Always fetch the profile for the active user context
+    const profile = await authService.getUserProfile(req.userId);
     if (!profile) {
+      // Return an empty object, but not an error, if a profile doesn't exist yet
       return res.status(200).json({});
     }
     res.status(200).json(profile);
   } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
+    // Error handling can be improved with custom error types
+    if (error.constructor.name === 'ForbiddenError') {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -206,7 +212,7 @@ router.get('/profiles', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/profiles:
+ * /identity/profiles:
  *   put:
  *     summary: Update the current user's profile
  *     tags: [Identity & Security]
@@ -240,20 +246,19 @@ router.get('/profiles', authenticate, async (req, res, next) => {
  *         description: Profile not found or no changes made.
  */
 router.put('/profiles', authenticate, async (req, res, next) => {
-  const { full_name, phone_number, date_of_birth, bio, avatar_url, gender } = req.body;
-
   try {
+    // Profile updates should apply to the active user context
     const updatedProfile = await authService.updateUserProfile(
       req.userId,
-      req.userId,
-      { full_name, phone_number, date_of_birth, bio, avatar_url, gender }
+      req.body
     );
     res.status(200).json({ message: 'Profile updated successfully.', profile: updatedProfile });
   } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
+    // Example of improved error handling
+    if (error.constructor.name === 'ForbiddenError') {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message === 'Profile not found or no changes made.') {
+    if (error.constructor.name === 'NotFoundError') {
       return res.status(404).json({ error: error.message });
     }
     next(error);
@@ -262,7 +267,7 @@ router.put('/profiles', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/update-password:
+ * /identity/update-password:
  *   post:
  *     summary: Update user password
  *     tags: [Identity & Security]
@@ -302,10 +307,11 @@ router.post('/update-password', authenticate, async (req, res, next) => {
   }
 
   try {
-    await authService.updateUserPassword(req.userId, newPassword);
+    // Security: Password updates must always apply to the authenticated user, not the active context
+    await authService.updateUserPassword(req.authenticatedUserId, newPassword);
     res.status(200).json({ message: 'Password updated successfully.' });
   } catch (error) {
-    if (error.message === 'User not found.') {
+    if (error.constructor.name === 'NotFoundError') {
       return res.status(404).json({ error: error.message });
     }
     next(error);
@@ -314,7 +320,7 @@ router.post('/update-password', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/update-email:
+ * /identity/update-email:
  *   post:
  *     summary: Update user email
  *     tags: [Identity & Security]
@@ -356,13 +362,14 @@ router.post('/update-email', authenticate, async (req, res, next) => {
   }
 
   try {
-    await authService.updateUserEmail(req.userId, newEmail);
+    // Security: Email updates must always apply to the authenticated user
+    await authService.updateUserEmail(req.authenticatedUserId, newEmail);
     res.status(200).json({ message: 'Email update initiated. User will need to verify new email.' });
   } catch (error) {
-    if (error.message === 'Email already in use by another account.') {
+    if (error.constructor.name === 'ConflictError') {
       return res.status(409).json({ error: error.message });
     }
-    if (error.message === 'User not found.') {
+    if (error.constructor.name === 'NotFoundError') {
       return res.status(404).json({ error: error.message });
     }
     next(error);
@@ -371,7 +378,7 @@ router.post('/update-email', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /auth/profiles/avatar:
+ * /identity/profiles/avatar:
  *   post:
  *     summary: Upload user avatar
  *     tags: [Identity & Security]
@@ -409,26 +416,27 @@ router.post('/update-email', authenticate, async (req, res, next) => {
  *         description: Internal server error.
  */
 router.post('/profiles/avatar', authenticate, upload.single('avatar'), async (req, res, next) => {
-
   try {
     if (!req.file) {
-      console.error('Multer did not provide a file for upload.');
-      return res.status(400).json({ error: 'No file uploaded.' });
+      return res.status(400).json({ error: 'No file uploaded or invalid file type.' });
     }
-    console.log('Multer req.file:', req.file);
-    const avatarUrl = `/auth/profiles/avatar/${req.file.filename}`;
-    console.log('Generated avatarUrl for DB:', avatarUrl);
-    await authService.updateUserProfile(req.userId, req.userId, { avatar_url: avatarUrl });
+    // The avatar URL should be a relative path that the frontend can use.
+    // The logic for serving the file will handle the rest.
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+    // Update the profile of the active user context
+    await authService.updateUserProfile(req.userId, { avatar_url: avatarUrl });
+
     res.status(200).json({ message: 'Avatar uploaded successfully.', avatar_url: avatarUrl });
   } catch (error) {
-    console.error('Error in avatar upload route:', error);
+    log('error', 'Error in avatar upload route:', error);
     next(error);
   }
 });
 
 /**
  * @swagger
- * /auth/profiles/avatar/{filename}:
+ * /identity/profiles/avatar/{filename}:
  *   get:
  *     summary: Get user avatar image
  *     tags: [Identity & Security]
@@ -455,13 +463,15 @@ router.post('/profiles/avatar', authenticate, upload.single('avatar'), async (re
  *       500:
  *         description: Internal server error.
  */
-router.get('/profiles/avatar/:filename', authenticate, async (req, res, next) => {
-
+router.get('/profiles/avatar/:filename', authenticate, (req, res, next) => {
   try {
     const { filename } = req.params;
-    const userId = req.userId;
-
     const avatarPath = path.join(UPLOADS_DIR, filename);
+
+    // Security check: Ensure the filename is safe to prevent directory traversal
+    if (filename.includes('..')) {
+      return res.status(400).json({ error: 'Invalid filename.' });
+    }
 
     if (fs.existsSync(avatarPath)) {
       res.sendFile(avatarPath);
@@ -469,6 +479,58 @@ router.get('/profiles/avatar/:filename', authenticate, async (req, res, next) =>
       res.status(404).json({ error: 'Avatar not found.' });
     }
   } catch (error) {
+    log('error', `Error serving avatar file ${req.params.filename}:`, error);
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /identity/mfa/email-toggle:
+ *   post:
+ *     summary: Toggle Email MFA
+ *     tags: [Identity & Security]
+ *     description: Enables or disables Email MFA for the currently authenticated user.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               enabled:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: MFA settings updated successfully.
+ */
+router.post('/mfa/email-toggle', authenticate, async (req, res, next) => {
+  const { enabled } = req.body;
+
+  try {
+    // Security: MFA settings must apply to the authenticated user
+    const user = await authService.getUser(req.authenticatedUserId);
+    const totpEnabled = !!user.mfa_totp_enabled;
+    const globalMfaState = enabled || totpEnabled;
+
+    await authService.updateUserMfaSettings(
+      req.authenticatedUserId,
+      undefined,      // mfaSecret
+      totpEnabled,    // mfa_totp_enabled (specifically TOTP)
+      enabled,        // mfaEmailEnabled
+      undefined,      // mfaRecoveryCodes
+      undefined,      // mfaEnforced
+      null,           // emailMfaCode
+      null            // emailMfaExpiresAt
+    );
+
+    res.status(200).json({
+      message: `Email MFA ${enabled ? 'enabled' : 'disabled'} successfully.`,
+      mfaEmailEnabled: enabled,
+      twoFactorEnabled: globalMfaState
+    });
+  } catch (error) {
+    log('error', `Error toggling email MFA for user ${req.authenticatedUserId}:`, error);
     next(error);
   }
 });

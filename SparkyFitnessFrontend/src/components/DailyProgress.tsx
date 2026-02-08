@@ -13,15 +13,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from "@/utils/logging";
-import { format, parseISO, addDays } from "date-fns"; // Import format, parseISO, and addDays from date-fns
 import { calculateFoodEntryNutrition } from "@/utils/nutritionCalculations"; // Import the new utility function
 import {
   getGoalsForDate,
   getFoodEntriesForDate,
   getExerciseEntriesForDate,
   getCheckInMeasurementsForDate,
-  Goals,
-  ExerciseEntry,
   CheckInMeasurement,
 } from "@/services/dailyProgressService";
 import { GroupedExerciseEntry } from "@/services/exerciseEntryService"; // Corrected import path
@@ -143,190 +140,168 @@ const DailyProgress = ({
     try {
       setLoading(true);
 
-      // Use the database function to get goals for the selected date
-      debug(loggingLevel, "DailyProgress: Fetching goals...");
-      const goalsData = await getGoalsForDate(selectedDate, currentUserId);
-      info(
-        loggingLevel,
-        "DailyProgress: Goals loaded successfully:",
+      // Parallelize all data fetching
+      debug(loggingLevel, "DailyProgress: Fetching all data in parallel...");
+      const [
         goalsData,
-      );
+        entriesData,
+        exerciseData,
+        stepsData,
+        prefs,
+        mostRecentWeight,
+        mostRecentHeight,
+        mostRecentBodyFat,
+        userProfile,
+      ] = await Promise.all([
+        getGoalsForDate(selectedDate),
+        getFoodEntriesForDate(selectedDate),
+        getExerciseEntriesForDate(selectedDate),
+        getCheckInMeasurementsForDate(selectedDate),
+        getUserPreferences(loggingLevel),
+        getMostRecentMeasurement("weight"),
+        getMostRecentMeasurement("height"),
+        getMostRecentMeasurement("body_fat_percentage"),
+        userManagementService.getUserProfile(currentUserId),
+      ]);
+
+      // Process Goals
+      info(loggingLevel, "DailyProgress: Goals loaded:", goalsData);
       setDailyGoals({
-        calories: goalsData.calories || 2000, // Assume backend always provides kcal
+        calories: goalsData.calories || 2000,
         protein: goalsData.protein || 150,
         carbs: goalsData.carbs || 250,
         fat: goalsData.fat || 67,
-        water_goal_ml: goalsData.water_goal_ml || 1920, // Default to 8 glasses * 240ml
+        water_goal_ml: goalsData.water_goal_ml || 1920,
       });
 
-      // Load daily intake from food entries
-      debug(
+      // Process Food Entries
+      info(
         loggingLevel,
-        "DailyProgress: Fetching food entries for intake calculation...",
+        `DailyProgress: Fetched ${entriesData.length} food entries.`,
       );
-      try {
-        const entriesData = await getFoodEntriesForDate(selectedDate, currentUserId);
-        info(
-          loggingLevel,
-          `DailyProgress: Fetched ${entriesData.length} food entries for intake.`,
-        );
-        const totals = entriesData.reduce(
-          (acc, entry) => {
-            const nutrition = calculateFoodEntryNutrition(entry); // Assumes nutrition is in kcal
-            acc.calories += nutrition.calories;
-            acc.protein += nutrition.protein;
-            acc.carbs += nutrition.carbs;
-            acc.fat += nutrition.fat;
-            acc.water_ml += nutrition.water_ml;
-            return acc;
-          },
-          { calories: 0, protein: 0, carbs: 0, fat: 0, water_ml: 0 },
-        );
+      const totals = (entriesData as FoodEntry[]).reduce(
+        (acc, entry) => {
+          const nutrition = calculateFoodEntryNutrition(entry);
+          acc.calories += nutrition.calories;
+          acc.protein += nutrition.protein;
+          acc.carbs += nutrition.carbs;
+          acc.fat += nutrition.fat;
+          acc.water_ml += nutrition.water_ml;
+          return acc;
+        },
+        { calories: 0, protein: 0, carbs: 0, fat: 0, water_ml: 0 },
+      );
+      info(loggingLevel, "DailyProgress: Daily intake calculated:", totals);
+      setDailyIntake({
+        calories: Math.round(totals.calories),
+        protein: Math.round(totals.protein),
+        carbs: Math.round(totals.carbs),
+        fat: Math.round(totals.fat),
+        water_ml: Math.round(totals.water_ml),
+      });
 
-        info(loggingLevel, "DailyProgress: Daily intake calculated:", totals);
-        setDailyIntake({
-          calories: Math.round(totals.calories), // Still kcal internally
-          protein: Math.round(totals.protein),
-          carbs: Math.round(totals.carbs),
-          fat: Math.round(totals.fat),
-          water_ml: Math.round(totals.water_ml),
-        });
-      } catch (err: any) {
-        error(
-          loggingLevel,
-          "DailyProgress: Error loading food entries for intake:",
-          err,
-        );
-      }
-
-      // Load exercise calories burned
-      debug(loggingLevel, "DailyProgress: Fetching exercise entries...");
-      try {
-        const exerciseData: GroupedExerciseEntry[] = await getExerciseEntriesForDate(selectedDate, currentUserId); // Update type
-        info(
-          loggingLevel,
-          `DailyProgress: Fetched ${exerciseData.length} exercise entries.`,
-        );
-
-        let activeCaloriesFromExercise = 0;
-        let otherExerciseCalories = 0;
-
-        exerciseData.forEach(groupedEntry => {
-          if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
-            groupedEntry.exercises.forEach(entry => {
-              // Assume calories_burned from backend is always kcal
-              if (entry.exercise_snapshot?.name === 'Active Calories') {
-                activeCaloriesFromExercise += Number(entry.calories_burned || 0);
-              } else {
-                otherExerciseCalories += Number(entry.calories_burned || 0);
-              }
-            });
-          } else if (groupedEntry.type === 'individual') {
-            // Assume calories_burned from backend is always kcal
-            if (groupedEntry.exercise_snapshot?.name === 'Active Calories') {
-              activeCaloriesFromExercise += Number(groupedEntry.calories_burned || 0);
+      // Process Exercise Entries
+      info(
+        loggingLevel,
+        `DailyProgress: Fetched ${exerciseData.length} exercise entries.`,
+      );
+      let activeCaloriesFromExercise = 0;
+      let otherExerciseCalories = 0;
+      (exerciseData as GroupedExerciseEntry[]).forEach(groupedEntry => {
+        if (groupedEntry.type === "preset" && groupedEntry.exercises) {
+          groupedEntry.exercises.forEach(entry => {
+            if (entry.exercise_snapshot?.name === "Active Calories") {
+              activeCaloriesFromExercise += Number(entry.calories_burned || 0);
             } else {
-              otherExerciseCalories += Number(groupedEntry.calories_burned || 0);
+              otherExerciseCalories += Number(entry.calories_burned || 0);
             }
+          });
+        } else if (groupedEntry.type === "individual") {
+          if (groupedEntry.exercise_snapshot?.name === "Active Calories") {
+            activeCaloriesFromExercise += Number(
+              groupedEntry.calories_burned || 0,
+            );
+          } else {
+            otherExerciseCalories += Number(groupedEntry.calories_burned || 0);
           }
-        });
-
-        info(
-          loggingLevel,
-          "DailyProgress: Active Calories from Exercise entries:",
-          activeCaloriesFromExercise,
-        );
-        info(
-          loggingLevel,
-          "DailyProgress: Other Exercise Calories:",
-          otherExerciseCalories,
-        );
-        setExerciseCalories(otherExerciseCalories); // Store other exercise calories here (kcal)
-        setActiveCaloriesFromExercise(activeCaloriesFromExercise); // Set the new state variable (kcal)
-      } catch (err: any) {
-        error(
-          loggingLevel,
-          "DailyProgress: Error loading exercise entries:",
-          err,
-        );
-        setExerciseCalories(0);
-      }
-
-      // Load daily steps from body measurements
-      debug(loggingLevel, "DailyProgress: Fetching daily steps...");
-      try {
-        const stepsData = await getCheckInMeasurementsForDate(selectedDate, currentUserId);
-        if (stepsData && stepsData.steps) {
-          info(
-            loggingLevel,
-            "DailyProgress: Daily steps loaded:",
-            stepsData.steps,
-          );
-          setDailySteps(stepsData.steps);
-          const stepsCaloriesBurned = convertStepsToCalories(
-            Number(stepsData.steps),
-          ); // Returns kcal
-          info(
-            loggingLevel,
-            "DailyProgress: Calories burned from steps:",
-            stepsCaloriesBurned,
-          );
-          setStepsCalories(stepsCaloriesBurned);
-        } else {
-          info(loggingLevel, "DailyProgress: No daily steps found.");
-          setDailySteps(0);
-          setStepsCalories(0);
         }
-      } catch (err: any) {
-        error(loggingLevel, "DailyProgress: Error loading daily steps:", err);
+      });
+      info(
+        loggingLevel,
+        "DailyProgress: Active Calories from Exercise:",
+        activeCaloriesFromExercise,
+      );
+      info(
+        loggingLevel,
+        "DailyProgress: Other Exercise Calories:",
+        otherExerciseCalories,
+      );
+      setExerciseCalories(otherExerciseCalories);
+      setActiveCaloriesFromExercise(activeCaloriesFromExercise);
+
+      // Process Steps
+      if (stepsData && (stepsData as CheckInMeasurement).steps) {
+        const currentSteps = (stepsData as CheckInMeasurement).steps;
+        info(loggingLevel, "DailyProgress: Daily steps loaded:", currentSteps);
+        setDailySteps(currentSteps);
+        const stepsCaloriesBurned = convertStepsToCalories(
+          Number(currentSteps),
+        );
+        info(
+          loggingLevel,
+          "DailyProgress: Calories burned from steps:",
+          stepsCaloriesBurned,
+        );
+        setStepsCalories(stepsCaloriesBurned);
+      } else {
+        info(loggingLevel, "DailyProgress: No daily steps found.");
         setDailySteps(0);
         setStepsCalories(0);
       }
 
-      // Load BMR
-      debug(loggingLevel, "DailyProgress: Fetching user preferences for BMR...");
-      try {
-        const prefs = await getUserPreferences(loggingLevel);
-        if (prefs && currentUserId) {
-          setIncludeBmrInNetCalories(prefs.include_bmr_in_net_calories || false);
-          const [mostRecentWeight, mostRecentHeight, mostRecentBodyFat, userProfile] = await Promise.all([
-            getMostRecentMeasurement('weight'),
-            getMostRecentMeasurement('height'),
-            getMostRecentMeasurement('body_fat_percentage'),
-            userManagementService.getUserProfile(currentUserId)
-          ]);
+      // Process BMR
+      if (prefs && currentUserId) {
+        setIncludeBmrInNetCalories(
+          (prefs as any).include_bmr_in_net_calories || false,
+        );
+        const age = (userProfile as any)?.date_of_birth
+          ? new Date().getFullYear() -
+          new Date((userProfile as any).date_of_birth).getFullYear()
+          : 0;
+        const gender = (userProfile as any)?.gender;
 
-          const age = userProfile?.date_of_birth ? new Date().getFullYear() - new Date(userProfile.date_of_birth).getFullYear() : 0;
-          const gender = userProfile?.gender;
-
-          if (prefs.bmr_algorithm && mostRecentWeight?.weight && mostRecentHeight?.height && age && gender) {
-            try {
-              const bmrValue = calculateBmr(
-                prefs.bmr_algorithm as BmrAlgorithm,
-                mostRecentWeight.weight,
-                mostRecentHeight.height,
-                age,
-                gender,
-                mostRecentBodyFat?.body_fat_percentage
-              );
-              setBmr(bmrValue); // bmrValue is in kcal
-            } catch (bmrError) {
-              error(loggingLevel, "DailyProgress: Error calculating BMR:", bmrError);
-              setBmr(null);
-            }
-          } else {
-            warn(loggingLevel, "DailyProgress: Missing data for BMR calculation.", {
-              bmr_algorithm: prefs.bmr_algorithm,
-              weight: mostRecentWeight?.weight,
-              height: mostRecentHeight?.height,
+        if (
+          (prefs as any).bmr_algorithm &&
+          (mostRecentWeight as any)?.weight &&
+          (mostRecentHeight as any)?.height &&
+          age &&
+          gender
+        ) {
+          try {
+            const bmrValue = calculateBmr(
+              (prefs as any).bmr_algorithm as BmrAlgorithm,
+              (mostRecentWeight as any).weight,
+              (mostRecentHeight as any).height,
               age,
-              gender
-            });
+              gender,
+              (mostRecentBodyFat as any)?.body_fat_percentage,
+            );
+            setBmr(bmrValue);
+          } catch (bmrError) {
+            error(loggingLevel, "DailyProgress: Error calculating BMR:", bmrError);
             setBmr(null);
           }
+        } else {
+          warn(loggingLevel, "DailyProgress: Missing data for BMR calculation.", {
+            bmr_algorithm: (prefs as any).bmr_algorithm,
+            weight: (mostRecentWeight as any)?.weight,
+            height: (mostRecentHeight as any)?.height,
+            age,
+            gender,
+          });
+          setBmr(null);
         }
-      } catch (err) {
-        error(loggingLevel, "DailyProgress: Error loading BMR data:", err);
+      } else {
         setBmr(null);
       }
 
@@ -407,7 +382,7 @@ const DailyProgress = ({
   // Calculate total calories burned based on user's refined logic:
   // Sum all exercise calories *except* those explicitly categorized as "Active Calories".
   // Then, add either the "Active Calories" (if present and greater than 0) or the "stepsCalories" (if "Active Calories" are 0 or not present).
-  let totalOtherExerciseCaloriesBurned = Math.round(Number(exerciseCalories)); // This now holds 'otherExerciseCalories'
+  const totalOtherExerciseCaloriesBurned = Math.round(Number(exerciseCalories)); // This now holds 'otherExerciseCalories'
 
   let activeOrStepsCaloriesToAdd = 0;
   if (activeCaloriesFromExercise > 0) {
@@ -426,38 +401,37 @@ const DailyProgress = ({
     );
   }
 
-  const totalCaloriesBurned = totalOtherExerciseCaloriesBurned + activeOrStepsCaloriesToAdd;
+  const bmrCalories = includeBmrInNetCalories && bmr ? bmr : 0;
+  const finalTotalCaloriesBurned = totalOtherExerciseCaloriesBurned + activeOrStepsCaloriesToAdd + bmrCalories;
+
   info(
     loggingLevel,
-    "DailyProgress: Total calories burned (Other Exercise + Active/Steps):",
-    totalCaloriesBurned,
+    "DailyProgress: Final Total calories burned (Exercise + Active/Steps + BMR?):",
+    finalTotalCaloriesBurned,
   );
-
-  const bmrCalories = includeBmrInNetCalories && bmr ? bmr : 0;
-  const finalTotalCaloriesBurned = totalCaloriesBurned + bmrCalories;
 
   let netCalories: number;
   let caloriesRemaining: number;
 
+  // Net Calories is always Eaten - Burned (Total) for metabolic visibility
+  netCalories = Math.round(dailyIntake.calories) - finalTotalCaloriesBurned;
+
   if (calorieGoalAdjustmentMode === 'dynamic') {
-    // Dynamic Goal: burned calories are added to the daily calorie goal
-    // Formula: Remaining = Goal + Burned - Eaten
-    // Effectively, netCalories in this context is Eaten - Burned
-    netCalories = Math.round(dailyIntake.calories) - finalTotalCaloriesBurned;
+    // Dynamic Goal: burned calories are effectively added to the budget
+    // Formula: Remaining = Goal - Net  => Goal - (Eaten - Burned) => Goal + Burned - Eaten
     caloriesRemaining = dailyGoals.calories - netCalories;
   } else {
-    // Fixed Goal: daily calorie goal remains constant regardless of exercise
+    // Fixed Goal: daily calorie goal remains constant
     // Formula: Remaining = Goal - Eaten
-    netCalories = Math.round(dailyIntake.calories); // Only eaten calories count towards net
-    caloriesRemaining = dailyGoals.calories - dailyIntake.calories;
+    caloriesRemaining = dailyGoals.calories - Math.round(dailyIntake.calories);
   }
 
   const calorieProgress = Math.max(
     0,
-    (netCalories / dailyGoals.calories) * 100,
+    ((calorieGoalAdjustmentMode === 'dynamic' ? netCalories : Math.round(dailyIntake.calories)) / dailyGoals.calories) * 100,
   );
   debug(loggingLevel, "DailyProgress: Calculated progress values:", {
-    totalCaloriesBurned,
+    finalTotalCaloriesBurned,
     netCalories,
     caloriesRemaining,
     calorieProgress,
@@ -467,13 +441,12 @@ const DailyProgress = ({
   // Convert all displayed energy values to the user's preferred unit
   const displayedCaloriesRemaining = Math.round(convertEnergy(caloriesRemaining, 'kcal', energyUnit));
   const displayedDailyIntakeCalories = Math.round(convertEnergy(dailyIntake.calories, 'kcal', energyUnit));
-  const displayedTotalCaloriesBurned = Math.round(convertEnergy(totalCaloriesBurned, 'kcal', energyUnit));
+  const displayedFinalTotalCaloriesBurned = Math.round(convertEnergy(finalTotalCaloriesBurned, 'kcal', energyUnit));
   const displayedDailyGoalCalories = Math.round(convertEnergy(dailyGoals.calories, 'kcal', energyUnit));
   const displayedExerciseCalories = Math.round(convertEnergy(exerciseCalories, 'kcal', energyUnit));
   const displayedActiveCaloriesFromExercise = Math.round(convertEnergy(activeCaloriesFromExercise, 'kcal', energyUnit));
   const displayedStepsCalories = Math.round(convertEnergy(stepsCalories, 'kcal', energyUnit));
   const displayedBmr = bmr ? Math.round(convertEnergy(bmr, 'kcal', energyUnit)) : 0;
-  const displayedFinalTotalCaloriesBurned = Math.round(convertEnergy(finalTotalCaloriesBurned, 'kcal', energyUnit));
   const displayedNetCalories = Math.round(convertEnergy(netCalories, 'kcal', energyUnit));
 
 
@@ -537,7 +510,7 @@ const DailyProgress = ({
                   <div className="space-y-1">
                     <div className="flex items-center justify-center text-lg font-bold text-orange-600">
                       <Flame className="w-4 h-4 mr-1" />
-                      {displayedTotalCaloriesBurned}
+                      {displayedFinalTotalCaloriesBurned}
                     </div>
                     <div className="text-xs text-gray-500">{t('exercise.dailyProgress.burned', 'burned')} {getEnergyUnitString(energyUnit)}</div>
                   </div>
@@ -556,7 +529,7 @@ const DailyProgress = ({
                   {bmr && !isNaN(bmr) && (
                     <p>{t('exercise.dailyProgress.bmrCalories', 'BMR: {{bmr}} {{energyUnit}}', { bmr: displayedBmr, energyUnit: getEnergyUnitString(energyUnit) })}</p>
                   )}
-                  <p>{t('exercise.dailyProgress.totalCaloriesBurned', 'Total: {{totalCaloriesBurned}} {{energyUnit}}', { totalCaloriesBurned: displayedTotalCaloriesBurned, energyUnit: getEnergyUnitString(energyUnit) })}</p>
+                  <p>{t('exercise.dailyProgress.totalCaloriesBurned', 'Total: {{totalCaloriesBurned}} {{energyUnit}}', { totalCaloriesBurned: displayedFinalTotalCaloriesBurned, energyUnit: getEnergyUnitString(energyUnit) })}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -607,7 +580,6 @@ const DailyProgress = ({
               {t('exercise.dailyProgress.netEnergy', 'Net Energy: {{netCalories}}', { netCalories: displayedNetCalories, energyUnit: getEnergyUnitString(energyUnit) })}
             </div>
             <div className="text-xs dark:text-black text-gray-600">
-              {displayedDailyIntakeCalories} eaten - {displayedFinalTotalCaloriesBurned}{" "}
               {t('exercise.dailyProgress.netEnergyBreakdown', '{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned', { dailyIntakeCalories: displayedDailyIntakeCalories, finalTotalCaloriesBurned: displayedFinalTotalCaloriesBurned, energyUnit: getEnergyUnitString(energyUnit) })}
             </div>
           </div>

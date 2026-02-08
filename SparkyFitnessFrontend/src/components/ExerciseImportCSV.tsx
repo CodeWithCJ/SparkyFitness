@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Download, Upload, Trash2, Copy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { importExercisesFromCSV } from "@/services/exerciseService"; // Assuming this service function exists
 import {
   Tooltip,
   TooltipContent,

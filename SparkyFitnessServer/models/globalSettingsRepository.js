@@ -10,6 +10,7 @@ async function getGlobalSettings() {
             // Map the database column 'mfa_mandatory' to the frontend's expected 'is_mfa_mandatory'
             settings.is_mfa_mandatory = settings.mfa_mandatory;
         }
+        log('info', `[GLOBAL SETTINGS REPO] Retrieved Global Settings: ${JSON.stringify(settings)}`);
         return settings;
     } finally {
         client.release();

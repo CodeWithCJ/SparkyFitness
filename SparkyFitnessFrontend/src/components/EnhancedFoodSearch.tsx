@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Search, Plus, Loader2, Edit, Camera, BookText, Share2, Users } from "lucide-react";
+import { Search, Plus, Loader2, Edit, Camera, BookText, Share2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import EnhancedCustomFoodForm from "./EnhancedCustomFoodForm";
 import BarcodeScanner from "./BarcodeScanner";
@@ -32,9 +32,7 @@ import {
 } from "@/services/FatSecretService";
 import {
   searchMealieFoods, // Import searchMealieFoods
-  getMealieFoodDetails, // Import getMealieFoodDetails
   searchTandoorFoods, // Import searchTandoorFoods
-  getTandoorFoodDetails, // Import getTandoorFoodDetails
 } from "@/services/foodService";
 import {
   searchUsdaFoods,
@@ -51,7 +49,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { apiCall } from "@/services/api";
 import { getProviderCategory } from "@/services/externalProviderService"; // New import
-import { Food, FoodVariant, CSVData, GlycemicIndex } from "@/types/food";
+import { Food, FoodVariant, CSVData } from "@/types/food";
 import { Meal } from "@/types/meal"; // Import Meal type
 import { customNutrientService } from "@/services/customNutrientService"; // Add custom nutrient service
 import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
@@ -291,7 +289,7 @@ const EnhancedFoodSearch = ({
         if (!term.trim()) {
           // If search term is empty, fetch recent and top foods
           let query = `/foods?limit=${itemDisplayLimit}`;
-          if (!!mealType) {
+          if (mealType) {
             query += `&mealType=${mealType}`;
           }
           const data = await apiCall(query);
@@ -300,7 +298,7 @@ const EnhancedFoodSearch = ({
         } else {
           // Otherwise, perform a regular search
           let query = `/foods?name=${encodeURIComponent(term)}&broadMatch=true&limit=${foodDisplayLimit}`;
-          if (!!mealType) {
+          if (mealType) {
             query += `&mealType=${mealType}`;
           }
           const data = await apiCall(query);

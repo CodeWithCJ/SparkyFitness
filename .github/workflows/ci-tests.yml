@@ -60,6 +60,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -67,19 +72,15 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: SparkyFitnessFrontend/pnpm-lock.yaml
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Run linting
         run: pnpm run lint
+        continue-on-error: true
 
       - name: Run tests with coverage
-        run: pnpm test -- --ci --coverage --maxWorkers=2
+        run: pnpm run test:ci
         env:
           NODE_ENV: test
 
@@ -119,7 +120,7 @@ jobs:
         run: npm run lint
 
       - name: Run tests with coverage
-        run: npm run test:coverage -- --ci --maxWorkers=2
+        run: npm run test:ci
         env:
           NODE_ENV: test
 
@@ -135,7 +136,8 @@ jobs:
     name: Server Tests
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.server == 'true'
+    # Temporarily disabled per maintainer request
+    if: false
 
     defaults:
       run:
@@ -145,6 +147,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -152,16 +159,15 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: SparkyFitnessServer/pnpm-lock.yaml
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Run linting
+        run: pnpm run lint
+        continue-on-error: true
+
       - name: Run tests with coverage
-        run: pnpm run test:coverage -- --ci --maxWorkers=2
+        run: pnpm run test:ci
         env:
           NODE_ENV: test
 

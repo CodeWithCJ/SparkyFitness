@@ -1,145 +1,153 @@
-import { apiCall } from './api';
+import { authClient } from '../lib/auth-client';
 import { AuthResponse, LoginSettings } from '../types/auth';
-import { NavigateFunction } from 'react-router-dom';
 
 export const requestMagicLink = async (email: string): Promise<void> => {
-  await apiCall('/auth/request-magic-link', {
-    method: 'POST',
-    body: { email },
+  const { error } = await authClient.signIn.magicLink({
+    email,
+    callbackURL: window.location.origin,
   });
+  if (error) throw error;
 };
 
 export const registerUser = async (email: string, password: string, fullName: string): Promise<AuthResponse> => {
-  const response = await apiCall('/auth/register', {
-    method: 'POST',
-    body: { email, password, full_name: fullName },
+  const { data, error } = await authClient.signUp.email({
+    email,
+    password,
+    name: fullName,
   });
-  return response as AuthResponse;
+
+  if (error) {
+    if (error.status === 409) {
+      const err = new Error('User with this email already exists.');
+      (err as any).code = '23505';
+      throw err;
+    }
+    throw error;
+  }
+
+  return {
+    message: 'User registered successfully',
+    userId: (data as any)?.user?.id,
+    role: ((data as any)?.user as any)?.role || 'user',
+    fullName: (data as any)?.user?.name || '',
+  } as AuthResponse;
 };
 
 
 export const loginUser = async (email: string, password: string): Promise<AuthResponse> => {
-  try {
-    const response = await apiCall('/auth/login', {
-      method: 'POST',
-      body: { email, password },
-    });
+  const { data, error } = await authClient.signIn.email({
+    email,
+    password,
+  });
 
-    // If MFA is required, the response will contain the necessary MFA challenge details
-    if (response.status === 'MFA_REQUIRED') {
-      return {
-        status: 'MFA_REQUIRED',
-        userId: response.userId,
-        email: email,
-        mfa_totp_enabled: response.mfa_totp_enabled,
-        mfa_email_enabled: response.mfa_email_enabled,
-        needs_mfa_setup: response.needs_mfa_setup,
-        mfaToken: response.mfaToken,
-      } as AuthResponse;
+
+  if (error) {
+    if (error.status === 401) {
+      throw new Error('Invalid credentials.');
     }
-
-    return response as AuthResponse;
-  } catch (error) {
-    console.error('Error during login:', error);
     throw error;
   }
+
+  // Better Auth native 2FA handling
+  if ((data as any)?.twoFactorRedirect) {
+    return {
+      userId: (data as any)?.user?.id || '',
+      email: (data as any)?.user?.email || email,
+      status: 'MFA_REQUIRED',
+      twoFactorRedirect: true,
+      mfa_totp_enabled: (data as any)?.user?.twoFactorEnabled,
+      mfa_email_enabled: (data as any)?.user?.mfaEmailEnabled,
+    } as AuthResponse;
+  }
+
+  return {
+    message: 'Login successful',
+    userId: (data as any)?.user?.id,
+    role: ((data as any)?.user as any)?.role || 'user',
+    fullName: (data as any)?.user?.name || '',
+  } as AuthResponse;
 };
 
 export const requestPasswordReset = async (email: string): Promise<void> => {
-  await apiCall('/auth/forgot-password', {
-    method: 'POST',
-    body: { email },
+  const { error } = await authClient.requestPasswordReset({
+    email,
+    redirectTo: window.location.origin + '/reset-password',
   });
+  if (error) throw error;
 };
 
 export const resetPassword = async (token: string, newPassword: string): Promise<void> => {
-  await apiCall('/auth/reset-password', {
-    method: 'POST',
-    body: { token, newPassword },
+  const { error } = await authClient.resetPassword({
+    newPassword,
+    token,
   });
+  if (error) throw error;
 };
 
 export const logoutUser = async (): Promise<void> => {
-  try {
-    await apiCall('/auth/logout', { method: 'POST' });
-  } catch (error) {
-    console.error('Error during backend logout:', error);
-  } finally {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('refreshToken');
-    // Optionally, clear other relevant local storage items
-    // For example, if user preferences or other sensitive data are stored
-    // localStorage.removeItem('userPreferences');
-    // Redirect to login page or home page
-    window.location.href = '/login'; // Assuming a login route
-  }
+  await authClient.signOut();
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('refreshToken');
+  window.location.href = '/';
 };
 
-export const initiateOidcLogin = async (providerId: number) => {
-  try {
-    const response = await apiCall(`/openid/login/${providerId}`);
-    if (response.authorizationUrl) {
-      window.location.href = response.authorizationUrl;
-    } else {
-      console.error('Could not get OIDC authorization URL from server.');
-    }
-  } catch (error) {
-    console.error('Failed to initiate OIDC login:', error);
-  }
+export const initiateOidcLogin = async (providerId: string, requestSignUp: boolean = false) => {
+  await authClient.signIn.sso({
+    providerId: providerId,
+    callbackURL: window.location.origin,
+    errorCallbackURL: window.location.origin,
+    requestSignUp: requestSignUp,
+  });
 };
 
 export const getOidcProviders = async (): Promise<any[]> => {
-  try {
-    const response = await apiCall('/openid/providers');
-    return response;
-  } catch (error) {
-    console.error('Error fetching OIDC providers:', error);
-    return [];
-  }
+  const response = await fetch('/api/auth/settings');
+  if (!response.ok) return [];
+  const data = await response.json();
+  return data.oidc?.providers || [];
 };
 
 export const checkOidcAvailability = async (): Promise<boolean> => {
-  try {
-    const response = await apiCall('/openid/providers');
-    return response && response.length > 0;
-  } catch (error: any) {
-    console.warn('OIDC availability check failed due to an error:', error.message);
-    return false;
-  }
+  const providers = await getOidcProviders();
+  return providers.length > 0;
 };
 
 export const getLoginSettings = async (): Promise<LoginSettings> => {
-  try {
-    const response = await apiCall('/auth/settings');
-    return response as LoginSettings;
-  } catch (error) {
-    console.error('Error fetching login settings:', error);
-    // Fallback to a safe default (email enabled) if the API call fails
+  const response = await fetch('/api/auth/settings');
+  if (!response.ok) {
     return {
       email: { enabled: true },
       oidc: { enabled: false, providers: [] },
-      warning: 'Could not load login settings from server. Defaulting to email login.'
     };
   }
+  return await response.json();
 };
 
 export const verifyMagicLink = async (token: string): Promise<AuthResponse> => {
-  try {
-    const response = await apiCall(`/auth/magic-link-login?token=${token}`);
-    if (response.status === 'MFA_REQUIRED') {
-      return {
-        status: 'MFA_REQUIRED',
-        userId: response.userId,
-        email: response.email,
-        mfa_totp_enabled: response.mfa_totp_enabled,
-        mfa_email_enabled: response.mfa_email_enabled,
-        needs_mfa_setup: response.needs_mfa_setup,
-        mfaToken: response.mfaToken,
-      } as AuthResponse;
-    }
-    return response as AuthResponse;
-  } catch (error) {
-    console.error('Error verifying magic link:', error);
-    throw error;
+  // In Better Auth 1.0, verification can also be done via signIn.magicLink token property
+  // if the plugin is configured to support manual verification.
+  const { data, error } = await (authClient as any).signIn.magicLink({
+    token,
+  });
+
+  if (error) throw error;
+
+  // Better Auth native 2FA handling after Magic Link
+  if ((data as any)?.twoFactorRedirect) {
+    return {
+      userId: (data as any)?.user?.id || '',
+      email: (data as any)?.user?.email || '',
+      status: 'MFA_REQUIRED',
+      twoFactorRedirect: true,
+      mfa_totp_enabled: (data as any)?.user?.twoFactorEnabled,
+      mfa_email_enabled: (data as any)?.user?.mfaEmailEnabled,
+    } as AuthResponse;
   }
+
+  return {
+    message: 'Magic link login successful',
+    userId: (data as any)?.user?.id,
+    role: ((data as any)?.user as any)?.role || 'user',
+    fullName: (data as any)?.user?.name || '',
+  } as AuthResponse;
 };

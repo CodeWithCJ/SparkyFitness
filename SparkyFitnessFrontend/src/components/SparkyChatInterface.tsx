@@ -7,7 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import DOMPurify from 'dompurify';
 import SparkyNutritionCoach from './SparkyNutritionCoach';
 import { usePreferences } from '@/contexts/PreferencesContext'; // Import usePreferences
-import { debug, info, warn, error } from '@/utils/logging'; // Import logging utilities
+import { info, warn, error } from '@/utils/logging'; // Import logging utilities
 import {
   loadUserPreferences,
   loadChatHistory,
@@ -16,7 +16,6 @@ import {
   processUserInput,
   getTodaysNutrition,
   Message,
-  UserPreferences,
 } from '@/services/sparkyChatService';
 import { getActiveAiServiceSetting, AIService } from '@/services/aiServiceSettingsService';
 

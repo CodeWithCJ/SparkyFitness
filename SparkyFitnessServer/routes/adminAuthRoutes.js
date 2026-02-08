@@ -19,7 +19,7 @@ router.use(isAdmin);
 
 /**
  * @swagger
- * /admin-auth/settings/mfa-mandatory:
+ * /admin/auth/settings/mfa-mandatory:
  *   get:
  *     summary: Get global MFA mandatory setting
  *     tags: [Identity & Security]
@@ -54,7 +54,7 @@ router.get('/settings/mfa-mandatory', async (req, res, next) => {
 
 /**
  * @swagger
- * /admin-auth/settings/mfa-mandatory:
+ * /admin/auth/settings/mfa-mandatory:
  *   put:
  *     summary: Update global MFA mandatory setting
  *     tags: [Identity & Security]
@@ -111,7 +111,7 @@ router.put('/settings/mfa-mandatory',
 
 /**
  * @swagger
- * /admin-auth/users/{userId}/mfa/reset:
+ * /admin/auth/users/{userId}/mfa/reset:
  *   post:
  *     summary: Reset a user's MFA
  *     tags: [Identity & Security]
