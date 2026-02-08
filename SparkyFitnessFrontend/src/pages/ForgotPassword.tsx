@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,7 +15,6 @@ import { debug, info, error } from "@/utils/logging";
 import { requestPasswordReset } from "@/services/authService"; // Assuming this service function exists
 
 const ForgotPassword = () => {
-  const navigate = useNavigate();
   const { loggingLevel } = usePreferences();
   debug(loggingLevel, "ForgotPassword: Component rendered.");
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -41,10 +40,9 @@ import { Plus, Edit, Trash2, Share2, Users, Lock, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useAuth } from "@/hooks/useAuth";
-import { debug, info, warn, error } from "@/utils/logging";
+import { error } from "@/utils/logging";
 import {
   loadExercises,
-  createExercise,
   updateExercise,
   deleteExercise,
   updateExerciseShareStatus,
@@ -56,7 +54,6 @@ import {
 import { Exercise as ExerciseInterface } from "@/services/exerciseSearchService";
 import WorkoutPresetsManager from "@/components/WorkoutPresetsManager"; // Import the new component
 import WorkoutPlansManager from "@/components/WorkoutPlansManager"; // Import the new component
-import { PresetExercise } from "@/types/workout"; // Import PresetExercise
 
 const ExerciseDatabaseManager = () => {
   const { t } = useTranslation();

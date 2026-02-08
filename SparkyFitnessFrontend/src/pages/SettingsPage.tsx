@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import { useLocation } from "react-router-dom"; // Import useLocation
 import { useTranslation } from "react-i18next";
 import { formatDateToYYYYMMDD } from "@/lib/utils"; // Import the new utility function
@@ -7,7 +7,6 @@ import {
   getSupportedLanguages,
   getLanguageDisplayName,
 } from "@/utils/languageUtils"; // Import language utilities
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Added import
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Calendar as CalendarIcon } from "lucide-react"; // Import CalendarIcon
@@ -32,15 +30,11 @@ import {
 } from "@/components/ui/popover"; // Import Popover components
 import {
   Save,
-  Upload,
   User,
   Settings as SettingsIcon,
   Lock,
   Camera,
   ClipboardCopy,
-  Copy,
-  Eye,
-  EyeOff,
   KeyRound,
   Trash2,
   Droplet,
@@ -49,13 +43,9 @@ import {
   Tag,
   Cloud,
   Sparkles,
-  QrCode,
-  Mail,
   BookOpen,
   UtensilsCrossed,
   X,
-  Target,
-  Flame,
 } from "lucide-react";
 import { apiCall } from "@/services/api"; // Assuming a common API utility
 import { useAuth } from "@/hooks/useAuth";
@@ -120,7 +110,6 @@ const Settings = () => {
     dateFormat,
     setDateFormat,
     loggingLevel,
-    setLoggingLevel,
     itemDisplayLimit,
     setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
     autoScaleOpenFoodFactsImports,

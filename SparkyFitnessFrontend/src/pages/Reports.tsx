@@ -29,17 +29,10 @@ const HIDDEN_CUSTOM_METRICS = [
   'Average Overnight HRV',  // Shown in Sleep tab HRV card
 ];
 import StressChart from "@/components/StressChart"; // Import StressChart
-import { log, debug, info, warn, error, UserLoggingLevel } from "@/utils/logging";
-import { format, parseISO, addDays } from 'date-fns'; // Import format, parseISO, addDays from date-fns
+import {  debug, info, warn, error, UserLoggingLevel } from "@/utils/logging";
+import {  parseISO  } from 'date-fns'; // Import format, parseISO, addDays from date-fns
 import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
 import { calculateSmartYAxisDomain, getChartConfig } from "@/utils/chartUtils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"; // Import Select components
 
 import {
   loadReportsData,
@@ -52,10 +45,8 @@ import {
   ExerciseProgressData, // Import ExerciseProgressData
   ExerciseDashboardData, // Import new type for dashboard data
 } from '@/services/reportsService';
-import { SleepAnalyticsData, MoodEntry, StressDataPoint } from '@/types';
-import { getExerciseProgressData } from '@/services/exerciseEntryService';
+import { MoodEntry, StressDataPoint } from '@/types';
 import { getExerciseDashboardData, getSleepAnalyticsData } from '@/services/reportsService';
-import { getCategories as getCustomCategories } from '@/services/customCategoryService';
 import { getRawStressData } from '@/services/customMeasurementService';
 import { getMoodEntries } from '@/services/moodService';
 import { customNutrientService } from "@/services/customNutrientService";

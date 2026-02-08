@@ -22,7 +22,6 @@ interface MfaChallengeProps {
 }
 
 const MfaChallenge: React.FC<MfaChallengeProps> = ({
-    userId,
     email,
     mfaTotpEnabled = true, // Defaulting to true as Better Auth usually starts with TOTP
     mfaEmailEnabled = false,

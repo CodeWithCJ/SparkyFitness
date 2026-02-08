@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { debug, error } from "@/utils/logging";
 import { useAuth } from "@/hooks/useAuth";
-import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/contexts/PreferencesContext";
 
 import OnBoarding from "@/components/Onboarding/OnBoarding";

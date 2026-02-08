@@ -40,7 +40,6 @@ import {
   Trash2,
   Plus,
   Share2,
-  Users,
   Filter,
   Lock,
 } from "lucide-react";
@@ -64,8 +63,6 @@ import { createFoodEntry } from "@/services/foodEntryService"; // Import foodEnt
 import { Food, FoodVariant, FoodDeletionImpact } from "@/types/food";
 import MealManagement from "@/components/MealManagement"; // Import MealManagement
 import MealPlanCalendar from "@/components/MealPlanCalendar"; // Import MealPlanCalendar
-import { customNutrientService } from "@/services/customNutrientService";
-import { UserCustomNutrient } from "@/types/customNutrient";
 
 const FoodDatabaseManager: React.FC = () => {
   const { t } = useTranslation();
@@ -86,12 +83,6 @@ const FoodDatabaseManager: React.FC = () => {
       : t("common.kJUnit", "kJ");
   };
 
-  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>(
-    [],
-  );
-  const [dynamicNutrientDetails, setDynamicNutrientDetails] = useState<{
-    [key: string]: { color: string; label: string; unit: string };
-  }>({});
 
   const nutrientDetails: {
     [key: string]: { color: string; label: string; unit: string };

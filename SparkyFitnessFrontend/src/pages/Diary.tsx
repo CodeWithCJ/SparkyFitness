@@ -16,11 +16,9 @@ import DiaryTopControls from "../components/DiaryTopControls";
 import MealCard from "../components/MealCard";
 import ExerciseCard from "../components/ExerciseCard";
 import EditFoodEntryDialog from "../components/EditFoodEntryDialog";
-import EnhancedCustomFoodForm from "../components/EnhancedCustomFoodForm";
 import FoodUnitSelector from "../components/FoodUnitSelector";
 import CopyFoodEntryDialog from "../components/CopyFoodEntryDialog";
 import ConvertToMealDialog from "../components/ConvertToMealDialog";
-import ExerciseSearch from "../components/ExerciseSearch";
 import EditMealFoodEntryDialog from "../components/EditMealFoodEntryDialog";
 import LogMealDialog from "../components/LogMealDialog";
 import { debug, info, warn, error } from "@/utils/logging";
@@ -35,25 +33,13 @@ import {
   copyFoodEntriesFromYesterday,
   getFoodEntryMealsByDate, // New import
   deleteFoodEntryMeal, // New import
-  getFoodEntryMealWithComponents, // Import the new function
-  createFoodEntryMeal, // Add this import
 } from "@/services/foodEntryService"; // ALL food related services now from foodEntryService
 import { getMealTypes, MealTypeDefinition } from "@/services/mealTypeService";
 import { Food, FoodVariant, GlycemicIndex } from "@/types/food";
 import { Meal as MealType, FoodEntryMeal } from "@/types/meal"; // Added FoodEntryMeal
 import { FoodEntry } from "@/types/food";
 import { ExpandedGoals } from "@/types/goals";
-import { Exercise } from "@/services/exerciseSearchService";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { PresetExercise, WorkoutPreset } from "@/types/workout";
-import AddExerciseDialog from "../components/AddExerciseDialog";
-import AddWorkoutPresetDialog from "../components/AddWorkoutPresetDialog";
 
 import { customNutrientService } from "@/services/customNutrientService"; // Add import
 import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
@@ -90,11 +76,6 @@ const Diary = () => {
     energyUnit,
     convertEnergy,
   } = usePreferences();
-  const getEnergyUnitString = (unit: "kcal" | "kJ"): string => {
-    return unit === "kcal"
-      ? t("common.kcalUnit", "kcal")
-      : t("common.kJUnit", "kJ");
-  };
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
   const [foodEntryMeals, setFoodEntryMeals] = useState<FoodEntryMeal[]>([]); // New state for logged meals
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);

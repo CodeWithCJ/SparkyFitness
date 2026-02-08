@@ -29,15 +29,12 @@ import {
   saveCheckInMeasurements,
   saveCustomMeasurement,
   CustomCategory,
-  CustomMeasurement,
-  CheckInMeasurement,
   CombinedMeasurement,
 } from '@/services/checkInService';
 import { saveMoodEntry, getMoodEntryByDate } from '@/services/moodService'; // Import mood service
 import { calculateBodyFatBmi, calculateBodyFatNavy } from '@/services/bodyCompositionService';
 import { getUserPreferences } from '@/services/preferenceService';
 import { userManagementService } from "@/services/userManagementService";
-import { api } from '@/services/api'; // Import the API service
 import SleepEntrySection from '../components/SleepEntrySection'; // Import SleepEntrySection
 import HomeDashboardFasting from '../components/HomeDashboardFasting'; // Import Fasting Widget
 import { getFastingHistory } from '@/services/fastingService'; // Import fasting history service
