@@ -14,7 +14,6 @@ import type { MealPlanTemplate, Meal, MealPlanTemplateAssignment } from '@/types
 import type { Food, FoodVariant } from '@/types/food';
 import { getMealById } from '@/services/mealService';
 import { getFoodById } from '@/services/foodService';
-import MealSelection from './MealSelection';
 import FoodSearchDialog from '@/components/FoodSearchDialog';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import MealUnitSelector from './MealUnitSelector';
@@ -47,7 +46,6 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({ template, o
     const [isActive, setIsActive] = useState(template?.is_active || false);
     const [assignments, setAssignments] = useState<MealPlanTemplateAssignment[]>(template?.assignments || []);
     const [extendedAssignments, setExtendedAssignments] = useState<ExtendedAssignment[]>([]);
-    const [isMealSelectionOpen, setIsMealSelectionOpen] = useState(false);
     const [isFoodSelectionOpen, setIsFoodSelectionOpen] = useState(false);
     const [isFoodUnitSelectorOpen, setIsFoodUnitSelectorOpen] = useState(false);
     const [isMealUnitSelectorOpen, setIsMealUnitSelectorOpen] = useState(false);
@@ -132,7 +130,6 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({ template, o
 
     const handleMealSelected = (meal: Meal) => {
         if (currentDay === null || currentMealType === null) return;
-        setIsMealSelectionOpen(false);
         // Instead of immediately adding, open quantity selector
         setSelectedMeal(meal);
         setIsMealUnitSelectorOpen(true);
@@ -497,20 +494,6 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({ template, o
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            {isMealSelectionOpen && (
-                <Dialog open={isMealSelectionOpen} onOpenChange={setIsMealSelectionOpen}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>{t('mealPlanTemplateForm.selectMealTitle')}</DialogTitle>
-                            <DialogDescription>
-                                {t('mealPlanTemplateForm.selectMealDescription')}
-                            </DialogDescription>
-                        </DialogHeader>
-                        <MealSelection onMealSelect={handleMealSelected} />
-                    </DialogContent>
-                </Dialog>
-            )}
 
             <FoodSearchDialog
                 open={isFoodSelectionOpen}

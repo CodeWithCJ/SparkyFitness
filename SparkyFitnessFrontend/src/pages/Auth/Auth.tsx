@@ -107,9 +107,7 @@ const Auth = () => {
   // Passkey Conditional UI (Autofill)
   useEffect(() => {
     const initPasskeyAutofill = async () => {
-      // @ts-expect-error
       if (window.PublicKeyCredential && PublicKeyCredential.isConditionalMediationAvailable) {
-        // @ts-expect-error
         const isAvailable = await PublicKeyCredential.isConditionalMediationAvailable();
         if (isAvailable) {
           debug(loggingLevel, "Auth: Passkey Conditional UI available. Starting autofill prompt.");

@@ -20,7 +20,31 @@ interface ImportFromCSVProps {
 
 export interface CSVData {
   id: string;
-  [key: string]: string | number | boolean;
+  name: string;
+  brand: string;
+  is_custom: boolean;
+  shared_with_public: boolean;
+  is_quick_food: boolean;
+  serving_size: number;
+  serving_unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  saturated_fat: number;
+  polyunsaturated_fat: number;
+  monounsaturated_fat: number;
+  trans_fat: number;
+  cholesterol: number;
+  sodium: number;
+  potassium: number;
+  dietary_fiber: number;
+  sugars: number;
+  vitamin_a: number;
+  vitamin_c: number;
+  calcium: number;
+  iron: number;
+  is_default: boolean;
 }
 
 const generateUniqueId = () =>
@@ -53,13 +77,7 @@ const servingUnitOptions = [
 ];
 
 const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
-  const { user } = useAuth();
   const { energyUnit, convertEnergy } = usePreferences();
-
-  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    // This component does not import useTranslation, so we'll hardcode or pass t() from parent if it were needed for translation
-    return unit === 'kcal' ? 'kcal' : 'kJ';
-  };
 
 
   const [loading, setLoading] = useState(false);
@@ -112,7 +130,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(",").map((value) => value.trim());
-      const row: CSVData = { id: generateUniqueId() };
+      const row: CSVData = { id: generateUniqueId() } as CSVData;
 
       parsedHeaders.forEach((header, index) => {
         const value = values[index] || "";
