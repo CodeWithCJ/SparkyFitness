@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import {
 import { Search, Plus, Loader2, Edit, Camera, BookText, Share2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import EnhancedCustomFoodForm from "./EnhancedCustomFoodForm";
-import BarcodeScanner from "./BarcodeScanner";
 import ImportFromCSV from "./FoodImportFromCSV";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -79,6 +78,7 @@ interface EnhancedFoodSearchProps {
 }
 
 type FoodDataForBackend = Omit<CSVData, "id">;
+
 
 const NutrientGrid = ({ food, visibleNutrients, energyUnit, convertEnergy, getEnergyUnitString, customNutrients = [] }) => {
   const { t } = useTranslation(); // Import useTranslation here
@@ -238,6 +238,8 @@ const EnhancedFoodSearch = ({
   const [hasOnlineSearchBeenPerformed, setHasOnlineSearchBeenPerformed] =
     useState(false);
   const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>([]); // Custom nutrients state
+    const BarcodeScanner = React.lazy(() => import('./BarcodeScanner.tsx'));
+
 
   // Load food data providers and set default
   useEffect(() => {
@@ -1582,7 +1584,8 @@ const EnhancedFoodSearch = ({
               {t("enhancedFoodSearch.scanBarcodeDescription", "Position the product barcode in front of your camera.")}
             </DialogDescription>
           </DialogHeader>
-          <BarcodeScanner
+          <Suspense fallback={<div>Lade Kamera-Module...</div>}>
+            <BarcodeScanner
             onBarcodeDetected={(barcode) => {
               searchOpenFoodFactsByBarcode(barcode);
               setShowBarcodeScanner(false);
@@ -1590,7 +1593,8 @@ const EnhancedFoodSearch = ({
             onClose={() => setShowBarcodeScanner(false)}
             isActive={showBarcodeScanner}
             cameraFacing="back"
-          />
+            />
+          </Suspense>
         </DialogContent>
       </Dialog>
 

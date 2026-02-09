@@ -261,9 +261,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-1">
             <img
-              src="/images/SparkyFitness.png"
+              src="/images/SparkyFitness.webp"
               alt="SparkyFitness Logo"
-              className="h-12 w-auto"
+              width={54}
+              height={72}
             />
             <h1 className="text-xl sm:text-2xl font-bold text-foreground dark:text-slate-300">
               SparkyFitness
