@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => {
       // Temporarily disabled for development to debug refresh issue
       // mode === "production" && VitePWA({...})
       mode === "production" && VitePWA({
-        registerType: "prompt",
+        registerType: "autoUpdate",
         manifest: {
           name: "SparkyFitness",
           short_name: "SparkyFitness",
