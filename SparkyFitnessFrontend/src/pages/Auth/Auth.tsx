@@ -66,6 +66,9 @@ const Auth = () => {
       // PREVENT AUTO-REDIRECT: If we already have a user or are still loading auth status
       if (authUser || authLoading) {
         console.log("Auth Page: Guard triggered - user session already active or loading.");
+        if (authUser) {
+          navigate("/");
+        }
         return;
       }
 
@@ -99,7 +102,7 @@ const Auth = () => {
       }
     };
     fetchAuthSettings();
-  }, [loggingLevel, authUser, authLoading]);
+  }, [loggingLevel, authUser, authLoading, navigate]);
 
   // Passkey Conditional UI (Autofill)
   useEffect(() => {
@@ -119,18 +122,25 @@ const Auth = () => {
                   navigate("/");
                 },
                 onError(ctx) {
-                  // Silently ignore "Authentication was not completed" which is usually a cancel/timeout
-                  if (ctx.error.message?.includes("Authentication was not completed")) {
-                    debug(loggingLevel, "Auth: Passkey autofill dismissed or timed out.");
+                  // Silently ignore "Authentication was not completed" or AbortError
+                  if (
+                    ctx.error.message?.includes("Authentication was not completed") ||
+                    ctx.error.name === "AbortError"
+                  ) {
+                    debug(loggingLevel, "Auth: Passkey autofill dismissed or interrupted.");
                     return;
                   }
                   error(loggingLevel, "Auth: Passkey autofill error:", ctx.error);
                 }
               }
             });
-          } catch (err) {
-            // Silently fail for autofill
-            debug(loggingLevel, "Auth: Passkey autofill silently ignored or failed.");
+          } catch (err: any) {
+            // Silently fail for autofill, especially for AbortError
+            if (err.name === "AbortError") {
+              debug(loggingLevel, "Auth: Passkey autofill aborted.");
+            } else {
+              debug(loggingLevel, "Auth: Passkey autofill silently ignored or failed.");
+            }
           }
         }
       }

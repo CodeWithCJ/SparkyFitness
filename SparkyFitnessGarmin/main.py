@@ -50,12 +50,14 @@ app = FastAPI()
 # Get port from environment variable or use default
 PORT = int(os.getenv("GARMIN_SERVICE_PORT", 8000))
 IS_CN = bool(os.getenv("GARMIN_SERVICE_IS_CN", "false").lower() == "true")
-GARMIN_DATA_SOURCE = os.getenv("GARMIN_DATA_SOURCE", "garmin").lower() # "garmin" or "local"
+GARMIN_DATA_SOURCE = os.getenv("SPARKY_FITNESS_GARMIN_DATA_SOURCE", "garmin").lower() # "garmin" or "local"
+SAVE_MOCK_DATA = os.getenv("SPARKY_FITNESS_SAVE_MOCK_DATA", "false").lower() == "true"
 
 logger.info(f"Garmin service configured to run on port: {PORT}")
 if IS_CN:
     logger.info("Configured for Garmin China (CN) region.")
 logger.info(f"Garmin data source configured to: {GARMIN_DATA_SOURCE}")
+logger.info(f"Garmin mock data saving enabled: {SAVE_MOCK_DATA}")
 
 # Define a Pydantic model for login credentials
 
@@ -926,8 +928,9 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             logger.info(f"[GARMIN_SYNC] {metric_name}: {entry_count} entries")
         logger.info(f"[GARMIN_SYNC] ===================================")
 
-        # Save data to local file if GARMIN_DATA_SOURCE is not "local"
-        _save_to_local_file(filename, {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data})
+        # Save data to local file if capture is enabled
+        if SAVE_MOCK_DATA:
+            _save_to_local_file(filename, {"user_id": user_id, "start_date": start_date, "end_date": end_date, "data": final_health_data})
 
         logger.debug(f"Final health data being returned: {final_health_data}")
         logger.info(f"Successfully retrieved and cleaned health and wellness data for user {user_id} from {start_date} to {end_date}.")
@@ -1065,14 +1068,15 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
 
         logger.info(f"Successfully retrieved and cleaned activities and workouts for user {user_id} from {start_date} to {end_date}. Activities: {cleaned_activities}, Workouts: {cleaned_workouts}")
         
-        # Save data to local file if GARMIN_DATA_SOURCE is not "local"
-        _save_to_local_file(filename, {
-            "user_id": user_id,
-            "start_date": start_date,
-            "end_date": end_date,
-            "activities": cleaned_activities,
-            "workouts": cleaned_workouts
-        })
+        # Save data to local file if capture is enabled
+        if SAVE_MOCK_DATA:
+            _save_to_local_file(filename, {
+                "user_id": user_id,
+                "start_date": start_date,
+                "end_date": end_date,
+                "activities": cleaned_activities,
+                "workouts": cleaned_workouts
+            })
 
         return {
             "user_id": user_id,

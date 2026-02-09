@@ -90,7 +90,11 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
             }
         });
 
-        log('info', 'Withings token exchange response:', JSON.stringify(response.data, null, 2));
+        if (!response.data || !response.data.body) {
+            log('error', `Withings requesttoken error: Invalid response structure.`, JSON.stringify(response.data));
+            throw new Error('Invalid Withings API response structure.');
+        }
+
         const { access_token, refresh_token, expires_in, scope, userid } = response.data.body;
 
         if (!access_token || !refresh_token) {
@@ -124,18 +128,18 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
         }, null, 2));
 
         try {
-           const updateQuery = `UPDATE external_data_providers
+            const updateQuery = `UPDATE external_data_providers
                 SET encrypted_access_token = $1, access_token_iv = $2, access_token_tag = $3,
                     encrypted_refresh_token = $4, refresh_token_iv = $5, refresh_token_tag = $6,
                     scope = $7, token_expires_at = $8, external_user_id = $9, is_active = TRUE, updated_at = NOW()
                 WHERE user_id = $10 AND provider_type = 'withings'`;
-           log('info', `Executing SQL query: ${updateQuery}`);
-           log('info', `With payload: ${JSON.stringify(updatePayload)}`);
-           log('info', `Interpolated SQL query: ${interpolateQuery(updateQuery, updatePayload)}`);
-             const dbResult = await client.query(
-                 updateQuery,
-                 updatePayload
-             );
+            log('info', `Executing SQL query: ${updateQuery}`);
+            log('info', `With payload: ${JSON.stringify(updatePayload)}`);
+            log('info', `Interpolated SQL query: ${interpolateQuery(updateQuery, updatePayload)}`);
+            const dbResult = await client.query(
+                updateQuery,
+                updatePayload
+            );
             log('info', `Database update result for user ${userId}: ${dbResult.rowCount} rows updated.`);
         } catch (dbError) {
             log('error', `FATAL: Database update failed for user ${userId}:`, dbError);
@@ -186,6 +190,11 @@ async function refreshAccessToken(userId) {
                 refresh_token: refreshToken
             }
         });
+
+        if (!response.data || !response.data.body) {
+            log('error', `Withings refresh access token error: Invalid response structure.`, JSON.stringify(response.data));
+            throw new Error('Invalid Withings API response structure during token refresh.');
+        }
 
         const { access_token, refresh_token: newRefreshToken, expires_in, scope } = response.data.body;
 
@@ -271,7 +280,11 @@ async function fetchAndProcessMeasuresData(userId, createdByUserId, startDate, e
                 enddate: endDate      // Unix timestamp
             }
         });
-        const measuregrps = response.data.body.measuregrps;
+        if (!response.data || !response.data.body) {
+            log('warn', `Withings measures API returned no body for user ${userId}. Status: ${response.data?.status || 'unknown'}`);
+            return [];
+        }
+        const measuregrps = response.data.body.measuregrps || [];
         await withingsDataProcessor.processWithingsMeasures(userId, createdByUserId, measuregrps);
         return measuregrps;
     } catch (error) {
@@ -302,6 +315,10 @@ async function fetchAndProcessHeartData(userId, createdByUserId, startDate, endD
                 enddate: endDate      // Unix timestamp
             }
         });
+        if (!response.data || !response.data.body) {
+            log('warn', `Withings heart API returned no body for user ${userId}. Status: ${response.data?.status || 'unknown'}`);
+            return [];
+        }
         const heartSeries = response.data.body.series || [];
         await withingsDataProcessor.processWithingsHeartData(userId, createdByUserId, heartSeries);
         return heartSeries;
@@ -333,6 +350,10 @@ async function fetchAndProcessSleepData(userId, createdByUserId, startDate, endD
                 enddate: endDate      // Unix timestamp
             }
         });
+        if (!response.data || !response.data.body) {
+            log('warn', `Withings sleep API returned no body for user ${userId}. Status: ${response.data?.status || 'unknown'}`);
+            return [];
+        }
         const sleepSeries = response.data.body.series || [];
         await withingsDataProcessor.processWithingsSleepData(userId, createdByUserId, sleepSeries);
         return sleepSeries;
@@ -364,6 +385,10 @@ async function fetchAndProcessWorkoutsData(userId, createdByUserId, startDateYMD
                 enddateymd: endDateYMD
             }
         });
+        if (!response.data || !response.data.body) {
+            log('warn', `Withings workouts API returned no body for user ${userId}. Status: ${response.data?.status || 'unknown'}`);
+            return [];
+        }
         const workouts = response.data.body.series || [];
         await withingsDataProcessor.processWithingsWorkouts(userId, createdByUserId, workouts);
         return workouts;
