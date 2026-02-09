@@ -1,7 +1,6 @@
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import MealManagement from '../../pages/Foods/MealManagement';
+import MealManagement from '@/pages/Foods/MealManagement';
 
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
@@ -48,7 +47,7 @@ jest.mock('@/services/mealService', () => ({
 }));
 
 // Mock MealBuilder sub-component
-jest.mock('../../components/MealBuilder', () => {
+jest.mock('@/components/MealBuilder', () => {
   return function MockMealBuilder() {
     return <div data-testid="meal-builder">MealBuilder</div>;
   };

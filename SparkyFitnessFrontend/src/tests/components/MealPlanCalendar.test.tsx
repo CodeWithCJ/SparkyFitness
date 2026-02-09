@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MealPlanCalendar from '../../pages/Foods/MealPlanCalendar';
@@ -47,7 +46,7 @@ jest.mock('@/services/mealPlanTemplateService', () => ({
 }));
 
 // Mock MealPlanTemplateForm sub-component
-jest.mock('../../components/MealPlanTemplateForm', () => {
+jest.mock('@/pages/Foods/MealPlanTemplateForm', () => {
   return function MockMealPlanTemplateForm() {
     return <div data-testid="meal-plan-template-form">MealPlanTemplateForm</div>;
   };
