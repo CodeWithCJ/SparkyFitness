@@ -111,31 +111,16 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
     log('info', 'Received request to /withings/sync');
     try {
         const userId = req.userId;
-        const today = new Date();
-        const endDateForYMD = new Date(today);
-        endDateForYMD.setDate(today.getDate() + 1); // Set to tomorrow to ensure all of today's data is captured
+        const withingsServiceCentral = require('../services/withingsService');
 
-        const startDateForYMD = new Date(today);
-        startDateForYMD.setDate(today.getDate() - 7); // 7 days ago
+        const result = await withingsServiceCentral.syncWithingsData(userId, 'manual');
 
-        const startDateYMD = startDateForYMD.toISOString().split('T')[0];
-        const endDateYMD = endDateForYMD.toISOString().split('T')[0]; // Tomorrow's date
-
-        const startDateUnix = Math.floor(startDateForYMD.getTime() / 1000);
-        const endDateUnix = Math.floor(today.getTime() / 1000); // End Unix timestamp at current time today
-
-        log('info', `Starting Withings data sync for user ${userId} from ${startDateForYMD.toISOString()} to ${today.toISOString()}. Fetching workouts from ${startDateYMD} to ${endDateYMD}`);
-
-        // We can run these in parallel to speed up the process
-        await Promise.all([
-            withingsService.fetchAndProcessMeasuresData(userId, userId, startDateUnix, endDateUnix),
-            withingsService.fetchAndProcessHeartData(userId, userId, startDateUnix, endDateUnix),
-            withingsService.fetchAndProcessSleepData(userId, userId, startDateUnix, endDateUnix),
-            withingsService.fetchAndProcessWorkoutsData(userId, userId, startDateYMD, endDateYMD) // Add this line
-        ]);
-
-        log('info', `Withings data sync completed for user ${userId}`);
-        res.status(200).json({ message: 'Withings data sync completed successfully.' });
+        log('info', `Withings data sync completed for user ${userId}. Source: ${result.source}`);
+        res.status(200).json({
+            message: 'Withings data sync completed successfully.',
+            source: result.source,
+            cached_date: result.cached_date
+        });
     } catch (error) {
         log('error', `Error initiating manual Withings sync: ${error.message}`);
         res.status(500).json({ message: 'Error initiating manual Withings sync', error: error.message });

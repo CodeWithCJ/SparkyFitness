@@ -361,8 +361,13 @@ const scheduleWithingsSyncs = async () => {
     const withingsProviders = await externalProviderRepository.getProvidersByType("withings");
     for (const provider of withingsProviders) {
       if (provider.is_active && provider.sync_frequency !== "manual") {
-        await withingsService.fetchAndProcessMeasuresData(provider.user_id, provider.user_id, Math.floor(Date.now() / 1000) - 3600, Math.floor(Date.now() / 1000));
-        await externalProviderRepository.updateProviderLastSync(provider.id, new Date());
+        try {
+          const withingsServiceCentral = require('./services/withingsService');
+          await withingsServiceCentral.syncWithingsData(provider.user_id, 'scheduled');
+          await externalProviderRepository.updateProviderLastSync(provider.id, new Date());
+        } catch (error) {
+          console.error(`[CRON] Withings sync failed for user ${provider.user_id}:`, error);
+        }
       }
     }
   });

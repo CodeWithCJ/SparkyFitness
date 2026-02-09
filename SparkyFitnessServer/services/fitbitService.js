@@ -10,6 +10,7 @@ const path = require('path');
 
 // Configuration for data mocking/caching
 const FITBIT_DATA_SOURCE = process.env.SPARKY_FITNESS_FITBIT_DATA_SOURCE || 'fitbit';
+const SAVE_MOCK_DATA = process.env.SPARKY_FITNESS_SAVE_MOCK_DATA === 'true'; // Defaults to false
 const MOCK_DATA_DIR = path.join(__dirname, '..', 'mock_data');
 
 // Ensure mock_data directory exists
@@ -254,7 +255,9 @@ async function syncFitbitData(userId, syncType = 'manual') {
             timezone_offset: timezoneOffset
         };
 
-        _saveToLocalFile('fitbit_mock_data.json', mockDataPayload);
+        if (SAVE_MOCK_DATA) {
+            _saveToLocalFile('fitbit_mock_data.json', mockDataPayload);
+        }
 
         log('info', `[fitbitService] Full Fitbit sync completed for user ${userId}.`);
         return { success: true, source: 'live_api' };
