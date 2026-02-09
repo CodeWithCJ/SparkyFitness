@@ -1,4 +1,4 @@
-import { api } from '@/services/api'; // Assuming you have a utility for making API requests
+import { api } from '@/services/api';
 
 /**
  * Fetches the total number of items (foods, exercises, meals)

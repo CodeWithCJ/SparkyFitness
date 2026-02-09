@@ -8,8 +8,8 @@ import { Save, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { toast } from "sonner";
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
-import { debug } from '@/utils/logging'; // Import logging utility
+import { usePreferences } from "@/contexts/PreferencesContext";
+import { debug } from '@/utils/logging';
 import {
   getCustomCategories,
   getCustomMeasurements,

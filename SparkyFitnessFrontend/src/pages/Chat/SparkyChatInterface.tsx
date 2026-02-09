@@ -6,8 +6,8 @@ import { Send, Loader2, ImageIcon, X } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
 import DOMPurify from 'dompurify';
 import SparkyNutritionCoach from './SparkyNutritionCoach';
-import { usePreferences } from '@/contexts/PreferencesContext'; // Import usePreferences
-import { info, warn, error } from '@/utils/logging'; // Import logging utilities
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { info, warn, error } from '@/utils/logging';
 import {
   loadUserPreferences,
   loadChatHistory,

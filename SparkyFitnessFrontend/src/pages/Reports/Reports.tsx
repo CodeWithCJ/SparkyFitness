@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'; // Added ScatterChart, Scatter
-import { BarChart3, TrendingUp, Activity, Dumbbell, BedDouble } from "lucide-react"; // Added Dumbbell and BedDouble
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart3, TrendingUp, Activity, Dumbbell, BedDouble } from "lucide-react";
 import { getFastingDataRange, type FastingLog } from '@/services/fastingService';
 import { FastingReport } from '@/pages/Reports/FastingReport';
 import { usePreferences } from "@/contexts/PreferencesContext";
@@ -15,10 +15,10 @@ import ReportsControls from "@/pages/Reports/ReportsControls";
 import NutritionChartsGrid from "@/pages/Reports/NutritionChartsGrid";
 import MeasurementChartsGrid from "@/pages/Reports/MeasurementChartsGrid";
 import ReportsTables from "@/pages/Reports/ReportsTables";
-import ExerciseReportsDashboard from "@/pages/Reports/ExerciseReportsDashboard"; // Import ExerciseReportsDashboard
-import SleepReport from "@/pages/Reports/SleepReport"; // Import SleepReport
-import BodyBatteryCard, { BODY_BATTERY_METRICS } from "@/pages/Reports/BodyBatteryCard"; // Import BodyBatteryCard
-import RespirationCard, { RESPIRATION_METRICS } from "@/pages/Reports/RespirationCard"; // Import RespirationCard
+import ExerciseReportsDashboard from "@/pages/Reports/ExerciseReportsDashboard";
+import SleepReport from "@/pages/Reports/SleepReport";
+import BodyBatteryCard, { BODY_BATTERY_METRICS } from "@/pages/Reports/BodyBatteryCard";
+import RespirationCard, { RESPIRATION_METRICS } from "@/pages/Reports/RespirationCard";
 
 // Metrics to hide from the custom measurements charts (shown in dedicated cards instead)
 const HIDDEN_CUSTOM_METRICS = [
@@ -27,9 +27,9 @@ const HIDDEN_CUSTOM_METRICS = [
   'Average SpO2',  // Shown in Sleep tab SpO2 card
   'Average Overnight HRV',  // Shown in Sleep tab HRV card
 ];
-import StressChart from "@/pages/Reports/StressChart"; // Import StressChart
+import StressChart from "@/pages/Reports/StressChart";
 import { debug, info, warn, error } from "@/utils/logging";
-import { parseISO } from 'date-fns'; // Import format, parseISO, addDays from date-fns
+import { parseISO } from 'date-fns';
 import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
 import { calculateSmartYAxisDomain, getChartConfig } from "@/utils/chartUtils";
 

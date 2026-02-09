@@ -14,7 +14,7 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { info, error } from "@/utils/logging";
-import ActivityReportVisualizer from "./ActivityReportVisualizer"; // Import ActivityReportVisualizer
+import ActivityReportVisualizer from "./ActivityReportVisualizer";
 import type {
   ExerciseDashboardData,
   ExerciseProgressData,

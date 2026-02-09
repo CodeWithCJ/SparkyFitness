@@ -1,6 +1,6 @@
 import { api } from './api';
 import type { MoodEntry } from '@/types/mood';
-import { debug, info, error } from '@/utils/logging'; // Import logging utility
+import { debug, info, error } from '@/utils/logging';
 import { getUserLoggingLevel } from "@/utils/userPreferences";
 
 // Import format from date-fns

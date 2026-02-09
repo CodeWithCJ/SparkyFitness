@@ -47,10 +47,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "@/hooks/use-toast";
-import { info } from "@/utils/logging"; // Import the info function
+import { info } from "@/utils/logging";
 import EnhancedCustomFoodForm from "@/components/EnhancedCustomFoodForm";
 import FoodSearchDialog from "@/components/FoodSearchDialog";
-import FoodUnitSelector from "@/components/FoodUnitSelector"; // Import FoodUnitSelector
+import FoodUnitSelector from "@/components/FoodUnitSelector";
 import {
   loadFoods,
   togglePublicSharing,
@@ -58,10 +58,10 @@ import {
   getFoodDeletionImpact,
   type FoodFilter,
 } from "@/services/foodService";
-import { createFoodEntry } from "@/services/foodEntryService"; // Import foodEntryService
+import { createFoodEntry } from "@/services/foodEntryService";
 import type { Food, FoodVariant, FoodDeletionImpact } from "@/types/food";
-import MealManagement from "./MealManagement"; // Import MealManagement
-import MealPlanCalendar from "./MealPlanCalendar"; // Import MealPlanCalendar
+import MealManagement from "./MealManagement";
+import MealPlanCalendar from "./MealPlanCalendar";
 
 const FoodDatabaseManager: React.FC = () => {
   const { t } = useTranslation();

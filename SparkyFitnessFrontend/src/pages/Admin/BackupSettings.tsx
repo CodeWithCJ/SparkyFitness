@@ -1,12 +1,12 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../services/api'; // Assuming an API service exists
-import { useAuth } from '../../hooks/useAuth'; // Import useAuth hook
-import { usePreferences } from '../../contexts/PreferencesContext'; // Assuming a preferences context for admin settings
-import { useToast } from '@/hooks/use-toast'; // Import the custom useToast hook
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"; // Import Accordion components
-import { Shield } from "lucide-react"; // Import an icon for the trigger
+import { api } from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
+import { usePreferences } from '../../contexts/PreferencesContext';
+import { useToast } from '@/hooks/use-toast';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Shield } from "lucide-react";
 import { info, debug } from '../../utils/logging';
 
 const BackupSettings: React.FC = () => {

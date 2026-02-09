@@ -12,7 +12,7 @@ import { Dumbbell, Edit, Trash2, Settings, Play } from "lucide-react";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import type { ExerciseEntry } from "@/services/exerciseEntryService";
 import type { Exercise } from "@/services/exerciseService";
-import { formatMinutesToHHMM } from "@/utils/timeFormatters"; // Import the new utility function
+import { formatMinutesToHHMM } from "@/utils/timeFormatters";
 
 interface ExerciseEntryDisplayProps {
   exerciseEntry: ExerciseEntry;

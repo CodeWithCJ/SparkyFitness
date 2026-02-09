@@ -14,7 +14,7 @@ import { warn, error } from '@/utils/logging';
 import type { Food, FoodVariant } from '@/types/food';
 import type { Meal, MealFood, MealPayload } from '@/types/meal';
 import { createMeal, updateMeal, getMealById } from '@/services/mealService';
-import { createFoodEntryMeal, updateFoodEntryMeal, getFoodEntryMealWithComponents } from '@/services/foodEntryService'; // New imports
+import { createFoodEntryMeal, updateFoodEntryMeal, getFoodEntryMealWithComponents } from '@/services/foodEntryService';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import FoodSearchDialog from './FoodSearchDialog';
 

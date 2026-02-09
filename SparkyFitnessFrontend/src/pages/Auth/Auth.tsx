@@ -29,7 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { AuthResponse, LoginSettings, OidcProvider } from "../../types/auth";
 import useToggle from "@/hooks/use-toggle";
 import PasswordToggle from "../../components/PasswordToggle";
-import MfaChallenge from "./MfaChallenge"; // Import the MfaChallenge component
+import MfaChallenge from "./MfaChallenge";
 
 const Auth = () => {
   const navigate = useNavigate();

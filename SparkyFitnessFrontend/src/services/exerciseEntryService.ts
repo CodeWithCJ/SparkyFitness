@@ -1,12 +1,12 @@
 import { apiCall } from './api';
 import { getExerciseEntriesForDate as getDailyExerciseEntries } from './dailyProgressService';
-import type { Exercise } from './exerciseSearchService'; // Import the comprehensive Exercise interface
-import { parseJsonArray } from './exerciseService'; // Import parseJsonArray
-import type { ExerciseProgressData } from './reportsService'; // Import ExerciseProgressData
+import type { Exercise } from './exerciseSearchService';
+import { parseJsonArray } from './exerciseService';
+import type { ExerciseProgressData } from './reportsService';
 import type { WorkoutPresetSet } from '@/types/workout';
-import type { ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor'; // New import
-import { debug } from '@/utils/logging'; // Import logging utility
-import { getUserLoggingLevel } from '@/utils/userPreferences'; // Import user logging level
+import type { ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor';
+import { debug } from '@/utils/logging';
+import { getUserLoggingLevel } from '@/utils/userPreferences';
 
 export interface ExerciseEntry {
   id: string;

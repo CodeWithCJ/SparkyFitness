@@ -4,7 +4,7 @@ import { getWaterContainers, setPrimaryWaterContainer, type WaterContainer } fro
 import { useToast } from '../hooks/use-toast';
 import { usePreferences } from './PreferencesContext';
 import { useAuth } from '../hooks/useAuth';
-import { useActiveUser } from './ActiveUserContext'; // Import useActiveUser
+import { useActiveUser } from './ActiveUserContext';
 
 interface WaterContainerContextType {
   activeContainer: WaterContainer | null;

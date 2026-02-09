@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTranslation } from "react-i18next"; // Import useTranslation
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -22,9 +22,9 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import EnhancedFoodSearch from "../../components/EnhancedFoodSearch";
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
+import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { debug, info } from "@/utils/logging"; // Import logging utility
+import { debug, info } from "@/utils/logging";
 
 import type { Food, FoodVariant, FoodEntry, GlycemicIndex } from "@/types/food";
 import type { Meal, FoodEntryMeal } from "@/types/meal";
@@ -49,7 +49,7 @@ interface MealTotals {
   custom_nutrients?: Record<string, number>; // Add custom_nutrients support
 }
 
-import type { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+import type { UserCustomNutrient } from "@/types/customNutrient";
 
 interface MealCardProps {
   meal: {

@@ -11,9 +11,9 @@ import { createExerciseEntry } from '@/services/exerciseEntryService';
 import { useToast } from "@/hooks/use-toast";
 import ExerciseHistoryDisplay from "../../components/ExerciseHistoryDisplay";
 import type { WorkoutPresetSet } from "@/types/workout";
-import type { ExerciseToLog } from './ExerciseCard'; // TODO remove type from file
+import type { ExerciseToLog } from './ExerciseCard';
 import { Plus, X, Copy, GripVertical, Repeat, Weight, Timer } from "lucide-react";
-import ExerciseActivityDetailsEditor, { type ActivityDetailKeyValuePair } from '../../components/ExerciseActivityDetailsEditor'; // New import
+import ExerciseActivityDetailsEditor, { type ActivityDetailKeyValuePair } from '../../components/ExerciseActivityDetailsEditor';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';

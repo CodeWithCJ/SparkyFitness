@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, error } from "@/utils/logging";
-import { requestPasswordReset } from "@/services/authService"; // Assuming this service function exists
+import { requestPasswordReset } from "@/services/authService";
 
 const ForgotPassword = () => {
   const { loggingLevel } = usePreferences();

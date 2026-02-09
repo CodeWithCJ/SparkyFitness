@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea'; // Import Textarea
+import { Textarea } from './ui/textarea';
 import { Plus, X } from 'lucide-react';
 
 // Utility function to check if a string is valid JSON

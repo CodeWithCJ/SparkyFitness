@@ -6,8 +6,8 @@ import type { CombinedSleepData, SleepStageEvent } from '@/types';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { debug } from '@/utils/logging'; // Import logging utility
-import { getUserLoggingLevel } from '@/utils/userPreferences'; // Import user logging level
+import { debug } from '@/utils/logging';
+import { getUserLoggingLevel } from '@/utils/userPreferences';
 
 interface SleepAnalyticsTableProps {
   combinedSleepData: CombinedSleepData[];

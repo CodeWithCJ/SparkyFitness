@@ -8,14 +8,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Dumbbell } from "lucide-react"; // Added ChevronDown, ChevronUp
+import { Dumbbell } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import EditExerciseEntryDialog from "./EditExerciseEntryDialog";
-import ExercisePlaybackModal from "@/pages/Diary/ExercisePlaybackModal"; // Import the new modal
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
-import { debug, info, warn, error } from "@/utils/logging"; // Import logging utility
-import { toast } from "@/hooks/use-toast"; // Import toast
+import ExercisePlaybackModal from "@/pages/Diary/ExercisePlaybackModal";
+import { usePreferences } from "@/contexts/PreferencesContext";
+import { debug, info, warn, error } from "@/utils/logging";
+import { toast } from "@/hooks/use-toast";
 import {
   fetchExerciseEntries,
   deleteExerciseEntry,
@@ -31,14 +31,14 @@ import {
   type Exercise,
   type ExerciseOwnershipFilter,
 } from "@/services/exerciseService";
-import type { WorkoutPresetSet, WorkoutPreset, PresetExercise } from "@/types/workout"; // Import PresetExercise
-import { getExerciseById } from "@/services/exerciseService"; // Import getExerciseById
-import { formatMinutesToHHMM } from "@/utils/timeFormatters"; // Import the new utility function
+import type { WorkoutPresetSet, WorkoutPreset, PresetExercise } from "@/types/workout";
+import { getExerciseById } from "@/services/exerciseService";
+import { formatMinutesToHHMM } from "@/utils/timeFormatters";
 import ExerciseEntryDisplay from "./ExerciseEntryDisplay";
 import ExercisePresetEntryDisplay from "./ExercisePresetEntryDisplay";
-import EditExerciseDatabaseDialog from "./EditExerciseDatabaseDialog"; // New import
-import AddExerciseDialog from "@/pages/Exercises/AddExerciseDialog"; // Import AddExerciseDialog
-import LogExerciseEntryDialog from "@/pages/Diary/LogExerciseEntryDialog"; // Import LogExerciseEntryDialog
+import EditExerciseDatabaseDialog from "./EditExerciseDatabaseDialog";
+import AddExerciseDialog from "@/pages/Exercises/AddExerciseDialog";
+import LogExerciseEntryDialog from "@/pages/Diary/LogExerciseEntryDialog";
 
 // New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
 export interface ExerciseToLog extends Exercise { // Export the interface

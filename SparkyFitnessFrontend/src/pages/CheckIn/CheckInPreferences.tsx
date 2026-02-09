@@ -5,8 +5,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { cn } from "@/lib/utils";
-import { debug, info, warn } from '@/utils/logging'; // Import logging utility
-import { format } from 'date-fns'; // Import format from date-fns
+import { debug, info, warn } from '@/utils/logging';
+import { format } from 'date-fns';
 import { useTranslation } from "react-i18next";
 
 

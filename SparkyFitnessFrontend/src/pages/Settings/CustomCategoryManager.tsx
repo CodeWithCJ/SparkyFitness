@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Plus, Trash2, Edit } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
+import { usePreferences } from "@/contexts/PreferencesContext";
 import {
   addCategory,
   updateCategory,

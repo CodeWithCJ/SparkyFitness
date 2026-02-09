@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Target, Zap, Utensils, Flame, Flag } from "lucide-react"; // Added Utensils, Flame, Flag
+import { Target, Zap, Utensils, Flame, Flag } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from "@/utils/logging";
-import { calculateFoodEntryNutrition } from "@/utils/nutritionCalculations"; // Import the new utility function
+import { calculateFoodEntryNutrition } from "@/utils/nutritionCalculations";
 import {
   getGoalsForDate,
   getFoodEntriesForDate,
@@ -21,9 +21,9 @@ import {
   getCheckInMeasurementsForDate,
   type CheckInMeasurement,
 } from "@/services/dailyProgressService";
-import type { GroupedExerciseEntry } from "@/services/exerciseEntryService"; // Corrected import path
+import type { GroupedExerciseEntry } from "@/services/exerciseEntryService";
 import { getMostRecentMeasurement } from "@/services/checkInService";
-import type { FoodEntry } from "@/types/food"; // Import FoodEntry from src/types/food
+import type { FoodEntry } from "@/types/food";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getUserPreferences } from "@/services/preferenceService";
 import { calculateBmr, type BmrAlgorithm } from "@/services/bmrService";

@@ -1,6 +1,6 @@
 import type React from 'react';
-import { Heart } from 'lucide-react'; // Using Heart icon for sponsor
-import { cn } from '@/lib/utils'; // Assuming cn is available for utility classes
+import { Heart } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface GitHubSponsorButtonProps {
   owner: string;

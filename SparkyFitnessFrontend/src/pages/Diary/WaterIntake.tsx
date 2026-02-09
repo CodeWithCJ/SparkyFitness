@@ -10,7 +10,7 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { convertMlToSelectedUnit } from "@/utils/nutritionCalculations";
 import { debug } from "@/utils/logging";
 import { useWaterContainer } from "@/contexts/WaterContainerContext";
-import { useActiveUser } from "@/contexts/ActiveUserContext"; // Import useActiveUser
+import { useActiveUser } from "@/contexts/ActiveUserContext";
 
 interface WaterIntakeProps {
   selectedDate: string;

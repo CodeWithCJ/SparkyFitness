@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"; // Added useEffect
+import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Upload, Download, Loader2, Plus, Trash2, Copy } from "lucide-react"; // Added Plus, Trash2, and Copy
+import { Upload, Download, Loader2, Plus, Trash2, Copy } from "lucide-react";
 import { format, parse } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { getUserPreferences } from "@/services/preferenceService";

@@ -6,8 +6,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
-import { usePreferences } from '@/contexts/PreferencesContext'; // Import usePreferences
-import { debug, info } from '@/utils/logging'; // Import logging functions
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { debug, info } from '@/utils/logging';
 import { toast } from '@/hooks/use-toast';
 import type { MealPlanTemplate } from '@/types/meal';
 import { getMealPlanTemplates, createMealPlanTemplate, updateMealPlanTemplate, deleteMealPlanTemplate } from '@/services/mealPlanTemplateService';

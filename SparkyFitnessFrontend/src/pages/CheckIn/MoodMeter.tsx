@@ -1,9 +1,9 @@
 import React from 'react';
 import { useTranslation } from "react-i18next";
-import { Slider } from '@/components/ui/slider'; // Assuming Shadcn UI Slider
-import { Textarea } from '@/components/ui/textarea'; // Assuming Shadcn UI Textarea
-import { Label } from '@/components/ui/label'; // Assuming Shadcn UI Label
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Assuming Shadcn UI Card
+import { Slider } from '@/components/ui/slider';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface MoodMeterProps {
   onMoodChange: (mood: number | null, notes: string) => void;

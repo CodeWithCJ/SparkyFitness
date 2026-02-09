@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { parseISO } from "date-fns";
-import { useLocation } from "react-router-dom"; // Import useLocation
+import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { formatDateToYYYYMMDD } from "@/lib/utils"; // Import the new utility function
+import { formatDateToYYYYMMDD } from "@/lib/utils";
 import {
   getSupportedLanguages,
   getLanguageDisplayName,
@@ -21,8 +21,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Calendar as CalendarIcon } from "lucide-react"; // Import CalendarIcon
-import { Calendar } from "@/components/ui/calendar"; // Import Calendar component
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -47,7 +47,7 @@ import {
   UtensilsCrossed,
   X,
 } from "lucide-react";
-import { apiCall } from "@/services/api"; // Assuming a common API utility
+import { apiCall } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "@/hooks/use-toast";
@@ -56,11 +56,11 @@ import AIServiceSettings from "./AIServiceSettings";
 import CustomCategoryManager from "./CustomCategoryManager";
 import MealTypeManager from "./MealTypeManager";
 import type { CustomCategory } from "@/services/customCategoryService";
-import ExternalProviderSettings from "./ExternalProviderSettings"; // Import ExternalProviderSettings
+import ExternalProviderSettings from "./ExternalProviderSettings";
 // Import GarminConnectSettings
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
-import NutrientDisplaySettings from "./NutrientDisplaySettings"; // Import NutrientDisplaySettings
-import WaterContainerManager from "./WaterContainerManager"; // Import WaterContainerManager
+import { usePreferences } from "@/contexts/PreferencesContext";
+import NutrientDisplaySettings from "./NutrientDisplaySettings";
+import WaterContainerManager from "./WaterContainerManager";
 // Import parse for parsing user-entered date strings
 import {
   Accordion,
@@ -70,7 +70,7 @@ import {
 } from "@/components/ui/accordion"; // Import Accordion components
 import CalculationSettings from "./CalculationSettings";
 import TooltipWarning from "@/components/TooltipWarning";
-import MFASettings from "@/pages/Settings/MFASettings"; // Import MFASettings component
+import MFASettings from "@/pages/Settings/MFASettings";
 import CustomNutrientsSettings from "@/pages/Settings/CustomNutrientsSettings";
 import PasskeySettings from "@/pages/Settings/PasskeySettings";
 

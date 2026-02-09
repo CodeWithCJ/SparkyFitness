@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast"; // Import toast
+import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, error } from '@/utils/logging';
 import { formatWeight } from '@/utils/numberFormatting';
@@ -15,7 +15,7 @@ import { fetchExerciseDetails } from '@/services/editExerciseEntryService';
 import { updateExerciseEntry, type ExerciseEntry } from '@/services/exerciseEntryService';
 import type { WorkoutPresetSet } from "@/types/workout";
 import { excerciseWorkoutSetTypes } from "@/constants/excerciseWorkoutSetTypes";
-import ExerciseActivityDetailsEditor, { type ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor'; // New import
+import ExerciseActivityDetailsEditor, { type ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor';
 import {
   DndContext,
   closestCenter,

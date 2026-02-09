@@ -14,9 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { createMealFromDiary } from "@/services/mealService"; // Assuming this service function will be created
-import { debug, info, error } from "@/utils/logging"; // Import logging utility
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
+import { createMealFromDiary } from "@/services/mealService";
+import { debug, info, error } from "@/utils/logging";
+import { usePreferences } from "@/contexts/PreferencesContext";
 
 interface ConvertToMealDialogProps {
   isOpen: boolean;

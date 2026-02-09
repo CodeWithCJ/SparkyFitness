@@ -2,19 +2,19 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // New import
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { useAuth } from "@/hooks/useAuth"; // New import
+import { useAuth } from "@/hooks/useAuth";
 import { debug, info, warn, error } from '@/utils/logging';
-import { apiCall } from '@/services/api'; // Import apiCall
-import { searchExercises as searchExercisesService, searchExternalExercises, addExternalExerciseToUserExercises, addNutritionixExercise, addFreeExerciseDBExercise, type Exercise, getRecentExercises, getTopExercises } from '@/services/exerciseSearchService'; // Added getRecentExercises, getTopExercises
-import { getFreeExerciseDBMuscleGroups, getFreeExerciseDBEquipment } from '@/services/freeExerciseDBSchemaService'; // New import
-import { Plus, Loader2, Search, ChevronLeft, ChevronRight, Volume2 } from "lucide-react"; // Added Loader2, Search, ChevronLeft, ChevronRight, Volume2, XCircle
+import { apiCall } from '@/services/api';
+import { searchExercises as searchExercisesService, searchExternalExercises, addExternalExerciseToUserExercises, addNutritionixExercise, addFreeExerciseDBExercise, type Exercise, getRecentExercises, getTopExercises } from '@/services/exerciseSearchService';
+import { getFreeExerciseDBMuscleGroups, getFreeExerciseDBEquipment } from '@/services/freeExerciseDBSchemaService';
+import { Plus, Loader2, Search, ChevronLeft, ChevronRight, Volume2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getExternalDataProviders, type DataProvider, getProviderCategory } from '@/services/externalProviderService'; // New import
+import { getExternalDataProviders, type DataProvider, getProviderCategory } from '@/services/externalProviderService';
 import { Badge } from "@/components/ui/badge";
 import { Share2, Users } from "lucide-react";
-import BodyMapFilter from './BodyMapFilter'; // Import BodyMapFilter
+import BodyMapFilter from './BodyMapFilter';
 
 interface ExerciseSearchProps {
   onExerciseSelect: (exercise: Exercise, sourceMode: 'internal' | 'external') => void;

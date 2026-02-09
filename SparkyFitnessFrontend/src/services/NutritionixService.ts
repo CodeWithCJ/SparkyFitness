@@ -1,5 +1,5 @@
 import { toast } from "@/hooks/use-toast";
-import { apiCall } from './api'; // Import apiCall
+import { apiCall } from './api';
 
 // Function to fetch food data provider details from your backend
 const fetchFoodDataProvider = async (providerId: string) => {

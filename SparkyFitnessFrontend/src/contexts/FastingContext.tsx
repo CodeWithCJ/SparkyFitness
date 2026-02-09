@@ -2,9 +2,9 @@ import type React from 'react';
 import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react'
 import * as fastingService from '../services/fastingService';
 import type { FastingLog } from '../services/fastingService';
-import { useAuth } from '../hooks/useAuth'; // Restored import path
-import { debug, error } from '@/utils/logging'; // Import logging utility
-import { getUserLoggingLevel } from '@/utils/userPreferences'; // Import user logging level
+import { useAuth } from '../hooks/useAuth';
+import { debug, error } from '@/utils/logging';
+import { getUserLoggingLevel } from '@/utils/userPreferences';
 // queryClient import removed
 
 interface FastingContextType {

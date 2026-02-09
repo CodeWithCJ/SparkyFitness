@@ -1,7 +1,7 @@
-import { parseISO } from 'date-fns'; // Import parseISO
-import type { CoachResponse } from './Chatbot_types'; // Import types
-import { debug, error, type UserLoggingLevel } from '@/utils/logging'; // Import logging utility
-import { apiCall } from '../api'; // Import apiCall
+import { parseISO } from 'date-fns';
+import type { CoachResponse } from './Chatbot_types';
+import { debug, error, type UserLoggingLevel } from '@/utils/logging';
+import { apiCall } from '../api';
 
 // Function to process exercise input
 export const processExerciseInput = async (data: { exercise_name: string; duration_minutes: number | null; distance: number | null; distance_unit: string | null }, entryDate: string | undefined, formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string, userLoggingLevel: UserLoggingLevel): Promise<CoachResponse> => {

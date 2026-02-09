@@ -5,14 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
-import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
+import { usePreferences } from "@/contexts/PreferencesContext";
+import { debug, info, warn, error } from '@/utils/logging';
 import {
   loadFoodVariants,
   updateFoodEntry,
 } from '@/services/editFoodEntryService';
-import { getFoodById } from '@/services/foodService'; // Import getFoodById
-import type { FoodVariant, FoodEntry, Food } from '@/types/food'; // Import Food type
+import { getFoodById } from '@/services/foodService';
+import type { FoodVariant, FoodEntry, Food } from '@/types/food';
 import type { UserCustomNutrient } from "@/types/customNutrient";
 import { customNutrientService } from "@/services/customNutrientService";
 

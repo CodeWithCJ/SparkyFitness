@@ -3,12 +3,12 @@ import EditGoals from "./EditGoals";
 import WaterIntake from "./WaterIntake";
 import DailyProgress from "./DailyProgress";
 import MiniNutritionTrends from "./MiniNutritionTrends";
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
+import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { debug } from "@/utils/logging"; // Import logging utility
+import { debug } from "@/utils/logging";
 import { useTranslation } from "react-i18next";
 
-import type { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+import type { UserCustomNutrient } from "@/types/customNutrient";
 
 interface Goals {
   calories: number; // Stored internally as kcal

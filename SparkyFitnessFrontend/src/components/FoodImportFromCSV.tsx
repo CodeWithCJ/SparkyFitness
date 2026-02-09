@@ -12,7 +12,7 @@ import {
 import { Plus, Download, Upload, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
+import { usePreferences } from "@/contexts/PreferencesContext";
 
 interface ImportFromCSVProps {
   onSave: (foodData: Omit<CSVData, "id">[]) => Promise<void>;

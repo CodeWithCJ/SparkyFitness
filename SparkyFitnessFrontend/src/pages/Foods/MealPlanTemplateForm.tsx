@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
-import { usePreferences } from '@/contexts/PreferencesContext'; // Import usePreferences
-import { debug, error } from '@/utils/logging'; // Import logging functions
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { debug, error } from '@/utils/logging';
 import { toast } from '@/hooks/use-toast';
 import type { MealPlanTemplate, Meal, MealPlanTemplateAssignment } from '@/types/meal';
 import type { Food, FoodVariant } from '@/types/food';

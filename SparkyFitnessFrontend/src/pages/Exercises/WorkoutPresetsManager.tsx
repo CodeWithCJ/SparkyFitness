@@ -13,7 +13,7 @@ import {
   updateWorkoutPreset,
   deleteWorkoutPreset,
 } from '@/services/workoutPresetService';
-import { logWorkoutPreset } from '@/services/exerciseEntryService'; // Import logWorkoutPreset
+import { logWorkoutPreset } from '@/services/exerciseEntryService';
 import type { WorkoutPreset, PaginatedWorkoutPresets } from '@/types/workout';
 import WorkoutPresetForm from "./WorkoutPresetForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";

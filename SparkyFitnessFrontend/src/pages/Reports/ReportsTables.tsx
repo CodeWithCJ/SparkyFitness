@@ -11,7 +11,7 @@ import { debug, info } from "@/utils/logging";
 import { parseISO } from "date-fns";
 import { formatNutrientValue, getNutrientUnit } from '@/lib/utils';
 import { formatWeight } from '@/utils/numberFormatting';
-import type { UserCustomNutrient } from "@/types/customNutrient"; // Import UserCustomNutrient
+import type { UserCustomNutrient } from "@/types/customNutrient";
 import type { DailyFoodEntry as BaseDailyFoodEntry } from '@/services/reportsService';
 
 interface DailyFoodEntry extends BaseDailyFoodEntry {

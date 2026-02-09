@@ -14,15 +14,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ExerciseSearch from "./ExerciseSearch";
-import WorkoutPresetSelector from "./WorkoutPresetSelector"; // Import WorkoutPresetSelector
-import ExerciseImportCSV, { type ExerciseCSVData } from "./ExerciseImportCSV"; // Renamed import and import ExerciseCSVData
-import ExerciseEntryHistoryImportCSV from "./ExerciseEntryHistoryImportCSV"; // Import new component
+import WorkoutPresetSelector from "./WorkoutPresetSelector";
+import ExerciseImportCSV, { type ExerciseCSVData } from "./ExerciseImportCSV";
+import ExerciseEntryHistoryImportCSV from "./ExerciseEntryHistoryImportCSV";
 import { createExercise, type Exercise } from "@/services/exerciseService";
-import type { WorkoutPreset } from "@/types/workout"; // Import WorkoutPreset type
+import type { WorkoutPreset } from "@/types/workout";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { XCircle } from "lucide-react";
-import { apiCall } from "@/services/api"; // Import apiCall
+import { apiCall } from "@/services/api";
 
 interface AddExerciseDialogProps {
   open: boolean;

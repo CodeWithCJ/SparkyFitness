@@ -1,5 +1,5 @@
 import { toast } from "@/hooks/use-toast";
-import { apiCall } from './api'; // Import apiCall
+import { apiCall } from './api';
 
 const PROXY_BASE_URL = "/foods/fatsecret"; // Base path for FatSecret proxy endpoints
 

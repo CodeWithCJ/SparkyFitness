@@ -18,7 +18,7 @@ import {
   updateWorkoutPlanTemplate,
   deleteWorkoutPlanTemplate,
 } from '@/services/workoutPlanTemplateService'; // Assuming this service exists
-import type { WorkoutPlanTemplate } from '@/types/workout'; // Import the WorkoutPlanTemplate interface
+import type { WorkoutPlanTemplate } from '@/types/workout';
 import AddWorkoutPlanDialog from "./AddWorkoutPlanDialog";
 
 type WorkoutPlansManagerProps = {}

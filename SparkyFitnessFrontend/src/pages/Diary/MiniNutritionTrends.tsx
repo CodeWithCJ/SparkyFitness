@@ -10,7 +10,7 @@ import { loadMiniNutritionTrendData, type DayData } from '@/services/miniNutriti
 import { formatNutrientValue } from '@/lib/utils';
 
 
-import type { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+import type { UserCustomNutrient } from "@/types/customNutrient";
 
 interface MiniNutritionTrendsProps {
   selectedDate: string;

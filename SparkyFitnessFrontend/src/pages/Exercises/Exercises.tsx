@@ -52,8 +52,8 @@ import {
   type ExerciseOwnershipFilter,
 } from "@/services/exerciseService";
 import type { Exercise as ExerciseInterface } from "@/services/exerciseSearchService";
-import WorkoutPresetsManager from "./WorkoutPresetsManager"; // Import the new component
-import WorkoutPlansManager from "@/pages/Exercises/WorkoutPlansManager"; // Import the new component
+import WorkoutPresetsManager from "./WorkoutPresetsManager";
+import WorkoutPlansManager from "@/pages/Exercises/WorkoutPlansManager";
 
 const ExerciseDatabaseManager = () => {
   const { t } = useTranslation();

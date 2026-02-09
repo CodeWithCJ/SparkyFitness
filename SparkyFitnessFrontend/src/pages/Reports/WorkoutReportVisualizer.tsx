@@ -5,7 +5,7 @@ import type { WorkoutData } from './ActivityReportVisualizer';
 import SetPerformanceAnalysisChart from './SetPerformanceAnalysisChart';
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { formatNumber } from "@/utils/numberFormatting";
-import { FaDumbbell, FaClock, FaWeightHanging, FaRedo, FaTrophy, FaWeight, FaChartLine } from 'react-icons/fa'; // Import icons
+import { FaDumbbell, FaClock, FaWeightHanging, FaRedo, FaTrophy, FaWeight, FaChartLine } from 'react-icons/fa';
 
 interface WorkoutReportVisualizerProps {
   workoutData: WorkoutData;

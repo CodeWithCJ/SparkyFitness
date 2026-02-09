@@ -7,8 +7,8 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, error } from '@/utils/logging';
-import { getExerciseHistory } from '@/services/exerciseEntryService'; // Assuming this service exists
-import type { ExerciseEntry } from '@/services/exerciseEntryService'; // Assuming ExerciseEntry interface is defined here
+import { getExerciseHistory } from '@/services/exerciseEntryService';
+import type { ExerciseEntry } from '@/services/exerciseEntryService';
 
 interface ExerciseHistoryDisplayProps {
   exerciseId: string;

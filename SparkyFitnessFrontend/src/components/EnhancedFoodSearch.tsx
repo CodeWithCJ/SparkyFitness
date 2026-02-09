@@ -18,13 +18,13 @@ import BarcodeScanner from "./BarcodeScanner";
 import ImportFromCSV from "./FoodImportFromCSV";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { debug, error } from "@/utils/logging"; // Import logging functions
+import { debug, error } from "@/utils/logging";
 import {
   searchNutritionixFoods,
   getNutritionixNutrients,
   getNutritionixBrandedNutrients,
 } from "@/services/NutritionixService";
-import { getMeals } from "@/services/mealService"; // Import getMeals
+import { getMeals } from "@/services/mealService";
 import {
   searchFatSecretFoods,
   getFatSecretNutrients,
@@ -48,11 +48,11 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { apiCall } from "@/services/api";
-import { getProviderCategory } from "@/services/externalProviderService"; // New import
+import { getProviderCategory } from "@/services/externalProviderService";
 import type { Food, FoodVariant, CSVData } from "@/types/food";
-import type { Meal } from "@/types/meal"; // Import Meal type
-import { customNutrientService } from "@/services/customNutrientService"; // Add custom nutrient service
-import type { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+import type { Meal } from "@/types/meal";
+import { customNutrientService } from "@/services/customNutrientService";
+import type { UserCustomNutrient } from "@/types/customNutrient";
 
 interface OpenFoodFactsProduct {
   product_name: string;

@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePreferences } from "@/contexts/PreferencesContext";
 
 import OnBoarding from "@/components/Onboarding/OnBoarding";
-import MainLayout from "@/layouts/MainLayout"; // Import the new MainLayout
+import MainLayout from "@/layouts/MainLayout";
 import { getOnboardingStatus } from "@/services/onboardingService";
 
 interface IndexProps {

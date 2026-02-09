@@ -1,9 +1,9 @@
-import { parseISO } from 'date-fns'; // Import parseISO
-import type { CoachResponse, FoodOption } from './Chatbot_types'; // Import types
-import { debug, info, warn, error, type UserLoggingLevel } from '@/utils/logging'; // Import logging utility
-import { apiCall } from '../api'; // Import apiCall
+import { parseISO } from 'date-fns';
+import type { CoachResponse, FoodOption } from './Chatbot_types';
+import { debug, info, warn, error, type UserLoggingLevel } from '@/utils/logging';
+import { apiCall } from '../api';
 
-import SparkyAIService from '@/components/SparkyAIService'; // Import SparkyAIService
+import SparkyAIService from '@/components/SparkyAIService';
 
 const sparkyAIService = new SparkyAIService(); // Create an instance of SparkyAIService
 // Function to process food input

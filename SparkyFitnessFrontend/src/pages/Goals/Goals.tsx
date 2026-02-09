@@ -9,7 +9,7 @@ import { apiCall } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { usePreferences } from "@/contexts/PreferencesContext"; // Added import
+import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { saveGoals as saveGoalsService } from "@/services/goalsService";
 import {

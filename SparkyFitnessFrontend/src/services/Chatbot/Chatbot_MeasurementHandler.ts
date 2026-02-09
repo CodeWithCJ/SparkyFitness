@@ -1,6 +1,6 @@
-import type { CoachResponse } from './Chatbot_types'; // Import types
-import { debug, info, warn, error, type UserLoggingLevel } from '@/utils/logging'; // Import logging utility
-import { apiCall } from '../api'; // Import apiCall
+import type { CoachResponse } from './Chatbot_types';
+import { debug, info, warn, error, type UserLoggingLevel } from '@/utils/logging';
+import { apiCall } from '../api';
 
 // Function to upsert check-in measurements
 const upsertCheckInMeasurement = async (payload: any) => {

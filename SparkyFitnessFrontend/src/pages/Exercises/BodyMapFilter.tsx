@@ -2,7 +2,7 @@ import type React from 'react';
 import { useEffect, useState, useRef } from 'react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { error } from '@/utils/logging';
-import './BodyMapFilter.css'; // For styling the SVG
+import './BodyMapFilter.css';
 
 interface BodyMapFilterProps {
   selectedMuscles: string[];

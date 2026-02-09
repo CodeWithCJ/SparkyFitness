@@ -3,8 +3,8 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from "react-i18next";
 import { format, parseISO, differenceInMinutes, addMinutes, isSameMinute, isBefore, isAfter } from 'date-fns';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // Added Input import
-import { Label } from "@/components/ui/label"; // Added Label import
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { type SleepStageEvent, SLEEP_STAGE_COLORS } from '@/types';
 
 interface SleepTimelineEditorProps {

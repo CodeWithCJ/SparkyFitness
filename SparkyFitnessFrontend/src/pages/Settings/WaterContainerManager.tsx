@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useWaterContainer } from "@/contexts/WaterContainerContext"; // Import the context
+import { useWaterContainer } from "@/contexts/WaterContainerContext";
 
 const WaterContainerManager: React.FC = () => {
   const [containers, setContainers] = useState<WaterContainer[]>([]);

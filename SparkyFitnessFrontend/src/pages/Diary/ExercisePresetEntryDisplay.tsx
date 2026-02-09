@@ -9,8 +9,8 @@ import { debug } from "@/utils/logging";
 import type { GroupedExerciseEntry, ExerciseEntry } from "@/services/exerciseEntryService";
 import type { Exercise } from "@/services/exerciseService";
 import ExerciseEntryDisplay from "./ExerciseEntryDisplay";
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
-import { formatMinutesToHHMM } from "@/utils/timeFormatters"; // Import the new utility function
+import { usePreferences } from "@/contexts/PreferencesContext";
+import { formatMinutesToHHMM } from "@/utils/timeFormatters";
 
 interface ExercisePresetEntryDisplayProps {
   presetEntry: GroupedExerciseEntry;

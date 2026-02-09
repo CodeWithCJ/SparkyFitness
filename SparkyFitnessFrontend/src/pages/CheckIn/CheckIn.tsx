@@ -10,12 +10,12 @@ import { toast } from "@/hooks/use-toast";
 import CheckInPreferences from "./CheckInPreferences";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
-import MoodMeter from "./MoodMeter"; // Import MoodMeter component
+import MoodMeter from "./MoodMeter";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { Trash2, ClipboardList } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
-import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
-import { format, parseISO } from 'date-fns'; // Import format and parseISO from date-fns
+import { debug, info, warn, error } from '@/utils/logging';
+import { format, parseISO } from 'date-fns';
 import {
   loadCustomCategories as loadCustomCategoriesService,
   fetchRecentCustomMeasurements,
@@ -30,14 +30,14 @@ import {
   type CustomCategory,
   type CombinedMeasurement,
 } from '@/services/checkInService';
-import { saveMoodEntry, getMoodEntryByDate } from '@/services/moodService'; // Import mood service
+import { saveMoodEntry, getMoodEntryByDate } from '@/services/moodService';
 import { calculateBodyFatBmi, calculateBodyFatNavy } from '@/services/bodyCompositionService';
 import { getUserPreferences } from '@/services/preferenceService';
 import { userManagementService } from "@/services/userManagementService";
-import SleepEntrySection from './SleepEntrySection'; // Import SleepEntrySection
-import HomeDashboardFasting from './HomeDashboardFasting'; // Import Fasting Widget
-import { getFastingHistory } from '@/services/fastingService'; // Import fasting history service
-import { Timer, Activity } from 'lucide-react'; // Icons
+import SleepEntrySection from './SleepEntrySection';
+import HomeDashboardFasting from './HomeDashboardFasting';
+import { getFastingHistory } from '@/services/fastingService';
+import { Timer, Activity } from 'lucide-react';
 
 const CheckIn = () => {
   const { t } = useTranslation();

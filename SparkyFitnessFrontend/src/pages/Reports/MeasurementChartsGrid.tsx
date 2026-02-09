@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import ZoomableChart from "@/components/ZoomableChart";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { info, error } from "@/utils/logging";
-import { parseISO } from "date-fns"; // Import parseISO
+import { parseISO } from "date-fns";
 import { calculateSmartYAxisDomain, getChartConfig } from "@/utils/chartUtils";
 
 interface MeasurementData {

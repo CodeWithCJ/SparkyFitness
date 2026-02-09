@@ -36,13 +36,13 @@ import {
 } from "@/services/foodEntryService"; // ALL food related services now from foodEntryService
 import { getMealTypes, type MealTypeDefinition } from "@/services/mealTypeService";
 import type { Food, FoodVariant, GlycemicIndex } from "@/types/food";
-import type { Meal as MealType, FoodEntryMeal } from "@/types/meal"; // Added FoodEntryMeal
+import type { Meal as MealType, FoodEntryMeal } from "@/types/meal";
 import type { FoodEntry } from "@/types/food";
 import type { ExpandedGoals } from "@/types/goals";
 import type { PresetExercise, WorkoutPreset } from "@/types/workout";
 
-import { customNutrientService } from "@/services/customNutrientService"; // Add import
-import type { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+import { customNutrientService } from "@/services/customNutrientService";
+import type { UserCustomNutrient } from "@/types/customNutrient";
 
 interface MealTotals {
   calories: number; // Stored internally as kcal

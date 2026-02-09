@@ -6,9 +6,9 @@ import ZoomableChart from "@/components/ZoomableChart";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { info } from "@/utils/logging";
-import { parseISO, format } from "date-fns"; // Import parseISO, format
+import { parseISO, format } from "date-fns";
 import { calculateSmartYAxisDomain, excludeIncompleteDay, getChartConfig } from "@/utils/chartUtils";
-import type { UserCustomNutrient } from "@/types/customNutrient"; // Import UserCustomNutrient
+import type { UserCustomNutrient } from "@/types/customNutrient";
 interface NutritionData {
   date: string;
   calories: number;

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { api } from '@/services/api';
-import { info, error } from '@/utils/logging'; // Import warn
+import { info, error } from '@/utils/logging';
 import { toast as sonnerToast } from "sonner";
 import type { SleepEntry, SleepStageEvent, SleepAnalyticsData, CombinedSleepData, SleepChartData } from '@/types';
 import SleepAnalyticsTable from './SleepAnalyticsTable';
