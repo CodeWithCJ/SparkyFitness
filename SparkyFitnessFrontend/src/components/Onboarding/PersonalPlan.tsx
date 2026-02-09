@@ -20,7 +20,6 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { ExpandedGoals } from "@/types/goals";
 import { DIET_TEMPLATES, getDietTemplate } from "@/constants/dietTemplates";
-import MealPercentageManager from "@/components/MealPercentageManager";
 import {
     FatBreakdownAlgorithm,
     FatBreakdownAlgorithmLabels,
@@ -44,6 +43,7 @@ import { toast } from "@/hooks/use-toast";
 import { Save, PlayCircle } from "lucide-react";
 
 import { TFunction } from "i18next";
+import MealPercentageManager from "@/components/MealPercentageManager";
 
 interface PersonalPlanProps {
     plan: any;

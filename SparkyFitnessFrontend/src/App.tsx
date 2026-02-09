@@ -13,27 +13,27 @@ import AppSetup from "@/components/AppSetup";
 import axios from "axios";
 import { Toaster } from "@/components/ui/toaster";
 import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
-import WithingsCallback from "@/pages/WithingsCallback";
-import FitbitCallback from "@/pages/FitbitCallback";
-import Auth from "@/components/Auth";
+import ForgotPassword from "@/pages/Auth/ForgotPassword";
+import ResetPassword from "@/pages/Auth/ResetPassword";
+import WithingsCallback from "@/pages/Integrations/WithingsCallback";
+import FitbitCallback from "@/pages/Integrations/FitbitCallback";
+import Auth from "@/pages/Auth/Auth";
 import { useAuth } from "@/hooks/useAuth";
 import { FastingProvider } from "@/contexts/FastingContext";
 import Index from "@/pages/Index";
-import Diary from "@/pages/Diary";
-import NotFound from "@/pages/NotFound";
+import Diary from "@/pages/Diary/Diary";
+import NotFound from "@/pages/Errors/NotFound";
 import AuthenticationSettings from "@/pages/Admin/AuthenticationSettings";
 import UserManagement from "@/pages/Admin/UserManagement";
 import OidcCallback from "@/components/OidcCallback";
 import { useActiveUser } from "./contexts/ActiveUserContext";
-import CheckIn from "./pages/CheckIn";
-import FoodDatabaseManager from "./pages/Foods";
-import Reports from "./pages/Reports";
-import ExerciseDatabaseManager from "./pages/Exercises";
-import GoalsSettings from "./pages/Goals";
-import Settings from "./pages/SettingsPage";
-import AdminPage from "./pages/Admin";
+import CheckIn from "./pages/CheckIn/CheckIn";
+import FoodDatabaseManager from "./pages/Foods/Foods";
+import Reports from "./pages/Reports/Reports";
+import ExerciseDatabaseManager from "./pages/Exercises/Exercises";
+import GoalsSettings from "./pages/Goals/Goals";
+import Settings from "./pages/Settings/SettingsPage";
+import AdminPage from "./pages/Admin/Admin";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -176,11 +176,14 @@ const App = () => {
                     <Route path="goals" element={<GoalsSettings />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="admin">
-                      <Route index element={
-                        <PermissionRoute permission="admin">
-                          <AdminPage />
-                        </PermissionRoute>
-                      } />
+                      <Route
+                        index
+                        element={
+                          <PermissionRoute permission="admin">
+                            <AdminPage />
+                          </PermissionRoute>
+                        }
+                      />
                       <Route
                         path="oidc-settings"
                         element={

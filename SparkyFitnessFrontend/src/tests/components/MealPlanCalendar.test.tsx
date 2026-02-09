@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import MealPlanCalendar from '../../components/MealPlanCalendar';
+import MealPlanCalendar from '../../pages/Foods/MealPlanCalendar';
 
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
