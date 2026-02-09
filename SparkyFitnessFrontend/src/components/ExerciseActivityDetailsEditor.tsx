@@ -1,4 +1,5 @@
-import React, { useState, useEffect, ChangeEvent } from 'react';
+import type React from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react'
 import { useTranslation } from "react-i18next";
 import { Button } from './ui/button';
 import { Input } from './ui/input';

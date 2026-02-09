@@ -23,8 +23,8 @@ import {
   loadFoodVariants, // Also re-add loadFoodVariants as it's used
 } from "@/services/enhancedCustomFoodFormService";
 import { updateFoodEntriesSnapshot } from "@/services/foodService";
-import { Food, FoodVariant, GlycemicIndex } from "@/types/food";
-import { UserCustomNutrient } from "@/types/customNutrient";
+import type { Food, FoodVariant, GlycemicIndex } from "@/types/food";
+import type { UserCustomNutrient } from "@/types/customNutrient";
 import { customNutrientService } from "@/services/customNutrientService";
 
 type NumericFoodVariantKeys = Exclude<

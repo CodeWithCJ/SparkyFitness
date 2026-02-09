@@ -1,5 +1,5 @@
 import { api } from './api';
-import { MoodEntry } from '@/types/mood';
+import type { MoodEntry } from '@/types/mood';
 import { debug, info, error } from '@/utils/logging'; // Import logging utility
 import { getUserLoggingLevel } from "@/utils/userPreferences";
 

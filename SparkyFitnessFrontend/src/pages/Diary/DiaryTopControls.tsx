@@ -8,7 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { debug } from "@/utils/logging"; // Import logging utility
 import { useTranslation } from "react-i18next";
 
-import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+import type { UserCustomNutrient } from "@/types/customNutrient"; // Add import
 
 interface Goals {
   calories: number; // Stored internally as kcal

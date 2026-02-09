@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SLEEP_STAGE_COLORS } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CombinedSleepData, SleepStageEvent } from '@/types';
+import type { CombinedSleepData, SleepStageEvent } from '@/types';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ChevronDown, ChevronUp } from 'lucide-react';

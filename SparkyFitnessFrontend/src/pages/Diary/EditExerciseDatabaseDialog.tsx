@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import type React from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -14,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { updateExercise, Exercise } from "@/services/exerciseService";
+import { updateExercise, type Exercise } from "@/services/exerciseService";
 import { error } from "@/utils/logging";
 import { usePreferences } from "@/contexts/PreferencesContext";
 

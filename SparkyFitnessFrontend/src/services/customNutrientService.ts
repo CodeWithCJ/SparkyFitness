@@ -1,4 +1,4 @@
-import { UserCustomNutrient } from '../types/customNutrient';
+import type { UserCustomNutrient } from '../types/customNutrient';
 import { api } from './api';
 
 export const customNutrientService = {

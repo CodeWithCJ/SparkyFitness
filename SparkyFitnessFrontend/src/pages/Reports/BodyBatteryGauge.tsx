@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next';
 
 // Body Battery max value (Garmin uses 0-100 scale)

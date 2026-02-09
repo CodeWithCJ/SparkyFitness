@@ -1,9 +1,9 @@
 
 import { forwardRef, useImperativeHandle } from 'react';
 import { useTranslation } from "react-i18next";
-import { UserLoggingLevel, error, info, warn, debug } from "@/utils/logging";
+import { type UserLoggingLevel, error, info, warn, debug } from "@/utils/logging";
 import { apiCall } from "@/services/api";
-import { CoachResponse, FoodOption, NutritionData } from "@/services/Chatbot/Chatbot_types";
+import type { CoachResponse, FoodOption, NutritionData } from "@/services/Chatbot/Chatbot_types";
 import SparkyAIService from "@/components/SparkyAIService";
 import { fileToBase64, saveMessageToHistory, clearHistory } from "@/services/Chatbot/Chatbot_utils";
 import { processFoodInput, addFoodOption } from "@/services/Chatbot/Chatbot_FoodHandler";
@@ -169,7 +169,7 @@ const SparkyNutritionCoach = forwardRef<any, { userLoggingLevel: UserLoggingLeve
 
       // Map AI intent to CoachResponse action and call appropriate handlers
       switch (parsedResponse.intent) {
-        case 'log_food':
+        case 'log_food': {
           const foodResponse = await processFoodInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel, transactionId);
 
           // Check if the food was not found in the database (fallback)
@@ -211,6 +211,7 @@ const SparkyNutritionCoach = forwardRef<any, { userLoggingLevel: UserLoggingLeve
             // If food was found and logged, or another issue occurred, return the original response
             return foodResponse;
           }
+        }
 
         case 'log_exercise':
           return await processExerciseInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel);

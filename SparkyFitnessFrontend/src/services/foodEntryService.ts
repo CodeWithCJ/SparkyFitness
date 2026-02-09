@@ -1,7 +1,7 @@
 import { apiCall } from "./api";
-import { MealFood } from "@/types/meal"; // Import MealFood
-import { FoodEntryMeal } from "@/types/meal"; // New import
-import { FoodEntry } from "@/types/food"; // New import
+import type { MealFood } from "@/types/meal"; // Import MealFood
+import type { FoodEntryMeal } from "@/types/meal"; // New import
+import type { FoodEntry } from "@/types/food"; // New import
 
 interface FoodEntryUpdateData {
   quantity?: number;

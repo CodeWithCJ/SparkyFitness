@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next'; // Import useTranslation
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDistanceToNow } from 'date-fns';

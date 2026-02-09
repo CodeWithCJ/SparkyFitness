@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import type React from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { DEFAULT_GOALS } from "@/constants/goals";
 import { format, parseISO } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { ExpandedGoals } from "@/types/goals";
+import type { ExpandedGoals } from "@/types/goals";
 import { getDietTemplate } from "@/constants/dietTemplates";
 import {
     Popover,
@@ -27,7 +28,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { calculateAllAdvancedNutrients } from '@/services/nutrientCalculationService';
-import {
+import type {
     FatBreakdownAlgorithm,
     MineralCalculationAlgorithm,
     VitaminCalculationAlgorithm,

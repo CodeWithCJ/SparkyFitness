@@ -13,9 +13,7 @@ import { log } from "@/utils/logging";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import QRCode from "react-qr-code";
 
-interface MFASettingsProps {
-    // No props needed for now
-}
+type MFASettingsProps = {}
 
 const MFASettings: React.FC<MFASettingsProps> = () => {
     const { t } = useTranslation();
@@ -54,7 +52,7 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
         setLoading(true);
         try {
             switch (pendingAction) {
-                case 'enableTotp':
+                case 'enableTotp': {
                     const enableRes = await authClient.twoFactor.enable({ password: confirmPassword });
                     if (enableRes.error) throw enableRes.error;
                     setOtpAuthUrl(enableRes.data.totpURI);
@@ -62,7 +60,8 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
                     toast({ title: "Success", description: "Scan QR code to verify." });
                     await refetch();
                     break;
-                case 'disableTotp':
+                }
+                case 'disableTotp': {
                     const disableRes = await authClient.twoFactor.disable({ password: confirmPassword });
                     if (disableRes.error) throw disableRes.error;
 
@@ -72,7 +71,8 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
                     toast({ title: "Success", description: "TOTP disabled." });
                     await refetch();
                     break;
-                case 'generateBackup':
+                }
+                case 'generateBackup': {
                     const backupRes = await authClient.twoFactor.generateBackupCodes({ password: confirmPassword });
                     if (backupRes.error) throw backupRes.error;
                     setRecoveryCodes(backupRes.data.backupCodes);
@@ -80,6 +80,7 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
                     toast({ title: "Success", description: "Backup codes generated." });
                     await refetch();
                     break;
+                }
                 // Custom Email MFA still needs an endpoint or we adapt Better Auth OTP
             }
             setShowPasswordPrompt(false);

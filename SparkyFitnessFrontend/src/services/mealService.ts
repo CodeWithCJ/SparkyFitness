@@ -1,5 +1,5 @@
 import { apiCall } from './api';
-import { Meal, MealPayload, MealPlanTemplate, MealDeletionImpact } from '@/types/meal';
+import type { Meal, MealPayload, MealPlanTemplate, MealDeletionImpact } from '@/types/meal';
 
 export type MealFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
 

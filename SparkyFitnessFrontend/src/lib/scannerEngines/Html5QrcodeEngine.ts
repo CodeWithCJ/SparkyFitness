@@ -1,5 +1,5 @@
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { BarcodeScannerEngine } from './EngineInterface';
+import type { BarcodeScannerEngine } from './EngineInterface';
 
 export class Html5QrcodeEngine implements BarcodeScannerEngine {
     private html5QrCode: Html5Qrcode | null = null;

@@ -1,4 +1,4 @@
-import { UserLoggingLevel } from './logging';
+import type { UserLoggingLevel } from './logging';
 
 let currentUserLoggingLevel: UserLoggingLevel = 'ERROR'; // Default logging level
 

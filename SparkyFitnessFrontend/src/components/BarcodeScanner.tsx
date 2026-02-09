@@ -1,11 +1,12 @@
 // BarcodeScanner component with selectable scanning engine and camera switching
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import type React from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Scan, Camera, Flashlight, FlashlightOff, Keyboard, RefreshCcw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { BarcodeScannerEngine } from '@/lib/scannerEngines/EngineInterface';
+import type { BarcodeScannerEngine } from '@/lib/scannerEngines/EngineInterface';
 import { ZxingEngine } from '@/lib/scannerEngines/ZxingEngine';
 import { Html5QrcodeEngine } from '@/lib/scannerEngines/Html5QrcodeEngine';
 import { QuaggaEngine } from '@/lib/scannerEngines/QuaggaEngine';

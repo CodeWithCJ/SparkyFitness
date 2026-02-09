@@ -7,11 +7,11 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { useAuth } from "@/hooks/useAuth"; // New import
 import { debug, info, warn, error } from '@/utils/logging';
 import { apiCall } from '@/services/api'; // Import apiCall
-import { searchExercises as searchExercisesService, searchExternalExercises, addExternalExerciseToUserExercises, addNutritionixExercise, addFreeExerciseDBExercise, Exercise, getRecentExercises, getTopExercises } from '@/services/exerciseSearchService'; // Added getRecentExercises, getTopExercises
+import { searchExercises as searchExercisesService, searchExternalExercises, addExternalExerciseToUserExercises, addNutritionixExercise, addFreeExerciseDBExercise, type Exercise, getRecentExercises, getTopExercises } from '@/services/exerciseSearchService'; // Added getRecentExercises, getTopExercises
 import { getFreeExerciseDBMuscleGroups, getFreeExerciseDBEquipment } from '@/services/freeExerciseDBSchemaService'; // New import
 import { Plus, Loader2, Search, ChevronLeft, ChevronRight, Volume2 } from "lucide-react"; // Added Loader2, Search, ChevronLeft, ChevronRight, Volume2, XCircle
 import { useToast } from "@/hooks/use-toast";
-import { getExternalDataProviders, DataProvider, getProviderCategory } from '@/services/externalProviderService'; // New import
+import { getExternalDataProviders, type DataProvider, getProviderCategory } from '@/services/externalProviderService'; // New import
 import { Badge } from "@/components/ui/badge";
 import { Share2, Users } from "lucide-react";
 import BodyMapFilter from './BodyMapFilter'; // Import BodyMapFilter

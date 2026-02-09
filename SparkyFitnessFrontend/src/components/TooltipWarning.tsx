@@ -1,4 +1,4 @@
-import React from 'react'
+import type React from 'react'
 
 const TooltipWarning: React.FC<{warningMsg: string, color?: string}> = ({ warningMsg, color="yellow" }) => {
   return (

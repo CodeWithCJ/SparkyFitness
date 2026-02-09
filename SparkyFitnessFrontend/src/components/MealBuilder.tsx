@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,8 +11,8 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 import { warn, error } from '@/utils/logging';
-import { Food, FoodVariant } from '@/types/food';
-import { Meal, MealFood, MealPayload } from '@/types/meal';
+import type { Food, FoodVariant } from '@/types/food';
+import type { Meal, MealFood, MealPayload } from '@/types/meal';
 import { createMeal, updateMeal, getMealById } from '@/services/mealService';
 import { createFoodEntryMeal, updateFoodEntryMeal, getFoodEntryMealWithComponents } from '@/services/foodEntryService'; // New imports
 import FoodUnitSelector from '@/components/FoodUnitSelector';

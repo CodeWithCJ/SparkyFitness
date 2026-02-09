@@ -1,12 +1,13 @@
-import React, { useState, useCallback } from "react";
+import type React from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Edit, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { debug } from "@/utils/logging";
-import { GroupedExerciseEntry, ExerciseEntry } from "@/services/exerciseEntryService";
-import { Exercise } from "@/services/exerciseService";
+import type { GroupedExerciseEntry, ExerciseEntry } from "@/services/exerciseEntryService";
+import type { Exercise } from "@/services/exerciseService";
 import ExerciseEntryDisplay from "./ExerciseEntryDisplay";
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 import { formatMinutesToHHMM } from "@/utils/timeFormatters"; // Import the new utility function

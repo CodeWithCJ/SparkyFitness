@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback } from "react";
+import type React from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, Utensils, Lock, Unlock, AlertTriangle, Settings } from "lucide-react";
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { ExpandedGoals } from "@/types/goals";
+import type { ExpandedGoals } from "@/types/goals";
 import { DIET_TEMPLATES, getDietTemplate } from "@/constants/dietTemplates";
 import {
     FatBreakdownAlgorithm,
@@ -42,7 +43,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Save, PlayCircle } from "lucide-react";
 
-import { TFunction } from "i18next";
+import type { TFunction } from "i18next";
 import MealPercentageManager from "@/components/MealPercentageManager";
 
 interface PersonalPlanProps {

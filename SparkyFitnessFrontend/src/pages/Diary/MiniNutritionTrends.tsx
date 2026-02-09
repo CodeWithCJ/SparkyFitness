@@ -6,11 +6,11 @@ import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { parseISO, subDays } from "date-fns";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { loadMiniNutritionTrendData, DayData } from '@/services/miniNutritionTrendsService';
+import { loadMiniNutritionTrendData, type DayData } from '@/services/miniNutritionTrendsService';
 import { formatNutrientValue } from '@/lib/utils';
 
 
-import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+import type { UserCustomNutrient } from "@/types/customNutrient"; // Add import
 
 interface MiniNutritionTrendsProps {
   selectedDate: string;

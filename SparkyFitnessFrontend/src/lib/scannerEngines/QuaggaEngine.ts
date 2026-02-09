@@ -1,5 +1,5 @@
 import Quagga from '@ericblade/quagga2';
-import { BarcodeScannerEngine } from './EngineInterface';
+import type { BarcodeScannerEngine } from './EngineInterface';
 
 export class QuaggaEngine implements BarcodeScannerEngine {
     private containerElement: HTMLElement | null = null;

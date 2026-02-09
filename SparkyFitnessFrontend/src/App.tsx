@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import type React from "react";
+import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { ChatbotVisibilityProvider } from "@/contexts/ChatbotVisibilityContext";

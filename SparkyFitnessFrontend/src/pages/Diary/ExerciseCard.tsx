@@ -20,18 +20,18 @@ import {
   fetchExerciseEntries,
   deleteExerciseEntry,
   deleteExercisePresetEntry, // Import the new function
-  ExerciseEntry,
+  type ExerciseEntry,
   logWorkoutPreset, // Import the new function
-  GroupedExerciseEntry, // Import GroupedExerciseEntry
+  type GroupedExerciseEntry, // Import GroupedExerciseEntry
 } from "@/services/exerciseEntryService";
 import {
   getSuggestedExercises,
   loadExercises,
   createExercise,
-  Exercise,
-  ExerciseOwnershipFilter,
+  type Exercise,
+  type ExerciseOwnershipFilter,
 } from "@/services/exerciseService";
-import { WorkoutPresetSet, WorkoutPreset, PresetExercise } from "@/types/workout"; // Import PresetExercise
+import type { WorkoutPresetSet, WorkoutPreset, PresetExercise } from "@/types/workout"; // Import PresetExercise
 import { getExerciseById } from "@/services/exerciseService"; // Import getExerciseById
 import { formatMinutesToHHMM } from "@/utils/timeFormatters"; // Import the new utility function
 import ExerciseEntryDisplay from "./ExerciseEntryDisplay";

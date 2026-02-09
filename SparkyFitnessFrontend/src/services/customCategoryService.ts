@@ -1,6 +1,6 @@
 import { apiCall } from './api';
 import { info, error } from '@/utils/logging';
-import { UserLoggingLevel } from '@/utils/logging';
+import type { UserLoggingLevel } from '@/utils/logging';
 
 export interface CustomCategory {
   id: string;

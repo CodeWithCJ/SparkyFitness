@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import type React from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,10 +56,10 @@ import {
   togglePublicSharing,
   deleteFood as deleteFoodService,
   getFoodDeletionImpact,
-  FoodFilter,
+  type FoodFilter,
 } from "@/services/foodService";
 import { createFoodEntry } from "@/services/foodEntryService"; // Import foodEntryService
-import { Food, FoodVariant, FoodDeletionImpact } from "@/types/food";
+import type { Food, FoodVariant, FoodDeletionImpact } from "@/types/food";
 import MealManagement from "./MealManagement"; // Import MealManagement
 import MealPlanCalendar from "./MealPlanCalendar"; // Import MealPlanCalendar
 

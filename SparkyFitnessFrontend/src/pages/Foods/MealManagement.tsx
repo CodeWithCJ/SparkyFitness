@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from "react-i18next";
 import { Button } from '@/components/ui/button';
 import {
@@ -21,9 +22,9 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 import { error } from '@/utils/logging';
-import { Meal, MealFood, MealPayload } from '@/types/meal';
-import { getMeals, deleteMeal, getMealById, MealFilter, getMealDeletionImpact, updateMeal } from '@/services/mealService';
-import { MealDeletionImpact } from '@/types/meal';
+import type { Meal, MealFood, MealPayload } from '@/types/meal';
+import { getMeals, deleteMeal, getMealById, type MealFilter, getMealDeletionImpact, updateMeal } from '@/services/mealService';
+import type { MealDeletionImpact } from '@/types/meal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import MealBuilder from '@/components/MealBuilder';

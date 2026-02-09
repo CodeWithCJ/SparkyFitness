@@ -1,13 +1,13 @@
 import { apiCall } from './api';
 import { setUserLoggingLevel } from '@/utils/userPreferences';
-import { debug, info, warn, error, UserLoggingLevel } from '@/utils/logging';
-import { CoachResponse, FoodOption } from './Chatbot/Chatbot_types';
+import { debug, info, warn, error, type UserLoggingLevel } from '@/utils/logging';
+import type { CoachResponse, FoodOption } from './Chatbot/Chatbot_types';
 import { processFoodInput, addFoodOption } from './Chatbot/Chatbot_FoodHandler';
 import { processExerciseInput } from './Chatbot/Chatbot_ExerciseHandler';
 import { processMeasurementInput } from './Chatbot/Chatbot_MeasurementHandler';
 import { processWaterInput } from './Chatbot/Chatbot_WaterHandler';
 import { processChatInput } from './Chatbot/Chatbot_ChatHandler';
-import { AIService } from './aiServiceSettingsService';
+import type { AIService } from './aiServiceSettingsService';
 
 export interface Message {
   id: string;
@@ -120,7 +120,7 @@ export const processUserInput = async (
     info(userLoggingLevel, `[${transactionId}] Determined entry date:`, determinedEntryDate);
 
     switch (parsedResponse.intent) {
-      case 'log_food':
+      case 'log_food': {
         const foodResponse = await processFoodInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel, transactionId);
 
         if (foodResponse.action === 'none' && foodResponse.metadata?.is_fallback) {
@@ -156,13 +156,14 @@ export const processUserInput = async (
         } else {
           return foodResponse;
         }
+      }
 
       case 'log_exercise':
         return await processExerciseInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel);
       case 'log_measurement':
       case 'log_measurements':
         return await processMeasurementInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel);
-      case 'log_water':
+      case 'log_water': {
         // Map AI's glasses_consumed to quantity for processWaterInput
         const waterData = parsedResponse.data;
         if (waterData && waterData.glasses_consumed !== undefined) {
@@ -170,6 +171,7 @@ export const processUserInput = async (
           delete waterData.glasses_consumed; // Remove the old key if necessary
         }
         return await processWaterInput(waterData, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel, transactionId);
+      }
       case 'ask_question':
       case 'chat':
         return await processChatInput(parsedResponse.data || {}, parsedResponse.response, userLoggingLevel);

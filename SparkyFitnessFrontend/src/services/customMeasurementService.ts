@@ -126,7 +126,6 @@ export const getRawStressData = async (userId?: string): Promise<StressDataPoint
                       success = true;
                       break;
                     } catch (inner) {
-                      continue;
                     }
                   }
                   if (!success) break; // Cannot parse any more

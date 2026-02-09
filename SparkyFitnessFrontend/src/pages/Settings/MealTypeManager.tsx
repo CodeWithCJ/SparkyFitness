@@ -21,7 +21,7 @@ import {
   createMealType,
   updateMealType,
   deleteMealType,
-  MealTypeDefinition,
+  type MealTypeDefinition,
 } from "@/services/mealTypeService";
 import { Badge } from "@/components/ui/badge";
 

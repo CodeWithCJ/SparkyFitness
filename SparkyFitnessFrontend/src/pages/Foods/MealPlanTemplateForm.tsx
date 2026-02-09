@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -9,8 +10,8 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext'; // Import usePreferences
 import { debug, error } from '@/utils/logging'; // Import logging functions
 import { toast } from '@/hooks/use-toast';
-import { MealPlanTemplate, Meal, MealPlanTemplateAssignment } from '@/types/meal';
-import { Food, FoodVariant } from '@/types/food';
+import type { MealPlanTemplate, Meal, MealPlanTemplateAssignment } from '@/types/meal';
+import type { Food, FoodVariant } from '@/types/food';
 import { getMealById } from '@/services/mealService';
 import { getFoodById } from '@/services/foodService';
 import MealSelection from './MealSelection';

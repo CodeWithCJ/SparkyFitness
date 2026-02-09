@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { api } from '@/services/api';
 import { info, error } from '@/utils/logging'; // Import warn
 import { toast as sonnerToast } from "sonner";
-import { SleepEntry, SleepStageEvent, SleepAnalyticsData, CombinedSleepData, SleepChartData } from '@/types';
+import type { SleepEntry, SleepStageEvent, SleepAnalyticsData, CombinedSleepData, SleepChartData } from '@/types';
 import SleepAnalyticsTable from './SleepAnalyticsTable';
 import SleepAnalyticsCharts from './SleepAnalyticsCharts';
 import { useTranslation } from 'react-i18next';

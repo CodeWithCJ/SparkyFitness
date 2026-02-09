@@ -1,5 +1,5 @@
-import { BrowserMultiFormatReader, Result, NotFoundException } from '@zxing/library';
-import { BarcodeScannerEngine } from './EngineInterface';
+import { BrowserMultiFormatReader, type Result, NotFoundException } from '@zxing/library';
+import type { BarcodeScannerEngine } from './EngineInterface';
 
 export class ZxingEngine implements BarcodeScannerEngine {
     private codeReader: BrowserMultiFormatReader;

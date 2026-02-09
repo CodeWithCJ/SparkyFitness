@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getWaterContainers, setPrimaryWaterContainer, WaterContainer } from '../services/waterContainerService';
+import type React from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { getWaterContainers, setPrimaryWaterContainer, type WaterContainer } from '../services/waterContainerService';
 import { useToast } from '../hooks/use-toast';
 import { usePreferences } from './PreferencesContext';
 import { useAuth } from '../hooks/useAuth';

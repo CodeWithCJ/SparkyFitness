@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import type React from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2, Share2, Lock, ListOrdered, CalendarPlus } from "lucide-react";
@@ -13,13 +14,11 @@ import {
   deleteWorkoutPreset,
 } from '@/services/workoutPresetService';
 import { logWorkoutPreset } from '@/services/exerciseEntryService'; // Import logWorkoutPreset
-import { WorkoutPreset, PaginatedWorkoutPresets } from '@/types/workout';
+import type { WorkoutPreset, PaginatedWorkoutPresets } from '@/types/workout';
 import WorkoutPresetForm from "./WorkoutPresetForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-interface WorkoutPresetsManagerProps {
-  // onUsePreset: (preset: WorkoutPreset) => void; // No longer needed
-}
+type WorkoutPresetsManagerProps = {}
 
 const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => { // Removed onUsePreset prop
   const { t } = useTranslation();

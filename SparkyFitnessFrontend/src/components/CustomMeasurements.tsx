@@ -16,8 +16,8 @@ import {
   getCustomMeasurementsForDate,
   saveCustomMeasurement,
   deleteCustomMeasurement,
-  CustomCategory,
-  CustomMeasurement,
+  type CustomCategory,
+  type CustomMeasurement,
 } from "@/services/customMeasurementService";
 
 

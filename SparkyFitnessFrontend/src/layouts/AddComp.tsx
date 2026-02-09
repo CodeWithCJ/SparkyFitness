@@ -1,6 +1,6 @@
-import React from "react";
+import type React from "react";
 import { useTranslation } from "react-i18next";
-import { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AddCompItem {

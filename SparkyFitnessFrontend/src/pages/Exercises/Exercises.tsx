@@ -47,11 +47,11 @@ import {
   deleteExercise,
   updateExerciseShareStatus,
   getExerciseDeletionImpact,
-  ExerciseDeletionImpact,
+  type ExerciseDeletionImpact,
   updateExerciseEntriesSnapshot,
-  ExerciseOwnershipFilter,
+  type ExerciseOwnershipFilter,
 } from "@/services/exerciseService";
-import { Exercise as ExerciseInterface } from "@/services/exerciseSearchService";
+import type { Exercise as ExerciseInterface } from "@/services/exerciseSearchService";
 import WorkoutPresetsManager from "./WorkoutPresetsManager"; // Import the new component
 import WorkoutPlansManager from "@/pages/Exercises/WorkoutPlansManager"; // Import the new component
 

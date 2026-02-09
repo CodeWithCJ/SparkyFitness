@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn } from '@/utils/logging';
-import { Meal } from '@/types/meal';
+import type { Meal } from '@/types/meal';
 
 interface MealUnitSelectorProps {
     meal: Meal;

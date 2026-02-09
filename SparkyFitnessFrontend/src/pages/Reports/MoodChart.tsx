@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getMoodDisplay } from '@/utils/moodUtils';
-import { MoodEntry } from '@/types';
+import type { MoodEntry } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
 

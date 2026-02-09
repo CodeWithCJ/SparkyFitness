@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getNeedsReviewCount, getNeedsReviewItems, ReviewItem } from '@/services/reviewService'; // Assuming a service to fetch the count
+import { getNeedsReviewCount, getNeedsReviewItems, type ReviewItem } from '@/services/reviewService'; // Assuming a service to fetch the count
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog,

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import MealBuilder from '@/components/MealBuilder';
-import { FoodEntryMeal, MealFood } from '@/types/meal'; // Import FoodEntryMeal directly
+import type { FoodEntryMeal, MealFood } from '@/types/meal'; // Import FoodEntryMeal directly
 import { debug, warn } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
 

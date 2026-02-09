@@ -8,10 +8,10 @@ export interface Goals {
   water_goal_ml: number;
 }
 
-import { FoodEntry } from '@/types/food'; // Import FoodEntry from the central types file
-import { GroupedExerciseEntry } from './exerciseEntryService'; // Import GroupedExerciseEntry
+import type { FoodEntry } from '@/types/food'; // Import FoodEntry from the central types file
+import type { GroupedExerciseEntry } from './exerciseEntryService'; // Import GroupedExerciseEntry
 
-import { WorkoutPresetSet } from '@/types/workout'; // Import WorkoutPresetSet
+import type { WorkoutPresetSet } from '@/types/workout'; // Import WorkoutPresetSet
 
 export interface ExerciseEntry {
   id: string;

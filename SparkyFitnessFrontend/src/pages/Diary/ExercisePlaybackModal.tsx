@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import type React from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -17,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Exercise } from "@/services/exerciseService";
+import type { Exercise } from "@/services/exerciseService";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn } from "@/utils/logging";
 

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import type React from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react'
 
 interface ChatbotVisibilityContextType {
   isChatOpen: boolean;

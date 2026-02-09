@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import type React from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react'
 import * as fastingService from '../services/fastingService';
-import { FastingLog } from '../services/fastingService';
+import type { FastingLog } from '../services/fastingService';
 import { useAuth } from '../hooks/useAuth'; // Restored import path
 import { debug, error } from '@/utils/logging'; // Import logging utility
 import { getUserLoggingLevel } from '@/utils/userPreferences'; // Import user logging level

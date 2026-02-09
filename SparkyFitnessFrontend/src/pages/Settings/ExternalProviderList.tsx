@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Trash2, Edit, Lock, Share2, RefreshCw, Link2Off, Clipboard } from "lucide-react";
-import { ExternalDataProvider } from "./ExternalProviderSettings";
+import type { ExternalDataProvider } from "./ExternalProviderSettings";
 
 interface ExternalProviderListProps {
   providers: ExternalDataProvider[];

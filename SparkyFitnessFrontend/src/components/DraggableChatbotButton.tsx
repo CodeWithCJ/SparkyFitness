@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type React from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
 import { useIsMobile } from '@/hooks/use-mobile';

@@ -28,7 +28,7 @@ import { getMeals } from "@/services/mealService"; // Import getMeals
 import {
   searchFatSecretFoods,
   getFatSecretNutrients,
-  FatSecretFoodItem,
+  type FatSecretFoodItem,
 } from "@/services/FatSecretService";
 import {
   searchMealieFoods, // Import searchMealieFoods
@@ -49,10 +49,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { apiCall } from "@/services/api";
 import { getProviderCategory } from "@/services/externalProviderService"; // New import
-import { Food, FoodVariant, CSVData } from "@/types/food";
-import { Meal } from "@/types/meal"; // Import Meal type
+import type { Food, FoodVariant, CSVData } from "@/types/food";
+import type { Meal } from "@/types/meal"; // Import Meal type
 import { customNutrientService } from "@/services/customNutrientService"; // Add custom nutrient service
-import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+import type { UserCustomNutrient } from "@/types/customNutrient"; // Add import
 
 interface OpenFoodFactsProduct {
   product_name: string;

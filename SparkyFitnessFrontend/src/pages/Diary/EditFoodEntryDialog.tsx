@@ -12,8 +12,8 @@ import {
   updateFoodEntry,
 } from '@/services/editFoodEntryService';
 import { getFoodById } from '@/services/foodService'; // Import getFoodById
-import { FoodVariant, FoodEntry, Food } from '@/types/food'; // Import Food type
-import { UserCustomNutrient } from "@/types/customNutrient";
+import type { FoodVariant, FoodEntry, Food } from '@/types/food'; // Import Food type
+import type { UserCustomNutrient } from "@/types/customNutrient";
 import { customNutrientService } from "@/services/customNutrientService";
 
 

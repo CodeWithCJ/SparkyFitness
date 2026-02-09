@@ -1,5 +1,5 @@
-import { CoachResponse } from './Chatbot_types'; // Import types
-import { debug, info, warn, error, UserLoggingLevel } from '@/utils/logging'; // Import logging utility
+import type { CoachResponse } from './Chatbot_types'; // Import types
+import { debug, info, warn, error, type UserLoggingLevel } from '@/utils/logging'; // Import logging utility
 import { apiCall } from '../api'; // Import apiCall
 
 // Function to upsert check-in measurements

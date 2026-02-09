@@ -1,5 +1,5 @@
 import { apiCall } from './api';
-import { ExpandedGoals } from '@/types/goals';
+import type { ExpandedGoals } from '@/types/goals';
 
 
 export const loadGoals = async (selectedDate: string): Promise<ExpandedGoals> => {

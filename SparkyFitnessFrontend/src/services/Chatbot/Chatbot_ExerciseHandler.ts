@@ -1,6 +1,6 @@
 import { parseISO } from 'date-fns'; // Import parseISO
-import { CoachResponse } from './Chatbot_types'; // Import types
-import { debug, error, UserLoggingLevel } from '@/utils/logging'; // Import logging utility
+import type { CoachResponse } from './Chatbot_types'; // Import types
+import { debug, error, type UserLoggingLevel } from '@/utils/logging'; // Import logging utility
 import { apiCall } from '../api'; // Import apiCall
 
 // Function to process exercise input

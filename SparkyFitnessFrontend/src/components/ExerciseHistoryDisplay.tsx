@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, error } from '@/utils/logging';
 import { getExerciseHistory } from '@/services/exerciseEntryService'; // Assuming this service exists
-import { ExerciseEntry } from '@/services/exerciseEntryService'; // Assuming ExerciseEntry interface is defined here
+import type { ExerciseEntry } from '@/services/exerciseEntryService'; // Assuming ExerciseEntry interface is defined here
 
 interface ExerciseHistoryDisplayProps {
   exerciseId: string;

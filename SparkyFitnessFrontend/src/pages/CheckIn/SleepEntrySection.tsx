@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { parseISO, differenceInMinutes, addDays } from 'date-fns';
-import { SleepEntry, SleepStageEvent } from '@/types';
+import type { SleepEntry, SleepStageEvent } from '@/types';
 import SleepTimelineEditor from './SleepTimelineEditor';
 
 // Helper to aggregate sleep stages from stage_events (same approach as reports page)

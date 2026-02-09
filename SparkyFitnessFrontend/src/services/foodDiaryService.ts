@@ -1,7 +1,7 @@
 import { apiCall } from './api';
 
-import { FoodEntry } from '@/types/food'; // Import FoodEntry from food.d.ts
-import { ExpandedGoals } from '@/types/goals'; // Import ExpandedGoals
+import type { FoodEntry } from '@/types/food'; // Import FoodEntry from food.d.ts
+import type { ExpandedGoals } from '@/types/goals'; // Import ExpandedGoals
 
 export const loadFoodEntries = async (userId: string, selectedDate: string): Promise<FoodEntry[]> => {
   const params = new URLSearchParams({

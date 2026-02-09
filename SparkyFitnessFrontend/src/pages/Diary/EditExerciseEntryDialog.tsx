@@ -12,10 +12,10 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, error } from '@/utils/logging';
 import { formatWeight } from '@/utils/numberFormatting';
 import { fetchExerciseDetails } from '@/services/editExerciseEntryService';
-import { updateExerciseEntry, ExerciseEntry } from '@/services/exerciseEntryService';
-import { WorkoutPresetSet } from "@/types/workout";
+import { updateExerciseEntry, type ExerciseEntry } from '@/services/exerciseEntryService';
+import type { WorkoutPresetSet } from "@/types/workout";
 import { excerciseWorkoutSetTypes } from "@/constants/excerciseWorkoutSetTypes";
-import ExerciseActivityDetailsEditor, { ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor'; // New import
+import ExerciseActivityDetailsEditor, { type ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor'; // New import
 import {
   DndContext,
   closestCenter,
@@ -23,7 +23,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
+  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,

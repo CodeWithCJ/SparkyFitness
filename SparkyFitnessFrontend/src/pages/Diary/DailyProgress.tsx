@@ -19,14 +19,14 @@ import {
   getFoodEntriesForDate,
   getExerciseEntriesForDate,
   getCheckInMeasurementsForDate,
-  CheckInMeasurement,
+  type CheckInMeasurement,
 } from "@/services/dailyProgressService";
-import { GroupedExerciseEntry } from "@/services/exerciseEntryService"; // Corrected import path
+import type { GroupedExerciseEntry } from "@/services/exerciseEntryService"; // Corrected import path
 import { getMostRecentMeasurement } from "@/services/checkInService";
-import { FoodEntry } from "@/types/food"; // Import FoodEntry from src/types/food
+import type { FoodEntry } from "@/types/food"; // Import FoodEntry from src/types/food
 import { Skeleton } from "@/components/ui/skeleton";
 import { getUserPreferences } from "@/services/preferenceService";
-import { calculateBmr, BmrAlgorithm } from "@/services/bmrService";
+import { calculateBmr, type BmrAlgorithm } from "@/services/bmrService";
 import { userManagementService } from "@/services/userManagementService";
 
 const DailyProgress = ({

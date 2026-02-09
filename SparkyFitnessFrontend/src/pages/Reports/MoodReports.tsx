@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next'; // Import useTranslation
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getMoodEntries } from '@/services/moodService';
-import { MoodEntry } from '@/types/index.d';
+import type { MoodEntry } from '@/types/index.d';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';

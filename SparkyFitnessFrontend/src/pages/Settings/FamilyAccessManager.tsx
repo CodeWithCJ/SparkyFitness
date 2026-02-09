@@ -17,7 +17,7 @@ import {
   toggleFamilyAccessActiveStatus,
   deleteFamilyAccess,
   findUserByEmail,
-  FamilyAccess,
+  type FamilyAccess,
 } from '@/services/familyAccessService';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';

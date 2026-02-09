@@ -8,7 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { info } from "@/utils/logging";
 import { parseISO, format } from "date-fns"; // Import parseISO, format
 import { calculateSmartYAxisDomain, excludeIncompleteDay, getChartConfig } from "@/utils/chartUtils";
-import { UserCustomNutrient } from "@/types/customNutrient"; // Import UserCustomNutrient
+import type { UserCustomNutrient } from "@/types/customNutrient"; // Import UserCustomNutrient
 interface NutritionData {
   date: string;
   calories: number;

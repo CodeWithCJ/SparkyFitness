@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { getMeals } from '@/services/mealService';
-import { Meal } from '@/types/meal';
+import type { Meal } from '@/types/meal';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

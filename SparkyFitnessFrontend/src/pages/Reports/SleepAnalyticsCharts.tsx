@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { SleepAnalyticsData, SLEEP_STAGE_COLORS, SleepChartData, SleepEntry } from '@/types';
+import { type SleepAnalyticsData, SLEEP_STAGE_COLORS, type SleepChartData, type SleepEntry } from '@/types';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import ZoomableChart from '@/components/ZoomableChart';
 import SleepStageChart from './SleepStageChart';

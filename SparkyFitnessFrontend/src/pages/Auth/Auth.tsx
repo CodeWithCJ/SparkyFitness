@@ -26,7 +26,7 @@ import {
   requestMagicLink,
 } from "@/services/authService";
 import { useAuth } from "@/hooks/useAuth";
-import { AuthResponse, LoginSettings, OidcProvider } from "../../types/auth";
+import type { AuthResponse, LoginSettings, OidcProvider } from "../../types/auth";
 import useToggle from "@/hooks/use-toggle";
 import PasswordToggle from "../../components/PasswordToggle";
 import MfaChallenge from "./MfaChallenge"; // Import the MfaChallenge component
@@ -107,9 +107,9 @@ const Auth = () => {
   // Passkey Conditional UI (Autofill)
   useEffect(() => {
     const initPasskeyAutofill = async () => {
-      // @ts-ignore
+      // @ts-expect-error
       if (window.PublicKeyCredential && PublicKeyCredential.isConditionalMediationAvailable) {
-        // @ts-ignore
+        // @ts-expect-error
         const isAvailable = await PublicKeyCredential.isConditionalMediationAvailable();
         if (isAvailable) {
           debug(loggingLevel, "Auth: Passkey Conditional UI available. Starting autofill prompt.");

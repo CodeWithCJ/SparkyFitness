@@ -1,5 +1,5 @@
 import { api } from './api';
-import { MealPlanTemplate } from '@/types/meal';
+import type { MealPlanTemplate } from '@/types/meal';
 
 export const getMealPlanTemplates = async (userId: string): Promise<MealPlanTemplate[]> => {
     return await api.get(`/meal-plan-templates?userId=${userId}`);

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import type React from "react";
+import { useState, useEffect } from "react";
 import { debug, error } from "@/utils/logging";
 import { useAuth } from "@/hooks/useAuth";
 import { usePreferences } from "@/contexts/PreferencesContext";

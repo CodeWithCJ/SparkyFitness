@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid } from 'recharts';
-import { FastingLog } from '@/services/fastingService';
+import type { FastingLog } from '@/services/fastingService';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 import ZoomableChart from '@/components/ZoomableChart';

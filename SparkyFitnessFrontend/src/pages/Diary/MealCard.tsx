@@ -27,7 +27,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { debug, info } from "@/utils/logging"; // Import logging utility
 
 import type { Food, FoodVariant, FoodEntry, GlycemicIndex } from "@/types/food";
-import { Meal, FoodEntryMeal } from "@/types/meal";
+import type { Meal, FoodEntryMeal } from "@/types/meal";
 
 interface MealTotals {
   calories: number;
@@ -49,7 +49,7 @@ interface MealTotals {
   custom_nutrients?: Record<string, number>; // Add custom_nutrients support
 }
 
-import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+import type { UserCustomNutrient } from "@/types/customNutrient"; // Add import
 
 interface MealCardProps {
   meal: {

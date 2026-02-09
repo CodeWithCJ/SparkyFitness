@@ -55,7 +55,7 @@ import FamilyAccessManager from "./FamilyAccessManager";
 import AIServiceSettings from "./AIServiceSettings";
 import CustomCategoryManager from "./CustomCategoryManager";
 import MealTypeManager from "./MealTypeManager";
-import { CustomCategory } from "@/services/customCategoryService";
+import type { CustomCategory } from "@/services/customCategoryService";
 import ExternalProviderSettings from "./ExternalProviderSettings"; // Import ExternalProviderSettings
 // Import GarminConnectSettings
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences

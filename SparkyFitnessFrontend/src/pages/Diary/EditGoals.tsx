@@ -14,7 +14,7 @@ import { Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { loadGoals, saveGoals } from "@/services/goalsService";
-import { GoalPreset } from "@/services/goalPresetService";
+import type { GoalPreset } from "@/services/goalPresetService";
 import { getGoalPresets } from "@/services/goalPresetService";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -24,8 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ExpandedGoals } from "@/types/goals";
-import MealPercentageManager, { MealPercentages } from "@/components/MealPercentageManager";
+import type { ExpandedGoals } from "@/types/goals";
+import MealPercentageManager, { type MealPercentages } from "@/components/MealPercentageManager";
 import { Separator } from "@/components/ui/separator";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useIsMobile } from "@/hooks/use-mobile";

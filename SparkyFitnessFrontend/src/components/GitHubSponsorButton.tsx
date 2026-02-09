@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { Heart } from 'lucide-react'; // Using Heart icon for sponsor
 import { cn } from '@/lib/utils'; // Assuming cn is available for utility classes
 

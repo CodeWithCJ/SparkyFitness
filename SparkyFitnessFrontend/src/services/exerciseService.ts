@@ -1,5 +1,5 @@
 import { apiCall } from './api';
-import { Exercise as ExerciseInterface } from './exerciseSearchService';
+import type { Exercise as ExerciseInterface } from './exerciseSearchService';
 
 // Helper function to safely parse JSON strings that might be arrays
 export const parseJsonArray = (value: string | string[] | undefined): string[] | undefined => {

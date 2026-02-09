@@ -63,7 +63,7 @@ export function calculateFatBreakdown(
     const { calories, totalFatGrams } = userData;
 
     switch (algorithm) {
-        case FatBreakdownAlgorithm.AHA_GUIDELINES:
+        case FatBreakdownAlgorithm.AHA_GUIDELINES: {
             // American Heart Association Guidelines
             // Saturated: Max 5-6% of calories
             // Trans: 0g (avoid)
@@ -80,8 +80,9 @@ export function calculateFatBreakdown(
                 polyunsaturated_fat: poly,
                 monounsaturated_fat: mono,
             };
+        }
 
-        case FatBreakdownAlgorithm.KETO_ADAPTED:
+        case FatBreakdownAlgorithm.KETO_ADAPTED: {
             // Keto/Low-carb optimized
             // Saturated: 10-15% of calories
             // Trans: 0g
@@ -98,8 +99,9 @@ export function calculateFatBreakdown(
                 polyunsaturated_fat: ketoPoly,
                 monounsaturated_fat: ketoMono,
             };
+        }
 
-        case FatBreakdownAlgorithm.MEDITERRANEAN:
+        case FatBreakdownAlgorithm.MEDITERRANEAN: {
             // Mediterranean diet pattern
             // Saturated: 7-8% of calories
             // Trans: 0g
@@ -116,6 +118,7 @@ export function calculateFatBreakdown(
                 polyunsaturated_fat: medPoly,
                 monounsaturated_fat: medMono,
             };
+        }
 
         default:
             return calculateFatBreakdown(userData, FatBreakdownAlgorithm.AHA_GUIDELINES);
@@ -132,7 +135,7 @@ export function calculateMineralTargets(
     const { age, sex, activityLevel } = userData;
 
     switch (algorithm) {
-        case MineralCalculationAlgorithm.RDA_STANDARD:
+        case MineralCalculationAlgorithm.RDA_STANDARD: {
             // USDA Recommended Dietary Allowance (age/sex-based)
 
             // Sodium: 2300mg max for adults
@@ -154,8 +157,9 @@ export function calculateMineralTargets(
             const cholesterol = 300;
 
             return { cholesterol, sodium, potassium, calcium, iron };
+        }
 
-        case MineralCalculationAlgorithm.ATHLETIC_PERFORMANCE:
+        case MineralCalculationAlgorithm.ATHLETIC_PERFORMANCE: {
             // Higher targets for athletes
             const athleteSodium = activityLevel === 'heavy' ? 3500 : 3000;
             const athletePotassium = 4500;
@@ -170,8 +174,9 @@ export function calculateMineralTargets(
                 calcium: athleteCalcium,
                 iron: athleteIron,
             };
+        }
 
-        case MineralCalculationAlgorithm.HEART_HEALTH:
+        case MineralCalculationAlgorithm.HEART_HEALTH: {
             // Heart health focus: lower sodium, higher potassium
             const heartSodium = 1500; // Strict limit
             const heartPotassium = 4700; // Higher to balance sodium
@@ -186,6 +191,7 @@ export function calculateMineralTargets(
                 calcium: heartCalcium,
                 iron: heartIron,
             };
+        }
 
         default:
             return calculateMineralTargets(userData, MineralCalculationAlgorithm.RDA_STANDARD);
@@ -202,26 +208,29 @@ export function calculateVitaminTargets(
     const { sex, activityLevel } = userData;
 
     switch (algorithm) {
-        case VitaminCalculationAlgorithm.RDA_STANDARD:
+        case VitaminCalculationAlgorithm.RDA_STANDARD: {
             // USDA RDA
             const vitaminA = sex === 'male' ? 900 : 700;
             const vitaminC = sex === 'male' ? 90 : 75;
 
             return { vitamin_a: vitaminA, vitamin_c: vitaminC };
+        }
 
-        case VitaminCalculationAlgorithm.IMMUNE_SUPPORT:
+        case VitaminCalculationAlgorithm.IMMUNE_SUPPORT: {
             // Higher for immune function
             const immuneVitaminA = sex === 'male' ? 1000 : 850;
             const immuneVitaminC = activityLevel === 'heavy' ? 500 : 300;
 
             return { vitamin_a: immuneVitaminA, vitamin_c: immuneVitaminC };
+        }
 
-        case VitaminCalculationAlgorithm.ANTIOXIDANT_FOCUS:
+        case VitaminCalculationAlgorithm.ANTIOXIDANT_FOCUS: {
             // Emphasis on antioxidants
             const antioxidantVitaminA = 1000;
             const antioxidantVitaminC = 750;
 
             return { vitamin_a: antioxidantVitaminA, vitamin_c: antioxidantVitaminC };
+        }
 
         default:
             return calculateVitaminTargets(userData, VitaminCalculationAlgorithm.RDA_STANDARD);
@@ -238,20 +247,23 @@ export function calculateSugarTarget(
     const { calories } = userData;
 
     switch (algorithm) {
-        case SugarCalculationAlgorithm.WHO_GUIDELINES:
+        case SugarCalculationAlgorithm.WHO_GUIDELINES: {
             // WHO: Max 10% of calories from added sugars
             const whoSugars = Math.round((calories * 0.10) / 4);
             return { sugars: whoSugars };
+        }
 
-        case SugarCalculationAlgorithm.LOW_CARB_KETO:
+        case SugarCalculationAlgorithm.LOW_CARB_KETO: {
             // Strict low-carb: Max 5% of calories
             const ketoSugars = Math.round((calories * 0.05) / 4);
             return { sugars: ketoSugars };
+        }
 
-        case SugarCalculationAlgorithm.BALANCED:
+        case SugarCalculationAlgorithm.BALANCED: {
             // Moderate: Max 15% of calories
             const balancedSugars = Math.round((calories * 0.15) / 4);
             return { sugars: balancedSugars };
+        }
 
         default:
             return calculateSugarTarget(userData, SugarCalculationAlgorithm.WHO_GUIDELINES);

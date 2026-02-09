@@ -1,5 +1,5 @@
 import { apiCall } from './api';
-import { WorkoutPresetSet } from '@/types/workout';
+import type { WorkoutPresetSet } from '@/types/workout';
 
 export interface ExerciseEntry {
   id: string;

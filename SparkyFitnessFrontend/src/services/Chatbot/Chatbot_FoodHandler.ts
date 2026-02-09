@@ -1,6 +1,6 @@
 import { parseISO } from 'date-fns'; // Import parseISO
-import { CoachResponse, FoodOption } from './Chatbot_types'; // Import types
-import { debug, info, warn, error, UserLoggingLevel } from '@/utils/logging'; // Import logging utility
+import type { CoachResponse, FoodOption } from './Chatbot_types'; // Import types
+import { debug, info, warn, error, type UserLoggingLevel } from '@/utils/logging'; // Import logging utility
 import { apiCall } from '../api'; // Import apiCall
 
 import SparkyAIService from '@/components/SparkyAIService'; // Import SparkyAIService

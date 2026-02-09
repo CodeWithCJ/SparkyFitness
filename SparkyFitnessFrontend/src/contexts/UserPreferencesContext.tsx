@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import type React from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react'
 
 type EnergyUnit = 'kcal' | 'kJ';
 

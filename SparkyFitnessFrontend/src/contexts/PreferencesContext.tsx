@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import type React from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, error } from '@/utils/logging';
 import { format, parseISO, startOfDay } from 'date-fns';

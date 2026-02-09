@@ -18,7 +18,7 @@ import { Upload, Download, Loader2, Plus, Trash2, Copy } from "lucide-react"; //
 import { format, parse } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { getUserPreferences } from "@/services/preferenceService";
-import { UserPreferences } from "@/services/preferenceService";
+import type { UserPreferences } from "@/services/preferenceService";
 import {
   Tooltip,
   TooltipContent,

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'; // Added ScatterChart, Scatter
 import { BarChart3, TrendingUp, Activity, Dumbbell, BedDouble } from "lucide-react"; // Added Dumbbell and BedDouble
-import { getFastingDataRange, FastingLog } from '@/services/fastingService';
+import { getFastingDataRange, type FastingLog } from '@/services/fastingService';
 import { FastingReport } from '@/pages/Reports/FastingReport';
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
@@ -35,20 +35,20 @@ import { calculateSmartYAxisDomain, getChartConfig } from "@/utils/chartUtils";
 
 import {
   loadReportsData,
-  NutritionData,
-  MeasurementData,
-  DailyFoodEntry,
-  CustomCategory,
-  CustomMeasurementData,
-  DailyExerciseEntry, // Import ExerciseProgressData
-  ExerciseDashboardData, // Import new type for dashboard data
+  type NutritionData,
+  type MeasurementData,
+  type DailyFoodEntry,
+  type CustomCategory,
+  type CustomMeasurementData,
+  type DailyExerciseEntry, // Import ExerciseProgressData
+  type ExerciseDashboardData, // Import new type for dashboard data
 } from '@/services/reportsService';
-import { MoodEntry, StressDataPoint } from '@/types';
+import type { MoodEntry, StressDataPoint } from '@/types';
 import { getExerciseDashboardData } from '@/services/reportsService';
 import { getRawStressData } from '@/services/customMeasurementService';
 import { getMoodEntries } from '@/services/moodService';
 import { customNutrientService } from "@/services/customNutrientService";
-import { UserCustomNutrient } from "@/types/customNutrient";
+import type { UserCustomNutrient } from "@/types/customNutrient";
 import MoodChart from '@/pages/Reports/MoodChart';
 
 interface ExtendedNutritionData extends NutritionData {

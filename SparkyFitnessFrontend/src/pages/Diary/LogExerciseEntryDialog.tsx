@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent } from "react";
+import React, { useState, useEffect, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,10 @@ import { debug, info, warn, error } from '@/utils/logging';
 import { createExerciseEntry } from '@/services/exerciseEntryService';
 import { useToast } from "@/hooks/use-toast";
 import ExerciseHistoryDisplay from "../../components/ExerciseHistoryDisplay";
-import { WorkoutPresetSet } from "@/types/workout";
-import { ExerciseToLog } from './ExerciseCard'; // TODO remove type from file
+import type { WorkoutPresetSet } from "@/types/workout";
+import type { ExerciseToLog } from './ExerciseCard'; // TODO remove type from file
 import { Plus, X, Copy, GripVertical, Repeat, Weight, Timer } from "lucide-react";
-import ExerciseActivityDetailsEditor, { ActivityDetailKeyValuePair } from '../../components/ExerciseActivityDetailsEditor'; // New import
+import ExerciseActivityDetailsEditor, { type ActivityDetailKeyValuePair } from '../../components/ExerciseActivityDetailsEditor'; // New import
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';

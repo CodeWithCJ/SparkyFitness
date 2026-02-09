@@ -13,14 +13,14 @@ import { usePreferences } from "@/contexts/PreferencesContext"; // Added import
 import { useIsMobile } from "@/hooks/use-mobile";
 import { saveGoals as saveGoalsService } from "@/services/goalsService";
 import {
-  GoalPreset,
+  type GoalPreset,
   createGoalPreset,
   getGoalPresets,
   updateGoalPreset,
   deleteGoalPreset,
 } from "@/services/goalPresetService";
 import {
-  WeeklyGoalPlan,
+  type WeeklyGoalPlan,
   createWeeklyGoalPlan,
   getWeeklyGoalPlans,
   updateWeeklyGoalPlan,
@@ -60,7 +60,7 @@ import MealPercentageManager from "@/components/MealPercentageManager";
 import { Separator } from "@/components/ui/separator";
 import { resetOnboardingStatus } from "@/services/onboardingService";
 
-import { ExpandedGoals } from "@/types/goals";
+import type { ExpandedGoals } from "@/types/goals";
 import { DEFAULT_GOALS } from "@/constants/goals";
 
 const GoalsSettings = () => {

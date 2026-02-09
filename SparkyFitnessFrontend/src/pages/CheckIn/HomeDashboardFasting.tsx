@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useFasting } from '@/contexts/FastingContext';
@@ -13,7 +14,7 @@ import { FASTING_PRESETS } from '@/constants/fastingPresets';
 import { parseISO, addHours, differenceInMinutes } from 'date-fns';
 import EndFastDialog from '../Fasting/EndFastDialog';
 import FastingZoneBar from '../Fasting/FastingZoneBar';
-import { getFastingStats, FastingStats } from '@/services/fastingService';
+import { getFastingStats, type FastingStats } from '@/services/fastingService';
 
 interface HomeDashboardFastingProps {
     onFastUpdate?: () => void;

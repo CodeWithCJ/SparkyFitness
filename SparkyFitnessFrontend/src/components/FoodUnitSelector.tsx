@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
 import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
 import { loadFoodVariants } from '@/services/foodUnitService';
-import { Food, FoodVariant } from '@/types/food';
+import type { Food, FoodVariant } from '@/types/food';
 
 
 interface FoodUnitSelectorProps {

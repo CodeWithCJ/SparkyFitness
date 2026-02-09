@@ -27,8 +27,8 @@ import {
   getMostRecentMeasurement,
   saveCheckInMeasurements,
   saveCustomMeasurement,
-  CustomCategory,
-  CombinedMeasurement,
+  type CustomCategory,
+  type CombinedMeasurement,
 } from '@/services/checkInService';
 import { saveMoodEntry, getMoodEntryByDate } from '@/services/moodService'; // Import mood service
 import { calculateBodyFatBmi, calculateBodyFatNavy } from '@/services/bodyCompositionService';

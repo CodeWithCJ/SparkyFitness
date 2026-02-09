@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -8,7 +9,7 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext'; // Import usePreferences
 import { debug, info } from '@/utils/logging'; // Import logging functions
 import { toast } from '@/hooks/use-toast';
-import { MealPlanTemplate } from '@/types/meal';
+import type { MealPlanTemplate } from '@/types/meal';
 import { getMealPlanTemplates, createMealPlanTemplate, updateMealPlanTemplate, deleteMealPlanTemplate } from '@/services/mealPlanTemplateService';
 import MealPlanTemplateForm from './MealPlanTemplateForm';
 import { Edit, Plus, Trash2 } from 'lucide-react';

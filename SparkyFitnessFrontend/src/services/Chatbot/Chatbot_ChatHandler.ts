@@ -1,5 +1,5 @@
-import { CoachResponse } from './Chatbot_types'; // Import types
-import { debug, UserLoggingLevel } from '../../utils/logging'; // Import logging utility
+import type { CoachResponse } from './Chatbot_types'; // Import types
+import { debug, type UserLoggingLevel } from '../../utils/logging'; // Import logging utility
 
 // Function to handle conversational intents (ask_question, chat)
 export const processChatInput = async (data: any, aiResponseText: string, userLoggingLevel: UserLoggingLevel): Promise<CoachResponse> => {

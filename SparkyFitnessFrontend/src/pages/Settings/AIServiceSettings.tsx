@@ -18,8 +18,8 @@ import {
   updateAIService,
   deleteAIService,
   updateUserPreferences,
-  AIService,
-  UserPreferences,
+  type AIService,
+  type UserPreferences,
 } from "@/services/aiServiceSettingsService";
 
 

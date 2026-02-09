@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import type React from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Flame } from 'lucide-react';
 

@@ -27,15 +27,17 @@ export const calculateBmr = (
         return 9.247 * weight + 3.098 * height - 4.33 * age + 447.593;
       }
 
-    case BmrAlgorithm.KATCH_MCARDLE:
+    case BmrAlgorithm.KATCH_MCARDLE: {
       if (!weight || !bodyFatPercentage) throw new Error('Katch-McArdle requires weight and body fat percentage.');
       const lbmKatch = weight * (1 - bodyFatPercentage / 100);
       return 370 + 21.6 * lbmKatch;
+    }
 
-    case BmrAlgorithm.CUNNINGHAM:
+    case BmrAlgorithm.CUNNINGHAM: {
       if (!weight || !bodyFatPercentage) throw new Error('Cunningham requires weight and body fat percentage.');
       const lbmCunningham = weight * (1 - bodyFatPercentage / 100);
       return 500 + 22 * lbmCunningham;
+    }
 
     case BmrAlgorithm.OXFORD:
         if (!weight || !height || !age || !gender) throw new Error('Oxford requires weight, height, age, and gender.');

@@ -1,5 +1,5 @@
 import { authClient } from '../lib/auth-client';
-import { AuthResponse, LoginSettings } from '../types/auth';
+import type { AuthResponse, LoginSettings } from '../types/auth';
 
 export const requestMagicLink = async (email: string): Promise<void> => {
   const { error } = await authClient.signIn.magicLink({

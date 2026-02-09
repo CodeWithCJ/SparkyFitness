@@ -1,5 +1,5 @@
 import { api } from './api';
-import { debug, error, UserLoggingLevel } from '@/utils/logging'; // Import logging utility and UserLoggingLevel enum
+import { debug, error, type UserLoggingLevel } from '@/utils/logging'; // Import logging utility and UserLoggingLevel enum
 
 export interface UserPreferences {
   bmr_algorithm?: string;

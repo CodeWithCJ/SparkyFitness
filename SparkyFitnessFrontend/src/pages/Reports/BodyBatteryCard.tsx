@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Battery } from 'lucide-react';
-import { CustomCategory, CustomMeasurementData } from '@/services/reportsService';
+import type { CustomCategory, CustomMeasurementData } from '@/services/reportsService';
 import BodyBatteryGauge from './BodyBatteryGauge';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';

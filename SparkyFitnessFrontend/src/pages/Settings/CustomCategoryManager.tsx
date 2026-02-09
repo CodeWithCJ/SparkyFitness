@@ -15,7 +15,7 @@ import {
   updateCategory,
   deleteCategory,
   getCategories,
-  CustomCategory,
+  type CustomCategory,
 } from "@/services/customCategoryService";
 
 

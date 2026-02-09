@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import type React from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { info, error } from "@/utils/logging";
 import ActivityReportVisualizer from "./ActivityReportVisualizer"; // Import ActivityReportVisualizer
-import {
+import type {
   ExerciseDashboardData,
   ExerciseProgressData,
 } from '@/services/reportsService';
@@ -357,11 +358,12 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             </CardContent>
           </Card>
         );
-      case "muscleGroupRecovery":
+      case "muscleGroupRecovery": {
         const recoveryData = exerciseDashboardData?.recoveryData;
         return recoveryData && Object.keys(recoveryData).length > 0 ? (
           <MuscleGroupRecoveryTracker key="muscleGroupRecovery" recoveryData={recoveryData} />
         ) : null;
+      }
       case "prProgression":
         return selectedExercisesForChart.map(exerciseId => {
           const prProgressionData = exerciseDashboardData.prProgressionData[exerciseId] || [];
@@ -375,12 +377,13 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             </Card>
           ) : null;
         });
-      case "exerciseVariety":
+      case "exerciseVariety": {
         const varietyData = exerciseDashboardData?.exerciseVarietyData;
         return varietyData && Object.keys(varietyData).length > 0 ? (
           <ExerciseVarietyScore key="exerciseVariety" varietyData={varietyData} />
         ) : null;
-      case "volumeTrend":
+      }
+      case "volumeTrend": {
         const volumeTrendData = selectedExercisesForChart.length > 0
           ? Object.values(exerciseProgressData).flat().reduce((acc, entry) => {
             const date = formatDateInUserTimezone(parseISO(entry.entry_date), 'MMM dd, yyyy');
@@ -442,7 +445,8 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             </CardContent>
           </Card>
         ) : null;
-      case "maxWeightTrend":
+      }
+      case "maxWeightTrend": {
         const maxWeightTrendData = selectedExercisesForChart.length > 0
           ? Object.values(exerciseProgressData).flat().reduce((acc, entry) => {
             const date = formatDateInUserTimezone(parseISO(entry.entry_date), 'MMM dd, yyyy');
@@ -502,7 +506,8 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             </CardContent>
           </Card>
         ) : null;
-      case "estimated1RMTrend":
+      }
+      case "estimated1RMTrend": {
         const estimated1RMTrendData = selectedExercisesForChart.length > 0
           ? Object.values(exerciseProgressData).flat().reduce((acc, entry) => {
             const date = formatDateInUserTimezone(parseISO(entry.entry_date), 'MMM dd, yyyy');
@@ -562,6 +567,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             </CardContent>
           </Card>
         ) : null;
+      }
       case "bestSetRepRange":
         return (
           <div key="bestSetRepRange">
@@ -607,7 +613,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             })}
           </div>
         );
-      case "trainingVolumeByMuscleGroup":
+      case "trainingVolumeByMuscleGroup": {
         const trainingVolumeByMuscleGroupData = exerciseDashboardData.muscleGroupVolume && Object.keys(exerciseDashboardData.muscleGroupVolume).length > 0
           ? Object.entries(exerciseDashboardData.muscleGroupVolume).map(([muscle, volume]) => ({
             muscle,
@@ -641,6 +647,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             </CardContent>
           </Card>
         ) : null;
+      }
       case "repsVsWeightScatter":
         return selectedExercisesForChart.map(exerciseId => {
           const repsVsWeightScatterData = (() => {

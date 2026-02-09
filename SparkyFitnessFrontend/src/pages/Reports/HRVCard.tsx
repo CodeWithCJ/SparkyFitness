@@ -42,7 +42,7 @@ const calculateBaseline = (values: number[]): { low: number; high: number; avg: 
     return { low: avg * 0.8, high: avg * 1.2, avg };
   }
 
-  const squaredDiffs = values.map(v => Math.pow(v - avg, 2));
+  const squaredDiffs = values.map(v => (v - avg) ** 2);
   const avgSquaredDiff = squaredDiffs.reduce((sum, v) => sum + v, 0) / values.length;
   const stdDev = Math.sqrt(avgSquaredDiff);
 

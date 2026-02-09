@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import type React from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -17,10 +18,10 @@ import {
   updateWorkoutPlanTemplate,
   deleteWorkoutPlanTemplate,
 } from '@/services/workoutPlanTemplateService'; // Assuming this service exists
-import { WorkoutPlanTemplate } from '@/types/workout'; // Import the WorkoutPlanTemplate interface
+import type { WorkoutPlanTemplate } from '@/types/workout'; // Import the WorkoutPlanTemplate interface
 import AddWorkoutPlanDialog from "./AddWorkoutPlanDialog";
 
-interface WorkoutPlansManagerProps {}
+type WorkoutPlansManagerProps = {}
 
 const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
   const { t } = useTranslation();

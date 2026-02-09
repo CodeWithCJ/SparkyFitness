@@ -28,7 +28,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { debug, info, warn, error } from "@/utils/logging";
-import { getMealTypes, MealTypeDefinition } from "@/services/mealTypeService";
+import { getMealTypes, type MealTypeDefinition } from "@/services/mealTypeService";
 
 interface CopyFoodEntryDialogProps {
   isOpen: boolean;

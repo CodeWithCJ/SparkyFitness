@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Polyline, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';

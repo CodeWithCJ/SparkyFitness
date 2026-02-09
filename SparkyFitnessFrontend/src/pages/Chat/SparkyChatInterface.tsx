@@ -15,9 +15,9 @@ import {
   clearChatHistory,
   processUserInput,
   getTodaysNutrition,
-  Message,
+  type Message,
 } from '@/services/sparkyChatService';
-import { getActiveAiServiceSetting, AIService } from '@/services/aiServiceSettingsService';
+import { getActiveAiServiceSetting, type AIService } from '@/services/aiServiceSettingsService';
 
 
 const SparkyChatInterface = () => {

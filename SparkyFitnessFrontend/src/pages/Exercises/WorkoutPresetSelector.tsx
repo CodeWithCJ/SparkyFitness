@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import type React from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
-import { WorkoutPreset } from "@/types/workout";
+import type { WorkoutPreset } from "@/types/workout";
 import { getWorkoutPresets } from "@/services/workoutPresetService";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
