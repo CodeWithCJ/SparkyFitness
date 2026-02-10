@@ -1,14 +1,26 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import ZoomableChart from "@/components/ZoomableChart";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { info } from "@/utils/logging";
-import { parseISO, format } from "date-fns";
-import { calculateSmartYAxisDomain, excludeIncompleteDay, getChartConfig } from "@/utils/chartUtils";
-import type { UserCustomNutrient } from "@/types/customNutrient";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import ZoomableChart from '@/components/ZoomableChart';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { info } from '@/utils/logging';
+import { parseISO, format } from 'date-fns';
+import {
+  calculateSmartYAxisDomain,
+  excludeIncompleteDay,
+  getChartConfig,
+} from '@/utils/chartUtils';
+import type { UserCustomNutrient } from '@/types/customNutrient';
 interface NutritionData {
   date: string;
   calories: number;
@@ -36,12 +48,23 @@ interface NutritionChartsGridProps {
   customNutrients: UserCustomNutrient[]; // Add customNutrients prop
 }
 
-const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionChartsGridProps) => {
+const NutritionChartsGrid = ({
+  nutritionData,
+  customNutrients,
+}: NutritionChartsGridProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, formatDateInUserTimezone, nutrientDisplayPreferences, energyUnit, convertEnergy } = usePreferences(); // Destructure formatDateInUserTimezone, energyUnit, convertEnergy
+  const {
+    loggingLevel,
+    formatDateInUserTimezone,
+    nutrientDisplayPreferences,
+    energyUnit,
+    convertEnergy,
+  } = usePreferences(); // Destructure formatDateInUserTimezone, energyUnit, convertEnergy
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
-  const reportChartPreferences = nutrientDisplayPreferences.find(p => p.view_group === 'report_chart' && p.platform === platform);
+  const reportChartPreferences = nutrientDisplayPreferences.find(
+    (p) => p.view_group === 'report_chart' && p.platform === platform
+  );
 
   info(loggingLevel, 'NutritionChartsGrid: Rendering component.');
 
@@ -65,32 +88,117 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
     const chartData = prepareChartData(data, dataKey);
     return calculateSmartYAxisDomain(chartData, dataKey, {
       marginPercent: config.marginPercent,
-      minRangeThreshold: config.minRangeThreshold
+      minRangeThreshold: config.minRangeThreshold,
     });
   };
 
   const allNutritionCharts = [
-    { key: 'calories', label: t('nutritionCharts.calories', 'Calories'), color: '#8884d8', unit: energyUnit },
-    { key: 'protein', label: t('nutritionCharts.protein', 'Protein'), color: '#82ca9d', unit: 'g' },
-    { key: 'carbs', label: t('nutritionCharts.carbs', 'Carbs'), color: '#ffc658', unit: 'g' },
-    { key: 'fat', label: t('nutritionCharts.fat', 'Fat'), color: '#ff7300', unit: 'g' },
-    { key: 'saturated_fat', label: t('nutritionCharts.saturated_fat', 'Saturated Fat'), color: '#ff6b6b', unit: 'g' },
-    { key: 'polyunsaturated_fat', label: t('nutritionCharts.polyunsaturated_fat', 'Polyunsaturated Fat'), color: '#4ecdc4', unit: 'g' },
-    { key: 'monounsaturated_fat', label: t('nutritionCharts.monounsaturated_fat', 'Monounsaturated Fat'), color: '#45b7d1', unit: 'g' },
-    { key: 'trans_fat', label: t('nutritionCharts.trans_fat', 'Trans Fat'), color: '#f9ca24', unit: 'g' },
-    { key: 'cholesterol', label: t('nutritionCharts.cholesterol', 'Cholesterol'), color: '#eb4d4b', unit: 'mg' },
-    { key: 'sodium', label: t('nutritionCharts.sodium', 'Sodium'), color: '#6c5ce7', unit: 'mg' },
-    { key: 'potassium', label: t('nutritionCharts.potassium', 'Potassium'), color: '#a29bfe', unit: 'mg' },
-    { key: 'dietary_fiber', label: t('nutritionCharts.dietary_fiber', 'Dietary Fiber'), color: '#fd79a8', unit: 'g' },
-    { key: 'sugars', label: t('nutritionCharts.sugars', 'Sugars'), color: '#fdcb6e', unit: 'g' },
-    { key: 'vitamin_a', label: t('nutritionCharts.vitamin_a', 'Vitamin A'), color: '#e17055', unit: 'μg' },
-    { key: 'vitamin_c', label: t('nutritionCharts.vitamin_c', 'Vitamin C'), color: '#00b894', unit: 'mg' },
-    { key: 'calcium', label: t('nutritionCharts.calcium', 'Calcium'), color: '#0984e3', unit: 'mg' },
-    { key: 'iron', label: t('nutritionCharts.iron', 'Iron'), color: '#2d3436', unit: 'mg' }
+    {
+      key: 'calories',
+      label: t('nutritionCharts.calories', 'Calories'),
+      color: '#8884d8',
+      unit: energyUnit,
+    },
+    {
+      key: 'protein',
+      label: t('nutritionCharts.protein', 'Protein'),
+      color: '#82ca9d',
+      unit: 'g',
+    },
+    {
+      key: 'carbs',
+      label: t('nutritionCharts.carbs', 'Carbs'),
+      color: '#ffc658',
+      unit: 'g',
+    },
+    {
+      key: 'fat',
+      label: t('nutritionCharts.fat', 'Fat'),
+      color: '#ff7300',
+      unit: 'g',
+    },
+    {
+      key: 'saturated_fat',
+      label: t('nutritionCharts.saturated_fat', 'Saturated Fat'),
+      color: '#ff6b6b',
+      unit: 'g',
+    },
+    {
+      key: 'polyunsaturated_fat',
+      label: t('nutritionCharts.polyunsaturated_fat', 'Polyunsaturated Fat'),
+      color: '#4ecdc4',
+      unit: 'g',
+    },
+    {
+      key: 'monounsaturated_fat',
+      label: t('nutritionCharts.monounsaturated_fat', 'Monounsaturated Fat'),
+      color: '#45b7d1',
+      unit: 'g',
+    },
+    {
+      key: 'trans_fat',
+      label: t('nutritionCharts.trans_fat', 'Trans Fat'),
+      color: '#f9ca24',
+      unit: 'g',
+    },
+    {
+      key: 'cholesterol',
+      label: t('nutritionCharts.cholesterol', 'Cholesterol'),
+      color: '#eb4d4b',
+      unit: 'mg',
+    },
+    {
+      key: 'sodium',
+      label: t('nutritionCharts.sodium', 'Sodium'),
+      color: '#6c5ce7',
+      unit: 'mg',
+    },
+    {
+      key: 'potassium',
+      label: t('nutritionCharts.potassium', 'Potassium'),
+      color: '#a29bfe',
+      unit: 'mg',
+    },
+    {
+      key: 'dietary_fiber',
+      label: t('nutritionCharts.dietary_fiber', 'Dietary Fiber'),
+      color: '#fd79a8',
+      unit: 'g',
+    },
+    {
+      key: 'sugars',
+      label: t('nutritionCharts.sugars', 'Sugars'),
+      color: '#fdcb6e',
+      unit: 'g',
+    },
+    {
+      key: 'vitamin_a',
+      label: t('nutritionCharts.vitamin_a', 'Vitamin A'),
+      color: '#e17055',
+      unit: 'μg',
+    },
+    {
+      key: 'vitamin_c',
+      label: t('nutritionCharts.vitamin_c', 'Vitamin C'),
+      color: '#00b894',
+      unit: 'mg',
+    },
+    {
+      key: 'calcium',
+      label: t('nutritionCharts.calcium', 'Calcium'),
+      color: '#0984e3',
+      unit: 'mg',
+    },
+    {
+      key: 'iron',
+      label: t('nutritionCharts.iron', 'Iron'),
+      color: '#2d3436',
+      unit: 'mg',
+    },
   ];
 
   // Dynamically add custom nutrients to allNutritionCharts
-  customNutrients.forEach(cn => {
+  customNutrients.forEach((cn) => {
     allNutritionCharts.push({
       key: cn.name,
       label: cn.name,
@@ -100,7 +208,9 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
   });
 
   const visibleCharts = reportChartPreferences
-    ? allNutritionCharts.filter(chart => reportChartPreferences.visible_nutrients.includes(chart.key))
+    ? allNutritionCharts.filter((chart) =>
+        reportChartPreferences.visible_nutrients.includes(chart.key)
+      )
     : allNutritionCharts;
 
   const [isMounted, setIsMounted] = React.useState(false);
@@ -115,11 +225,15 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
         {visibleCharts.map((chart) => (
           <Card key={chart.key}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">{chart.label} ({chart.unit})</CardTitle>
+              <CardTitle className="text-sm">
+                {chart.label} ({chart.unit})
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-48 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading...')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('common.loading', 'Loading...')}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -135,17 +249,27 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
         const yAxisDomain = getYAxisDomain(nutritionData, chart.key);
 
         return (
-          <ZoomableChart key={chart.key} title={`${chart.label} (${chart.unit})`}>
+          <ZoomableChart
+            key={chart.key}
+            title={`${chart.label} (${chart.unit})`}
+          >
             {(isMaximized, zoomLevel) => (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">{chart.label} ({chart.unit})</CardTitle>
+                  <CardTitle className="text-sm">
+                    {chart.label} ({chart.unit})
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className={(isMaximized ? "h-[calc(95vh-150px)]" : "h-48") + " min-w-0"}>
+                  <div
+                    className={
+                      (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48') +
+                      ' min-w-0'
+                    }
+                  >
                     <ResponsiveContainer
-                      width={isMaximized ? `${100 * zoomLevel}%` : "100%"}
-                      height={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                      width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
@@ -156,7 +280,11 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
                           dataKey="date"
                           fontSize={10}
                           tickFormatter={formatDateForChart} // Apply formatter
-                          tickCount={isMaximized ? Math.max(chartData.length, 10) : undefined} // More ticks when maximized
+                          tickCount={
+                            isMaximized
+                              ? Math.max(chartData.length, 10)
+                              : undefined
+                          } // More ticks when maximized
                         />
                         <YAxis
                           fontSize={10}
@@ -166,8 +294,11 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
                               return value.toFixed(1);
                             } else if (chart.unit === 'mg') {
                               return value.toFixed(2);
-                            } else if (chart.key === 'calories') { // Use chart.key === 'calories' to specifically target calories
-                              return Math.round(convertEnergy(value, 'kcal', energyUnit)).toString();
+                            } else if (chart.key === 'calories') {
+                              // Use chart.key === 'calories' to specifically target calories
+                              return Math.round(
+                                convertEnergy(value, 'kcal', energyUnit)
+                              ).toString();
                             } else if (chart.unit === 'μg') {
                               return Math.round(value).toString();
                             } else {
@@ -176,8 +307,12 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
                           }}
                         />
                         <Tooltip
-                          labelFormatter={(value) => formatDateForChart(value as string)} // Apply formatter
-                          formatter={(value: number | string | null | undefined) => {
+                          labelFormatter={(value) =>
+                            formatDateForChart(value as string)
+                          } // Apply formatter
+                          formatter={(
+                            value: number | string | null | undefined
+                          ) => {
                             if (value === null || value === undefined) {
                               return ['N/A'];
                             }
@@ -191,21 +326,25 @@ const NutritionChartsGrid = ({ nutritionData, customNutrients }: NutritionCharts
                             }
 
                             let formattedValue: string;
-                            if (chart.key === 'calories') { // Use chart.key === 'calories' to specifically target calories
-                              formattedValue = Math.round(convertEnergy(numValue, 'kcal', energyUnit)).toString();
+                            if (chart.key === 'calories') {
+                              // Use chart.key === 'calories' to specifically target calories
+                              formattedValue = Math.round(
+                                convertEnergy(numValue, 'kcal', energyUnit)
+                              ).toString();
                             } else if (chart.unit === 'g') {
                               formattedValue = numValue.toFixed(1);
                             } else if (chart.unit === 'mg') {
                               formattedValue = numValue.toFixed(2);
                             } else if (chart.unit === 'μg') {
                               formattedValue = Math.round(numValue).toString();
-                            }
-                            else {
+                            } else {
                               formattedValue = Math.round(numValue).toString();
                             }
                             return [`${formattedValue} ${chart.unit}`];
                           }}
-                          contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                          }}
                         />
                         <Line
                           type="monotone"

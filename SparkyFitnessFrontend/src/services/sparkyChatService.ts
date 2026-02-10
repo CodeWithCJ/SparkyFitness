@@ -1,6 +1,12 @@
 import { apiCall } from './api';
 import { setUserLoggingLevel } from '@/utils/userPreferences';
-import { debug, info, warn, error, type UserLoggingLevel } from '@/utils/logging';
+import {
+  debug,
+  info,
+  warn,
+  error,
+  type UserLoggingLevel,
+} from '@/utils/logging';
 import type { CoachResponse, FoodOption } from './Chatbot/Chatbot_types';
 import { processFoodInput, addFoodOption } from './Chatbot/Chatbot_FoodHandler';
 import { processExerciseInput } from './Chatbot/Chatbot_ExerciseHandler';
@@ -26,12 +32,17 @@ export const loadUserPreferences = async (): Promise<UserPreferences> => {
   const data = await apiCall(`/user-preferences`, {
     method: 'GET',
   });
-  const preferences = data || { auto_clear_history: 'never', logging_level: 'WARN' };
+  const preferences = data || {
+    auto_clear_history: 'never',
+    logging_level: 'WARN',
+  };
   setUserLoggingLevel(preferences.logging_level);
   return preferences;
 };
 
-export const loadChatHistory = async (autoClearHistory: string): Promise<Message[]> => {
+export const loadChatHistory = async (
+  autoClearHistory: string
+): Promise<Message[]> => {
   const params = new URLSearchParams({
     autoClearHistory,
   });
@@ -48,7 +59,7 @@ export const loadChatHistory = async (autoClearHistory: string): Promise<Message
       content: item.content,
       isUser: item.message_type === 'user',
       timestamp: timestamp,
-      metadata: item.metadata
+      metadata: item.metadata,
     };
   });
 };
@@ -64,11 +75,16 @@ export const saveMessageToHistory = async (
   });
 };
 
-export const clearChatHistory = async (clearType: 'manual' | 'all'): Promise<void> => {
-  await apiCall(`/chat/${clearType === 'all' ? 'clear-all-history' : 'clear-old-history'}`, {
-    method: 'POST',
-    body: {}, // No body needed, user is identified by JWT
-  });
+export const clearChatHistory = async (
+  clearType: 'manual' | 'all'
+): Promise<void> => {
+  await apiCall(
+    `/chat/${clearType === 'all' ? 'clear-all-history' : 'clear-old-history'}`,
+    {
+      method: 'POST',
+      body: {}, // No body needed, user is identified by JWT
+    }
+  );
 };
 
 export const processUserInput = async (
@@ -84,10 +100,25 @@ export const processUserInput = async (
 ): Promise<CoachResponse> => {
   try {
     // Check if the current input is a follow-up to a previous food options prompt
-    if (lastBotMessageMetadata?.foodOptions && typeof input === 'string' && !isNaN(parseInt(input))) {
+    if (
+      lastBotMessageMetadata?.foodOptions &&
+      typeof input === 'string' &&
+      !isNaN(parseInt(input))
+    ) {
       const optionIndex = parseInt(input) - 1; // Convert to 0-based index
-      info(userLoggingLevel, `[${transactionId}] Processing food option selection:`, optionIndex, lastBotMessageMetadata);
-      return await addFoodOption(optionIndex, lastBotMessageMetadata, formatDateInUserTimezone, userLoggingLevel, transactionId);
+      info(
+        userLoggingLevel,
+        `[${transactionId}] Processing food option selection:`,
+        optionIndex,
+        lastBotMessageMetadata
+      );
+      return await addFoodOption(
+        optionIndex,
+        lastBotMessageMetadata,
+        formatDateInUserTimezone,
+        userLoggingLevel,
+        transactionId
+      );
     }
 
     let imageData = null;
@@ -98,42 +129,95 @@ export const processUserInput = async (
     if (!activeAIServiceSetting) {
       throw new Error('Active AI service setting is missing.');
     }
-    const aiResponse = await getAIResponse(input, imageData, transactionId, userLoggingLevel, activeAIServiceSetting as AIService, messages, userDate);
+    const aiResponse = await getAIResponse(
+      input,
+      imageData,
+      transactionId,
+      userLoggingLevel,
+      activeAIServiceSetting as AIService,
+      messages,
+      userDate
+    );
 
-    let parsedResponse: { intent: string; data: any; response?: string; entryDate?: string };
+    let parsedResponse: {
+      intent: string;
+      data: any;
+      response?: string;
+      entryDate?: string;
+    };
     try {
       const jsonMatch = aiResponse.response.match(/```json\n([\s\S]*?)\n```/);
       let jsonString = jsonMatch ? jsonMatch[1] : aiResponse.response;
       jsonString = stripJsonComments(jsonString); // Strip comments before parsing
 
       parsedResponse = JSON.parse(jsonString);
-      info(userLoggingLevel, `[${transactionId}] Parsed AI response:`, parsedResponse);
+      info(
+        userLoggingLevel,
+        `[${transactionId}] Parsed AI response:`,
+        parsedResponse
+      );
     } catch (jsonError) {
-      error(userLoggingLevel, `[${transactionId}] Failed to parse AI response as JSON:`, jsonError);
+      error(
+        userLoggingLevel,
+        `[${transactionId}] Failed to parse AI response as JSON:`,
+        jsonError
+      );
       return {
         action: 'advice',
-        response: aiResponse.response || 'Sorry, I had trouble understanding that.'
+        response:
+          aiResponse.response || 'Sorry, I had trouble understanding that.',
       };
     }
 
-    const determinedEntryDate = parsedResponse.entryDate ? extractDateFromInput(parsedResponse.entryDate, userDate) : extractDateFromInput(input, userDate);
-    info(userLoggingLevel, `[${transactionId}] Determined entry date:`, determinedEntryDate);
+    const determinedEntryDate = parsedResponse.entryDate
+      ? extractDateFromInput(parsedResponse.entryDate, userDate)
+      : extractDateFromInput(input, userDate);
+    info(
+      userLoggingLevel,
+      `[${transactionId}] Determined entry date:`,
+      determinedEntryDate
+    );
 
     switch (parsedResponse.intent) {
       case 'log_food': {
-        const foodResponse = await processFoodInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel, transactionId);
+        const foodResponse = await processFoodInput(
+          parsedResponse.data,
+          determinedEntryDate,
+          formatDateInUserTimezone,
+          userLoggingLevel,
+          transactionId
+        );
 
-        if (foodResponse.action === 'none' && foodResponse.metadata?.is_fallback) {
-          info(userLoggingLevel, `[${transactionId}] Food not found in DB, requesting AI options...`);
-          const { foodName, unit, mealType, quantity, entryDate } = foodResponse.metadata;
+        if (
+          foodResponse.action === 'none' &&
+          foodResponse.metadata?.is_fallback
+        ) {
+          info(
+            userLoggingLevel,
+            `[${transactionId}] Food not found in DB, requesting AI options...`
+          );
+          const { foodName, unit, mealType, quantity, entryDate } =
+            foodResponse.metadata;
 
-          const foodOptions = await callAIForFoodOptions(foodName, unit, userLoggingLevel, activeAIServiceSetting as AIService);
+          const foodOptions = await callAIForFoodOptions(
+            foodName,
+            unit,
+            userLoggingLevel,
+            activeAIServiceSetting as AIService
+          );
 
           if (foodOptions.length > 0) {
-            info(userLoggingLevel, `[${transactionId}] Received AI food options:`, foodOptions);
-            const optionsResponse = foodOptions.map((option: FoodOption, index: number) =>
-              `${index + 1}. ${option.name} (~${Math.round(option.calories || 0)} calories per ${option.serving_size}${option.serving_unit})`
-            ).join('\n');
+            info(
+              userLoggingLevel,
+              `[${transactionId}] Received AI food options:`,
+              foodOptions
+            );
+            const optionsResponse = foodOptions
+              .map(
+                (option: FoodOption, index: number) =>
+                  `${index + 1}. ${option.name} (~${Math.round(option.calories || 0)} calories per ${option.serving_size}${option.serving_unit})`
+              )
+              .join('\n');
 
             return {
               action: 'food_options',
@@ -143,14 +227,17 @@ export const processUserInput = async (
                 mealType: mealType,
                 quantity: quantity,
                 unit: unit,
-                entryDate: entryDate
-              }
+                entryDate: entryDate,
+              },
             };
           } else {
-            error(userLoggingLevel, `[${transactionId}] Failed to generate food options via AI.`);
+            error(
+              userLoggingLevel,
+              `[${transactionId}] Failed to generate food options via AI.`
+            );
             return {
               action: 'none',
-              response: `Sorry, I couldn't find "${foodName}" in the database and had trouble generating suitable options using the AI service. Please check your AI service configuration in settings or try a different food.`
+              response: `Sorry, I couldn't find "${foodName}" in the database and had trouble generating suitable options using the AI service. Please check your AI service configuration in settings or try a different food.`,
             };
           }
         } else {
@@ -159,10 +246,20 @@ export const processUserInput = async (
       }
 
       case 'log_exercise':
-        return await processExerciseInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel);
+        return await processExerciseInput(
+          parsedResponse.data,
+          determinedEntryDate,
+          formatDateInUserTimezone,
+          userLoggingLevel
+        );
       case 'log_measurement':
       case 'log_measurements':
-        return await processMeasurementInput(parsedResponse.data, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel);
+        return await processMeasurementInput(
+          parsedResponse.data,
+          determinedEntryDate,
+          formatDateInUserTimezone,
+          userLoggingLevel
+        );
       case 'log_water': {
         // Map AI's glasses_consumed to quantity for processWaterInput
         const waterData = parsedResponse.data;
@@ -170,23 +267,43 @@ export const processUserInput = async (
           waterData.quantity = waterData.glasses_consumed;
           delete waterData.glasses_consumed; // Remove the old key if necessary
         }
-        return await processWaterInput(waterData, determinedEntryDate, formatDateInUserTimezone, userLoggingLevel, transactionId);
+        return await processWaterInput(
+          waterData,
+          determinedEntryDate,
+          formatDateInUserTimezone,
+          userLoggingLevel,
+          transactionId
+        );
       }
       case 'ask_question':
       case 'chat':
-        return await processChatInput(parsedResponse.data || {}, parsedResponse.response, userLoggingLevel);
+        return await processChatInput(
+          parsedResponse.data || {},
+          parsedResponse.response,
+          userLoggingLevel
+        );
       default:
-        warn(userLoggingLevel, `[${transactionId}] Unrecognized AI intent:`, parsedResponse.intent);
+        warn(
+          userLoggingLevel,
+          `[${transactionId}] Unrecognized AI intent:`,
+          parsedResponse.intent
+        );
         return {
           action: 'none',
-          response: parsedResponse.response || 'I\'m not sure how to handle that request. Can you please rephrase?'
+          response:
+            parsedResponse.response ||
+            "I'm not sure how to handle that request. Can you please rephrase?",
         };
     }
   } catch (err) {
-    error(userLoggingLevel, `[${transactionId}] Error in processUserInput:`, err);
+    error(
+      userLoggingLevel,
+      `[${transactionId}] Error in processUserInput:`,
+      err
+    );
     return {
       action: 'none',
-      response: 'An unexpected error occurred while processing your request.'
+      response: 'An unexpected error occurred while processing your request.',
     };
   }
 };
@@ -203,24 +320,42 @@ const fileToBase64 = (file: File): Promise<string> => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
+    reader.onerror = (error) => reject(error);
   });
 };
 
-const getAIResponse = async (input: string, imageData: string | null = null, transactionId: string, userLoggingLevel: UserLoggingLevel, activeAIServiceSetting: AIService, messages: Message[], userDate: string): Promise<CoachResponse> => {
+const getAIResponse = async (
+  input: string,
+  imageData: string | null = null,
+  transactionId: string,
+  userLoggingLevel: UserLoggingLevel,
+  activeAIServiceSetting: AIService,
+  messages: Message[],
+  userDate: string
+): Promise<CoachResponse> => {
   try {
-    debug(userLoggingLevel, `[${transactionId}] Calling getAIResponse with input:`, input);
+    debug(
+      userLoggingLevel,
+      `[${transactionId}] Calling getAIResponse with input:`,
+      input
+    );
 
     const messagesToSend: any[] = [];
     // Add previous messages for context, limiting to the last 10 for brevity
     const historyLimit = 10;
     const recentMessages = messages.slice(-historyLimit);
 
-    recentMessages.forEach(msg => {
+    recentMessages.forEach((msg) => {
       if (msg.isUser) {
-        messagesToSend.push({ role: 'user', content: [{ type: 'text', text: msg.content }] });
+        messagesToSend.push({
+          role: 'user',
+          content: [{ type: 'text', text: msg.content }],
+        });
       } else {
-        messagesToSend.push({ role: 'assistant', content: [{ type: 'text', text: msg.content }] });
+        messagesToSend.push({
+          role: 'assistant',
+          content: [{ type: 'text', text: msg.content }],
+        });
       }
     });
 
@@ -230,7 +365,10 @@ const getAIResponse = async (input: string, imageData: string | null = null, tra
       userMessageContent.push({ type: 'text', text: input.trim() });
     }
     if (imageData) {
-      userMessageContent.push({ type: 'image_url', image_url: { url: imageData } });
+      userMessageContent.push({
+        type: 'image_url',
+        image_url: { url: imageData },
+      });
     }
 
     if (userMessageContent.length > 0) {
@@ -238,36 +376,47 @@ const getAIResponse = async (input: string, imageData: string | null = null, tra
     } else {
       return {
         action: 'none',
-        response: 'Please provide text or an image.'
+        response: 'Please provide text or an image.',
       };
     }
 
     const response = await apiCall('/chat', {
       method: 'POST',
-      body: { messages: messagesToSend, service_config_id: activeAIServiceSetting.id, user_date: userDate },
+      body: {
+        messages: messagesToSend,
+        service_config_id: activeAIServiceSetting.id,
+        user_date: userDate,
+      },
     });
 
     return {
       action: 'advice',
-      response: response.content
+      response: response.content,
     };
-
   } catch (err: any) {
     error(userLoggingLevel, `[${transactionId}] Error in getAIResponse:`, err);
     if (err.message && err.message.includes('503')) {
       return {
         action: 'none',
-        response: 'The AI service is currently overloaded. Please try again in a few moments.'
+        response:
+          'The AI service is currently overloaded. Please try again in a few moments.',
       };
     }
     return {
       action: 'none',
-      response: err.message || 'An unexpected error occurred while trying to get an AI response.'
+      response:
+        err.message ||
+        'An unexpected error occurred while trying to get an AI response.',
     };
   }
 };
 
-const callAIForFoodOptions = async (foodName: string, unit: string, userLoggingLevel: UserLoggingLevel, activeAIServiceSetting: AIService): Promise<FoodOption[]> => {
+const callAIForFoodOptions = async (
+  foodName: string,
+  unit: string,
+  userLoggingLevel: UserLoggingLevel,
+  activeAIServiceSetting: AIService
+): Promise<FoodOption[]> => {
   try {
     const response = await apiCall('/chat/food-options', {
       method: 'POST',
@@ -290,7 +439,9 @@ const callAIForFoodOptions = async (foodName: string, unit: string, userLoggingL
     try {
       const rawFoodOptions = JSON.parse(foodOptionsJsonString);
 
-      const foodOptions: FoodOption[] = (Array.isArray(rawFoodOptions) ? rawFoodOptions : []).map((rawOption: any) => {
+      const foodOptions: FoodOption[] = (
+        Array.isArray(rawFoodOptions) ? rawFoodOptions : []
+      ).map((rawOption: any) => {
         debug(userLoggingLevel, 'Raw AI food option received:', rawOption);
         const mappedOption: FoodOption = {
           name: rawOption.food_name || rawOption.name || 'Unknown Food',
@@ -300,9 +451,12 @@ const callAIForFoodOptions = async (foodName: string, unit: string, userLoggingL
           fat: rawOption.macros?.fat || rawOption.fat || 0,
           serving_size: parseFloat(rawOption.serving_size) || 1,
           serving_unit: rawOption.serving_unit || 'serving',
-          saturated_fat: rawOption.macros?.saturated_fat || rawOption.saturated_fat,
-          polyunsaturated_fat: rawOption.polyunsaturated_fat || rawOption.polyunsaturated_fat,
-          monounsaturated_fat: rawOption.monounsaturated_fat || rawOption.monounsaturated_fat,
+          saturated_fat:
+            rawOption.macros?.saturated_fat || rawOption.saturated_fat,
+          polyunsaturated_fat:
+            rawOption.polyunsaturated_fat || rawOption.polyunsaturated_fat,
+          monounsaturated_fat:
+            rawOption.monounsaturated_fat || rawOption.monounsaturated_fat,
           trans_fat: rawOption.trans_fat || rawOption.trans_fat,
           cholesterol: rawOption.cholesterol,
           sodium: rawOption.sodium,
@@ -318,32 +472,46 @@ const callAIForFoodOptions = async (foodName: string, unit: string, userLoggingL
         return mappedOption;
       });
 
-      if (foodOptions.every(option =>
-        typeof option.name === 'string' &&
-        typeof option.calories === 'number' &&
-        typeof option.protein === 'number' &&
-        typeof option.carbs === 'number' &&
-        typeof option.fat === 'number' &&
-        typeof option.serving_size === 'number' &&
-        typeof option.serving_unit === 'string'
-      )) {
+      if (
+        foodOptions.every(
+          (option) =>
+            typeof option.name === 'string' &&
+            typeof option.calories === 'number' &&
+            typeof option.protein === 'number' &&
+            typeof option.carbs === 'number' &&
+            typeof option.fat === 'number' &&
+            typeof option.serving_size === 'number' &&
+            typeof option.serving_unit === 'string'
+        )
+      ) {
         return foodOptions;
       } else {
-        error(userLoggingLevel, 'Mapped food options failed validation:', foodOptions);
+        error(
+          userLoggingLevel,
+          'Mapped food options failed validation:',
+          foodOptions
+        );
         return [];
       }
     } catch (jsonParseError) {
-      error(userLoggingLevel, 'Failed to parse or map JSON response for food options:', jsonParseError, foodOptionsJsonString);
+      error(
+        userLoggingLevel,
+        'Failed to parse or map JSON response for food options:',
+        jsonParseError,
+        foodOptionsJsonString
+      );
       return [];
     }
-
   } catch (err: any) {
     error(userLoggingLevel, 'Error in callAIForFoodOptions:', err);
     return [];
   }
 };
 
-const extractDateFromInput = (input: string, userDate: string): string | undefined => {
+const extractDateFromInput = (
+  input: string,
+  userDate: string
+): string | undefined => {
   const lowerInput = input.toLowerCase();
   const today = new Date(userDate); // Use user's date
   const yesterday = new Date(today);
@@ -359,7 +527,9 @@ const extractDateFromInput = (input: string, userDate: string): string | undefin
     return tomorrow.toISOString().split('T')[0];
   }
 
-  const dateMatch = lowerInput.match(/(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?/);
+  const dateMatch = lowerInput.match(
+    /(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?/
+  );
   if (dateMatch) {
     const month = parseInt(dateMatch[1], 10);
     const day = parseInt(dateMatch[2], 10);

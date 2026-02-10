@@ -25,7 +25,11 @@ export interface Exercise {
   tags?: string[];
 }
 
-export const searchExercises = async (query: string, equipmentFilter: string[] = [], muscleGroupFilter: string[] = []): Promise<Exercise[]> => {
+export const searchExercises = async (
+  query: string,
+  equipmentFilter: string[] = [],
+  muscleGroupFilter: string[] = []
+): Promise<Exercise[]> => {
   const params: Record<string, any> = {
     searchTerm: query,
   };
@@ -42,7 +46,14 @@ export const searchExercises = async (query: string, equipmentFilter: string[] =
   return Array.isArray(result) ? result : [];
 };
 
-export const searchExternalExercises = async (query: string, providerId: string, providerType: string, equipmentFilter: string[] = [], muscleGroupFilter: string[] = [], limit?: number): Promise<Exercise[]> => {
+export const searchExternalExercises = async (
+  query: string,
+  providerId: string,
+  providerType: string,
+  equipmentFilter: string[] = [],
+  muscleGroupFilter: string[] = [],
+  limit?: number
+): Promise<Exercise[]> => {
   const params: Record<string, any> = {
     query: query,
     providerId: providerId,
@@ -66,28 +77,37 @@ export const searchExternalExercises = async (query: string, providerId: string,
   return Array.isArray(result) ? result : [];
 };
 
-export const addExternalExerciseToUserExercises = async (wgerExerciseId: string): Promise<Exercise> => {
+export const addExternalExerciseToUserExercises = async (
+  wgerExerciseId: string
+): Promise<Exercise> => {
   return apiCall(`/exercises/add-external`, {
     method: 'POST',
     body: JSON.stringify({ wgerExerciseId }),
   });
 };
 
-export const addNutritionixExercise = async (nutritionixExerciseData: Exercise): Promise<Exercise> => {
+export const addNutritionixExercise = async (
+  nutritionixExerciseData: Exercise
+): Promise<Exercise> => {
   return apiCall(`/exercises/add-nutritionix-exercise`, {
     method: 'POST',
     body: JSON.stringify(nutritionixExerciseData),
   });
 };
 
-export const addFreeExerciseDBExercise = async (freeExerciseDBId: string): Promise<Exercise> => {
+export const addFreeExerciseDBExercise = async (
+  freeExerciseDBId: string
+): Promise<Exercise> => {
   return apiCall(`/freeexercisedb/add`, {
     method: 'POST',
     body: JSON.stringify({ exerciseId: freeExerciseDBId }),
   });
 };
 
-export const getRecentExercises = async (userId: string, limit: number = 5): Promise<Exercise[]> => {
+export const getRecentExercises = async (
+  userId: string,
+  limit: number = 5
+): Promise<Exercise[]> => {
   const result = await apiCall('/exercises/recent', {
     method: 'GET',
     params: { userId, limit },
@@ -95,7 +115,10 @@ export const getRecentExercises = async (userId: string, limit: number = 5): Pro
   return Array.isArray(result) ? result : [];
 };
 
-export const getTopExercises = async (userId: string, limit: number = 5): Promise<Exercise[]> => {
+export const getTopExercises = async (
+  userId: string,
+  limit: number = 5
+): Promise<Exercise[]> => {
   const result = await apiCall('/exercises/top', {
     method: 'GET',
     params: { userId, limit },
@@ -110,7 +133,10 @@ export const getAvailableEquipment = async (): Promise<string[]> => {
   return Array.isArray(response) ? response : [];
 };
 
-export const getAvailableExercises = async (muscle?: string | null, equipment?: string | null): Promise<{ id: string, name: string }[]> => {
+export const getAvailableExercises = async (
+  muscle?: string | null,
+  equipment?: string | null
+): Promise<{ id: string; name: string }[]> => {
   const params = new URLSearchParams();
   if (muscle) {
     params.append('muscle', muscle);

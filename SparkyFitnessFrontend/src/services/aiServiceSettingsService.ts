@@ -50,32 +50,41 @@ export const getPreferences = async (): Promise<UserPreferences> => {
   }
 };
 
-export const getActiveAiServiceSetting = async (): Promise<AIService | null> => {
-  try {
-    const setting = await apiCall(`/chat/ai-service-settings/active`, {
-      method: 'GET',
-      suppress404Toast: true, // Suppress toast for 404
-    });
-    return setting;
-  } catch (err: any) {
-    if (err.message && err.message.includes('404')) {
-      return null;
+export const getActiveAiServiceSetting =
+  async (): Promise<AIService | null> => {
+    try {
+      const setting = await apiCall(`/chat/ai-service-settings/active`, {
+        method: 'GET',
+        suppress404Toast: true, // Suppress toast for 404
+      });
+      return setting;
+    } catch (err: any) {
+      if (err.message && err.message.includes('404')) {
+        return null;
+      }
+      throw err;
     }
-    throw err;
-  }
-};
+  };
 
-export const addAIService = async (serviceData: Partial<AIService>): Promise<AIService> => {
+export const addAIService = async (
+  serviceData: Partial<AIService>
+): Promise<AIService> => {
   return apiCall('/chat', {
     method: 'POST',
     body: { action: 'save_ai_service_settings', service_data: serviceData },
   });
 };
 
-export const updateAIService = async (serviceId: string, serviceUpdateData: Partial<AIService>): Promise<AIService> => {
+export const updateAIService = async (
+  serviceId: string,
+  serviceUpdateData: Partial<AIService>
+): Promise<AIService> => {
   return apiCall('/chat', {
     method: 'POST',
-    body: { action: 'save_ai_service_settings', service_data: { id: serviceId, ...serviceUpdateData } },
+    body: {
+      action: 'save_ai_service_settings',
+      service_data: { id: serviceId, ...serviceUpdateData },
+    },
   });
 };
 
@@ -85,14 +94,22 @@ export const deleteAIService = async (serviceId: string): Promise<void> => {
   });
 };
 
-export const updateAIServiceStatus = async (serviceId: string, isActive: boolean): Promise<AIService> => {
+export const updateAIServiceStatus = async (
+  serviceId: string,
+  isActive: boolean
+): Promise<AIService> => {
   return apiCall('/chat', {
     method: 'POST',
-    body: { action: 'save_ai_service_settings', service_data: { id: serviceId, is_active: isActive } },
+    body: {
+      action: 'save_ai_service_settings',
+      service_data: { id: serviceId, is_active: isActive },
+    },
   });
 };
 
-export const updateUserPreferences = async (preferences: UserPreferences): Promise<UserPreferences> => {
+export const updateUserPreferences = async (
+  preferences: UserPreferences
+): Promise<UserPreferences> => {
   return apiCall(`/user-preferences`, {
     method: 'PUT',
     body: preferences,

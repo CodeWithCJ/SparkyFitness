@@ -10,17 +10,21 @@ interface BodyMapFilterProps {
   availableMuscleGroups: string[];
 }
 
-const BodyMapFilter: React.FC<BodyMapFilterProps> = ({ selectedMuscles, onMuscleToggle, availableMuscleGroups }) => {
+const BodyMapFilter: React.FC<BodyMapFilterProps> = ({
+  selectedMuscles,
+  onMuscleToggle,
+  availableMuscleGroups,
+}) => {
   const { loggingLevel } = usePreferences();
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/images/muscle-male.svg')
-      .then(response => response.text())
+      .then((response) => response.text())
       .then(setSvgContent)
-      .catch(err => {
-        error(loggingLevel, "BodyMapFilter: Error fetching SVG:", err);
+      .catch((err) => {
+        error(loggingLevel, 'BodyMapFilter: Error fetching SVG:', err);
       });
   }, [loggingLevel]);
 
@@ -37,14 +41,14 @@ const BodyMapFilter: React.FC<BodyMapFilterProps> = ({ selectedMuscles, onMuscle
     const cleanupFunctions: (() => void)[] = [];
 
     const svgClassToSchemaName: { [key: string]: string } = {
-      'abdominal': 'abdominals',
-      'lowerback': 'lower back',
-      'quads': 'quadriceps',
-      'obliques': 'abdominals', // Map obliques to abdominals
+      abdominal: 'abdominals',
+      lowerback: 'lower back',
+      quads: 'quadriceps',
+      obliques: 'abdominals', // Map obliques to abdominals
       // Add other mappings if necessary, e.g., 'lats' if it appears in SVG
     };
 
-    paths.forEach(path => {
+    paths.forEach((path) => {
       const svgClassName = path.getAttribute('class');
       if (svgClassName) {
         const muscleName = svgClassToSchemaName[svgClassName] || svgClassName; // Map to schema name or use as is
@@ -66,12 +70,16 @@ const BodyMapFilter: React.FC<BodyMapFilterProps> = ({ selectedMuscles, onMuscle
 
         const handleMouseOver = () => {
           if (availableMuscleGroups.includes(muscleName)) {
-            svgElement.querySelectorAll(`path[class="${svgClassName}"]`).forEach(el => el.classList.add('hover'));
+            svgElement
+              .querySelectorAll(`path[class="${svgClassName}"]`)
+              .forEach((el) => el.classList.add('hover'));
           }
         };
         const handleMouseOut = () => {
           if (availableMuscleGroups.includes(muscleName)) {
-            svgElement.querySelectorAll(`path[class="${svgClassName}"]`).forEach(el => el.classList.remove('hover'));
+            svgElement
+              .querySelectorAll(`path[class="${svgClassName}"]`)
+              .forEach((el) => el.classList.remove('hover'));
           }
         };
         const handleClick = () => {
@@ -93,12 +101,22 @@ const BodyMapFilter: React.FC<BodyMapFilterProps> = ({ selectedMuscles, onMuscle
     });
 
     return () => {
-      cleanupFunctions.forEach(cleanup => cleanup());
+      cleanupFunctions.forEach((cleanup) => cleanup());
     };
-  }, [svgContent, selectedMuscles, onMuscleToggle, availableMuscleGroups, loggingLevel]);
+  }, [
+    svgContent,
+    selectedMuscles,
+    onMuscleToggle,
+    availableMuscleGroups,
+    loggingLevel,
+  ]);
 
   return (
-    <div id="body-map-container" ref={svgContainerRef} className="w-full h-auto">
+    <div
+      id="body-map-container"
+      ref={svgContainerRef}
+      className="w-full h-auto"
+    >
       {!svgContent && <div>Loading body map...</div>}
     </div>
   );

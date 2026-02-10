@@ -33,7 +33,9 @@ export interface GoalPreset {
   snacks_percentage: number;
 }
 
-export async function createGoalPreset(presetData: GoalPreset): Promise<GoalPreset> {
+export async function createGoalPreset(
+  presetData: GoalPreset
+): Promise<GoalPreset> {
   return apiCall('/goal-presets', {
     method: 'POST',
     body: JSON.stringify(presetData),
@@ -52,7 +54,10 @@ export async function getGoalPresetById(id: string): Promise<GoalPreset> {
   });
 }
 
-export async function updateGoalPreset(id: string, presetData: GoalPreset): Promise<GoalPreset> {
+export async function updateGoalPreset(
+  id: string,
+  presetData: GoalPreset
+): Promise<GoalPreset> {
   return apiCall(`/goal-presets/${id}`, {
     method: 'PUT',
     body: JSON.stringify(presetData),

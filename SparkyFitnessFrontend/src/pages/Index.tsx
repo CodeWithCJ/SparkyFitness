@@ -1,12 +1,12 @@
-import type React from "react";
-import { useState, useEffect } from "react";
-import { debug, error } from "@/utils/logging";
-import { useAuth } from "@/hooks/useAuth";
-import { usePreferences } from "@/contexts/PreferencesContext";
+import type React from 'react';
+import { useState, useEffect } from 'react';
+import { debug, error } from '@/utils/logging';
+import { useAuth } from '@/hooks/useAuth';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
-import OnBoarding from "@/components/Onboarding/OnBoarding";
-import MainLayout from "@/layouts/MainLayout";
-import { getOnboardingStatus } from "@/services/onboardingService";
+import OnBoarding from '@/components/Onboarding/OnBoarding';
+import MainLayout from '@/layouts/MainLayout';
+import { getOnboardingStatus } from '@/services/onboardingService';
 
 interface IndexProps {
   onShowAboutDialog: () => void;
@@ -15,7 +15,7 @@ interface IndexProps {
 const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
   const { user, loading: authLoading } = useAuth();
   const { loggingLevel } = usePreferences();
-  debug(loggingLevel, "Index: Component rendered (onboarding check).");
+  debug(loggingLevel, 'Index: Component rendered (onboarding check).');
 
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(true);
@@ -34,7 +34,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
         const { onboardingComplete } = await getOnboardingStatus();
         setNeedsOnboarding(!onboardingComplete);
       } catch (err) {
-        error(loggingLevel, "Index: Error fetching onboarding status:", err);
+        error(loggingLevel, 'Index: Error fetching onboarding status:', err);
         setNeedsOnboarding(false);
       } finally {
         setIsCheckingStatus(false);

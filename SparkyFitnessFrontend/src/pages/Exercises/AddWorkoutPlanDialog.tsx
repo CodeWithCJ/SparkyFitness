@@ -1,273 +1,498 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useTranslation } from "react-i18next";
+import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import {
-  TooltipProvider,
-} from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import type { WorkoutPlanTemplate, WorkoutPlanAssignment, WorkoutPreset, WorkoutPresetSet } from "@/types/workout";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { Plus, X, Repeat, Timer, ListOrdered, GripVertical, Copy, Dumbbell, Clipboard } from "lucide-react";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, arrayMove, useSortable } from '@dnd-kit/sortable';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import type {
+  WorkoutPlanTemplate,
+  WorkoutPlanAssignment,
+  WorkoutPreset,
+  WorkoutPresetSet,
+} from '@/types/workout';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import {
+  Plus,
+  X,
+  Repeat,
+  Timer,
+  ListOrdered,
+  GripVertical,
+  Copy,
+  Dumbbell,
+  Clipboard,
+} from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getWorkoutPresets } from "@/services/workoutPresetService";
-import { Card } from "@/components/ui/card";
-import { loadExercises } from "@/services/exerciseService";
-import type { Exercise } from "@/services/exerciseSearchService";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import AddExerciseDialog from "./AddExerciseDialog";
-import ExerciseHistoryDisplay from "../../components/ExerciseHistoryDisplay";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { debug } from "@/utils/logging";
+import { getWorkoutPresets } from '@/services/workoutPresetService';
+import { Card } from '@/components/ui/card';
+import { loadExercises } from '@/services/exerciseService';
+import type { Exercise } from '@/services/exerciseSearchService';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import AddExerciseDialog from './AddExerciseDialog';
+import ExerciseHistoryDisplay from '../../components/ExerciseHistoryDisplay';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { debug } from '@/utils/logging';
 
 interface AddWorkoutPlanDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (newPlan: Omit<WorkoutPlanTemplate, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => void;
+  onSave: (
+    newPlan: Omit<
+      WorkoutPlanTemplate,
+      'id' | 'user_id' | 'created_at' | 'updated_at'
+    >
+  ) => void;
   initialData?: WorkoutPlanTemplate | null;
-  onUpdate?: (planId: string, updatedPlan: Partial<WorkoutPlanTemplate>) => void;
+  onUpdate?: (
+    planId: string,
+    updatedPlan: Partial<WorkoutPlanTemplate>
+  ) => void;
 }
 
 const daysOfWeek = [
-  { id: 0, name: "Sunday" },
-  { id: 1, name: "Monday" },
-  { id: 2, name: "Tuesday" },
-  { id: 3, name: "Wednesday" },
-  { id: 4, name: "Thursday" },
-  { id: 5, name: "Friday" },
-  { id: 6, name: "Saturday" },
+  { id: 0, name: 'Sunday' },
+  { id: 1, name: 'Monday' },
+  { id: 2, name: 'Tuesday' },
+  { id: 3, name: 'Wednesday' },
+  { id: 4, name: 'Thursday' },
+  { id: 5, name: 'Friday' },
+  { id: 6, name: 'Saturday' },
 ];
 
-const SortableSetItem = React.memo(({ set, assignmentIndex, setIndex, handleSetChangeInPlan, handleDuplicateSetInPlan, handleRemoveSetInPlan, weightUnit }: { set: WorkoutPresetSet, assignmentIndex: number, setIndex: number, handleSetChangeInPlan: Function, handleDuplicateSetInPlan: Function, handleRemoveSetInPlan: Function, weightUnit: string }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: `set-${assignmentIndex}-${setIndex}` });
+const SortableSetItem = React.memo(
+  ({
+    set,
+    assignmentIndex,
+    setIndex,
+    handleSetChangeInPlan,
+    handleDuplicateSetInPlan,
+    handleRemoveSetInPlan,
+    weightUnit,
+  }: {
+    set: WorkoutPresetSet;
+    assignmentIndex: number;
+    setIndex: number;
+    handleSetChangeInPlan: Function;
+    handleDuplicateSetInPlan: Function;
+    handleRemoveSetInPlan: Function;
+    weightUnit: string;
+  }) => {
+    const { attributes, listeners, setNodeRef, transform, transition } =
+      useSortable({ id: `set-${assignmentIndex}-${setIndex}` });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
 
-  return (
-    <div ref={setNodeRef} style={style} className="flex flex-col space-y-2" {...attributes}>
-      <div className="flex items-center space-x-2">
-        <div {...listeners}>
-          <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-8 gap-2 flex-grow items-center">
-          <div className="md:col-span-1">
-            <Label>Set</Label>
-            <p className="font-medium p-2">{set.set_number}</p>
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="flex flex-col space-y-2"
+        {...attributes}
+      >
+        <div className="flex items-center space-x-2">
+          <div {...listeners}>
+            <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
           </div>
-          <div className="md:col-span-2">
-            <Label>Type</Label>
-            <Select value={set.set_type} onValueChange={(value) => handleSetChangeInPlan(assignmentIndex, setIndex, 'set_type', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Set Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Working Set">Working Set</SelectItem>
-                <SelectItem value="Warm-up">Warm-up</SelectItem>
-                <SelectItem value="Drop Set">Drop Set</SelectItem>
-                <SelectItem value="Failure">Failure</SelectItem>
-                <SelectItem value="AMRAP">AMRAP</SelectItem>
-                <SelectItem value="Back-off">Back-off</SelectItem>
-                <SelectItem value="Rest-Pause">Rest-Pause</SelectItem>
-                <SelectItem value="Cluster">Cluster</SelectItem>
-                <SelectItem value="Technique">Technique</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="md:col-span-1">
-            <Label htmlFor={`reps-${assignmentIndex}-${setIndex}`} className="flex items-center">
-              <Repeat className="h-4 w-4 mr-1" style={{ color: '#3b82f6' }} /> Reps
-            </Label>
-            <Input id={`reps-${assignmentIndex}-${setIndex}`} type="number" value={set.reps ?? ''} onChange={(e) => handleSetChangeInPlan(assignmentIndex, setIndex, 'reps', Number(e.target.value))} />
-          </div>
-          <div className="md:col-span-1">
-            <Label htmlFor={`weight-${assignmentIndex}-${setIndex}`} className="flex items-center">
-              <Dumbbell className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} /> Weight ({weightUnit})
-            </Label>
-            <Input id={`weight-${assignmentIndex}-${setIndex}`} type="number" value={set.weight ?? ''} onChange={(e) => handleSetChangeInPlan(assignmentIndex, setIndex, 'weight', Number(e.target.value))} />
-          </div>
-          <div className="md:col-span-1">
-            <Label htmlFor={`duration-${assignmentIndex}-${setIndex}`} className="flex items-center">
-              <Timer className="h-4 w-4 mr-1" style={{ color: '#f97316' }} /> Duration (min)
-            </Label>
-            <Input id={`duration-${assignmentIndex}-${setIndex}`} type="number" value={set.duration ?? ''} onChange={(e) => handleSetChangeInPlan(assignmentIndex, setIndex, 'duration', Number(e.target.value))} />
-          </div>
-          <div className="md:col-span-1">
-            <Label htmlFor={`rest-${assignmentIndex}-${setIndex}`} className="flex items-center">
-              <Timer className="h-4 w-4 mr-1" style={{ color: '#8b5cf6' }} /> Rest (s)
-            </Label>
-            <Input id={`rest-${assignmentIndex}-${setIndex}`} type="number" value={set.rest_time ?? ''} onChange={(e) => handleSetChangeInPlan(assignmentIndex, setIndex, 'rest_time', Number(e.target.value))} />
-          </div>
-          <div className="flex items-center space-x-1">
-            <Button variant="ghost" size="icon" onClick={() => handleDuplicateSetInPlan(assignmentIndex, setIndex)}>
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => handleRemoveSetInPlan(assignmentIndex, setIndex)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-      <div className="pl-8">
-        <Label htmlFor={`notes-${assignmentIndex}-${setIndex}`}>Notes</Label>
-        <Textarea id={`notes-${assignmentIndex}-${setIndex}`} value={set.notes ?? ''} onChange={(e) => handleSetChangeInPlan(assignmentIndex, setIndex, 'notes', e.target.value)} />
-      </div>
-    </div>
-  );
-});
-
-const SortableAssignmentItem = React.memo(({
-  assignment,
-  originalIndex,
-  workoutPresets,
-  handleCopyAssignment,
-  handleRemoveAssignment,
-  handleSetChangeInPlan,
-  handleDuplicateSetInPlan,
-  handleRemoveSetInPlan,
-  handleAddSetInPlan,
-  weightUnit,
-  t
-}: {
-  assignment: WorkoutPlanAssignment,
-  originalIndex: number,
-  workoutPresets: WorkoutPreset[],
-  handleCopyAssignment: Function,
-  handleRemoveAssignment: Function,
-  handleSetChangeInPlan: Function,
-  handleDuplicateSetInPlan: Function,
-  handleRemoveSetInPlan: Function,
-  handleAddSetInPlan: Function,
-  weightUnit: string,
-  t: any
-}) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({ id: (assignment.id || `assignment-${originalIndex}`) as string });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style} className="border p-4 rounded-md space-y-4 bg-card" {...attributes}>
-      {assignment.workout_preset_id ? (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div {...listeners}>
-              <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
+          <div className="grid grid-cols-1 md:grid-cols-8 gap-2 flex-grow items-center">
+            <div className="md:col-span-1">
+              <Label>Set</Label>
+              <p className="font-medium p-2">{set.set_number}</p>
             </div>
-            <div>
-              <h4 className="font-medium">
-                {t('addWorkoutPlanDialog.presetLabel', "Preset:")} {workoutPresets.find(p => p.id === assignment.workout_preset_id)?.name || "N/A"}
-              </h4>
-              {(() => {
-                const preset = workoutPresets.find(p => p.id === assignment.workout_preset_id);
-                if (preset && preset.exercises && preset.exercises.length > 0) {
-                  return (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {preset.exercises.map((ex, idx) => (
-                        <p key={idx} className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                          <span className="font-medium">{ex.exercise_name}</span>
-                          {ex.sets && <span className="flex items-center gap-1"><ListOrdered className="h-3 w-3" /> {ex.sets.length} {t('addWorkoutPlanDialog.setsLabel', "sets")}</span>}
-                        </p>
-                      ))}
-                    </div>
-                  );
+            <div className="md:col-span-2">
+              <Label>Type</Label>
+              <Select
+                value={set.set_type}
+                onValueChange={(value) =>
+                  handleSetChangeInPlan(
+                    assignmentIndex,
+                    setIndex,
+                    'set_type',
+                    value
+                  )
                 }
-                return null;
-              })()}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Set Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Working Set">Working Set</SelectItem>
+                  <SelectItem value="Warm-up">Warm-up</SelectItem>
+                  <SelectItem value="Drop Set">Drop Set</SelectItem>
+                  <SelectItem value="Failure">Failure</SelectItem>
+                  <SelectItem value="AMRAP">AMRAP</SelectItem>
+                  <SelectItem value="Back-off">Back-off</SelectItem>
+                  <SelectItem value="Rest-Pause">Rest-Pause</SelectItem>
+                  <SelectItem value="Cluster">Cluster</SelectItem>
+                  <SelectItem value="Technique">Technique</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-1">
+              <Label
+                htmlFor={`reps-${assignmentIndex}-${setIndex}`}
+                className="flex items-center"
+              >
+                <Repeat className="h-4 w-4 mr-1" style={{ color: '#3b82f6' }} />{' '}
+                Reps
+              </Label>
+              <Input
+                id={`reps-${assignmentIndex}-${setIndex}`}
+                type="number"
+                value={set.reps ?? ''}
+                onChange={(e) =>
+                  handleSetChangeInPlan(
+                    assignmentIndex,
+                    setIndex,
+                    'reps',
+                    Number(e.target.value)
+                  )
+                }
+              />
+            </div>
+            <div className="md:col-span-1">
+              <Label
+                htmlFor={`weight-${assignmentIndex}-${setIndex}`}
+                className="flex items-center"
+              >
+                <Dumbbell
+                  className="h-4 w-4 mr-1"
+                  style={{ color: '#ef4444' }}
+                />{' '}
+                Weight ({weightUnit})
+              </Label>
+              <Input
+                id={`weight-${assignmentIndex}-${setIndex}`}
+                type="number"
+                value={set.weight ?? ''}
+                onChange={(e) =>
+                  handleSetChangeInPlan(
+                    assignmentIndex,
+                    setIndex,
+                    'weight',
+                    Number(e.target.value)
+                  )
+                }
+              />
+            </div>
+            <div className="md:col-span-1">
+              <Label
+                htmlFor={`duration-${assignmentIndex}-${setIndex}`}
+                className="flex items-center"
+              >
+                <Timer className="h-4 w-4 mr-1" style={{ color: '#f97316' }} />{' '}
+                Duration (min)
+              </Label>
+              <Input
+                id={`duration-${assignmentIndex}-${setIndex}`}
+                type="number"
+                value={set.duration ?? ''}
+                onChange={(e) =>
+                  handleSetChangeInPlan(
+                    assignmentIndex,
+                    setIndex,
+                    'duration',
+                    Number(e.target.value)
+                  )
+                }
+              />
+            </div>
+            <div className="md:col-span-1">
+              <Label
+                htmlFor={`rest-${assignmentIndex}-${setIndex}`}
+                className="flex items-center"
+              >
+                <Timer className="h-4 w-4 mr-1" style={{ color: '#8b5cf6' }} />{' '}
+                Rest (s)
+              </Label>
+              <Input
+                id={`rest-${assignmentIndex}-${setIndex}`}
+                type="number"
+                value={set.rest_time ?? ''}
+                onChange={(e) =>
+                  handleSetChangeInPlan(
+                    assignmentIndex,
+                    setIndex,
+                    'rest_time',
+                    Number(e.target.value)
+                  )
+                }
+              />
+            </div>
+            <div className="flex items-center space-x-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  handleDuplicateSetInPlan(assignmentIndex, setIndex)
+                }
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleRemoveSetInPlan(assignmentIndex, setIndex)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <div>
-            <Button variant="ghost" size="icon" onClick={() => handleCopyAssignment(assignment)}>
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => handleRemoveAssignment(originalIndex)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
-      ) : (
-        <>
+        <div className="pl-8">
+          <Label htmlFor={`notes-${assignmentIndex}-${setIndex}`}>Notes</Label>
+          <Textarea
+            id={`notes-${assignmentIndex}-${setIndex}`}
+            value={set.notes ?? ''}
+            onChange={(e) =>
+              handleSetChangeInPlan(
+                assignmentIndex,
+                setIndex,
+                'notes',
+                e.target.value
+              )
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+);
+
+const SortableAssignmentItem = React.memo(
+  ({
+    assignment,
+    originalIndex,
+    workoutPresets,
+    handleCopyAssignment,
+    handleRemoveAssignment,
+    handleSetChangeInPlan,
+    handleDuplicateSetInPlan,
+    handleRemoveSetInPlan,
+    handleAddSetInPlan,
+    weightUnit,
+    t,
+  }: {
+    assignment: WorkoutPlanAssignment;
+    originalIndex: number;
+    workoutPresets: WorkoutPreset[];
+    handleCopyAssignment: Function;
+    handleRemoveAssignment: Function;
+    handleSetChangeInPlan: Function;
+    handleDuplicateSetInPlan: Function;
+    handleRemoveSetInPlan: Function;
+    handleAddSetInPlan: Function;
+    weightUnit: string;
+    t: any;
+  }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({
+      id: (assignment.id || `assignment-${originalIndex}`) as string,
+    });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="border p-4 rounded-md space-y-4 bg-card"
+        {...attributes}
+      >
+        {assignment.workout_preset_id ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div {...listeners}>
                 <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
               </div>
-              <h4 className="font-semibold">{assignment.exercise_name}</h4>
+              <div>
+                <h4 className="font-medium">
+                  {t('addWorkoutPlanDialog.presetLabel', 'Preset:')}{' '}
+                  {workoutPresets.find(
+                    (p) => p.id === assignment.workout_preset_id
+                  )?.name || 'N/A'}
+                </h4>
+                {(() => {
+                  const preset = workoutPresets.find(
+                    (p) => p.id === assignment.workout_preset_id
+                  );
+                  if (
+                    preset &&
+                    preset.exercises &&
+                    preset.exercises.length > 0
+                  ) {
+                    return (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {preset.exercises.map((ex, idx) => (
+                          <p
+                            key={idx}
+                            className="flex flex-wrap items-center gap-x-4 gap-y-1"
+                          >
+                            <span className="font-medium">
+                              {ex.exercise_name}
+                            </span>
+                            {ex.sets && (
+                              <span className="flex items-center gap-1">
+                                <ListOrdered className="h-3 w-3" />{' '}
+                                {ex.sets.length}{' '}
+                                {t('addWorkoutPlanDialog.setsLabel', 'sets')}
+                              </span>
+                            )}
+                          </p>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
             </div>
             <div>
-              <Button variant="ghost" size="icon" onClick={() => handleCopyAssignment(assignment)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleCopyAssignment(assignment)}
+              >
                 <Copy className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => handleRemoveAssignment(originalIndex)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleRemoveAssignment(originalIndex)}
+              >
                 <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          <SortableContext items={assignment.sets.map((set) => set.id as string)}>
-            <div className="space-y-2">
-              {assignment.sets.map((set, setIndex) => (
-                <SortableSetItem
-                  key={set.id}
-                  set={set}
-                  assignmentIndex={originalIndex}
-                  setIndex={setIndex}
-                  handleSetChangeInPlan={handleSetChangeInPlan}
-                  handleDuplicateSetInPlan={handleDuplicateSetInPlan}
-                  handleRemoveSetInPlan={handleRemoveSetInPlan}
-                  weightUnit={weightUnit}
-                />
-              ))}
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div {...listeners}>
+                  <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
+                </div>
+                <h4 className="font-semibold">{assignment.exercise_name}</h4>
+              </div>
+              <div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleCopyAssignment(assignment)}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveAssignment(originalIndex)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </SortableContext>
-          <Button type="button" variant="outline" onClick={() => handleAddSetInPlan(originalIndex)}>
-            <Plus className="h-4 w-4 mr-2" /> {t('addWorkoutPlanDialog.addSetButton', "Add Set")}
-          </Button>
-          <ExerciseHistoryDisplay exerciseId={assignment.exercise_id!} />
-        </>
-      )}
-    </div>
-  );
-});
+            <SortableContext
+              items={assignment.sets.map((set) => set.id as string)}
+            >
+              <div className="space-y-2">
+                {assignment.sets.map((set, setIndex) => (
+                  <SortableSetItem
+                    key={set.id}
+                    set={set}
+                    assignmentIndex={originalIndex}
+                    setIndex={setIndex}
+                    handleSetChangeInPlan={handleSetChangeInPlan}
+                    handleDuplicateSetInPlan={handleDuplicateSetInPlan}
+                    handleRemoveSetInPlan={handleRemoveSetInPlan}
+                    weightUnit={weightUnit}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleAddSetInPlan(originalIndex)}
+            >
+              <Plus className="h-4 w-4 mr-2" />{' '}
+              {t('addWorkoutPlanDialog.addSetButton', 'Add Set')}
+            </Button>
+            <ExerciseHistoryDisplay exerciseId={assignment.exercise_id!} />
+          </>
+        )}
+      </div>
+    );
+  }
+);
 
-const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onClose, onSave, initialData, onUpdate }) => {
+const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  initialData,
+  onUpdate,
+}) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { weightUnit, loggingLevel, convertWeight } = usePreferences();
-  const [planName, setPlanName] = useState("");
-  const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [planName, setPlanName] = useState('');
+  const [description, setDescription] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [assignments, setAssignments] = useState<WorkoutPlanAssignment[]>([]);
   const [workoutPresets, setWorkoutPresets] = useState<WorkoutPreset[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
-  const [selectedDayForAssignment, setSelectedDayForAssignment] = useState<number | null>(null);
-  const [copiedAssignment, setCopiedAssignment] = useState<WorkoutPlanAssignment | null>(null);
+  const [selectedDayForAssignment, setSelectedDayForAssignment] = useState<
+    number | null
+  >(null);
+  const [copiedAssignment, setCopiedAssignment] =
+    useState<WorkoutPlanAssignment | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -278,23 +503,34 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
       if (initialData) {
         setPlanName(initialData.plan_name);
         setDescription(initialData.description);
-        setStartDate(initialData.start_date ? new Date(initialData.start_date).toISOString().split('T')[0] : '');
-        setEndDate(initialData.end_date ? new Date(initialData.end_date).toISOString().split('T')[0] : '');
+        setStartDate(
+          initialData.start_date
+            ? new Date(initialData.start_date).toISOString().split('T')[0]
+            : ''
+        );
+        setEndDate(
+          initialData.end_date
+            ? new Date(initialData.end_date).toISOString().split('T')[0]
+            : ''
+        );
         setIsActive(initialData.is_active);
         setAssignments(
-          initialData.assignments?.map(a => ({
+          initialData.assignments?.map((a) => ({
             ...a,
             id: a.id ? String(a.id) : crypto.randomUUID(),
-            sets: a.sets?.map(s => ({
-              ...s,
-              id: s.id ? String(s.id) : crypto.randomUUID(),
-              weight: parseFloat(convertWeight(s.weight ?? 0, 'kg', weightUnit).toFixed(2))
-            })) || []
+            sets:
+              a.sets?.map((s) => ({
+                ...s,
+                id: s.id ? String(s.id) : crypto.randomUUID(),
+                weight: parseFloat(
+                  convertWeight(s.weight ?? 0, 'kg', weightUnit).toFixed(2)
+                ),
+              })) || [],
           })) || []
         );
       } else {
-        setPlanName("");
-        setDescription("");
+        setPlanName('');
+        setDescription('');
         setStartDate(new Date().toISOString().split('T')[0]);
         const today = new Date();
         today.setDate(today.getDate() + 7);
@@ -303,8 +539,8 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
         setAssignments([]);
       }
     } else {
-      setPlanName("");
-      setDescription("");
+      setPlanName('');
+      setDescription('');
       setStartDate(new Date().toISOString().split('T')[0]);
       const today = new Date();
       today.setDate(today.getDate() + 7);
@@ -325,11 +561,14 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
       setExercises(fetchedExercises);
     } catch (error) {
       toast({
-        title: t('addWorkoutPlanDialog.errorToastTitle', "Error"),
-        description: t('addWorkoutPlanDialog.errorToastDescription', "Failed to load workout presets or exercises."),
-        variant: "destructive",
+        title: t('addWorkoutPlanDialog.errorToastTitle', 'Error'),
+        description: t(
+          'addWorkoutPlanDialog.errorToastDescription',
+          'Failed to load workout presets or exercises.'
+        ),
+        variant: 'destructive',
       });
-      console.error("Error fetching presets or exercises:", error);
+      console.error('Error fetching presets or exercises:', error);
     }
   };
 
@@ -337,34 +576,55 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
     setAssignments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleAssignmentChange = (index: number, field: keyof WorkoutPlanAssignment, value: any) => {
-    setAssignments(prev => prev.map((a, i) => i === index ? { ...a, [field]: value } : a));
+  const handleAssignmentChange = (
+    index: number,
+    field: keyof WorkoutPlanAssignment,
+    value: any
+  ) => {
+    setAssignments((prev) =>
+      prev.map((a, i) => (i === index ? { ...a, [field]: value } : a))
+    );
   };
 
-  const handleSetChangeInPlan = useCallback((assignmentIndex: number, setIndex: number, field: keyof WorkoutPresetSet, value: any) => {
-    debug(loggingLevel, `[AddWorkoutPlanDialog] handleSetChangeInPlan: assignmentIndex=${assignmentIndex}, setIndex=${setIndex}, field=${field}, value=${value}, weightUnit=${weightUnit}`);
-    setAssignments(prev =>
-      prev.map((assignment, aIndex) => {
-        if (aIndex !== assignmentIndex || !assignment.sets) {
-          return assignment;
-        }
-        return {
-          ...assignment,
-          sets: assignment.sets.map((set, sIndex) => {
-            if (sIndex !== setIndex) {
-              return set;
-            }
-            return { ...set, [field]: value };
-          }),
-        };
-      })
-    );
-  }, [loggingLevel, weightUnit, convertWeight]);
+  const handleSetChangeInPlan = useCallback(
+    (
+      assignmentIndex: number,
+      setIndex: number,
+      field: keyof WorkoutPresetSet,
+      value: any
+    ) => {
+      debug(
+        loggingLevel,
+        `[AddWorkoutPlanDialog] handleSetChangeInPlan: assignmentIndex=${assignmentIndex}, setIndex=${setIndex}, field=${field}, value=${value}, weightUnit=${weightUnit}`
+      );
+      setAssignments((prev) =>
+        prev.map((assignment, aIndex) => {
+          if (aIndex !== assignmentIndex || !assignment.sets) {
+            return assignment;
+          }
+          return {
+            ...assignment,
+            sets: assignment.sets.map((set, sIndex) => {
+              if (sIndex !== setIndex) {
+                return set;
+              }
+              return { ...set, [field]: value };
+            }),
+          };
+        })
+      );
+    },
+    [loggingLevel, weightUnit, convertWeight]
+  );
 
   const handleAddSetInPlan = useCallback((assignmentIndex: number) => {
-    setAssignments(prev =>
+    setAssignments((prev) =>
       prev.map((assignment, aIndex) => {
-        if (aIndex !== assignmentIndex || !assignment.sets || assignment.sets.length === 0) {
+        if (
+          aIndex !== assignmentIndex ||
+          !assignment.sets ||
+          assignment.sets.length === 0
+        ) {
           return assignment;
         }
         const lastSet = assignment.sets[assignment.sets.length - 1];
@@ -381,36 +641,49 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
     );
   }, []);
 
-  const handleDuplicateSetInPlan = useCallback((assignmentIndex: number, setIndex: number) => {
-    setAssignments(prev =>
-      prev.map((assignment, aIndex) => {
-        if (aIndex !== assignmentIndex || !assignment.sets) {
-          return assignment;
-        }
-        const sets = assignment.sets;
-        const setToDuplicate = sets[setIndex];
-        const newSets = [
-          ...sets.slice(0, setIndex + 1),
-          { ...setToDuplicate, id: crypto.randomUUID() },
-          ...sets.slice(setIndex + 1)
-        ].map((s, i) => ({ ...s, set_number: i + 1 }));
-        return { ...assignment, sets: newSets };
-      })
-    );
-  }, []);
+  const handleDuplicateSetInPlan = useCallback(
+    (assignmentIndex: number, setIndex: number) => {
+      setAssignments((prev) =>
+        prev.map((assignment, aIndex) => {
+          if (aIndex !== assignmentIndex || !assignment.sets) {
+            return assignment;
+          }
+          const sets = assignment.sets;
+          const setToDuplicate = sets[setIndex];
+          const newSets = [
+            ...sets.slice(0, setIndex + 1),
+            { ...setToDuplicate, id: crypto.randomUUID() },
+            ...sets.slice(setIndex + 1),
+          ].map((s, i) => ({ ...s, set_number: i + 1 }));
+          return { ...assignment, sets: newSets };
+        })
+      );
+    },
+    []
+  );
 
-  const handleRemoveSetInPlan = useCallback((assignmentIndex: number, setIndex: number) => {
-    setAssignments(prev =>
-      prev.map((assignment, aIndex) => {
-        if (aIndex !== assignmentIndex || !assignment.sets) {
-          return assignment;
-        }
-        const newSets = assignment.sets.filter((_, sIndex) => sIndex !== setIndex)
-          .map((s, i) => ({ ...s, set_number: i + 1 }));
-        return { ...assignment, sets: newSets };
-      }).filter(assignment => !assignment.exercise_id || (assignment.sets && assignment.sets.length > 0))
-    );
-  }, []);
+  const handleRemoveSetInPlan = useCallback(
+    (assignmentIndex: number, setIndex: number) => {
+      setAssignments((prev) =>
+        prev
+          .map((assignment, aIndex) => {
+            if (aIndex !== assignmentIndex || !assignment.sets) {
+              return assignment;
+            }
+            const newSets = assignment.sets
+              .filter((_, sIndex) => sIndex !== setIndex)
+              .map((s, i) => ({ ...s, set_number: i + 1 }));
+            return { ...assignment, sets: newSets };
+          })
+          .filter(
+            (assignment) =>
+              !assignment.exercise_id ||
+              (assignment.sets && assignment.sets.length > 0)
+          )
+      );
+    },
+    []
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -419,67 +692,94 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
     })
   );
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
 
-    if (over && active.id !== over.id) {
-      const activeId = String(active.id);
-      const overId = String(over.id);
+      if (over && active.id !== over.id) {
+        const activeId = String(active.id);
+        const overId = String(over.id);
 
-      // Handle assignment reordering (potentially across days)
-      const activeAssignmentIdx = assignments.findIndex(a => String(a.id) === activeId);
-      if (activeAssignmentIdx !== -1) {
-        // Find what we are dropping over
-        // It could be another assignment
-        const overAssignmentIdx = assignments.findIndex(a => String(a.id) === overId);
+        // Handle assignment reordering (potentially across days)
+        const activeAssignmentIdx = assignments.findIndex(
+          (a) => String(a.id) === activeId
+        );
+        if (activeAssignmentIdx !== -1) {
+          // Find what we are dropping over
+          // It could be another assignment
+          const overAssignmentIdx = assignments.findIndex(
+            (a) => String(a.id) === overId
+          );
 
-        if (overAssignmentIdx !== -1) {
-          const activeAssignment = assignments[activeAssignmentIdx];
-          const overAssignment = assignments[overAssignmentIdx];
+          if (overAssignmentIdx !== -1) {
+            const activeAssignment = assignments[activeAssignmentIdx];
+            const overAssignment = assignments[overAssignmentIdx];
 
-          // If moving to a different day, update the day_of_week
-          if (activeAssignment.day_of_week !== overAssignment.day_of_week) {
-            setAssignments(prev => {
-              const newItems = [...prev];
-              const item = { ...newItems[activeAssignmentIdx], day_of_week: overAssignment.day_of_week };
-              newItems.splice(activeAssignmentIdx, 1);
-              // Insert before or after the 'over' item? 
-              // dnd-kit arrayMove does: newItems.splice(to, 0, newItems.splice(from, 1)[0]);
-              const newOverIdx = newItems.findIndex(a => String(a.id) === overId);
-              newItems.splice(newOverIdx, 0, item);
-              return newItems;
-            });
-          } else {
-            // Same day reordering
-            setAssignments((items) => arrayMove(items, activeAssignmentIdx, overAssignmentIdx));
+            // If moving to a different day, update the day_of_week
+            if (activeAssignment.day_of_week !== overAssignment.day_of_week) {
+              setAssignments((prev) => {
+                const newItems = [...prev];
+                const item = {
+                  ...newItems[activeAssignmentIdx],
+                  day_of_week: overAssignment.day_of_week,
+                };
+                newItems.splice(activeAssignmentIdx, 1);
+                // Insert before or after the 'over' item?
+                // dnd-kit arrayMove does: newItems.splice(to, 0, newItems.splice(from, 1)[0]);
+                const newOverIdx = newItems.findIndex(
+                  (a) => String(a.id) === overId
+                );
+                newItems.splice(newOverIdx, 0, item);
+                return newItems;
+              });
+            } else {
+              // Same day reordering
+              setAssignments((items) =>
+                arrayMove(items, activeAssignmentIdx, overAssignmentIdx)
+              );
+            }
+            return;
+          }
+        }
+
+        // Handle set reordering within an assignment
+        const setParentIdx = assignments.findIndex((a) =>
+          a.sets?.some((s) => String(s.id) === activeId)
+        );
+        if (setParentIdx !== -1) {
+          const overSetAssignmentIdx = assignments.findIndex((a) =>
+            a.sets?.some((s) => String(s.id) === overId)
+          );
+
+          if (setParentIdx === overSetAssignmentIdx) {
+            setAssignments((prev) =>
+              prev.map((a, idx) => {
+                if (idx !== setParentIdx) return a;
+                const oldIndex = a.sets.findIndex(
+                  (s) => String(s.id) === activeId
+                );
+                const newIndex = a.sets.findIndex(
+                  (s) => String(s.id) === overId
+                );
+                if (oldIndex !== -1 && newIndex !== -1) {
+                  return {
+                    ...a,
+                    sets: arrayMove(a.sets, oldIndex, newIndex).map((s, i) => ({
+                      ...s,
+                      set_number: i + 1,
+                    })),
+                  };
+                }
+                return a;
+              })
+            );
           }
           return;
         }
       }
-
-      // Handle set reordering within an assignment
-      const setParentIdx = assignments.findIndex(a => a.sets?.some(s => String(s.id) === activeId));
-      if (setParentIdx !== -1) {
-        const overSetAssignmentIdx = assignments.findIndex(a => a.sets?.some(s => String(s.id) === overId));
-
-        if (setParentIdx === overSetAssignmentIdx) {
-          setAssignments(prev => prev.map((a, idx) => {
-            if (idx !== setParentIdx) return a;
-            const oldIndex = a.sets.findIndex(s => String(s.id) === activeId);
-            const newIndex = a.sets.findIndex(s => String(s.id) === overId);
-            if (oldIndex !== -1 && newIndex !== -1) {
-              return {
-                ...a,
-                sets: arrayMove(a.sets, oldIndex, newIndex).map((s, i) => ({ ...s, set_number: i + 1 }))
-              };
-            }
-            return a;
-          }));
-        }
-        return;
-      }
-    }
-  }, [assignments]);
+    },
+    [assignments]
+  );
 
   const handleAddExerciseOrPreset = (
     item: Exercise | WorkoutPreset,
@@ -510,7 +810,15 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
             workout_preset_id: undefined,
             exercise_id: exercise.id,
             exercise_name: exercise.name,
-            sets: [{ id: crypto.randomUUID(), set_number: 1, set_type: 'Working Set', reps: 10, weight: 0 }],
+            sets: [
+              {
+                id: crypto.randomUUID(),
+                set_number: 1,
+                set_type: 'Working Set',
+                reps: 10,
+                weight: 0,
+              },
+            ],
           },
         ]);
       }
@@ -522,8 +830,12 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
   const handleCopyAssignment = (assignment: WorkoutPlanAssignment) => {
     setCopiedAssignment({ ...assignment });
     toast({
-      title: t('addWorkoutPlanDialog.copiedToastTitle', "Copied!"),
-      description: t('addWorkoutPlanDialog.copiedToastDescription', { itemName: assignment.exercise_name || `${t('addWorkoutPlanDialog.presetLabel', "Preset:")} ${workoutPresets.find(p => p.id === assignment.workout_preset_id)?.name}` }),
+      title: t('addWorkoutPlanDialog.copiedToastTitle', 'Copied!'),
+      description: t('addWorkoutPlanDialog.copiedToastDescription', {
+        itemName:
+          assignment.exercise_name ||
+          `${t('addWorkoutPlanDialog.presetLabel', 'Preset:')} ${workoutPresets.find((p) => p.id === assignment.workout_preset_id)?.name}`,
+      }),
     });
   };
 
@@ -534,22 +846,36 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
         id: crypto.randomUUID(),
         day_of_week: dayOfWeek,
         template_id: '', // Reset template_id for the new assignment
-        sets: copiedAssignment.sets?.map(s => ({ ...s, id: crypto.randomUUID() })) || []
+        sets:
+          copiedAssignment.sets?.map((s) => ({
+            ...s,
+            id: crypto.randomUUID(),
+          })) || [],
       };
       setAssignments((prev) => [...prev, newAssignment]);
       toast({
-        title: t('addWorkoutPlanDialog.pastedToastTitle', "Pasted!"),
-        description: t('addWorkoutPlanDialog.pastedToastDescription', { itemName: newAssignment.exercise_name || `${t('addWorkoutPlanDialog.presetLabel', "Preset:")} ${workoutPresets.find(p => p.id === newAssignment.workout_preset_id)?.name}` }),
+        title: t('addWorkoutPlanDialog.pastedToastTitle', 'Pasted!'),
+        description: t('addWorkoutPlanDialog.pastedToastDescription', {
+          itemName:
+            newAssignment.exercise_name ||
+            `${t('addWorkoutPlanDialog.presetLabel', 'Preset:')} ${workoutPresets.find((p) => p.id === newAssignment.workout_preset_id)?.name}`,
+        }),
       });
     }
   };
 
   const handleSave = () => {
-    if (planName.trim() === "" || startDate.trim() === "") {
+    if (planName.trim() === '' || startDate.trim() === '') {
       toast({
-        title: t('addWorkoutPlanDialog.validationErrorTitle', "Validation Error"),
-        description: t('addWorkoutPlanDialog.validationErrorDescription', "Plan Name and Start Date are required."),
-        variant: "destructive",
+        title: t(
+          'addWorkoutPlanDialog.validationErrorTitle',
+          'Validation Error'
+        ),
+        description: t(
+          'addWorkoutPlanDialog.validationErrorDescription',
+          'Plan Name and Start Date are required.'
+        ),
+        variant: 'destructive',
       });
       return;
     }
@@ -566,16 +892,19 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
       is_active: isActive,
       assignments: assignmentsToSave.map((a, index) => {
         // Calculate sort_order within its day
-        const dayAssignments = assignmentsToSave.filter(da => da.day_of_week === a.day_of_week);
+        const dayAssignments = assignmentsToSave.filter(
+          (da) => da.day_of_week === a.day_of_week
+        );
         const sortOrder = dayAssignments.indexOf(a);
 
         return {
           ...a,
           sort_order: sortOrder,
-          sets: a.sets?.map(s => ({
-            ...s,
-            weight: convertWeight(s.weight, weightUnit, 'kg')
-          })) || []
+          sets:
+            a.sets?.map((s) => ({
+              ...s,
+              weight: convertWeight(s.weight, weightUnit, 'kg'),
+            })) || [],
         };
       }),
     };
@@ -588,21 +917,32 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
     onClose();
   };
 
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <TooltipProvider>
         <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{initialData ? t('addWorkoutPlanDialog.editTitle', "Edit Workout Plan") : t('addWorkoutPlanDialog.addTitle', "Add New Workout Plan")}</DialogTitle>
+            <DialogTitle>
+              {initialData
+                ? t('addWorkoutPlanDialog.editTitle', 'Edit Workout Plan')
+                : t('addWorkoutPlanDialog.addTitle', 'Add New Workout Plan')}
+            </DialogTitle>
             <DialogDescription>
-              {initialData ? t('addWorkoutPlanDialog.editDescription', "Edit the details for your workout plan and its assignments.") : t('addWorkoutPlanDialog.addDescription', "Enter the details for your new workout plan and assign workouts to days.")}
+              {initialData
+                ? t(
+                    'addWorkoutPlanDialog.editDescription',
+                    'Edit the details for your workout plan and its assignments.'
+                  )
+                : t(
+                    'addWorkoutPlanDialog.addDescription',
+                    'Enter the details for your new workout plan and assign workouts to days.'
+                  )}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="planName">
-                {t('addWorkoutPlanDialog.planNameLabel', "Plan Name")}
+                {t('addWorkoutPlanDialog.planNameLabel', 'Plan Name')}
               </Label>
               <Input
                 id="planName"
@@ -612,7 +952,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">
-                {t('addWorkoutPlanDialog.descriptionLabel', "Description")}
+                {t('addWorkoutPlanDialog.descriptionLabel', 'Description')}
               </Label>
               <Textarea
                 id="description"
@@ -623,7 +963,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startDate">
-                  {t('addWorkoutPlanDialog.startDateLabel', "Start Date")}
+                  {t('addWorkoutPlanDialog.startDateLabel', 'Start Date')}
                 </Label>
                 <div className="relative">
                   <Input
@@ -637,7 +977,10 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
               </div>
               <div className="space-y-2">
                 <Label htmlFor="endDate">
-                  {t('addWorkoutPlanDialog.endDateLabel', "End Date (Optional)")}
+                  {t(
+                    'addWorkoutPlanDialog.endDateLabel',
+                    'End Date (Optional)'
+                  )}
                 </Label>
                 <div className="relative">
                   <Input
@@ -657,40 +1000,79 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
                 onCheckedChange={(checked) => setIsActive(checked as boolean)}
               />
               <Label htmlFor="isActive">
-                {t('addWorkoutPlanDialog.setActiveLabel', "Set as active plan")}
+                {t('addWorkoutPlanDialog.setActiveLabel', 'Set as active plan')}
               </Label>
             </div>
-            <p className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mt-2" role="alert">
-              <span className="font-bold">{t('addWorkoutPlanDialog.noteTitle', "Note:")}</span> {t('addWorkoutPlanDialog.noteDescription', "Updating an active plan adjusts upcoming exercise entries. Deleting a plan clears future ones, while previous entries stay in your log.")}
+            <p
+              className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mt-2"
+              role="alert"
+            >
+              <span className="font-bold">
+                {t('addWorkoutPlanDialog.noteTitle', 'Note:')}
+              </span>{' '}
+              {t(
+                'addWorkoutPlanDialog.noteDescription',
+                'Updating an active plan adjusts upcoming exercise entries. Deleting a plan clears future ones, while previous entries stay in your log.'
+              )}
             </p>
 
             <div className="space-y-4">
-              <h4 className="mb-2 text-lg font-medium">{t('addWorkoutPlanDialog.assignmentsTitle', "Assignments")}</h4>
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <h4 className="mb-2 text-lg font-medium">
+                {t('addWorkoutPlanDialog.assignmentsTitle', 'Assignments')}
+              </h4>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
                 {daysOfWeek.map((day) => {
-                  const dayAssignments = assignments.filter(assignment => assignment.day_of_week === day.id);
+                  const dayAssignments = assignments.filter(
+                    (assignment) => assignment.day_of_week === day.id
+                  );
                   return (
                     <Card key={day.name} className="p-4 bg-muted/30">
-                      <SortableContext items={dayAssignments.map((a) => a.id as string)}>
+                      <SortableContext
+                        items={dayAssignments.map((a) => a.id as string)}
+                      >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-primary">{day.name}</h3>
+                            <h3 className="font-semibold text-primary">
+                              {day.name}
+                            </h3>
                             <div className="flex items-center space-x-2">
                               {copiedAssignment && (
-                                <Button variant="ghost" size="sm" onClick={() => handlePasteAssignment(day.id)}>
-                                  <Clipboard className="h-4 w-4 mr-2" /> {t('addWorkoutPlanDialog.pasteButton', "Paste")}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handlePasteAssignment(day.id)}
+                                >
+                                  <Clipboard className="h-4 w-4 mr-2" />{' '}
+                                  {t(
+                                    'addWorkoutPlanDialog.pasteButton',
+                                    'Paste'
+                                  )}
                                 </Button>
                               )}
-                              <Button variant="outline" size="sm" onClick={() => {
-                                setSelectedDayForAssignment(day.id);
-                                setIsAddExerciseDialogOpen(true);
-                              }}>
-                                <Plus className="h-4 w-4 mr-2" /> {t('addWorkoutPlanDialog.addExerciseButtonInDay', "Add Exercise")}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedDayForAssignment(day.id);
+                                  setIsAddExerciseDialogOpen(true);
+                                }}
+                              >
+                                <Plus className="h-4 w-4 mr-2" />{' '}
+                                {t(
+                                  'addWorkoutPlanDialog.addExerciseButtonInDay',
+                                  'Add Exercise'
+                                )}
                               </Button>
                             </div>
                           </div>
                           {dayAssignments.map((assignment) => {
-                            const originalIndex = assignments.findIndex(a => a.id === assignment.id);
+                            const originalIndex = assignments.findIndex(
+                              (a) => a.id === assignment.id
+                            );
                             return (
                               <SortableAssignmentItem
                                 key={assignment.id}
@@ -700,7 +1082,9 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
                                 handleCopyAssignment={handleCopyAssignment}
                                 handleRemoveAssignment={handleRemoveAssignment}
                                 handleSetChangeInPlan={handleSetChangeInPlan}
-                                handleDuplicateSetInPlan={handleDuplicateSetInPlan}
+                                handleDuplicateSetInPlan={
+                                  handleDuplicateSetInPlan
+                                }
                                 handleRemoveSetInPlan={handleRemoveSetInPlan}
                                 handleAddSetInPlan={handleAddSetInPlan}
                                 weightUnit={weightUnit}
@@ -718,31 +1102,50 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({ isOpen, onC
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" onClick={onClose}>{t('addWorkoutPlanDialog.cancelButton', "Cancel")}</Button>
+              <Button variant="outline" onClick={onClose}>
+                {t('addWorkoutPlanDialog.cancelButton', 'Cancel')}
+              </Button>
             </DialogClose>
-            <Button onClick={handleSave}>{t('addWorkoutPlanDialog.saveButton', "Save Plan")}</Button>
+            <Button onClick={handleSave}>
+              {t('addWorkoutPlanDialog.saveButton', 'Save Plan')}
+            </Button>
           </DialogFooter>
         </DialogContent>
 
-        <Dialog open={isAddExerciseDialogOpen} onOpenChange={setIsAddExerciseDialogOpen}>
+        <Dialog
+          open={isAddExerciseDialogOpen}
+          onOpenChange={setIsAddExerciseDialogOpen}
+        >
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{t('addWorkoutPlanDialog.addExerciseOrPresetTitle', "Add Exercise or Preset")}</DialogTitle>
+              <DialogTitle>
+                {t(
+                  'addWorkoutPlanDialog.addExerciseOrPresetTitle',
+                  'Add Exercise or Preset'
+                )}
+              </DialogTitle>
               <DialogDescription>
-                {t('addWorkoutPlanDialog.addExerciseOrPresetDescription', "Select an exercise or a preset to add to the selected day.")}
+                {t(
+                  'addWorkoutPlanDialog.addExerciseOrPresetDescription',
+                  'Select an exercise or a preset to add to the selected day.'
+                )}
               </DialogDescription>
             </DialogHeader>
             <AddExerciseDialog
               open={isAddExerciseDialogOpen}
               onOpenChange={setIsAddExerciseDialogOpen}
-              onExerciseAdded={(exercise, sourceMode) => handleAddExerciseOrPreset(exercise, sourceMode)}
-              onWorkoutPresetSelected={(preset) => handleAddExerciseOrPreset(preset, 'preset')}
+              onExerciseAdded={(exercise, sourceMode) =>
+                handleAddExerciseOrPreset(exercise, sourceMode)
+              }
+              onWorkoutPresetSelected={(preset) =>
+                handleAddExerciseOrPreset(preset, 'preset')
+              }
               mode="workout-plan"
             />
           </DialogContent>
         </Dialog>
       </TooltipProvider>
-    </Dialog >
+    </Dialog>
   );
 };
 

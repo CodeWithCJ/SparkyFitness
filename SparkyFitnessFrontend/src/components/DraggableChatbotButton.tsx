@@ -47,9 +47,10 @@ const DraggableChatbotButton: React.FC = () => {
       return dragPosition;
     }
     return {
-      x: buttonState.edge === 'right'
-        ? window.innerWidth - size - EDGE_MARGIN
-        : EDGE_MARGIN,
+      x:
+        buttonState.edge === 'right'
+          ? window.innerWidth - size - EDGE_MARGIN
+          : EDGE_MARGIN,
       y: buttonState.y,
     };
   }, [buttonState, isDragging, dragPosition]);
@@ -84,11 +85,14 @@ const DraggableChatbotButton: React.FC = () => {
   };
 
   // Calculate max Y position (respects bottom nav on mobile)
-  const getMaxY = useCallback((minimized: boolean) => {
-    const size = minimized ? MINIMIZED_SIZE : BUTTON_SIZE;
-    const bottomOffset = isMobile ? BOTTOM_NAV_HEIGHT : 0;
-    return window.innerHeight - size - EDGE_MARGIN - bottomOffset;
-  }, [isMobile]);
+  const getMaxY = useCallback(
+    (minimized: boolean) => {
+      const size = minimized ? MINIMIZED_SIZE : BUTTON_SIZE;
+      const bottomOffset = isMobile ? BOTTOM_NAV_HEIGHT : 0;
+      return window.innerHeight - size - EDGE_MARGIN - bottomOffset;
+    },
+    [isMobile]
+  );
 
   // Handle window resize
   useEffect(() => {
@@ -111,12 +115,16 @@ const DraggableChatbotButton: React.FC = () => {
     if (!loading && user?.id) {
       try {
         const activeService = await getActiveAiServiceSetting();
-        const hasActive = activeService !== null &&
+        const hasActive =
+          activeService !== null &&
           activeService !== undefined &&
           Object.keys(activeService).length > 0;
         setHasAiProvider(hasActive);
       } catch (error) {
-        console.error("[DraggableChatbotButton] Failed to fetch AI services:", error);
+        console.error(
+          '[DraggableChatbotButton] Failed to fetch AI services:',
+          error
+        );
         setHasAiProvider(false);
       }
     } else if (!loading && !user) {
@@ -127,7 +135,6 @@ const DraggableChatbotButton: React.FC = () => {
   useEffect(() => {
     checkAiProviders();
   }, [checkAiProviders]);
-
 
   useEffect(() => {
     const interval = setInterval(checkAiProviders, 60000);
@@ -144,50 +151,62 @@ const DraggableChatbotButton: React.FC = () => {
   }, [hasAiProvider, hasAppeared]);
 
   // Snap to nearest edge (auto-minimize if dragged very close to edge on mobile)
-  const snapToEdge = useCallback((x: number, y: number) => {
-    const centerX = x + BUTTON_SIZE / 2;
-    const screenCenterX = window.innerWidth / 2;
-    const edge: SnappedEdge = centerX > screenCenterX ? 'right' : 'left';
+  const snapToEdge = useCallback(
+    (x: number, y: number) => {
+      const centerX = x + BUTTON_SIZE / 2;
+      const screenCenterX = window.innerWidth / 2;
+      const edge: SnappedEdge = centerX > screenCenterX ? 'right' : 'left';
 
-    // Check if dragged very close to edge - auto-minimize on mobile
-    const isNearLeftEdge = x < MINIMIZE_THRESHOLD;
-    const isNearRightEdge = x > window.innerWidth - BUTTON_SIZE - MINIMIZE_THRESHOLD;
-    const shouldMinimize = isMobile && !buttonState.minimized && (isNearLeftEdge || isNearRightEdge);
+      // Check if dragged very close to edge - auto-minimize on mobile
+      const isNearLeftEdge = x < MINIMIZE_THRESHOLD;
+      const isNearRightEdge =
+        x > window.innerWidth - BUTTON_SIZE - MINIMIZE_THRESHOLD;
+      const shouldMinimize =
+        isMobile &&
+        !buttonState.minimized &&
+        (isNearLeftEdge || isNearRightEdge);
 
-    const maxY = getMaxY(shouldMinimize || buttonState.minimized);
-    const clampedY = Math.min(Math.max(EDGE_MARGIN, y), maxY);
+      const maxY = getMaxY(shouldMinimize || buttonState.minimized);
+      const clampedY = Math.min(Math.max(EDGE_MARGIN, y), maxY);
 
-    const newState: ButtonState = {
-      y: clampedY,
-      edge,
-      minimized: shouldMinimize || buttonState.minimized,
-    };
+      const newState: ButtonState = {
+        y: clampedY,
+        edge,
+        minimized: shouldMinimize || buttonState.minimized,
+      };
 
-    setButtonState(newState);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-  }, [buttonState.minimized, getMaxY, isMobile]);
+      setButtonState(newState);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+    },
+    [buttonState.minimized, getMaxY, isMobile]
+  );
 
   // Drag handlers
-  const updatePosition = useCallback((clientX: number, clientY: number) => {
-    if (!isDragging) return;
+  const updatePosition = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!isDragging) return;
 
-    if (Math.abs(clientX - (dragPosition.x + dragOffset.current.x)) > 5 ||
-      Math.abs(clientY - (dragPosition.y + dragOffset.current.y)) > 5) {
-      hasDragged.current = true;
-    }
+      if (
+        Math.abs(clientX - (dragPosition.x + dragOffset.current.x)) > 5 ||
+        Math.abs(clientY - (dragPosition.y + dragOffset.current.y)) > 5
+      ) {
+        hasDragged.current = true;
+      }
 
-    let newX = clientX - dragOffset.current.x;
-    let newY = clientY - dragOffset.current.y;
+      let newX = clientX - dragOffset.current.x;
+      let newY = clientY - dragOffset.current.y;
 
-    const size = buttonState.minimized ? MINIMIZED_SIZE : BUTTON_SIZE;
-    const maxX = window.innerWidth - size;
-    const maxY = getMaxY(buttonState.minimized);
+      const size = buttonState.minimized ? MINIMIZED_SIZE : BUTTON_SIZE;
+      const maxX = window.innerWidth - size;
+      const maxY = getMaxY(buttonState.minimized);
 
-    newX = Math.max(0, Math.min(newX, maxX));
-    newY = Math.max(0, Math.min(newY, maxY));
+      newX = Math.max(0, Math.min(newX, maxX));
+      newY = Math.max(0, Math.min(newY, maxY));
 
-    setDragPosition({ x: newX, y: newY });
-  }, [isDragging, dragPosition, buttonState.minimized, getMaxY]);
+      setDragPosition({ x: newX, y: newY });
+    },
+    [isDragging, dragPosition, buttonState.minimized, getMaxY]
+  );
 
   const handleInteractionStart = (clientX: number, clientY: number) => {
     if (containerRef.current) {
@@ -214,9 +233,12 @@ const DraggableChatbotButton: React.FC = () => {
     e.preventDefault();
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    updatePosition(e.clientX, e.clientY);
-  }, [updatePosition]);
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      updatePosition(e.clientX, e.clientY);
+    },
+    [updatePosition]
+  );
 
   const handleMouseUp = useCallback(() => {
     handleInteractionEnd();
@@ -229,11 +251,14 @@ const DraggableChatbotButton: React.FC = () => {
     }
   }, []);
 
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (e.touches.length === 1) {
-      updatePosition(e.touches[0].clientX, e.touches[0].clientY);
-    }
-  }, [updatePosition]);
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        updatePosition(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    },
+    [updatePosition]
+  );
 
   const handleTouchEnd = useCallback(() => {
     if (isDragging) {
@@ -274,7 +299,9 @@ const DraggableChatbotButton: React.FC = () => {
     if (!element) return;
 
     // Touch events on the element
-    element.addEventListener('touchstart', handleTouchStart, { passive: false });
+    element.addEventListener('touchstart', handleTouchStart, {
+      passive: false,
+    });
 
     // Global touch events for drag tracking
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -291,7 +318,13 @@ const DraggableChatbotButton: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [handleMouseMove, handleMouseUp, handleTouchStart, handleTouchMove, handleTouchEnd]);
+  }, [
+    handleMouseMove,
+    handleMouseUp,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+  ]);
 
   if (!hasAiProvider) {
     return null;
@@ -340,7 +373,11 @@ const DraggableChatbotButton: React.FC = () => {
         top: position.y,
         width: size,
         height: size,
-        transform: isRestoring ? 'scale(1.15)' : (hasAppeared ? 'scale(1)' : 'scale(0.75)'),
+        transform: isRestoring
+          ? 'scale(1.15)'
+          : hasAppeared
+            ? 'scale(1)'
+            : 'scale(0.75)',
       }}
       onMouseDown={handleMouseDown}
       onClick={handleClick}

@@ -2,7 +2,20 @@
 // that reads the contents of the public/locales directory.
 // For this task, we are hardcoding the languages found in the public/locales directory.
 export const getSupportedLanguages = (): string[] => {
-  return ['da', 'de', 'en', 'es', 'fr', 'it', 'nl', 'pt-BR', 'ro', 'sl', 'sv', 'ta'];
+  return [
+    'da',
+    'de',
+    'en',
+    'es',
+    'fr',
+    'it',
+    'nl',
+    'pt-BR',
+    'ro',
+    'sl',
+    'sv',
+    'ta',
+  ];
 };
 
 export const getLanguageDisplayName = (langCode: string): string => {

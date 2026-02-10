@@ -1,4 +1,4 @@
-import { toast } from "@/hooks/use-toast";
+import { toast } from '@/hooks/use-toast';
 import { apiCall } from './api';
 
 // Function to fetch food data provider details from your backend
@@ -7,11 +7,11 @@ const fetchFoodDataProvider = async (providerId: string) => {
     const data = await apiCall(`/external-providers/${providerId}`);
     return data;
   } catch (error) {
-    console.error("Error fetching food data provider:", error);
+    console.error('Error fetching food data provider:', error);
     toast({
-      title: "Error",
+      title: 'Error',
       description: `Failed to retrieve food data provider details: ${error.message}`,
-      variant: "destructive",
+      variant: 'destructive',
     });
     return null;
   }
@@ -56,14 +56,17 @@ interface NutritionixNutrientsResponse {
   foods: NutritionixFoodItem[];
 }
 
-const NUTRITIONIX_API_BASE_URL = "https://trackapi.nutritionix.com/v2";
+const NUTRITIONIX_API_BASE_URL = 'https://trackapi.nutritionix.com/v2';
 
-export const searchNutritionixFoods = async (query: string, defaultFoodDataProviderId: string | null) => {
+export const searchNutritionixFoods = async (
+  query: string,
+  defaultFoodDataProviderId: string | null
+) => {
   if (!defaultFoodDataProviderId) {
     toast({
-      title: "Error",
-      description: "No default Nutritionix provider configured.",
-      variant: "destructive",
+      title: 'Error',
+      description: 'No default Nutritionix provider configured.',
+      variant: 'destructive',
     });
     return [];
   }
@@ -75,23 +78,26 @@ export const searchNutritionixFoods = async (query: string, defaultFoodDataProvi
   }
 
   const headers = {
-    "Content-Type": "application/json",
-    "x-app-id": providerData.app_id,
-    "x-app-key": providerData.app_key,
+    'Content-Type': 'application/json',
+    'x-app-id': providerData.app_id,
+    'x-app-key': providerData.app_key,
   };
 
   try {
-    const data: NutritionixInstantSearchResponse = await apiCall(`${NUTRITIONIX_API_BASE_URL}/search/instant?query=${encodeURIComponent(query)}`, {
-      method: 'GET',
-      headers,
-      externalApi: true,
-    });
+    const data: NutritionixInstantSearchResponse = await apiCall(
+      `${NUTRITIONIX_API_BASE_URL}/search/instant?query=${encodeURIComponent(query)}`,
+      {
+        method: 'GET',
+        headers,
+        externalApi: true,
+      }
+    );
     const commonFoods = (data.common || []).slice(0, 10).map((item) => ({
       id: item.food_name, // Use food_name as a temporary ID for common foods
       name: item.food_name,
       brand: null,
       image: item.photo?.thumb,
-      source: "Nutritionix",
+      source: 'Nutritionix',
       // Basic info, full nutrients will be fetched on selection
       serving_size: 0,
       serving_unit: 'g',
@@ -106,7 +112,7 @@ export const searchNutritionixFoods = async (query: string, defaultFoodDataProvi
       name: item.food_name,
       brand: item.brand_name,
       image: item.photo?.thumb,
-      source: "Nutritionix",
+      source: 'Nutritionix',
       calories: item.nf_calories,
       protein: item.nf_protein || 0,
       carbs: item.nf_total_carbohydrate || 0,
@@ -118,22 +124,25 @@ export const searchNutritionixFoods = async (query: string, defaultFoodDataProvi
     const results = [...commonFoods, ...brandedFoods];
     return results;
   } catch (error) {
-    console.error("Network error during Nutritionix instant search:", error);
+    console.error('Network error during Nutritionix instant search:', error);
     toast({
-      title: "Error",
-      description: "Network error during Nutritionix search. Please try again.",
-      variant: "destructive",
+      title: 'Error',
+      description: 'Network error during Nutritionix search. Please try again.',
+      variant: 'destructive',
     });
     return [];
   }
 };
 
-export const getNutritionixNutrients = async (query: string, defaultFoodDataProviderId: string | null) => {
+export const getNutritionixNutrients = async (
+  query: string,
+  defaultFoodDataProviderId: string | null
+) => {
   if (!defaultFoodDataProviderId) {
     toast({
-      title: "Error",
-      description: "No default Nutritionix provider configured.",
-      variant: "destructive",
+      title: 'Error',
+      description: 'No default Nutritionix provider configured.',
+      variant: 'destructive',
     });
     return null;
   }
@@ -145,18 +154,21 @@ export const getNutritionixNutrients = async (query: string, defaultFoodDataProv
   }
 
   const headers = {
-    "Content-Type": "application/json",
-    "x-app-id": providerData.app_id,
-    "x-app-key": providerData.app_key,
+    'Content-Type': 'application/json',
+    'x-app-id': providerData.app_id,
+    'x-app-key': providerData.app_key,
   };
 
   try {
-    const data: any = await apiCall(`${NUTRITIONIX_API_BASE_URL}/natural/nutrients`, {
-      method: 'POST',
-      headers,
-      body: { query },
-      externalApi: true,
-    });
+    const data: any = await apiCall(
+      `${NUTRITIONIX_API_BASE_URL}/natural/nutrients`,
+      {
+        method: 'POST',
+        headers,
+        body: { query },
+        externalApi: true,
+      }
+    );
     if (data && data.foods && data.foods.length > 0) {
       const food = data.foods[0];
       return {
@@ -185,22 +197,26 @@ export const getNutritionixNutrients = async (query: string, defaultFoodDataProv
     }
     return null;
   } catch (error) {
-    console.error("Network error during Nutritionix nutrient lookup:", error);
+    console.error('Network error during Nutritionix nutrient lookup:', error);
     toast({
-      title: "Error",
-      description: "Network error during Nutritionix nutrient lookup. Please try again.",
-      variant: "destructive",
+      title: 'Error',
+      description:
+        'Network error during Nutritionix nutrient lookup. Please try again.',
+      variant: 'destructive',
     });
     return null;
   }
 };
 
-export const getNutritionixBrandedNutrients = async (nixItemId: string, defaultFoodDataProviderId: string | null) => {
+export const getNutritionixBrandedNutrients = async (
+  nixItemId: string,
+  defaultFoodDataProviderId: string | null
+) => {
   if (!defaultFoodDataProviderId) {
     toast({
-      title: "Error",
-      description: "No default Nutritionix provider configured.",
-      variant: "destructive",
+      title: 'Error',
+      description: 'No default Nutritionix provider configured.',
+      variant: 'destructive',
     });
     return null;
   }
@@ -212,9 +228,9 @@ export const getNutritionixBrandedNutrients = async (nixItemId: string, defaultF
   }
 
   const headers = {
-    "Content-Type": "application/json",
-    "x-app-id": providerData.app_id,
-    "x-app-key": providerData.app_key,
+    'Content-Type': 'application/json',
+    'x-app-id': providerData.app_id,
+    'x-app-key': providerData.app_key,
   };
 
   try {
@@ -252,11 +268,15 @@ export const getNutritionixBrandedNutrients = async (nixItemId: string, defaultF
     }
     return null;
   } catch (error) {
-    console.error("Network error during Nutritionix branded item lookup:", error);
+    console.error(
+      'Network error during Nutritionix branded item lookup:',
+      error
+    );
     toast({
-      title: "Error",
-      description: "Network error during Nutritionix branded item lookup. Please try again.",
-      variant: "destructive",
+      title: 'Error',
+      description:
+        'Network error during Nutritionix branded item lookup. Please try again.',
+      variant: 'destructive',
     });
     return null;
   }

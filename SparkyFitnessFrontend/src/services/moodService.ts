@@ -1,15 +1,25 @@
 import { api } from './api';
 import type { MoodEntry } from '@/types/mood';
 import { debug, info, error } from '@/utils/logging';
-import { getUserLoggingLevel } from "@/utils/userPreferences";
+import { getUserLoggingLevel } from '@/utils/userPreferences';
 
 // Import format from date-fns
 
-export const saveMoodEntry = async (moodValue: number, notes: string, entryDate: string): Promise<MoodEntry> => {
+export const saveMoodEntry = async (
+  moodValue: number,
+  notes: string,
+  entryDate: string
+): Promise<MoodEntry> => {
   try {
     const userLoggingLevel = getUserLoggingLevel();
-    debug(userLoggingLevel, "Sending mood entry:", { mood_value: moodValue, notes, entry_date: entryDate });
-    const response = await api.post('/mood', { body: { mood_value: moodValue, notes, entry_date: entryDate } });
+    debug(userLoggingLevel, 'Sending mood entry:', {
+      mood_value: moodValue,
+      notes,
+      entry_date: entryDate,
+    });
+    const response = await api.post('/mood', {
+      body: { mood_value: moodValue, notes, entry_date: entryDate },
+    });
     return response.data;
   } catch (error) {
     console.error('Error saving mood entry:', error);
@@ -17,30 +27,50 @@ export const saveMoodEntry = async (moodValue: number, notes: string, entryDate:
   }
 };
 
-export const getMoodEntries = async (startDate: string, endDate: string, userId?: string): Promise<MoodEntry[]> => {
+export const getMoodEntries = async (
+  startDate: string,
+  endDate: string,
+  userId?: string
+): Promise<MoodEntry[]> => {
   try {
     const userLoggingLevel = getUserLoggingLevel();
-    debug(userLoggingLevel, "Fetching mood entries:", { userId, startDate, endDate });
+    debug(userLoggingLevel, 'Fetching mood entries:', {
+      userId,
+      startDate,
+      endDate,
+    });
     const params: any = { startDate, endDate };
     if (userId) params.userId = userId;
     const response = await api.get('/mood', {
       params,
     });
     // Log the actual response data from the backend
-    debug(userLoggingLevel, 'moodService: Received response from /mood API:', response);
+    debug(
+      userLoggingLevel,
+      'moodService: Received response from /mood API:',
+      response
+    );
     return response;
   } catch (err) {
-    error(getUserLoggingLevel(), 'moodService: Error fetching mood entries:', err);
+    error(
+      getUserLoggingLevel(),
+      'moodService: Error fetching mood entries:',
+      err
+    );
     throw err;
   }
 };
 
-export const getMoodEntryByDate = async (entryDate: string): Promise<MoodEntry | null> => {
+export const getMoodEntryByDate = async (
+  entryDate: string
+): Promise<MoodEntry | null> => {
   try {
     const userLoggingLevel = getUserLoggingLevel();
-    debug(userLoggingLevel, "Fetching mood entry by date:", { entryDate });
-    const response = await api.get(`/mood/date/${entryDate}`, { suppress404Toast: true });
-    debug(userLoggingLevel, "Response from getMoodEntryByDate API:", response);
+    debug(userLoggingLevel, 'Fetching mood entry by date:', { entryDate });
+    const response = await api.get(`/mood/date/${entryDate}`, {
+      suppress404Toast: true,
+    });
+    debug(userLoggingLevel, 'Response from getMoodEntryByDate API:', response);
     return response;
   } catch (err: any) {
     if (err.message && err.message.includes('404')) {
@@ -52,7 +82,6 @@ export const getMoodEntryByDate = async (entryDate: string): Promise<MoodEntry |
   }
 };
 
-
 export const getMoodEntryById = async (id: string): Promise<MoodEntry> => {
   try {
     const response = await api.get(`/mood/${id}`);
@@ -63,11 +92,23 @@ export const getMoodEntryById = async (id: string): Promise<MoodEntry> => {
   }
 };
 
-export const updateMoodEntry = async (id: string, moodValue: number | null, notes: string, entryDate: string): Promise<MoodEntry> => {
+export const updateMoodEntry = async (
+  id: string,
+  moodValue: number | null,
+  notes: string,
+  entryDate: string
+): Promise<MoodEntry> => {
   try {
     const userLoggingLevel = getUserLoggingLevel();
-    debug(userLoggingLevel, "Updating mood entry:", { id, mood_value: moodValue, notes, entry_date: entryDate });
-    const response = await api.put(`/mood/${id}`, { body: { mood_value: moodValue, notes, entry_date: entryDate } });
+    debug(userLoggingLevel, 'Updating mood entry:', {
+      id,
+      mood_value: moodValue,
+      notes,
+      entry_date: entryDate,
+    });
+    const response = await api.put(`/mood/${id}`, {
+      body: { mood_value: moodValue, notes, entry_date: entryDate },
+    });
     return response.data;
   } catch (error) {
     console.error('Error updating mood entry:', error);

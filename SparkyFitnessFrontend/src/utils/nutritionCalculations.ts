@@ -1,9 +1,11 @@
-
 import type { FoodEntry } from '@/types/food';
 
 // Utility functions for nutrition calculations
 
-export const convertStepsToCalories = (steps: number, weightKg: number = 70): number => {
+export const convertStepsToCalories = (
+  steps: number,
+  weightKg: number = 70
+): number => {
   // More accurate calculation based on weight
   // Formula: steps * 0.04 * (weight in kg / 70)
   const baseCaloriesPerStep = 0.04;
@@ -11,18 +13,24 @@ export const convertStepsToCalories = (steps: number, weightKg: number = 70): nu
   return Math.round(steps * baseCaloriesPerStep * weightAdjustment);
 };
 
-export const estimateStepsFromWalkingExercise = (durationMinutes: number, intensity: 'light' | 'moderate' | 'brisk' = 'moderate'): number => {
+export const estimateStepsFromWalkingExercise = (
+  durationMinutes: number,
+  intensity: 'light' | 'moderate' | 'brisk' = 'moderate'
+): number => {
   // Estimate steps based on walking duration and intensity
   const stepsPerMinute = {
-    light: 80,     // slow walk
+    light: 80, // slow walk
     moderate: 100, // normal pace
-    brisk: 120     // fast walk
+    brisk: 120, // fast walk
   };
-  
+
   return Math.round(durationMinutes * stepsPerMinute[intensity]);
 };
 
-export const calculateNutritionProgress = (actual: number, goal: number): number => {
+export const calculateNutritionProgress = (
+  actual: number,
+  goal: number
+): number => {
   return goal > 0 ? Math.round((actual / goal) * 100) : 0;
 };
 
@@ -43,16 +51,33 @@ export const roundNutritionValue = (value: number): number => {
 
 export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
   // Prefer snapshotted data if available, otherwise calculate from variant/food
-  const source = entry.calories ? entry : entry.food_variants || entry.foods?.default_variant;
+  const source = entry.calories
+    ? entry
+    : entry.food_variants || entry.foods?.default_variant;
 
   if (!source) {
     // Return zero for all nutrients if no source is found
     return {
-      calories: 0, protein: 0, carbs: 0, fat: 0, saturated_fat: 0,
-      polyunsaturated_fat: 0, monounsaturated_fat: 0, trans_fat: 0,
-      cholesterol: 0, sodium: 0, potassium: 0, dietary_fiber: 0,
-      sugars: 0, vitamin_a: 0, vitamin_c: 0, calcium: 0, iron: 0,
-      glycemic_index: 'None', water_ml: 0, custom_nutrients: {}
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      saturated_fat: 0,
+      polyunsaturated_fat: 0,
+      monounsaturated_fat: 0,
+      trans_fat: 0,
+      cholesterol: 0,
+      sodium: 0,
+      potassium: 0,
+      dietary_fiber: 0,
+      sugars: 0,
+      vitamin_a: 0,
+      vitamin_c: 0,
+      calcium: 0,
+      iron: 0,
+      glycemic_index: 'None',
+      water_ml: 0,
+      custom_nutrients: {},
     };
   }
 
@@ -82,33 +107,81 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
 
   // Calculate total nutrition: (nutrient_value_per_reference_size / effective_reference_size) * quantity_consumed
   return {
-    calories: (nutrientValuesPerReferenceSize.calories / effectiveReferenceSize) * entry.quantity,
-    protein: (nutrientValuesPerReferenceSize.protein / effectiveReferenceSize) * entry.quantity,
-    carbs: (nutrientValuesPerReferenceSize.carbs / effectiveReferenceSize) * entry.quantity,
-    fat: (nutrientValuesPerReferenceSize.fat / effectiveReferenceSize) * entry.quantity,
-    saturated_fat: (nutrientValuesPerReferenceSize.saturated_fat / effectiveReferenceSize) * entry.quantity,
-    polyunsaturated_fat: (nutrientValuesPerReferenceSize.polyunsaturated_fat / effectiveReferenceSize) * entry.quantity,
-    monounsaturated_fat: (nutrientValuesPerReferenceSize.monounsaturated_fat / effectiveReferenceSize) * entry.quantity,
-    trans_fat: (nutrientValuesPerReferenceSize.trans_fat / effectiveReferenceSize) * entry.quantity,
-    cholesterol: (nutrientValuesPerReferenceSize.cholesterol / effectiveReferenceSize) * entry.quantity,
-    sodium: (nutrientValuesPerReferenceSize.sodium / effectiveReferenceSize) * entry.quantity,
-    potassium: (nutrientValuesPerReferenceSize.potassium / effectiveReferenceSize) * entry.quantity,
-    dietary_fiber: (nutrientValuesPerReferenceSize.dietary_fiber / effectiveReferenceSize) * entry.quantity,
-    sugars: (nutrientValuesPerReferenceSize.sugars / effectiveReferenceSize) * entry.quantity,
-    vitamin_a: (nutrientValuesPerReferenceSize.vitamin_a / effectiveReferenceSize) * entry.quantity,
-    vitamin_c: (nutrientValuesPerReferenceSize.vitamin_c / effectiveReferenceSize) * entry.quantity,
-    calcium: (nutrientValuesPerReferenceSize.calcium / effectiveReferenceSize) * entry.quantity,
-    iron: (nutrientValuesPerReferenceSize.iron / effectiveReferenceSize) * entry.quantity,
+    calories:
+      (nutrientValuesPerReferenceSize.calories / effectiveReferenceSize) *
+      entry.quantity,
+    protein:
+      (nutrientValuesPerReferenceSize.protein / effectiveReferenceSize) *
+      entry.quantity,
+    carbs:
+      (nutrientValuesPerReferenceSize.carbs / effectiveReferenceSize) *
+      entry.quantity,
+    fat:
+      (nutrientValuesPerReferenceSize.fat / effectiveReferenceSize) *
+      entry.quantity,
+    saturated_fat:
+      (nutrientValuesPerReferenceSize.saturated_fat / effectiveReferenceSize) *
+      entry.quantity,
+    polyunsaturated_fat:
+      (nutrientValuesPerReferenceSize.polyunsaturated_fat /
+        effectiveReferenceSize) *
+      entry.quantity,
+    monounsaturated_fat:
+      (nutrientValuesPerReferenceSize.monounsaturated_fat /
+        effectiveReferenceSize) *
+      entry.quantity,
+    trans_fat:
+      (nutrientValuesPerReferenceSize.trans_fat / effectiveReferenceSize) *
+      entry.quantity,
+    cholesterol:
+      (nutrientValuesPerReferenceSize.cholesterol / effectiveReferenceSize) *
+      entry.quantity,
+    sodium:
+      (nutrientValuesPerReferenceSize.sodium / effectiveReferenceSize) *
+      entry.quantity,
+    potassium:
+      (nutrientValuesPerReferenceSize.potassium / effectiveReferenceSize) *
+      entry.quantity,
+    dietary_fiber:
+      (nutrientValuesPerReferenceSize.dietary_fiber / effectiveReferenceSize) *
+      entry.quantity,
+    sugars:
+      (nutrientValuesPerReferenceSize.sugars / effectiveReferenceSize) *
+      entry.quantity,
+    vitamin_a:
+      (nutrientValuesPerReferenceSize.vitamin_a / effectiveReferenceSize) *
+      entry.quantity,
+    vitamin_c:
+      (nutrientValuesPerReferenceSize.vitamin_c / effectiveReferenceSize) *
+      entry.quantity,
+    calcium:
+      (nutrientValuesPerReferenceSize.calcium / effectiveReferenceSize) *
+      entry.quantity,
+    iron:
+      (nutrientValuesPerReferenceSize.iron / effectiveReferenceSize) *
+      entry.quantity,
     glycemic_index: nutrientValuesPerReferenceSize.glycemic_index, // Pass through glycemic_index
-    water_ml: (entry.unit === 'ml' || entry.unit === 'liter' || entry.unit === 'oz') ? entry.quantity : 0, // Assuming water is tracked in ml, liter, or oz
-    custom_nutrients: Object.entries(nutrientValuesPerReferenceSize.custom_nutrients).reduce((acc, [key, value]) => {
-      acc[key] = (Number(value) / effectiveReferenceSize) * entry.quantity;
-      return acc;
-    }, {} as Record<string, number>),
+    water_ml:
+      entry.unit === 'ml' || entry.unit === 'liter' || entry.unit === 'oz'
+        ? entry.quantity
+        : 0, // Assuming water is tracked in ml, liter, or oz
+    custom_nutrients: Object.entries(
+      nutrientValuesPerReferenceSize.custom_nutrients
+    ).reduce(
+      (acc, [key, value]) => {
+        acc[key] = (Number(value) / effectiveReferenceSize) * entry.quantity;
+        return acc;
+      },
+      {} as Record<string, number>
+    ),
   };
 };
 
-export const convertMlToSelectedUnit = (ml: number | null | undefined, unit: 'ml' | 'oz' | 'liter'): number => { // Removed 'cup' from type
+export const convertMlToSelectedUnit = (
+  ml: number | null | undefined,
+  unit: 'ml' | 'oz' | 'liter'
+): number => {
+  // Removed 'cup' from type
   const safeMl = typeof ml === 'number' && !isNaN(ml) ? ml : 0;
   let convertedValue: number;
   switch (unit) {

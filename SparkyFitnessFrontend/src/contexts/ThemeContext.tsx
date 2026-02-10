@@ -1,4 +1,3 @@
-
 import type React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { info } from '@/utils/logging';
@@ -27,17 +26,25 @@ import { usePreferences } from './PreferencesContext';
 
 const getSystemTheme = (): ResolvedTheme => {
   if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
   }
   return 'light';
 };
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { loggingLevel } = usePreferences();
   const [theme, setThemeState] = useState<ThemeSetting>(() => {
     const saved = localStorage.getItem('theme');
     const initialTheme = (saved as ThemeSetting) || 'system';
-    info(loggingLevel, "ThemeProvider: Initial theme loaded from localStorage:", initialTheme);
+    info(
+      loggingLevel,
+      'ThemeProvider: Initial theme loaded from localStorage:',
+      initialTheme
+    );
     return initialTheme;
   });
 
@@ -56,7 +63,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e: MediaQueryListEvent) => {
       const newResolvedTheme = e.matches ? 'dark' : 'light';
-      info(loggingLevel, "ThemeProvider: System theme changed to:", newResolvedTheme);
+      info(
+        loggingLevel,
+        'ThemeProvider: System theme changed to:',
+        newResolvedTheme
+      );
       setResolvedTheme(newResolvedTheme);
     };
 
@@ -75,7 +86,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Apply theme to DOM
   useEffect(() => {
-    info(loggingLevel, "ThemeProvider: Theme changed, updating localStorage and DOM.", theme, "resolved:", resolvedTheme);
+    info(
+      loggingLevel,
+      'ThemeProvider: Theme changed, updating localStorage and DOM.',
+      theme,
+      'resolved:',
+      resolvedTheme
+    );
     localStorage.setItem('theme', theme);
     if (resolvedTheme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -85,20 +102,23 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [theme, resolvedTheme, loggingLevel]);
 
   const setTheme = (newTheme: ThemeSetting) => {
-    info(loggingLevel, "ThemeProvider: Setting theme to:", newTheme);
+    info(loggingLevel, 'ThemeProvider: Setting theme to:', newTheme);
     setThemeState(newTheme);
   };
 
   const toggleTheme = () => {
-    setThemeState(prev => {
-      const newTheme = prev === 'light' ? 'dark' : prev === 'dark' ? 'system' : 'light';
-      info(loggingLevel, "ThemeProvider: Toggling theme to:", newTheme);
+    setThemeState((prev) => {
+      const newTheme =
+        prev === 'light' ? 'dark' : prev === 'dark' ? 'system' : 'light';
+      info(loggingLevel, 'ThemeProvider: Toggling theme to:', newTheme);
       return newTheme;
     });
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, resolvedTheme, setTheme, toggleTheme }}
+    >
       {children}
     </ThemeContext.Provider>
   );

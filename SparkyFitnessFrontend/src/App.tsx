@@ -1,47 +1,47 @@
-import type React from "react";
-import { useState, useEffect, lazy, Suspense } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PreferencesProvider } from "@/contexts/PreferencesContext";
-import { ChatbotVisibilityProvider } from "@/contexts/ChatbotVisibilityContext";
-import LanguageHandler from "@/components/LanguageHandler";
-import { WaterContainerProvider } from "@/contexts/WaterContainerContext";
-import { ActiveUserProvider } from "@/contexts/ActiveUserContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import DraggableChatbotButton from "@/components/DraggableChatbotButton";
-import AboutDialog from "@/components/AboutDialog";
-import NewReleaseDialog from "@/components/NewReleaseDialog";
-import AppSetup from "@/components/AppSetup";
-import axios from "axios";
-import { Toaster } from "@/components/ui/toaster";
-import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { FastingProvider } from "@/contexts/FastingContext";
-import OidcCallback from "@/components/OidcCallback";
-import { useActiveUser } from "./contexts/ActiveUserContext";
-const Auth = lazy(() => import("@/pages/Auth/Auth"));
-const ForgotPassword = lazy(() => import("@/pages/Auth/ForgotPassword"));
-const ResetPassword = lazy(() => import("@/pages/Auth/ResetPassword"));
-const Index = lazy(() => import("@/pages/Index"));
-const Diary = lazy(() => import("@/pages/Diary/Diary"));
-const CheckIn = lazy(() => import("./pages/CheckIn/CheckIn"));
-const FoodDatabaseManager = lazy(() => import("./pages/Foods/Foods"));
-const Reports = lazy(() => import("./pages/Reports/Reports"));
+import type React from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { PreferencesProvider } from '@/contexts/PreferencesContext';
+import { ChatbotVisibilityProvider } from '@/contexts/ChatbotVisibilityContext';
+import LanguageHandler from '@/components/LanguageHandler';
+import { WaterContainerProvider } from '@/contexts/WaterContainerContext';
+import { ActiveUserProvider } from '@/contexts/ActiveUserContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import DraggableChatbotButton from '@/components/DraggableChatbotButton';
+import AboutDialog from '@/components/AboutDialog';
+import NewReleaseDialog from '@/components/NewReleaseDialog';
+import AppSetup from '@/components/AppSetup';
+import axios from 'axios';
+import { Toaster } from '@/components/ui/toaster';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { FastingProvider } from '@/contexts/FastingContext';
+import OidcCallback from '@/components/OidcCallback';
+import { useActiveUser } from './contexts/ActiveUserContext';
+const Auth = lazy(() => import('@/pages/Auth/Auth'));
+const ForgotPassword = lazy(() => import('@/pages/Auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/Auth/ResetPassword'));
+const Index = lazy(() => import('@/pages/Index'));
+const Diary = lazy(() => import('@/pages/Diary/Diary'));
+const CheckIn = lazy(() => import('./pages/CheckIn/CheckIn'));
+const FoodDatabaseManager = lazy(() => import('./pages/Foods/Foods'));
+const Reports = lazy(() => import('./pages/Reports/Reports'));
 const ExerciseDatabaseManager = lazy(
-  () => import("./pages/Exercises/Exercises"),
+  () => import('./pages/Exercises/Exercises')
 );
-const GoalsSettings = lazy(() => import("./pages/Goals/Goals"));
-const Settings = lazy(() => import("./pages/Settings/SettingsPage"));
-const AdminPage = lazy(() => import("./pages/Admin/Admin"));
-const UserManagement = lazy(() => import("@/pages/Admin/UserManagement"));
+const GoalsSettings = lazy(() => import('./pages/Goals/Goals'));
+const Settings = lazy(() => import('./pages/Settings/SettingsPage'));
+const AdminPage = lazy(() => import('./pages/Admin/Admin'));
+const UserManagement = lazy(() => import('@/pages/Admin/UserManagement'));
 const AuthenticationSettings = lazy(
-  () => import("@/pages/Admin/AuthenticationSettings"),
+  () => import('@/pages/Admin/AuthenticationSettings')
 );
-const NotFound = lazy(() => import("@/pages/Errors/NotFound"));
+const NotFound = lazy(() => import('@/pages/Errors/NotFound'));
 const WithingsCallback = lazy(
-  () => import("@/pages/Integrations/WithingsCallback"),
+  () => import('@/pages/Integrations/WithingsCallback')
 );
 const FitbitCallback = lazy(
-  () => import("@/pages/Integrations/FitbitCallback"),
+  () => import('@/pages/Integrations/FitbitCallback')
 );
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -96,31 +96,31 @@ const App = () => {
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const [latestRelease, setLatestRelease] = useState(null);
   const [showNewReleaseDialog, setShowNewReleaseDialog] = useState(false);
-  const [appVersion, setAppVersion] = useState("unknown");
+  const [appVersion, setAppVersion] = useState('unknown');
 
   useEffect(() => {
     // Other useEffects like network intercept, reload detection, etc. can remain
     const fetchVersion = async () => {
       try {
-        const response = await axios.get("/api/version/current");
+        const response = await axios.get('/api/version/current');
         setAppVersion(response.data.version);
       } catch (error) {
-        console.error("Error fetching app version:", error);
+        console.error('Error fetching app version:', error);
       }
     };
     fetchVersion();
   }, []);
 
   const handleDismissRelease = (version: string) => {
-    localStorage.setItem("dismissedReleaseVersion", version);
+    localStorage.setItem('dismissedReleaseVersion', version);
     setShowNewReleaseDialog(false);
   };
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (window.location.pathname.includes("//")) {
-      const normalizedPath = window.location.pathname.replace(/\/+/g, "/");
+    if (window.location.pathname.includes('//')) {
+      const normalizedPath = window.location.pathname.replace(/\/+/g, '/');
       navigate(normalizedPath + window.location.search, { replace: true });
     }
   }, [navigate]);

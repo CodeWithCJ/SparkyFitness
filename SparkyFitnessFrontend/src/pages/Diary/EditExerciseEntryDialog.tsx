@@ -1,21 +1,31 @@
-
-import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
-import { usePreferences } from "@/contexts/PreferencesContext";
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/hooks/use-toast';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
 import { formatWeight } from '@/utils/numberFormatting';
 import { fetchExerciseDetails } from '@/services/editExerciseEntryService';
-import { updateExerciseEntry, type ExerciseEntry } from '@/services/exerciseEntryService';
-import type { WorkoutPresetSet } from "@/types/workout";
-import { excerciseWorkoutSetTypes } from "@/constants/excerciseWorkoutSetTypes";
-import ExerciseActivityDetailsEditor, { type ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor';
+import {
+  updateExerciseEntry,
+  type ExerciseEntry,
+} from '@/services/exerciseEntryService';
+import type { WorkoutPresetSet } from '@/types/workout';
+import { excerciseWorkoutSetTypes } from '@/constants/excerciseWorkoutSetTypes';
+import ExerciseActivityDetailsEditor, {
+  type ActivityDetailKeyValuePair,
+} from '@/components/ExerciseActivityDetailsEditor';
 import {
   DndContext,
   closestCenter,
@@ -24,14 +34,14 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-} from "@dnd-kit/core";
+} from '@dnd-kit/core';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   arrayMove,
   useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   GripVertical,
   Copy,
@@ -41,10 +51,15 @@ import {
   Timer,
   Plus,
   XCircle,
-} from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import ExerciseHistoryDisplay from "@/components/ExerciseHistoryDisplay";
-
+} from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import ExerciseHistoryDisplay from '@/components/ExerciseHistoryDisplay';
 
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;
@@ -91,19 +106,28 @@ const SortableSetItem = React.memo(
           </div>
           <div className="grid grid-cols-1 md:grid-cols-8 gap-2 flex-grow items-center">
             <div className="md:col-span-1">
-              <Label>{t('exercise.editExerciseEntryDialog.setLabel', 'Set')}</Label>
+              <Label>
+                {t('exercise.editExerciseEntryDialog.setLabel', 'Set')}
+              </Label>
               <p className="font-medium p-2">{set.set_number}</p>
             </div>
             <div className="md:col-span-2">
-              <Label>{t('exercise.editExerciseEntryDialog.typeLabel', 'Type')}</Label>
+              <Label>
+                {t('exercise.editExerciseEntryDialog.typeLabel', 'Type')}
+              </Label>
               <Select
                 value={set.set_type}
                 onValueChange={(value) =>
-                  handleSetChange(setIndex, "set_type", value)
+                  handleSetChange(setIndex, 'set_type', value)
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={t('exercise.editExerciseEntryDialog.setTypePlaceholder', 'Set Type')} />
+                  <SelectValue
+                    placeholder={t(
+                      'exercise.editExerciseEntryDialog.setTypePlaceholder',
+                      'Set Type'
+                    )}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {excerciseWorkoutSetTypes.map((type) => (
@@ -115,22 +139,16 @@ const SortableSetItem = React.memo(
               </Select>
             </div>
             <div className="md:col-span-1">
-              <Label
-                htmlFor={`reps-${setIndex}`}
-                className="flex items-center"
-              >
-                <Repeat
-                  className="h-4 w-4 mr-1"
-                  style={{ color: "#3b82f6" }}
-                />{" "}
+              <Label htmlFor={`reps-${setIndex}`} className="flex items-center">
+                <Repeat className="h-4 w-4 mr-1" style={{ color: '#3b82f6' }} />{' '}
                 {t('exercise.editExerciseEntryDialog.repsLabel', 'Reps')}
               </Label>
               <Input
                 id={`reps-${setIndex}`}
                 type="number"
-                value={set.reps ?? ""}
+                value={set.reps ?? ''}
                 onChange={(e) =>
-                  handleSetChange(setIndex, "reps", Number(e.target.value))
+                  handleSetChange(setIndex, 'reps', Number(e.target.value))
                 }
               />
             </div>
@@ -141,16 +159,21 @@ const SortableSetItem = React.memo(
               >
                 <Dumbbell
                   className="h-4 w-4 mr-1"
-                  style={{ color: "#ef4444" }}
-                />{" "}
-                {t('exercise.editExerciseEntryDialog.weightLabel', 'Weight')} ({weightUnit})
+                  style={{ color: '#ef4444' }}
+                />{' '}
+                {t('exercise.editExerciseEntryDialog.weightLabel', 'Weight')} (
+                {weightUnit})
               </Label>
               <Input
                 id={`weight-${setIndex}`}
                 type="number"
-                value={set.weight !== undefined && set.weight !== null ? formatWeight(set.weight) : ""}
+                value={
+                  set.weight !== undefined && set.weight !== null
+                    ? formatWeight(set.weight)
+                    : ''
+                }
                 onChange={(e) =>
-                  handleSetChange(setIndex, "weight", Number(e.target.value))
+                  handleSetChange(setIndex, 'weight', Number(e.target.value))
                 }
               />
             </div>
@@ -159,42 +182,32 @@ const SortableSetItem = React.memo(
                 htmlFor={`duration-${setIndex}`}
                 className="flex items-center"
               >
-                <Timer
-                  className="h-4 w-4 mr-1"
-                  style={{ color: "#f97316" }}
-                />{" "}
-                {t('exercise.editExerciseEntryDialog.durationLabel', 'Duration (min)')}
+                <Timer className="h-4 w-4 mr-1" style={{ color: '#f97316' }} />{' '}
+                {t(
+                  'exercise.editExerciseEntryDialog.durationLabel',
+                  'Duration (min)'
+                )}
               </Label>
               <Input
                 id={`duration-${setIndex}`}
                 type="number"
-                value={set.duration ?? ""}
+                value={set.duration ?? ''}
                 onChange={(e) =>
-                  handleSetChange(setIndex, "duration", Number(e.target.value))
+                  handleSetChange(setIndex, 'duration', Number(e.target.value))
                 }
               />
             </div>
             <div className="md:col-span-1">
-              <Label
-                htmlFor={`rest-${setIndex}`}
-                className="flex items-center"
-              >
-                <Timer
-                  className="h-4 w-4 mr-1"
-                  style={{ color: "#8b5cf6" }}
-                />{" "}
+              <Label htmlFor={`rest-${setIndex}`} className="flex items-center">
+                <Timer className="h-4 w-4 mr-1" style={{ color: '#8b5cf6' }} />{' '}
                 {t('exercise.editExerciseEntryDialog.restLabel', 'Rest (s)')}
               </Label>
               <Input
                 id={`rest-${setIndex}`}
                 type="number"
-                value={set.rest_time ?? ""}
+                value={set.rest_time ?? ''}
                 onChange={(e) =>
-                  handleSetChange(
-                    setIndex,
-                    "rest_time",
-                    Number(e.target.value)
-                  )
+                  handleSetChange(setIndex, 'rest_time', Number(e.target.value))
                 }
               />
             </div>
@@ -217,11 +230,13 @@ const SortableSetItem = React.memo(
           </div>
         </div>
         <div className="pl-8">
-          <Label htmlFor={`notes-${setIndex}`}>{t('exercise.editExerciseEntryDialog.notesLabel', 'Notes')}</Label>
+          <Label htmlFor={`notes-${setIndex}`}>
+            {t('exercise.editExerciseEntryDialog.notesLabel', 'Notes')}
+          </Label>
           <Textarea
             id={`notes-${setIndex}`}
-            value={set.notes ?? ""}
-            onChange={(e) => handleSetChange(setIndex, "notes", e.target.value)}
+            value={set.notes ?? ''}
+            onChange={(e) => handleSetChange(setIndex, 'notes', e.target.value)}
             className="h-16"
           />
         </div>
@@ -237,59 +252,115 @@ const EditExerciseEntryDialog = ({
   onSave,
 }: EditExerciseEntryDialogProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, weightUnit, distanceUnit, convertWeight, convertDistance } = usePreferences();
+  const {
+    loggingLevel,
+    weightUnit,
+    distanceUnit,
+    convertWeight,
+    convertDistance,
+  } = usePreferences();
   debug(
     loggingLevel,
-    "EditExerciseEntry_v2: Component rendered for entry:",
+    'EditExerciseEntry_v2: Component rendered for entry:',
     entry.id
   );
 
   const [sets, setSets] = useState<WorkoutPresetSet[]>(
     (entry.sets as WorkoutPresetSet[]) || []
   );
-  const [notes, setNotes] = useState(entry.notes || "");
-  const [imageUrl, setImageUrl] = useState<string | null>(entry.image_url || null);
+  const [notes, setNotes] = useState(entry.notes || '');
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    entry.image_url || null
+  );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(entry.calories_burned || '');
-  const [distanceInput, setDistanceInput] = useState<number | ''>(entry.distance || '');
-  const [avgHeartRateInput, setAvgHeartRateInput] = useState<number | ''>(entry.avg_heart_rate || '');
-  const [activityDetails, setActivityDetails] = useState<ActivityDetailKeyValuePair[]>([]); // New state for activity details
+  const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(
+    entry.calories_burned || ''
+  );
+  const [distanceInput, setDistanceInput] = useState<number | ''>(
+    entry.distance || ''
+  );
+  const [avgHeartRateInput, setAvgHeartRateInput] = useState<number | ''>(
+    entry.avg_heart_rate || ''
+  );
+  const [activityDetails, setActivityDetails] = useState<
+    ActivityDetailKeyValuePair[]
+  >([]); // New state for activity details
   const [showCaloriesWarning, setShowCaloriesWarning] = useState(false);
   useEffect(() => {
     debug(
       loggingLevel,
-      "EditExerciseEntryDialog: entry useEffect triggered. Initializing form fields.",
-      { entry, caloriesBurned: entry.calories_burned, activityDetails: entry.activity_details }
+      'EditExerciseEntryDialog: entry useEffect triggered. Initializing form fields.',
+      {
+        entry,
+        caloriesBurned: entry.calories_burned,
+        activityDetails: entry.activity_details,
+      }
     );
     setSets(
-      ((entry.sets as WorkoutPresetSet[]) || []).map(set => {
-        debug(loggingLevel, `EditExerciseEntryDialog: Initial set weight (before conversion): ${set.weight}`);
+      ((entry.sets as WorkoutPresetSet[]) || []).map((set) => {
+        debug(
+          loggingLevel,
+          `EditExerciseEntryDialog: Initial set weight (before conversion): ${set.weight}`
+        );
         const convertedWeight = convertWeight(set.weight, 'kg', weightUnit);
-        debug(loggingLevel, `EditExerciseEntryDialog: Converted weight (after conversion, before rounding): ${convertedWeight}`);
+        debug(
+          loggingLevel,
+          `EditExerciseEntryDialog: Converted weight (after conversion, before rounding): ${convertedWeight}`
+        );
         return {
           ...set,
-          weight: convertedWeight
+          weight: convertedWeight,
         };
       })
     );
-    setNotes(entry.notes || "");
+    setNotes(entry.notes || '');
     setImageUrl(entry.image_url || null);
     setImageFile(null);
-    setCaloriesBurnedInput(entry.calories_burned !== null && entry.calories_burned !== undefined ? entry.calories_burned : '');
-    setDistanceInput(entry.distance ? Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1)) : '');
-    setAvgHeartRateInput(entry.avg_heart_rate !== null && entry.avg_heart_rate !== undefined ? entry.avg_heart_rate : '');
+    setCaloriesBurnedInput(
+      entry.calories_burned !== null && entry.calories_burned !== undefined
+        ? entry.calories_burned
+        : ''
+    );
+    setDistanceInput(
+      entry.distance
+        ? Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1))
+        : ''
+    );
+    setAvgHeartRateInput(
+      entry.avg_heart_rate !== null && entry.avg_heart_rate !== undefined
+        ? entry.avg_heart_rate
+        : ''
+    );
     // Initialize activity details from entry
     setActivityDetails(entry.activity_details || []);
-  }, [entry, loggingLevel, weightUnit, distanceUnit, convertWeight, convertDistance]);
+  }, [
+    entry,
+    loggingLevel,
+    weightUnit,
+    distanceUnit,
+    convertWeight,
+    convertDistance,
+  ]);
 
   useEffect(() => {
-    debug(loggingLevel, "EditExerciseEntryDialog - Current State: notes=", notes, "imageUrl=", imageUrl, "imageFile=", imageFile);
+    debug(
+      loggingLevel,
+      'EditExerciseEntryDialog - Current State: notes=',
+      notes,
+      'imageUrl=',
+      imageUrl,
+      'imageFile=',
+      imageFile
+    );
   }, [notes, imageUrl, imageFile]);
 
   useEffect(() => {
     // When sets change, clear the calories burned input to trigger recalculation
-    debug(loggingLevel, "EditExerciseEntryDialog: sets useEffect triggered. Sets changed, clearing caloriesBurnedInput.");
+    debug(
+      loggingLevel,
+      'EditExerciseEntryDialog: sets useEffect triggered. Sets changed, clearing caloriesBurnedInput.'
+    );
     if (sets.length > 0 && !entry.calories_burned) {
       setCaloriesBurnedInput('');
       setShowCaloriesWarning(true);
@@ -314,7 +385,10 @@ const EditExerciseEntryDialog = ({
     field: keyof WorkoutPresetSet,
     value: any
   ) => {
-    debug(loggingLevel, `[EditExerciseEntryDialog] handleSetChange: index=${setIndex}, field=${field}, value=${value}, weightUnit=${weightUnit}`);
+    debug(
+      loggingLevel,
+      `[EditExerciseEntryDialog] handleSetChange: index=${setIndex}, field=${field}, value=${value}, weightUnit=${weightUnit}`
+    );
     setSets((prev) =>
       prev.map((set, sIndex) => {
         if (sIndex !== setIndex) {
@@ -327,7 +401,15 @@ const EditExerciseEntryDialog = ({
 
   const handleAddSet = () => {
     setSets((prev) => {
-      const lastSet = prev.length > 0 ? prev[prev.length - 1] : { set_number: 0, set_type: 'Working Set' as const, reps: 10, weight: 0 };
+      const lastSet =
+        prev.length > 0
+          ? prev[prev.length - 1]
+          : {
+              set_number: 0,
+              set_type: 'Working Set' as const,
+              reps: 10,
+              weight: 0,
+            };
       const newSet: WorkoutPresetSet = {
         ...lastSet,
         set_number: prev.length + 1,
@@ -366,12 +448,8 @@ const EditExerciseEntryDialog = ({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = sets.findIndex(
-        (s, i) => `set-${i}` === active.id
-      );
-      const newIndex = sets.findIndex(
-        (s, i) => `set-${i}` === over.id
-      );
+      const oldIndex = sets.findIndex((s, i) => `set-${i}` === active.id);
+      const newIndex = sets.findIndex((s, i) => `set-${i}` === over.id);
       setSets((items) => {
         const reorderedSets = arrayMove(items, oldIndex, newIndex);
         return reorderedSets.map((set, index) => ({
@@ -385,7 +463,7 @@ const EditExerciseEntryDialog = ({
   const handleSave = async () => {
     info(
       loggingLevel,
-      "EditExerciseEntryDialog: Attempting to save changes for entry:",
+      'EditExerciseEntryDialog: Attempting to save changes for entry:',
       entry.id
     );
     setLoading(true);
@@ -393,13 +471,16 @@ const EditExerciseEntryDialog = ({
     try {
       debug(
         loggingLevel,
-        "EditExerciseEntryDialog: Fetching exercise details for recalculation:",
+        'EditExerciseEntryDialog: Fetching exercise details for recalculation:',
         entry.exercise_id
       );
       const exerciseData = await fetchExerciseDetails(entry.exercise_id);
 
       const caloriesPerHour = exerciseData?.calories_per_hour || 300;
-      const totalDurationFromSets = sets.reduce((acc, set) => acc + (set.duration || 0), 0);
+      const totalDurationFromSets = sets.reduce(
+        (acc, set) => acc + (set.duration || 0),
+        0
+      );
       const totalDuration = totalDurationFromSets;
 
       let caloriesBurned;
@@ -411,7 +492,7 @@ const EditExerciseEntryDialog = ({
 
       debug(
         loggingLevel,
-        "EditExerciseEntryDialog: Final calories burned:",
+        'EditExerciseEntryDialog: Final calories burned:',
         caloriesBurned
       );
 
@@ -419,15 +500,19 @@ const EditExerciseEntryDialog = ({
         duration_minutes: totalDuration,
         calories_burned: caloriesBurned,
         notes: notes,
-        sets: sets.map(set => ({
+        sets: sets.map((set) => ({
           ...set,
-          weight: convertWeight(set.weight, weightUnit, 'kg')
+          weight: convertWeight(set.weight, weightUnit, 'kg'),
         })),
         imageFile: imageFile,
         image_url: imageUrl,
-        distance: distanceInput === '' ? null : convertDistance(Number(distanceInput), distanceUnit, 'km'),
-        avg_heart_rate: avgHeartRateInput === '' ? null : Number(avgHeartRateInput),
-        activity_details: activityDetails.map(detail => ({
+        distance:
+          distanceInput === ''
+            ? null
+            : convertDistance(Number(distanceInput), distanceUnit, 'km'),
+        avg_heart_rate:
+          avgHeartRateInput === '' ? null : Number(avgHeartRateInput),
+        activity_details: activityDetails.map((detail) => ({
           id: detail.id,
           provider_name: detail.provider_name,
           detail_type: detail.key, // Use key as detail_type
@@ -437,31 +522,37 @@ const EditExerciseEntryDialog = ({
 
       info(
         loggingLevel,
-        "EditExerciseEntryDialog: Exercise entry updated successfully:",
+        'EditExerciseEntryDialog: Exercise entry updated successfully:',
         entry.id
       );
       toast({
         title: t('common.success', 'Success'),
-        description: t('exercise.editExerciseEntryDialog.updateSuccess', 'Exercise entry updated successfully.'),
+        description: t(
+          'exercise.editExerciseEntryDialog.updateSuccess',
+          'Exercise entry updated successfully.'
+        ),
       });
       onOpenChange(false);
       onSave();
     } catch (err) {
       error(
         loggingLevel,
-        "EditExerciseEntryDialog: Error updating exercise entry:",
+        'EditExerciseEntryDialog: Error updating exercise entry:',
         err
       );
       toast({
         title: t('common.error', 'Error'),
-        description: t('exercise.editExerciseEntryDialog.updateError', 'Failed to update exercise entry.'),
-        variant: "destructive",
+        description: t(
+          'exercise.editExerciseEntryDialog.updateError',
+          'Failed to update exercise entry.'
+        ),
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
       debug(
         loggingLevel,
-        "EditExerciseEntryDialog: Loading state set to false."
+        'EditExerciseEntryDialog: Loading state set to false.'
       );
     }
   };
@@ -472,7 +563,7 @@ const EditExerciseEntryDialog = ({
       onOpenChange={(open) => {
         debug(
           loggingLevel,
-          "EditExerciseEntryDialog: Dialog open state changed:",
+          'EditExerciseEntryDialog: Dialog open state changed:',
           open
         );
         onOpenChange(open);
@@ -480,28 +571,50 @@ const EditExerciseEntryDialog = ({
     >
       <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t('exercise.editExerciseEntryDialog.title', 'Edit Exercise Entry')}</DialogTitle>
+          <DialogTitle>
+            {t('exercise.editExerciseEntryDialog.title', 'Edit Exercise Entry')}
+          </DialogTitle>
           <DialogDescription>
-            {t('exercise.editExerciseEntryDialog.description', 'Make changes to your exercise entry here. Click save when you\'re done.')}
+            {t(
+              'exercise.editExerciseEntryDialog.description',
+              "Make changes to your exercise entry here. Click save when you're done."
+            )}
           </DialogDescription>
         </DialogHeader>
 
         {showCaloriesWarning && (
-          <Alert variant="default" className="bg-yellow-100 border-yellow-400 text-yellow-700 p-0.25 relative">
+          <Alert
+            variant="default"
+            className="bg-yellow-100 border-yellow-400 text-yellow-700 p-0.25 relative"
+          >
             <AlertDescription>
-              {t('exercise.editExerciseEntryDialog.caloriesWarning', 'Calories burned will be recalculated on save. Enter a value to override.')}
+              {t(
+                'exercise.editExerciseEntryDialog.caloriesWarning',
+                'Calories burned will be recalculated on save. Enter a value to override.'
+              )}
             </AlertDescription>
-            <button onClick={() => setShowCaloriesWarning(false)} className="absolute top-1/2 right-2 -translate-y-1/2">
+            <button
+              onClick={() => setShowCaloriesWarning(false)}
+              className="absolute top-1/2 right-2 -translate-y-1/2"
+            >
               <X className="h-4 w-4" />
             </button>
           </Alert>
         )}
         <div className="space-y-2">
           <div>
-            <Label htmlFor="exercise-name">{t('exercise.editExerciseEntryDialog.exerciseLabel', 'Exercise')}</Label>
+            <Label htmlFor="exercise-name">
+              {t('exercise.editExerciseEntryDialog.exerciseLabel', 'Exercise')}
+            </Label>
             <Input
               id="exercise-name"
-              value={entry.exercise_snapshot?.name || t('exercise.editExerciseEntryDialog.unknownExercise', 'Unknown Exercise')}
+              value={
+                entry.exercise_snapshot?.name ||
+                t(
+                  'exercise.editExerciseEntryDialog.unknownExercise',
+                  'Unknown Exercise'
+                )
+              }
               disabled
               className="bg-gray-100 dark:bg-gray-800"
             />
@@ -513,11 +626,9 @@ const EditExerciseEntryDialog = ({
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <SortableContext
-                items={sets.map((_, i) => `set-${i}`)}
-              >
+              <SortableContext items={sets.map((_, i) => `set-${i}`)}>
                 <div className="space-y-2">
-                   {sets.map((set, setIndex) => (
+                  {sets.map((set, setIndex) => (
                     <SortableSetItem
                       key={`set-${setIndex}`}
                       set={set}
@@ -533,19 +644,32 @@ const EditExerciseEntryDialog = ({
             </DndContext>
           )}
           <Button type="button" variant="outline" onClick={handleAddSet}>
-            <Plus className="h-4 w-4 mr-2" /> {t('exercise.editExerciseEntryDialog.addSetButton', 'Add Set')}
+            <Plus className="h-4 w-4 mr-2" />{' '}
+            {t('exercise.editExerciseEntryDialog.addSetButton', 'Add Set')}
           </Button>
           <ExerciseHistoryDisplay exerciseId={entry.exercise_id} />
 
           <div>
-            <Label htmlFor="calories-burned">{t('exercise.editExerciseEntryDialog.caloriesBurnedOptionalLabel', 'Calories Burned (Optional)')}</Label>
+            <Label htmlFor="calories-burned">
+              {t(
+                'exercise.editExerciseEntryDialog.caloriesBurnedOptionalLabel',
+                'Calories Burned (Optional)'
+              )}
+            </Label>
             <div className="relative">
               <Input
                 id="calories-burned"
                 type="number"
                 value={caloriesBurnedInput}
-                onChange={(e) => setCaloriesBurnedInput(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder={t('exercise.editExerciseEntryDialog.caloriesBurnedPlaceholder', 'Enter calories burned to override calculation')}
+                onChange={(e) =>
+                  setCaloriesBurnedInput(
+                    e.target.value === '' ? '' : Number(e.target.value)
+                  )
+                }
+                placeholder={t(
+                  'exercise.editExerciseEntryDialog.caloriesBurnedPlaceholder',
+                  'Enter calories burned to override calculation'
+                )}
                 className="pr-8"
               />
               {caloriesBurnedInput !== '' && (
@@ -564,35 +688,66 @@ const EditExerciseEntryDialog = ({
             </div>
             {caloriesBurnedInput === '' && (
               <p className="text-sm text-muted-foreground mt-1">
-                {t('exercise.editExerciseEntryDialog.caloriesBurnedHint', 'Calories will be automatically calculated on save if left blank.')}
+                {t(
+                  'exercise.editExerciseEntryDialog.caloriesBurnedHint',
+                  'Calories will be automatically calculated on save if left blank.'
+                )}
               </p>
             )}
           </div>
 
           <div>
-            <Label htmlFor="distance">{t('exercise.editExerciseEntryDialog.distanceLabel', 'Distance')} ({distanceUnit})</Label>
+            <Label htmlFor="distance">
+              {t('exercise.editExerciseEntryDialog.distanceLabel', 'Distance')}{' '}
+              ({distanceUnit})
+            </Label>
             <Input
               id="distance"
               type="number"
               value={distanceInput}
-              onChange={(e) => setDistanceInput(e.target.value === '' ? '' : Number(e.target.value))}
-              placeholder={t('exercise.editExerciseEntryDialog.distancePlaceholder', 'Enter distance in {{distanceUnit}}', { distanceUnit })}
+              onChange={(e) =>
+                setDistanceInput(
+                  e.target.value === '' ? '' : Number(e.target.value)
+                )
+              }
+              placeholder={t(
+                'exercise.editExerciseEntryDialog.distancePlaceholder',
+                'Enter distance in {{distanceUnit}}',
+                { distanceUnit }
+              )}
             />
           </div>
 
           <div>
-            <Label htmlFor="avg-heart-rate">{t('exercise.editExerciseEntryDialog.avgHeartRateLabel', 'Average Heart Rate (bpm)')}</Label>
+            <Label htmlFor="avg-heart-rate">
+              {t(
+                'exercise.editExerciseEntryDialog.avgHeartRateLabel',
+                'Average Heart Rate (bpm)'
+              )}
+            </Label>
             <Input
               id="avg-heart-rate"
               type="number"
               value={avgHeartRateInput}
-              onChange={(e) => setAvgHeartRateInput(e.target.value === '' ? '' : Number(e.target.value))}
-              placeholder={t('exercise.editExerciseEntryDialog.avgHeartRatePlaceholder', 'Enter average heart rate')}
+              onChange={(e) =>
+                setAvgHeartRateInput(
+                  e.target.value === '' ? '' : Number(e.target.value)
+                )
+              }
+              placeholder={t(
+                'exercise.editExerciseEntryDialog.avgHeartRatePlaceholder',
+                'Enter average heart rate'
+              )}
             />
           </div>
 
           <div>
-            <Label>{t('exercise.editExerciseEntryDialog.customActivityDetailsLabel', 'Custom Activity Details')}</Label>
+            <Label>
+              {t(
+                'exercise.editExerciseEntryDialog.customActivityDetailsLabel',
+                'Custom Activity Details'
+              )}
+            </Label>
             <ExerciseActivityDetailsEditor
               initialData={activityDetails}
               onChange={setActivityDetails}
@@ -600,29 +755,43 @@ const EditExerciseEntryDialog = ({
           </div>
 
           <div>
-            <Label htmlFor="notes">{t('exercise.editExerciseEntryDialog.notesLabel', 'Notes')}</Label>
+            <Label htmlFor="notes">
+              {t('exercise.editExerciseEntryDialog.notesLabel', 'Notes')}
+            </Label>
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => {
                 debug(
                   loggingLevel,
-                  "EditExerciseEntryDialog: Notes input changed:",
+                  'EditExerciseEntryDialog: Notes input changed:',
                   e.target.value
                 );
                 setNotes(e.target.value);
               }}
-              placeholder={t('exercise.editExerciseEntryDialog.notesPlaceholder', 'Add any notes about this exercise...')}
+              placeholder={t(
+                'exercise.editExerciseEntryDialog.notesPlaceholder',
+                'Add any notes about this exercise...'
+              )}
             />
           </div>
 
           <div>
-            <Label htmlFor="image">{t('exercise.editExerciseEntryDialog.imageLabel', 'Image')}</Label>
-            <Input id="image" type="file" accept="image/*" onChange={handleImageUpload} />
+            <Label htmlFor="image">
+              {t('exercise.editExerciseEntryDialog.imageLabel', 'Image')}
+            </Label>
+            <Input
+              id="image"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+            />
             {(imageUrl || imageFile) && (
               <div className="mt-2 relative w-24 h-24">
                 <img
-                  src={imageFile ? URL.createObjectURL(imageFile) : imageUrl || ""}
+                  src={
+                    imageFile ? URL.createObjectURL(imageFile) : imageUrl || ''
+                  }
                   alt="Exercise"
                   className="h-full w-full object-cover rounded-md"
                 />
@@ -645,7 +814,7 @@ const EditExerciseEntryDialog = ({
             onClick={() => {
               debug(
                 loggingLevel,
-                "EditExerciseEntryDialog: Cancel button clicked."
+                'EditExerciseEntryDialog: Cancel button clicked.'
               );
               onOpenChange(false);
             }}
@@ -653,7 +822,9 @@ const EditExerciseEntryDialog = ({
             {t('common.cancel', 'Cancel')}
           </Button>
           <Button onClick={handleSave} disabled={loading}>
-            {loading ? t('common.saving', 'Saving...') : t('common.saveChanges', 'Save Changes')}
+            {loading
+              ? t('common.saving', 'Saving...')
+              : t('common.saveChanges', 'Save Changes')}
           </Button>
         </div>
       </DialogContent>

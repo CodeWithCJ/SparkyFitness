@@ -1,33 +1,33 @@
-import { useState, useEffect } from "react";
-import { parseISO } from "date-fns";
-import { useLocation } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { formatDateToYYYYMMDD } from "@/lib/utils";
+import { useState, useEffect } from 'react';
+import { parseISO } from 'date-fns';
+import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 import {
   getSupportedLanguages,
   getLanguageDisplayName,
-} from "@/utils/languageUtils"; // Import language utilities
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from '@/utils/languageUtils'; // Import language utilities
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"; // Import Popover components
+} from '@/components/ui/popover'; // Import Popover components
 import {
   Save,
   User,
@@ -46,33 +46,33 @@ import {
   BookOpen,
   UtensilsCrossed,
   X,
-} from "lucide-react";
-import { apiCall } from "@/services/api";
-import { useAuth } from "@/hooks/useAuth";
-import { authClient } from "@/lib/auth-client";
-import { toast } from "@/hooks/use-toast";
-import FamilyAccessManager from "./FamilyAccessManager";
-import AIServiceSettings from "./AIServiceSettings";
-import CustomCategoryManager from "./CustomCategoryManager";
-import MealTypeManager from "./MealTypeManager";
-import type { CustomCategory } from "@/services/customCategoryService";
-import ExternalProviderSettings from "./ExternalProviderSettings";
+} from 'lucide-react';
+import { apiCall } from '@/services/api';
+import { useAuth } from '@/hooks/useAuth';
+import { authClient } from '@/lib/auth-client';
+import { toast } from '@/hooks/use-toast';
+import FamilyAccessManager from './FamilyAccessManager';
+import AIServiceSettings from './AIServiceSettings';
+import CustomCategoryManager from './CustomCategoryManager';
+import MealTypeManager from './MealTypeManager';
+import type { CustomCategory } from '@/services/customCategoryService';
+import ExternalProviderSettings from './ExternalProviderSettings';
 // Import GarminConnectSettings
-import { usePreferences } from "@/contexts/PreferencesContext";
-import NutrientDisplaySettings from "./NutrientDisplaySettings";
-import WaterContainerManager from "./WaterContainerManager";
+import { usePreferences } from '@/contexts/PreferencesContext';
+import NutrientDisplaySettings from './NutrientDisplaySettings';
+import WaterContainerManager from './WaterContainerManager';
 // Import parse for parsing user-entered date strings
 import {
   Accordion,
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
-} from "@/components/ui/accordion"; // Import Accordion components
-import CalculationSettings from "./CalculationSettings";
-import TooltipWarning from "@/components/TooltipWarning";
-import MFASettings from "@/pages/Settings/MFASettings";
-import CustomNutrientsSettings from "@/pages/Settings/CustomNutrientsSettings";
-import PasskeySettings from "@/pages/Settings/PasskeySettings";
+} from '@/components/ui/accordion'; // Import Accordion components
+import CalculationSettings from './CalculationSettings';
+import TooltipWarning from '@/components/TooltipWarning';
+import MFASettings from '@/pages/Settings/MFASettings';
+import CustomNutrientsSettings from '@/pages/Settings/CustomNutrientsSettings';
+import PasskeySettings from '@/pages/Settings/PasskeySettings';
 
 interface Profile {
   id: string;
@@ -88,7 +88,7 @@ interface UserPreferences {
   date_format: string;
   default_weight_unit: string;
   default_measurement_unit: string;
-  logging_level: "DEBUG" | "INFO" | "WARN" | "ERROR" | "SILENT"; // Add logging level
+  logging_level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT'; // Add logging level
 }
 
 interface SettingsProps {
@@ -126,22 +126,22 @@ const Settings = () => {
   const [avatarObjectURL, setAvatarObjectURL] = useState<string | null>(null); // State to hold the object URL for the avatar
   // Remove local preferences state as it's now managed by PreferencesContext
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>(
-    [],
+    []
   );
   const [localLoggingLevel, setLocalLoggingLevel] = useState(loggingLevel);
   const [profileForm, setProfileForm] = useState({
-    full_name: "",
-    phone: "",
-    date_of_birth: "",
-    bio: "",
-    gender: "", // Add gender to the profileForm state
+    full_name: '',
+    phone: '',
+    date_of_birth: '',
+    bio: '',
+    gender: '', // Add gender to the profileForm state
   });
   const [passwordForm, setPasswordForm] = useState({
-    current_password: "",
-    new_password: "",
-    confirm_password: "",
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
   });
-  const [newEmail, setNewEmail] = useState<string>("");
+  const [newEmail, setNewEmail] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -149,9 +149,9 @@ const Settings = () => {
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [showApiKey, setShowApiKey] = useState<string | null>(null); // Stores the ID of the key to show
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null); // New state to show secret key once
-  const [newApiKeyDescription, setNewApiKeyDescription] = useState<string>("");
+  const [newApiKeyDescription, setNewApiKeyDescription] = useState<string>('');
   const [newApiKeyExpiresIn, setNewApiKeyExpiresIn] = useState<number | null>(
-    null,
+    null
   );
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [cleaningUpKeys, setCleaningUpKeys] = useState(false);
@@ -162,7 +162,7 @@ const Settings = () => {
       loadUserPreferencesFromContext(); // Load preferences from context
       loadCustomCategories();
       loadApiKeys(); // Load API keys
-      setNewEmail(user.email || ""); // Initialize newEmail here
+      setNewEmail(user.email || ''); // Initialize newEmail here
     }
   }, [user]); // Removed loadUserPreferencesFromContext from dependency array
 
@@ -179,14 +179,14 @@ const Settings = () => {
         try {
           // Fetch the image as a Blob
           const response = await apiCall(profile.avatar_url, {
-            method: "GET",
-            responseType: "blob", // Indicate that we expect a blob response
+            method: 'GET',
+            responseType: 'blob', // Indicate that we expect a blob response
           });
-          const blob = new Blob([response], { type: "image/jpeg" }); // Adjust type if needed
+          const blob = new Blob([response], { type: 'image/jpeg' }); // Adjust type if needed
           const url = URL.createObjectURL(blob);
           setAvatarObjectURL(url);
         } catch (error) {
-          console.error("Error fetching avatar:", error);
+          console.error('Error fetching avatar:', error);
           setAvatarObjectURL(null);
         }
       } else {
@@ -209,15 +209,15 @@ const Settings = () => {
 
     try {
       const data = await apiCall(`/measurements/custom-categories`, {
-        method: "GET",
+        method: 'GET',
       });
       setCustomCategories(data || []);
     } catch (error: any) {
-      console.error("Error loading custom categories:", error);
+      console.error('Error loading custom categories:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to load custom categories: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
@@ -229,11 +229,11 @@ const Settings = () => {
       if (error) throw error;
       setApiKeys(data || []);
     } catch (error: any) {
-      console.error("Error loading API keys:", error);
+      console.error('Error loading API keys:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to load API keys: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
@@ -244,7 +244,7 @@ const Settings = () => {
     setNewlyCreatedKey(null);
     try {
       const { data, error } = await authClient.apiKey.create({
-        name: newApiKeyDescription || "New API Key",
+        name: newApiKeyDescription || 'New API Key',
         expiresIn: newApiKeyExpiresIn || undefined,
       });
       if (error) throw error;
@@ -254,18 +254,18 @@ const Settings = () => {
       }
 
       toast({
-        title: "Success",
+        title: 'Success',
         description:
           "New API key generated successfully! Please copy it now as it won't be shown again.",
       });
-      setNewApiKeyDescription("");
+      setNewApiKeyDescription('');
       loadApiKeys(); // Reload keys to show the new one in the list
     } catch (error: any) {
-      console.error("Error generating API key:", error);
+      console.error('Error generating API key:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to generate API key: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setGeneratingApiKey(false);
@@ -276,7 +276,7 @@ const Settings = () => {
     if (!user) return;
     if (
       !confirm(
-        "Are you sure you want to delete this API key? This action cannot be undone.",
+        'Are you sure you want to delete this API key? This action cannot be undone.'
       )
     ) {
       return;
@@ -289,16 +289,16 @@ const Settings = () => {
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: "API key deleted successfully!",
+        title: 'Success',
+        description: 'API key deleted successfully!',
       });
       loadApiKeys(); // Reload keys
     } catch (error: any) {
-      console.error("Error deleting API key:", error);
+      console.error('Error deleting API key:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to delete API key: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -316,16 +316,16 @@ const Settings = () => {
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: `API key ${enabled ? "enabled" : "disabled"} successfully!`,
+        title: 'Success',
+        description: `API key ${enabled ? 'enabled' : 'disabled'} successfully!`,
       });
       loadApiKeys();
     } catch (error: any) {
-      console.error("Error toggling API key:", error);
+      console.error('Error toggling API key:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to update API key: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -342,16 +342,16 @@ const Settings = () => {
       if (error) throw error;
 
       toast({
-        title: "Cleanup Complete",
-        description: "All expired API keys have been removed.",
+        title: 'Cleanup Complete',
+        description: 'All expired API keys have been removed.',
       });
       loadApiKeys();
     } catch (error: any) {
-      console.error("Error cleaning up API keys:", error);
+      console.error('Error cleaning up API keys:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to cleanup keys: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setCleaningUpKeys(false);
@@ -363,22 +363,22 @@ const Settings = () => {
 
     try {
       const data = await apiCall(`/identity/profiles`, {
-        method: "GET",
+        method: 'GET',
       });
       setProfile(data);
       setProfileForm({
-        full_name: data.full_name || "",
-        phone: data.phone_number || "", // Use phone_number from backend
-        date_of_birth: data.date_of_birth || "", // Store as YYYY-MM-DD string directly
-        bio: data.bio || "",
-        gender: data.gender || "", // Set gender from fetched profile
+        full_name: data.full_name || '',
+        phone: data.phone_number || '', // Use phone_number from backend
+        date_of_birth: data.date_of_birth || '', // Store as YYYY-MM-DD string directly
+        bio: data.bio || '',
+        gender: data.gender || '', // Set gender from fetched profile
       });
     } catch (error: any) {
-      console.error("Error loading profile:", error);
+      console.error('Error loading profile:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to load profile: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
@@ -389,7 +389,7 @@ const Settings = () => {
     setLoading(true);
     try {
       await apiCall(`/identity/profiles`, {
-        method: "PUT", // Or PATCH, depending on backend implementation
+        method: 'PUT', // Or PATCH, depending on backend implementation
         body: JSON.stringify({
           full_name: profileForm.full_name,
           phone_number: profileForm.phone, // Changed to phone_number
@@ -400,16 +400,16 @@ const Settings = () => {
       });
 
       toast({
-        title: "Success",
-        description: "Profile updated successfully",
+        title: 'Success',
+        description: 'Profile updated successfully',
       });
       loadProfile();
     } catch (error: any) {
-      console.error("Error updating profile:", error);
+      console.error('Error updating profile:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to update profile: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -422,16 +422,16 @@ const Settings = () => {
     try {
       await saveAllPreferences({ loggingLevel: localLoggingLevel }); // Pass the new logging level directly
       toast({
-        title: "Success",
-        description: "Preferences updated successfully",
+        title: 'Success',
+        description: 'Preferences updated successfully',
       });
       window.location.reload();
     } catch (error: any) {
-      console.error("Error updating preferences:", error);
+      console.error('Error updating preferences:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to update preferences: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -441,18 +441,18 @@ const Settings = () => {
   const handlePasswordChange = async () => {
     if (passwordForm.new_password !== passwordForm.confirm_password) {
       toast({
-        title: "Error",
-        description: "New passwords do not match",
-        variant: "destructive",
+        title: 'Error',
+        description: 'New passwords do not match',
+        variant: 'destructive',
       });
       return;
     }
 
     if (passwordForm.new_password.length < 6) {
       toast({
-        title: "Error",
-        description: "Password must be at least 6 characters long",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Password must be at least 6 characters long',
+        variant: 'destructive',
       });
       return;
     }
@@ -467,20 +467,20 @@ const Settings = () => {
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: "Password updated successfully",
+        title: 'Success',
+        description: 'Password updated successfully',
       });
       setPasswordForm({
-        current_password: "",
-        new_password: "",
-        confirm_password: "",
+        current_password: '',
+        new_password: '',
+        confirm_password: '',
       });
     } catch (error: any) {
-      console.error("Error updating password:", error);
+      console.error('Error updating password:', error);
       toast({
-        title: "Error",
-        description: `Failed to update password: ${error.message || (error.error && error.error.message) || "Unknown error"}`,
-        variant: "destructive",
+        title: 'Error',
+        description: `Failed to update password: ${error.message || (error.error && error.error.message) || 'Unknown error'}`,
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -490,9 +490,9 @@ const Settings = () => {
   const handleEmailChange = async () => {
     if (!newEmail || newEmail === user?.email) {
       toast({
-        title: "Error",
-        description: "Please enter a new email address",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please enter a new email address',
+        variant: 'destructive',
       });
       return;
     }
@@ -505,16 +505,16 @@ const Settings = () => {
       if (error) throw error;
 
       toast({
-        title: "Success",
+        title: 'Success',
         description:
-          "Email update initiated. Please check your new email for confirmation.",
+          'Email update initiated. Please check your new email for confirmation.',
       });
     } catch (error: any) {
-      console.error("Error updating email:", error);
+      console.error('Error updating email:', error);
       toast({
-        title: "Error",
-        description: `Failed to update email: ${error.message || (error.error && error.error.message) || "Unknown error"}`,
-        variant: "destructive",
+        title: 'Error',
+        description: `Failed to update email: ${error.message || (error.error && error.error.message) || 'Unknown error'}`,
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -522,18 +522,18 @@ const Settings = () => {
   };
 
   const handleImageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
+    event: React.ChangeEvent<HTMLInputElement>
   ) => {
     if (!event.target.files || !event.target.files[0] || !user) return;
 
     const file = event.target.files[0];
 
     // Validate file type
-    if (!file.type.startsWith("image/")) {
+    if (!file.type.startsWith('image/')) {
       toast({
-        title: "Error",
-        description: "Please select an image file",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please select an image file',
+        variant: 'destructive',
       });
       return;
     }
@@ -541,9 +541,9 @@ const Settings = () => {
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: "Error",
-        description: "Image must be less than 5MB",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Image must be less than 5MB',
+        variant: 'destructive',
       });
       return;
     }
@@ -551,26 +551,26 @@ const Settings = () => {
     setUploadingImage(true);
 
     const formData = new FormData();
-    formData.append("avatar", file);
+    formData.append('avatar', file);
 
     try {
-      const response = await apiCall("/identity/profiles/avatar", {
-        method: "POST",
+      const response = await apiCall('/identity/profiles/avatar', {
+        method: 'POST',
         body: formData,
         isFormData: true, // Indicate that the body is FormData
       });
 
       toast({
-        title: "Success",
-        description: "Profile picture updated successfully",
+        title: 'Success',
+        description: 'Profile picture updated successfully',
       });
       loadProfile(); // Reload profile to display the new avatar
     } catch (error: any) {
-      console.error("Error uploading image:", error);
+      console.error('Error uploading image:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to upload profile picture: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setUploadingImage(false);
@@ -578,19 +578,19 @@ const Settings = () => {
   };
 
   const getInitials = (name: string | null) => {
-    if (!name) return "U";
+    if (!name) return 'U';
     return name
-      .split(" ")
+      .split(' ')
       .map((n) => n[0])
-      .join("")
+      .join('')
       .toUpperCase()
       .slice(0, 2);
   };
 
   const queryParams = new URLSearchParams(location.search);
   const defaultExpanded =
-    queryParams.get("section") === "integrations"
-      ? ["food-and-exercise-data-providers"]
+    queryParams.get('section') === 'integrations'
+      ? ['food-and-exercise-data-providers']
       : [];
 
   return (
@@ -609,12 +609,12 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.profileInformation.description",
-              "Manage your personal information and profile picture",
+              'settings.profileInformation.description',
+              'Manage your personal information and profile picture'
             )}
           >
             <User className="h-5 w-5" />
-            {t("settings.profileInformation.title", "Profile Information")}
+            {t('settings.profileInformation.title', 'Profile Information')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-6">
             {/* Profile Picture */}
@@ -623,7 +623,7 @@ const Settings = () => {
                 {avatarObjectURL ? ( // Use avatarObjectURL for display
                   <AvatarImage
                     src={avatarObjectURL}
-                    alt={profile?.full_name || "User"}
+                    alt={profile?.full_name || 'User'}
                   />
                 ) : (
                   <AvatarFallback className="text-lg">
@@ -643,12 +643,12 @@ const Settings = () => {
                       <Camera className="h-4 w-4 mr-2" />
                       {uploadingImage
                         ? t(
-                            "settings.profileInformation.uploading",
-                            "Uploading...",
+                            'settings.profileInformation.uploading',
+                            'Uploading...'
                           )
                         : t(
-                            "settings.profileInformation.changePhoto",
-                            "Change Photo",
+                            'settings.profileInformation.changePhoto',
+                            'Change Photo'
                           )}
                     </span>
                   </Button>
@@ -662,8 +662,8 @@ const Settings = () => {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   {t(
-                    "settings.profileInformation.photoSize",
-                    "PNG, JPG up to 5MB",
+                    'settings.profileInformation.photoSize',
+                    'PNG, JPG up to 5MB'
                   )}
                 </p>
               </div>
@@ -674,7 +674,7 @@ const Settings = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="full_name">
-                  {t("settings.profileInformation.fullName", "Full Name")}
+                  {t('settings.profileInformation.fullName', 'Full Name')}
                 </Label>
                 <Input
                   id="full_name"
@@ -686,14 +686,14 @@ const Settings = () => {
                     }))
                   }
                   placeholder={t(
-                    "settings.profileInformation.enterFullName",
-                    "Enter your full name",
+                    'settings.profileInformation.enterFullName',
+                    'Enter your full name'
                   )}
                 />
               </div>
               <div>
                 <Label htmlFor="phone">
-                  {t("settings.profileInformation.phoneNumber", "Phone Number")}
+                  {t('settings.profileInformation.phoneNumber', 'Phone Number')}
                 </Label>
                 <Input
                   id="phone"
@@ -705,22 +705,22 @@ const Settings = () => {
                     }))
                   }
                   placeholder={t(
-                    "settings.profileInformation.enterPhoneNumber",
-                    "Enter your phone number",
+                    'settings.profileInformation.enterPhoneNumber',
+                    'Enter your phone number'
                   )}
                 />
               </div>
               <div>
                 <Label htmlFor="date_of_birth">
                   {t(
-                    "settings.profileInformation.dateOfBirth",
-                    "Date of Birth",
+                    'settings.profileInformation.dateOfBirth',
+                    'Date of Birth'
                   )}
                 </Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
-                      variant={"outline"}
+                      variant={'outline'}
                       className="w-full justify-start text-left font-normal"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -729,8 +729,8 @@ const Settings = () => {
                       ) : (
                         <span>
                           {t(
-                            "settings.profileInformation.pickADate",
-                            "Pick a date",
+                            'settings.profileInformation.pickADate',
+                            'Pick a date'
                           )}
                         </span>
                       )}
@@ -747,7 +747,7 @@ const Settings = () => {
                       onSelect={(date) => {
                         setProfileForm((prev) => ({
                           ...prev,
-                          date_of_birth: date ? formatDateToYYYYMMDD(date) : "", // Store as YYYY-MM-DD string
+                          date_of_birth: date ? formatDateToYYYYMMDD(date) : '', // Store as YYYY-MM-DD string
                         }));
                       }}
                       initialFocus
@@ -758,7 +758,7 @@ const Settings = () => {
               </div>
               <div>
                 <Label htmlFor="gender">
-                  {t("settings.profileInformation.gender", "Gender")}
+                  {t('settings.profileInformation.gender', 'Gender')}
                 </Label>
                 <Select
                   value={profileForm.gender}
@@ -769,27 +769,27 @@ const Settings = () => {
                   <SelectTrigger>
                     <SelectValue
                       placeholder={t(
-                        "settings.profileInformation.selectGender",
-                        "Select Gender",
+                        'settings.profileInformation.selectGender',
+                        'Select Gender'
                       )}
                     />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="male">
-                      {t("settings.profileInformation.male", "Male")}
+                      {t('settings.profileInformation.male', 'Male')}
                     </SelectItem>
                     <SelectItem value="female">
-                      {t("settings.profileInformation.female", "Female")}
+                      {t('settings.profileInformation.female', 'Female')}
                     </SelectItem>
                     <SelectItem value="other">
-                      {t("settings.profileInformation.other", "Other")}
+                      {t('settings.profileInformation.other', 'Other')}
                     </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="md:col-span-2">
                 <Label htmlFor="bio">
-                  {t("settings.profileInformation.bio", "Bio")}
+                  {t('settings.profileInformation.bio', 'Bio')}
                 </Label>
                 <Textarea
                   id="bio"
@@ -798,8 +798,8 @@ const Settings = () => {
                     setProfileForm((prev) => ({ ...prev, bio: e.target.value }))
                   }
                   placeholder={t(
-                    "settings.profileInformation.tellAboutYourself",
-                    "Tell us about yourself",
+                    'settings.profileInformation.tellAboutYourself',
+                    'Tell us about yourself'
                   )}
                   rows={3}
                 />
@@ -809,8 +809,8 @@ const Settings = () => {
             <Button onClick={handleProfileUpdate} disabled={loading}>
               <Save className="h-4 w-4 mr-2" />
               {loading
-                ? t("settings.profileInformation.saving", "Saving...")
-                : t("settings.profileInformation.saveProfile", "Save Profile")}
+                ? t('settings.profileInformation.saving', 'Saving...')
+                : t('settings.profileInformation.saveProfile', 'Save Profile')}
             </Button>
           </AccordionContent>
         </AccordionItem>
@@ -822,18 +822,18 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.preferences.description",
-              "Customize your app settings and display preferences",
+              'settings.preferences.description',
+              'Customize your app settings and display preferences'
             )}
           >
             <SettingsIcon className="h-5 w-5" />
-            {t("settings.preferences.title", "Preferences")}
+            {t('settings.preferences.title', 'Preferences')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="date_format">
-                  {t("settings.preferences.dateFormat", "Date Format")}
+                  {t('settings.preferences.dateFormat', 'Date Format')}
                 </Label>
                 <Select value={dateFormat} onValueChange={setDateFormat}>
                   <SelectTrigger>
@@ -860,7 +860,7 @@ const Settings = () => {
               </div>
               <div>
                 <Label htmlFor="weight_unit">
-                  {t("settings.preferences.weightUnit", "Weight Unit")}
+                  {t('settings.preferences.weightUnit', 'Weight Unit')}
                 </Label>
                 <Select value={weightUnit} onValueChange={setWeightUnit}>
                   <SelectTrigger>
@@ -868,10 +868,10 @@ const Settings = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="kg">
-                      {t("settings.preferences.kilograms", "Kilograms (kg)")}
+                      {t('settings.preferences.kilograms', 'Kilograms (kg)')}
                     </SelectItem>
                     <SelectItem value="lbs">
-                      {t("settings.preferences.pounds", "Pounds (lbs)")}
+                      {t('settings.preferences.pounds', 'Pounds (lbs)')}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -879,8 +879,8 @@ const Settings = () => {
               <div>
                 <Label htmlFor="measurement_unit">
                   {t(
-                    "settings.preferences.measurementUnit",
-                    "Measurement Unit",
+                    'settings.preferences.measurementUnit',
+                    'Measurement Unit'
                   )}
                 </Label>
                 <Select
@@ -893,19 +893,19 @@ const Settings = () => {
                   <SelectContent>
                     <SelectItem value="cm">
                       {t(
-                        "settings.preferences.centimeters",
-                        "Centimeters (cm)",
+                        'settings.preferences.centimeters',
+                        'Centimeters (cm)'
                       )}
                     </SelectItem>
                     <SelectItem value="inches">
-                      {t("settings.preferences.inches", "Inches (in)")}
+                      {t('settings.preferences.inches', 'Inches (in)')}
                     </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label htmlFor="distance_unit">
-                  {t("settings.preferences.distanceUnit", "Distance Unit")}
+                  {t('settings.preferences.distanceUnit', 'Distance Unit')}
                 </Label>
                 <Select value={distanceUnit} onValueChange={setDistanceUnit}>
                   <SelectTrigger>
@@ -913,22 +913,22 @@ const Settings = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="km">
-                      {t("settings.preferences.kilometers", "Kilometers (km)")}
+                      {t('settings.preferences.kilometers', 'Kilometers (km)')}
                     </SelectItem>
                     <SelectItem value="miles">
-                      {t("settings.preferences.miles", "Miles (miles)")}
+                      {t('settings.preferences.miles', 'Miles (miles)')}
                     </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label htmlFor="energy_unit">
-                  {t("settings.preferences.energyUnit", "Energy Unit")}
+                  {t('settings.preferences.energyUnit', 'Energy Unit')}
                 </Label>
                 <Select
                   value={energyUnit}
                   onValueChange={(value) =>
-                    setEnergyUnit(value as "kcal" | "kJ")
+                    setEnergyUnit(value as 'kcal' | 'kJ')
                   }
                 >
                   <SelectTrigger>
@@ -936,10 +936,10 @@ const Settings = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="kcal">
-                      {t("settings.preferences.calories", "Calories (kcal)")}
+                      {t('settings.preferences.calories', 'Calories (kcal)')}
                     </SelectItem>
                     <SelectItem value="kJ">
-                      {t("settings.preferences.joules", "Joules (kJ)")}
+                      {t('settings.preferences.joules', 'Joules (kJ)')}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -947,15 +947,15 @@ const Settings = () => {
               <div>
                 <Label htmlFor="logging_level">
                   {t(
-                    "settings.preferences.loggingLevel",
-                    "Minimum Logging Level",
+                    'settings.preferences.loggingLevel',
+                    'Minimum Logging Level'
                   )}
                 </Label>
                 <Select
                   value={localLoggingLevel}
                   onValueChange={(value) =>
                     setLocalLoggingLevel(
-                      value as "DEBUG" | "INFO" | "WARN" | "ERROR" | "SILENT",
+                      value as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT'
                     )
                   }
                 >
@@ -964,19 +964,19 @@ const Settings = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="DEBUG">
-                      {t("settings.preferences.debug", "DEBUG (Most Detailed)")}
+                      {t('settings.preferences.debug', 'DEBUG (Most Detailed)')}
                     </SelectItem>
                     <SelectItem value="INFO">
-                      {t("settings.preferences.info", "INFO")}
+                      {t('settings.preferences.info', 'INFO')}
                     </SelectItem>
                     <SelectItem value="WARN">
-                      {t("settings.preferences.warn", "WARN")}
+                      {t('settings.preferences.warn', 'WARN')}
                     </SelectItem>
                     <SelectItem value="ERROR">
-                      {t("settings.preferences.error", "ERROR")}
+                      {t('settings.preferences.error', 'ERROR')}
                     </SelectItem>
                     <SelectItem value="SILENT">
-                      {t("settings.preferences.silent", "SILENT (No Logs)")}
+                      {t('settings.preferences.silent', 'SILENT (No Logs)')}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -984,8 +984,8 @@ const Settings = () => {
               <div>
                 <Label htmlFor="item_display_limit">
                   {t(
-                    "settings.preferences.itemDisplayLimit",
-                    "Search/Recent/Top Limit",
+                    'settings.preferences.itemDisplayLimit',
+                    'Search/Recent/Top Limit'
                   )}
                 </Label>
                 <Select
@@ -997,27 +997,27 @@ const Settings = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="5">
-                      {t("settings.preferences.items", {
+                      {t('settings.preferences.items', {
                         count: 5,
-                        defaultValue: "{{count}} items",
+                        defaultValue: '{{count}} items',
                       })}
                     </SelectItem>
                     <SelectItem value="10">
-                      {t("settings.preferences.items", {
+                      {t('settings.preferences.items', {
                         count: 10,
-                        defaultValue: "{{count}} items",
+                        defaultValue: '{{count}} items',
                       })}
                     </SelectItem>
                     <SelectItem value="15">
-                      {t("settings.preferences.items", {
+                      {t('settings.preferences.items', {
                         count: 15,
-                        defaultValue: "{{count}} items",
+                        defaultValue: '{{count}} items',
                       })}
                     </SelectItem>
                     <SelectItem value="20">
-                      {t("settings.preferences.items", {
+                      {t('settings.preferences.items', {
                         count: 20,
-                        defaultValue: "{{count}} items",
+                        defaultValue: '{{count}} items',
                       })}
                     </SelectItem>
                   </SelectContent>
@@ -1025,7 +1025,7 @@ const Settings = () => {
               </div>
               <div>
                 <Label htmlFor="language">
-                  {t("settings.preferences.language", "Language")}
+                  {t('settings.preferences.language', 'Language')}
                 </Label>
                 <Select value={language} onValueChange={setLanguage}>
                   <SelectTrigger>
@@ -1044,14 +1044,14 @@ const Settings = () => {
                 <div className="space-y-0.5">
                   <Label htmlFor="auto-scale-openfoodfacts">
                     {t(
-                      "settings.preferences.autoScaleOpenFoodFacts",
-                      "Auto-scale OpenFoodFacts Imports",
+                      'settings.preferences.autoScaleOpenFoodFacts',
+                      'Auto-scale OpenFoodFacts Imports'
                     )}
                   </Label>
                   <p className="text-sm text-muted-foreground">
                     {t(
-                      "settings.preferences.autoScaleOpenFoodFactsHint",
-                      "When enabled, nutrition values from OpenFoodFacts will be automatically scaled from per-100g to the product's serving size.",
+                      'settings.preferences.autoScaleOpenFoodFactsHint',
+                      "When enabled, nutrition values from OpenFoodFacts will be automatically scaled from per-100g to the product's serving size."
                     )}
                   </p>
                 </div>
@@ -1065,8 +1065,8 @@ const Settings = () => {
             <Button onClick={handlePreferencesUpdate} disabled={loading}>
               <Save className="h-4 w-4 mr-2" />
               {loading
-                ? t("settings.profileInformation.saving", "Saving...")
-                : t("settings.preferences.savePreferences", "Save Preferences")}
+                ? t('settings.profileInformation.saving', 'Saving...')
+                : t('settings.preferences.savePreferences', 'Save Preferences')}
             </Button>
           </AccordionContent>
         </AccordionItem>
@@ -1078,19 +1078,19 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.waterTracking.description",
-              "Configure your water intake tracking settings",
+              'settings.waterTracking.description',
+              'Configure your water intake tracking settings'
             )}
           >
             <Droplet className="h-5 w-5" />
-            {t("settings.waterTracking.title", "Water Tracking")}
+            {t('settings.waterTracking.title', 'Water Tracking')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <div className="grid gap-1.5">
               <Label htmlFor="water_display_unit">
                 {t(
-                  "settings.waterTracking.waterDisplayUnit",
-                  "Water Display Unit",
+                  'settings.waterTracking.waterDisplayUnit',
+                  'Water Display Unit'
                 )}
               </Label>
               <Select
@@ -1103,18 +1103,18 @@ const Settings = () => {
                 <SelectContent>
                   <SelectItem value="ml">
                     {t(
-                      "settings.waterTracking.milliliters",
-                      "Milliliters (ml)",
+                      'settings.waterTracking.milliliters',
+                      'Milliliters (ml)'
                     )}
                   </SelectItem>
                   <SelectItem value="oz">
                     {t(
-                      "settings.waterTracking.fluidOunces",
-                      "Fluid Ounces (oz)",
+                      'settings.waterTracking.fluidOunces',
+                      'Fluid Ounces (oz)'
                     )}
                   </SelectItem>
                   <SelectItem value="cup">
-                    {t("settings.waterTracking.cups", "Cups")}
+                    {t('settings.waterTracking.cups', 'Cups')}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -1122,10 +1122,10 @@ const Settings = () => {
             <Button onClick={handlePreferencesUpdate} disabled={loading}>
               <Save className="h-4 w-4 mr-2" />
               {loading
-                ? t("settings.profileInformation.saving", "Saving...")
+                ? t('settings.profileInformation.saving', 'Saving...')
                 : t(
-                    "settings.waterTracking.saveWaterDisplayUnit",
-                    "Save Water Display Unit",
+                    'settings.waterTracking.saveWaterDisplayUnit',
+                    'Save Water Display Unit'
                   )}
             </Button>
             <Separator />
@@ -1156,12 +1156,12 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.nutrientDisplay.description",
-              "Choose which nutrients to display in food and meal views",
+              'settings.nutrientDisplay.description',
+              'Choose which nutrients to display in food and meal views'
             )}
           >
             <ListChecks className="h-5 w-5" />
-            {t("settings.nutrientDisplay.title", "Nutrient Display")}
+            {t('settings.nutrientDisplay.title', 'Nutrient Display')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <NutrientDisplaySettings />
@@ -1175,12 +1175,12 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.calculationSettings.description",
-              "Manage BMR and Body Fat calculation preferences",
+              'settings.calculationSettings.description',
+              'Manage BMR and Body Fat calculation preferences'
             )}
           >
             <SettingsIcon className="h-5 w-5" />
-            {t("settings.calculationSettings.title", "Calculation Settings")}
+            {t('settings.calculationSettings.title', 'Calculation Settings')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <CalculationSettings />
@@ -1191,12 +1191,12 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.familyAccess.description",
-              "Manage access to your data for family members",
+              'settings.familyAccess.description',
+              'Manage access to your data for family members'
             )}
           >
             <Users className="h-5 w-5" />
-            {t("settings.familyAccess.title", "Family Access")}
+            {t('settings.familyAccess.title', 'Family Access')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <FamilyAccessManager />
@@ -1210,12 +1210,12 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.customCategories.description",
-              "Create and manage custom measurement categories",
+              'settings.customCategories.description',
+              'Create and manage custom measurement categories'
             )}
           >
             <Tag className="h-5 w-5" />
-            {t("settings.customCategories.title", "Custom Categories")}
+            {t('settings.customCategories.title', 'Custom Categories')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <CustomCategoryManager
@@ -1229,12 +1229,12 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.customMeals.description",
-              "Create and manage custom meals types",
+              'settings.customMeals.description',
+              'Create and manage custom meals types'
             )}
           >
             <UtensilsCrossed className="h-5 w-5" />
-            {t("settings.customMeals.title", "Custom Meals")}
+            {t('settings.customMeals.title', 'Custom Meals')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <MealTypeManager />
@@ -1248,21 +1248,21 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.foodExerciseDataProviders.description",
-              "Configure external food and exercise data sources and synchronize data with Garmin Connect",
+              'settings.foodExerciseDataProviders.description',
+              'Configure external food and exercise data sources and synchronize data with Garmin Connect'
             )}
           >
             <Cloud className="h-5 w-5" />
             {t(
-              "settings.foodExerciseDataProviders.title",
-              "Food & Exercise Data Providers",
+              'settings.foodExerciseDataProviders.title',
+              'Food & Exercise Data Providers'
             )}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <TooltipWarning
               warningMsg={t(
-                "settings.foodExerciseDataProviders.invalidKeyLengthWarning",
-                'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.',
+                'settings.foodExerciseDataProviders.invalidKeyLengthWarning',
+                'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.'
               )}
             />
             <ExternalProviderSettings />
@@ -1274,18 +1274,18 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.aiService.description",
-              "Manage settings for AI-powered features",
+              'settings.aiService.description',
+              'Manage settings for AI-powered features'
             )}
           >
             <Sparkles className="h-5 w-5" />
-            {t("settings.aiService.title", "AI Service")}
+            {t('settings.aiService.title', 'AI Service')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <TooltipWarning
               warningMsg={t(
-                "settings.aiService.invalidKeyLengthWarning",
-                'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.',
+                'settings.aiService.invalidKeyLengthWarning',
+                'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.'
               )}
             />
             <AIServiceSettings />
@@ -1299,25 +1299,25 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.apiKeyManagement.description",
-              "Generate and manage API keys for external integrations",
+              'settings.apiKeyManagement.description',
+              'Generate and manage API keys for external integrations'
             )}
           >
             <KeyRound className="h-5 w-5" />
-            {t("settings.apiKeyManagement.title", "API Key Management")}
+            {t('settings.apiKeyManagement.title', 'API Key Management')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <p className="text-sm text-muted-foreground">
               {t(
-                "settings.apiKeyManagement.infoText",
-                "Generate API keys to securely submit data from external applications like iPhone Shortcuts. These keys are tied to your account and can be revoked at any time.",
+                'settings.apiKeyManagement.infoText',
+                'Generate API keys to securely submit data from external applications like iPhone Shortcuts. These keys are tied to your account and can be revoked at any time.'
               )}
             </p>
 
             <TooltipWarning
               warningMsg={t(
-                "settings.apiKeyManagement.wikiWarning",
-                "Refer to the Wiki page in Github for sample setup instructions for iPhone and Android.",
+                'settings.apiKeyManagement.wikiWarning',
+                'Refer to the Wiki page in Github for sample setup instructions for iPhone and Android.'
               )}
               color="blue"
             />
@@ -1325,14 +1325,14 @@ const Settings = () => {
               <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-md mb-4">
                 <p className="text-sm font-bold text-yellow-800 dark:text-yellow-200 mb-1">
                   {t(
-                    "settings.apiKeyManagement.newKeyGenerated",
-                    "New API Key Generated!",
+                    'settings.apiKeyManagement.newKeyGenerated',
+                    'New API Key Generated!'
                   )}
                 </p>
                 <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-2">
                   {t(
-                    "settings.apiKeyManagement.copyWarning",
-                    "Copy this key now. For security, it will NOT be shown again.",
+                    'settings.apiKeyManagement.copyWarning',
+                    'Copy this key now. For security, it will NOT be shown again.'
                   )}
                 </p>
                 <div className="flex items-center gap-2">
@@ -1346,10 +1346,10 @@ const Settings = () => {
                     onClick={() => {
                       navigator.clipboard.writeText(newlyCreatedKey);
                       toast({
-                        title: t("settings.apiKeyManagement.copied", "Copied!"),
+                        title: t('settings.apiKeyManagement.copied', 'Copied!'),
                         description: t(
-                          "settings.apiKeyManagement.apiKeyCopied",
-                          "API key copied to clipboard.",
+                          'settings.apiKeyManagement.apiKeyCopied',
+                          'API key copied to clipboard.'
                         ),
                       });
                     }}
@@ -1372,8 +1372,8 @@ const Settings = () => {
                 <div className="flex-grow space-y-2 w-full">
                   <Label htmlFor="api-key-description">
                     {t(
-                      "settings.apiKeyManagement.descriptionLabel",
-                      "Description (e.g., 'iPhone Health Shortcut')",
+                      'settings.apiKeyManagement.descriptionLabel',
+                      "Description (e.g., 'iPhone Health Shortcut')"
                     )}
                   </Label>
                   <Input
@@ -1381,20 +1381,20 @@ const Settings = () => {
                     value={newApiKeyDescription}
                     onChange={(e) => setNewApiKeyDescription(e.target.value)}
                     placeholder={t(
-                      "settings.apiKeyManagement.placeholder",
-                      "Description (e.g., 'iPhone Health Shortcut')",
+                      'settings.apiKeyManagement.placeholder',
+                      "Description (e.g., 'iPhone Health Shortcut')"
                     )}
                   />
                 </div>
                 <div className="space-y-2 w-full sm:w-48">
                   <Label htmlFor="api-key-expiry">
-                    {t("settings.apiKeyManagement.expiresIn", "Expires In")}
+                    {t('settings.apiKeyManagement.expiresIn', 'Expires In')}
                   </Label>
                   <Select
-                    value={newApiKeyExpiresIn?.toString() || "null"}
+                    value={newApiKeyExpiresIn?.toString() || 'null'}
                     onValueChange={(val) =>
                       setNewApiKeyExpiresIn(
-                        val === "null" ? null : parseInt(val),
+                        val === 'null' ? null : parseInt(val)
                       )
                     }
                   >
@@ -1403,19 +1403,19 @@ const Settings = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="null">
-                        {t("settings.apiKeyManagement.never", "Never")}
+                        {t('settings.apiKeyManagement.never', 'Never')}
                       </SelectItem>
                       <SelectItem value={(60 * 60 * 24 * 7).toString()}>
-                        {t("settings.apiKeyManagement.7days", "7 Days")}
+                        {t('settings.apiKeyManagement.7days', '7 Days')}
                       </SelectItem>
                       <SelectItem value={(60 * 60 * 24 * 30).toString()}>
-                        {t("settings.apiKeyManagement.30days", "30 Days")}
+                        {t('settings.apiKeyManagement.30days', '30 Days')}
                       </SelectItem>
                       <SelectItem value={(60 * 60 * 24 * 90).toString()}>
-                        {t("settings.apiKeyManagement.90days", "90 Days")}
+                        {t('settings.apiKeyManagement.90days', '90 Days')}
                       </SelectItem>
                       <SelectItem value={(60 * 60 * 24 * 365).toString()}>
-                        {t("settings.apiKeyManagement.1year", "1 Year")}
+                        {t('settings.apiKeyManagement.1year', '1 Year')}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -1427,10 +1427,10 @@ const Settings = () => {
                 >
                   <KeyRound className="h-4 w-4 mr-2" />
                   {generatingApiKey
-                    ? t("settings.apiKeyManagement.generating", "Generating...")
+                    ? t('settings.apiKeyManagement.generating', 'Generating...')
                     : t(
-                        "settings.apiKeyManagement.generate",
-                        "Generate New Key",
+                        'settings.apiKeyManagement.generate',
+                        'Generate New Key'
                       )}
                 </Button>
               </div>
@@ -1445,10 +1445,10 @@ const Settings = () => {
                 >
                   <Trash2 className="h-3 w-3 mr-1" />
                   {cleaningUpKeys
-                    ? t("common.processing", "Processing...")
+                    ? t('common.processing', 'Processing...')
                     : t(
-                        "settings.apiKeyManagement.cleanupExpired",
-                        "Cleanup Expired Keys",
+                        'settings.apiKeyManagement.cleanupExpired',
+                        'Cleanup Expired Keys'
                       )}
                 </Button>
               </div>
@@ -1459,30 +1459,30 @@ const Settings = () => {
               {apiKeys.length === 0 ? (
                 <p className="text-center text-sm text-muted-foreground py-4">
                   {t(
-                    "settings.apiKeyManagement.noApiKeys",
-                    "No API keys generated yet.",
+                    'settings.apiKeyManagement.noApiKeys',
+                    'No API keys generated yet.'
                   )}
                 </p>
               ) : (
                 apiKeys.map((key) => (
                   <div
                     key={key.id}
-                    className={`flex items-center space-x-4 p-3 border rounded-md ${!key.enabled ? "bg-muted/50 opacity-80" : ""}`}
+                    className={`flex items-center space-x-4 p-3 border rounded-md ${!key.enabled ? 'bg-muted/50 opacity-80' : ''}`}
                   >
                     <div className="flex-grow space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="font-medium">
                           {key.name ||
                             t(
-                              "settings.apiKeyManagement.noDescription",
-                              "No Description",
+                              'settings.apiKeyManagement.noDescription',
+                              'No Description'
                             )}
                         </p>
                         {!key.enabled && (
                           <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border uppercase font-bold">
                             {t(
-                              "settings.apiKeyManagement.disabled",
-                              "Disabled",
+                              'settings.apiKeyManagement.disabled',
+                              'Disabled'
                             )}
                           </span>
                         )}
@@ -1491,37 +1491,37 @@ const Settings = () => {
                         <span className="font-mono text-xs">{key.id}</span>
                         <TooltipWarning
                           warningMsg={t(
-                            "settings.apiKeyManagement.idOnlyInfo",
-                            "Only the Key ID is shown for security.",
+                            'settings.apiKeyManagement.idOnlyInfo',
+                            'Only the Key ID is shown for security.'
                           )}
                           color="blue"
                         />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <p>
-                          {t("settings.apiKeyManagement.created", "Created:")}{" "}
+                          {t('settings.apiKeyManagement.created', 'Created:')}{' '}
                           {key.createdAt
                             ? new Date(key.createdAt).toLocaleDateString()
-                            : "N/A"}
+                            : 'N/A'}
                         </p>
                         {key.expiresAt && (
                           <p
                             className={
                               new Date(key.expiresAt) < new Date()
-                                ? "text-destructive font-semibold"
-                                : ""
+                                ? 'text-destructive font-semibold'
+                                : ''
                             }
                           >
-                            {t("settings.apiKeyManagement.expires", "Expires:")}{" "}
+                            {t('settings.apiKeyManagement.expires', 'Expires:')}{' '}
                             {new Date(key.expiresAt).toLocaleDateString()}
                           </p>
                         )}
                         {key.lastUsedAt && (
                           <p>
                             {t(
-                              "settings.apiKeyManagement.lastUsed",
-                              "Last Used:",
-                            )}{" "}
+                              'settings.apiKeyManagement.lastUsed',
+                              'Last Used:'
+                            )}{' '}
                             {new Date(key.lastUsedAt).toLocaleDateString()}
                           </p>
                         )}
@@ -1560,12 +1560,12 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.developerResources.description",
-              "Access API documentation and resources",
+              'settings.developerResources.description',
+              'Access API documentation and resources'
             )}
           >
             <BookOpen className="h-5 w-5" />
-            {t("settings.developerResources.title", "Developer Resources")}
+            {t('settings.developerResources.title', 'Developer Resources')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-4">
             <div className="grid gap-4">
@@ -1607,18 +1607,18 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              "settings.accountSecurity.description",
-              "Change your email or password and manage MFA",
+              'settings.accountSecurity.description',
+              'Change your email or password and manage MFA'
             )}
           >
             <Lock className="h-5 w-5" />
-            {t("settings.accountSecurity.title", "Account Security")}
+            {t('settings.accountSecurity.title', 'Account Security')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0 space-y-6">
             {/* Email Change */}
             <div>
               <Label htmlFor="current_email">
-                {t("settings.accountSecurity.currentEmail", "Current Email")}
+                {t('settings.accountSecurity.currentEmail', 'Current Email')}
               </Label>
               <div className="flex gap-2">
                 <Input
@@ -1627,8 +1627,8 @@ const Settings = () => {
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder={t(
-                    "settings.accountSecurity.enterNewEmail",
-                    "Enter new email address",
+                    'settings.accountSecurity.enterNewEmail',
+                    'Enter new email address'
                   )}
                 />
                 <Button
@@ -1636,13 +1636,13 @@ const Settings = () => {
                   disabled={loading}
                   variant="outline"
                 >
-                  {t("settings.accountSecurity.updateEmail", "Update Email")}
+                  {t('settings.accountSecurity.updateEmail', 'Update Email')}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {t(
-                  "settings.accountSecurity.verifyNewEmail",
-                  "You'll need to verify your new email address",
+                  'settings.accountSecurity.verifyNewEmail',
+                  "You'll need to verify your new email address"
                 )}
               </p>
             </div>
@@ -1659,8 +1659,8 @@ const Settings = () => {
             >
               <h3 className="text-lg font-medium">
                 {t(
-                  "settings.accountSecurity.changePassword",
-                  "Change Password",
+                  'settings.accountSecurity.changePassword',
+                  'Change Password'
                 )}
               </h3>
               {/* Hidden username field for password managers */}
@@ -1672,13 +1672,13 @@ const Settings = () => {
                 className="hidden"
                 tabIndex={-1}
                 aria-hidden="true"
-                value={user?.email || ""} // Pre-fill with user's email if available
+                value={user?.email || ''} // Pre-fill with user's email if available
                 readOnly
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="new_password">
-                    {t("settings.accountSecurity.newPassword", "New Password")}
+                    {t('settings.accountSecurity.newPassword', 'New Password')}
                   </Label>
                   <Input
                     id="new_password"
@@ -1692,16 +1692,16 @@ const Settings = () => {
                       }))
                     }
                     placeholder={t(
-                      "settings.accountSecurity.enterNewPassword",
-                      "Enter new password",
+                      'settings.accountSecurity.enterNewPassword',
+                      'Enter new password'
                     )}
                   />
                 </div>
                 <div>
                   <Label htmlFor="confirm_password">
                     {t(
-                      "settings.accountSecurity.confirmNewPassword",
-                      "Confirm New Password",
+                      'settings.accountSecurity.confirmNewPassword',
+                      'Confirm New Password'
                     )}
                   </Label>
                   <Input
@@ -1716,8 +1716,8 @@ const Settings = () => {
                       }))
                     }
                     placeholder={t(
-                      "settings.accountSecurity.confirmNewPassword",
-                      "Confirm New Password",
+                      'settings.accountSecurity.confirmNewPassword',
+                      'Confirm New Password'
                     )}
                   />
                 </div>
@@ -1732,10 +1732,10 @@ const Settings = () => {
               >
                 <Lock className="h-4 w-4 mr-2" />
                 {loading
-                  ? t("settings.accountSecurity.updating", "Updating...")
+                  ? t('settings.accountSecurity.updating', 'Updating...')
                   : t(
-                      "settings.accountSecurity.updatePassword",
-                      "Update Password",
+                      'settings.accountSecurity.updatePassword',
+                      'Update Password'
                     )}
               </Button>
             </form>

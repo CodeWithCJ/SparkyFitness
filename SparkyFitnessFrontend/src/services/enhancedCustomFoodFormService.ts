@@ -2,14 +2,21 @@ import { apiCall } from './api';
 
 import type { Food, FoodVariant } from '@/types/food';
 
-export const loadFoodVariants = async (foodId: string): Promise<FoodVariant[]> => {
+export const loadFoodVariants = async (
+  foodId: string
+): Promise<FoodVariant[]> => {
   return apiCall(`/foods/food-variants?food_id=${foodId}`, {
     method: 'GET',
     suppress404Toast: true, // Suppress toast for 404 errors, return empty array instead
   });
 };
 
-export const saveFood = async (foodData: Food, variants: FoodVariant[], userId: string, foodId?: string): Promise<Food> => {
+export const saveFood = async (
+  foodData: Food,
+  variants: FoodVariant[],
+  userId: string,
+  foodId?: string
+): Promise<Food> => {
   let savedFood: Food;
 
   if (foodId) {
@@ -26,9 +33,11 @@ export const saveFood = async (foodData: Food, variants: FoodVariant[], userId: 
     // Fetch existing variants to determine what to update/delete/insert
     const existingVariants = await loadFoodVariants(foodId);
 
-    const variantsToCreate = variants.filter(v => !v.id);
-    const variantsToUpdate = variants.filter(v => v.id);
-    const variantsToDelete = existingVariants.filter(ev => !variants.some(v => v.id === ev.id));
+    const variantsToCreate = variants.filter((v) => !v.id);
+    const variantsToUpdate = variants.filter((v) => v.id);
+    const variantsToDelete = existingVariants.filter(
+      (ev) => !variants.some((v) => v.id === ev.id)
+    );
 
     // Update existing variants
     for (const variant of variantsToUpdate) {
@@ -64,7 +73,7 @@ export const saveFood = async (foodData: Food, variants: FoodVariant[], userId: 
 
     // Create new variants
     if (variantsToCreate.length > 0) {
-      const newVariantsData = variantsToCreate.map(variant => ({
+      const newVariantsData = variantsToCreate.map((variant) => ({
         food_id: foodId,
         serving_size: variant.serving_size,
         serving_unit: variant.serving_unit,
@@ -144,7 +153,7 @@ export const saveFood = async (foodData: Food, variants: FoodVariant[], userId: 
     });
 
     // Insert additional variants (starting from the second variant)
-    const additionalVariantsToInsert = variants.slice(1).map(variant => ({
+    const additionalVariantsToInsert = variants.slice(1).map((variant) => ({
       food_id: savedFood.id,
       serving_size: variant.serving_size,
       serving_unit: variant.serving_unit,
@@ -181,6 +190,7 @@ export const saveFood = async (foodData: Food, variants: FoodVariant[], userId: 
 };
 
 export const isUUID = (uuid: string) => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(uuid);
 };

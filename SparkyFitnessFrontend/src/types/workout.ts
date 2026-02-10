@@ -1,4 +1,4 @@
-import { Exercise } from "@/services/exerciseService";
+import { Exercise } from '@/services/exerciseService';
 
 export interface PresetExercise {
   id: string;
@@ -13,7 +13,16 @@ export interface PresetExercise {
 export interface WorkoutPresetSet {
   id?: string;
   set_number: number;
-  set_type: 'Working Set' | 'Warm-up' | 'Drop Set' | 'Failure' | 'AMRAP' | 'Back-off' | 'Rest-Pause' | 'Cluster' | 'Technique';
+  set_type:
+    | 'Working Set'
+    | 'Warm-up'
+    | 'Drop Set'
+    | 'Failure'
+    | 'AMRAP'
+    | 'Back-off'
+    | 'Rest-Pause'
+    | 'Cluster'
+    | 'Technique';
   reps?: number;
   weight?: number;
   duration?: number; // in minutes
@@ -75,7 +84,8 @@ export interface WorkoutPlanTemplate {
 }
 
 // New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
-export interface ExerciseToLog extends Exercise { // Export the interface
+export interface ExerciseToLog extends Exercise {
+  // Export the interface
   sets?: WorkoutPresetSet[];
   reps?: number;
   weight?: number;
@@ -86,4 +96,3 @@ export interface ExerciseToLog extends Exercise { // Export the interface
   distance?: number; // New field
   avg_heart_rate?: number; // New field
 }
-

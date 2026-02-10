@@ -1,33 +1,33 @@
-import type React from "react";
-import { useState, useEffect } from "react";
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import {
   getWaterContainers,
   createWaterContainer,
   deleteWaterContainer,
   setPrimaryWaterContainer,
   type WaterContainer,
-} from "@/services/waterContainerService";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { convertMlToSelectedUnit } from "@/utils/nutritionCalculations";
+} from '@/services/waterContainerService';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { convertMlToSelectedUnit } from '@/utils/nutritionCalculations';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { useWaterContainer } from "@/contexts/WaterContainerContext";
+} from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { useWaterContainer } from '@/contexts/WaterContainerContext';
 
 const WaterContainerManager: React.FC = () => {
   const [containers, setContainers] = useState<WaterContainer[]>([]);
-  const [name, setName] = useState("");
-  const [volume, setVolume] = useState<number | "">("");
-  const [unit, setUnit] = useState<"ml" | "oz" | "liter">("ml");
-  const [servingsPerContainer, setServingsPerContainer] = useState<number | "">(
-    "",
+  const [name, setName] = useState('');
+  const [volume, setVolume] = useState<number | ''>('');
+  const [unit, setUnit] = useState<'ml' | 'oz' | 'liter'>('ml');
+  const [servingsPerContainer, setServingsPerContainer] = useState<number | ''>(
+    ''
   );
   const { toast } = useToast();
   const { refreshContainers } = useWaterContainer(); // Use the context
@@ -42,16 +42,16 @@ const WaterContainerManager: React.FC = () => {
       setContainers(fetchedContainers);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to fetch water containers.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to fetch water containers.',
+        variant: 'destructive',
       });
     }
   };
 
   const handleAddContainer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || volume === "" || servingsPerContainer === "") return;
+    if (!name || volume === '' || servingsPerContainer === '') return;
     try {
       await createWaterContainer({
         name,
@@ -60,17 +60,17 @@ const WaterContainerManager: React.FC = () => {
         is_primary: false,
         servings_per_container: Number(servingsPerContainer),
       });
-      toast({ title: "Success", description: "Water container added." });
+      toast({ title: 'Success', description: 'Water container added.' });
       fetchContainers();
       refreshContainers(); // Refresh active container in context
-      setName("");
-      setVolume("");
-      setServingsPerContainer("");
+      setName('');
+      setVolume('');
+      setServingsPerContainer('');
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to add water container.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to add water container.',
+        variant: 'destructive',
       });
     }
   };
@@ -78,14 +78,14 @@ const WaterContainerManager: React.FC = () => {
   const handleDeleteContainer = async (id: number) => {
     try {
       await deleteWaterContainer(id);
-      toast({ title: "Success", description: "Water container deleted." });
+      toast({ title: 'Success', description: 'Water container deleted.' });
       fetchContainers();
       refreshContainers(); // Refresh active container in context
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to delete water container.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to delete water container.',
+        variant: 'destructive',
       });
     }
   };
@@ -93,14 +93,14 @@ const WaterContainerManager: React.FC = () => {
   const handleSetPrimary = async (id: number) => {
     try {
       await setPrimaryWaterContainer(id);
-      toast({ title: "Success", description: "Primary container updated." });
+      toast({ title: 'Success', description: 'Primary container updated.' });
       fetchContainers();
       refreshContainers(); // Refresh active container in context
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to set primary container.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to set primary container.',
+        variant: 'destructive',
       });
     }
   };
@@ -150,7 +150,7 @@ const WaterContainerManager: React.FC = () => {
           <div className="grid gap-1.5">
             <label>Unit</label>
             <Select
-              onValueChange={(value: "ml" | "oz" | "liter") => setUnit(value)}
+              onValueChange={(value: 'ml' | 'oz' | 'liter') => setUnit(value)}
               defaultValue={unit}
             >
               <SelectTrigger>
@@ -173,11 +173,11 @@ const WaterContainerManager: React.FC = () => {
             >
               <div>
                 <p className="font-semibold">
-                  {c.name} -{" "}
+                  {c.name} -{' '}
                   {convertMlToSelectedUnit(
                     parseFloat(c.volume as any),
-                    c.unit,
-                  ).toFixed(2)}{" "}
+                    c.unit
+                  ).toFixed(2)}{' '}
                   {c.unit} ({c.servings_per_container} servings)
                 </p>
                 {c.is_primary && (

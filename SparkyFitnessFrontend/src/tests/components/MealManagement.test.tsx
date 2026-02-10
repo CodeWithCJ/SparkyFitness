@@ -7,7 +7,11 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, defaultValueOrOpts?: string | Record<string, unknown>) => {
       if (typeof defaultValueOrOpts === 'string') return defaultValueOrOpts;
-      if (defaultValueOrOpts && typeof defaultValueOrOpts === 'object' && 'defaultValue' in defaultValueOrOpts) {
+      if (
+        defaultValueOrOpts &&
+        typeof defaultValueOrOpts === 'object' &&
+        'defaultValue' in defaultValueOrOpts
+      ) {
         return defaultValueOrOpts.defaultValue as string;
       }
       return key;
@@ -66,7 +70,9 @@ describe('MealManagement', () => {
     expect(screen.getByText('Meal Management')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText('No meals found. Create one!')).toBeInTheDocument();
+      expect(
+        screen.getByText('No meals found. Create one!')
+      ).toBeInTheDocument();
     });
   });
 

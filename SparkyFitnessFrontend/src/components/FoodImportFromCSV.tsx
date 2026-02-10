@@ -1,21 +1,21 @@
-import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Plus, Download, Upload, Trash2 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
-import { usePreferences } from "@/contexts/PreferencesContext";
+} from '@/components/ui/select';
+import { Plus, Download, Upload, Trash2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 interface ImportFromCSVProps {
-  onSave: (foodData: Omit<CSVData, "id">[]) => Promise<void>;
+  onSave: (foodData: Omit<CSVData, 'id'>[]) => Promise<void>;
 }
 
 export interface CSVData {
@@ -51,94 +51,93 @@ const generateUniqueId = () =>
   `temp_${Math.random().toString(36).substr(2, 9)}`;
 
 const servingUnitOptions = [
-  "g",
-  "kg",
-  "mg",
-  "oz",
-  "lb",
-  "ml",
-  "l",
-  "cup",
-  "tbsp",
-  "tsp",
-  "piece",
-  "slice",
-  "serving",
-  "can",
-  "bottle",
-  "packet",
-  "bag",
-  "bowl",
-  "plate",
-  "handful",
-  "scoop",
-  "bar",
-  "stick",
+  'g',
+  'kg',
+  'mg',
+  'oz',
+  'lb',
+  'ml',
+  'l',
+  'cup',
+  'tbsp',
+  'tsp',
+  'piece',
+  'slice',
+  'serving',
+  'can',
+  'bottle',
+  'packet',
+  'bag',
+  'bowl',
+  'plate',
+  'handful',
+  'scoop',
+  'bar',
+  'stick',
 ];
 
 const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   const { energyUnit, convertEnergy } = usePreferences();
-
 
   const [loading, setLoading] = useState(false);
   const [csvData, setCsvData] = useState<CSVData[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const textFields = new Set(["name", "brand"]);
+  const textFields = new Set(['name', 'brand']);
   const booleanFields = new Set([
-    "shared_with_public",
-    "is_quick_food",
-    "is_default",
-    "is_custom",
+    'shared_with_public',
+    'is_quick_food',
+    'is_default',
+    'is_custom',
   ]);
 
   const requiredHeaders = [
-    "name",
-    "brand",
-    "is_custom",
-    "shared_with_public",
-    "is_quick_food",
-    "serving_size",
-    "serving_unit",
-    "calories", // Assumed to be in kcal
-    "protein",
-    "carbs",
-    "fat",
-    "saturated_fat",
-    "polyunsaturated_fat",
-    "monounsaturated_fat",
-    "trans_fat",
-    "cholesterol",
-    "sodium",
-    "potassium",
-    "dietary_fiber",
-    "sugars",
-    "vitamin_a",
-    "vitamin_c",
-    "calcium",
-    "iron",
-    "is_default",
+    'name',
+    'brand',
+    'is_custom',
+    'shared_with_public',
+    'is_quick_food',
+    'serving_size',
+    'serving_unit',
+    'calories', // Assumed to be in kcal
+    'protein',
+    'carbs',
+    'fat',
+    'saturated_fat',
+    'polyunsaturated_fat',
+    'monounsaturated_fat',
+    'trans_fat',
+    'cholesterol',
+    'sodium',
+    'potassium',
+    'dietary_fiber',
+    'sugars',
+    'vitamin_a',
+    'vitamin_c',
+    'calcium',
+    'iron',
+    'is_default',
   ];
 
   const parseCSV = (text: string): CSVData[] => {
-    const lines = text.split("\n").filter((line) => line.trim() !== "");
+    const lines = text.split('\n').filter((line) => line.trim() !== '');
     if (lines.length < 2) return [];
 
-    const parsedHeaders = lines[0].split(",").map((header) => header.trim());
+    const parsedHeaders = lines[0].split(',').map((header) => header.trim());
     const data: CSVData[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(",").map((value) => value.trim());
+      const values = lines[i].split(',').map((value) => value.trim());
       const row: CSVData = { id: generateUniqueId() } as CSVData;
 
       parsedHeaders.forEach((header, index) => {
-        const value = values[index] || "";
+        const value = values[index] || '';
         if (booleanFields.has(header)) {
-          row[header] = value.toLowerCase() === "true";
+          row[header] = value.toLowerCase() === 'true';
         } else if (
           !textFields.has(header) &&
-          header !== "serving_unit" &&
+          header !== 'serving_unit' &&
           !isNaN(parseFloat(value))
         ) {
           row[header] = parseFloat(value); // All numeric values (including calories) are treated as kcal
@@ -159,41 +158,41 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     reader.onload = (e) => {
       const text = e.target?.result as string;
 
-      if (!text || text.trim() === "") {
+      if (!text || text.trim() === '') {
         toast({
-          title: "Import Error",
-          description: "The selected file is empty.",
-          variant: "destructive",
+          title: 'Import Error',
+          description: 'The selected file is empty.',
+          variant: 'destructive',
         });
         return;
       }
 
-      const lines = text.split("\n");
-      const fileHeaders = lines[0].split(",").map((h) => h.trim());
+      const lines = text.split('\n');
+      const fileHeaders = lines[0].split(',').map((h) => h.trim());
       const areHeadersValid =
         requiredHeaders.length === fileHeaders.length &&
         requiredHeaders.every((value, index) => value === fileHeaders[index]);
 
       if (!areHeadersValid) {
         toast({
-          title: "Invalid CSV Format",
+          title: 'Invalid CSV Format',
           description:
-            "The CSV headers do not match the required format or order. Please download the template.",
-          variant: "destructive",
+            'The CSV headers do not match the required format or order. Please download the template.',
+          variant: 'destructive',
         });
-        if (fileInputRef.current) fileInputRef.current.value = "";
+        if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
 
       const parsedData = parseCSV(text);
       if (parsedData.length > 0) {
-        setHeaders(Object.keys(parsedData[0]).filter((key) => key !== "id"));
+        setHeaders(Object.keys(parsedData[0]).filter((key) => key !== 'id'));
         setCsvData(parsedData);
       } else {
         toast({
-          title: "No Data Found",
-          description: "The CSV file contains headers but no data rows.",
-          variant: "destructive",
+          title: 'No Data Found',
+          description: 'The CSV file contains headers but no data rows.',
+          variant: 'destructive',
         });
       }
     };
@@ -203,13 +202,13 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   const handleDownloadSample = () => {
     const sampleData = [
       {
-        name: "Sparky Sample Food",
-        brand: "Sparky Sample Brand",
-        is_custom: "TRUE",
-        shared_with_public: "",
-        is_quick_food: "FALSE",
+        name: 'Sparky Sample Food',
+        brand: 'Sparky Sample Brand',
+        is_custom: 'TRUE',
+        shared_with_public: '',
+        is_quick_food: 'FALSE',
         serving_size: 231,
-        serving_unit: "slice",
+        serving_unit: 'slice',
         calories: 431, // kcal
         protein: 379,
         carbs: 204,
@@ -227,25 +226,25 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
         vitamin_c: 635,
         calcium: 360,
         iron: 366,
-        is_default: "TRUE",
+        is_default: 'TRUE',
       },
     ];
 
-    const headerString = requiredHeaders.join(",");
+    const headerString = requiredHeaders.join(',');
     const rowsString = sampleData
       .map((row) =>
         requiredHeaders
           .map((header) => row[header as keyof typeof row])
-          .join(",")
+          .join(',')
       )
-      .join("\n");
+      .join('\n');
     const csvContent = `${headerString}\n${rowsString}`;
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "food_template.csv");
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'food_template.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -269,13 +268,13 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   const handleAddNewRow = () => {
     const newRow: CSVData = {
       id: generateUniqueId(),
-      name: "",
-      brand: "",
+      name: '',
+      brand: '',
       is_custom: true,
       shared_with_public: false,
       is_quick_food: false,
       serving_size: 100,
-      serving_unit: "g",
+      serving_unit: 'g',
       calories: 0, // kcal
       protein: 0,
       carbs: 0,
@@ -304,19 +303,19 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   const clearData = () => {
     setCsvData([]);
     setHeaders([]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const invalidRow = csvData.find(
-      (row) => !row.name || String(row.name).trim() === ""
+      (row) => !row.name || String(row.name).trim() === ''
     );
     if (invalidRow) {
       toast({
-        title: "Validation Error",
+        title: 'Validation Error',
         description: "The 'name' field cannot be empty.",
-        variant: "destructive",
+        variant: 'destructive',
       });
       return;
     }
@@ -327,7 +326,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       await onSave(dataForBackend);
     } catch (error) {
       console.error(
-        "An error occurred while the parent was handling the save operation:",
+        'An error occurred while the parent was handling the save operation:',
         error
       );
     } finally {
@@ -404,7 +403,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                           key={header}
                           className="px-4 py-2 text-left bg-background font-medium whitespace-nowrap capitalize"
                         >
-                          {header.replace(/_/g, " ")}
+                          {header.replace(/_/g, ' ')}
                         </th>
                       ))}
                       <th className="px-4 py-2 text-left bg-background font-medium whitespace-nowrap">
@@ -424,12 +423,12 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                             className="block md:table-cell px-4 py-3 md:py-2 md:whitespace-nowrap border-b md:border-0 last:border-b-0"
                           >
                             <span className="font-medium capitalize text-muted-foreground md:hidden mb-1 block">
-                              {header.replace(/_/g, " ")}
+                              {header.replace(/_/g, ' ')}
                             </span>
 
-                            {header === "serving_unit" ? (
+                            {header === 'serving_unit' ? (
                               <Select
-                                value={String(row[header]) || "g"}
+                                value={String(row[header]) || 'g'}
                                 onValueChange={(value) =>
                                   handleEditCell(row.id, header, value)
                                 }
@@ -452,7 +451,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                                   handleEditCell(
                                     row.id,
                                     header,
-                                    value === "true"
+                                    value === 'true'
                                   )
                                 }
                               >
@@ -467,27 +466,40 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                             ) : textFields.has(header) ? (
                               <Input
                                 type="text"
-                                value={(row[header] as string) || ""}
+                                value={(row[header] as string) || ''}
                                 onChange={(e) =>
                                   handleEditCell(row.id, header, e.target.value)
                                 }
-                                required={header === "name"}
+                                required={header === 'name'}
                                 className="w-full md:w-40"
                               />
-                            ) : ( // Generic number input
+                            ) : (
+                              // Generic number input
                               <Input
                                 type="number"
                                 value={
-                                  (header === "calories" && row[header] !== undefined)
-                                    ? Math.round(convertEnergy(row[header] as number, 'kcal', energyUnit))
+                                  header === 'calories' &&
+                                  row[header] !== undefined
+                                    ? Math.round(
+                                        convertEnergy(
+                                          row[header] as number,
+                                          'kcal',
+                                          energyUnit
+                                        )
+                                      )
                                     : (row[header] as number) || 0
                                 }
                                 onChange={(e) =>
                                   handleEditCell(
                                     row.id,
                                     header,
-                                    (header === "calories" && e.target.valueAsNumber)
-                                      ? convertEnergy(e.target.valueAsNumber, energyUnit, 'kcal')
+                                    header === 'calories' &&
+                                      e.target.valueAsNumber
+                                      ? convertEnergy(
+                                          e.target.valueAsNumber,
+                                          energyUnit,
+                                          'kcal'
+                                        )
                                       : e.target.valueAsNumber || 0
                                   )
                                 }
@@ -534,7 +546,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
             ) : (
               <>
                 <Upload size={16} /> Import
-                {csvData.length > 0 ? `${csvData.length} Records` : "Data"}
+                {csvData.length > 0 ? `${csvData.length} Records` : 'Data'}
               </>
             )}
           </Button>

@@ -18,7 +18,11 @@ interface CachedStarData {
 const CACHE_KEY_PREFIX = 'github_stars_';
 const CACHE_DURATION = 1 * 60 * 60 * 1000; // 1 hours
 
-const GitHubStarCounter: React.FC<GitHubStarCounterProps> = ({ owner, repo, className }) => {
+const GitHubStarCounter: React.FC<GitHubStarCounterProps> = ({
+  owner,
+  repo,
+  className,
+}) => {
   const [starCount, setStarCount] = useState<string | null>(null);
 
   const getCacheKey = () => `${CACHE_KEY_PREFIX}${owner}/${repo}`;
@@ -85,7 +89,7 @@ const GitHubStarCounter: React.FC<GitHubStarCounterProps> = ({ owner, repo, clas
         }
       } catch (error) {
         console.debug(`GitHub API error for ${owner}/${repo}`);
-        
+
         // If API fails, try to use stale cache as fallback
         try {
           const staleCache = localStorage.getItem(getCacheKey());
@@ -109,7 +113,15 @@ const GitHubStarCounter: React.FC<GitHubStarCounterProps> = ({ owner, repo, clas
   const githubUrl = `https://github.com/${owner}/${repo}`;
 
   return (
-    <a href={githubUrl} target="_blank" rel="noopener noreferrer" className={cn("flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md text-sm text-gray-800 dark:text-gray-200 cursor-pointer", className)}>
+    <a
+      href={githubUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        'flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md text-sm text-gray-800 dark:text-gray-200 cursor-pointer',
+        className
+      )}
+    >
       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
       <span>{starCount}</span>
     </a>

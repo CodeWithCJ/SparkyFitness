@@ -1,44 +1,51 @@
 import { apiCall } from './api';
 import type { ExpandedGoals } from '@/types/goals';
 
-
-export const loadGoals = async (selectedDate: string): Promise<ExpandedGoals> => {
+export const loadGoals = async (
+  selectedDate: string
+): Promise<ExpandedGoals> => {
   const params = new URLSearchParams({ date: selectedDate });
   const data = await apiCall(`/goals/for-date?${params.toString()}`, {
     method: 'GET',
   });
-  return data || {
-    calories: 2000,
-    protein: 150,
-    carbs: 250,
-    fat: 67,
-    water_goal_ml: 1920, // Default to 1920ml (8 glasses)
-    saturated_fat: 20,
-    polyunsaturated_fat: 10,
-    monounsaturated_fat: 25,
-    trans_fat: 0,
-    cholesterol: 300,
-    sodium: 2300,
-    potassium: 3500,
-    dietary_fiber: 25,
-    sugars: 50,
-    vitamin_a: 900,
-    vitamin_c: 90,
-    calcium: 1000,
-    iron: 18,
-    target_exercise_calories_burned: 0,
-    target_exercise_duration_minutes: 0,
-    protein_percentage: null,
-    carbs_percentage: null,
-    fat_percentage: null,
-    breakfast_percentage: 25,
-    lunch_percentage: 25,
-    dinner_percentage: 25,
-    snacks_percentage: 25,
-  };
+  return (
+    data || {
+      calories: 2000,
+      protein: 150,
+      carbs: 250,
+      fat: 67,
+      water_goal_ml: 1920, // Default to 1920ml (8 glasses)
+      saturated_fat: 20,
+      polyunsaturated_fat: 10,
+      monounsaturated_fat: 25,
+      trans_fat: 0,
+      cholesterol: 300,
+      sodium: 2300,
+      potassium: 3500,
+      dietary_fiber: 25,
+      sugars: 50,
+      vitamin_a: 900,
+      vitamin_c: 90,
+      calcium: 1000,
+      iron: 18,
+      target_exercise_calories_burned: 0,
+      target_exercise_duration_minutes: 0,
+      protein_percentage: null,
+      carbs_percentage: null,
+      fat_percentage: null,
+      breakfast_percentage: 25,
+      lunch_percentage: 25,
+      dinner_percentage: 25,
+      snacks_percentage: 25,
+    }
+  );
 };
 
-export const saveGoals = async (selectedDate: string, goals: ExpandedGoals, cascade: boolean): Promise<void> => {
+export const saveGoals = async (
+  selectedDate: string,
+  goals: ExpandedGoals,
+  cascade: boolean
+): Promise<void> => {
   await apiCall('/goals/manage-timeline', {
     method: 'POST',
     body: {
@@ -63,14 +70,15 @@ export const saveGoals = async (selectedDate: string, goals: ExpandedGoals, casc
       p_calcium: goals.calcium,
       p_iron: goals.iron,
       p_target_exercise_calories_burned: goals.target_exercise_calories_burned,
-      p_target_exercise_duration_minutes: goals.target_exercise_duration_minutes,
+      p_target_exercise_duration_minutes:
+        goals.target_exercise_duration_minutes,
       p_protein_percentage: goals.protein_percentage,
       p_carbs_percentage: goals.carbs_percentage,
       p_fat_percentage: goals.fat_percentage,
       p_breakfast_percentage: goals.breakfast_percentage,
       p_lunch_percentage: goals.lunch_percentage,
       p_dinner_percentage: goals.dinner_percentage,
-      p_snacks_percentage: goals.snacks_percentage
+      p_snacks_percentage: goals.snacks_percentage,
     },
   });
 };

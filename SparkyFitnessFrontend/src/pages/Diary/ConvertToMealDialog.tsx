@@ -1,6 +1,6 @@
-import type React from "react";
-import { useState, useEffect, useCallback } from "react";
-import { useTranslation } from "react-i18next";
+import type React from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -8,15 +8,15 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { toast } from "@/hooks/use-toast";
-import { createMealFromDiary } from "@/services/mealService";
-import { debug, info, error } from "@/utils/logging";
-import { usePreferences } from "@/contexts/PreferencesContext";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { toast } from '@/hooks/use-toast';
+import { createMealFromDiary } from '@/services/mealService';
+import { debug, info, error } from '@/utils/logging';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 interface ConvertToMealDialogProps {
   isOpen: boolean;
@@ -35,8 +35,8 @@ const ConvertToMealDialog: React.FC<ConvertToMealDialogProps> = ({
 }) => {
   const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
-  const [mealName, setMealName] = useState("");
-  const [description, setDescription] = useState("");
+  const [mealName, setMealName] = useState('');
+  const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -45,49 +45,90 @@ const ConvertToMealDialog: React.FC<ConvertToMealDialogProps> = ({
       // Set a default meal name based on the meal type and date
       const defaultName = `${t(`common.${mealType}`, mealType)} - ${selectedDate}`;
       setMealName(defaultName);
-      setDescription("");
+      setDescription('');
       setIsPublic(false);
-      debug(loggingLevel, "ConvertToMealDialog: Dialog opened with mealType:", mealType, "and selectedDate:", selectedDate);
+      debug(
+        loggingLevel,
+        'ConvertToMealDialog: Dialog opened with mealType:',
+        mealType,
+        'and selectedDate:',
+        selectedDate
+      );
     }
   }, [isOpen, mealType, selectedDate, t, loggingLevel]);
 
   const handleSubmit = useCallback(async () => {
     setIsLoading(true);
-    debug(loggingLevel, "ConvertToMealDialog: Submitting new meal with data:", { mealName, description, isPublic, selectedDate, mealType });
+    debug(loggingLevel, 'ConvertToMealDialog: Submitting new meal with data:', {
+      mealName,
+      description,
+      isPublic,
+      selectedDate,
+      mealType,
+    });
     try {
-      await createMealFromDiary(selectedDate, mealType, mealName, description, isPublic);
+      await createMealFromDiary(
+        selectedDate,
+        mealType,
+        mealName,
+        description,
+        isPublic
+      );
       toast({
-        title: t("mealCreation.success", "Success"),
-        description: t("mealCreation.mealCreatedSuccessfully", "Meal created successfully from diary entries."),
+        title: t('mealCreation.success', 'Success'),
+        description: t(
+          'mealCreation.mealCreatedSuccessfully',
+          'Meal created successfully from diary entries.'
+        ),
       });
-      info(loggingLevel, "ConvertToMealDialog: Meal created successfully.");
+      info(loggingLevel, 'ConvertToMealDialog: Meal created successfully.');
       onMealCreated();
       onClose();
     } catch (err: any) {
-      error(loggingLevel, "ConvertToMealDialog: Error creating meal:", err);
+      error(loggingLevel, 'ConvertToMealDialog: Error creating meal:', err);
       toast({
-        title: t("mealCreation.error", "Error"),
-        description: err.response?.data?.error || t("mealCreation.failedToCreateMeal", "Failed to create meal from diary entries."),
-        variant: "destructive",
+        title: t('mealCreation.error', 'Error'),
+        description:
+          err.response?.data?.error ||
+          t(
+            'mealCreation.failedToCreateMeal',
+            'Failed to create meal from diary entries.'
+          ),
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
-  }, [mealName, description, isPublic, selectedDate, mealType, onMealCreated, onClose, t, loggingLevel]);
+  }, [
+    mealName,
+    description,
+    isPublic,
+    selectedDate,
+    mealType,
+    onMealCreated,
+    onClose,
+    t,
+    loggingLevel,
+  ]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{t("mealCreation.convertToMeal", "Create Meal from Diary")}</DialogTitle>
+          <DialogTitle>
+            {t('mealCreation.convertToMeal', 'Create Meal from Diary')}
+          </DialogTitle>
           <DialogDescription>
-            {t("mealCreation.enterDetails", "Enter details for your new meal template.")}
+            {t(
+              'mealCreation.enterDetails',
+              'Enter details for your new meal template.'
+            )}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="mealName" className="text-right">
-              {t("mealCreation.mealName", "Meal Name")}
+              {t('mealCreation.mealName', 'Meal Name')}
             </Label>
             <Input
               id="mealName"
@@ -99,7 +140,7 @@ const ConvertToMealDialog: React.FC<ConvertToMealDialogProps> = ({
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="description" className="text-right">
-              {t("mealCreation.description", "Description")}
+              {t('mealCreation.description', 'Description')}
             </Label>
             <Input
               id="description"
@@ -111,7 +152,7 @@ const ConvertToMealDialog: React.FC<ConvertToMealDialogProps> = ({
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="isPublic" className="text-right">
-              {t("mealCreation.makePublic", "Make Public")}
+              {t('mealCreation.makePublic', 'Make Public')}
             </Label>
             <Switch
               id="isPublic"
@@ -124,10 +165,12 @@ const ConvertToMealDialog: React.FC<ConvertToMealDialogProps> = ({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            {t("common.cancel", "Cancel")}
+            {t('common.cancel', 'Cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading || !mealName}>
-            {isLoading ? t("common.creating", "Creating...") : t("common.create", "Create")}
+            {isLoading
+              ? t('common.creating', 'Creating...')
+              : t('common.create', 'Create')}
           </Button>
         </DialogFooter>
       </DialogContent>

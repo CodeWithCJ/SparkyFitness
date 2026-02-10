@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from 'react';
 
 /**
  * Custom hook for managing toggle state.
@@ -10,13 +10,13 @@ const useToggle = (): {
   toggleHandler: () => void;
   setIsToggled: React.Dispatch<React.SetStateAction<boolean>>;
 } => {
- const [isToggled, setIsToggled] = useState<boolean>(false)
+  const [isToggled, setIsToggled] = useState<boolean>(false);
 
- const toggleHandler = () => {
-    setIsToggled((prev) => !prev)
- }
+  const toggleHandler = () => {
+    setIsToggled((prev) => !prev);
+  };
 
-  return { isToggled, toggleHandler, setIsToggled }
-}
+  return { isToggled, toggleHandler, setIsToggled };
+};
 
-export default useToggle
+export default useToggle;

@@ -1,6 +1,8 @@
 // SparkyFitnessFrontend/src/utils/moodUtils.ts
 
-export const getMoodDisplay = (moodValue: number | null): { emoji: string, label: string } => {
+export const getMoodDisplay = (
+  moodValue: number | null
+): { emoji: string; label: string } => {
   if (moodValue === null) return { emoji: '😐', label: 'Neutral' }; // Default for null mood
   if (moodValue === 10) return { emoji: '😴', label: 'Tired' }; // 0-10
   if (moodValue <= 20) return { emoji: '😢', label: 'Sad' }; // 11-20

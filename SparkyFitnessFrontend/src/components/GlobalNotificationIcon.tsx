@@ -2,15 +2,24 @@ import type React from 'react';
 import { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getNeedsReviewCount, getNeedsReviewItems, type ReviewItem } from '@/services/reviewService';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  getNeedsReviewCount,
+  getNeedsReviewItems,
+  type ReviewItem,
+} from '@/services/reviewService';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 
 const GlobalNotificationIcon: React.FC = () => {
   const { user } = useAuth();
@@ -31,7 +40,7 @@ const GlobalNotificationIcon: React.FC = () => {
           setReviewItems(items);
         }
       } catch (error) {
-        console.error("Failed to fetch items needing review:", error);
+        console.error('Failed to fetch items needing review:', error);
       }
     };
 
@@ -54,7 +63,10 @@ const GlobalNotificationIcon: React.FC = () => {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="relative cursor-pointer" onClick={() => setIsDialogOpen(true)}>
+          <div
+            className="relative cursor-pointer"
+            onClick={() => setIsDialogOpen(true)}
+          >
             <Bell className="h-6 w-6" />
             {reviewCount > 0 && (
               <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
@@ -78,8 +90,13 @@ const GlobalNotificationIcon: React.FC = () => {
           </DialogHeader>
           <div className="mt-4 space-y-2">
             {reviewItems.map((item, index) => (
-              <div key={`${item.type}-${item.id || index}`} className="flex items-center justify-between p-2 border rounded-md">
-                <span>{item.name || '(food)'} ({item.type})</span>
+              <div
+                key={`${item.type}-${item.id || index}`}
+                className="flex items-center justify-between p-2 border rounded-md"
+              >
+                <span>
+                  {item.name || '(food)'} ({item.type})
+                </span>
                 {/* Add action buttons here if needed, e.g., to dismiss or view details */}
               </div>
             ))}

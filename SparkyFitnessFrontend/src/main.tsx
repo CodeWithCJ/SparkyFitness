@@ -1,15 +1,17 @@
-import { createRoot } from 'react-dom/client'
-import App from './App.tsx'
-import './index.css'
+import { createRoot } from 'react-dom/client';
+import App from './App.tsx';
+import './index.css';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth.tsx';
 import './i18n';
 import { Suspense } from 'react';
 
-createRoot(document.getElementById("root")!).render(
+createRoot(document.getElementById('root')!).render(
   <Suspense fallback="loading">
     <BrowserRouter>
-      <AuthProvider> {/* Wrap App with AuthProvider */}
+      <AuthProvider>
+        {' '}
+        {/* Wrap App with AuthProvider */}
         <App />
       </AuthProvider>
     </BrowserRouter>

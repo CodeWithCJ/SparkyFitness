@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogDescription,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Edit,
   Trash2,
@@ -18,16 +18,16 @@ import {
   Utensils,
   ClipboardCopy,
   PlusCircle, // Adding PlusCircle icon for "Convert to Meal"
-} from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useState } from "react";
-import EnhancedFoodSearch from "../../components/EnhancedFoodSearch";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { debug, info } from "@/utils/logging";
+} from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useState } from 'react';
+import EnhancedFoodSearch from '../../components/EnhancedFoodSearch';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { debug, info } from '@/utils/logging';
 
-import type { Food, FoodVariant, FoodEntry, GlycemicIndex } from "@/types/food";
-import type { Meal, FoodEntryMeal } from "@/types/meal";
+import type { Food, FoodVariant, FoodEntry, GlycemicIndex } from '@/types/food';
+import type { Meal, FoodEntryMeal } from '@/types/meal';
 
 interface MealTotals {
   calories: number;
@@ -49,7 +49,7 @@ interface MealTotals {
   custom_nutrients?: Record<string, number>; // Add custom_nutrients support
 }
 
-import type { UserCustomNutrient } from "@/types/customNutrient";
+import type { UserCustomNutrient } from '@/types/customNutrient';
 
 interface MealCardProps {
   meal: {
@@ -65,18 +65,18 @@ interface MealCardProps {
   onEditFood: (food: Food) => void;
   onRemoveEntry: (
     itemId: string,
-    itemType: "foodEntry" | "foodEntryMeal"
+    itemType: 'foodEntry' | 'foodEntryMeal'
   ) => Promise<void>; // Updated signature to match FoodDiary's handleRemoveEntry
   getEntryNutrition: (entry: FoodEntry | FoodEntryMeal) => MealTotals; // Updated to accept both types
   onMealAdded: () => void;
   onCopyClick: (mealType: string) => void;
   onCopyFromYesterday: (mealType: string) => void;
   onConvertToMealClick: (mealType: string) => void;
-  energyUnit: "kcal" | "kJ";
+  energyUnit: 'kcal' | 'kJ';
   convertEnergy: (
     value: number,
-    fromUnit: "kcal" | "kJ",
-    toUnit: "kcal" | "kJ"
+    fromUnit: 'kcal' | 'kJ',
+    toUnit: 'kcal' | 'kJ'
   ) => number;
   customNutrients?: UserCustomNutrient[]; // Add customNutrients prop
 }
@@ -101,70 +101,70 @@ const MealCard = ({
   const { t } = useTranslation();
   const { loggingLevel, nutrientDisplayPreferences } = usePreferences();
   const isMobile = useIsMobile();
-  const platform = isMobile ? "mobile" : "desktop";
+  const platform = isMobile ? 'mobile' : 'desktop';
 
-  const getEnergyUnitString = (unit: "kcal" | "kJ"): string => {
-    return unit === "kcal"
-      ? t("common.kcalUnit", "kcal")
-      : t("common.kJUnit", "kJ");
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal'
+      ? t('common.kcalUnit', 'kcal')
+      : t('common.kJUnit', 'kJ');
   };
-  debug(loggingLevel, "MealCard: Component rendered for meal:", meal.name);
-  debug(loggingLevel, "MealCard: meal.entries:", meal.entries);
+  debug(loggingLevel, 'MealCard: Component rendered for meal:', meal.name);
+  debug(loggingLevel, 'MealCard: meal.entries:', meal.entries);
   const [editingFood, setEditingFood] = useState<Food | null>(null); // Changed from editingFoodEntry to editingFood
 
   const handleEditFood = (food: Food) => {
     // This now expects a Food
-    debug(loggingLevel, "MealCard: Handling edit food for food:", food.id);
+    debug(loggingLevel, 'MealCard: Handling edit food for food:', food.id);
     setEditingFood(food); // Set the food object to be edited
   };
 
   const handleSaveFood = () => {
-    debug(loggingLevel, "MealCard: Handling save food.");
+    debug(loggingLevel, 'MealCard: Handling save food.');
     if (editingFood) {
       onEditFood(editingFood); // Pass the edited food
     }
     setEditingFood(null);
-    info(loggingLevel, "MealCard: Food saved and refresh triggered.");
+    info(loggingLevel, 'MealCard: Food saved and refresh triggered.');
   };
 
   const handleCancelFood = () => {
-    debug(loggingLevel, "MealCard: Handling cancel food.");
+    debug(loggingLevel, 'MealCard: Handling cancel food.');
     setEditingFood(null);
-    info(loggingLevel, "MealCard: Food edit cancelled.");
+    info(loggingLevel, 'MealCard: Food edit cancelled.');
   };
 
   const quickInfoPreferences =
     nutrientDisplayPreferences.find(
-      (p) => p.view_group === "quick_info" && p.platform === platform
+      (p) => p.view_group === 'quick_info' && p.platform === platform
     ) ||
     nutrientDisplayPreferences.find(
-      (p) => p.view_group === "quick_info" && p.platform === "desktop"
+      (p) => p.view_group === 'quick_info' && p.platform === 'desktop'
     );
   const foodDatabasePreferences =
     nutrientDisplayPreferences.find(
-      (p) => p.view_group === "food_database" && p.platform === platform
+      (p) => p.view_group === 'food_database' && p.platform === platform
     ) ||
     nutrientDisplayPreferences.find(
-      (p) => p.view_group === "food_database" && p.platform === "desktop"
+      (p) => p.view_group === 'food_database' && p.platform === 'desktop'
     );
 
   // Create a base list of summable nutrients
   const baseSummableNutrients = [
-    "calories",
-    "protein",
-    "carbs",
-    "fat",
-    "dietary_fiber",
-    "sugars",
-    "sodium",
-    "cholesterol",
-    "saturated_fat",
-    "trans_fat",
-    "potassium",
-    "vitamin_a",
-    "vitamin_c",
-    "iron",
-    "calcium",
+    'calories',
+    'protein',
+    'carbs',
+    'fat',
+    'dietary_fiber',
+    'sugars',
+    'sodium',
+    'cholesterol',
+    'saturated_fat',
+    'trans_fat',
+    'potassium',
+    'vitamin_a',
+    'vitamin_c',
+    'iron',
+    'calcium',
   ];
 
   // Add custom nutrient names to summable nutrients list if they exist
@@ -175,14 +175,14 @@ const MealCard = ({
       .map((cn) => cn.name),
   ];
 
-  const allDisplayableNutrients = [...summableNutrients, "glycemic_index"];
+  const allDisplayableNutrients = [...summableNutrients, 'glycemic_index'];
 
   const defaultNutrients = [
-    "calories",
-    "protein",
-    "carbs",
-    "fat",
-    "dietary_fiber",
+    'calories',
+    'protein',
+    'carbs',
+    'fat',
+    'dietary_fiber',
   ];
 
   const quickInfoNutrients = quickInfoPreferences
@@ -193,12 +193,12 @@ const MealCard = ({
     ? foodDatabasePreferences.visible_nutrients
     : defaultNutrients;
 
-  debug(loggingLevel, "MealCard: isMobile:", isMobile);
-  debug(loggingLevel, "MealCard: platform:", platform);
-  debug(loggingLevel, "MealCard: quickInfoPreferences:", quickInfoPreferences);
+  debug(loggingLevel, 'MealCard: isMobile:', isMobile);
+  debug(loggingLevel, 'MealCard: platform:', platform);
+  debug(loggingLevel, 'MealCard: quickInfoPreferences:', quickInfoPreferences);
   debug(
     loggingLevel,
-    "MealCard: foodDatabasePreferences:",
+    'MealCard: foodDatabasePreferences:',
     foodDatabasePreferences
   );
 
@@ -213,32 +213,32 @@ const MealCard = ({
     [key: string]: { color: string; label: string; unit: string };
   } = {
     calories: {
-      color: "text-gray-900 dark:text-gray-100",
+      color: 'text-gray-900 dark:text-gray-100',
       label: getEnergyUnitString(energyUnit),
-      unit: "",
+      unit: '',
     },
-    protein: { color: "text-blue-600", label: "protein", unit: "g" },
-    carbs: { color: "text-orange-600", label: "carbs", unit: "g" },
-    fat: { color: "text-yellow-600", label: "fat", unit: "g" },
-    dietary_fiber: { color: "text-green-600", label: "fiber", unit: "g" },
-    sugars: { color: "text-pink-500", label: "sugar", unit: "g" }, // Corrected 'sugar' to 'sugars'
-    sodium: { color: "text-purple-500", label: "sodium", unit: "mg" },
-    cholesterol: { color: "text-indigo-500", label: "cholesterol", unit: "mg" },
-    saturated_fat: { color: "text-red-500", label: "sat fat", unit: "g" },
-    trans_fat: { color: "text-red-700", label: "trans fat", unit: "g" },
-    potassium: { color: "text-teal-500", label: "potassium", unit: "mg" },
-    vitamin_a: { color: "text-yellow-400", label: "vit a", unit: "mcg" },
-    vitamin_c: { color: "text-orange-400", label: "vit c", unit: "mg" },
-    iron: { color: "text-gray-500", label: "iron", unit: "mg" },
-    calcium: { color: "text-blue-400", label: "calcium", unit: "mg" },
-    glycemic_index: { color: "text-purple-600", label: "GI", unit: "" },
+    protein: { color: 'text-blue-600', label: 'protein', unit: 'g' },
+    carbs: { color: 'text-orange-600', label: 'carbs', unit: 'g' },
+    fat: { color: 'text-yellow-600', label: 'fat', unit: 'g' },
+    dietary_fiber: { color: 'text-green-600', label: 'fiber', unit: 'g' },
+    sugars: { color: 'text-pink-500', label: 'sugar', unit: 'g' }, // Corrected 'sugar' to 'sugars'
+    sodium: { color: 'text-purple-500', label: 'sodium', unit: 'mg' },
+    cholesterol: { color: 'text-indigo-500', label: 'cholesterol', unit: 'mg' },
+    saturated_fat: { color: 'text-red-500', label: 'sat fat', unit: 'g' },
+    trans_fat: { color: 'text-red-700', label: 'trans fat', unit: 'g' },
+    potassium: { color: 'text-teal-500', label: 'potassium', unit: 'mg' },
+    vitamin_a: { color: 'text-yellow-400', label: 'vit a', unit: 'mcg' },
+    vitamin_c: { color: 'text-orange-400', label: 'vit c', unit: 'mg' },
+    iron: { color: 'text-gray-500', label: 'iron', unit: 'mg' },
+    calcium: { color: 'text-blue-400', label: 'calcium', unit: 'mg' },
+    glycemic_index: { color: 'text-purple-600', label: 'GI', unit: '' },
   };
 
   // Add custom nutrients to nutrientDetails
   customNutrients.forEach((cn) => {
     if (!nutrientDetails[cn.name]) {
       nutrientDetails[cn.name] = {
-        color: "text-indigo-500", // Default color for custom nutrients
+        color: 'text-indigo-500', // Default color for custom nutrients
         label: cn.name,
         unit: cn.unit,
       };
@@ -255,10 +255,10 @@ const MealCard = ({
                 {meal.name}
               </CardTitle>
               <span className="text-xs sm:text-sm text-gray-500">
-                {Math.round(convertEnergy(totals.calories, "kcal", energyUnit))}
+                {Math.round(convertEnergy(totals.calories, 'kcal', energyUnit))}
                 {!!meal.targetCalories &&
                   ` / ${Math.round(
-                    convertEnergy(meal.targetCalories, "kcal", energyUnit)
+                    convertEnergy(meal.targetCalories, 'kcal', energyUnit)
                   )}`}
                 {getEnergyUnitString(energyUnit)}
               </span>
@@ -282,7 +282,7 @@ const MealCard = ({
                 <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
-                      {t("mealCard.addFoodToMeal", {
+                      {t('mealCard.addFoodToMeal', {
                         mealName: t(`common.${meal.type}`, meal.name),
                         defaultValue: `Add Food to ${t(
                           `common.${meal.type}`,
@@ -291,7 +291,7 @@ const MealCard = ({
                       })}
                     </DialogTitle>
                     <DialogDescription>
-                      {t("mealCard.searchFoodsForMeal", {
+                      {t('mealCard.searchFoodsForMeal', {
                         mealName: t(
                           `common.${meal.type}`,
                           meal.name
@@ -306,17 +306,17 @@ const MealCard = ({
                   <EnhancedFoodSearch
                     mealType={meal.type}
                     onFoodSelect={(item, type) => {
-                      if (type === "food") {
+                      if (type === 'food') {
                         debug(
                           loggingLevel,
-                          "MealCard: Food selected in search:",
+                          'MealCard: Food selected in search:',
                           item
                         );
                         onFoodSelect(item as Food, meal.type);
                       } else {
                         debug(
                           loggingLevel,
-                          "MealCard: Meal selected in search:",
+                          'MealCard: Meal selected in search:',
                           item
                         );
                         onFoodSelect(item as Meal, meal.type);
@@ -360,7 +360,7 @@ const MealCard = ({
               {meal.entries.map((item) => {
                 // Changed entry to item
                 const entryNutrition = getEntryNutrition(item);
-                const isFoodEntryMeal = "foods" in item && "entry_date" in item; // More robust check for FoodEntryMeal
+                const isFoodEntryMeal = 'foods' in item && 'entry_date' in item; // More robust check for FoodEntryMeal
                 const isFoodEntry = !isFoodEntryMeal;
                 const isFromMealPlan =
                   isFoodEntry && (item as FoodEntry).meal_plan_template_id;
@@ -369,22 +369,24 @@ const MealCard = ({
                 const giValue: GlycemicIndex | undefined | null =
                   entryNutrition.glycemic_index ?? null;
                 const validGiValues: GlycemicIndex[] = [
-                  "Very Low",
-                  "Low",
-                  "Medium",
-                  "High",
-                  "Very High",
+                  'Very Low',
+                  'Low',
+                  'Medium',
+                  'High',
+                  'Very High',
                 ];
 
                 debug(
                   loggingLevel,
-                  `MealCard: Rendering item: ${isFoodEntryMeal
-                    ? (item as FoodEntryMeal).name
-                    : (item as FoodEntry).food_name
+                  `MealCard: Rendering item: ${
+                    isFoodEntryMeal
+                      ? (item as FoodEntryMeal).name
+                      : (item as FoodEntry).food_name
                   }, GI Value: ${giValue}, quickInfoNutrients includes GI: ${quickInfoNutrients.includes(
-                    "glycemic_index"
-                  )}, giValue is valid: ${giValue != null &&
-                  validGiValues.includes(giValue as GlycemicIndex)
+                    'glycemic_index'
+                  )}, giValue is valid: ${
+                    giValue != null &&
+                    validGiValues.includes(giValue as GlycemicIndex)
                   }`
                 );
 
@@ -402,7 +404,7 @@ const MealCard = ({
                         </span>
                         {(isFoodEntryMeal &&
                           (item as FoodEntryMeal).description) ||
-                          (isFoodEntry && (item as FoodEntry).brand_name) ? (
+                        (isFoodEntry && (item as FoodEntry).brand_name) ? (
                           <Badge variant="secondary" className="text-xs w-fit">
                             {isFoodEntryMeal
                               ? (item as FoodEntryMeal).description
@@ -410,7 +412,7 @@ const MealCard = ({
                           </Badge>
                         ) : null}
                         <span className="text-sm text-gray-500">
-                          {(item as FoodEntry | FoodEntryMeal).quantity}{" "}
+                          {(item as FoodEntry | FoodEntryMeal).quantity}{' '}
                           {(item as FoodEntry | FoodEntryMeal).unit}
                         </span>
                         {isFromMealPlan && (
@@ -420,7 +422,7 @@ const MealCard = ({
                         )}
                         {giValue &&
                           validGiValues.includes(giValue as GlycemicIndex) &&
-                          quickInfoNutrients.includes("glycemic_index") && (
+                          quickInfoNutrients.includes('glycemic_index') && (
                             <Badge
                               variant="secondary"
                               className="text-xs w-fit font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-transparent dark:text-purple-600"
@@ -444,16 +446,16 @@ const MealCard = ({
                           return (
                             <div key={nutrient} className="text-center">
                               <div className={`font-medium ${details.color}`}>
-                                {typeof value === "number"
-                                  ? nutrient === "calories"
+                                {typeof value === 'number'
+                                  ? nutrient === 'calories'
                                     ? Math.round(
-                                      convertEnergy(value, "kcal", energyUnit)
-                                    )
+                                        convertEnergy(value, 'kcal', energyUnit)
+                                      )
                                     : value.toFixed(
-                                      nutrient === "calories" ? 0 : 1
-                                    )
+                                        nutrient === 'calories' ? 0 : 1
+                                      )
                                   : value}
-                                {nutrient === "calories"
+                                {nutrient === 'calories'
                                   ? getEnergyUnitString(energyUnit)
                                   : details.unit}
                               </div>
@@ -472,7 +474,7 @@ const MealCard = ({
                         onClick={() => {
                           debug(
                             loggingLevel,
-                            "MealCard: Edit entry button clicked:",
+                            'MealCard: Edit entry button clicked:',
                             item.id
                           );
                           onEditEntry(item); // Pass the item directly
@@ -487,12 +489,12 @@ const MealCard = ({
                         onClick={() => {
                           debug(
                             loggingLevel,
-                            "MealCard: Remove entry button clicked:",
+                            'MealCard: Remove entry button clicked:',
                             item.id
                           );
                           onRemoveEntry(
                             item.id,
-                            isFoodEntryMeal ? "foodEntryMeal" : "foodEntry"
+                            isFoodEntryMeal ? 'foodEntryMeal' : 'foodEntry'
                           );
                         }}
                       >
@@ -517,20 +519,20 @@ const MealCard = ({
                     if (!details) return null;
                     const val = totals[nutrient as keyof MealTotals];
                     const value =
-                      (typeof val === "number" || typeof val === "string"
+                      (typeof val === 'number' || typeof val === 'string'
                         ? val
                         : totals.custom_nutrients?.[nutrient]) ?? 0;
                     return (
                       <div key={nutrient} className="text-center">
                         <div className={`font-bold ${details.color}`}>
-                          {typeof value === "number"
-                            ? nutrient === "calories"
+                          {typeof value === 'number'
+                            ? nutrient === 'calories'
                               ? Math.round(
-                                convertEnergy(value, "kcal", energyUnit)
-                              )
-                              : value.toFixed(nutrient === "calories" ? 0 : 1)
+                                  convertEnergy(value, 'kcal', energyUnit)
+                                )
+                              : value.toFixed(nutrient === 'calories' ? 0 : 1)
                             : value}
-                          {nutrient === "calories"
+                          {nutrient === 'calories'
                             ? getEnergyUnitString(energyUnit)
                             : details.unit}
                         </div>

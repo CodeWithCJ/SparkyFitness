@@ -12,7 +12,14 @@ i18n
     supportedLngs: getSupportedLanguages(),
     fallbackLng: 'en',
     detection: {
-      order: ['localStorage', 'querystring', 'cookie', 'sessionStorage', 'navigator', 'htmlTag'],
+      order: [
+        'localStorage',
+        'querystring',
+        'cookie',
+        'sessionStorage',
+        'navigator',
+        'htmlTag',
+      ],
       caches: ['localStorage', 'cookie'],
     },
     backend: {

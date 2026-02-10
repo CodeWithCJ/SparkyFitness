@@ -1,47 +1,53 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { debug, info, error } from "@/utils/logging";
-import { requestPasswordReset } from "@/services/authService";
+} from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { toast } from '@/hooks/use-toast';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { debug, info, error } from '@/utils/logging';
+import { requestPasswordReset } from '@/services/authService';
 
 const ForgotPassword = () => {
   const { loggingLevel } = usePreferences();
-  debug(loggingLevel, "ForgotPassword: Component rendered.");
+  debug(loggingLevel, 'ForgotPassword: Component rendered.');
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    info(loggingLevel, "ForgotPassword: Attempting to request password reset.");
+    info(loggingLevel, 'ForgotPassword: Attempting to request password reset.');
     setLoading(true);
-    setMessage("");
+    setMessage('');
 
     try {
       await requestPasswordReset(email);
-      setMessage("If an account with that email exists, a password reset link has been sent.");
+      setMessage(
+        'If an account with that email exists, a password reset link has been sent.'
+      );
       toast({
-        title: "Success",
-        description: "Password reset email sent (if applicable).",
+        title: 'Success',
+        description: 'Password reset email sent (if applicable).',
       });
     } catch (err: any) {
-      error(loggingLevel, "ForgotPassword: Password reset request failed:", err);
-      setMessage(err.message || "An unexpected error occurred.");
+      error(
+        loggingLevel,
+        'ForgotPassword: Password reset request failed:',
+        err
+      );
+      setMessage(err.message || 'An unexpected error occurred.');
       toast({
-        title: "Error",
-        description: err.message || "Failed to send password reset email.",
-        variant: "destructive",
+        title: 'Error',
+        description: err.message || 'Failed to send password reset email.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -81,7 +87,7 @@ const ForgotPassword = () => {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Sending..." : "Send Reset Link"}
+              {loading ? 'Sending...' : 'Send Reset Link'}
             </Button>
             {message && (
               <p className="text-center text-sm text-muted-foreground">
@@ -89,10 +95,7 @@ const ForgotPassword = () => {
               </p>
             )}
             <div className="text-center text-sm">
-              <a
-                href="/"
-                className="font-medium text-primary hover:underline"
-              >
+              <a href="/" className="font-medium text-primary hover:underline">
                 Back to Sign In
               </a>
             </div>

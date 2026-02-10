@@ -1,20 +1,31 @@
-import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Database } from "lucide-react";
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Database } from 'lucide-react';
 import { apiCall } from '@/services/api';
 import { toggleProviderPublicSharing } from '@/services/externalProviderService';
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import AddExternalProviderForm from "./AddExternalProviderForm";
-import ExternalProviderList from "./ExternalProviderList";
-import GarminConnectSettings from "./GarminConnectSettings";
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import AddExternalProviderForm from './AddExternalProviderForm';
+import ExternalProviderList from './ExternalProviderList';
+import GarminConnectSettings from './GarminConnectSettings';
 
 export interface ExternalDataProvider {
   id: string;
   provider_name: string;
-  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'free-exercise-db' | 'withings' | 'garmin' | 'tandoor' | 'usda' | 'fitbit';
+  provider_type:
+    | 'openfoodfacts'
+    | 'nutritionix'
+    | 'fatsecret'
+    | 'wger'
+    | 'mealie'
+    | 'free-exercise-db'
+    | 'withings'
+    | 'garmin'
+    | 'tandoor'
+    | 'usda'
+    | 'fitbit';
   app_id: string | null;
   app_key: string | null;
   is_active: boolean;
@@ -38,14 +49,17 @@ export interface ExternalDataProvider {
 const ExternalProviderSettings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { defaultFoodDataProviderId, setDefaultFoodDataProviderId } = usePreferences();
+  const { defaultFoodDataProviderId, setDefaultFoodDataProviderId } =
+    usePreferences();
   const [providers, setProviders] = useState<ExternalDataProvider[]>([]);
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<ExternalDataProvider>>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showGarminMfaInputFromAddForm, setShowGarminMfaInputFromAddForm] = useState(false);
-  const [garminClientStateFromAddForm, setGarminClientStateFromAddForm] = useState<string | null>(null);
+  const [showGarminMfaInputFromAddForm, setShowGarminMfaInputFromAddForm] =
+    useState(false);
+  const [garminClientStateFromAddForm, setGarminClientStateFromAddForm] =
+    useState<string | null>(null);
 
   const loadProviders = useCallback(async () => {
     if (!user) return;
@@ -57,54 +71,79 @@ const ExternalProviderSettings = () => {
         suppress404Toast: true,
       });
 
-      const updatedProviders = await Promise.all(providersData.map(async (provider: any) => {
-        if (provider.provider_type === 'garmin') {
-          try {
-            const garminStatus = await apiCall('/integrations/garmin/status');
-            return {
-              ...provider,
-              provider_type: provider.provider_type as ExternalDataProvider['provider_type'],
-              garmin_connect_status: garminStatus.isLinked ? 'linked' : 'disconnected',
-              garmin_last_status_check: garminStatus.lastUpdated,
-              garmin_token_expires: garminStatus.tokenExpiresAt,
-            };
-          } catch (garminError) {
-            console.error('Failed to fetch Garmin specific status for provider:', provider.id, garminError);
-            return {
-              ...provider,
-              provider_type: provider.provider_type as ExternalDataProvider['provider_type'],
-              garmin_connect_status: 'disconnected',
-            };
+      const updatedProviders = await Promise.all(
+        providersData.map(async (provider: any) => {
+          if (provider.provider_type === 'garmin') {
+            try {
+              const garminStatus = await apiCall('/integrations/garmin/status');
+              return {
+                ...provider,
+                provider_type:
+                  provider.provider_type as ExternalDataProvider['provider_type'],
+                garmin_connect_status: garminStatus.isLinked
+                  ? 'linked'
+                  : 'disconnected',
+                garmin_last_status_check: garminStatus.lastUpdated,
+                garmin_token_expires: garminStatus.tokenExpiresAt,
+              };
+            } catch (garminError) {
+              console.error(
+                'Failed to fetch Garmin specific status for provider:',
+                provider.id,
+                garminError
+              );
+              return {
+                ...provider,
+                provider_type:
+                  provider.provider_type as ExternalDataProvider['provider_type'],
+                garmin_connect_status: 'disconnected',
+              };
+            }
           }
-        }
-        return {
-          ...provider,
-          provider_type: provider.provider_type as ExternalDataProvider['provider_type'],
-          garmin_connect_status: provider.garmin_connect_status || 'disconnected',
-        };
-      }));
+          return {
+            ...provider,
+            provider_type:
+              provider.provider_type as ExternalDataProvider['provider_type'],
+            garmin_connect_status:
+              provider.garmin_connect_status || 'disconnected',
+          };
+        })
+      );
 
-      const withingsProviders = updatedProviders.filter((p: ExternalDataProvider) => p.provider_type === 'withings' && p.has_token);
+      const withingsProviders = updatedProviders.filter(
+        (p: ExternalDataProvider) =>
+          p.provider_type === 'withings' && p.has_token
+      );
       if (withingsProviders.length > 0) {
-        const withingsStatusPromises = withingsProviders.map(async (provider: ExternalDataProvider) => {
-          try {
-            const withingsStatus = await apiCall(`/withings/status`, {
-              method: 'GET',
-              params: { providerId: provider.id }
-            });
-            return {
-              ...provider,
-              withings_last_sync_at: withingsStatus.lastSyncAt,
-              withings_token_expires: withingsStatus.tokenExpiresAt,
-            };
-          } catch (withingsError) {
-            console.error('Failed to fetch Withings specific status for provider:', provider.id, withingsError);
-            return provider; // Return original provider if status fetch fails
+        const withingsStatusPromises = withingsProviders.map(
+          async (provider: ExternalDataProvider) => {
+            try {
+              const withingsStatus = await apiCall(`/withings/status`, {
+                method: 'GET',
+                params: { providerId: provider.id },
+              });
+              return {
+                ...provider,
+                withings_last_sync_at: withingsStatus.lastSyncAt,
+                withings_token_expires: withingsStatus.tokenExpiresAt,
+              };
+            } catch (withingsError) {
+              console.error(
+                'Failed to fetch Withings specific status for provider:',
+                provider.id,
+                withingsError
+              );
+              return provider; // Return original provider if status fetch fails
+            }
           }
-        });
-        const updatedWithingsProviders = await Promise.all(withingsStatusPromises);
-        const finalProviders = updatedProviders.map(p => {
-          const updatedProvider = updatedWithingsProviders.find(up => up.id === p.id);
+        );
+        const updatedWithingsProviders = await Promise.all(
+          withingsStatusPromises
+        );
+        const finalProviders = updatedProviders.map((p) => {
+          const updatedProvider = updatedWithingsProviders.find(
+            (up) => up.id === p.id
+          );
           return updatedProvider || p;
         });
         setProviders(finalProviders || []);
@@ -113,32 +152,46 @@ const ExternalProviderSettings = () => {
       }
 
       // Fetch Fitbit status if applicable
-      const fitbitProviders = updatedProviders.filter((p: ExternalDataProvider) => p.provider_type === 'fitbit' && p.has_token);
+      const fitbitProviders = updatedProviders.filter(
+        (p: ExternalDataProvider) => p.provider_type === 'fitbit' && p.has_token
+      );
       if (fitbitProviders.length > 0) {
-        setProviders(prev => prev.map(p => {
-          const isFitbit = fitbitProviders.find(fp => fp.id === p.id);
-          return isFitbit ? p : p; // We'll update them below
-        }));
+        setProviders((prev) =>
+          prev.map((p) => {
+            const isFitbit = fitbitProviders.find((fp) => fp.id === p.id);
+            return isFitbit ? p : p; // We'll update them below
+          })
+        );
 
         for (const provider of fitbitProviders) {
           try {
             const fitbitStatus = await apiCall(`/integrations/fitbit/status`);
-            setProviders(prev => prev.map(p => p.id === provider.id ? {
-              ...p,
-              fitbit_last_sync_at: fitbitStatus.lastSyncAt,
-              fitbit_token_expires: fitbitStatus.tokenExpiresAt,
-            } : p));
+            setProviders((prev) =>
+              prev.map((p) =>
+                p.id === provider.id
+                  ? {
+                      ...p,
+                      fitbit_last_sync_at: fitbitStatus.lastSyncAt,
+                      fitbit_token_expires: fitbitStatus.tokenExpiresAt,
+                    }
+                  : p
+              )
+            );
           } catch (fitbitError) {
-            console.error('Failed to fetch Fitbit specific status for provider:', provider.id, fitbitError);
+            console.error(
+              'Failed to fetch Fitbit specific status for provider:',
+              provider.id,
+              fitbitError
+            );
           }
         }
       }
     } catch (error: any) {
       console.error('Error loading external data providers:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to load external data providers: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -166,15 +219,43 @@ const ExternalProviderSettings = () => {
     const providerUpdateData: Partial<ExternalDataProvider> = {
       provider_name: editData.provider_name,
       provider_type: editData.provider_type,
-      app_id: (editData.provider_type === 'mealie' || editData.provider_type === 'tandoor' || editData.provider_type === 'free-exercise-db' || editData.provider_type === 'wger') ? null : editData.app_id || null,
+      app_id:
+        editData.provider_type === 'mealie' ||
+        editData.provider_type === 'tandoor' ||
+        editData.provider_type === 'free-exercise-db' ||
+        editData.provider_type === 'wger'
+          ? null
+          : editData.app_id || null,
       app_key: editData.app_key || null,
       is_active: editData.is_active,
-      base_url: (editData.provider_type === 'mealie' || editData.provider_type === 'tandoor' || editData.provider_type === 'free-exercise-db') ? editData.base_url || null : null,
-      withings_last_sync_at: editData.provider_type === 'withings' ? editData.withings_last_sync_at : null,
-      withings_token_expires: editData.provider_type === 'withings' ? editData.withings_token_expires : null,
-      fitbit_last_sync_at: editData.provider_type === 'fitbit' ? editData.fitbit_last_sync_at : null,
-      fitbit_token_expires: editData.provider_type === 'fitbit' ? editData.fitbit_token_expires : null,
-      sync_frequency: (editData.provider_type === 'withings' || editData.provider_type === 'garmin' || editData.provider_type === 'fitbit') ? editData.sync_frequency : null,
+      base_url:
+        editData.provider_type === 'mealie' ||
+        editData.provider_type === 'tandoor' ||
+        editData.provider_type === 'free-exercise-db'
+          ? editData.base_url || null
+          : null,
+      withings_last_sync_at:
+        editData.provider_type === 'withings'
+          ? editData.withings_last_sync_at
+          : null,
+      withings_token_expires:
+        editData.provider_type === 'withings'
+          ? editData.withings_token_expires
+          : null,
+      fitbit_last_sync_at:
+        editData.provider_type === 'fitbit'
+          ? editData.fitbit_last_sync_at
+          : null,
+      fitbit_token_expires:
+        editData.provider_type === 'fitbit'
+          ? editData.fitbit_token_expires
+          : null,
+      sync_frequency:
+        editData.provider_type === 'withings' ||
+        editData.provider_type === 'garmin' ||
+        editData.provider_type === 'fitbit'
+          ? editData.sync_frequency
+          : null,
     };
 
     try {
@@ -184,13 +265,21 @@ const ExternalProviderSettings = () => {
       });
 
       toast({
-        title: "Success",
-        description: "External data provider updated successfully"
+        title: 'Success',
+        description: 'External data provider updated successfully',
       });
       setEditingProvider(null);
       setEditData({});
       loadProviders();
-      if (data && data.is_active && (data.provider_type === 'openfoodfacts' || data.provider_type === 'nutritionix' || data.provider_type === 'fatsecret' || data.provider_type === 'mealie' || data.provider_type === 'tandoor')) {
+      if (
+        data &&
+        data.is_active &&
+        (data.provider_type === 'openfoodfacts' ||
+          data.provider_type === 'nutritionix' ||
+          data.provider_type === 'fatsecret' ||
+          data.provider_type === 'mealie' ||
+          data.provider_type === 'tandoor')
+      ) {
         setDefaultFoodDataProviderId(data.id);
       } else if (data && defaultFoodDataProviderId === data.id) {
         setDefaultFoodDataProviderId(null);
@@ -198,9 +287,9 @@ const ExternalProviderSettings = () => {
     } catch (error: any) {
       console.error('Error updating external data provider:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to update external data provider: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -208,7 +297,10 @@ const ExternalProviderSettings = () => {
   };
 
   const handleDeleteProvider = async (providerId: string) => {
-    if (!confirm('Are you sure you want to delete this external data provider?')) return;
+    if (
+      !confirm('Are you sure you want to delete this external data provider?')
+    )
+      return;
 
     setLoading(true);
     try {
@@ -217,8 +309,8 @@ const ExternalProviderSettings = () => {
       });
 
       toast({
-        title: "Success",
-        description: "External data provider deleted successfully"
+        title: 'Success',
+        description: 'External data provider deleted successfully',
       });
       loadProviders();
       if (defaultFoodDataProviderId === providerId) {
@@ -227,9 +319,9 @@ const ExternalProviderSettings = () => {
     } catch (error: any) {
       console.error('Error deleting external data provider:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to delete external data provider: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -245,11 +337,19 @@ const ExternalProviderSettings = () => {
       });
 
       toast({
-        title: "Success",
-        description: `External data provider ${isActive ? 'activated' : 'deactivated'}`
+        title: 'Success',
+        description: `External data provider ${isActive ? 'activated' : 'deactivated'}`,
       });
       loadProviders();
-      if (data && data.is_active && (data.provider_type === 'openfoodfacts' || data.provider_type === 'nutritionix' || data.provider_type === 'fatsecret' || data.provider_type === 'mealie' || data.provider_type === 'tandoor')) {
+      if (
+        data &&
+        data.is_active &&
+        (data.provider_type === 'openfoodfacts' ||
+          data.provider_type === 'nutritionix' ||
+          data.provider_type === 'fatsecret' ||
+          data.provider_type === 'mealie' ||
+          data.provider_type === 'tandoor')
+      ) {
         setDefaultFoodDataProviderId(data.id);
       } else if (data && defaultFoodDataProviderId === data.id) {
         setDefaultFoodDataProviderId(null);
@@ -257,9 +357,9 @@ const ExternalProviderSettings = () => {
     } catch (error: any) {
       console.error('Error updating external data provider status:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to update external data provider status: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -280,9 +380,9 @@ const ExternalProviderSettings = () => {
     } catch (error: any) {
       console.error('Error connecting to Withings:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to connect to Withings: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -290,7 +390,12 @@ const ExternalProviderSettings = () => {
   };
 
   const handleDisconnectWithings = async (providerId: string) => {
-    if (!confirm('Are you sure you want to disconnect from Withings? This will revoke access and delete all associated tokens.')) return;
+    if (
+      !confirm(
+        'Are you sure you want to disconnect from Withings? This will revoke access and delete all associated tokens.'
+      )
+    )
+      return;
 
     setLoading(true);
     try {
@@ -298,16 +403,16 @@ const ExternalProviderSettings = () => {
         method: 'POST',
       });
       toast({
-        title: "Success",
-        description: "Disconnected from Withings successfully."
+        title: 'Success',
+        description: 'Disconnected from Withings successfully.',
       });
       loadProviders();
     } catch (error: any) {
       console.error('Error disconnecting from Withings:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to disconnect from Withings: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -321,16 +426,16 @@ const ExternalProviderSettings = () => {
         method: 'POST',
       });
       toast({
-        title: "Success",
-        description: "Withings data synchronization initiated."
+        title: 'Success',
+        description: 'Withings data synchronization initiated.',
       });
       loadProviders();
     } catch (error: any) {
       console.error('Error initiating manual sync:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to initiate manual sync: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -343,16 +448,16 @@ const ExternalProviderSettings = () => {
       // Placeholder for Garmin connection logic
       // This would typically redirect to Garmin Connect for OAuth
       toast({
-        title: "Info",
-        description: "Garmin connection flow initiated (placeholder)."
+        title: 'Info',
+        description: 'Garmin connection flow initiated (placeholder).',
       });
       loadProviders(); // Reload to reflect potential status changes
     } catch (error: any) {
       console.error('Error connecting to Garmin:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to connect to Garmin: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -360,7 +465,12 @@ const ExternalProviderSettings = () => {
   };
 
   const handleDisconnectGarmin = async (providerId: string) => {
-    if (!confirm('Are you sure you want to disconnect from Garmin? This will revoke access and delete all associated tokens.')) return;
+    if (
+      !confirm(
+        'Are you sure you want to disconnect from Garmin? This will revoke access and delete all associated tokens.'
+      )
+    )
+      return;
 
     setLoading(true);
     try {
@@ -369,16 +479,16 @@ const ExternalProviderSettings = () => {
         method: 'POST',
       });
       toast({
-        title: "Success",
-        description: "Disconnected from Garmin successfully."
+        title: 'Success',
+        description: 'Disconnected from Garmin successfully.',
       });
       loadProviders();
     } catch (error: any) {
       console.error('Error disconnecting from Garmin:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to disconnect from Garmin: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -394,16 +504,16 @@ const ExternalProviderSettings = () => {
       });
 
       toast({
-        title: "Success",
-        description: "Garmin data synchronization initiated."
+        title: 'Success',
+        description: 'Garmin data synchronization initiated.',
       });
       loadProviders();
     } catch (error: any) {
       console.error('Error initiating manual Garmin sync:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to initiate manual Garmin sync: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -424,9 +534,9 @@ const ExternalProviderSettings = () => {
     } catch (error: any) {
       console.error('Error connecting to Fitbit:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to connect to Fitbit: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -434,7 +544,12 @@ const ExternalProviderSettings = () => {
   };
 
   const handleDisconnectFitbit = async (providerId: string) => {
-    if (!confirm('Are you sure you want to disconnect from Fitbit? This will revoke access and delete all associated tokens.')) return;
+    if (
+      !confirm(
+        'Are you sure you want to disconnect from Fitbit? This will revoke access and delete all associated tokens.'
+      )
+    )
+      return;
 
     setLoading(true);
     try {
@@ -442,16 +557,16 @@ const ExternalProviderSettings = () => {
         method: 'POST',
       });
       toast({
-        title: "Success",
-        description: "Disconnected from Fitbit successfully."
+        title: 'Success',
+        description: 'Disconnected from Fitbit successfully.',
       });
       loadProviders();
     } catch (error: any) {
       console.error('Error disconnecting from Fitbit:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to disconnect from Fitbit: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -465,16 +580,16 @@ const ExternalProviderSettings = () => {
         method: 'POST',
       });
       toast({
-        title: "Success",
-        description: "Fitbit data synchronization initiated."
+        title: 'Success',
+        description: 'Fitbit data synchronization initiated.',
       });
       loadProviders();
     } catch (error: any) {
       console.error('Error initiating manual Fitbit sync:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to initiate manual Fitbit sync: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -509,17 +624,17 @@ const ExternalProviderSettings = () => {
   };
 
   const getProviderTypes = () => [
-    { value: "openfoodfacts", label: "OpenFoodFacts" },
-    { value: "nutritionix", label: "Nutritionix" },
-    { value: "fatsecret", label: "FatSecret" },
-    { value: "wger", label: "Wger (Exercise)" },
-    { value: "free-exercise-db", label: "Free Exercise DB" },
-    { value: "mealie", label: "Mealie" },
-    { value: "tandoor", label: "Tandoor" },
-    { value: "withings", label: "Withings" },
-    { value: "garmin", label: "Garmin" },
-    { value: "fitbit", label: "Fitbit" },
-    { value: "usda", label: "USDA" },
+    { value: 'openfoodfacts', label: 'OpenFoodFacts' },
+    { value: 'nutritionix', label: 'Nutritionix' },
+    { value: 'fatsecret', label: 'FatSecret' },
+    { value: 'wger', label: 'Wger (Exercise)' },
+    { value: 'free-exercise-db', label: 'Free Exercise DB' },
+    { value: 'mealie', label: 'Mealie' },
+    { value: 'tandoor', label: 'Tandoor' },
+    { value: 'withings', label: 'Withings' },
+    { value: 'garmin', label: 'Garmin' },
+    { value: 'fitbit', label: 'Fitbit' },
+    { value: 'usda', label: 'USDA' },
   ];
 
   return (
@@ -558,7 +673,9 @@ const ExternalProviderSettings = () => {
           {providers.length > 0 && (
             <>
               <Separator />
-              <h3 className="text-lg font-medium">Configured External Data Providers</h3>
+              <h3 className="text-lg font-medium">
+                Configured External Data Providers
+              </h3>
 
               <ExternalProviderList
                 providers={providers}
@@ -592,7 +709,10 @@ const ExternalProviderSettings = () => {
             <div className="text-center py-8 text-muted-foreground">
               <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No data providers configured yet.</p>
-              <p className="text-sm">Add your first data provider to enable search from external sources.</p>
+              <p className="text-sm">
+                Add your first data provider to enable search from external
+                sources.
+              </p>
             </div>
           )}
         </CardContent>

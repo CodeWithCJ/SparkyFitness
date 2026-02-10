@@ -9,7 +9,9 @@ interface SleepSummaryCardProps {
   latestSleepEntry: SleepEntry | null;
 }
 
-const SleepSummaryCard: React.FC<SleepSummaryCardProps> = ({ latestSleepEntry }) => {
+const SleepSummaryCard: React.FC<SleepSummaryCardProps> = ({
+  latestSleepEntry,
+}) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
 
@@ -48,53 +50,65 @@ const SleepSummaryCard: React.FC<SleepSummaryCardProps> = ({ latestSleepEntry })
     {
       icon: Activity,
       label: t('sleepSummary.sleepScore', 'Sleep Score'),
-      value: latestSleepEntry.sleep_score ? `${latestSleepEntry.sleep_score}` : '--',
+      value: latestSleepEntry.sleep_score
+        ? `${latestSleepEntry.sleep_score}`
+        : '--',
       color: getScoreColor(latestSleepEntry.sleep_score),
     },
     {
       icon: Heart,
       label: t('sleepSummary.restingHR', 'Resting HR'),
-      value: latestSleepEntry.resting_heart_rate ? `${latestSleepEntry.resting_heart_rate} bpm` : '--',
+      value: latestSleepEntry.resting_heart_rate
+        ? `${latestSleepEntry.resting_heart_rate} bpm`
+        : '--',
       color: 'text-red-500',
     },
     {
       icon: Battery,
       label: t('sleepSummary.batteryChange', 'Battery'),
-      value: latestSleepEntry.body_battery_change !== null
-        ? `${latestSleepEntry.body_battery_change > 0 ? '+' : ''}${latestSleepEntry.body_battery_change}`
-        : '--',
+      value:
+        latestSleepEntry.body_battery_change !== null
+          ? `${latestSleepEntry.body_battery_change > 0 ? '+' : ''}${latestSleepEntry.body_battery_change}`
+          : '--',
       color: getBatteryColor(latestSleepEntry.body_battery_change),
     },
     {
       icon: Waves,
       label: t('sleepSummary.restless', 'Restless Moments'),
-      value: latestSleepEntry.restless_moments_count !== null
-        ? `${latestSleepEntry.restless_moments_count}`
-        : '--',
+      value:
+        latestSleepEntry.restless_moments_count !== null
+          ? `${latestSleepEntry.restless_moments_count}`
+          : '--',
       color: 'text-purple-500',
     },
     {
       icon: Wind,
       label: t('sleepSummary.avgSpO2', 'Avg SpO2'),
-      value: latestSleepEntry.average_spo2_value ? `${latestSleepEntry.average_spo2_value}%` : '--',
+      value: latestSleepEntry.average_spo2_value
+        ? `${latestSleepEntry.average_spo2_value}%`
+        : '--',
       color: 'text-green-500',
     },
     {
       icon: Activity,
       label: t('sleepSummary.avgHRV', 'Avg HRV'),
-      value: latestSleepEntry.avg_overnight_hrv ? `${Math.round(latestSleepEntry.avg_overnight_hrv)} ms` : '--',
+      value: latestSleepEntry.avg_overnight_hrv
+        ? `${Math.round(latestSleepEntry.avg_overnight_hrv)} ms`
+        : '--',
       color: 'text-cyan-500',
     },
     {
       icon: Wind,
       label: t('sleepSummary.avgResp', 'Avg Resp'),
-      value: latestSleepEntry.average_respiration_value ? `${latestSleepEntry.average_respiration_value} brpm` : '--',
+      value: latestSleepEntry.average_respiration_value
+        ? `${latestSleepEntry.average_respiration_value} brpm`
+        : '--',
       color: 'text-teal-500',
     },
   ];
 
   // Filter out stats with '--' value if you want to hide empty ones
-  const visibleStats = stats.filter(stat => stat.value !== '--');
+  const visibleStats = stats.filter((stat) => stat.value !== '--');
 
   return (
     <Card className="w-full col-span-full">
@@ -105,7 +119,10 @@ const SleepSummaryCard: React.FC<SleepSummaryCardProps> = ({ latestSleepEntry })
             {t('sleepSummary.lastNight', 'Last Night')}
           </div>
           <span className="text-sm font-normal text-muted-foreground">
-            {formatDateInUserTimezone(latestSleepEntry.entry_date, 'EEEE, MMM d')}
+            {formatDateInUserTimezone(
+              latestSleepEntry.entry_date,
+              'EEEE, MMM d'
+            )}
           </span>
         </CardTitle>
       </CardHeader>

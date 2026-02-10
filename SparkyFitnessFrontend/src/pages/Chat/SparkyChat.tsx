@@ -1,8 +1,13 @@
-
 import { useState, useEffect, useCallback } from 'react';
-import { Button } from "@/components/ui/button";
-import { MessageCircle, Trash2 } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Button } from '@/components/ui/button';
+import { MessageCircle, Trash2 } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
 import SparkyChatInterface from './SparkyChatInterface';
 import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
@@ -14,13 +19,14 @@ const SparkyChat = () => {
   const [hasEnabledServices, setHasEnabledServices] = useState(false); // Keep this state
 
   const checkEnabledServices = useCallback(async () => {
-    if (loading) { // Do not proceed if authentication is still loading
+    if (loading) {
+      // Do not proceed if authentication is still loading
       setHasEnabledServices(false);
       return;
     }
     try {
       const services = await getAIServices();
-      const enabled = services.some(service => service.is_active);
+      const enabled = services.some((service) => service.is_active);
       setHasEnabledServices(enabled);
     } catch (error) {
       console.error('Error fetching AI services:', error);

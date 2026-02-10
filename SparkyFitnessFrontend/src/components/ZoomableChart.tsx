@@ -1,11 +1,18 @@
-
-import { useState, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Maximize2, Minimize2, ZoomIn, ZoomOut } from "lucide-react";
+import { useState, useMemo } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Maximize2, Minimize2, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface ZoomableChartProps {
-  children: ((isMaximized: boolean, zoomLevel: number) => React.ReactNode) | React.ReactNode;
+  children:
+    | ((isMaximized: boolean, zoomLevel: number) => React.ReactNode)
+    | React.ReactNode;
   title: string;
 }
 
@@ -14,11 +21,11 @@ const ZoomableChart = ({ children, title }: ZoomableChartProps) => {
   const [zoomLevel, setZoomLevel] = useState(1);
 
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.25, 3));
+    setZoomLevel((prev) => Math.min(prev + 0.25, 3));
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
+    setZoomLevel((prev) => Math.max(prev - 0.25, 0.5));
   };
 
   const resetZoom = () => {
@@ -26,11 +33,15 @@ const ZoomableChart = ({ children, title }: ZoomableChartProps) => {
   };
 
   const renderedChildren = useMemo(() => {
-    return typeof children === 'function' ? children(false, zoomLevel) : children;
+    return typeof children === 'function'
+      ? children(false, zoomLevel)
+      : children;
   }, [children, zoomLevel]);
 
   const maximizedChildren = useMemo(() => {
-    return typeof children === 'function' ? children(true, zoomLevel) : children;
+    return typeof children === 'function'
+      ? children(true, zoomLevel)
+      : children;
   }, [children, zoomLevel]);
 
   return (
@@ -64,9 +75,7 @@ const ZoomableChart = ({ children, title }: ZoomableChartProps) => {
             <Maximize2 className="h-3 w-3" />
           </Button>
         </div>
-        <div className="w-full h-full min-h-[200px]">
-          {renderedChildren}
-        </div>
+        <div className="w-full h-full min-h-[200px]">{renderedChildren}</div>
       </div>
 
       <Dialog open={isMaximized} onOpenChange={setIsMaximized}>
@@ -87,11 +96,7 @@ const ZoomableChart = ({ children, title }: ZoomableChartProps) => {
               >
                 <ZoomOut className="h-4 w-4" />
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetZoom}
-              >
+              <Button variant="outline" size="sm" onClick={resetZoom}>
                 Reset
               </Button>
               <Button

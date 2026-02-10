@@ -2,10 +2,23 @@
 import type React from 'react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Scan, Camera, Flashlight, FlashlightOff, Keyboard, RefreshCcw } from 'lucide-react';
+import {
+  Scan,
+  Camera,
+  Flashlight,
+  FlashlightOff,
+  Keyboard,
+  RefreshCcw,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 import type { BarcodeScannerEngine } from '@/lib/scannerEngines/EngineInterface';
 import { ZxingEngine } from '@/lib/scannerEngines/ZxingEngine';
 import { Html5QrcodeEngine } from '@/lib/scannerEngines/Html5QrcodeEngine';
@@ -24,7 +37,12 @@ const ENGINE_OPTIONS = [
   { value: 'quagga2', label: 'quagga2' },
 ];
 
-const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onClose, isActive, cameraFacing }) => {
+const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
+  onBarcodeDetected,
+  onClose,
+  isActive,
+  cameraFacing,
+}) => {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -38,7 +56,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
       return 'zxing';
     }
   });
-  const [engineInstance, setEngineInstance] = useState<BarcodeScannerEngine | null>(null);
+  const [engineInstance, setEngineInstance] =
+    useState<BarcodeScannerEngine | null>(null);
 
   // Camera Selection
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
@@ -86,20 +105,26 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
         await navigator.mediaDevices.getUserMedia({ video: true });
 
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        const videoDevices = devices.filter(
+          (device) => device.kind === 'videoinput'
+        );
         setCameras(videoDevices);
 
         if (videoDevices.length > 0) {
           // Try to respect cameraFacing prop if no specific camera selected yet
           if (!selectedCameraId) {
-            const preferred = videoDevices.find(d =>
-              cameraFacing === 'front' ? d.label.toLowerCase().includes('front') : d.label.toLowerCase().includes('back')
+            const preferred = videoDevices.find((d) =>
+              cameraFacing === 'front'
+                ? d.label.toLowerCase().includes('front')
+                : d.label.toLowerCase().includes('back')
             );
-            setSelectedCameraId(preferred?.deviceId || videoDevices[0].deviceId);
+            setSelectedCameraId(
+              preferred?.deviceId || videoDevices[0].deviceId
+            );
           }
         }
       } catch (err) {
-        console.error("Error enumerating devices:", err);
+        console.error('Error enumerating devices:', err);
       }
     };
 
@@ -108,13 +133,16 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
     }
   }, [isActive, cameraFacing]); // Re-check when active toggles
 
-
   const createEngine = (name: string): BarcodeScannerEngine => {
     switch (name) {
-      case 'zxing': return new ZxingEngine();
-      case 'html5-qrcode': return new Html5QrcodeEngine();
-      case 'quagga2': return new QuaggaEngine();
-      default: return new ZxingEngine();
+      case 'zxing':
+        return new ZxingEngine();
+      case 'html5-qrcode':
+        return new Html5QrcodeEngine();
+      case 'quagga2':
+        return new QuaggaEngine();
+      default:
+        return new ZxingEngine();
     }
   };
 
@@ -123,13 +151,15 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
     setEngineInstance(engine);
     try {
       localStorage.setItem('barcodeScannerEngine', selectedEngine);
-    } catch { }
+    } catch {}
   }, [selectedEngine]);
 
   const turnOffTorch = useCallback(async () => {
     if (!currentTrack.current || !torchSupported || !torchEnabled) return;
     try {
-      await currentTrack.current.applyConstraints({ advanced: [{ torch: false } as any] });
+      await currentTrack.current.applyConstraints({
+        advanced: [{ torch: false } as any],
+      });
       setTorchEnabled(false);
     } catch (error) {
       console.error('Error turning off torch:', error);
@@ -139,7 +169,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
   const toggleTorch = useCallback(async () => {
     if (!currentTrack.current || !torchSupported) return;
     try {
-      await currentTrack.current.applyConstraints({ advanced: [{ torch: !torchEnabled } as any] });
+      await currentTrack.current.applyConstraints({
+        advanced: [{ torch: !torchEnabled } as any],
+      });
       setTorchEnabled(!torchEnabled);
     } catch (error) {
       console.error('Error toggling torch:', error);
@@ -148,7 +180,12 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
 
   // Main Scanning Loop
   useEffect(() => {
-    if (!isActive || !engineInstance || !containerRef.current || !selectedCameraId) {
+    if (
+      !isActive ||
+      !engineInstance ||
+      !containerRef.current ||
+      !selectedCameraId
+    ) {
       engineInstance?.stop();
       setIsScanning(false);
       return;
@@ -159,8 +196,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
         deviceId: { exact: selectedCameraId },
         width: { ideal: 1280 }, // Lowering ideal might help mobile performance/compatibility
         frameRate: { ideal: 30 },
-        focusMode: { ideal: 'continuous' }
-      } as any // Cast to allow custom properties
+        focusMode: { ideal: 'continuous' },
+      } as any, // Cast to allow custom properties
     };
 
     const start = async () => {
@@ -170,7 +207,11 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
 
         engineInstance.onDetected((code: string) => {
           const now = Date.now();
-          if (code !== lastDetectedBarcode.current || (!internalContinuousMode || now - lastScanTime.current > scanCooldown)) {
+          if (
+            code !== lastDetectedBarcode.current ||
+            !internalContinuousMode ||
+            now - lastScanTime.current > scanCooldown
+          ) {
             console.log('Barcode detected:', code);
             setScanLine(true);
             setTimeout(() => setScanLine(false), 500);
@@ -185,7 +226,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
           }
         });
 
-        // Pass selectedCameraId explicitly if engine supports it better that way, 
+        // Pass selectedCameraId explicitly if engine supports it better that way,
         // OR rely on constraints. Our interface update sends both.
         await engineInstance.start(constraints, selectedCameraId);
         setIsScanning(true);
@@ -216,16 +257,30 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
       engineInstance.stop();
       setIsScanning(false);
     };
-  }, [isActive, engineInstance, selectedCameraId, internalContinuousMode, onBarcodeDetected, turnOffTorch, refreshTrigger]); // Dependencies - restarts if any change
-
+  }, [
+    isActive,
+    engineInstance,
+    selectedCameraId,
+    internalContinuousMode,
+    onBarcodeDetected,
+    turnOffTorch,
+    refreshTrigger,
+  ]); // Dependencies - restarts if any change
 
   // Persist settings
   useEffect(() => {
-    try { localStorage.setItem('barcodeScanAreaSize', JSON.stringify(scanAreaSize)); } catch { }
+    try {
+      localStorage.setItem('barcodeScanAreaSize', JSON.stringify(scanAreaSize));
+    } catch {}
   }, [scanAreaSize]);
 
   useEffect(() => {
-    try { localStorage.setItem('barcodeContinuousMode', JSON.stringify(internalContinuousMode)); } catch { }
+    try {
+      localStorage.setItem(
+        'barcodeContinuousMode',
+        JSON.stringify(internalContinuousMode)
+      );
+    } catch {}
   }, [internalContinuousMode]);
 
   const handleManualBarcodeSubmit = (e: React.FormEvent) => {
@@ -238,23 +293,29 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
     }
   };
 
-  const handleCornerDrag = useCallback((corner: string, deltaX: number, deltaY: number) => {
-    setScanAreaSize(prev => {
-      let newWidth = prev.width;
-      let newHeight = prev.height;
-      if (corner.includes('right')) newWidth = Math.max(200, Math.min(400, prev.width + deltaX));
-      if (corner.includes('left')) newWidth = Math.max(200, Math.min(400, prev.width - deltaX));
-      if (corner.includes('bottom')) newHeight = Math.max(100, Math.min(200, prev.height + deltaY));
-      if (corner.includes('top')) newHeight = Math.max(100, Math.min(200, prev.height - deltaY));
-      return { width: newWidth, height: newHeight };
-    });
-  }, []);
+  const handleCornerDrag = useCallback(
+    (corner: string, deltaX: number, deltaY: number) => {
+      setScanAreaSize((prev) => {
+        let newWidth = prev.width;
+        let newHeight = prev.height;
+        if (corner.includes('right'))
+          newWidth = Math.max(200, Math.min(400, prev.width + deltaX));
+        if (corner.includes('left'))
+          newWidth = Math.max(200, Math.min(400, prev.width - deltaX));
+        if (corner.includes('bottom'))
+          newHeight = Math.max(100, Math.min(200, prev.height + deltaY));
+        if (corner.includes('top'))
+          newHeight = Math.max(100, Math.min(200, prev.height - deltaY));
+        return { width: newWidth, height: newHeight };
+      });
+    },
+    []
+  );
 
   return (
     <div className="relative bg-black rounded-lg overflow-hidden shadow-lg w-full max-w-lg mx-auto flex flex-col">
       {/* Height controlled here via inline style or class. Returning to h-80 (320px) or similar */}
       <div className="relative w-full h-[400px] bg-black">
-
         {/* Header Controls (Engine & Camera) */}
         <div className="absolute top-4 left-4 right-16 z-20 flex flex-col gap-2 pointer-events-auto">
           <Select value={selectedEngine} onValueChange={setSelectedEngine}>
@@ -262,20 +323,25 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
               <SelectValue placeholder="Engine" />
             </SelectTrigger>
             <SelectContent>
-              {ENGINE_OPTIONS.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              {ENGINE_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           {cameras.length > 0 && (
-            <Select value={selectedCameraId} onValueChange={setSelectedCameraId}>
+            <Select
+              value={selectedCameraId}
+              onValueChange={setSelectedCameraId}
+            >
               <SelectTrigger className="w-full max-w-[150px] bg-black/60 text-white border-gray-600 h-8 text-xs">
                 <Camera className="w-3 h-3 mr-2" />
                 <SelectValue placeholder="Camera" />
               </SelectTrigger>
               <SelectContent>
-                {cameras.map(cam => (
+                {cameras.map((cam) => (
                   <SelectItem key={cam.deviceId} value={cam.deviceId}>
                     {cam.label || `Camera ${cam.deviceId.slice(0, 4)}...`}
                   </SelectItem>
@@ -292,23 +358,47 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
               ref={containerRef}
               id="scanner-viewport"
               className="w-full h-full absolute inset-0"
-            // Important: styles to ensure video fills container without distorting if possible
+              // Important: styles to ensure video fills container without distorting if possible
             />
 
             <canvas ref={canvasRef} className="hidden" />
 
             {/* Overlay UI */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-              <div className="relative pointer-events-auto" style={{ width: scanAreaSize.width, height: scanAreaSize.height }}>
-                <div className="relative w-full border-2 border-white border-dashed rounded-lg overflow-hidden box-border" style={{ height: scanAreaSize.height }}>
+              <div
+                className="relative pointer-events-auto"
+                style={{
+                  width: scanAreaSize.width,
+                  height: scanAreaSize.height,
+                }}
+              >
+                <div
+                  className="relative w-full border-2 border-white border-dashed rounded-lg overflow-hidden box-border"
+                  style={{ height: scanAreaSize.height }}
+                >
                   {scanLine && (
-                    <div className="absolute left-0 w-full h-1 bg-green-400 animate-scan-line" style={{ top: 'auto' }} />
+                    <div
+                      className="absolute left-0 w-full h-1 bg-green-400 animate-scan-line"
+                      style={{ top: 'auto' }}
+                    />
                   )}
                 </div>
-                <ResizableCorner position="top-left" onDrag={(dx, dy) => handleCornerDrag('top-left', dx, dy)} />
-                <ResizableCorner position="top-right" onDrag={(dx, dy) => handleCornerDrag('top-right', dx, dy)} />
-                <ResizableCorner position="bottom-left" onDrag={(dx, dy) => handleCornerDrag('bottom-left', dx, dy)} />
-                <ResizableCorner position="bottom-right" onDrag={(dx, dy) => handleCornerDrag('bottom-right', dx, dy)} />
+                <ResizableCorner
+                  position="top-left"
+                  onDrag={(dx, dy) => handleCornerDrag('top-left', dx, dy)}
+                />
+                <ResizableCorner
+                  position="top-right"
+                  onDrag={(dx, dy) => handleCornerDrag('top-right', dx, dy)}
+                />
+                <ResizableCorner
+                  position="bottom-left"
+                  onDrag={(dx, dy) => handleCornerDrag('bottom-left', dx, dy)}
+                />
+                <ResizableCorner
+                  position="bottom-right"
+                  onDrag={(dx, dy) => handleCornerDrag('bottom-right', dx, dy)}
+                />
               </div>
             </div>
 
@@ -321,16 +411,27 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
           </div>
         ) : (
           <div className="p-4 flex flex-col items-center justify-center h-full">
-            <h3 className="text-white text-lg mb-4">{t('barcodeScanner.manualInput.title', 'Enter Barcode Manually')}</h3>
-            <form onSubmit={handleManualBarcodeSubmit} className="w-full max-w-xs space-y-4">
+            <h3 className="text-white text-lg mb-4">
+              {t('barcodeScanner.manualInput.title', 'Enter Barcode Manually')}
+            </h3>
+            <form
+              onSubmit={handleManualBarcodeSubmit}
+              className="w-full max-w-xs space-y-4"
+            >
               <Input
                 type="text"
-                placeholder={t('barcodeScanner.manualInput.placeholder', 'Enter barcode')}
+                placeholder={t(
+                  'barcodeScanner.manualInput.placeholder',
+                  'Enter barcode'
+                )}
                 value={manualBarcodeValue}
-                onChange={e => setManualBarcodeValue(e.target.value)}
+                onChange={(e) => setManualBarcodeValue(e.target.value)}
                 className="w-full bg-gray-700 text-white border-gray-600"
               />
-              <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
+              <Button
+                type="submit"
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
                 {t('barcodeScanner.manualInput.submitButton', 'Submit Barcode')}
               </Button>
             </form>
@@ -341,29 +442,42 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
         <div className="absolute top-4 right-4 flex flex-col space-y-3 z-30 pointer-events-none">
           <div className="flex flex-col space-y-3 pointer-events-auto items-end">
             <button
-              onClick={() => { setShowManualInput(prev => !prev); engineInstance?.stop(); }}
+              onClick={() => {
+                setShowManualInput((prev) => !prev);
+                engineInstance?.stop();
+              }}
               className="bg-black/60 hover:bg-black/80 text-white pl-4 pr-2 py-2 rounded-full transition-colors backdrop-blur-sm flex items-center space-x-2 border border-white/10"
             >
-              <span className="text-xs font-medium">{showManualInput ? t('barcodeScanner.buttons.camera', 'Camera') : t('barcodeScanner.buttons.manual', 'Enter Scan Code')}</span>
+              <span className="text-xs font-medium">
+                {showManualInput
+                  ? t('barcodeScanner.buttons.camera', 'Camera')
+                  : t('barcodeScanner.buttons.manual', 'Enter Scan Code')}
+              </span>
               <Keyboard className="w-4 h-4" />
             </button>
 
             {!showManualInput && (
               <button
-                onClick={() => setInternalContinuousMode(prev => !prev)}
+                onClick={() => setInternalContinuousMode((prev) => !prev)}
                 className={`pl-4 pr-2 py-2 rounded-full transition-colors backdrop-blur-sm flex items-center space-x-2 border border-white/10 ${internalContinuousMode ? 'bg-green-500/80 hover:bg-green-600/90 text-white' : 'bg-black/60 hover:bg-black/80 text-white'}`}
               >
-                <span className="text-xs font-medium">{internalContinuousMode ? t('barcodeScanner.buttons.continuous', 'Continuous') : t('barcodeScanner.buttons.single', 'Single Scan')}</span>
+                <span className="text-xs font-medium">
+                  {internalContinuousMode
+                    ? t('barcodeScanner.buttons.continuous', 'Continuous')
+                    : t('barcodeScanner.buttons.single', 'Single Scan')}
+                </span>
                 <Scan className="w-4 h-4" />
               </button>
             )}
 
             {!showManualInput && (
               <button
-                onClick={() => setRefreshTrigger(prev => prev + 1)}
+                onClick={() => setRefreshTrigger((prev) => prev + 1)}
                 className="bg-black/60 hover:bg-black/80 text-white pl-4 pr-2 py-2 rounded-full transition-colors backdrop-blur-sm flex items-center space-x-2 border border-white/10"
               >
-                <span className="text-xs font-medium">{t('barcodeScanner.buttons.refresh', 'Refresh Focus')}</span>
+                <span className="text-xs font-medium">
+                  {t('barcodeScanner.buttons.refresh', 'Refresh Focus')}
+                </span>
                 <RefreshCcw className="w-4 h-4" />
               </button>
             )}
@@ -373,13 +487,20 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onBarcodeDetected, onCl
                 onClick={toggleTorch}
                 className={`pl-4 pr-2 py-2 rounded-full transition-colors backdrop-blur-sm flex items-center space-x-2 border border-white/10 ${torchEnabled ? 'bg-yellow-500/80 hover:bg-yellow-600/90 text-white' : 'bg-black/60 hover:bg-black/80 text-white'}`}
               >
-                <span className="text-xs font-medium">{torchEnabled ? t('barcodeScanner.buttons.flashOn', 'Flash On') : t('barcodeScanner.buttons.flashOff', 'Flash Off')}</span>
-                {torchEnabled ? <Flashlight className="w-4 h-4" /> : <FlashlightOff className="w-4 h-4" />}
+                <span className="text-xs font-medium">
+                  {torchEnabled
+                    ? t('barcodeScanner.buttons.flashOn', 'Flash On')
+                    : t('barcodeScanner.buttons.flashOff', 'Flash Off')}
+                </span>
+                {torchEnabled ? (
+                  <Flashlight className="w-4 h-4" />
+                ) : (
+                  <FlashlightOff className="w-4 h-4" />
+                )}
               </button>
             )}
           </div>
         </div>
-
       </div>
     </div>
   );
@@ -391,7 +512,10 @@ interface ResizableCornerProps {
   onDrag: (deltaX: number, deltaY: number) => void;
 }
 
-const ResizableCorner: React.FC<ResizableCornerProps> = ({ position, onDrag }) => {
+const ResizableCorner: React.FC<ResizableCornerProps> = ({
+  position,
+  onDrag,
+}) => {
   const [isDragging, setIsDragging] = useState(false);
   const lastPos = useRef({ x: 0, y: 0 });
 
@@ -441,8 +565,8 @@ const ResizableCorner: React.FC<ResizableCornerProps> = ({ position, onDrag }) =
   }, [isDragging, onDrag]);
 
   const getPositionClasses = () => {
-    const base = "absolute w-6 h-6 cursor-pointer touch-none z-20"; // Increased z-index
-    const corner = "border-4 border-green-400";
+    const base = 'absolute w-6 h-6 cursor-pointer touch-none z-20'; // Increased z-index
+    const corner = 'border-4 border-green-400';
     switch (position) {
       case 'top-left':
         return `${base} -top-3 -left-3 ${corner} border-r-0 border-b-0`;

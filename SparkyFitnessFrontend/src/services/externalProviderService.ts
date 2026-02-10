@@ -16,8 +16,13 @@ export const getExternalDataProviders = async (): Promise<DataProvider[]> => {
   });
 };
 
-export const getProviderCategory = (provider: DataProvider): ('food' | 'exercise' | 'other')[] => {
-  switch (provider.provider_type.toLowerCase() || provider.provider_name.toLowerCase()) { // Use provider.provider_type
+export const getProviderCategory = (
+  provider: DataProvider
+): ('food' | 'exercise' | 'other')[] => {
+  switch (
+    provider.provider_type.toLowerCase() ||
+    provider.provider_name.toLowerCase() // Use provider.provider_type
+  ) {
     case 'wger':
     case 'free-exercise-db': // Added free-exercise-db
       return ['exercise'];
@@ -34,7 +39,10 @@ export const getProviderCategory = (provider: DataProvider): ('food' | 'exercise
   }
 };
 
-export const toggleProviderPublicSharing = async (id: string, sharedWithPublic: boolean) => {
+export const toggleProviderPublicSharing = async (
+  id: string,
+  sharedWithPublic: boolean
+) => {
   return apiCall(`/external-providers/${id}`, {
     method: 'PUT',
     body: JSON.stringify({ shared_with_public: sharedWithPublic }),

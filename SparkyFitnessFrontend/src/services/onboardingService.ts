@@ -1,15 +1,15 @@
-import { apiCall } from "./api";
+import { apiCall } from './api';
 
 interface OnboardingData {
-  sex: "male" | "female" | "";
-  primaryGoal: "lose_weight" | "maintain_weight" | "gain_weight" | "";
-  currentWeight: number | "";
-  height: number | "";
+  sex: 'male' | 'female' | '';
+  primaryGoal: 'lose_weight' | 'maintain_weight' | 'gain_weight' | '';
+  currentWeight: number | '';
+  height: number | '';
   birthDate: string; // In 'YYYY-MM-DD' format
   bodyFatRange?: string;
-  targetWeight: number | "";
+  targetWeight: number | '';
   mealsPerDay?: number;
-  activityLevel: "not_much" | "light" | "moderate" | "heavy" | "";
+  activityLevel: 'not_much' | 'light' | 'moderate' | 'heavy' | '';
   addBurnedCalories?: boolean;
 }
 
@@ -20,16 +20,16 @@ interface OnboardingData {
  */
 export const submitOnboardingData = async (data: OnboardingData) => {
   try {
-    const response = await apiCall("/onboarding", {
-      method: "POST",
+    const response = await apiCall('/onboarding', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
     });
     return response;
   } catch (error) {
-    console.error("Error submitting onboarding data:", error);
+    console.error('Error submitting onboarding data:', error);
     throw error;
   }
 };
@@ -42,10 +42,10 @@ export const getOnboardingStatus = async (): Promise<{
   onboardingComplete: boolean;
 }> => {
   try {
-    const response = await apiCall("/onboarding/status");
+    const response = await apiCall('/onboarding/status');
     return response;
   } catch (error) {
-    console.error("Error fetching onboarding status:", error);
+    console.error('Error fetching onboarding status:', error);
     return { onboardingComplete: true };
   }
 };
@@ -56,12 +56,12 @@ export const getOnboardingStatus = async (): Promise<{
  */
 export const resetOnboardingStatus = async () => {
   try {
-    const response = await apiCall("/onboarding/reset", {
-      method: "POST",
+    const response = await apiCall('/onboarding/reset', {
+      method: 'POST',
     });
     return response;
   } catch (error) {
-    console.error("Error resetting onboarding status:", error);
+    console.error('Error resetting onboarding status:', error);
     throw error;
   }
 };

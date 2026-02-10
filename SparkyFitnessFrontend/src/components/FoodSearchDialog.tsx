@@ -1,6 +1,12 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useTranslation } from "react-i18next";
-import EnhancedFoodSearch from "./EnhancedFoodSearch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { useTranslation } from 'react-i18next';
+import EnhancedFoodSearch from './EnhancedFoodSearch';
 import type { Food } from '@/types/food';
 import type { Meal } from '@/types/meal';
 
@@ -19,8 +25,8 @@ const FoodSearchDialog = ({
   open,
   onOpenChange,
   onFoodSelect,
-  title = "Search and Add Food",
-  description = "Search for foods to add to your database.",
+  title = 'Search and Add Food',
+  description = 'Search for foods to add to your database.',
   hideDatabaseTab = false,
   hideMealTab = false,
   mealType = undefined,
@@ -30,12 +36,17 @@ const FoodSearchDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t("foodSearchDialog.title", title)}</DialogTitle>
+          <DialogTitle>{t('foodSearchDialog.title', title)}</DialogTitle>
           <DialogDescription>
-            {t("foodSearchDialog.description", description)}
+            {t('foodSearchDialog.description', description)}
           </DialogDescription>
         </DialogHeader>
-        <EnhancedFoodSearch onFoodSelect={onFoodSelect} hideDatabaseTab={hideDatabaseTab} hideMealTab={hideMealTab} mealType={mealType} />
+        <EnhancedFoodSearch
+          onFoodSelect={onFoodSelect}
+          hideDatabaseTab={hideDatabaseTab}
+          hideMealTab={hideMealTab}
+          mealType={mealType}
+        />
       </DialogContent>
     </Dialog>
   );

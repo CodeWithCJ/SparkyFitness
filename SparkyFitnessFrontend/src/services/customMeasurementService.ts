@@ -31,43 +31,64 @@ export interface StressDataPoint {
   stress_level: number;
 }
 
-export const getCustomCategories = async (userId?: string): Promise<CustomCategory[]> => {
-  const url = userId ? `/measurements/custom-categories?userId=${userId}` : '/measurements/custom-categories';
+export const getCustomCategories = async (
+  userId?: string
+): Promise<CustomCategory[]> => {
+  const url = userId
+    ? `/measurements/custom-categories?userId=${userId}`
+    : '/measurements/custom-categories';
   return apiCall(url, {
     method: 'GET',
   });
 };
 
-export const getCustomMeasurements = async (userId?: string): Promise<CustomMeasurement[]> => {
-  const url = userId ? `/measurements/custom-entries?userId=${userId}` : '/measurements/custom-entries';
+export const getCustomMeasurements = async (
+  userId?: string
+): Promise<CustomMeasurement[]> => {
+  const url = userId
+    ? `/measurements/custom-entries?userId=${userId}`
+    : '/measurements/custom-entries';
   return apiCall(url, {
     method: 'GET',
   });
 };
 
-export const getCustomMeasurementsForDate = async (date: string, userId?: string): Promise<CustomMeasurement[]> => {
-  const url = userId ? `/measurements/custom-entries/${userId}/${date}` : `/measurements/custom-entries/${date}`;
+export const getCustomMeasurementsForDate = async (
+  date: string,
+  userId?: string
+): Promise<CustomMeasurement[]> => {
+  const url = userId
+    ? `/measurements/custom-entries/${userId}/${date}`
+    : `/measurements/custom-entries/${date}`;
   return apiCall(url, {
     method: 'GET',
   });
 };
 
-export const saveCustomMeasurement = async (measurementData: any): Promise<CustomMeasurement> => {
+export const saveCustomMeasurement = async (
+  measurementData: any
+): Promise<CustomMeasurement> => {
   return apiCall('/measurements/custom-entries', {
     method: 'POST', // Always use POST for new entries, backend will handle upsert logic
     body: measurementData,
   });
 };
 
-export const deleteCustomMeasurement = async (measurementId: string): Promise<void> => {
+export const deleteCustomMeasurement = async (
+  measurementId: string
+): Promise<void> => {
   return apiCall(`/measurements/custom-entries/${measurementId}`, {
     method: 'DELETE',
   });
 };
 
-export const getRawStressData = async (userId?: string): Promise<StressDataPoint[]> => {
+export const getRawStressData = async (
+  userId?: string
+): Promise<StressDataPoint[]> => {
   const categories = await getCustomCategories(userId);
-  const rawStressCategory = categories.find(cat => cat.name === 'Raw Stress Data');
+  const rawStressCategory = categories.find(
+    (cat) => cat.name === 'Raw Stress Data'
+  );
 
   if (!rawStressCategory) {
     console.warn('Raw Stress Data category not found.');
@@ -88,7 +109,7 @@ export const getRawStressData = async (userId?: string): Promise<StressDataPoint
   let allStressDataPoints: StressDataPoint[] = [];
   // console.log('Custom measurements received for raw stress data:', customMeasurements);
 
-  customMeasurements.forEach(measurement => {
+  customMeasurements.forEach((measurement) => {
     try {
       if (typeof measurement.value === 'string') {
         let cleanedValue = measurement.value.trim();
@@ -107,7 +128,10 @@ export const getRawStressData = async (userId?: string): Promise<StressDataPoint
           } catch (e: any) {
             // Check if error is "unexpected character after JSON"
             // This happens if multiple JSON objects are joined together like {"a":1}{"b":2}
-            if (e.message?.includes('Unexpected non-whitespace character') || e.message?.includes('after JSON')) {
+            if (
+              e.message?.includes('Unexpected non-whitespace character') ||
+              e.message?.includes('after JSON')
+            ) {
               // Try to find if it's a sequence of objects
               // This is a naive but often effective way for simple objects
               const points: any[] = [];
@@ -125,8 +149,7 @@ export const getRawStressData = async (userId?: string): Promise<StressDataPoint
                       remaining = remaining.substring(i).trim();
                       success = true;
                       break;
-                    } catch (inner) {
-                    }
+                    } catch (inner) {}
                   }
                   if (!success) break; // Cannot parse any more
                 } catch (err) {
@@ -144,8 +167,15 @@ export const getRawStressData = async (userId?: string): Promise<StressDataPoint
           parsedValue = parseRobustly(cleanedValue);
         } catch (initialError) {
           // If it's still failing, try removing JUST the outer braces if they seem like extraneous wrappers
-          if (cleanedValue.startsWith('{') && cleanedValue.endsWith('}') && !cleanedValue.includes(':')) {
-            const alternativeValue = cleanedValue.substring(1, cleanedValue.length - 1);
+          if (
+            cleanedValue.startsWith('{') &&
+            cleanedValue.endsWith('}') &&
+            !cleanedValue.includes(':')
+          ) {
+            const alternativeValue = cleanedValue.substring(
+              1,
+              cleanedValue.length - 1
+            );
             parsedValue = parseRobustly(alternativeValue);
           } else {
             throw initialError;
@@ -163,7 +193,7 @@ export const getRawStressData = async (userId?: string): Promise<StressDataPoint
 
         if (Array.isArray(parsedValue)) {
           // Flatten if we got an array of arrays from the robust parser
-          parsedValue.forEach(val => {
+          parsedValue.forEach((val) => {
             if (Array.isArray(val)) {
               allStressDataPoints = allStressDataPoints.concat(val);
             } else {
@@ -179,7 +209,7 @@ export const getRawStressData = async (userId?: string): Promise<StressDataPoint
       console.error('Error parsing stress data point JSON:', {
         error: error instanceof Error ? error.message : error,
         value: measurement.value,
-        id: measurement.id
+        id: measurement.id,
       });
     }
   });

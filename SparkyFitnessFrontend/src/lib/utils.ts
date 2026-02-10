@@ -1,8 +1,8 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 export function formatDateToYYYYMMDD(date: Date): string {
@@ -12,7 +12,10 @@ export function formatDateToYYYYMMDD(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function getNutrientUnit(nutrientName: string, currentEnergyUnit: 'kcal' | 'kJ' = 'kcal'): string {
+export function getNutrientUnit(
+  nutrientName: string,
+  currentEnergyUnit: 'kcal' | 'kJ' = 'kcal'
+): string {
   switch (nutrientName) {
     case 'calories':
       return currentEnergyUnit;
@@ -40,7 +43,16 @@ export function getNutrientUnit(nutrientName: string, currentEnergyUnit: 'kcal' 
   }
 }
 
-export function formatNutrientValue(value: number, nutrientName: string, currentEnergyUnit: 'kcal' | 'kJ' = 'kcal', converter?: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number): string {
+export function formatNutrientValue(
+  value: number,
+  nutrientName: string,
+  currentEnergyUnit: 'kcal' | 'kJ' = 'kcal',
+  converter?: (
+    value: number,
+    fromUnit: 'kcal' | 'kJ',
+    toUnit: 'kcal' | 'kJ'
+  ) => number
+): string {
   let formattedValue: string;
   let finalValue = value;
 

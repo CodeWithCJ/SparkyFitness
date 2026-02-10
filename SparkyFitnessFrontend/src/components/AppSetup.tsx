@@ -9,7 +9,10 @@ interface AppSetupProps {
   setShowNewReleaseDialog: (show: boolean) => void;
 }
 
-const AppSetup = ({ setLatestRelease, setShowNewReleaseDialog }: AppSetupProps) => {
+const AppSetup = ({
+  setLatestRelease,
+  setShowNewReleaseDialog,
+}: AppSetupProps) => {
   const { user, loading } = useAuth();
   const { loggingLevel } = usePreferences();
 
@@ -24,10 +27,19 @@ const AppSetup = ({ setLatestRelease, setShowNewReleaseDialog }: AppSetupProps) 
           setLatestRelease(releaseData);
           info(loggingLevel, 'Latest GitHub release data:', releaseData);
 
-          const dismissedVersion = localStorage.getItem('dismissedReleaseVersion');
-          info(loggingLevel, 'Dismissed release version from localStorage:', dismissedVersion);
+          const dismissedVersion = localStorage.getItem(
+            'dismissedReleaseVersion'
+          );
+          info(
+            loggingLevel,
+            'Dismissed release version from localStorage:',
+            dismissedVersion
+          );
 
-          if (releaseData.isNewVersionAvailable && dismissedVersion !== releaseData.version) {
+          if (
+            releaseData.isNewVersionAvailable &&
+            dismissedVersion !== releaseData.version
+          ) {
             info(loggingLevel, 'Showing new release dialog.');
             setShowNewReleaseDialog(true);
           } else {
@@ -44,7 +56,10 @@ const AppSetup = ({ setLatestRelease, setShowNewReleaseDialog }: AppSetupProps) 
 
       checkNewRelease();
     } else {
-      info(loggingLevel, 'User not authenticated or still loading, skipping new release check.');
+      info(
+        loggingLevel,
+        'User not authenticated or still loading, skipping new release check.'
+      );
     }
   }, [user, loading, loggingLevel, setLatestRelease, setShowNewReleaseDialog]);
 

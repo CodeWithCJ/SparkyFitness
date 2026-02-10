@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { info } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
@@ -64,30 +64,65 @@ const WorkoutHeatmap: React.FC<WorkoutHeatmapProps> = ({ workoutDates }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("exerciseReportsDashboard.workoutHeatmap", "Workout Heatmap")}</CardTitle>
+        <CardTitle>
+          {t('exerciseReportsDashboard.workoutHeatmap', 'Workout Heatmap')}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           {monthsToDisplay.map((monthInfo, monthIndex) => (
-            <div key={`${monthInfo.year}-${monthInfo.month}`} className="flex flex-col items-center">
-              <h4 className="text-sm font-semibold mb-2">{monthInfo.name} {monthInfo.year}</h4>
-              <div className="grid grid-cols-7 gap-1" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
-                <div className="text-xs text-center text-muted-foreground">{t("common.day_short.sunday", "S")}</div>
-                <div className="text-xs text-center text-muted-foreground">{t("common.day_short.monday", "M")}</div>
-                <div className="text-xs text-center text-muted-foreground">{t("common.day_short.tuesday", "T")}</div>
-                <div className="text-xs text-center text-muted-foreground">{t("common.day_short.wednesday", "W")}</div>
-                <div className="text-xs text-center text-muted-foreground">{t("common.day_short.thursday", "T")}</div>
-                <div className="text-xs text-center text-muted-foreground">{t("common.day_short.friday", "F")}</div>
-                <div className="text-xs text-center text-muted-foreground">{t("common.day_short.saturday", "S")}</div>
-                {generateMonthData(monthInfo.year, monthInfo.month).map((date, dayIndex) => (
-                  <div
-                    key={dayIndex}
-                    className={`w-8 h-8 md:w-5 md:h-5 rounded-md flex items-center justify-center text-center text-[10px] md:text-[8px] ${getDayColor(date)}`}
-                    title={date ? formatDateInUserTimezone(date, 'yyyy-MM-dd') + (workoutDates.includes(formatDateInUserTimezone(date, 'yyyy-MM-dd')) ? ` (${t("exerciseReportsDashboard.workout", "Workout")})` : ` (${t("exerciseReportsDashboard.noWorkout", "No Workout")})`) : ''}
-                  >
-                    {date ? date.getDate() : ''}
-                  </div>
-                ))}
+            <div
+              key={`${monthInfo.year}-${monthInfo.month}`}
+              className="flex flex-col items-center"
+            >
+              <h4 className="text-sm font-semibold mb-2">
+                {monthInfo.name} {monthInfo.year}
+              </h4>
+              <div
+                className="grid grid-cols-7 gap-1"
+                style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}
+              >
+                <div className="text-xs text-center text-muted-foreground">
+                  {t('common.day_short.sunday', 'S')}
+                </div>
+                <div className="text-xs text-center text-muted-foreground">
+                  {t('common.day_short.monday', 'M')}
+                </div>
+                <div className="text-xs text-center text-muted-foreground">
+                  {t('common.day_short.tuesday', 'T')}
+                </div>
+                <div className="text-xs text-center text-muted-foreground">
+                  {t('common.day_short.wednesday', 'W')}
+                </div>
+                <div className="text-xs text-center text-muted-foreground">
+                  {t('common.day_short.thursday', 'T')}
+                </div>
+                <div className="text-xs text-center text-muted-foreground">
+                  {t('common.day_short.friday', 'F')}
+                </div>
+                <div className="text-xs text-center text-muted-foreground">
+                  {t('common.day_short.saturday', 'S')}
+                </div>
+                {generateMonthData(monthInfo.year, monthInfo.month).map(
+                  (date, dayIndex) => (
+                    <div
+                      key={dayIndex}
+                      className={`w-8 h-8 md:w-5 md:h-5 rounded-md flex items-center justify-center text-center text-[10px] md:text-[8px] ${getDayColor(date)}`}
+                      title={
+                        date
+                          ? formatDateInUserTimezone(date, 'yyyy-MM-dd') +
+                            (workoutDates.includes(
+                              formatDateInUserTimezone(date, 'yyyy-MM-dd')
+                            )
+                              ? ` (${t('exerciseReportsDashboard.workout', 'Workout')})`
+                              : ` (${t('exerciseReportsDashboard.noWorkout', 'No Workout')})`)
+                          : ''
+                      }
+                    >
+                      {date ? date.getDate() : ''}
+                    </div>
+                  )
+                )}
               </div>
             </div>
           ))}

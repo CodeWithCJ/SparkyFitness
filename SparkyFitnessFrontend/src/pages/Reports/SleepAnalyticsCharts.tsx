@@ -1,8 +1,24 @@
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { type SleepAnalyticsData, SLEEP_STAGE_COLORS, type SleepChartData, type SleepEntry } from '@/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from 'recharts';
+import {
+  type SleepAnalyticsData,
+  SLEEP_STAGE_COLORS,
+  type SleepChartData,
+  type SleepEntry,
+} from '@/types';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import ZoomableChart from '@/components/ZoomableChart';
 import SleepStageChart from './SleepStageChart';
@@ -13,7 +29,13 @@ import SleepRespirationCard from './SleepRespirationCard';
 import SleepHeartRateCard from './SleepHeartRateCard';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, Moon, TrendingUp, Activity } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Moon,
+  TrendingUp,
+  Activity,
+} from 'lucide-react';
 
 interface SpO2DataPoint {
   date: string;
@@ -58,7 +80,7 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({
   hrvData,
   respirationData,
   heartRateData,
-  latestSleepEntry
+  latestSleepEntry,
 }) => {
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
   const { resolvedTheme } = useTheme();
@@ -77,7 +99,7 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({
   };
 
   const chartData = sleepAnalyticsData
-    .map(data => ({
+    .map((data) => ({
       date: data.date,
       deep: data.stagePercentages.deep,
       rem: data.stagePercentages.rem,
@@ -85,31 +107,43 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({
       awake: data.stagePercentages.awake,
       sleepDebt: data.sleepDebt,
       sleepEfficiency: data.sleepEfficiency,
-      bedtime: new Date(data.earliestBedtime).getHours() + new Date(data.earliestBedtime).getMinutes() / 60,
-      wakeTime: new Date(data.latestWakeTime).getHours() + new Date(data.latestWakeTime).getMinutes() / 60,
+      bedtime:
+        new Date(data.earliestBedtime).getHours() +
+        new Date(data.earliestBedtime).getMinutes() / 60,
+      wakeTime:
+        new Date(data.latestWakeTime).getHours() +
+        new Date(data.latestWakeTime).getMinutes() / 60,
     }))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // Sort hypnograms by date descending (most recent first)
-  const sortedHypnograms = useMemo(() =>
-    [...sleepHypnogramData].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    ), [sleepHypnogramData]);
+  const sortedHypnograms = useMemo(
+    () =>
+      [...sleepHypnogramData].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      ),
+    [sleepHypnogramData]
+  );
 
-  const visibleHypnograms = useMemo(() =>
-    showAllHypnograms
-      ? sortedHypnograms
-      : sortedHypnograms.slice(0, DEFAULT_HYPNOGRAMS_SHOWN)
-    , [showAllHypnograms, sortedHypnograms]);
+  const visibleHypnograms = useMemo(
+    () =>
+      showAllHypnograms
+        ? sortedHypnograms
+        : sortedHypnograms.slice(0, DEFAULT_HYPNOGRAMS_SHOWN),
+    [showAllHypnograms, sortedHypnograms]
+  );
 
   const hasMoreHypnograms = sortedHypnograms.length > DEFAULT_HYPNOGRAMS_SHOWN;
 
   // Check which health metrics are available
-  const hasSpO2 = spo2Data && spo2Data.some(d => d.average !== null);
-  const hasHRV = hrvData && hrvData.some(d => d.avg_overnight_hrv !== null);
-  const hasRespiration = respirationData && respirationData.some(d => d.average !== null);
-  const hasHeartRate = heartRateData && heartRateData.some(d => d.resting_heart_rate !== null);
-  const hasAnyHealthMetrics = hasSpO2 || hasHRV || hasRespiration || hasHeartRate;
+  const hasSpO2 = spo2Data && spo2Data.some((d) => d.average !== null);
+  const hasHRV = hrvData && hrvData.some((d) => d.avg_overnight_hrv !== null);
+  const hasRespiration =
+    respirationData && respirationData.some((d) => d.average !== null);
+  const hasHeartRate =
+    heartRateData && heartRateData.some((d) => d.resting_heart_rate !== null);
+  const hasAnyHealthMetrics =
+    hasSpO2 || hasHRV || hasRespiration || hasHeartRate;
 
   const [isMounted, setIsMounted] = useState(false);
 
@@ -121,7 +155,9 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({
     return (
       <div className="space-y-6">
         <div className="h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg">
-          <span className="text-sm text-muted-foreground">{t('common.loading', 'Loading Sleep Analytics...')}</span>
+          <span className="text-sm text-muted-foreground">
+            {t('common.loading', 'Loading Sleep Analytics...')}
+          </span>
         </div>
       </div>
     );
@@ -156,7 +192,10 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({
                   </>
                 ) : (
                   <>
-                    {t('sleepAnalyticsCharts.showAll', `Show All (${sortedHypnograms.length})`)}
+                    {t(
+                      'sleepAnalyticsCharts.showAll',
+                      `Show All (${sortedHypnograms.length})`
+                    )}
                     <ChevronDown className="w-4 h-4 ml-1" />
                   </>
                 )}
@@ -178,31 +217,87 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({
           {t('sleepAnalyticsCharts.sleepTrends', 'Sleep Trends')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <ZoomableChart title={t('sleepAnalyticsCharts.sleepStages', 'Sleep Stages')}>
+          <ZoomableChart
+            title={t('sleepAnalyticsCharts.sleepStages', 'Sleep Stages')}
+          >
             {(isMaximized, zoomLevel) => (
               <Card>
                 <CardHeader>
-                  <CardTitle>{t('sleepAnalyticsCharts.sleepStages', 'Sleep Stages')}</CardTitle>
+                  <CardTitle>
+                    {t('sleepAnalyticsCharts.sleepStages', 'Sleep Stages')}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
+                  <div
+                    className={isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48'}
+                  >
                     <ResponsiveContainer
-                      width={isMaximized ? `${100 * zoomLevel}%` : "100%"}
-                      height={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                      width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
                     >
                       <BarChart data={chartData} stackOffset="expand">
-                        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                        <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke={tickColor} tick={{ fill: tickColor }} />
-                        <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} stroke={tickColor} tick={{ fill: tickColor }} />
-                        <Tooltip labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)} contentStyle={{ backgroundColor: tooltipBackgroundColor, borderColor: tooltipBorderColor, color: tickColor }} itemStyle={{ color: tickColor }} />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke={gridColor}
+                        />
+                        <XAxis
+                          dataKey="date"
+                          tickFormatter={(tick) =>
+                            formatDateInUserTimezone(tick, dateFormat)
+                          }
+                          stroke={tickColor}
+                          tick={{ fill: tickColor }}
+                        />
+                        <YAxis
+                          tickFormatter={(value) =>
+                            `${(value * 100).toFixed(0)}%`
+                          }
+                          stroke={tickColor}
+                          tick={{ fill: tickColor }}
+                        />
+                        <Tooltip
+                          labelFormatter={(label) =>
+                            formatDateInUserTimezone(label, dateFormat)
+                          }
+                          contentStyle={{
+                            backgroundColor: tooltipBackgroundColor,
+                            borderColor: tooltipBorderColor,
+                            color: tickColor,
+                          }}
+                          itemStyle={{ color: tickColor }}
+                        />
                         <Legend wrapperStyle={{ color: tickColor }} />
-                        <Bar dataKey="deep" stackId="a" fill={SLEEP_STAGE_COLORS.deep} name={t('sleepAnalyticsCharts.deep', 'Deep')} isAnimationActive={false} />
-                        <Bar dataKey="rem" stackId="a" fill={SLEEP_STAGE_COLORS.rem} name={t('sleepAnalyticsCharts.rem', 'REM')} isAnimationActive={false} />
-                        <Bar dataKey="light" stackId="a" fill={SLEEP_STAGE_COLORS.light} name={t('sleepAnalyticsCharts.light', 'Light')} isAnimationActive={false} />
-                        <Bar dataKey="awake" stackId="a" fill={SLEEP_STAGE_COLORS.awake} name={t('sleepAnalyticsCharts.awake', 'Awake')} isAnimationActive={false} />
+                        <Bar
+                          dataKey="deep"
+                          stackId="a"
+                          fill={SLEEP_STAGE_COLORS.deep}
+                          name={t('sleepAnalyticsCharts.deep', 'Deep')}
+                          isAnimationActive={false}
+                        />
+                        <Bar
+                          dataKey="rem"
+                          stackId="a"
+                          fill={SLEEP_STAGE_COLORS.rem}
+                          name={t('sleepAnalyticsCharts.rem', 'REM')}
+                          isAnimationActive={false}
+                        />
+                        <Bar
+                          dataKey="light"
+                          stackId="a"
+                          fill={SLEEP_STAGE_COLORS.light}
+                          name={t('sleepAnalyticsCharts.light', 'Light')}
+                          isAnimationActive={false}
+                        />
+                        <Bar
+                          dataKey="awake"
+                          stackId="a"
+                          fill={SLEEP_STAGE_COLORS.awake}
+                          name={t('sleepAnalyticsCharts.awake', 'Awake')}
+                          isAnimationActive={false}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -211,33 +306,85 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({
             )}
           </ZoomableChart>
 
-          <ZoomableChart title={t('sleepAnalyticsCharts.sleepConsistency', 'Sleep Consistency')}>
+          <ZoomableChart
+            title={t(
+              'sleepAnalyticsCharts.sleepConsistency',
+              'Sleep Consistency'
+            )}
+          >
             {(isMaximized, zoomLevel) => (
               <Card>
                 <CardHeader>
-                  <CardTitle>{t('sleepAnalyticsCharts.sleepConsistency', 'Sleep Consistency')}</CardTitle>
+                  <CardTitle>
+                    {t(
+                      'sleepAnalyticsCharts.sleepConsistency',
+                      'Sleep Consistency'
+                    )}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
+                  <div
+                    className={isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48'}
+                  >
                     <ResponsiveContainer
-                      width={isMaximized ? `${100 * zoomLevel}%` : "100%"}
-                      height={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                      width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
                     >
                       <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                        <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke={tickColor} tick={{ fill: tickColor }} />
-                        <YAxis tickFormatter={formatBedWakeTime} stroke={tickColor} tick={{ fill: tickColor }} />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke={gridColor}
+                        />
+                        <XAxis
+                          dataKey="date"
+                          tickFormatter={(tick) =>
+                            formatDateInUserTimezone(tick, dateFormat)
+                          }
+                          stroke={tickColor}
+                          tick={{ fill: tickColor }}
+                        />
+                        <YAxis
+                          tickFormatter={formatBedWakeTime}
+                          stroke={tickColor}
+                          tick={{ fill: tickColor }}
+                        />
                         <Tooltip
-                          labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)}
-                          formatter={(value: number, name: string) => [`${formatBedWakeTime(value)}`, name]}
-                          contentStyle={{ backgroundColor: tooltipBackgroundColor, borderColor: tooltipBorderColor, color: tickColor }} itemStyle={{ color: tickColor }}
+                          labelFormatter={(label) =>
+                            formatDateInUserTimezone(label, dateFormat)
+                          }
+                          formatter={(value: number, name: string) => [
+                            `${formatBedWakeTime(value)}`,
+                            name,
+                          ]}
+                          contentStyle={{
+                            backgroundColor: tooltipBackgroundColor,
+                            borderColor: tooltipBorderColor,
+                            color: tickColor,
+                          }}
+                          itemStyle={{ color: tickColor }}
                         />
                         <Legend wrapperStyle={{ color: tickColor }} />
-                        <Line type="monotone" dataKey="bedtime" stroke="#8884d8" name={t('sleepAnalyticsCharts.bedtime', 'Bedtime')} strokeWidth={2} dot={false} isAnimationActive={false} />
-                        <Line type="monotone" dataKey="wakeTime" stroke="#82ca9d" name={t('sleepAnalyticsCharts.wakeTime', 'Wake Time')} strokeWidth={2} dot={false} isAnimationActive={false} />
+                        <Line
+                          type="monotone"
+                          dataKey="bedtime"
+                          stroke="#8884d8"
+                          name={t('sleepAnalyticsCharts.bedtime', 'Bedtime')}
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="wakeTime"
+                          stroke="#82ca9d"
+                          name={t('sleepAnalyticsCharts.wakeTime', 'Wake Time')}
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -246,61 +393,149 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({
             )}
           </ZoomableChart>
 
-          <ZoomableChart title={t('sleepAnalyticsCharts.sleepDebt', 'Sleep Debt')}>
+          <ZoomableChart
+            title={t('sleepAnalyticsCharts.sleepDebt', 'Sleep Debt')}
+          >
             {(isMaximized, zoomLevel) => (
               <Card>
                 <CardHeader>
-                  <CardTitle>{t('sleepAnalyticsCharts.sleepDebt', 'Sleep Debt')}</CardTitle>
+                  <CardTitle>
+                    {t('sleepAnalyticsCharts.sleepDebt', 'Sleep Debt')}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
+                  <div
+                    className={isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48'}
+                  >
                     <ResponsiveContainer
-                      width={isMaximized ? `${100 * zoomLevel}%` : "100%"}
-                      height={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                      width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
                     >
                       <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                        <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke={tickColor} tick={{ fill: tickColor }} />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke={gridColor}
+                        />
+                        <XAxis
+                          dataKey="date"
+                          tickFormatter={(tick) =>
+                            formatDateInUserTimezone(tick, dateFormat)
+                          }
+                          stroke={tickColor}
+                          tick={{ fill: tickColor }}
+                        />
                         <YAxis stroke={tickColor} tick={{ fill: tickColor }} />
-                        <Tooltip labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)} contentStyle={{ backgroundColor: tooltipBackgroundColor, borderColor: tooltipBorderColor, color: tickColor }} itemStyle={{ color: tickColor }} />
+                        <Tooltip
+                          labelFormatter={(label) =>
+                            formatDateInUserTimezone(label, dateFormat)
+                          }
+                          contentStyle={{
+                            backgroundColor: tooltipBackgroundColor,
+                            borderColor: tooltipBorderColor,
+                            color: tickColor,
+                          }}
+                          itemStyle={{ color: tickColor }}
+                        />
                         <Legend wrapperStyle={{ color: tickColor }} />
-                        <Line type="monotone" dataKey="sleepDebt" stroke="#8884d8" name={t('sleepAnalyticsCharts.sleepDebtHours', 'Sleep Debt (hours)')} strokeWidth={2} dot={false} isAnimationActive={false} />
+                        <Line
+                          type="monotone"
+                          dataKey="sleepDebt"
+                          stroke="#8884d8"
+                          name={t(
+                            'sleepAnalyticsCharts.sleepDebtHours',
+                            'Sleep Debt (hours)'
+                          )}
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
                 </CardContent>
                 <div className="text-sm text-muted-foreground p-4">
-                  {t('sleepAnalyticsCharts.sleepDebtDisclaimer', '*Sleep Debt is calculated based on a recommended 8 hours of sleep. This will be customizable in a future release.')}
+                  {t(
+                    'sleepAnalyticsCharts.sleepDebtDisclaimer',
+                    '*Sleep Debt is calculated based on a recommended 8 hours of sleep. This will be customizable in a future release.'
+                  )}
                 </div>
               </Card>
             )}
           </ZoomableChart>
 
-          <ZoomableChart title={t('sleepAnalyticsCharts.sleepEfficiency', 'Sleep Efficiency')}>
+          <ZoomableChart
+            title={t(
+              'sleepAnalyticsCharts.sleepEfficiency',
+              'Sleep Efficiency'
+            )}
+          >
             {(isMaximized, zoomLevel) => (
               <Card>
                 <CardHeader>
-                  <CardTitle>{t('sleepAnalyticsCharts.sleepEfficiency', 'Sleep Efficiency')}</CardTitle>
+                  <CardTitle>
+                    {t(
+                      'sleepAnalyticsCharts.sleepEfficiency',
+                      'Sleep Efficiency'
+                    )}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className={isMaximized ? "h-[calc(95vh-150px)]" : "h-48"}>
+                  <div
+                    className={isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48'}
+                  >
                     <ResponsiveContainer
-                      width={isMaximized ? `${100 * zoomLevel}%` : "100%"}
-                      height={isMaximized ? `${100 * zoomLevel}%` : "100%"}
+                      width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
                     >
                       <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                        <XAxis dataKey="date" tickFormatter={(tick) => formatDateInUserTimezone(tick, dateFormat)} stroke={tickColor} tick={{ fill: tickColor }} />
-                        <YAxis domain={[0, 100]} tickFormatter={(value) => `${value.toFixed(0)}%`} stroke={tickColor} tick={{ fill: tickColor }} />
-                        <Tooltip labelFormatter={(label) => formatDateInUserTimezone(label, dateFormat)} contentStyle={{ backgroundColor: tooltipBackgroundColor, borderColor: tooltipBorderColor, color: tickColor }} itemStyle={{ color: tickColor }} />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke={gridColor}
+                        />
+                        <XAxis
+                          dataKey="date"
+                          tickFormatter={(tick) =>
+                            formatDateInUserTimezone(tick, dateFormat)
+                          }
+                          stroke={tickColor}
+                          tick={{ fill: tickColor }}
+                        />
+                        <YAxis
+                          domain={[0, 100]}
+                          tickFormatter={(value) => `${value.toFixed(0)}%`}
+                          stroke={tickColor}
+                          tick={{ fill: tickColor }}
+                        />
+                        <Tooltip
+                          labelFormatter={(label) =>
+                            formatDateInUserTimezone(label, dateFormat)
+                          }
+                          contentStyle={{
+                            backgroundColor: tooltipBackgroundColor,
+                            borderColor: tooltipBorderColor,
+                            color: tickColor,
+                          }}
+                          itemStyle={{ color: tickColor }}
+                        />
                         <Legend wrapperStyle={{ color: tickColor }} />
-                        <Line type="monotone" dataKey="sleepEfficiency" stroke="#82ca9d" name={t('sleepAnalyticsCharts.sleepEfficiency', 'Sleep Efficiency')} strokeWidth={2} dot={false} isAnimationActive={false} />
+                        <Line
+                          type="monotone"
+                          dataKey="sleepEfficiency"
+                          stroke="#82ca9d"
+                          name={t(
+                            'sleepAnalyticsCharts.sleepEfficiency',
+                            'Sleep Efficiency'
+                          )}
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
