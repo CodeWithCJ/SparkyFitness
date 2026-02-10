@@ -45,14 +45,14 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({ exerciseEntries }) =>
 
   if (filtered.length === 0) {
     return (
-      <View className="bg-section rounded-xl p-4 my-2 shadow-sm items-center py-6">
+      <View className="bg-surface rounded-xl p-4 my-2 shadow-sm items-center py-6">
         <Text className="text-text-muted text-base">No exercise entries yet</Text>
       </View>
     );
   }
 
   return (
-    <View className="bg-section rounded-xl p-4 my-2 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       <View className="flex-row items-center gap-2 mb-2">
         <Icon name="exercise" size={18} color={textSecondary} />
       <Text className="text-base font-bold text-text-primary">Exercise</Text>

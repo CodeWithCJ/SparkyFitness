@@ -43,7 +43,7 @@ const DevTools: React.FC = () => {
   };
 
   return (
-    <View className="bg-section rounded-xl p-4 mb-4 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
       <Text className="text-lg font-bold mb-3 text-text-primary">Dev Tools</Text>
       <Text className="text-text-muted mb-3 text-[13px]">
         These tools are only visible in development builds.

@@ -123,7 +123,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View className="flex-1 bg-background">
       {!isConnectionLoading && isConnected && (
         <DateNavigator
           title="Diary"

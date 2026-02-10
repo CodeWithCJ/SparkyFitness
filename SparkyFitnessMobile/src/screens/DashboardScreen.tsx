@@ -114,7 +114,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     '--color-progress-track',
     '--color-border-subtle',
     '--color-border-strong',
-    '--color-accent-subtle',
+    '--color-border-subtle',
   ]) as [string, string, string, string];
 
   const [refreshing, setRefreshing] = useState(false);
@@ -244,7 +244,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             />
           </View>
         ) : (
-          <View className="bg-section rounded-xl p-4 mb-2 shadow-sm items-center">
+          <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center">
             <SvgXml xml={buildEmptyStateSvg(illustrationMain, illustrationSubtle, illustrationMedium, illustrationAccent)} width="80%" height={100} />
             <Text className="text-sm text-text-muted mt-2">No entries recorded for this day</Text>
           </View>
@@ -281,7 +281,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View className="flex-1 bg-background">
       {!isConnectionLoading && isConnected && (
         <DateNavigator
           title="Dashboard"
