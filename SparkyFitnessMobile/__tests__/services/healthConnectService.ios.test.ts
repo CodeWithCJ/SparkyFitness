@@ -16,11 +16,11 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-jest.mock('../../src/services/api', () => ({
+jest.mock('../../src/services/api/healthDataApi', () => ({
   syncHealthData: jest.fn(),
 }));
 
-jest.mock('../../src/constants/HealthMetrics', () => ({
+jest.mock('../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
     { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
     { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate' },
@@ -33,7 +33,7 @@ const mockQueryStatisticsForQuantity = queryStatisticsForQuantity as jest.Mock;
 const mockQueryQuantitySamples = queryQuantitySamples as jest.Mock;
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const api = require('../../src/services/api') as { syncHealthData: jest.Mock };
+const api = require('../../src/services/api/healthDataApi') as { syncHealthData: jest.Mock };
 
 describe('syncHealthData (iOS)', () => {
   beforeEach(async () => {

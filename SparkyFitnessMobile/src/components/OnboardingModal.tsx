@@ -4,11 +4,10 @@ import {
   Text,
   Modal,
   TouchableOpacity,
-  StyleSheet,
   Image,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
+import { useCSSVariable } from 'uniwind';
+import Icon from './Icon';
 
 // Module-level flag - resets when app is fully killed and relaunched
 let hasShownThisSession = false;
@@ -37,7 +36,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
   onGoToSettings,
   onDismiss,
 }) => {
-  const { colors } = useTheme();
+  const primary = useCSSVariable('--color-accent-primary') as string;
 
   const handleGoToSettings = () => {
     markOnboardingShown();
@@ -56,34 +55,37 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
       animationType="fade"
       onRequestClose={handleDismiss}
     >
-      <View style={styles.overlay}>
-        <View style={[styles.modalContainer, { backgroundColor: colors.card }]}>
+      <View
+        className="flex-1 justify-center items-center p-6"
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      >
+        <View className="w-full max-w-[360px] rounded-2xl p-6 bg-section shadow-sm">
           {/* Header */}
-          <View style={styles.header}>
+          <View className="items-center mb-5">
             <Image
               source={require('../../assets/images/logo.png')}
-              style={styles.logo}
+              className="w-16 h-16"
               resizeMode="contain"
             />
-            <Text style={[styles.title, { color: colors.text }]}>
+            <Text className="text-[22px] font-bold mt-3 text-center text-text-primary">
               Welcome to SparkyFitness
             </Text>
           </View>
 
           {/* Content */}
-          <View style={styles.content}>
-            <Text style={[styles.description, { color: colors.textSecondary }]}>
+          <View className="mb-6">
+            <Text className="text-base leading-6 text-center mb-5 text-text-secondary">
               To get started, configure your server connection. This tells the app where to sync your health data.
             </Text>
 
             {/* Privacy Section */}
-            <View style={[styles.privacySection, { backgroundColor: colors.background }]}>
-              <Ionicons name="shield-checkmark-outline" size={24} color={colors.primary} style={styles.privacyIcon} />
-              <View style={styles.privacyTextContainer}>
-                <Text style={[styles.privacyTitle, { color: colors.text }]}>
+            <View className="flex-row p-4 rounded-xl bg-canvas">
+              <Icon name="shield-checkmark" size={24} color={primary} style={{ marginRight: 12, marginTop: 2 }} />
+              <View className="flex-1">
+                <Text className="text-[15px] font-semibold mb-1 text-text-primary">
                   Your Privacy Matters
                 </Text>
-                <Text style={[styles.privacyText, { color: colors.textSecondary }]}>
+                <Text className="text-sm leading-5 text-text-secondary">
                   We do not collect or store any of your data. All health information is sent directly to your own server.
                 </Text>
               </View>
@@ -91,22 +93,22 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
           </View>
 
           {/* Buttons */}
-          <View style={styles.buttonContainer}>
+          <View className="gap-3">
             <TouchableOpacity
-              style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+              className="flex-row items-center justify-center py-3.5 rounded-[10px] bg-accent-primary"
               onPress={handleGoToSettings}
               activeOpacity={0.8}
             >
-              <Ionicons name="settings-outline" size={20} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.primaryButtonText}>Go to Settings</Text>
+              <Icon name="settings" size={20} color="#fff" style={{ marginRight: 8 }} />
+              <Text className="text-white text-[17px] font-semibold">Go to Settings</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.secondaryButton}
+              className="items-center py-2.5"
               onPress={handleDismiss}
               activeOpacity={0.7}
             >
-              <Text style={[styles.secondaryButtonText, { color: colors.textMuted }]}>
+              <Text className="text-base text-text-muted">
                 Later
               </Text>
             </TouchableOpacity>
@@ -116,90 +118,5 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContainer: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: 16,
-    padding: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  logo: {
-    width: 64,
-    height: 64,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  content: {
-    marginBottom: 24,
-  },
-  description: {
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  privacySection: {
-    flexDirection: 'row',
-    padding: 16,
-    borderRadius: 12,
-  },
-  privacyIcon: {
-    marginRight: 12,
-    marginTop: 2,
-  },
-  privacyTextContainer: {
-    flex: 1,
-  },
-  privacyTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  privacyText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  buttonContainer: {
-    gap: 12,
-  },
-  primaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 10,
-  },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-  },
-});
 
 export default OnboardingModal;

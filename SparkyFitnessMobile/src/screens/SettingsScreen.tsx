@@ -1,32 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { View, Alert, Text, ScrollView, Platform, TouchableOpacity } from 'react-native';
-import styles from './SettingsScreenStyles';
+import { View, Alert, Text, ScrollView, Platform, TouchableOpacity, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig, loadBackgroundSyncEnabled, saveBackgroundSyncEnabled } from '../services/storage';
 import type { ServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference } from '../services/healthConnectService';
 import { configureBackgroundSync, stopBackgroundSync } from '../services/backgroundSyncService';
-import { checkServerConnection } from '../services/api';
-import { HEALTH_METRICS } from '../constants/HealthMetrics';
-import type { HealthMetric } from '../constants/HealthMetrics';
+import { HEALTH_METRICS } from '../HealthMetrics';
+import { useServerConnection } from '../hooks';
+import type { HealthMetric } from '../HealthMetrics';
 import ServerConfigComponent from '../components/ServerConfig';
 import HealthDataSync from '../components/HealthDataSync';
 import SyncFrequency from '../components/SyncFrequency';
 import AppearanceSettings from '../components/AppearanceSettings';
 import DevTools from '../components/DevTools';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
-import { useTheme } from '../contexts/ThemeContext';
 import * as Application from 'expo-application';
+import Icon from '../components/Icon';
 import type { HealthMetricStates } from '../types/healthRecords';
 import Constants from 'expo-constants';
+import * as WebBrowser from 'expo-web-browser';
+
 interface SettingsScreenProps {
   navigation: { navigate: (screen: string) => void };
 }
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { theme: appTheme, setTheme: setAppTheme, colors } = useTheme();
   const [url, setUrl] = useState<string>('');
   const [apiKey, setApiKey] = useState<string>('');
 
@@ -39,8 +39,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
   const [currentConfigId, setCurrentConfigId] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState<boolean>(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
+  const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
+
+  const { isConnected, refetch: refetchConnection } = useServerConnection();
 
   const healthSettingsName = Platform.OS === 'android' ? 'Health Connect settings' : 'Health app settings';
 
@@ -80,14 +82,42 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     setIsBackgroundSyncEnabled(bgSyncEnabled);
 
     await initHealthConnect();
-
-    const connectionStatus = await checkServerConnection();
-    setIsConnected(connectionStatus);
   };
 
   useEffect(() => {
     loadConfig();
   }, [activeConfigId]);
+
+  const openWebDashboard = async (): Promise<void> => {
+    try {
+      const activeConfig = await getActiveServerConfig();
+
+      if (!activeConfig || !activeConfig.url) {
+        Alert.alert(
+          'No Server Configured',
+          'Please configure your server URL in Settings first.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Go to Settings', onPress: () => navigation.navigate('Settings') }
+          ]
+        );
+        return;
+      }
+
+      const serverUrl = activeConfig.url.endsWith('/') ? activeConfig.url.slice(0, -1) : activeConfig.url;
+
+      try {
+        await WebBrowser.openBrowserAsync(serverUrl);
+      } catch (inAppError) {
+        addLog(`In-app browser failed, falling back to Linking: ${inAppError}`, 'ERROR');
+        await Linking.openURL(serverUrl);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLog(`Error opening web dashboard: ${errorMessage}`, 'ERROR');
+      Alert.alert('Error', `Could not open web dashboard: ${errorMessage}`);
+    }
+  };
 
   const handleSaveConfig = async (): Promise<void> => {
     if (!url || !apiKey) {
@@ -103,7 +133,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       };
       await saveServerConfig(configToSave);
 
+      setShowConfigModal(false);
       await loadConfig();
+      refetchConnection();
       Alert.alert('Success', 'Settings saved successfully.');
       addLog('Settings saved successfully.', 'SUCCESS');
     } catch (error) {
@@ -118,6 +150,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     try {
       await setActiveServerConfig(configId);
       await loadConfig();
+      refetchConnection();
       Alert.alert('Success', 'Active server configuration changed.');
       addLog('Active server configuration changed.', 'SUCCESS');
     } catch (error) {
@@ -132,6 +165,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     try {
       await deleteServerConfig(configId);
       await loadConfig();
+      refetchConnection();
       if (activeConfigId === configId) {
         setUrl('');
         setApiKey('');
@@ -152,12 +186,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     setUrl(config.url);
     setApiKey(config.apiKey);
     setCurrentConfigId(config.id);
+    setShowConfigModal(true);
   };
 
   const handleAddNewConfig = (): void => {
     setUrl('');
     setApiKey('');
     setCurrentConfigId(null);
+    setShowConfigModal(true);
   };
 
   const handleToggleHealthMetric = async (
@@ -257,9 +293,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top}]}>
-      <ScrollView contentContainerStyle={styles.scrollViewContent}>
-        <View style={styles.contentContainer}>
+    <View className="flex-1 bg-canvas">
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 130 }}>
+        <View className="flex-1 p-4 pb-20">
           <ServerConfigComponent
             url={url}
             setUrl={setUrl}
@@ -272,8 +308,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             handleDeleteConfig={handleDeleteConfig}
             handleEditConfig={handleEditConfig}
             handleAddNewConfig={handleAddNewConfig}
+            onOpenWebDashboard={openWebDashboard}
             isConnected={isConnected}
-            checkServerConnection={checkServerConnection}
+            checkServerConnection={() => refetchConnection().then((result) => !!result.data)}
+            showConfigModal={showConfigModal}
+            onCloseModal={() => setShowConfigModal(false)}
+            isEditing={!!currentConfigId}
           />
 
           <SyncFrequency
@@ -289,29 +329,35 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             }}
           />
 
-          <AppearanceSettings
-            appTheme={appTheme}
-            setAppTheme={setAppTheme}
-          />
 
+          <TouchableOpacity
+            className="bg-section rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+            onPress={() => navigation.navigate('Logs')}
+            activeOpacity={0.7}
+          >
+            <Text className="text-base font-semibold text-text-primary">View Logs</Text>
+            <Icon name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
           <HealthDataSync
             healthMetricStates={healthMetricStates}
             handleToggleHealthMetric={handleToggleHealthMetric}
             isAllMetricsEnabled={isAllMetricsEnabled}
             handleToggleAllMetrics={handleToggleAllMetrics}
           />
+          <AppearanceSettings />
 
-          {__DEV__ && 
-            (Constants.expoConfig?.extra?.APP_VARIANT === 'development' || 
+          {__DEV__ &&
+            (Constants.expoConfig?.extra?.APP_VARIANT === 'development' ||
              Constants.expoConfig?.extra?.APP_VARIANT === 'dev') && (
             <DevTools />
           )}
 
-          <View style={styles.footer}>
+
+          <View className="items-center z-100">
             <TouchableOpacity onPress={() => setShowPrivacyModal(true)} activeOpacity={0.7}>
-              <Text style={{ color: colors.primary, marginBottom: 8 }}>Privacy Policy</Text>
+              <Text className="text-accent-primary mb-2">Privacy Policy</Text>
             </TouchableOpacity>
-            <Text style={{ color: colors.textMuted }}>Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
+            <Text className="text-text-muted">Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
           </View>
         </View>
       </ScrollView>

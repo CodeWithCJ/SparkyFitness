@@ -4,7 +4,7 @@ import {
   readRecords,
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
-import { HEALTH_METRICS } from '../../constants/HealthMetrics';
+import { HEALTH_METRICS } from '../../HealthMetrics';
 import {
   aggregateStepsByDate,
   aggregateHeartRateByDate,

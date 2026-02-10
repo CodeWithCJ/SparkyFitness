@@ -1,11 +1,10 @@
 import React from 'react';
-import { View, TextInput, Text, TouchableOpacity, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Clipboard from '@react-native-clipboard/clipboard';
-import styles from '../screens/SettingsScreenStyles';
-import { useTheme } from '../contexts/ThemeContext';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { useCSSVariable } from 'uniwind';
 import { ServerConfig as ServerConfigType } from '../services/storage';
 import ConnectionStatus from './ConnectionStatus';
+import ServerConfigModal from './ServerConfigModal';
+import Icon from './Icon';
 
 interface ServerConfigProps {
   url: string;
@@ -19,8 +18,12 @@ interface ServerConfigProps {
   handleDeleteConfig: (id: string) => void;
   handleEditConfig: (config: ServerConfigType) => void;
   handleAddNewConfig: () => void;
+  onOpenWebDashboard: () => void;
   isConnected: boolean;
   checkServerConnection: () => Promise<boolean>;
+  showConfigModal: boolean;
+  onCloseModal: () => void;
+  isEditing: boolean;
 }
 
 const ServerConfig: React.FC<ServerConfigProps> = ({
@@ -35,16 +38,24 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
   handleDeleteConfig,
   handleEditConfig,
   handleAddNewConfig,
+  onOpenWebDashboard,
   isConnected,
   checkServerConnection,
+  showConfigModal,
+  onCloseModal,
+  isEditing,
 }) => {
-  const { colors } = useTheme();
+  const [success, successBackground, accentMuted] = useCSSVariable([
+    '--color-text-success',
+    '--color-bg-success',
+    '--color-accent-muted'
+  ]) as [string, string, string];
 
   const showConfigMenu = (item: ServerConfigType) => {
     const isActive = item.id === activeConfigId;
     Alert.alert(
       item.url,
-      isActive ? 'Active configuration' : 'Select an action', // Alert text, not a button
+      isActive ? 'Active configuration' : 'Select an action',
       [
         ...(!isActive ? [{ text: 'Set Active', onPress: () => handleSetActiveConfig(item.id) }] : []),
         { text: 'Edit', onPress: () => handleEditConfig(item) },
@@ -57,120 +68,81 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
   return (
     <View>
       {/* Server Configuration */}
-      <View style={[styles.card, { backgroundColor: colors.card }]}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Server Setup</Text>
+      <View className="bg-section rounded-xl p-4 mb-4 shadow-sm">
+        <View className="flex-row justify-between items-center mb-3">
+          <Text className="text-lg font-bold text-text-primary">Server Configuration</Text>
           <ConnectionStatus
             isConnected={isConnected}
             hasConfig={!!activeConfigId}
             onRefresh={checkServerConnection}
           />
         </View>
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Server URL</Text>
-          <View style={[styles.inputWithIcon, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-            <TextInput
-              style={[styles.input, { flex: 1, borderWidth: 0, color: colors.text }]}
-              placeholder="https://your-server-url.com"
-              placeholderTextColor={colors.textMuted}
-              value={url}
-              onChangeText={setUrl}
-              autoCapitalize="none"
-              keyboardType="url"
-            />
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => Clipboard.setString(url)}
-              accessibilityLabel="Copy URL to clipboard"
-              accessibilityRole="button"
-            >
-              <Ionicons name="copy-outline" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={async () => setUrl(await Clipboard.getString())}
-              accessibilityLabel="Paste URL from clipboard"
-              accessibilityRole="button"
-            >
-              <Ionicons name="clipboard-outline" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>API Key</Text>
-          <View style={[styles.inputWithIcon, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-            <TextInput
-              style={[styles.input, { flex: 1, borderWidth: 0, color: colors.text }]}
-              placeholder="Enter your API key"
-              placeholderTextColor={colors.textMuted}
-              value={apiKey}
-              onChangeText={setApiKey}
-              secureTextEntry
-            />
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => Clipboard.setString(apiKey)}
-              accessibilityLabel="Copy API key to clipboard"
-              accessibilityRole="button"
-            >
-              <Ionicons name="copy-outline" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={async () => setApiKey(await Clipboard.getString())}
-              accessibilityLabel="Paste API key from clipboard"
-              accessibilityRole="button"
-            >
-              <Ionicons name="clipboard-outline" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <TouchableOpacity style={[styles.addConfigButton, { backgroundColor: colors.primary }]} onPress={handleSaveConfig}>
-          <Text style={styles.addConfigButtonText}>Save Current Config</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Display existing configurations */}
-      <View style={[styles.card, { backgroundColor: colors.card }]}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Manage Configurations</Text>
-          <TouchableOpacity
-            onPress={handleAddNewConfig}
-            accessibilityLabel="Add new configuration"
-            accessibilityRole="button"
-            style={styles.menuButton}
-          >
-            <Ionicons name="add-circle-outline" size={28} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
         {serverConfigs.map((item) => (
-          <View key={item.id} style={[styles.serverConfigItem, { borderBottomColor: colors.border }]}>
-            <View style={styles.serverConfigInfo}>
+          <View key={item.id} className="py-0.5 flex-row items-center">
+            <View className="flex-1 flex-row items-center gap-2">
               <Text
-                style={[styles.serverConfigText, { color: colors.text }]}
+                className="text-sm text-text-primary shrink max-w-[80%]"
                 numberOfLines={1}
                 ellipsizeMode="middle"
               >
                 {item.url}
               </Text>
               {item.id === activeConfigId && (
-                <View style={[styles.activeBadge, { backgroundColor: colors.successBackground }]}>
-                  <Text style={[styles.activeBadgeText, { color: colors.success }]}>✓</Text>
+                <View
+                  className="w-6 h-6 rounded-xl justify-center items-center"
+                  style={{ backgroundColor: successBackground }}
+                >
+                  <Text className="text-sm font-bold" style={{ color: success }}>✓</Text>
                 </View>
               )}
             </View>
             <TouchableOpacity
-              style={styles.menuButton}
+              className="px-3 h-11 justify-center items-center"
               onPress={() => showConfigMenu(item)}
               accessibilityLabel={`Options for ${item.url}`}
               accessibilityRole="button"
             >
-              <Text style={[styles.menuIcon, { color: colors.textSecondary }]}>⋮</Text>
+              <Text className="text-sm font-medium text-text-secondary">Edit</Text>
             </TouchableOpacity>
           </View>
         ))}
+        <TouchableOpacity
+          onPress={onOpenWebDashboard}
+          disabled={!activeConfigId}
+          accessibilityLabel="Open web dashboard"
+          accessibilityRole="button"
+          className="flex-row items-center mt-2 py-1"
+          style={{ opacity: activeConfigId ? 1 : 0.4 }}
+        >
+          <Icon name="globe" size={20} color={activeConfigId ? accentMuted : '#999'} />
+          <Text
+            className="ml-2 text-base font-medium"
+            style={{ color: activeConfigId ? accentMuted : '#999' }}
+          >
+            Open Web Dashboard
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleAddNewConfig}
+          accessibilityLabel="Add new configuration"
+          accessibilityRole="button"
+          className="flex-row items-center mt-2 py-1"
+        >
+          <Icon name="add" size={24} color={accentMuted} />
+          <Text className="ml-2 text-base font-medium" style={{ color: accentMuted }}>Add Server</Text>
+        </TouchableOpacity>
       </View>
 
+      <ServerConfigModal
+        visible={showConfigModal}
+        onClose={onCloseModal}
+        url={url}
+        setUrl={setUrl}
+        apiKey={apiKey}
+        setApiKey={setApiKey}
+        onSave={handleSaveConfig}
+        isEditing={isEditing}
+      />
     </View>
   );
 };

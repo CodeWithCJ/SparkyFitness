@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useTheme } from '../contexts/ThemeContext';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useCSSVariable } from 'uniwind';
 
 type ConnectionState = 'connected' | 'disconnected' | 'unconfigured';
 
@@ -21,7 +21,13 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   variant = 'inline',
   onRefresh,
 }) => {
-  const { colors } = useTheme();
+  const [success, successBackground, danger, warning, warningText] = useCSSVariable([
+    '--color-text-success',
+    '--color-bg-success',
+    '--color-bg-danger',
+    '--color-bg-warning',
+    '--color-bg-warning',
+  ]) as [string, string, string, string, string];
 
   const getConnectionState = (): ConnectionState => {
     if (!hasConfig) return 'unconfigured';
@@ -35,9 +41,17 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
     if (!isConnected) return null;
 
     return (
-      <View style={[styles.headerContainer, { backgroundColor: colors.successBackground }]}>
-        <View style={[styles.headerDot, { backgroundColor: colors.success }]} />
-        <Text style={[styles.headerText, { color: colors.success } ]}>Connected</Text>
+      <View
+        className="flex-row items-center px-2.5 py-1 rounded-xl"
+        style={{ backgroundColor: successBackground }}
+      >
+        <View
+          className="w-2 h-2 rounded-full mr-1.5"
+          style={{ backgroundColor: success }}
+        />
+        <Text className="text-sm font-semibold" style={{ color: success }}>
+          Server Connected
+        </Text>
       </View>
     );
   }
@@ -46,11 +60,11 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   const getStatusColor = () => {
     switch (state) {
       case 'connected':
-        return colors.success;
+        return success;
       case 'disconnected':
-        return colors.danger;
+        return danger;
       case 'unconfigured':
-        return colors.warning;
+        return warning;
     }
   };
 
@@ -66,7 +80,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   };
 
   const getTextColor = () => {
-    if (state === 'unconfigured') return colors.warningText;
+    if (state === 'unconfigured') return warningText;
     return getStatusColor();
   };
 
@@ -81,10 +95,45 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
     }
   };
 
+  // Connected state uses pill style (matching header variant)
+  if (state === 'connected') {
+    const connectedContent = (
+      <View
+        className="flex-row items-center px-2.5 py-1 rounded-xl"
+        style={{ backgroundColor: successBackground }}
+      >
+        <View
+          className="w-2 h-2 rounded-full mr-1.5"
+          style={{ backgroundColor: success }}
+        />
+        <Text className="text-sm font-semibold" style={{ color: success }}>
+          Connected
+        </Text>
+      </View>
+    );
+
+    if (!onRefresh) {
+      return connectedContent;
+    }
+
+    return (
+      <TouchableOpacity
+        onPress={onRefresh}
+        accessibilityLabel={getAccessibilityLabel()}
+        accessibilityRole="button"
+      >
+        {connectedContent}
+      </TouchableOpacity>
+    );
+  }
+
   const content = (
     <>
-      <View style={[styles.inlineDot, { backgroundColor: getStatusColor() }]} />
-      <Text style={[styles.inlineText, { color: getTextColor() }]}>
+      <View
+        className="w-2.5 h-2.5 rounded-full"
+        style={{ backgroundColor: getStatusColor() }}
+      />
+      <Text className="ml-2 font-semibold text-sm" style={{ color: getTextColor() }}>
         {getStatusText()}
       </Text>
     </>
@@ -92,12 +141,12 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
 
   // Unconfigured state is not clickable
   if (state === 'unconfigured' || !onRefresh) {
-    return <View style={styles.inlineContainer}>{content}</View>;
+    return <View className="flex-row items-center">{content}</View>;
   }
 
   return (
     <TouchableOpacity
-      style={styles.inlineContainer}
+      className="flex-row items-center"
       onPress={onRefresh}
       accessibilityLabel={getAccessibilityLabel()}
       accessibilityRole="button"
@@ -106,44 +155,5 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  // Header variant styles
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    // backgroundColor: '#e6ffe6',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  headerDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    // backgroundColor: '#28a745',
-    marginRight: 6,
-  },
-  headerText: {
-    // color: '#28a745',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  // Inline variant styles
-  inlineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  inlineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  inlineText: {
-    marginLeft: 8,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-});
 
 export default ConnectionStatus;

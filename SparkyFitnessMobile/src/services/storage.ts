@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CATEGORY_ORDER } from '../constants/HealthMetrics';
+import { CATEGORY_ORDER } from '../HealthMetrics';
 
 export interface ServerConfig {
   id: string;

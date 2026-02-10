@@ -14,8 +14,8 @@ import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
+import { useUniwind, useCSSVariable } from 'uniwind';
+import Icon from './Icon';
 
 export interface PickerOption<T> {
   label: string;
@@ -40,7 +40,13 @@ function BottomSheetPicker<T extends string | number>({
   containerStyle,
 }: BottomSheetPickerProps<T>) {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const { colors, isDarkMode } = useTheme();
+  const { theme } = useUniwind();
+  const [primary, textMuted, sectionBg] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-muted',
+    '--color-section',
+  ]) as [string, string, string];
+  const isDarkMode = theme === 'dark' || theme === 'amoled';
 
   const selectedOption = options.find((opt) => opt.value === value);
   const displayText = selectedOption?.label || placeholder;
@@ -89,21 +95,18 @@ function BottomSheetPicker<T extends string | number>({
     return (
       <TouchableOpacity
         key={String(item.value)}
-        style={[styles.optionItem, { borderBottomColor: colors.border }]}
+        className="flex-row items-center justify-between px-4 py-3.5 border-b border-border-subtle"
+        style={{ borderBottomWidth: StyleSheet.hairlineWidth }}
         onPress={() => handleSelect(item)}
         activeOpacity={0.7}
       >
         <Text
-          style={[
-            styles.optionLabel,
-            { color: colors.text },
-            isSelected && styles.optionLabelSelected,
-          ]}
+          className={`text-base text-text-primary ${isSelected ? 'font-semibold' : ''}`}
         >
           {item.label}
         </Text>
         {isSelected && (
-          <Ionicons name="checkmark" size={20} color={colors.primary} />
+          <Icon name="checkmark" size={20} color={primary} />
         )}
       </TouchableOpacity>
     );
@@ -112,21 +115,18 @@ function BottomSheetPicker<T extends string | number>({
   return (
     <>
       <TouchableOpacity
-        style={[
-          styles.trigger,
-          { backgroundColor: colors.inputBackground, borderColor: colors.border },
-          containerStyle,
-        ]}
+        className="flex-row items-center justify-between px-3 py-2.5 rounded-lg border border-border-subtle bg-card min-h-11"
+        style={containerStyle}
         onPress={handleOpen}
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityLabel={title || placeholder}
         accessibilityHint="Opens selection menu"
       >
-        <Text style={[styles.triggerText, { color: colors.text }]}>
+        <Text className="text-base flex-1 text-text-primary">
           {displayText}
         </Text>
-        <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+        <Icon name="chevron-down" size={16} color={textMuted} />
       </TouchableOpacity>
 
       <BottomSheetModal
@@ -134,14 +134,14 @@ function BottomSheetPicker<T extends string | number>({
         snapPoints={snapPoints}
         enableDynamicSizing={enableDynamic}
         backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: colors.card }}
-        handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
+        backgroundStyle={{ backgroundColor: sectionBg }}
+        handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
         {enableDynamic ? (
-          <BottomSheetView style={styles.listContent}>
+          <BottomSheetView className="pb-5">
             {title && (
-              <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>
+              <View className="px-4 py-4 border-b border-border-subtle">
+                <Text className="text-lg font-semibold text-center text-text-primary">
                   {title}
                 </Text>
               </View>
@@ -151,8 +151,8 @@ function BottomSheetPicker<T extends string | number>({
         ) : (
           <BottomSheetScrollView contentContainerStyle={styles.listContent}>
             {title && (
-              <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>
+              <View className="px-4 py-4 border-b border-border-subtle">
+                <Text className="text-lg font-semibold text-center text-text-primary">
                   {title}
                 </Text>
               </View>
@@ -166,46 +166,8 @@ function BottomSheetPicker<T extends string | number>({
 }
 
 const styles = StyleSheet.create({
-  trigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    minHeight: 44,
-  },
-  triggerText: {
-    fontSize: 16,
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
   listContent: {
     paddingBottom: 20,
-  },
-  optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  optionLabel: {
-    fontSize: 16,
-  },
-  optionLabelSelected: {
-    fontWeight: '600',
   },
 });
 

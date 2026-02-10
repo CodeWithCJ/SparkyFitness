@@ -1,61 +1,99 @@
+import './global.css'
 import React, { useEffect, useState } from 'react';
-import { StatusBar, Platform, StyleSheet, type ImageSourcePropType } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { StatusBar, Platform, type ImageSourcePropType } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import {
   NavigationContainer,
-  DefaultTheme,
-  DarkTheme,
+  type Theme,
 } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { queryClient } from './src/hooks';
 
-import MainScreen from './src/screens/MainScreen';
+import { createStackNavigator } from '@react-navigation/stack';
+import SyncScreen from './src/screens/SyncScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
+import DiaryScreen from './src/screens/DiaryScreen';
 import LogScreen from './src/screens/LogScreen';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
-import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+import { initializeTheme } from './src/services/themeService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
 
-
 const Tab = createNativeBottomTabNavigator();
+const Stack = createStackNavigator();
 
 type TabIcons = {
-  home: ImageSourcePropType;
+  sync: ImageSourcePropType;
+  dashboard: ImageSourcePropType;
+  book: ImageSourcePropType;
   settings: ImageSourcePropType;
-  document: ImageSourcePropType;
 };
 
 function AppContent() {
-  const { isDarkMode } = useTheme();
+  const { theme } = useUniwind();
+  const [primary, navBar, navBarBorder, bgPrimary, textPrimary, tabActive, tabInactive] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-nav-bar',
+    '--color-nav-bar-border',
+    '--color-canvas',
+    '--color-text-primary',
+    '--color-tab-active',
+    '--color-tab-inactive',
+  ]) as [string, string, string, string, string, string, string];
   const [icons, setIcons] = useState<TabIcons | null>(null);
 
-  const styles = StyleSheet.create({
-    tabBar: {
-      backgroundColor: isDarkMode ? '#1c1c1e' : '#ffffff',
+  // Determine if we're in dark mode based on current theme
+  const isDarkMode = theme === 'dark' || theme === 'amoled';
+
+  // Create navigation theme that matches app colors
+  const navigationTheme: Theme = {
+    dark: isDarkMode,
+    colors: {
+      primary: primary,
+      background: bgPrimary,
+      card: navBar,
+      text: textPrimary,
+      border: navBarBorder,
+      notification: primary,
     },
-  });
+    fonts: {
+      regular: { fontFamily: 'System', fontWeight: '400' },
+      medium: { fontFamily: 'System', fontWeight: '500' },
+      bold: { fontFamily: 'System', fontWeight: '600' },
+      heavy: { fontFamily: 'System', fontWeight: '700' },
+    },
+  };
 
   useEffect(() => {
     if (Platform.OS !== 'ios') {
       Promise.all([
-        Ionicons.getImageSource('home', 24, '#999999'),
+        Ionicons.getImageSource('sync', 24, '#999999'),
+        Ionicons.getImageSource('grid', 24, '#999999'),
+        Ionicons.getImageSource('book', 24, '#999999'),
         Ionicons.getImageSource('settings', 24, '#999999'),
-        Ionicons.getImageSource('document-text', 24, '#999999'),
-      ]).then(([home, settings, document]) => {
-        if (home && settings && document) {
-          setIcons({ home, settings, document });
+      ]).then(([sync, dashboard, book, settings]) => {
+        if (sync && dashboard && book && settings) {
+          setIcons({ sync, dashboard, book, settings });
         }
+      }).catch(error => {
+        console.error('Failed to load tab icons:', error);
       });
     }
   }, []);
 
   useEffect(() => {
+    // Initialize theme from storage on app start
+    initializeTheme();
+
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {
-      // Remove the flag so the dashboard will auto-open on first MainScreen visit
+      // Remove the flag so the dashboard will auto-open on first SyncScreen visit
       await AsyncStorage.removeItem('@HealthConnect:hasAutoOpenedDashboard');
     };
 
@@ -72,42 +110,65 @@ function AppContent() {
   }
 
   return (
-    <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
+    <NavigationContainer theme={navigationTheme}>
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-        <Tab.Navigator
-            initialRouteName="Main"
-            tabBarActiveTintColor="#007bff"
-            tabBarInactiveTintColor="#888888"
-            activeIndicatorColor={isDarkMode ? '#424242' : '#E7EAEC'}
-            tabBarStyle={Platform.OS !== 'ios' ? styles.tabBar : undefined}
-          >
-          <Tab.Screen
-            name="Main"
-            component={MainScreen}
-            options={{
-              tabBarIcon: () =>
-                Platform.OS === 'ios' ? { sfSymbol: 'house.fill' } : icons!.home,
-            }}
-          />
-          <Tab.Screen
-            name="Settings"
-            component={SettingsScreen}
-            options={{
-              tabBarIcon: () =>
-                Platform.OS === 'ios' ? { sfSymbol: 'gearshape.fill' } : icons!.settings,
-            }}
-          />
-          <Tab.Screen
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Tabs">
+            {() => (
+              <Tab.Navigator
+                initialRouteName="Dashboard"
+                tabBarActiveTintColor={tabActive}
+                tabBarInactiveTintColor={tabInactive}
+                activeIndicatorColor={isDarkMode ? '#424242' : '#E7EAEC'}
+                tabBarStyle={Platform.OS !== 'ios' ? { backgroundColor: navBar } : undefined}
+                labeled={true}
+              >
+                <Tab.Screen
+                  name="Dashboard"
+                  component={DashboardScreen}
+                  options={{
+                    tabBarIcon: () =>
+                      Platform.OS === 'ios' ? { sfSymbol: 'square.grid.2x2.fill' } : icons!.dashboard,
+                  }}
+                />
+                <Tab.Screen
+                  name="Diary"
+                  component={DiaryScreen}
+                  options={{
+                    tabBarIcon: () =>
+                      Platform.OS === 'ios' ? { sfSymbol: 'book.fill' } : icons!.book,
+                  }}
+                />
+                <Tab.Screen
+                  name="Sync"
+                  component={SyncScreen}
+                  options={{
+                    tabBarIcon: () =>
+                      Platform.OS === 'ios' ? { sfSymbol: 'arrow.triangle.2.circlepath' } : icons!.sync,
+                  }}
+                />
+                <Tab.Screen
+                  name="Settings"
+                  component={SettingsScreen}
+                  options={{
+                    tabBarIcon: () =>
+                      Platform.OS === 'ios' ? { sfSymbol: 'gearshape.fill' } : icons!.settings,
+                  }}
+                />
+              </Tab.Navigator>
+            )}
+          </Stack.Screen>
+          <Stack.Screen
             name="Logs"
             component={LogScreen}
             options={{
-              tabBarIcon: () =>
-                Platform.OS === 'ios' ? { sfSymbol: 'doc.fill' } : icons!.document,
+              headerShown: true,
+              title: 'Logs',
+              headerBackTitle: 'Back',
             }}
           />
-        </Tab.Navigator>
-
+        </Stack.Navigator>
       </SafeAreaProvider>
     </NavigationContainer>
   );
@@ -115,13 +176,13 @@ function AppContent() {
 
 function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <GestureHandlerRootView className="flex-1">
         <BottomSheetModalProvider>
           <AppContent />
         </BottomSheetModalProvider>
-      </ThemeProvider>
-    </GestureHandlerRootView>
+      </GestureHandlerRootView>
+    </QueryClientProvider>
   );
 }
 
