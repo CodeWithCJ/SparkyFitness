@@ -31,7 +31,7 @@ import {
   type Exercise,
   type ExerciseOwnershipFilter,
 } from "@/services/exerciseService";
-import type { WorkoutPresetSet, WorkoutPreset, PresetExercise } from "@/types/workout";
+import type { WorkoutPresetSet, WorkoutPreset, PresetExercise, ExerciseToLog } from "@/types/workout";
 import { getExerciseById } from "@/services/exerciseService";
 import { formatMinutesToHHMM } from "@/utils/timeFormatters";
 import ExerciseEntryDisplay from "./ExerciseEntryDisplay";
@@ -39,19 +39,6 @@ import ExercisePresetEntryDisplay from "./ExercisePresetEntryDisplay";
 import EditExerciseDatabaseDialog from "./EditExerciseDatabaseDialog";
 import AddExerciseDialog from "@/pages/Exercises/AddExerciseDialog";
 import LogExerciseEntryDialog from "@/pages/Diary/LogExerciseEntryDialog";
-
-// New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
-export interface ExerciseToLog extends Exercise { // Export the interface
-  sets?: WorkoutPresetSet[];
-  reps?: number;
-  weight?: number;
-  duration?: number; // Duration in minutes (optional) - Changed from duration_minutes
-  notes?: string;
-  image_url?: string;
-  exercise_name?: string; // Added to match PresetExercise
-  distance?: number; // New field
-  avg_heart_rate?: number; // New field
-}
 
 // New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
 interface PresetExerciseToLog extends Exercise {

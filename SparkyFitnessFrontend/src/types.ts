@@ -1,8 +1,3 @@
-export interface AuthResponse {
-  userId: string;
-  token: string;
-}
-
 export interface MoodEntry {
   id: string;
   user_id: string;

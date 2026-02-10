@@ -30,4 +30,3 @@ export interface LoginSettings {
     };
     warning?: string | null;
 }
-export type AuthType = 'password' | 'oidc' | 'magic_link';

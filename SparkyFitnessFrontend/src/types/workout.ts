@@ -1,3 +1,5 @@
+import { Exercise } from "@/services/exerciseService";
+
 export interface PresetExercise {
   id: string;
   exercise_id: string;
@@ -19,14 +21,11 @@ export interface WorkoutPresetSet {
   notes?: string;
 }
 
-export interface ExerciseInPreset {
+export interface WorkoutPresetExercise {
   id?: string;
   exercise_id: string;
   image_url?: string;
   exercise_name: string; // Populated from backend join
-}
-
-export interface WorkoutPresetExercise extends ExerciseInPreset {
   exercise: any; // Full exercise object
   sets: WorkoutPresetSet[];
 }
@@ -74,3 +73,17 @@ export interface WorkoutPlanTemplate {
   updated_at?: string;
   assignments?: WorkoutPlanAssignment[];
 }
+
+// New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
+export interface ExerciseToLog extends Exercise { // Export the interface
+  sets?: WorkoutPresetSet[];
+  reps?: number;
+  weight?: number;
+  duration?: number; // Duration in minutes (optional) - Changed from duration_minutes
+  notes?: string;
+  image_url?: string;
+  exercise_name?: string; // Added to match PresetExercise
+  distance?: number; // New field
+  avg_heart_rate?: number; // New field
+}
+
