@@ -24,19 +24,29 @@
       "^@/(.*)$": "<rootDir>/src/$1"
     },
     "transform": {
-      "^.+\\.tsx?$": ["ts-jest", {
-        "useESM": true,
-        "tsconfig": {
-          "jsx": "react-jsx",
-          "esModuleInterop": true,
-          "module": "ESNext",
-          "moduleResolution": "node",
-          "types": ["jest", "@testing-library/jest-dom", "node"],
-          "isolatedModules": true
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "useESM": true,
+          "tsconfig": {
+            "jsx": "react-jsx",
+            "esModuleInterop": true,
+            "module": "ESNext",
+            "moduleResolution": "node",
+            "types": [
+              "jest",
+              "@testing-library/jest-dom",
+              "node"
+            ],
+            "isolatedModules": true
+          }
         }
-      }]
+      ]
     },
-    "extensionsToTreatAsEsm": [".ts", ".tsx"]
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".tsx"
+    ]
   },
   "dependencies": {
     "@better-auth/passkey": "^1.4.17",
@@ -45,7 +55,6 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@ericblade/quagga2": "^1.12.1",
-    "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -74,7 +83,6 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dompurify": "^3.3.1",
-    "embla-carousel-react": "^8.6.0",
     "html5-qrcode": "^2.3.8",
     "i18next": "^25.7.4",
     "i18next-browser-languagedetector": "^8.2.0",
