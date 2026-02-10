@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Switch, Image } from 'react-native';
+import { View, Text, Switch, Image, Platform, TouchableOpacity } from 'react-native';
 import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER } from '../HealthMetrics';
 import { useCSSVariable } from 'uniwind';
 import CollapsibleSection from './CollapsibleSection';
@@ -38,8 +38,20 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   ]) as [string, string];
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [isLoaded, setIsLoaded] = useState(false);
-  const [showHealthKitDetails, setShowHealthKitDetails] = useState(false);
-  const [showHealthConnectDetails, setShowHealthConnectDetails] = useState(false);
+  const [learnMoreExpanded, setLearnMoreExpanded] = useState(false);
+
+  const isIOS = Platform.OS === 'ios';
+  const platformSubtitle = isIOS ? 'Apple Health' : 'Health Connect';
+  const platformSummary = isIOS
+    ? 'Reads selected data from Apple Health and syncs it to your self-hosted server.'
+    : 'Reads selected data from Health Connect and syncs it to your self-hosted server.';
+  const platformDetail = isIOS
+    ? 'SparkyFitness reads the health data you select below using Apple Health (HealthKit). If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).\n\nManage or remove access in Settings → Health → Data Access & Devices → SparkyFitnessMobile'
+    : 'SparkyFitness reads the health data you select below using Health Connect. If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).';
+
+  const handleLearnMoreToggle = useCallback(() => {
+    setLearnMoreExpanded((prev) => !prev);
+  }, []);
 
   useEffect(() => {
     loadCollapsedCategories()
@@ -93,6 +105,18 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   return (
     <View className="bg-section rounded-xl p-4 mb-4 shadow-sm">
       <Text className="text-lg font-bold mb-3 text-text-primary">Health Data to Sync</Text>
+      <View className="mb-3">
+        <Text className="text-sm font-semibold text-text-secondary mb-1">{platformSubtitle}</Text>
+        <Text className="text-sm text-text-secondary">{platformSummary}</Text>
+        {learnMoreExpanded && (
+          <Text className="text-sm text-text-secondary mt-2">{platformDetail}</Text>
+        )}
+        <TouchableOpacity onPress={handleLearnMoreToggle} activeOpacity={0.7}>
+          <Text className="text-sm font-medium mt-1" style={{ color: primary }}>
+            {learnMoreExpanded ? 'Show less' : 'Learn more'}
+          </Text>
+        </TouchableOpacity>
+      </View>
       <View className="flex-row justify-between items-center mb-2">
         <View className="flex-row items-center flex-1 mr-2">
           <Text
