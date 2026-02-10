@@ -81,6 +81,8 @@ function AppContent() {
         if (sync && dashboard && book && settings) {
           setIcons({ sync, dashboard, book, settings });
         }
+      }).catch(error => {
+        console.error('Failed to load tab icons:', error);
       });
     }
   }, []);

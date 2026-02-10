@@ -310,7 +310,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             handleAddNewConfig={handleAddNewConfig}
             onOpenWebDashboard={openWebDashboard}
             isConnected={isConnected}
-            checkServerConnection={() => refetchConnection().then(() => isConnected)}
+            checkServerConnection={() => refetchConnection().then((result) => !!result.data)}
             showConfigModal={showConfigModal}
             onCloseModal={() => setShowConfigModal(false)}
             isEditing={!!currentConfigId}
