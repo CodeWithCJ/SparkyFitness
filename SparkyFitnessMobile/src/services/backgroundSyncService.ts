@@ -1,8 +1,8 @@
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
-import { syncHealthData, HealthDataPayload } from './api';
+import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
 import { addLog } from './LogService';
-import { HEALTH_METRICS } from '../constants/HealthMetrics';
+import { HEALTH_METRICS } from '../HealthMetrics';
 import {
   loadHealthPreference,
   readHealthRecords,

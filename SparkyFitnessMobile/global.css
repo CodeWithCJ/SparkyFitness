@@ -1,0 +1,152 @@
+@import 'tailwindcss';
+@import 'uniwind';
+
+
+@layer theme {
+  :root { 
+    --spacing-1: 4px;
+    --spacing-2: 8px;
+    --spacing-3: 12px;
+    --spacing-4: 16px;
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    
+    @variant light {
+      --color-canvas:            hsl(220, 25%, 96%);
+      --color-section:           hsl(220, 20%, 98%);
+      --color-card:              hsl(0, 0%, 100%);
+      --color-nav-bar:           hsl(0, 0%, 100%);
+      --color-nav-bar-border:    hsl(220, 20%, 88%);
+
+      --color-border-subtle:     hsl(213, 16%, 90%);
+      --color-border-strong:     hsl(212, 18%, 83%);
+
+      --color-text-primary:      hsl(222, 47%, 11%);
+      --color-text-secondary:    hsl(215, 19%, 40%);
+      --color-text-tertiary:     hsl(215, 16%, 59%);
+      --color-text-muted:        hsl(215, 20%, 65%);
+
+      --color-accent-primary:    hsl(230, 91%, 64%);
+      --color-accent-muted:      hsl(230, 100%, 68%);
+      --color-accent-subtle:     hsl(228, 100%, 95%);
+
+      --color-tab-active:        hsl(230, 91%, 54%);
+      --color-tab-inactive:      hsl(215, 16%, 47%);
+
+      --color-macro-protein:     hsl(231, 86%, 58%);
+      --color-macro-carbs:       hsl(195, 86%, 45%);
+      --color-macro-fat:         hsl(35, 92%, 55%);
+      --color-macro-fiber:       hsl(152, 60%, 40%);
+
+      --color-hydration:         hsl(200, 75%, 55%);
+      --color-exercise:          hsl(146, 56%, 54%);
+
+      --color-progress-track:    hsl(218, 29%, 92%);
+      --color-progress-fill:     hsl(230, 91%, 64%);
+    /*--color-progress-overfill: hsl(358, 51%, 53%); */
+      --color-progress-overfill: hsl(215, 28%, 17%);
+
+      --color-bg-success:        hsl(162, 64%, 88%);
+      --color-bg-warning:        hsl(35, 59%, 78%);
+      --color-bg-danger:         hsl(358, 63%, 50%);
+
+      --color-text-success:      hsl(163, 33%, 37%);
+      --color-text-warning:      hsl(36, 71%, 42%);
+      --color-text-danger:       hsl(358, 51%, 53%);
+    }
+      
+    @variant dark {
+      --color-canvas:            hsl(222, 56%, 5%);
+      --color-section:           hsl(222, 40%, 10%);
+      --color-card:              hsl(223, 44%, 12%);
+      
+      --color-nav-bar:           hsla(222, 56%, 4%, 0.85);
+      --color-nav-bar-border:    hsl(215, 25%, 20%);
+
+      --color-border-subtle:     hsl(216, 28%, 21%);
+      --color-border-strong:     hsl(215, 25%, 27%);
+
+      --color-text-primary:      hsl(220, 13%, 91%);
+      --color-text-secondary:    hsl(213, 27%, 74%);
+      --color-text-tertiary:     hsl(215, 30%, 45%);
+      --color-text-muted:        hsl(215, 16%, 47%);
+
+      --color-accent-primary:    hsl(233, 89%, 69%);
+      --color-accent-muted:      hsl(233, 100%, 82%);
+      --color-accent-subtle:     hsl(226, 46%, 22%);
+
+      --color-tab-active:        hsl(233, 100%, 78%);
+      --color-tab-inactive:      hsl(215, 20%, 62%);
+
+      --color-macro-protein:     hsl(233, 62%, 60%);
+      --color-macro-carbs:       hsl(190, 60%, 58%);
+      --color-macro-fat:         hsl(36, 76%, 57%);
+    /*--color-macro-fat:         hsl(278, 55%, 72%); */
+      --color-macro-fiber:       hsl(152, 49%, 49%);
+
+      --color-hydration:         hsl(200, 60%, 52%);
+      --color-exercise:          hsl(158, 49%, 48%);
+
+      --color-progress-track:    hsl(218, 41%, 23%);
+      --color-progress-fill:     hsl(233, 100%, 74%);
+      --color-progress-overfill: hsl(357, 66%, 65%);
+      
+      --color-bg-success:        hsl(159, 56%, 22%);
+      --color-bg-warning:        hsl(36, 72%, 65%);
+      --color-bg-danger:         hsl(358, 61%, 53%);
+   
+      --color-text-success:      hsl(159, 15%, 95%);
+      --color-text-warning:      hsl(35, 59%, 78%);
+      --color-text-danger:       hsl(358, 53%, 89%);
+    }
+
+    /* TODO Update AMOLED variant colors to be more distinct from dark mode */
+    @variant amoled {
+      --color-canvas:            hsl(0, 0%, 0%);
+      --color-section:           hsl(222, 33%, 3%);
+      --color-card:              hsl(223, 40%, 6%);
+      --color-nav-bar:           hsla(0, 0%, 0%, 0.85);
+      --color-nav-bar-border:    hsl(215, 25%, 15%);
+
+      --color-border-subtle:     hsl(220, 26%, 11%);
+      --color-border-strong:     hsl(215, 28%, 17%);
+
+      --color-text-primary:      hsl(220, 23%, 92%);
+      --color-text-secondary:    hsl(220, 32%, 84%);
+      --color-text-tertiary:     hsl(215, 20%, 65%);
+      --color-text-muted:        hsl(215, 16%, 47%);
+
+      --color-accent-primary:    hsl(233, 100%, 77%);
+      --color-accent-muted:      hsl(233, 100%, 85%);
+      --color-accent-subtle:     hsl(230, 40%, 12%);
+
+      --color-tab-active:        hsl(233, 100%, 82%);
+      --color-tab-inactive:      hsl(215, 20%, 62%);
+
+      --color-macro-protein:     hsl(233, 82%, 70%);
+      --color-macro-carbs:       hsl(190, 85%, 62%);
+      --color-macro-fat:         hsl(36, 100%, 71%);
+      /* --color-macro-fat:         hsl(278, 55%, 72%); */
+      --color-macro-fiber:       hsl(152, 55%, 54%);
+
+      --color-hydration:         hsl(200, 70%, 55%);
+      --color-exercise:          hsl(158, 58%, 50%);
+
+      --color-progress-track:    hsl(226, 46%, 18%);
+      --color-progress-fill:     hsl(233, 100%, 74%);
+      --color-progress-overfill: hsl(357, 66%, 65%);
+      
+      --color-bg-success:        hsl(163, 40%, 22%);
+      --color-bg-warning:        hsl(36, 72%, 65%);
+      --color-bg-danger:         hsl(358, 51%, 53%);
+   
+      --color-text-success:      hsl(162, 60%, 65%);
+      --color-text-warning:      hsl(35, 59%, 78%);
+      --color-text-danger:       hsl(358, 53%, 89%);
+    }
+  }
+}

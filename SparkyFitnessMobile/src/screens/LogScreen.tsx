@@ -4,7 +4,6 @@ import {
   View,
   Text,
   FlatList,
-  StyleSheet,
   TouchableOpacity,
   Image,
   Alert,
@@ -21,15 +20,12 @@ import {
   LOG_FILTER_OPTIONS,
 } from '../services/LogService';
 import type { LogEntry, LogSummary, LogFilter } from '../services/LogService';
-import { useTheme } from '../contexts/ThemeContext';
 
 interface LogScreenProps {
   navigation: { navigate: (screen: string) => void };
 }
 
 const LogScreen: React.FC<LogScreenProps> = () => {
-  const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [offset, setOffset] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
@@ -138,98 +134,84 @@ const LogScreen: React.FC<LogScreenProps> = () => {
     Alert.alert('Copied', 'Log entry copied to clipboard');
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'SUCCESS': return '#28a745';
+      case 'WARNING': return '#ffc107';
+      case 'INFO': return '#007bff';
+      case 'DEBUG': return '#6c757d';
+      default: return '#dc3545';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'SUCCESS': return require('../../assets/icons/success.png');
+      case 'WARNING': return require('../../assets/icons/warning.png');
+      case 'INFO': return require('../../assets/icons/info.png');
+      default: return require('../../assets/icons/error.png');
+    }
+  };
+
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.background, paddingTop: insets.top },
-      ]}
-    >
-      <View style={{ padding: 16, paddingBottom: 0, zIndex: 100 }}>
+    <View className="flex-1 bg-canvas">
+      <View className="p-4 pb-0 z-100">
         {/* Today's Summary */}
-        <View
-          style={[
-            styles.card,
-            styles.summaryCard,
-            { backgroundColor: colors.card },
-          ]}
-        >
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        <View className="bg-section rounded-xl p-4 py-2.5 mb-2.5 shadow-sm">
+          <Text className="text-lg font-bold mb-3 text-text-primary">
             {"Today's Summary"}
           </Text>
-          <View style={styles.summaryContainer}>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#28a745' }]}>
+          <View className="flex-row justify-around mb-4">
+            <View className="items-center">
+              <Text className="text-2xl font-bold" style={{ color: '#28a745' }}>
                 {logSummary.SUCCESS}
               </Text>
-              <Text
-                style={[styles.summaryLabel, { color: colors.textSecondary }]}
-              >
-                Success
-              </Text>
+              <Text className="text-sm text-text-secondary">Success</Text>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#ffc107' }]}>
+            <View className="items-center">
+              <Text className="text-2xl font-bold" style={{ color: '#ffc107' }}>
                 {logSummary.WARNING}
               </Text>
-              <Text
-                style={[styles.summaryLabel, { color: colors.textSecondary }]}
-              >
-                Warning
-              </Text>
+              <Text className="text-sm text-text-secondary">Warning</Text>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#dc3545' }]}>
+            <View className="items-center">
+              <Text className="text-2xl font-bold" style={{ color: '#dc3545' }}>
                 {logSummary.ERROR}
               </Text>
-              <Text
-                style={[styles.summaryLabel, { color: colors.textSecondary }]}
-              >
-                Error
-              </Text>
+              <Text className="text-sm text-text-secondary">Error</Text>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#007bff' }]}>
+            <View className="items-center">
+              <Text className="text-2xl font-bold" style={{ color: '#007bff' }}>
                 {logSummary.INFO}
               </Text>
-              <Text
-                style={[styles.summaryLabel, { color: colors.textSecondary }]}
-              >
-                Info
-              </Text>
+              <Text className="text-sm text-text-secondary">Info</Text>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryCount, { color: '#6c757d' }]}>
+            <View className="items-center">
+              <Text className="text-2xl font-bold" style={{ color: '#6c757d' }}>
                 {logSummary.DEBUG}
               </Text>
-              <Text
-                style={[styles.summaryLabel, { color: colors.textSecondary }]}
-              >
-                Debug
-              </Text>
+              <Text className="text-sm text-text-secondary">Debug</Text>
             </View>
           </View>
         </View>
 
         {/* Log Filter Settings */}
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Log Filter
-          </Text>
-          <View style={styles.logLevelContent}>
+        <View className="bg-section rounded-xl p-4 mb-4 shadow-sm">
+          <Text className="text-lg font-bold mb-3 text-text-primary">Log Filter</Text>
+          <View className="flex-row justify-between items-center">
             <BottomSheetPicker
               value={currentFilter}
               options={LOG_FILTER_OPTIONS}
               onSelect={handleFilterChange}
               title="Log Filter"
-              containerStyle={styles.dropdownContainer}
+              containerStyle={{ flex: 1, maxWidth: '50%' }}
             />
             {/* Clear Logs Button */}
             <TouchableOpacity
-              style={styles.clearButton}
+              className="bg-bg-danger rounded-lg py-3 px-6 self-center"
               onPress={handleClearLogs}
             >
-              <Text style={styles.clearButtonText}>Clear All Logs</Text>
+              <Text className="text-white text-base font-bold">Clear All Logs</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -239,72 +221,39 @@ const LogScreen: React.FC<LogScreenProps> = () => {
         data={logs}
         renderItem={({ item }: { item: LogEntry }) => (
           <TouchableOpacity
-            style={[styles.logItem, { backgroundColor: colors.card }]}
+            className="bg-section rounded-xl p-4 mb-3 flex-row items-center w-full shadow-sm"
             onPress={() => handleCopyLogToClipboard(item)}
             activeOpacity={0.7}
           >
             <View
-              style={[
-                styles.logIconContainer,
-                {
-                  backgroundColor:
-                    item.status === 'SUCCESS'
-                      ? '#28a745'
-                      : item.status === 'WARNING'
-                      ? '#ffc107'
-                      : item.status === 'INFO'
-                      ? '#007bff'
-                      : item.status === 'DEBUG'
-                      ? '#6c757d'
-                      : '#dc3545',
-                },
-              ]}
+              className="mr-3 p-2 rounded-[20px] items-center justify-center"
+              style={{ backgroundColor: getStatusColor(item.status) }}
             >
               <Image
-                source={
-                  item.status === 'SUCCESS'
-                    ? require('../../assets/icons/success.png')
-                    : item.status === 'WARNING'
-                    ? require('../../assets/icons/warning.png')
-                    : item.status === 'INFO'
-                    ? require('../../assets/icons/info.png')
-                    : require('../../assets/icons/error.png')
-                }
-                style={styles.logIcon}
+                source={getStatusIcon(item.status)}
+                className="w-6 h-6"
+                style={{ tintColor: '#fff' }}
               />
             </View>
-            <View style={styles.logContent}>
+            <View className="flex-1 shrink w-full">
               <Text
-                style={[
-                  styles.logStatus,
-                  {
-                    color:
-                    item.status === 'SUCCESS'
-                      ? '#28a745'
-                      : item.status === 'WARNING'
-                      ? '#ffc107'
-                      : item.status === 'INFO'
-                      ? '#007bff'
-                      : item.status === 'DEBUG'
-                      ? '#6c757d'
-                      : '#dc3545',
-                  },
-                ]}
+                className="text-base font-bold mb-1"
+                style={{ color: getStatusColor(item.status) }}
               >
                 {item.status}
               </Text>
-              <Text style={[styles.logMessage, { color: colors.text }]} ellipsizeMode="clip">
+              <Text className="text-sm mb-1 flex-wrap w-full text-text-primary" ellipsizeMode="clip">
                 {item.message}
               </Text>
-              <View style={styles.logDetails}>
+              <View className="flex-row flex-wrap mb-1">
                 {item.details &&
                   item.details.map((detail, index) => (
-                    <Text key={index} style={[styles.logDetailTag, { color: colors.text }]}>
+                    <Text key={index} className="bg-card rounded px-2 py-1 mr-2 mb-1 text-sm text-text-primary">
                       {detail}
                     </Text>
                   ))}
               </View>
-              <Text style={styles.logTimestamp}>
+              <Text className="text-sm text-text-muted">
                 {new Date(item.timestamp).toLocaleString()}
               </Text>
             </View>
@@ -315,193 +264,18 @@ const LogScreen: React.FC<LogScreenProps> = () => {
           <>
             {hasMore && (
               <TouchableOpacity
-                style={styles.loadMoreButton}
+                className="bg-accent-primary rounded-lg p-3 items-center mt-4"
                 onPress={handleLoadMore}
               >
-                <Text style={styles.loadMoreButtonText}>Load more logs</Text>
+                <Text className="text-white text-base font-bold">Load more logs</Text>
               </TouchableOpacity>
             )}
           </>
         )}
-        contentContainerStyle={styles.flatListContentContainer}
+        contentContainerStyle={{ padding: 16, paddingTop: 8, paddingBottom: 80 }}
       />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f2f5',
-  },
-  headerContainer: {
-    padding: 16,
-    paddingBottom: 0,
-    zIndex: 100,
-  },
-  flatListContentContainer: {
-    padding: 16,
-    paddingTop: 8,
-    paddingBottom: 80,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-    elevation: 1,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#333',
-  },
-  dropdownContainer: {
-    flex: 1,
-    maxWidth: '50%',
-  },
-  logLevelContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  summaryContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
-  },
-  summaryItem: {
-    alignItems: 'center',
-  },
-  summaryCount: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: '#777',
-  },
-  logItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
-    elevation: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-  },
-  logIconContainer: {
-    marginRight: 12,
-    padding: 8,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logIcon: {
-    width: 24,
-    height: 24,
-    tintColor: '#fff',
-  },
-  logContent: {
-    flex: 1,
-    flexShrink: 1,
-    width: '100%',
-  },
-  logStatus: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  logMessage: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 4,
-    flexWrap: 'wrap',
-    width: '100%',
-  },
-  logDetails: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 4,
-  },
-  logDetailTag: {
-    backgroundColor: '#e0e0e0',
-    borderRadius: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginRight: 8,
-    marginBottom: 4,
-    fontSize: 14,
-  },
-  logTimestamp: {
-    fontSize: 14,
-    color: '#777',
-  },
-  loadMoreButton: {
-    backgroundColor: '#007bff',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  loadMoreButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  clearButton: {
-    backgroundColor: '#dc3545',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignSelf: 'center',
-  },
-  clearButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  bottomNavBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  navBarItem: {
-    alignItems: 'center',
-  },
-  navBarIcon: {
-    width: 24,
-    height: 24,
-  },
-  navBarIconActive: {},
-  navBarText: {
-    fontSize: 12,
-    color: '#777',
-    marginTop: 4,
-  },
-  navBarTextActive: {
-    color: '#007bff',
-    fontWeight: 'bold',
-  },
-  summaryCard: {
-    paddingVertical: 10,
-    marginBottom: 10,
-  },
-  logLevelCard: {
-    paddingVertical: 10,
-    marginBottom: 10,
-  },
-});
 
 export default LogScreen;

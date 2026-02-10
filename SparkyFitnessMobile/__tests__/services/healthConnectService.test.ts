@@ -14,11 +14,11 @@ jest.mock('../../src/services/LogService', () => ({
 }));
 
 const mockApiSyncHealthData = jest.fn();
-jest.mock('../../src/services/api', () => ({
+jest.mock('../../src/services/api/healthDataApi', () => ({
   syncHealthData: (...args: unknown[]) => mockApiSyncHealthData(...args),
 }));
 
-jest.mock('../../src/constants/HealthMetrics', () => ({
+jest.mock('../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
     { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
     { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate' },

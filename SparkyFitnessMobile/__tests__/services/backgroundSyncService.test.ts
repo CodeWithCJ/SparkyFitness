@@ -4,7 +4,7 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-jest.mock('../../src/services/api', () => ({
+jest.mock('../../src/services/api/healthDataApi', () => ({
   syncHealthData: jest.fn(),
 }));
 
@@ -14,7 +14,7 @@ jest.mock('../../src/services/storage', () => ({
   loadBackgroundSyncEnabled: jest.fn(),
 }));
 
-jest.mock('../../src/constants/HealthMetrics', () => ({
+jest.mock('../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
     { id: 'steps', recordType: 'Steps', preferenceKey: 'isStepsSyncEnabled', label: 'Steps' },
     { id: 'active-calories', recordType: 'ActiveCaloriesBurned', preferenceKey: 'isActiveCaloriesSyncEnabled', label: 'Active Calories' },
@@ -40,7 +40,7 @@ jest.mock('../../src/services/healthConnectService', () => ({
   getAggregatedFloorsClimbedByDate: jest.fn(),
 }));
 
-const api = require('../../src/services/api') as { syncHealthData: jest.Mock };
+const api = require('../../src/services/api/healthDataApi') as { syncHealthData: jest.Mock };
 const storage = require('../../src/services/storage') as {
   loadLastSyncedTime: jest.Mock;
   saveLastSyncedTime: jest.Mock;

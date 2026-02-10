@@ -4,11 +4,10 @@ import {
   Text,
   Modal,
   TouchableOpacity,
-  StyleSheet,
   Linking,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
+import { useCSSVariable } from 'uniwind';
+import Icon from './Icon';
 
 const PRIVACY_POLICY_URL = 'https://codewithcj.github.io/SparkyFitness/privacy_policy';
 
@@ -21,7 +20,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
   visible,
   onClose,
 }) => {
-  const { colors } = useTheme();
+  const primary = useCSSVariable('--color-accent-primary') as string;
 
   const handleOpenPrivacyPolicy = async () => {
     try {
@@ -38,28 +37,31 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={[styles.modalContainer, { backgroundColor: colors.card }]}>
+      <View
+        className="flex-1 justify-center items-center p-6"
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      >
+        <View className="w-full max-w-90 rounded-2xl p-6 bg-section shadow-sm">
           {/* Header */}
-          <View style={styles.header}>
-            <Ionicons name="shield-checkmark-outline" size={48} color={colors.primary} />
-            <Text style={[styles.title, { color: colors.text }]}>
+          <View className="items-center mb-5">
+            <Icon name="shield-checkmark" size={48} color={primary} />
+            <Text className="text-[22px] font-bold mt-3 text-center text-text-primary">
               Privacy Policy
             </Text>
           </View>
 
           {/* Content */}
-          <View style={styles.content}>
-            <Text style={[styles.paragraph, { color: colors.text }]}>
+          <View className="mb-6">
+            <Text className="text-base leading-6 text-center mb-4 text-text-primary">
               This app does not collect, store, or sell your personal data.
             </Text>
 
-            <Text style={[styles.paragraph, { color: colors.text }]}>
+            <Text className="text-base leading-6 text-center mb-4 text-text-primary">
               All HealthKit data stays on your device and is transmitted only to your own server.
             </Text>
 
             <TouchableOpacity onPress={handleOpenPrivacyPolicy} activeOpacity={0.7}>
-              <Text style={[styles.link, { color: colors.primary }]}>
+              <Text className="text-base leading-6 text-center underline text-accent-primary">
                 Learn more in our Privacy Policy.
               </Text>
             </TouchableOpacity>
@@ -67,68 +69,16 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
 
           {/* Close Button */}
           <TouchableOpacity
-            style={[styles.closeButton, { backgroundColor: colors.primary }]}
+            className="items-center justify-center py-3.5 rounded-[10px] bg-accent-primary"
             onPress={onClose}
             activeOpacity={0.8}
           >
-            <Text style={styles.closeButtonText}>Close</Text>
+            <Text className="text-white text-[17px] font-semibold">Close</Text>
           </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContainer: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: 16,
-    padding: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  content: {
-    marginBottom: 24,
-  },
-  paragraph: {
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  link: {
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'center',
-    textDecorationLine: 'underline',
-  },
-  closeButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 10,
-  },
-  closeButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-});
 
 export default PrivacyPolicyModal;

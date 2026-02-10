@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Switch, Image, Platform, TouchableOpacity } from 'react-native';
-import styles from '../screens/SettingsScreenStyles';
-import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER } from '../constants/HealthMetrics';
-import { useTheme } from '../contexts/ThemeContext';
+import { View, Text, Switch, Image } from 'react-native';
+import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER } from '../HealthMetrics';
+import { useCSSVariable } from 'uniwind';
 import CollapsibleSection from './CollapsibleSection';
 import { saveCollapsedCategories, loadCollapsedCategories } from '../services/storage';
 
@@ -33,7 +32,10 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   isAllMetricsEnabled,
   handleToggleAllMetrics,
 }) => {
-  const { colors } = useTheme();
+  const [switchTrack, primary] = useCSSVariable([
+    '--color-progress-track',
+    '--color-accent-primary',
+  ]) as [string, string];
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [isLoaded, setIsLoaded] = useState(false);
   const [showHealthKitDetails, setShowHealthKitDetails] = useState(false);
@@ -68,11 +70,11 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   const groupedMetrics = groupMetricsByCategory(HEALTH_METRICS);
 
   const renderMetricItem = (metric: HealthMetric) => (
-    <View key={metric.id} style={[styles.settingItem, { borderBottomColor: colors.border }]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-        <Image source={metric.icon} style={styles.icon} />
+    <View key={metric.id} className="flex-row justify-between items-center mb-2">
+      <View className="flex-row items-center flex-1 mr-2">
+        <Image source={metric.icon} className="w-6 h-6" />
         <Text
-          style={[styles.settingLabel, { marginLeft: 8, color: colors.text, flex: 1 }]}
+          className="ml-2 text-base text-text-primary flex-1"
           numberOfLines={1}
           ellipsizeMode="tail"
         >
@@ -82,58 +84,19 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
       <Switch
         onValueChange={(newValue) => handleToggleHealthMetric(metric, newValue)}
         value={healthMetricStates[metric.stateKey]}
-        trackColor={{ false: colors.inputBackground, true: colors.primary }}
+        trackColor={{ false: switchTrack, true: primary }}
         thumbColor="#FFFFFF"
       />
     </View>
   );
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card }]}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>Health Data to Sync</Text>
-      {Platform.OS === 'ios' && (
-        <View style={{ marginBottom: 12 }}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
-            Apple Health (HealthKit)
-          </Text>
-          <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 18 }}>
-Reads selected data from Apple Health and syncs it to your self-hosted server.
-          </Text>
-          {showHealthKitDetails && (
-            <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 18, marginTop: 6 }}>
-SparkyFitness reads the health data you select below using Apple Health (HealthKit). If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).
-{'\n'}Manage or remove access in Settings → Health → Data Access & Devices → SparkyFitnessMobile</Text>
-          )}
-          <TouchableOpacity onPress={() => setShowHealthKitDetails(prev => !prev)} activeOpacity={0.7}>
-            <Text style={{ fontSize: 13, color: colors.primary, marginTop: 4 }}>
-              {showHealthKitDetails ? 'Show less' : 'Learn more'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      {Platform.OS === 'android' && (
-        <View style={{ marginBottom: 12 }}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
-            Health Connect
-          </Text>
-          <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 18 }}>
-Reads selected data from Health Connect and syncs it to your self-hosted server.
-          </Text>
-          {showHealthConnectDetails && (
-            <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 18, marginTop: 6 }}>
-SparkyFitness reads the health data you select below using Health Connect. If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).</Text>
-          )}
-          <TouchableOpacity onPress={() => setShowHealthConnectDetails(prev => !prev)} activeOpacity={0.7}>
-            <Text style={{ fontSize: 13, color: colors.primary, marginTop: 4 }}>
-              {showHealthConnectDetails ? 'Show less' : 'Learn more'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      <View style={[styles.settingItem]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+    <View className="bg-section rounded-xl p-4 mb-4 shadow-sm">
+      <Text className="text-lg font-bold mb-3 text-text-primary">Health Data to Sync</Text>
+      <View className="flex-row justify-between items-center mb-2">
+        <View className="flex-row items-center flex-1 mr-2">
           <Text
-            style={[styles.settingLabel, { fontWeight: 'bold', color: colors.text, flex: 1 }]}
+            className="font-bold text-base text-text-primary flex-1"
             numberOfLines={1}
             ellipsizeMode="tail"
           >
@@ -143,7 +106,7 @@ SparkyFitness reads the health data you select below using Health Connect. If sy
         <Switch
           onValueChange={handleToggleAllMetrics}
           value={isAllMetricsEnabled}
-          trackColor={{ false: colors.inputBackground, true: colors.primary }}
+          trackColor={{ false: switchTrack, true: primary }}
           thumbColor="#FFFFFF"
         />
       </View>

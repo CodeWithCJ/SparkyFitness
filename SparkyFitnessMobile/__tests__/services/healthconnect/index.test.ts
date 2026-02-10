@@ -21,7 +21,7 @@ jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-jest.mock('../../../src/constants/HealthMetrics', () => ({
+jest.mock('../../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
     { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
     { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate' },

@@ -5,17 +5,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   LayoutAnimation,
-  Platform,
-  UIManager,
   Animated,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
+import { useCSSVariable } from 'uniwind';
+import Icon from './Icon';
 
-// Enable LayoutAnimation on Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 interface CollapsibleSectionProps {
   title: string;
@@ -32,7 +26,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   children,
   itemCount,
 }) => {
-  const { colors } = useTheme();
+  const textSecondary = useCSSVariable('--color-text-secondary') as string;
   const rotateAnim = useRef(new Animated.Value(expanded ? 1 : 0)).current;
 
   useEffect(() => {
@@ -54,56 +48,29 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   });
 
   return (
-    <View style={styles.container}>
+    <View className="mt-2">
       <TouchableOpacity
-        style={[styles.header, { borderBottomColor: colors.border }]}
+        className="flex-row justify-between items-center py-3 border-b border-border-subtle"
+        style={{ borderBottomWidth: StyleSheet.hairlineWidth }}
         onPress={handleToggle}
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
         accessibilityHint={expanded ? 'Collapse this section' : 'Expand this section'}
       >
-        <View style={styles.headerLeft}>
+        <View className="flex-row items-center gap-2">
           <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
-            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+            <Icon name="chevron-down" size={20} color={textSecondary} />
           </Animated.View>
-          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+          <Text className="text-base font-semibold text-text-primary">{title}</Text>
         </View>
-        <Text style={[styles.itemCount, { color: colors.textMuted }]}>
+        <Text className="text-sm text-text-muted">
           ({itemCount} {itemCount === 1 ? 'item' : 'items'})
         </Text>
       </TouchableOpacity>
-      {expanded && <View style={styles.content}>{children}</View>}
+      {expanded && <View className="mt-1">{children}</View>}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginTop: 8,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  itemCount: {
-    fontSize: 14,
-  },
-  content: {
-    marginTop: 4,
-  },
-});
 
 export default CollapsibleSection;

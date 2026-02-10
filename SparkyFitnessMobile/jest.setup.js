@@ -146,6 +146,42 @@ jest.mock('@react-native-clipboard/clipboard', () => ({
   getString: jest.fn().mockResolvedValue(''),
 }));
 
+// Mock @shopify/react-native-skia
+jest.mock('@shopify/react-native-skia', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    Canvas: ({ children, style }) => React.createElement(View, { style, testID: 'skia-canvas' }, children),
+    Circle: () => null,
+    Rect: () => null,
+    RoundedRect: () => null,
+    Path: () => null,
+    Group: ({ children }) => children,
+    Skia: {
+      Path: {
+        Make: () => ({
+          addArc: jest.fn().mockReturnThis(),
+          moveTo: jest.fn().mockReturnThis(),
+          lineTo: jest.fn().mockReturnThis(),
+          close: jest.fn().mockReturnThis(),
+        }),
+      },
+    },
+    rect: jest.fn((x, y, width, height) => ({ x, y, width, height })),
+    rrect: jest.fn((r, rx, ry) => ({ rect: r, rx, ry })),
+  };
+});
+
+// Mock react-native-ui-datepicker
+jest.mock('react-native-ui-datepicker', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: (props) => React.createElement(View, { testID: 'date-picker', ...props }),
+  };
+});
+
 // Mock @gorhom/bottom-sheet
 jest.mock('@gorhom/bottom-sheet', () => {
   const React = require('react');

@@ -1,4 +1,4 @@
-import { HealthMetric } from '../constants/HealthMetrics';
+import { HealthMetric } from '../HealthMetrics';
 import { SleepStageEvent } from './mobileHealthData';
 
 // ==========================================
