@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,8 +6,21 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Users, Plus, Edit, Trash2 } from 'lucide-react';
 import {
   loadFamilyAccess,
@@ -17,11 +29,10 @@ import {
   toggleFamilyAccessActiveStatus,
   deleteFamilyAccess,
   findUserByEmail,
-  FamilyAccess,
+  type FamilyAccess,
 } from '@/services/familyAccessService';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-
 
 const FamilyAccessManager = () => {
   const { user } = useAuth();
@@ -47,9 +58,9 @@ const FamilyAccessManager = () => {
     } catch (error) {
       console.error('Error loading family access:', error);
       toast({
-        title: "Error",
-        description: "Failed to load family access records",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load family access records',
+        variant: 'destructive',
       });
     }
   };
@@ -62,7 +73,10 @@ const FamilyAccessManager = () => {
     (access) => user && access.owner_user_id === user.id
   );
   const rulesGivenToMe = familyAccess.filter(
-    (access) => user && access.family_user_id === user.id && access.owner_user_id !== user.id
+    (access) =>
+      user &&
+      access.family_user_id === user.id &&
+      access.owner_user_id !== user.id
   );
 
   const resetForm = () => {
@@ -89,11 +103,15 @@ const FamilyAccessManager = () => {
       family_email: access.family_email,
       can_manage_diary: access.access_permissions.can_manage_diary,
       can_view_food_library: access.access_permissions.can_view_food_library,
-      can_view_exercise_library: access.access_permissions.can_view_exercise_library,
+      can_view_exercise_library:
+        access.access_permissions.can_view_exercise_library,
       can_manage_checkin: access.access_permissions.can_manage_checkin, // Add new permission
       can_view_reports: access.access_permissions.can_view_reports, // Add new permission
-      share_external_providers: access.access_permissions.share_external_providers,
-      access_end_date: access.access_end_date ? access.access_end_date.split('T')[0] : '',
+      share_external_providers:
+        access.access_permissions.share_external_providers,
+      access_end_date: access.access_end_date
+        ? access.access_end_date.split('T')[0]
+        : '',
     });
     setEditingAccess(access);
     setIsDialogOpen(true);
@@ -103,11 +121,18 @@ const FamilyAccessManager = () => {
     if (!user || !formData.family_email) return;
 
     // Check if at least one permission is selected
-    if (!formData.can_manage_diary && !formData.can_view_food_library && !formData.can_view_exercise_library && !formData.can_manage_checkin && !formData.can_view_reports && !formData.share_external_providers) {
+    if (
+      !formData.can_manage_diary &&
+      !formData.can_view_food_library &&
+      !formData.can_view_exercise_library &&
+      !formData.can_manage_checkin &&
+      !formData.can_view_reports &&
+      !formData.share_external_providers
+    ) {
       toast({
-        title: "Error",
-        description: "Please select at least one permission",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please select at least one permission',
+        variant: 'destructive',
       });
       return;
     }
@@ -115,26 +140,27 @@ const FamilyAccessManager = () => {
     // Prevent adding yourself
     if (formData.family_email.toLowerCase() === user.email?.toLowerCase()) {
       toast({
-        title: "Error",
-        description: "You cannot grant access to yourself",
-        variant: "destructive",
+        title: 'Error',
+        description: 'You cannot grant access to yourself',
+        variant: 'destructive',
       });
       return;
     }
 
     try {
-
       const foundUserId = await findUserByEmail(formData.family_email);
 
       if (!editingAccess && foundUserId) {
         const existingAccess = familyAccess.find(
-          (access) => access.owner_user_id === user.id && access.family_user_id === foundUserId
+          (access) =>
+            access.owner_user_id === user.id &&
+            access.family_user_id === foundUserId
         );
         if (existingAccess) {
           toast({
-            title: "Error",
-            description: "Access already granted to this family member",
-            variant: "destructive",
+            title: 'Error',
+            description: 'Access already granted to this family member',
+            variant: 'destructive',
           });
           return;
         }
@@ -142,7 +168,8 @@ const FamilyAccessManager = () => {
 
       // For new access grants, we'll use a placeholder UUID if user not found
       // This allows the access to be created and activated later when the user signs up
-      const familyUserId = foundUserId || '00000000-0000-0000-0000-000000000000';
+      const familyUserId =
+        foundUserId || '00000000-0000-0000-0000-000000000000';
       const status = foundUserId ? 'active' : 'pending';
 
       const accessData = {
@@ -161,25 +188,24 @@ const FamilyAccessManager = () => {
         status: status,
       };
 
-
       if (editingAccess) {
         // Update existing access
         await updateFamilyAccess(editingAccess.id, accessData);
 
         toast({
-          title: "Success",
-          description: "Family access updated successfully",
+          title: 'Success',
+          description: 'Family access updated successfully',
         });
       } else {
         // Create new access
         await createFamilyAccess(accessData);
 
         const statusMessage = foundUserId
-          ? "Family access granted successfully"
+          ? 'Family access granted successfully'
           : `Access invitation sent to ${formData.family_email}. They'll have access once they create a SparkyFitness account.`;
 
         toast({
-          title: "Success",
+          title: 'Success',
           description: statusMessage,
         });
       }
@@ -190,9 +216,9 @@ const FamilyAccessManager = () => {
     } catch (error) {
       console.error('Error saving family access:', error);
       toast({
-        title: "Error",
-        description: "Failed to save family access",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to save family access',
+        variant: 'destructive',
       });
     }
   };
@@ -202,7 +228,7 @@ const FamilyAccessManager = () => {
       await toggleFamilyAccessActiveStatus(access.id, !access.is_active);
 
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Family access ${!access.is_active ? 'activated' : 'deactivated'}`,
       });
 
@@ -210,9 +236,9 @@ const FamilyAccessManager = () => {
     } catch (error) {
       console.error('Error toggling family access:', error);
       toast({
-        title: "Error",
-        description: "Failed to update family access",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update family access',
+        variant: 'destructive',
       });
     }
   };
@@ -222,33 +248,49 @@ const FamilyAccessManager = () => {
       await deleteFamilyAccess(accessId);
 
       toast({
-        title: "Success",
-        description: "Family access removed successfully",
+        title: 'Success',
+        description: 'Family access removed successfully',
       });
 
       fetchFamilyAccess(); // Call the function directly
     } catch (error) {
       console.error('Error deleting family access:', error);
       toast({
-        title: "Error",
-        description: "Failed to remove family access",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to remove family access',
+        variant: 'destructive',
       });
     }
   };
 
   const getStatusBadge = (status: string, isActive: boolean) => {
     if (!isActive) {
-      return <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">Inactive</span>;
+      return (
+        <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">
+          Inactive
+        </span>
+      );
     }
 
     switch (status) {
       case 'active':
-        return <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Active</span>;
+        return (
+          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+            Active
+          </span>
+        );
       case 'pending':
-        return <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">Pending</span>;
+        return (
+          <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+            Pending
+          </span>
+        );
       default:
-        return <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">Unknown</span>;
+        return (
+          <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">
+            Unknown
+          </span>
+        );
     }
   };
 
@@ -275,90 +317,153 @@ const FamilyAccessManager = () => {
                   id="family_email"
                   type="email"
                   value={formData.family_email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, family_email: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      family_email: e.target.value,
+                    }))
+                  }
                   placeholder="Enter family member's email"
                   disabled={!!editingAccess}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  They'll get access once they create a SparkyFitness account (if they don't have one already)
+                  They'll get access once they create a SparkyFitness account
+                  (if they don't have one already)
                 </p>
               </div>
 
               <Separator />
 
               <div>
-                <Label className="text-base font-medium">Access Permissions</Label>
+                <Label className="text-base font-medium">
+                  Access Permissions
+                </Label>
                 <div className="space-y-3 mt-3">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="can_manage_diary"
                       checked={formData.can_manage_diary}
                       onCheckedChange={(checked) =>
-                        setFormData(prev => ({ ...prev, can_manage_diary: !!checked }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          can_manage_diary: !!checked,
+                        }))
                       }
                     />
-                    <Label htmlFor="can_manage_diary" className='cursor-pointer'>Can Manage Diary</Label>
+                    <Label
+                      htmlFor="can_manage_diary"
+                      className="cursor-pointer"
+                    >
+                      Can Manage Diary
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="can_view_food_library"
                       checked={formData.can_view_food_library}
                       onCheckedChange={(checked) =>
-                        setFormData(prev => ({ ...prev, can_view_food_library: !!checked }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          can_view_food_library: !!checked,
+                        }))
                       }
                     />
-                    <Label htmlFor="can_view_food_library" className='cursor-pointer'>Can Use My Food & Meal Library</Label>
+                    <Label
+                      htmlFor="can_view_food_library"
+                      className="cursor-pointer"
+                    >
+                      Can Use My Food & Meal Library
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="can_view_exercise_library"
                       checked={formData.can_view_exercise_library}
                       onCheckedChange={(checked) =>
-                        setFormData(prev => ({ ...prev, can_view_exercise_library: !!checked }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          can_view_exercise_library: !!checked,
+                        }))
                       }
                     />
-                    <Label htmlFor="can_view_exercise_library" className='cursor-pointer'>Can Use My Exercise & Workout Library</Label>
+                    <Label
+                      htmlFor="can_view_exercise_library"
+                      className="cursor-pointer"
+                    >
+                      Can Use My Exercise & Workout Library
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="can_manage_checkin"
                       checked={formData.can_manage_checkin}
                       onCheckedChange={(checked) =>
-                        setFormData(prev => ({ ...prev, can_manage_checkin: !!checked }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          can_manage_checkin: !!checked,
+                        }))
                       }
                     />
-                    <Label htmlFor="can_manage_checkin" className='cursor-pointer'>Can Manage Check-in Data</Label>
+                    <Label
+                      htmlFor="can_manage_checkin"
+                      className="cursor-pointer"
+                    >
+                      Can Manage Check-in Data
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="can_view_reports"
                       checked={formData.can_view_reports}
                       onCheckedChange={(checked) =>
-                        setFormData(prev => ({ ...prev, can_view_reports: !!checked }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          can_view_reports: !!checked,
+                        }))
                       }
                     />
-                    <Label htmlFor="can_view_reports" className='cursor-pointer'>Can View Reports</Label>
+                    <Label
+                      htmlFor="can_view_reports"
+                      className="cursor-pointer"
+                    >
+                      Can View Reports
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="share_external_providers"
                       checked={formData.share_external_providers}
                       onCheckedChange={(checked) =>
-                        setFormData(prev => ({ ...prev, share_external_providers: !!checked }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          share_external_providers: !!checked,
+                        }))
                       }
                     />
-                    <Label htmlFor="share_external_providers" className='cursor-pointer'>Share External Data Providers</Label>
+                    <Label
+                      htmlFor="share_external_providers"
+                      className="cursor-pointer"
+                    >
+                      Share External Data Providers
+                    </Label>
                   </div>
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="access_end_date">Access End Date (Optional)</Label>
+                <Label htmlFor="access_end_date">
+                  Access End Date (Optional)
+                </Label>
                 <Input
                   id="access_end_date"
                   type="date"
                   value={formData.access_end_date}
-                  onChange={(e) => setFormData(prev => ({ ...prev, access_end_date: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      access_end_date: e.target.value,
+                    }))
+                  }
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Leave empty for indefinite access
@@ -369,7 +474,10 @@ const FamilyAccessManager = () => {
                 <Button onClick={handleSubmit} className="flex-1">
                   {editingAccess ? 'Update' : 'Grant'} Access
                 </Button>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
                   Cancel
                 </Button>
               </div>
@@ -410,7 +518,8 @@ const FamilyAccessManager = () => {
                             Food Library
                           </span>
                         )}
-                        {access.access_permissions.can_view_exercise_library && (
+                        {access.access_permissions
+                          .can_view_exercise_library && (
                           <span className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded">
                             Exercise Library
                           </span>
@@ -433,10 +542,9 @@ const FamilyAccessManager = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {access.access_end_date ?
-                        new Date(access.access_end_date).toLocaleDateString() :
-                        'No end date'
-                      }
+                      {access.access_end_date
+                        ? new Date(access.access_end_date).toLocaleDateString()
+                        : 'No end date'}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -505,7 +613,8 @@ const FamilyAccessManager = () => {
                             Food Library
                           </span>
                         )}
-                        {access.access_permissions.can_view_exercise_library && (
+                        {access.access_permissions
+                          .can_view_exercise_library && (
                           <span className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded">
                             Exercise Library
                           </span>
@@ -523,10 +632,9 @@ const FamilyAccessManager = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {access.access_end_date ?
-                        new Date(access.access_end_date).toLocaleDateString() :
-                        'No end date'
-                      }
+                      {access.access_end_date
+                        ? new Date(access.access_end_date).toLocaleDateString()
+                        : 'No end date'}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -570,7 +678,9 @@ const FamilyAccessManager = () => {
         <div className="text-center py-8 text-muted-foreground">
           <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
           <p>No family access granted yet</p>
-          <p className="text-sm">Add family members to let them help manage your fitness data</p>
+          <p className="text-sm">
+            Add family members to let them help manage your fitness data
+          </p>
         </div>
       )}
     </div>

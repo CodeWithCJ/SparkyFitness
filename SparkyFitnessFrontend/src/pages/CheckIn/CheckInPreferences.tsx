@@ -1,14 +1,17 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { cn } from "@/lib/utils";
-import { debug, info, warn } from '@/utils/logging'; // Import logging utility
-import { format } from 'date-fns'; // Import format from date-fns
-import { useTranslation } from "react-i18next";
-
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { cn } from '@/lib/utils';
+import { debug, info, warn } from '@/utils/logging';
+import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 interface CheckInPreferencesProps {
   selectedDate: string;
@@ -20,40 +23,39 @@ const CheckInPreferences = ({
   onDateChange,
 }: CheckInPreferencesProps) => {
   const { t } = useTranslation();
-  const {
-    formatDate,
-    parseDateInUserTimezone,
-    loggingLevel
-  } = usePreferences();
-  debug(loggingLevel, "CheckInPreferences component rendered.", { selectedDate });
+  const { formatDate, parseDateInUserTimezone, loggingLevel } =
+    usePreferences();
+  debug(loggingLevel, 'CheckInPreferences component rendered.', {
+    selectedDate,
+  });
   const date = parseDateInUserTimezone(selectedDate); // Use parseDateInUserTimezone
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    debug(loggingLevel, "Handling date change from input:", e.target.value);
+    debug(loggingLevel, 'Handling date change from input:', e.target.value);
     onDateChange(e.target.value);
   };
 
   const handleDateSelect = (newDate: Date | undefined) => {
-    debug(loggingLevel, "Handling date select from calendar:", newDate);
+    debug(loggingLevel, 'Handling date select from calendar:', newDate);
     if (newDate) {
       // Format the date to YYYY-MM-DD using the local timezone
       const dateString = format(newDate, 'yyyy-MM-dd');
-      info(loggingLevel, "Date selected:", dateString);
+      info(loggingLevel, 'Date selected:', dateString);
       onDateChange(dateString);
     } else {
-      warn(loggingLevel, "Date select called with undefined date.");
+      warn(loggingLevel, 'Date select called with undefined date.');
     }
   };
 
   const handlePreviousDay = () => {
-    debug(loggingLevel, "Handling previous day button click.");
+    debug(loggingLevel, 'Handling previous day button click.');
     const previousDay = new Date(date);
     previousDay.setDate(previousDay.getDate() - 1);
     handleDateSelect(previousDay);
   };
 
   const handleNextDay = () => {
-    debug(loggingLevel, "Handling next day button click.");
+    debug(loggingLevel, 'Handling next day button click.');
     const nextDay = new Date(date);
     nextDay.setDate(nextDay.getDate() + 1);
     handleDateSelect(nextDay);
@@ -82,12 +84,16 @@ const CheckInPreferences = ({
                   <Button
                     variant="outline"
                     className={cn(
-                      "justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
+                      'justify-start text-left font-normal',
+                      !date && 'text-muted-foreground'
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? formatDate(date) : <span>{t('common.pickADate', 'Pick a Date')}</span>}
+                    {date ? (
+                      formatDate(date)
+                    ) : (
+                      <span>{t('common.pickADate', 'Pick a Date')}</span>
+                    )}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">

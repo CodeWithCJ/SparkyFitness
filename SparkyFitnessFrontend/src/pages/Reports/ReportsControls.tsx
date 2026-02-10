@@ -1,15 +1,16 @@
-
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { cn } from "@/lib/utils";
-import { debug, info } from "@/utils/logging";
-import { format  } from 'date-fns'; // Import format and parseISO from date-fns
-
-
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { cn } from '@/lib/utils';
+import { debug, info } from '@/utils/logging';
+import { format } from 'date-fns';
 
 interface ReportsControlsProps {
   startDate: string;
@@ -24,7 +25,12 @@ const ReportsControls = ({
   onStartDateChange,
   onEndDateChange,
 }: ReportsControlsProps) => {
-  const { formatDate, parseDateInUserTimezone, formatDateInUserTimezone, loggingLevel } = usePreferences();
+  const {
+    formatDate,
+    parseDateInUserTimezone,
+    formatDateInUserTimezone,
+    loggingLevel,
+  } = usePreferences();
   info(loggingLevel, 'ReportsControls: Rendering component.');
 
   const handleStartDateSelect = (newDate: Date | undefined) => {
@@ -75,7 +81,6 @@ const ReportsControls = ({
     handleEndDateSelect(nextDay);
   };
 
-
   return (
     <Card>
       <CardContent className="p-4">
@@ -94,13 +99,13 @@ const ReportsControls = ({
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              
+
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      "justify-start text-left font-normal w-fit px-3" // Added w-fit and adjusted padding
+                      'justify-start text-left font-normal w-fit px-3' // Added w-fit and adjusted padding
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -113,7 +118,7 @@ const ReportsControls = ({
                     selected={parseDateInUserTimezone(startDate)}
                     onSelect={handleStartDateSelect}
                     initialFocus
-                    className={cn("p-3 pointer-events-auto")}
+                    className={cn('p-3 pointer-events-auto')}
                     yearsRange={10} // Default to 10 years for general date selection
                     // Ensure the calendar displays the date in the local timezone
                     // by setting the timezone to the user's local timezone
@@ -149,13 +154,13 @@ const ReportsControls = ({
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              
+
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      "justify-start text-left font-normal w-fit px-3" // Added w-fit and adjusted padding
+                      'justify-start text-left font-normal w-fit px-3' // Added w-fit and adjusted padding
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -168,7 +173,7 @@ const ReportsControls = ({
                     selected={parseDateInUserTimezone(endDate)}
                     onSelect={handleEndDateSelect}
                     initialFocus
-                    className={cn("p-3 pointer-events-auto")}
+                    className={cn('p-3 pointer-events-auto')}
                     yearsRange={10} // Default to 10 years for general date selection
                     // Ensure the calendar displays the date in the local timezone
                     // by setting the timezone to the user's local timezone

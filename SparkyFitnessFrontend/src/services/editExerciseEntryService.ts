@@ -1,5 +1,5 @@
 import { apiCall } from './api';
-import { WorkoutPresetSet } from '@/types/workout';
+import type { WorkoutPresetSet } from '@/types/workout';
 
 export interface ExerciseEntry {
   id: string;
@@ -20,7 +20,9 @@ export interface ExerciseEntry {
   } | null;
 }
 
-export const fetchExerciseDetails = async (exerciseId: string): Promise<{ calories_per_hour: number }> => {
+export const fetchExerciseDetails = async (
+  exerciseId: string
+): Promise<{ calories_per_hour: number }> => {
   return apiCall(`/exercises/${exerciseId}`, {
     method: 'GET',
   });
@@ -36,7 +38,7 @@ export const updateExerciseEntry = async (
     reps?: number;
     weight?: number;
     image_url?: string;
-  },
+  }
 ): Promise<void> => {
   await apiCall(`/exercise-entries/${entryId}`, {
     method: 'PUT',

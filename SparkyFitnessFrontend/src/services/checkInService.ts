@@ -60,24 +60,37 @@ export const loadCustomCategories = async (): Promise<CustomCategory[]> => {
   return apiCall('/measurements/custom-categories');
 };
 
-export const fetchRecentCustomMeasurements = async (): Promise<CustomMeasurement[]> => {
+export const fetchRecentCustomMeasurements = async (): Promise<
+  CustomMeasurement[]
+> => {
   return apiCall('/measurements/custom-entries', {
-    params: { limit: 20, orderBy: 'entry_timestamp.desc' }
+    params: { limit: 20, orderBy: 'entry_timestamp.desc' },
   });
 };
 
-export const fetchRecentStandardMeasurements = async (startDate: string, endDate: string): Promise<CheckInMeasurement[]> => {
-  return apiCall(`/measurements/check-in-measurements-range/${startDate}/${endDate}`, {
-    method: 'GET',
-    suppress404Toast: true,
-  });
+export const fetchRecentStandardMeasurements = async (
+  startDate: string,
+  endDate: string
+): Promise<CheckInMeasurement[]> => {
+  return apiCall(
+    `/measurements/check-in-measurements-range/${startDate}/${endDate}`,
+    {
+      method: 'GET',
+      suppress404Toast: true,
+    }
+  );
 };
 
 export const deleteCustomMeasurement = async (id: string): Promise<void> => {
   await apiCall(`/measurements/custom-entries/${id}`, { method: 'DELETE' });
 };
 
-export const updateCheckInMeasurementField = async (payload: { id: string, field: string, value: number | null, entry_date: string }): Promise<void> => {
+export const updateCheckInMeasurementField = async (payload: {
+  id: string;
+  field: string;
+  value: number | null;
+  entry_date: string;
+}): Promise<void> => {
   await apiCall(`/measurements/check-in/${payload.id}`, {
     method: 'PUT',
     body: {
@@ -87,14 +100,18 @@ export const updateCheckInMeasurementField = async (payload: { id: string, field
   });
 };
 
-export const loadExistingCheckInMeasurements = async (selectedDate: string): Promise<any> => {
+export const loadExistingCheckInMeasurements = async (
+  selectedDate: string
+): Promise<any> => {
   return apiCall(`/measurements/check-in/${selectedDate}`, {
     method: 'GET',
     suppress404Toast: true,
   });
 };
 
-export const loadExistingCustomMeasurements = async (selectedDate: string): Promise<any> => {
+export const loadExistingCustomMeasurements = async (
+  selectedDate: string
+): Promise<any> => {
   return apiCall(`/measurements/custom-entries/${selectedDate}`, {
     method: 'GET',
     suppress404Toast: true,
@@ -115,6 +132,8 @@ export const saveCustomMeasurement = async (payload: any): Promise<void> => {
   });
 };
 
-export const getMostRecentMeasurement = async (measurementType: string): Promise<CheckInMeasurement | null> => {
+export const getMostRecentMeasurement = async (
+  measurementType: string
+): Promise<CheckInMeasurement | null> => {
   return apiCall(`/measurements/most-recent/${measurementType}`);
 };

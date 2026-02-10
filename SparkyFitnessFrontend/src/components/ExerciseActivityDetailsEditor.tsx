@@ -1,9 +1,10 @@
-import React, { useState, useEffect, ChangeEvent } from 'react';
-import { useTranslation } from "react-i18next";
+import type React from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea'; // Import Textarea
+import { Textarea } from './ui/textarea';
 import { Plus, X } from 'lucide-react';
 
 // Utility function to check if a string is valid JSON
@@ -31,21 +32,29 @@ interface ExerciseActivityDetailsEditorProps {
   onChange: (data: ActivityDetailKeyValuePair[]) => void;
 }
 
-const ExerciseActivityDetailsEditor: React.FC<ExerciseActivityDetailsEditorProps> = ({ initialData, onChange }) => {
+const ExerciseActivityDetailsEditor: React.FC<
+  ExerciseActivityDetailsEditorProps
+> = ({ initialData, onChange }) => {
   const { t } = useTranslation();
   const [pairs, setPairs] = useState<ActivityDetailKeyValuePair[]>(initialData);
 
   useEffect(() => {
-    const sanitizedData = initialData.map(item => {
+    const sanitizedData = initialData.map((item) => {
       // Check if item.value is an object and not null, then stringify it
       if (typeof item.value === 'object' && item.value !== null) {
         return { ...item, value: JSON.stringify(item.value, null, 2) };
       } else if (typeof item.value === 'string' && isValidJson(item.value)) {
         // If it's a string that is valid JSON, parse and pretty-print
         try {
-          return { ...item, value: JSON.stringify(JSON.parse(item.value), null, 2) };
+          return {
+            ...item,
+            value: JSON.stringify(JSON.parse(item.value), null, 2),
+          };
         } catch (e) {
-          console.error("Failed to pretty-print JSON from initialData string:", e);
+          console.error(
+            'Failed to pretty-print JSON from initialData string:',
+            e
+          );
           return item; // Fallback to original value
         }
       }
@@ -55,7 +64,15 @@ const ExerciseActivityDetailsEditor: React.FC<ExerciseActivityDetailsEditorProps
   }, [initialData]);
 
   const handleAddPair = () => {
-    setPairs([...pairs, { key: '', value: '', detail_type: 'Custom Field', provider_name: 'Manual' }]);
+    setPairs([
+      ...pairs,
+      {
+        key: '',
+        value: '',
+        detail_type: 'Custom Field',
+        provider_name: 'Manual',
+      },
+    ]);
   };
 
   const handleRemovePair = (index: number) => {
@@ -64,7 +81,10 @@ const ExerciseActivityDetailsEditor: React.FC<ExerciseActivityDetailsEditorProps
     onChange(newPairs);
   };
 
-  const handleKeyChange = (index: number, event: ChangeEvent<HTMLInputElement>) => {
+  const handleKeyChange = (
+    index: number,
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
     const newKey = event.target.value;
     const newPairs = pairs.map((pair, i) =>
       i === index ? { ...pair, key: newKey, detail_type: newKey } : pair
@@ -73,7 +93,10 @@ const ExerciseActivityDetailsEditor: React.FC<ExerciseActivityDetailsEditorProps
     onChange(newPairs);
   };
 
-  const handleValueChange = (index: number, event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleValueChange = (
+    index: number,
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const newValue = event.target.value;
     let processedValue = newValue;
 
@@ -83,7 +106,7 @@ const ExerciseActivityDetailsEditor: React.FC<ExerciseActivityDetailsEditorProps
         processedValue = JSON.stringify(JSON.parse(newValue), null, 2);
       } catch (e) {
         // Fallback to original value if pretty-printing fails
-        console.error("Failed to pretty-print JSON:", e);
+        console.error('Failed to pretty-print JSON:', e);
       }
     }
 
@@ -99,22 +122,32 @@ const ExerciseActivityDetailsEditor: React.FC<ExerciseActivityDetailsEditorProps
       {pairs.map((pair, index) => (
         <div key={pair.id || index} className="flex items-end space-x-2">
           <div className="flex-1">
-            <Label htmlFor={`key-${index}`}>{t('exercise.activityDetailsEditor.fieldNameLabel', 'Field Name')}</Label>
+            <Label htmlFor={`key-${index}`}>
+              {t('exercise.activityDetailsEditor.fieldNameLabel', 'Field Name')}
+            </Label>
             <Input
               id={`key-${index}`}
               value={pair.key}
               onChange={(e) => handleKeyChange(index, e)}
-              placeholder={t('exercise.activityDetailsEditor.fieldNamePlaceholder', "e.g., 'Weather', 'Mood'")}
+              placeholder={t(
+                'exercise.activityDetailsEditor.fieldNamePlaceholder',
+                "e.g., 'Weather', 'Mood'"
+              )}
             />
           </div>
           <div className="flex-1">
-            <Label htmlFor={`value-${index}`}>{t('exercise.activityDetailsEditor.valueLabel', 'Value')}</Label>
+            <Label htmlFor={`value-${index}`}>
+              {t('exercise.activityDetailsEditor.valueLabel', 'Value')}
+            </Label>
             {isValidJson(pair.value) ? (
               <Textarea
                 id={`value-${index}`}
                 value={pair.value}
                 onChange={(e) => handleValueChange(index, e)}
-                placeholder={t('exercise.activityDetailsEditor.valuePlaceholder', "e.g., 'Sunny', 'Energetic'")}
+                placeholder={t(
+                  'exercise.activityDetailsEditor.valuePlaceholder',
+                  "e.g., 'Sunny', 'Energetic'"
+                )}
                 rows={6} // Provide enough rows for JSON
                 className="font-mono" // Use monospace font for JSON
               />
@@ -123,17 +156,28 @@ const ExerciseActivityDetailsEditor: React.FC<ExerciseActivityDetailsEditorProps
                 id={`value-${index}`}
                 value={pair.value}
                 onChange={(e) => handleValueChange(index, e)}
-                placeholder={t('exercise.activityDetailsEditor.valuePlaceholder', "e.g., 'Sunny', 'Energetic'")}
+                placeholder={t(
+                  'exercise.activityDetailsEditor.valuePlaceholder',
+                  "e.g., 'Sunny', 'Energetic'"
+                )}
               />
             )}
           </div>
-          <Button variant="ghost" size="icon" onClick={() => handleRemovePair(index)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleRemovePair(index)}
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
       ))}
       <Button type="button" variant="outline" onClick={handleAddPair}>
-        <Plus className="h-4 w-4 mr-2" /> {t('exercise.activityDetailsEditor.addCustomFieldButton', 'Add Custom Field')}
+        <Plus className="h-4 w-4 mr-2" />{' '}
+        {t(
+          'exercise.activityDetailsEditor.addCustomFieldButton',
+          'Add Custom Field'
+        )}
       </Button>
     </div>
   );

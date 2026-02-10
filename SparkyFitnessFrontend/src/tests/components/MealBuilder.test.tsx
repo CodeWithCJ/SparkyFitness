@@ -7,7 +7,11 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, defaultValueOrOpts?: string | Record<string, unknown>) => {
       if (typeof defaultValueOrOpts === 'string') return defaultValueOrOpts;
-      if (defaultValueOrOpts && typeof defaultValueOrOpts === 'object' && 'defaultValue' in defaultValueOrOpts) {
+      if (
+        defaultValueOrOpts &&
+        typeof defaultValueOrOpts === 'object' &&
+        'defaultValue' in defaultValueOrOpts
+      ) {
         return defaultValueOrOpts.defaultValue as string;
       }
       return key;
@@ -104,7 +108,9 @@ describe('MealBuilder', () => {
 
   it('shows empty state message when no foods added', () => {
     render(<MealBuilder />);
-    expect(screen.getByText('No foods added to this meal yet.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No foods added to this meal yet.')
+    ).toBeInTheDocument();
   });
 
   it('shows validation error when saving with no foods', () => {
@@ -125,7 +131,9 @@ describe('MealBuilder', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Meal Name')).toHaveValue('Logged Meal');
     });
-    fireEvent.change(screen.getByLabelText('Meal Name'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Meal Name'), {
+      target: { value: '' },
+    });
     fireEvent.click(screen.getByText('Save Meal'));
 
     expect(mockToast).toHaveBeenCalledWith({
@@ -155,7 +163,9 @@ describe('MealBuilder', () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Test Meal')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('A test description')).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue('A test description')
+      ).toBeInTheDocument();
       expect(screen.getByText('Apple')).toBeInTheDocument();
     });
   });
@@ -168,13 +178,15 @@ describe('MealBuilder', () => {
     render(<MealBuilder initialFoods={sampleFoods} onSave={onSave} />);
 
     // Set meal name
-    fireEvent.change(screen.getByLabelText('Meal Name'), { target: { value: 'My Meal' } });
+    fireEvent.change(screen.getByLabelText('Meal Name'), {
+      target: { value: 'My Meal' },
+    });
     fireEvent.click(screen.getByText('Save Meal'));
 
     await waitFor(() => {
       expect(mockCreateMeal).toHaveBeenCalledWith(
         'test-user-id',
-        expect.objectContaining({ name: 'My Meal' }),
+        expect.objectContaining({ name: 'My Meal' })
       );
     });
 
@@ -208,14 +220,16 @@ describe('MealBuilder', () => {
       expect(screen.getByDisplayValue('Original')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('Meal Name'), { target: { value: 'Updated' } });
+    fireEvent.change(screen.getByLabelText('Meal Name'), {
+      target: { value: 'Updated' },
+    });
     fireEvent.click(screen.getByText('Save Meal'));
 
     await waitFor(() => {
       expect(mockUpdateMeal).toHaveBeenCalledWith(
         'test-user-id',
         'meal1',
-        expect.objectContaining({ name: 'Updated' }),
+        expect.objectContaining({ name: 'Updated' })
       );
     });
 

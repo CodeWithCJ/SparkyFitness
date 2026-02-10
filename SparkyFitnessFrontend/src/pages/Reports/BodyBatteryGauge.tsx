@@ -1,12 +1,12 @@
-import React from 'react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next';
 
 // Body Battery max value (Garmin uses 0-100 scale)
 const BODY_BATTERY_MAX = 100;
 
 interface BodyBatteryGaugeProps {
-  value: number;        // 0-100
-  size?: number;        // px, default 160
+  value: number; // 0-100
+  size?: number; // px, default 160
   strokeWidth?: number; // px, default 12
 }
 
@@ -25,7 +25,7 @@ const getBodyBatteryStatusInfo = (value: number): BodyBatteryStatusInfo => {
       statusDefault: 'Low',
       color: '#ef4444',
       descriptionKey: 'reports.bodyBatteryDescLow',
-      descriptionDefault: 'Your energy is depleted. Rest recommended.'
+      descriptionDefault: 'Your energy is depleted. Rest recommended.',
     };
   } else if (value <= 50) {
     return {
@@ -33,7 +33,7 @@ const getBodyBatteryStatusInfo = (value: number): BodyBatteryStatusInfo => {
       statusDefault: 'Moderate',
       color: '#f97316',
       descriptionKey: 'reports.bodyBatteryDescModerate',
-      descriptionDefault: 'Your energy is limited. Light activity ok.'
+      descriptionDefault: 'Your energy is limited. Light activity ok.',
     };
   } else if (value <= 75) {
     return {
@@ -41,7 +41,7 @@ const getBodyBatteryStatusInfo = (value: number): BodyBatteryStatusInfo => {
       statusDefault: 'Good',
       color: '#3b82f6',
       descriptionKey: 'reports.bodyBatteryDescGood',
-      descriptionDefault: 'Your Body Battery is at a good level for the day.'
+      descriptionDefault: 'Your Body Battery is at a good level for the day.',
     };
   } else {
     return {
@@ -49,7 +49,8 @@ const getBodyBatteryStatusInfo = (value: number): BodyBatteryStatusInfo => {
       statusDefault: 'Excellent',
       color: '#22c55e',
       descriptionKey: 'reports.bodyBatteryDescExcellent',
-      descriptionDefault: "You're fully charged and ready for intense activity."
+      descriptionDefault:
+        "You're fully charged and ready for intense activity.",
     };
   }
 };
@@ -57,10 +58,16 @@ const getBodyBatteryStatusInfo = (value: number): BodyBatteryStatusInfo => {
 const BodyBatteryGauge: React.FC<BodyBatteryGaugeProps> = ({
   value,
   size = 160,
-  strokeWidth = 12
+  strokeWidth = 12,
 }) => {
   const { t } = useTranslation();
-  const { statusKey, statusDefault, color, descriptionKey, descriptionDefault } = getBodyBatteryStatusInfo(value);
+  const {
+    statusKey,
+    statusDefault,
+    color,
+    descriptionKey,
+    descriptionDefault,
+  } = getBodyBatteryStatusInfo(value);
   const status = t(statusKey, statusDefault);
   const description = t(descriptionKey, descriptionDefault);
 
@@ -137,8 +144,12 @@ const BodyBatteryGauge: React.FC<BodyBatteryGaugeProps> = ({
 
       {/* Status text */}
       <div className="text-center mt-2">
-        <p className="font-semibold text-lg" style={{ color }}>{status}</p>
-        <p className="text-sm text-muted-foreground max-w-[200px]">{description}</p>
+        <p className="font-semibold text-lg" style={{ color }}>
+          {status}
+        </p>
+        <p className="text-sm text-muted-foreground max-w-[200px]">
+          {description}
+        </p>
       </div>
     </div>
   );

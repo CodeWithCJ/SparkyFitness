@@ -1,15 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
 } from 'recharts';
-import ZoomableChart from "@/components/ZoomableChart";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { FaRoute, FaClock, FaWalking, FaMountain, FaFire, FaHeartbeat, FaRunning } from 'react-icons/fa';
+import ZoomableChart from '@/components/ZoomableChart';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import {
+  FaRoute,
+  FaClock,
+  FaWalking,
+  FaMountain,
+  FaFire,
+  FaHeartbeat,
+  FaRunning,
+} from 'react-icons/fa';
 import ActivityReportLapTable from './ActivityReportLapTable';
-import { info, warn, error as logError } from "@/utils/logging";
+import { info, warn, error as logError } from '@/utils/logging';
 import ActivityReportMap from './ActivityReportMap';
 import WorkoutReportVisualizer from './WorkoutReportVisualizer';
 
@@ -68,7 +86,10 @@ interface ActivityData {
   workout: WorkoutData | null;
 }
 
-const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exerciseEntryId, providerName }) => {
+const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
+  exerciseEntryId,
+  providerName,
+}) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,10 +100,18 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  const { distanceUnit, convertDistance, loggingLevel, energyUnit, convertEnergy } = usePreferences();
+  const {
+    distanceUnit,
+    convertDistance,
+    loggingLevel,
+    energyUnit,
+    convertEnergy,
+  } = usePreferences();
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal' ? t('common.kcalUnit', 'kcal') : t('common.kJUnit', 'kJ');
+    return unit === 'kcal'
+      ? t('common.kcalUnit', 'kcal')
+      : t('common.kJUnit', 'kJ');
   };
 
   useEffect(() => {
@@ -96,10 +125,24 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
 
         const response = await axios.get(apiUrl);
         setActivityData(response.data);
-        info(loggingLevel, "Fetched activity data:", JSON.stringify(response.data, null, 2));
+        info(
+          loggingLevel,
+          'Fetched activity data:',
+          JSON.stringify(response.data, null, 2)
+        );
       } catch (err) {
-        setError(t('reports.activityReport.error', { error: `Failed to fetch ${providerName} activity details.` }));
-        logError(loggingLevel, t('reports.activityReport.error', { error: `Failed to fetch ${providerName} activity details.` }), err);
+        setError(
+          t('reports.activityReport.error', {
+            error: `Failed to fetch ${providerName} activity details.`,
+          })
+        );
+        logError(
+          loggingLevel,
+          t('reports.activityReport.error', {
+            error: `Failed to fetch ${providerName} activity details.`,
+          }),
+          err
+        );
       } finally {
         setLoading(false);
       }
@@ -115,7 +158,11 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
   }
 
   if (error) {
-    return <div className="text-red-500">{t('reports.activityReport.error', { error: error })}</div>;
+    return (
+      <div className="text-red-500">
+        {t('reports.activityReport.error', { error: error })}
+      </div>
+    );
   }
 
   if (!activityData) {
@@ -129,24 +176,43 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
   const processChartData = (metrics: any[]) => {
     if (!metrics || metrics.length === 0) return [];
 
-    const metricDescriptors = activityData?.activity?.details?.metricDescriptors;
+    const metricDescriptors =
+      activityData?.activity?.details?.metricDescriptors;
     if (!metricDescriptors) {
-      logError(loggingLevel, t('reports.activityReport.metricDescriptorsNotFound'));
+      logError(
+        loggingLevel,
+        t('reports.activityReport.metricDescriptorsNotFound')
+      );
       return [];
     }
 
-    const timestampDescriptor = metricDescriptors.find((d: any) => d.key === 'directTimestamp');
-    const distanceDescriptor = metricDescriptors.find((d: any) => d.key === 'sumDistance');
+    const timestampDescriptor = metricDescriptors.find(
+      (d: any) => d.key === 'directTimestamp'
+    );
+    const distanceDescriptor = metricDescriptors.find(
+      (d: any) => d.key === 'sumDistance'
+    );
 
     // Add a defensive check to ensure metricDescriptors is not missing keys
     if (!timestampDescriptor || !distanceDescriptor) {
-      logError(loggingLevel, t('reports.activityReport.metricDescriptorsMissingKeys'));
+      logError(
+        loggingLevel,
+        t('reports.activityReport.metricDescriptorsMissingKeys')
+      );
       return [];
     }
-    const speedDescriptor = metricDescriptors.find((d: any) => d.key === 'directSpeed');
-    const heartRateDescriptor = metricDescriptors.find((d: any) => d.key === 'directHeartRate');
-    const runCadenceDescriptor = metricDescriptors.find((d: any) => d.key === 'directRunCadence');
-    const elevationDescriptor = metricDescriptors.find((d: any) => d.key === 'directElevation');
+    const speedDescriptor = metricDescriptors.find(
+      (d: any) => d.key === 'directSpeed'
+    );
+    const heartRateDescriptor = metricDescriptors.find(
+      (d: any) => d.key === 'directHeartRate'
+    );
+    const runCadenceDescriptor = metricDescriptors.find(
+      (d: any) => d.key === 'directRunCadence'
+    );
+    const elevationDescriptor = metricDescriptors.find(
+      (d: any) => d.key === 'directElevation'
+    );
 
     const metricKeyToDataIndexMap: { [key: string]: number } = {};
     let currentDataIndex = 0;
@@ -195,14 +261,23 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
 
     // Add a defensive check for heartRateDescriptor
     if (!heartRateDescriptor) {
-      warn(loggingLevel, t('reports.activityReport.heartRateDescriptorNotFound'));
+      warn(
+        loggingLevel,
+        t('reports.activityReport.heartRateDescriptorNotFound')
+      );
     } else {
-      info(loggingLevel, `Heart Rate Descriptor found at index: ${heartRateIndex}`);
+      info(
+        loggingLevel,
+        `Heart Rate Descriptor found at index: ${heartRateIndex}`
+      );
     }
     // Removed redundant runCadenceIndex declaration
 
     if (timestampIndex === undefined || distanceIndex === undefined) {
-      logError(loggingLevel, t('reports.activityReport.missingTimestampOrDistanceDescriptor'));
+      logError(
+        loggingLevel,
+        t('reports.activityReport.missingTimestampOrDistanceDescriptor')
+      );
       return [];
     }
 
@@ -234,12 +309,18 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
       activityStartTime = Math.min(...relativeTimestamps); // This will be the smallest relative offset
     } else {
       // No valid timestamps found
-      logError(loggingLevel, t('reports.activityReport.noValidTimestampsFound'));
+      logError(
+        loggingLevel,
+        t('reports.activityReport.noValidTimestampsFound')
+      );
       return [];
     }
 
     // Find the initial distance corresponding to the determined activityStartTime
-    const firstDataPoint = metrics.find(metric => parseFloat(metric.metrics[timestampIndex]) === activityStartTime);
+    const firstDataPoint = metrics.find(
+      (metric) =>
+        parseFloat(metric.metrics[timestampIndex]) === activityStartTime
+    );
     if (firstDataPoint) {
       const dist = parseFloat(firstDataPoint.metrics[distanceIndex]);
       initialDistance = !isNaN(dist) ? dist : 0;
@@ -250,39 +331,58 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
       initialDistance = !isNaN(firstMetricDistance) ? firstMetricDistance : 0;
     }
 
-    const processedMetrics = metrics.map((metric: any) => {
-      const currentTimestamp = parseFloat(metric.metrics[timestampIndex]);
-      const currentDistance = parseFloat(metric.metrics[distanceIndex]);
+    const processedMetrics = metrics
+      .map((metric: any) => {
+        const currentTimestamp = parseFloat(metric.metrics[timestampIndex]);
+        const currentDistance = parseFloat(metric.metrics[distanceIndex]);
 
-      // Handle cases where a metric might not have all data points
-      if (isNaN(currentTimestamp) || isNaN(currentDistance)) {
-        return null; // Filtered out later
-      }
+        // Handle cases where a metric might not have all data points
+        if (isNaN(currentTimestamp) || isNaN(currentDistance)) {
+          return null; // Filtered out later
+        }
 
-      const speed = speedIndex !== undefined && metric.metrics[speedIndex] !== undefined ? metric.metrics[speedIndex] : 0;
-      const heartRate = heartRateIndex !== undefined && metric.metrics[heartRateIndex] !== undefined ? metric.metrics[heartRateIndex] : null;
-      const runCadence = runCadenceIndex !== undefined && metric.metrics[runCadenceIndex] !== undefined ? metric.metrics[runCadenceIndex] : 0;
-      const elevation = elevationIndex !== undefined && metric.metrics[elevationIndex] !== undefined ? metric.metrics[elevationIndex] : null;
+        const speed =
+          speedIndex !== undefined && metric.metrics[speedIndex] !== undefined
+            ? metric.metrics[speedIndex]
+            : 0;
+        const heartRate =
+          heartRateIndex !== undefined &&
+          metric.metrics[heartRateIndex] !== undefined
+            ? metric.metrics[heartRateIndex]
+            : null;
+        const runCadence =
+          runCadenceIndex !== undefined &&
+          metric.metrics[runCadenceIndex] !== undefined
+            ? metric.metrics[runCadenceIndex]
+            : 0;
+        const elevation =
+          elevationIndex !== undefined &&
+          metric.metrics[elevationIndex] !== undefined
+            ? metric.metrics[elevationIndex]
+            : null;
 
-      if (heartRate !== null) {
-        //info(loggingLevel, `Extracted Heart Rate: ${heartRate} at timestamp: ${currentTimestamp}`);
-      }
+        if (heartRate !== null) {
+          //info(loggingLevel, `Extracted Heart Rate: ${heartRate} at timestamp: ${currentTimestamp}`);
+        }
 
-      const paceMinutesPerKm = speed > 0 ? (1000 / (speed * 60)) : 0; // Convert m/s to min/km
-      const activityDurationSeconds = (currentTimestamp - activityStartTime) / 1000; // Duration in seconds (assuming directTimestamp is in milliseconds)
-      const relativeDistanceMeters = currentDistance - initialDistance; // Distance in meters
+        const paceMinutesPerKm = speed > 0 ? 1000 / (speed * 60) : 0; // Convert m/s to min/km
+        const activityDurationSeconds =
+          (currentTimestamp - activityStartTime) / 1000; // Duration in seconds (assuming directTimestamp is in milliseconds)
+        const relativeDistanceMeters = currentDistance - initialDistance; // Distance in meters
 
-      return {
-        timestamp: currentTimestamp, // Store raw numerical timestamp (in milliseconds)
-        activityDuration: activityDurationSeconds / 60, // in minutes
-        distance: relativeDistanceMeters, // in meters
-        speed: speed ? parseFloat(speed.toFixed(2)) : 0,
-        pace: paceMinutesPerKm > 0 ? parseFloat(paceMinutesPerKm.toFixed(2)) : 0,
-        heartRate: heartRate,
-        runCadence: runCadence,
-        elevation: elevation,
-      };
-    }).filter(Boolean) as any[]; // Filter out null entries and assert type
+        return {
+          timestamp: currentTimestamp, // Store raw numerical timestamp (in milliseconds)
+          activityDuration: activityDurationSeconds / 60, // in minutes
+          distance: relativeDistanceMeters, // in meters
+          speed: speed ? parseFloat(speed.toFixed(2)) : 0,
+          pace:
+            paceMinutesPerKm > 0 ? parseFloat(paceMinutesPerKm.toFixed(2)) : 0,
+          heartRate: heartRate,
+          runCadence: runCadence,
+          elevation: elevation,
+        };
+      })
+      .filter(Boolean) as any[]; // Filter out null entries and assert type
 
     // Sort by timestamp to ensure chronological order
     processedMetrics.sort((a, b) => a.timestamp - b.timestamp);
@@ -290,44 +390,71 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
     // Downsampling
     const sampledData: any[] = [];
     const maxPoints = 50; // Maximum number of points to display on the chart
-    const samplingRate = Math.max(1, Math.floor(processedMetrics.length / maxPoints));
+    const samplingRate = Math.max(
+      1,
+      Math.floor(processedMetrics.length / maxPoints)
+    );
 
     for (let i = 0; i < processedMetrics.length; i++) {
-      if (i % samplingRate === 0 || i === processedMetrics.length - 1) { // Always include the last point
+      if (i % samplingRate === 0 || i === processedMetrics.length - 1) {
+        // Always include the last point
         sampledData.push(processedMetrics[i]);
       }
     }
 
-    return sampledData.map(dataPoint => ({
+    return sampledData.map((dataPoint) => ({
       ...dataPoint,
       distance: convertDistance(dataPoint.distance / 1000, 'km', distanceUnit), // Convert distance from meters to km, then to user's preferred unit
     }));
   };
 
-  const allChartData = processChartData(activityData.activity?.details?.activityDetailMetrics);
+  const allChartData = processChartData(
+    activityData.activity?.details?.activityDetailMetrics
+  );
 
   const paceData = allChartData.filter((data: any) => data.speed > 0); // Filter out zero speeds for meaningful pace
-  const heartRateData = allChartData.filter((data: any) => data.heartRate !== null && data.heartRate > 0);
-  const runCadenceData = allChartData.filter((data: any) => data.runCadence > 0);
-  const elevationData = allChartData.filter((data: any) => data.elevation !== null);
+  const heartRateData = allChartData.filter(
+    (data: any) => data.heartRate !== null && data.heartRate > 0
+  );
+  const runCadenceData = allChartData.filter(
+    (data: any) => data.runCadence > 0
+  );
+  const elevationData = allChartData.filter(
+    (data: any) => data.elevation !== null
+  );
 
-  info(loggingLevel, "Pace Data Timestamps:", paceData.map((d: any) => d.timestamp));
-  info(loggingLevel, "Heart Rate Data Timestamps:", heartRateData.map((d: any) => d.timestamp));
-  info(loggingLevel, "Elevation Data Timestamps:", elevationData.map((d: any) => d.timestamp));
-  info(loggingLevel, "Filtered Heart Rate Data:", heartRateData);
+  info(
+    loggingLevel,
+    'Pace Data Timestamps:',
+    paceData.map((d: any) => d.timestamp)
+  );
+  info(
+    loggingLevel,
+    'Heart Rate Data Timestamps:',
+    heartRateData.map((d: any) => d.timestamp)
+  );
+  info(
+    loggingLevel,
+    'Elevation Data Timestamps:',
+    elevationData.map((d: any) => d.timestamp)
+  );
+  info(loggingLevel, 'Filtered Heart Rate Data:', heartRateData);
 
-
-  const hrInTimezonesData = activityData.activity?.hr_in_timezones?.map((zone: any) => ({
-    name: `Zone ${zone.zoneNumber} (${zone.zoneLowBoundary} bpm)`,
-    'Time in Zone (s)': zone.secsInZone,
-  }));
+  const hrInTimezonesData = activityData.activity?.hr_in_timezones?.map(
+    (zone: any) => ({
+      name: `Zone ${zone.zoneNumber} (${zone.zoneLowBoundary} bpm)`,
+      'Time in Zone (s)': zone.secsInZone,
+    })
+  );
 
   // Extract summary data
-  const totalActivityDurationSeconds = activityData.activity?.activity?.duration || 0;
+  const totalActivityDurationSeconds =
+    activityData.activity?.activity?.duration || 0;
   const totalActivityCalories = activityData.activity?.activity?.calories || 0;
   const totalActivityAscent = activityData.activity?.activity?.totalAscent || 0;
   const averageHR = activityData.activity?.activity?.averageHR || 0;
-  const averageRunCadence = activityData.activity?.activity?.averageRunCadence || 0;
+  const averageRunCadence =
+    activityData.activity?.activity?.averageRunCadence || 0;
 
   let totalActivityDistanceForDisplay: number = 0;
   let averagePaceForDisplay: number = 0;
@@ -335,22 +462,36 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
   // Determine total activity distance
   if (allChartData.length > 0) {
     // Prioritize the last point from chart data, which is already in the preferred unit
-    totalActivityDistanceForDisplay = allChartData[allChartData.length - 1].distance;
-  } else if (activityData.activity?.activity?.distance && activityData.activity.activity.distance > 0) {
+    totalActivityDistanceForDisplay =
+      allChartData[allChartData.length - 1].distance;
+  } else if (
+    activityData.activity?.activity?.distance &&
+    activityData.activity.activity.distance > 0
+  ) {
     // Fallback to activityData.activity.distance if chart data is not available
     // activityData.activity.distance is in meters, convert to km then to preferred unit
-    totalActivityDistanceForDisplay = convertDistance(activityData.activity.activity.distance / 1000, 'km', distanceUnit);
+    totalActivityDistanceForDisplay = convertDistance(
+      activityData.activity.activity.distance / 1000,
+      'km',
+      distanceUnit
+    );
   }
 
   // Determine average pace
-  if (activityData.activity?.activity?.averagePace && activityData.activity.activity.averagePace > 0) {
+  if (
+    activityData.activity?.activity?.averagePace &&
+    activityData.activity.activity.averagePace > 0
+  ) {
     // activityData.activity.averagePace is assumed to be in min/km from the backend.
     averagePaceForDisplay = activityData.activity.activity.averagePace;
     if (distanceUnit === 'miles') {
       averagePaceForDisplay = averagePaceForDisplay * 1.60934; // Convert min/km to min/mi
     }
   } else if (paceData.length > 0) {
-    const totalPaceKm = paceData.reduce((sum: number, dataPoint: any) => sum + dataPoint.pace, 0); // pace is min/km
+    const totalPaceKm = paceData.reduce(
+      (sum: number, dataPoint: any) => sum + dataPoint.pace,
+      0
+    ); // pace is min/km
     if (paceData.length > 0) {
       let calculatedPace = totalPaceKm / paceData.length; // This is in min/km
       // If the preferred unit is miles, convert min/km to min/mi
@@ -361,16 +502,28 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
     }
   }
 
-  const totalActivityDurationFormatted = totalActivityDurationSeconds > 0 ? `${Math.floor(totalActivityDurationSeconds / 60)}:${(totalActivityDurationSeconds % 60).toFixed(0).padStart(2, '0')}` : 'N/A';
-  const totalActivityDistanceFormatted = (totalActivityDistanceForDisplay > 0)
-    ? `${totalActivityDistanceForDisplay.toFixed(2)} ${distanceUnit}`
-    : 'N/A';
-  const averagePaceFormatted = (averagePaceForDisplay > 0) ? `${averagePaceForDisplay.toFixed(2)} /${distanceUnit === 'km' ? 'km' : 'mi'}` : 'N/A';
-  const totalActivityAscentFormatted = totalActivityAscent > 0 ? `${totalActivityAscent.toFixed(0)}` : '--';
-  const totalActivityCaloriesFormatted = totalActivityCalories > 0 ? `${Math.round(convertEnergy(totalActivityCalories, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}` : 'N/A';
-  const averageHRFormatted = averageHR > 0 ? `${averageHR.toFixed(0)} bpm` : 'N/A';
-  const averageRunCadenceFormatted = averageRunCadence > 0 ? `${averageRunCadence.toFixed(0)} spm` : 'N/A';
-
+  const totalActivityDurationFormatted =
+    totalActivityDurationSeconds > 0
+      ? `${Math.floor(totalActivityDurationSeconds / 60)}:${(totalActivityDurationSeconds % 60).toFixed(0).padStart(2, '0')}`
+      : 'N/A';
+  const totalActivityDistanceFormatted =
+    totalActivityDistanceForDisplay > 0
+      ? `${totalActivityDistanceForDisplay.toFixed(2)} ${distanceUnit}`
+      : 'N/A';
+  const averagePaceFormatted =
+    averagePaceForDisplay > 0
+      ? `${averagePaceForDisplay.toFixed(2)} /${distanceUnit === 'km' ? 'km' : 'mi'}`
+      : 'N/A';
+  const totalActivityAscentFormatted =
+    totalActivityAscent > 0 ? `${totalActivityAscent.toFixed(0)}` : '--';
+  const totalActivityCaloriesFormatted =
+    totalActivityCalories > 0
+      ? `${Math.round(convertEnergy(totalActivityCalories, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`
+      : 'N/A';
+  const averageHRFormatted =
+    averageHR > 0 ? `${averageHR.toFixed(0)} bpm` : 'N/A';
+  const averageRunCadenceFormatted =
+    averageRunCadence > 0 ? `${averageRunCadence.toFixed(0)} spm` : 'N/A';
 
   const getXAxisDataKey = () => {
     switch (xAxisMode) {
@@ -389,13 +542,15 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
       case 'activityDuration':
         return t('reports.activityReport.activityDurationMin');
       case 'distance':
-        return t('reports.activityReport.distance') + ` (${distanceUnit === 'km' ? 'km' : 'mi'})`;
+        return (
+          t('reports.activityReport.distance') +
+          ` (${distanceUnit === 'km' ? 'km' : 'mi'})`
+        );
       case 'timeOfDay':
       default:
         return t('reports.activityReport.timeOfDayLocal');
     }
   };
-
 
   return (
     <div className="activity-report-visualizer p-4">
@@ -403,7 +558,10 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
         <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
           <span className="text-xl">{activityData.activity ? '🏃' : '🏋️'}</span>
         </div>
-        <h2 className="text-2xl font-bold">{activityData.activity?.activity.activityName || activityData.workout?.workoutName}</h2>
+        <h2 className="text-2xl font-bold">
+          {activityData.activity?.activity.activityName ||
+            activityData.workout?.workoutName}
+        </h2>
         <span className="ml-2 text-gray-500 cursor-pointer">✏️</span>
       </div>
 
@@ -411,74 +569,124 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
         <>
           <div className="flex flex-wrap gap-4 mb-6 text-sm text-muted-foreground">
             {activityData.activity?.activity.eventType && (
-              <span>{t('reports.activityReport.event')} {typeof activityData.activity.activity.eventType === 'object' ? (activityData.activity.activity.eventType as any).typeKey || t('common.notApplicable') : activityData.activity.activity.eventType}</span>
+              <span>
+                {t('reports.activityReport.event')}{' '}
+                {typeof activityData.activity.activity.eventType === 'object'
+                  ? (activityData.activity.activity.eventType as any).typeKey ||
+                    t('common.notApplicable')
+                  : activityData.activity.activity.eventType}
+              </span>
             )}
             {activityData.activity?.activity.course && (
-              <span className="mr-4">{t('reports.activityReport.course')} {typeof activityData.activity.activity.course === 'object' ? (activityData.activity.activity.course as any).typeKey || t('common.notApplicable') : activityData.activity.activity.course}</span>
+              <span className="mr-4">
+                {t('reports.activityReport.course')}{' '}
+                {typeof activityData.activity.activity.course === 'object'
+                  ? (activityData.activity.activity.course as any).typeKey ||
+                    t('common.notApplicable')
+                  : activityData.activity.activity.course}
+              </span>
             )}
             {activityData.activity?.activity.gear && (
-              <span className="mr-4">{t('reports.activityReport.gear')} {typeof activityData.activity.activity.gear === 'object' ? (activityData.activity.activity.gear as any).typeKey || t('common.notApplicable') : activityData.activity.activity.gear}</span>
+              <span className="mr-4">
+                {t('reports.activityReport.gear')}{' '}
+                {typeof activityData.activity.activity.gear === 'object'
+                  ? (activityData.activity.activity.gear as any).typeKey ||
+                    t('common.notApplicable')
+                  : activityData.activity.activity.gear}
+              </span>
             )}
           </div>
 
-          {activityData.activity?.details?.geoPolylineDTO?.polyline && activityData.activity.details.geoPolylineDTO.polyline.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-xl font-semibold mb-2">{t('reports.activityReport.activityMap')}</h3>
-              <ActivityReportMap polylineData={activityData.activity.details.geoPolylineDTO.polyline} />
-            </div>
-          )}
+          {activityData.activity?.details?.geoPolylineDTO?.polyline &&
+            activityData.activity.details.geoPolylineDTO.polyline.length >
+              0 && (
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold mb-2">
+                  {t('reports.activityReport.activityMap')}
+                </h3>
+                <ActivityReportMap
+                  polylineData={
+                    activityData.activity.details.geoPolylineDTO.polyline
+                  }
+                />
+              </div>
+            )}
 
           <div className="mb-8">
-            <h3 className="text-xl font-semibold mb-2">{t('reports.activityReport.stats')}</h3>
+            <h3 className="text-xl font-semibold mb-2">
+              {t('reports.activityReport.stats')}
+            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">{t('reports.activityReport.distance')}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {t('reports.activityReport.distance')}
+                  </CardTitle>
                   <FaRoute className="h-5 w-5 text-blue-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalActivityDistanceFormatted}</div>
+                  <div className="text-2xl font-bold">
+                    {totalActivityDistanceFormatted}
+                  </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">{t('reports.activityReport.time')}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {t('reports.activityReport.time')}
+                  </CardTitle>
                   <FaClock className="h-5 w-5 text-green-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalActivityDurationFormatted}</div>
+                  <div className="text-2xl font-bold">
+                    {totalActivityDurationFormatted}
+                  </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">{t('reports.activityReport.avgPace')}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {t('reports.activityReport.avgPace')}
+                  </CardTitle>
                   <FaWalking className="h-5 w-5 text-purple-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{averagePaceFormatted}</div>
+                  <div className="text-2xl font-bold">
+                    {averagePaceFormatted}
+                  </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">{t('reports.activityReport.totalAscent')}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {t('reports.activityReport.totalAscent')}
+                  </CardTitle>
                   <FaMountain className="h-5 w-5 text-gray-700" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalActivityAscentFormatted}</div>
+                  <div className="text-2xl font-bold">
+                    {totalActivityAscentFormatted}
+                  </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">{t('reports.activityReport.calories')}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {t('reports.activityReport.calories')}
+                  </CardTitle>
                   <FaFire className="h-5 w-5 text-red-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalActivityCaloriesFormatted}</div>
+                  <div className="text-2xl font-bold">
+                    {totalActivityCaloriesFormatted}
+                  </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">{t('reports.activityReport.heartRate')}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {t('reports.activityReport.heartRate')}
+                  </CardTitle>
                   <FaHeartbeat className="h-5 w-5 text-pink-500" />
                 </CardHeader>
                 <CardContent>
@@ -487,11 +695,15 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">{t('reports.activityReport.runningDynamics')}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {t('reports.activityReport.runningDynamics')}
+                  </CardTitle>
                   <FaRunning className="h-5 w-5 text-orange-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{averageRunCadenceFormatted}</div>
+                  <div className="text-2xl font-bold">
+                    {averageRunCadenceFormatted}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -523,30 +735,67 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
             {paceData && paceData.length > 0 && (
               <ZoomableChart title={t('reports.activityReport.paceAndSpeed')}>
                 {(isMaximized, zoomLevel) => (
-                  <Card className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}>
+                  <Card
+                    className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
+                  >
                     <CardHeader>
-                      <CardTitle className="text-sm">{t('reports.activityReport.paceAndSpeed')}</CardTitle>
+                      <CardTitle className="text-sm">
+                        {t('reports.activityReport.paceAndSpeed')}
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}>
+                    <CardContent
+                      className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                    >
                       {isMounted ? (
-                        <ResponsiveContainer width={`${100 * zoomLevel}%`} height={isMaximized ? `${100 * zoomLevel}%` : 300 * zoomLevel} minWidth={0} minHeight={0} debounce={100}>
-                          <LineChart data={paceData} syncId="activityReportSync">
+                        <ResponsiveContainer
+                          width={`${100 * zoomLevel}%`}
+                          height={
+                            isMaximized
+                              ? `${100 * zoomLevel}%`
+                              : 300 * zoomLevel
+                          }
+                          minWidth={0}
+                          minHeight={0}
+                          debounce={100}
+                        >
+                          <LineChart
+                            data={paceData}
+                            syncId="activityReportSync"
+                          >
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis
                               dataKey={getXAxisDataKey()}
-                              label={{ value: getXAxisLabel(), position: 'insideBottom', offset: -5 }}
+                              label={{
+                                value: getXAxisLabel(),
+                                position: 'insideBottom',
+                                offset: -5,
+                              }}
                               tickFormatter={(value) => {
-                                if (xAxisMode === 'activityDuration') return `${value.toFixed(0)} ${t('common.min')}`;
-                                if (xAxisMode === 'distance') return `${value.toFixed(2)}`;
-                                if (xAxisMode === 'timeOfDay') return new Date(value).toLocaleTimeString();
+                                if (xAxisMode === 'activityDuration')
+                                  return `${value.toFixed(0)} ${t('common.min')}`;
+                                if (xAxisMode === 'distance')
+                                  return `${value.toFixed(2)}`;
+                                if (xAxisMode === 'timeOfDay')
+                                  return new Date(value).toLocaleTimeString();
                                 return value;
                               }}
                               interval="preserveStartEnd"
                             />
-                            <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
-                            <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
+                            <YAxis
+                              yAxisId="left"
+                              orientation="left"
+                              stroke="#8884d8"
+                            />
+                            <YAxis
+                              yAxisId="right"
+                              orientation="right"
+                              stroke="#82ca9d"
+                            />
                             <Tooltip
-                              contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--background))',
+                                borderColor: 'hsl(var(--border))',
+                              }}
                               labelFormatter={(value) => {
                                 if (xAxisMode === 'timeOfDay') {
                                   return new Date(value).toLocaleTimeString();
@@ -561,13 +810,33 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
                               }}
                             />
                             <Legend />
-                            <Line yAxisId="left" type="monotone" dataKey="pace" stroke="#8884d8" name={t('reports.activityReport.paceMinPerKm')} dot={false} strokeWidth={2} isAnimationActive={false} />
-                            <Line yAxisId="right" type="monotone" dataKey="speed" stroke="#82ca9d" name={t('reports.activityReport.speedMPerS')} dot={false} strokeWidth={2} isAnimationActive={false} />
+                            <Line
+                              yAxisId="left"
+                              type="monotone"
+                              dataKey="pace"
+                              stroke="#8884d8"
+                              name={t('reports.activityReport.paceMinPerKm')}
+                              dot={false}
+                              strokeWidth={2}
+                              isAnimationActive={false}
+                            />
+                            <Line
+                              yAxisId="right"
+                              type="monotone"
+                              dataKey="speed"
+                              stroke="#82ca9d"
+                              name={t('reports.activityReport.speedMPerS')}
+                              dot={false}
+                              strokeWidth={2}
+                              isAnimationActive={false}
+                            />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
                         <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                          <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {t('common.loading', 'Loading chart...')}
+                          </span>
                         </div>
                       )}
                     </CardContent>
@@ -579,29 +848,58 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
             {heartRateData && heartRateData.length > 0 && (
               <ZoomableChart title={t('reports.activityReport.heartRateBpm')}>
                 {(isMaximized, zoomLevel) => (
-                  <Card className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}>
+                  <Card
+                    className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
+                  >
                     <CardHeader>
-                      <CardTitle className="text-sm">{t('reports.activityReport.heartRateBpm')}</CardTitle>
+                      <CardTitle className="text-sm">
+                        {t('reports.activityReport.heartRateBpm')}
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}>
+                    <CardContent
+                      className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                    >
                       {isMounted ? (
-                        <ResponsiveContainer width={`${100 * zoomLevel}%`} height={isMaximized ? `${100 * zoomLevel}%` : 300 * zoomLevel} minWidth={0} minHeight={0} debounce={100}>
-                          <LineChart data={heartRateData} syncId="activityReportSync">
+                        <ResponsiveContainer
+                          width={`${100 * zoomLevel}%`}
+                          height={
+                            isMaximized
+                              ? `${100 * zoomLevel}%`
+                              : 300 * zoomLevel
+                          }
+                          minWidth={0}
+                          minHeight={0}
+                          debounce={100}
+                        >
+                          <LineChart
+                            data={heartRateData}
+                            syncId="activityReportSync"
+                          >
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis
                               dataKey={getXAxisDataKey()}
-                              label={{ value: getXAxisLabel(), position: 'insideBottom', offset: -5 }}
+                              label={{
+                                value: getXAxisLabel(),
+                                position: 'insideBottom',
+                                offset: -5,
+                              }}
                               tickFormatter={(value) => {
-                                if (xAxisMode === 'activityDuration') return `${value.toFixed(0)} ${t('common.min')}`;
-                                if (xAxisMode === 'distance') return `${value.toFixed(2)}`;
-                                if (xAxisMode === 'timeOfDay') return new Date(value).toLocaleTimeString();
+                                if (xAxisMode === 'activityDuration')
+                                  return `${value.toFixed(0)} ${t('common.min')}`;
+                                if (xAxisMode === 'distance')
+                                  return `${value.toFixed(2)}`;
+                                if (xAxisMode === 'timeOfDay')
+                                  return new Date(value).toLocaleTimeString();
                                 return value;
                               }}
                               interval="preserveStartEnd"
                             />
                             <YAxis />
                             <Tooltip
-                              contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--background))',
+                                borderColor: 'hsl(var(--border))',
+                              }}
                               labelFormatter={(value) => {
                                 if (xAxisMode === 'timeOfDay') {
                                   return new Date(value).toLocaleTimeString();
@@ -616,12 +914,22 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
                               }}
                             />
                             <Legend />
-                            <Line type="monotone" dataKey="heartRate" stroke="#ff7300" name={t('reports.activityReport.heartRateBpm')} dot={false} strokeWidth={2} isAnimationActive={false} />
+                            <Line
+                              type="monotone"
+                              dataKey="heartRate"
+                              stroke="#ff7300"
+                              name={t('reports.activityReport.heartRateBpm')}
+                              dot={false}
+                              strokeWidth={2}
+                              isAnimationActive={false}
+                            />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
                         <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                          <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {t('common.loading', 'Loading chart...')}
+                          </span>
                         </div>
                       )}
                     </CardContent>
@@ -633,29 +941,58 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
             {runCadenceData && runCadenceData.length > 0 && (
               <ZoomableChart title={t('reports.activityReport.runCadenceSpM')}>
                 {(isMaximized, zoomLevel) => (
-                  <Card className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}>
+                  <Card
+                    className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
+                  >
                     <CardHeader>
-                      <CardTitle className="text-sm">{t('reports.activityReport.runCadenceSpM')}</CardTitle>
+                      <CardTitle className="text-sm">
+                        {t('reports.activityReport.runCadenceSpM')}
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}>
+                    <CardContent
+                      className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                    >
                       {isMounted ? (
-                        <ResponsiveContainer width={`${100 * zoomLevel}%`} height={isMaximized ? `${100 * zoomLevel}%` : 300 * zoomLevel} minWidth={0} minHeight={0} debounce={100}>
-                          <LineChart data={runCadenceData} syncId="activityReportSync">
+                        <ResponsiveContainer
+                          width={`${100 * zoomLevel}%`}
+                          height={
+                            isMaximized
+                              ? `${100 * zoomLevel}%`
+                              : 300 * zoomLevel
+                          }
+                          minWidth={0}
+                          minHeight={0}
+                          debounce={100}
+                        >
+                          <LineChart
+                            data={runCadenceData}
+                            syncId="activityReportSync"
+                          >
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis
                               dataKey={getXAxisDataKey()}
-                              label={{ value: getXAxisLabel(), position: 'insideBottom', offset: -5 }}
+                              label={{
+                                value: getXAxisLabel(),
+                                position: 'insideBottom',
+                                offset: -5,
+                              }}
                               tickFormatter={(value) => {
-                                if (xAxisMode === 'activityDuration') return `${value.toFixed(0)} ${t('common.min')}`;
-                                if (xAxisMode === 'distance') return `${value.toFixed(2)}`;
-                                if (xAxisMode === 'timeOfDay') return new Date(value).toLocaleTimeString();
+                                if (xAxisMode === 'activityDuration')
+                                  return `${value.toFixed(0)} ${t('common.min')}`;
+                                if (xAxisMode === 'distance')
+                                  return `${value.toFixed(2)}`;
+                                if (xAxisMode === 'timeOfDay')
+                                  return new Date(value).toLocaleTimeString();
                                 return value;
                               }}
                               interval="preserveStartEnd"
                             />
                             <YAxis />
                             <Tooltip
-                              contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--background))',
+                                borderColor: 'hsl(var(--border))',
+                              }}
                               labelFormatter={(value) => {
                                 if (xAxisMode === 'timeOfDay') {
                                   return new Date(value).toLocaleTimeString();
@@ -670,12 +1007,22 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
                               }}
                             />
                             <Legend />
-                            <Line type="monotone" dataKey="runCadence" stroke="#387900" name={t('reports.activityReport.runCadenceSpM')} dot={false} strokeWidth={2} isAnimationActive={false} />
+                            <Line
+                              type="monotone"
+                              dataKey="runCadence"
+                              stroke="#387900"
+                              name={t('reports.activityReport.runCadenceSpM')}
+                              dot={false}
+                              strokeWidth={2}
+                              isAnimationActive={false}
+                            />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
                         <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                          <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {t('common.loading', 'Loading chart...')}
+                          </span>
                         </div>
                       )}
                     </CardContent>
@@ -687,29 +1034,58 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
             {elevationData && elevationData.length > 0 && (
               <ZoomableChart title={t('reports.activityReport.elevationM')}>
                 {(isMaximized, zoomLevel) => (
-                  <Card className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}>
+                  <Card
+                    className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
+                  >
                     <CardHeader>
-                      <CardTitle className="text-sm">{t('reports.activityReport.elevationM')}</CardTitle>
+                      <CardTitle className="text-sm">
+                        {t('reports.activityReport.elevationM')}
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}>
+                    <CardContent
+                      className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                    >
                       {isMounted ? (
-                        <ResponsiveContainer width={`${100 * zoomLevel}%`} height={isMaximized ? `${100 * zoomLevel}%` : 300 * zoomLevel} minWidth={0} minHeight={0} debounce={100}>
-                          <LineChart data={elevationData} syncId="activityReportSync">
+                        <ResponsiveContainer
+                          width={`${100 * zoomLevel}%`}
+                          height={
+                            isMaximized
+                              ? `${100 * zoomLevel}%`
+                              : 300 * zoomLevel
+                          }
+                          minWidth={0}
+                          minHeight={0}
+                          debounce={100}
+                        >
+                          <LineChart
+                            data={elevationData}
+                            syncId="activityReportSync"
+                          >
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis
                               dataKey={getXAxisDataKey()}
-                              label={{ value: getXAxisLabel(), position: 'insideBottom', offset: -5 }}
+                              label={{
+                                value: getXAxisLabel(),
+                                position: 'insideBottom',
+                                offset: -5,
+                              }}
                               tickFormatter={(value) => {
-                                if (xAxisMode === 'activityDuration') return `${value.toFixed(0)} ${t('common.min')}`;
-                                if (xAxisMode === 'distance') return `${value.toFixed(2)}`;
-                                if (xAxisMode === 'timeOfDay') return new Date(value).toLocaleTimeString();
+                                if (xAxisMode === 'activityDuration')
+                                  return `${value.toFixed(0)} ${t('common.min')}`;
+                                if (xAxisMode === 'distance')
+                                  return `${value.toFixed(2)}`;
+                                if (xAxisMode === 'timeOfDay')
+                                  return new Date(value).toLocaleTimeString();
                                 return value;
                               }}
                               interval="preserveStartEnd"
                             />
                             <YAxis />
                             <Tooltip
-                              contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--background))',
+                                borderColor: 'hsl(var(--border))',
+                              }}
                               labelFormatter={(value) => {
                                 if (xAxisMode === 'timeOfDay') {
                                   return new Date(value).toLocaleTimeString();
@@ -722,15 +1098,27 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
                                 }
                                 return String(value);
                               }}
-                              formatter={(value: number) => Number(value).toFixed(2)}
+                              formatter={(value: number) =>
+                                Number(value).toFixed(2)
+                              }
                             />
                             <Legend />
-                            <Line type="monotone" dataKey="elevation" stroke="#007bff" name={t('reports.activityReport.elevationM')} dot={false} strokeWidth={2} isAnimationActive={false} />
+                            <Line
+                              type="monotone"
+                              dataKey="elevation"
+                              stroke="#007bff"
+                              name={t('reports.activityReport.elevationM')}
+                              dot={false}
+                              strokeWidth={2}
+                              isAnimationActive={false}
+                            />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
                         <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                          <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {t('common.loading', 'Loading chart...')}
+                          </span>
                         </div>
                       )}
                     </CardContent>
@@ -740,30 +1128,59 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
             )}
 
             {hrInTimezonesData && hrInTimezonesData.length > 0 && (
-              <ZoomableChart title={t('reports.activityReport.heartRateTimeInZones')}>
+              <ZoomableChart
+                title={t('reports.activityReport.heartRateTimeInZones')}
+              >
                 {(isMaximized, zoomLevel) => (
-                  <Card className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}>
+                  <Card
+                    className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
+                  >
                     <CardHeader>
-                      <CardTitle className="text-sm">{t('reports.activityReport.heartRateTimeInZones')}</CardTitle>
+                      <CardTitle className="text-sm">
+                        {t('reports.activityReport.heartRateTimeInZones')}
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}>
+                    <CardContent
+                      className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                    >
                       {isMounted ? (
-                        <ResponsiveContainer width={`${100 * zoomLevel}%`} height={isMaximized ? `${100 * zoomLevel}%` : 300 * zoomLevel} minWidth={0} minHeight={0} debounce={100}>
+                        <ResponsiveContainer
+                          width={`${100 * zoomLevel}%`}
+                          height={
+                            isMaximized
+                              ? `${100 * zoomLevel}%`
+                              : 300 * zoomLevel
+                          }
+                          minWidth={0}
+                          minHeight={0}
+                          debounce={100}
+                        >
                           <BarChart data={hrInTimezonesData}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="name" />
                             <YAxis />
                             <Tooltip
-                              contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
-                              formatter={(value: number) => `${value.toFixed(2)} ${t('reports.activityReport.timeInZoneS')}`}
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--background))',
+                                borderColor: 'hsl(var(--border))',
+                              }}
+                              formatter={(value: number) =>
+                                `${value.toFixed(2)} ${t('reports.activityReport.timeInZoneS')}`
+                              }
                             />
                             <Legend />
-                            <Bar dataKey={t('reports.activityReport.timeInZoneS')} fill="#8884d8" isAnimationActive={false} />
+                            <Bar
+                              dataKey={t('reports.activityReport.timeInZoneS')}
+                              fill="#8884d8"
+                              isAnimationActive={false}
+                            />
                           </BarChart>
                         </ResponsiveContainer>
                       ) : (
                         <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                          <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {t('common.loading', 'Loading chart...')}
+                          </span>
                         </div>
                       )}
                     </CardContent>
@@ -773,16 +1190,23 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({ exe
             )}
           </div>
 
-          {activityData.activity?.splits?.lapDTOs && activityData.activity.splits.lapDTOs.length > 0 && (
-            <ZoomableChart title={t('reports.activityReport.lapsTable')}>
-              {(isMaximized, zoomLevel) => (
-                <ActivityReportLapTable lapDTOs={activityData.activity.splits.lapDTOs} isMaximized={isMaximized} zoomLevel={zoomLevel} />
-              )}
-            </ZoomableChart>
-          )}
+          {activityData.activity?.splits?.lapDTOs &&
+            activityData.activity.splits.lapDTOs.length > 0 && (
+              <ZoomableChart title={t('reports.activityReport.lapsTable')}>
+                {(isMaximized, zoomLevel) => (
+                  <ActivityReportLapTable
+                    lapDTOs={activityData.activity.splits.lapDTOs}
+                    isMaximized={isMaximized}
+                    zoomLevel={zoomLevel}
+                  />
+                )}
+              </ZoomableChart>
+            )}
         </>
       )}
-      {activityData.workout && <WorkoutReportVisualizer workoutData={activityData.workout} />}
+      {activityData.workout && (
+        <WorkoutReportVisualizer workoutData={activityData.workout} />
+      )}
     </div>
   );
 };

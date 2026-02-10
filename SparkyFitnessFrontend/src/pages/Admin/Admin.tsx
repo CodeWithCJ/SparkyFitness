@@ -1,6 +1,6 @@
-import AuthenticationSettings from "./AuthenticationSettings";
-import BackupSettings from "./BackupSettings";
-import UserManagement from "./UserManagement";
+import AuthenticationSettings from './AuthenticationSettings';
+import BackupSettings from './BackupSettings';
+import UserManagement from './UserManagement';
 
 const AdminPage = () => {
   return (

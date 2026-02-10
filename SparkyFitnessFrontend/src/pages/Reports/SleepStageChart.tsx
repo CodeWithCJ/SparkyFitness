@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SleepChartData, SLEEP_STAGE_COLORS } from '@/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { type SleepChartData, SLEEP_STAGE_COLORS } from '@/types';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import ZoomableChart from '@/components/ZoomableChart';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -31,7 +31,9 @@ const stageLabels: { [key: string]: string } = {
   deep: 'Deep',
 };
 
-const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => {
+const SleepStageChart: React.FC<SleepStageChartProps> = ({
+  sleepChartData,
+}) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
   const { resolvedTheme } = useTheme();
@@ -41,14 +43,26 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
     setIsMounted(true);
   }, []);
 
-  if (!sleepChartData || !sleepChartData.segments || sleepChartData.segments.length === 0) {
+  if (
+    !sleepChartData ||
+    !sleepChartData.segments ||
+    sleepChartData.segments.length === 0
+  ) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{t("sleepReport.sleepHypnogram", "Sleep Hypnogram")} - {formatDateInUserTimezone(sleepChartData.date, dateFormat)}</CardTitle>
+          <CardTitle>
+            {t('sleepReport.sleepHypnogram', 'Sleep Hypnogram')} -{' '}
+            {formatDateInUserTimezone(sleepChartData.date, dateFormat)}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <p>{t("sleepReport.noSleepStageDataAvailable", "No sleep stage data available for this entry.")}</p>
+          <p>
+            {t(
+              'sleepReport.noSleepStageDataAvailable',
+              'No sleep stage data available for this entry.'
+            )}
+          </p>
         </CardContent>
       </Card>
     );
@@ -58,11 +72,16 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{t("sleepReport.sleepHypnogram", "Sleep Hypnogram")} - {formatDateInUserTimezone(sleepChartData.date, dateFormat)}</CardTitle>
+          <CardTitle>
+            {t('sleepReport.sleepHypnogram', 'Sleep Hypnogram')} -{' '}
+            {formatDateInUserTimezone(sleepChartData.date, dateFormat)}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-48 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-            <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading...')}</span>
+            <span className="text-xs text-muted-foreground">
+              {t('common.loading', 'Loading...')}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -70,11 +89,18 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
   }
 
   const sortedSegments = sleepChartData.segments
-    .filter(segment => stageYPositions[segment.stage_type] !== undefined) // Filter out unknown stages
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+    .filter((segment) => stageYPositions[segment.stage_type] !== undefined) // Filter out unknown stages
+    .sort(
+      (a, b) =>
+        new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+    );
 
-  const minTime = Math.min(...sortedSegments.map(s => new Date(s.start_time).getTime()));
-  const maxTime = Math.max(...sortedSegments.map(s => new Date(s.end_time).getTime()));
+  const minTime = Math.min(
+    ...sortedSegments.map((s) => new Date(s.start_time).getTime())
+  );
+  const maxTime = Math.max(
+    ...sortedSegments.map((s) => new Date(s.end_time).getTime())
+  );
   const totalDurationMs = maxTime - minTime;
 
   // Use a fixed width for the SVG to allow for zooming, similar to the Recharts approach
@@ -119,8 +145,14 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
 
       // Only draw connecting lines if there's a gap or stage change
       if (current.stage_type !== next.stage_type || currentEndX < nextStartX) {
-        const y1 = stageYPositions[current.stage_type] + BAR_VERTICAL_OFFSET + BAR_HEIGHT / 2;
-        const y2 = stageYPositions[next.stage_type] + BAR_VERTICAL_OFFSET + BAR_HEIGHT / 2;
+        const y1 =
+          stageYPositions[current.stage_type] +
+          BAR_VERTICAL_OFFSET +
+          BAR_HEIGHT / 2;
+        const y2 =
+          stageYPositions[next.stage_type] +
+          BAR_VERTICAL_OFFSET +
+          BAR_HEIGHT / 2;
 
         // Draw vertical line from current stage end to next stage start
         lines.push(
@@ -136,7 +168,10 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
         );
 
         // Draw horizontal line if there's a time gap between segments at the same stage level
-        if (currentEndX < nextStartX && current.stage_type === next.stage_type) {
+        if (
+          currentEndX < nextStartX &&
+          current.stage_type === next.stage_type
+        ) {
           lines.push(
             <line
               key={`h-line-gap-${i}`}
@@ -183,7 +218,10 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
           fill={resolvedTheme === 'dark' ? 'white' : 'black'}
           fontSize="12"
         >
-          {t(`sleepAnalyticsCharts.${stageType === 'light' ? 'core' : stageType}`, stageLabels[stageType])}
+          {t(
+            `sleepAnalyticsCharts.${stageType === 'light' ? 'core' : stageType}`,
+            stageLabels[stageType]
+          )}
         </text>
       );
     });
@@ -194,7 +232,11 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
       const timeMs = minTime + (totalDurationMs / numTimeLabels) * i;
       const xPos = getX(timeMs);
       const date = new Date(timeMs);
-      const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      const timeString = date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
 
       gridLines.push(
         <line
@@ -232,18 +274,28 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
   };
 
   return (
-    <ZoomableChart title={t("sleepReport.sleepHypnogram", "Sleep Hypnogram")}>
+    <ZoomableChart title={t('sleepReport.sleepHypnogram', 'Sleep Hypnogram')}>
       {(isMaximized, zoomLevel) => (
         <Card>
           <CardHeader>
-            <CardTitle>{t("sleepReport.sleepHypnogram", "Sleep Hypnogram")} - {formatDateInUserTimezone(sleepChartData.date, dateFormat)}</CardTitle>
+            <CardTitle>
+              {t('sleepReport.sleepHypnogram', 'Sleep Hypnogram')} -{' '}
+              {formatDateInUserTimezone(sleepChartData.date, dateFormat)}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex flex-wrap justify-center gap-x-4 gap-y-2">
               {Object.entries(stageLabels).map(([stageKey, stageLabel]) => {
                 const totalDurationSeconds = sortedSegments
-                  .filter(s => s.stage_type === stageKey)
-                  .reduce((acc, s) => acc + (new Date(s.end_time).getTime() - new Date(s.start_time).getTime()) / 1000, 0);
+                  .filter((s) => s.stage_type === stageKey)
+                  .reduce(
+                    (acc, s) =>
+                      acc +
+                      (new Date(s.end_time).getTime() -
+                        new Date(s.start_time).getTime()) /
+                        1000,
+                    0
+                  );
 
                 if (totalDurationSeconds === 0) return null;
 
@@ -257,12 +309,22 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
                       className="mr-2 h-3 w-3 rounded-full"
                       style={{ backgroundColor: SLEEP_STAGE_COLORS[stageKey] }}
                     ></span>
-                    <span>{t(`sleepAnalyticsCharts.${stageKey === 'light' ? 'core' : stageKey}`, stageLabel)}: <strong>{durationString}</strong></span>
+                    <span>
+                      {t(
+                        `sleepAnalyticsCharts.${stageKey === 'light' ? 'core' : stageKey}`,
+                        stageLabel
+                      )}
+                      : <strong>{durationString}</strong>
+                    </span>
                   </div>
                 );
               })}
             </div>
-            <div className={(isMaximized ? "h-[calc(95vh-200px)]" : "h-48") + " w-full"}>
+            <div
+              className={
+                (isMaximized ? 'h-[calc(95vh-200px)]' : 'h-48') + ' w-full'
+              }
+            >
               <svg
                 width="100%"
                 height="100%"
@@ -270,7 +332,13 @@ const SleepStageChart: React.FC<SleepStageChartProps> = ({ sleepChartData }) => 
                 preserveAspectRatio="xMidYMid meet"
                 style={{ overflow: 'visible' }}
               >
-                <rect x="-60" y="0" width={SVG_BASE_WIDTH + 80} height={CHART_HEIGHT + 40} fill={resolvedTheme === 'dark' ? 'black' : 'white'} />
+                <rect
+                  x="-60"
+                  y="0"
+                  width={SVG_BASE_WIDTH + 80}
+                  height={CHART_HEIGHT + 40}
+                  fill={resolvedTheme === 'dark' ? 'black' : 'white'}
+                />
                 {renderGridAndLabels()}
                 {renderConnectingLines()}
                 {renderSegments()}

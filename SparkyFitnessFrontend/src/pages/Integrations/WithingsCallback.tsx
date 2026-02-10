@@ -1,4 +1,4 @@
-import  { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { post } from '@/utils/api';
 import { toast } from '@/components/ui/use-toast';
@@ -62,7 +62,9 @@ const WithingsCallback = () => {
           </>
         ) : (
           <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700 mb-4">{message}</p>
+            <p className="text-lg font-semibold text-gray-700 mb-4">
+              {message}
+            </p>
           </div>
         )}
       </div>

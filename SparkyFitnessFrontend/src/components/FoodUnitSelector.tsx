@@ -1,20 +1,36 @@
-import { useState, useEffect, useCallback } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { usePreferences } from "@/contexts/PreferencesContext"; // Import usePreferences
-import { debug, info, warn, error } from '@/utils/logging'; // Import logging utility
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { debug, info, warn, error } from '@/utils/logging';
 import { loadFoodVariants } from '@/services/foodUnitService';
-import { Food, FoodVariant } from '@/types/food';
-
+import type { Food, FoodVariant } from '@/types/food';
 
 interface FoodUnitSelectorProps {
   food: Food;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (food: Food, quantity: number, unit: string, selectedVariant: FoodVariant) => void;
+  onSelect: (
+    food: Food,
+    quantity: number,
+    unit: string,
+    selectedVariant: FoodVariant
+  ) => void;
   showUnitSelector?: boolean; // New prop to control visibility
   initialQuantity?: number;
   initialUnit?: string;
@@ -32,27 +48,40 @@ const FoodUnitSelector = ({
   initialVariantId,
 }: FoodUnitSelectorProps) => {
   const { loggingLevel, energyUnit, convertEnergy } = usePreferences(); // Get logging level, energyUnit, convertEnergy
-  debug(loggingLevel, "FoodUnitSelector component rendered.", { food, open });
+  debug(loggingLevel, 'FoodUnitSelector component rendered.', { food, open });
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     // This component does not import useTranslation, so we'll hardcode or pass t() from parent if it were needed for translation
     return unit === 'kcal' ? 'kcal' : 'kJ';
   };
   const [variants, setVariants] = useState<FoodVariant[]>([]);
-  const [selectedVariant, setSelectedVariant] = useState<FoodVariant | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<FoodVariant | null>(
+    null
+  );
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    debug(loggingLevel, "FoodUnitSelector open/food useEffect triggered.", { open, food, initialQuantity, initialUnit, initialVariantId });
-    if (open && food && food.id) { // Ensure food.id exists before loading variants
+    debug(loggingLevel, 'FoodUnitSelector open/food useEffect triggered.', {
+      open,
+      food,
+      initialQuantity,
+      initialUnit,
+      initialVariantId,
+    });
+    if (open && food && food.id) {
+      // Ensure food.id exists before loading variants
       loadVariantsData();
-      setQuantity(initialQuantity !== undefined ? initialQuantity : (food.default_variant?.serving_size || 1));
+      setQuantity(
+        initialQuantity !== undefined
+          ? initialQuantity
+          : food.default_variant?.serving_size || 1
+      );
     }
   }, [open, food, initialQuantity, initialUnit, initialVariantId]);
 
   const loadVariantsData = async () => {
-    debug(loggingLevel, "Loading food variants for food ID:", food?.id);
+    debug(loggingLevel, 'Loading food variants for food ID:', food?.id);
     setLoading(true);
     try {
       const data = await loadFoodVariants(food.id);
@@ -84,8 +113,8 @@ const FoodUnitSelector = ({
       let combinedVariants: FoodVariant[] = [primaryUnit];
 
       if (data && data.length > 0) {
-        info(loggingLevel, "Food variants loaded successfully:", data);
-        const variantsFromDb = data.map(variant => ({
+        info(loggingLevel, 'Food variants loaded successfully:', data);
+        const variantsFromDb = data.map((variant) => ({
           id: variant.id,
           serving_size: variant.serving_size,
           serving_unit: variant.serving_unit,
@@ -110,15 +139,22 @@ const FoodUnitSelector = ({
 
         // Ensure the primary unit is always included and is the first option.
         // Then, add any other variants from the database that are not the primary unit (based on ID).
-        const otherVariants = variantsFromDb.filter(variant => variant.id !== primaryUnit.id);
+        const otherVariants = variantsFromDb.filter(
+          (variant) => variant.id !== primaryUnit.id
+        );
         combinedVariants = [primaryUnit, ...otherVariants];
       } else {
-        info(loggingLevel, "No additional variants found, using primary food unit only.");
+        info(
+          loggingLevel,
+          'No additional variants found, using primary food unit only.'
+        );
       }
-      
+
       setVariants(combinedVariants);
       if (initialVariantId) {
-        const variantToSelect = combinedVariants.find(v => v.id === initialVariantId);
+        const variantToSelect = combinedVariants.find(
+          (v) => v.id === initialVariantId
+        );
         setSelectedVariant(variantToSelect || combinedVariants[0]);
       } else {
         setSelectedVariant(combinedVariants[0]); // Select the primary unit by default
@@ -157,13 +193,13 @@ const FoodUnitSelector = ({
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    debug(loggingLevel, "Handling submit.");
+    debug(loggingLevel, 'Handling submit.');
     if (selectedVariant) {
       info(loggingLevel, 'Submitting food selection:', {
         food,
         quantity,
         unit: selectedVariant.serving_unit,
-        variantId: selectedVariant.id || undefined
+        variantId: selectedVariant.id || undefined,
       });
 
       // Pass the user-entered quantity directly, as it now represents the number of servings.
@@ -173,20 +209,20 @@ const FoodUnitSelector = ({
       onOpenChange(false);
       setQuantity(1);
     } else {
-      warn(loggingLevel, "Submit called with no selected variant.");
+      warn(loggingLevel, 'Submit called with no selected variant.');
     }
   };
 
   const calculateNutrition = () => {
-    debug(loggingLevel, "Calculating nutrition.");
+    debug(loggingLevel, 'Calculating nutrition.');
     if (!selectedVariant) {
-      warn(loggingLevel, "calculateNutrition called with no selected variant.");
+      warn(loggingLevel, 'calculateNutrition called with no selected variant.');
       return null;
     }
 
     info(loggingLevel, 'Calculating nutrition for:', {
       selectedVariant,
-      quantity
+      quantity,
     });
 
     const nutrientValuesPerReferenceSize = {
@@ -212,18 +248,26 @@ const FoodUnitSelector = ({
 
     // Calculate total nutrition: (nutrient_value_per_reference_size / effective_reference_size) * quantity_consumed
     const result = {
-      calories: (nutrientValuesPerReferenceSize.calories / effectiveReferenceSize) * quantity, // This result is in kcal
-      protein: (nutrientValuesPerReferenceSize.protein / effectiveReferenceSize) * quantity,
-      carbs: (nutrientValuesPerReferenceSize.carbs / effectiveReferenceSize) * quantity,
-      fat: (nutrientValuesPerReferenceSize.fat / effectiveReferenceSize) * quantity,
+      calories:
+        (nutrientValuesPerReferenceSize.calories / effectiveReferenceSize) *
+        quantity, // This result is in kcal
+      protein:
+        (nutrientValuesPerReferenceSize.protein / effectiveReferenceSize) *
+        quantity,
+      carbs:
+        (nutrientValuesPerReferenceSize.carbs / effectiveReferenceSize) *
+        quantity,
+      fat:
+        (nutrientValuesPerReferenceSize.fat / effectiveReferenceSize) *
+        quantity,
     };
-    debug(loggingLevel, "Calculated nutrition result:", result);
+    debug(loggingLevel, 'Calculated nutrition result:', result);
 
     return result;
   };
 
   const nutrition = calculateNutrition();
-  const focusAndSelect = useCallback(e => {
+  const focusAndSelect = useCallback((e) => {
     if (e) {
       e.focus();
       e.select();
@@ -231,12 +275,21 @@ const FoodUnitSelector = ({
   }, []);
 
   return (
-    <Dialog open={open && (showUnitSelector ?? true)} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open && (showUnitSelector ?? true)}
+      onOpenChange={onOpenChange}
+    >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{initialQuantity ? `Edit ${food?.name}` : `Add ${food?.name} to Meal`}</DialogTitle>
+          <DialogTitle>
+            {initialQuantity
+              ? `Edit ${food?.name}`
+              : `Add ${food?.name} to Meal`}
+          </DialogTitle>
           <DialogDescription>
-            {initialQuantity ? `Edit the quantity and unit for ${food?.name}.` : `Select the quantity and unit for your food entry.`}
+            {initialQuantity
+              ? `Edit the quantity and unit for ${food?.name}.`
+              : `Select the quantity and unit for your food entry.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -244,72 +297,85 @@ const FoodUnitSelector = ({
           <div>Loading units...</div>
         ) : (
           <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="quantity">Quantity</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  value={quantity}
-                  ref={focusAndSelect}
-                  onChange={(e) => {
-                    const newQuantity = Number(e.target.value);
-                    debug(loggingLevel, "Quantity changed:", newQuantity);
-                    setQuantity(newQuantity);
-                  }}
-                />
-              </div>
-              <div>
-                <Label htmlFor="unit">Unit</Label>
-                <Select
-                  value={selectedVariant?.id || ''} // Use empty string for default if no ID
-                  onValueChange={(value) => {
-                    debug(loggingLevel, "Unit selected:", value);
-                    const variant = variants.find(v => v.id === value); // Match by actual ID
-                    setSelectedVariant(variant || null);
-                    if (variant) {
-                      setQuantity(variant.serving_size); // Update quantity to the new variant's serving size
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {variants.map((variant) => (
-                      <SelectItem key={variant.id} value={variant.id}> {/* Use actual ID as key and value */}
-                        {variant.serving_unit}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {nutrition && selectedVariant && (
-              <div className="bg-muted p-3 rounded-lg">
-                <h4 className="font-medium mb-2">Nutrition for {quantity} {selectedVariant.serving_unit}:</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>{Math.round(convertEnergy(nutrition.calories, 'kcal', energyUnit))} {getEnergyUnitString(energyUnit)}</div>
-                  <div>{nutrition.protein.toFixed(1)}g protein</div>
-                  <div>{nutrition.carbs.toFixed(1)}g carbs</div>
-                  <div>{nutrition.fat.toFixed(1)}g fat</div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="quantity">Quantity</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    value={quantity}
+                    ref={focusAndSelect}
+                    onChange={(e) => {
+                      const newQuantity = Number(e.target.value);
+                      debug(loggingLevel, 'Quantity changed:', newQuantity);
+                      setQuantity(newQuantity);
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="unit">Unit</Label>
+                  <Select
+                    value={selectedVariant?.id || ''} // Use empty string for default if no ID
+                    onValueChange={(value) => {
+                      debug(loggingLevel, 'Unit selected:', value);
+                      const variant = variants.find((v) => v.id === value); // Match by actual ID
+                      setSelectedVariant(variant || null);
+                      if (variant) {
+                        setQuantity(variant.serving_size); // Update quantity to the new variant's serving size
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {variants.map((variant) => (
+                        <SelectItem key={variant.id} value={variant.id}>
+                          {' '}
+                          {/* Use actual ID as key and value */}
+                          {variant.serving_unit}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            )}
 
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={!selectedVariant}>
-                {initialQuantity ? 'Update Food' : 'Add to Meal'}
-              </Button>
+              {nutrition && selectedVariant && (
+                <div className="bg-muted p-3 rounded-lg">
+                  <h4 className="font-medium mb-2">
+                    Nutrition for {quantity} {selectedVariant.serving_unit}:
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      {Math.round(
+                        convertEnergy(nutrition.calories, 'kcal', energyUnit)
+                      )}{' '}
+                      {getEnergyUnitString(energyUnit)}
+                    </div>
+                    <div>{nutrition.protein.toFixed(1)}g protein</div>
+                    <div>{nutrition.carbs.toFixed(1)}g carbs</div>
+                    <div>{nutrition.fat.toFixed(1)}g fat</div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={!selectedVariant}>
+                  {initialQuantity ? 'Update Food' : 'Add to Meal'}
+                </Button>
+              </div>
             </div>
-          </div>
           </form>
         )}
       </DialogContent>

@@ -1,65 +1,65 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Plus, Trash2, Copy } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { toast } from "@/hooks/use-toast";
-import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
+} from '@/components/ui/select';
+import { Plus, Trash2, Copy } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from '@/hooks/use-toast';
+import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import {
   isUUID,
   saveFood,
   loadFoodVariants, // Also re-add loadFoodVariants as it's used
-} from "@/services/enhancedCustomFoodFormService";
-import { updateFoodEntriesSnapshot } from "@/services/foodService";
-import { Food, FoodVariant, GlycemicIndex } from "@/types/food";
-import { UserCustomNutrient } from "@/types/customNutrient";
-import { customNutrientService } from "@/services/customNutrientService";
+} from '@/services/enhancedCustomFoodFormService';
+import { updateFoodEntriesSnapshot } from '@/services/foodService';
+import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
+import type { UserCustomNutrient } from '@/types/customNutrient';
+import { customNutrientService } from '@/services/customNutrientService';
 
 type NumericFoodVariantKeys = Exclude<
   keyof FoodVariant,
-  | "id"
-  | "serving_unit"
-  | "is_default"
-  | "is_locked"
-  | "glycemic_index"
-  | "custom_nutrients"
+  | 'id'
+  | 'serving_unit'
+  | 'is_default'
+  | 'is_locked'
+  | 'glycemic_index'
+  | 'custom_nutrients'
 >;
 
 const nutrientFields: NumericFoodVariantKeys[] = [
-  "calories",
-  "protein",
-  "carbs",
-  "fat",
-  "saturated_fat",
-  "polyunsaturated_fat",
-  "monounsaturated_fat",
-  "trans_fat",
-  "cholesterol",
-  "sodium",
-  "potassium",
-  "dietary_fiber",
-  "sugars",
-  "vitamin_a",
-  "vitamin_c",
-  "calcium",
-  "iron",
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
+  'trans_fat',
+  'cholesterol',
+  'sodium',
+  'potassium',
+  'dietary_fiber',
+  'sugars',
+  'vitamin_a',
+  'vitamin_c',
+  'calcium',
+  'iron',
 ];
 
 // Local type that allows empty string for form inputs
 type FormFoodVariant = Omit<FoodVariant, NumericFoodVariantKeys> & {
-  [K in NumericFoodVariantKeys]?: number | "";
+  [K in NumericFoodVariantKeys]?: number | '';
 };
 
 // Helper to convert FormFoodVariant to FoodVariant (empty strings become 0)
@@ -88,47 +88,47 @@ const formVariantToFoodVariant = (variant: FormFoodVariant): FoodVariant => ({
 // Helper to convert FoodVariant to FormFoodVariant (0 becomes empty string for display)
 const foodVariantToFormVariant = (variant: FoodVariant): FormFoodVariant => ({
   ...variant,
-  calories: variant.calories === 0 ? "" : variant.calories,
-  protein: variant.protein === 0 ? "" : variant.protein,
-  carbs: variant.carbs === 0 ? "" : variant.carbs,
-  fat: variant.fat === 0 ? "" : variant.fat,
-  saturated_fat: variant.saturated_fat === 0 ? "" : variant.saturated_fat,
+  calories: variant.calories === 0 ? '' : variant.calories,
+  protein: variant.protein === 0 ? '' : variant.protein,
+  carbs: variant.carbs === 0 ? '' : variant.carbs,
+  fat: variant.fat === 0 ? '' : variant.fat,
+  saturated_fat: variant.saturated_fat === 0 ? '' : variant.saturated_fat,
   polyunsaturated_fat:
-    variant.polyunsaturated_fat === 0 ? "" : variant.polyunsaturated_fat,
+    variant.polyunsaturated_fat === 0 ? '' : variant.polyunsaturated_fat,
   monounsaturated_fat:
-    variant.monounsaturated_fat === 0 ? "" : variant.monounsaturated_fat,
-  trans_fat: variant.trans_fat === 0 ? "" : variant.trans_fat,
-  cholesterol: variant.cholesterol === 0 ? "" : variant.cholesterol,
-  sodium: variant.sodium === 0 ? "" : variant.sodium,
-  potassium: variant.potassium === 0 ? "" : variant.potassium,
-  dietary_fiber: variant.dietary_fiber === 0 ? "" : variant.dietary_fiber,
-  sugars: variant.sugars === 0 ? "" : variant.sugars,
-  vitamin_a: variant.vitamin_a === 0 ? "" : variant.vitamin_a,
-  vitamin_c: variant.vitamin_c === 0 ? "" : variant.vitamin_c,
-  calcium: variant.calcium === 0 ? "" : variant.calcium,
-  iron: variant.iron === 0 ? "" : variant.iron,
+    variant.monounsaturated_fat === 0 ? '' : variant.monounsaturated_fat,
+  trans_fat: variant.trans_fat === 0 ? '' : variant.trans_fat,
+  cholesterol: variant.cholesterol === 0 ? '' : variant.cholesterol,
+  sodium: variant.sodium === 0 ? '' : variant.sodium,
+  potassium: variant.potassium === 0 ? '' : variant.potassium,
+  dietary_fiber: variant.dietary_fiber === 0 ? '' : variant.dietary_fiber,
+  sugars: variant.sugars === 0 ? '' : variant.sugars,
+  vitamin_a: variant.vitamin_a === 0 ? '' : variant.vitamin_a,
+  vitamin_c: variant.vitamin_c === 0 ? '' : variant.vitamin_c,
+  calcium: variant.calcium === 0 ? '' : variant.calcium,
+  iron: variant.iron === 0 ? '' : variant.iron,
 });
 
 const sanitizeGlycemicIndexFrontend = (
-  gi: string | null | undefined,
+  gi: string | null | undefined
 ): GlycemicIndex => {
   const allowedGICategories: GlycemicIndex[] = [
-    "None",
-    "Very Low",
-    "Low",
-    "Medium",
-    "High",
-    "Very High",
+    'None',
+    'Very Low',
+    'Low',
+    'Medium',
+    'High',
+    'Very High',
   ];
   if (
     gi === null ||
     gi === undefined ||
-    gi === "" ||
-    gi === "0" ||
-    gi === "0.0" ||
+    gi === '' ||
+    gi === '0' ||
+    gi === '0.0' ||
     !allowedGICategories.includes(gi as GlycemicIndex)
   ) {
-    return "None";
+    return 'None';
   }
   return gi as GlycemicIndex;
 };
@@ -141,29 +141,29 @@ interface EnhancedCustomFoodFormProps {
 }
 
 const COMMON_UNITS = [
-  "g",
-  "kg",
-  "mg",
-  "oz",
-  "lb",
-  "ml",
-  "l",
-  "cup",
-  "tbsp",
-  "tsp",
-  "piece",
-  "slice",
-  "serving",
-  "can",
-  "bottle",
-  "packet",
-  "bag",
-  "bowl",
-  "plate",
-  "handful",
-  "scoop",
-  "bar",
-  "stick",
+  'g',
+  'kg',
+  'mg',
+  'oz',
+  'lb',
+  'ml',
+  'l',
+  'cup',
+  'tbsp',
+  'tsp',
+  'piece',
+  'slice',
+  'serving',
+  'can',
+  'bottle',
+  'packet',
+  'bag',
+  'bowl',
+  'plate',
+  'handful',
+  'scoop',
+  'bar',
+  'stick',
 ];
 
 const EnhancedCustomFoodForm = ({
@@ -176,25 +176,25 @@ const EnhancedCustomFoodForm = ({
   const { nutrientDisplayPreferences, energyUnit, convertEnergy } =
     usePreferences();
   const isMobile = useIsMobile();
-  const platform = isMobile ? "mobile" : "desktop";
+  const platform = isMobile ? 'mobile' : 'desktop';
 
-  const getEnergyUnitString = (unit: "kcal" | "kJ"): string => {
-    return unit === "kcal" ? "kcal" : "kJ"; // Using simple strings here, can be replaced with t() if i18n is available
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal' ? 'kcal' : 'kJ'; // Using simple strings here, can be replaced with t() if i18n is available
   };
   const [loading, setLoading] = useState(false);
   const [variants, setVariants] = useState<FormFoodVariant[]>([]);
   const [originalVariants, setOriginalVariants] = useState<FormFoodVariant[]>(
-    [],
+    []
   ); // State to hold original, immutable variants
   const [variantErrors, setVariantErrors] = useState<string[]>([]); // State to hold errors for each variant
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [syncFoodId, setSyncFoodId] = useState<string | null>(null);
   const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>(
-    [],
+    []
   );
 
   const foodDatabasePreferences = nutrientDisplayPreferences.find(
-    (p) => p.view_group === "food_database" && p.platform === platform,
+    (p) => p.view_group === 'food_database' && p.platform === platform
   );
   const visibleNutrients =
     passedVisibleNutrients ||
@@ -206,8 +206,8 @@ const EnhancedCustomFoodForm = ({
     brand: string;
     is_quick_food: boolean;
   }>({
-    name: "",
-    brand: "",
+    name: '',
+    brand: '',
     is_quick_food: false,
   });
 
@@ -217,12 +217,12 @@ const EnhancedCustomFoodForm = ({
         const nutrients = await customNutrientService.getCustomNutrients();
         setCustomNutrients(nutrients);
       } catch (error) {
-        console.error("Failed to fetch custom nutrients", error);
+        console.error('Failed to fetch custom nutrients', error);
         toast({
-          title: "Error",
+          title: 'Error',
           description:
-            "Could not load custom nutrients. Please try again later.",
-          variant: "destructive",
+            'Could not load custom nutrients. Please try again later.',
+          variant: 'destructive',
         });
       }
     };
@@ -233,8 +233,8 @@ const EnhancedCustomFoodForm = ({
   useEffect(() => {
     if (food) {
       setFormData({
-        name: food.name || "",
-        brand: food.brand || "",
+        name: food.name || '',
+        brand: food.brand || '',
         is_quick_food: food.is_quick_food || false,
       });
       if (food.variants && food.variants.length > 0) {
@@ -243,7 +243,7 @@ const EnhancedCustomFoodForm = ({
             ...v,
             is_locked: false,
             glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
-          }),
+          })
         );
         setVariants(mappedVariants);
         setOriginalVariants(JSON.parse(JSON.stringify(mappedVariants))); // Deep copy for original values
@@ -253,52 +253,52 @@ const EnhancedCustomFoodForm = ({
       }
     } else if (initialVariants && initialVariants.length > 0) {
       setFormData({
-        name: "",
-        brand: "",
+        name: '',
+        brand: '',
         is_quick_food: false,
       });
       const mappedInitialVariants = initialVariants.map(
-        foodVariantToFormVariant,
+        foodVariantToFormVariant
       );
       setVariants(mappedInitialVariants);
       setOriginalVariants(JSON.parse(JSON.stringify(mappedInitialVariants))); // Deep copy for original values
       setVariantErrors(new Array(initialVariants.length).fill(null)); // Initialize errors for initial variants
     } else {
       setFormData({
-        name: "",
-        brand: "",
+        name: '',
+        brand: '',
         is_quick_food: false,
       });
       const defaultVariant: FormFoodVariant = {
         serving_size: 100,
-        serving_unit: "g",
-        calories: "",
-        protein: "",
-        carbs: "",
-        fat: "",
-        saturated_fat: "",
-        polyunsaturated_fat: "",
-        monounsaturated_fat: "",
-        trans_fat: "",
-        cholesterol: "",
-        sodium: "",
-        potassium: "",
-        dietary_fiber: "",
-        sugars: "",
-        vitamin_a: "",
-        vitamin_c: "",
-        calcium: "",
-        iron: "",
+        serving_unit: 'g',
+        calories: '',
+        protein: '',
+        carbs: '',
+        fat: '',
+        saturated_fat: '',
+        polyunsaturated_fat: '',
+        monounsaturated_fat: '',
+        trans_fat: '',
+        cholesterol: '',
+        sodium: '',
+        potassium: '',
+        dietary_fiber: '',
+        sugars: '',
+        vitamin_a: '',
+        vitamin_c: '',
+        calcium: '',
+        iron: '',
         is_default: true,
         is_locked: false,
-        glycemic_index: "None" as GlycemicIndex,
+        glycemic_index: 'None' as GlycemicIndex,
         custom_nutrients: {},
       };
 
       if (customNutrients && customNutrients.length > 0) {
         customNutrients.forEach((nutrient) => {
           if (defaultVariant.custom_nutrients) {
-            defaultVariant.custom_nutrients[nutrient.name] = "";
+            defaultVariant.custom_nutrients[nutrient.name] = '';
           }
         });
       }
@@ -338,16 +338,16 @@ const EnhancedCustomFoodForm = ({
 
         if (defaultVariant) {
           loadedVariants.push(
-            foodVariantToFormVariant({ ...defaultVariant, is_locked: false }),
+            foodVariantToFormVariant({ ...defaultVariant, is_locked: false })
           );
           loadedVariants = loadedVariants.concat(
             data
               .filter((v) => v.id !== defaultVariant?.id)
-              .map((v) => foodVariantToFormVariant({ ...v, is_locked: false })),
+              .map((v) => foodVariantToFormVariant({ ...v, is_locked: false }))
           );
         } else {
           loadedVariants = data.map((v) =>
-            foodVariantToFormVariant({ ...v, is_locked: false }),
+            foodVariantToFormVariant({ ...v, is_locked: false })
           );
         }
       } else {
@@ -355,24 +355,24 @@ const EnhancedCustomFoodForm = ({
         loadedVariants = [
           {
             serving_size: 100,
-            serving_unit: "g",
-            calories: "",
-            protein: "",
-            carbs: "",
-            fat: "",
-            saturated_fat: "",
-            polyunsaturated_fat: "",
-            monounsaturated_fat: "",
-            trans_fat: "",
-            cholesterol: "",
-            sodium: "",
-            potassium: "",
-            dietary_fiber: "",
-            sugars: "",
-            vitamin_a: "",
-            vitamin_c: "",
-            calcium: "",
-            iron: "",
+            serving_unit: 'g',
+            calories: '',
+            protein: '',
+            carbs: '',
+            fat: '',
+            saturated_fat: '',
+            polyunsaturated_fat: '',
+            monounsaturated_fat: '',
+            trans_fat: '',
+            cholesterol: '',
+            sodium: '',
+            potassium: '',
+            dietary_fiber: '',
+            sugars: '',
+            vitamin_a: '',
+            vitamin_c: '',
+            calcium: '',
+            iron: '',
             is_default: true,
             is_locked: false,
           },
@@ -381,31 +381,31 @@ const EnhancedCustomFoodForm = ({
       setVariants(loadedVariants);
       setOriginalVariants(JSON.parse(JSON.stringify(loadedVariants))); // Deep copy for original values
     } catch (error) {
-      console.error("Error loading variants:", error);
+      console.error('Error loading variants:', error);
       // Fallback to a single default variant on error
       const defaultVariant: FormFoodVariant = {
         serving_size: 100,
-        serving_unit: "g",
-        calories: "",
-        protein: "",
-        carbs: "",
-        fat: "",
-        saturated_fat: "",
-        polyunsaturated_fat: "",
-        monounsaturated_fat: "",
-        trans_fat: "",
-        cholesterol: "",
-        sodium: "",
-        potassium: "",
-        dietary_fiber: "",
-        sugars: "",
-        vitamin_a: "",
-        vitamin_c: "",
-        calcium: "",
-        iron: "",
+        serving_unit: 'g',
+        calories: '',
+        protein: '',
+        carbs: '',
+        fat: '',
+        saturated_fat: '',
+        polyunsaturated_fat: '',
+        monounsaturated_fat: '',
+        trans_fat: '',
+        cholesterol: '',
+        sodium: '',
+        potassium: '',
+        dietary_fiber: '',
+        sugars: '',
+        vitamin_a: '',
+        vitamin_c: '',
+        calcium: '',
+        iron: '',
         is_default: true,
         is_locked: false,
-        glycemic_index: sanitizeGlycemicIndexFrontend("None"),
+        glycemic_index: sanitizeGlycemicIndexFrontend('None'),
         custom_nutrients: {},
       };
       setVariants([defaultVariant]);
@@ -416,34 +416,34 @@ const EnhancedCustomFoodForm = ({
   const addVariant = () => {
     const newVariant: FormFoodVariant = {
       serving_size: 1,
-      serving_unit: "g",
-      calories: "",
-      protein: "",
-      carbs: "",
-      fat: "",
-      saturated_fat: "",
-      polyunsaturated_fat: "",
-      monounsaturated_fat: "",
-      trans_fat: "",
-      cholesterol: "",
-      sodium: "",
-      potassium: "",
-      dietary_fiber: "",
-      sugars: "",
-      vitamin_a: "",
-      vitamin_c: "",
-      calcium: "",
-      iron: "",
+      serving_unit: 'g',
+      calories: '',
+      protein: '',
+      carbs: '',
+      fat: '',
+      saturated_fat: '',
+      polyunsaturated_fat: '',
+      monounsaturated_fat: '',
+      trans_fat: '',
+      cholesterol: '',
+      sodium: '',
+      potassium: '',
+      dietary_fiber: '',
+      sugars: '',
+      vitamin_a: '',
+      vitamin_c: '',
+      calcium: '',
+      iron: '',
       is_default: false, // New variants are not default
       is_locked: false, // New variants are not locked
-      glycemic_index: "None",
+      glycemic_index: 'None',
       custom_nutrients: {},
     };
 
     if (customNutrients) {
       customNutrients.forEach((nutrient) => {
         if (newVariant.custom_nutrients) {
-          newVariant.custom_nutrients[nutrient.name] = "";
+          newVariant.custom_nutrients[nutrient.name] = '';
         }
       });
     }
@@ -477,10 +477,10 @@ const EnhancedCustomFoodForm = ({
     // Prevent removing the primary unit (index 0)
     if (index === 0) {
       toast({
-        title: "Cannot remove default unit",
+        title: 'Cannot remove default unit',
         description:
           "The default unit represents the food's primary serving and cannot be removed.",
-        variant: "destructive",
+        variant: 'destructive',
       });
       return;
     }
@@ -491,7 +491,7 @@ const EnhancedCustomFoodForm = ({
   const updateVariant = (
     index: number,
     field: keyof FormFoodVariant | string, // Allow string for custom nutrients
-    value: string | number | boolean | GlycemicIndex,
+    value: string | number | boolean | GlycemicIndex
   ) => {
     const updatedVariants = [...variants];
     const updatedOriginalVariants = [...originalVariants]; // Get a mutable copy of original variants
@@ -500,12 +500,12 @@ const EnhancedCustomFoodForm = ({
 
     // Handle nutrient fields - allow empty string, convert to number if not empty
     const isNutrientField = nutrientFields.includes(
-      field as NumericFoodVariantKeys,
+      field as NumericFoodVariantKeys
     );
 
     if (customNutrients.some((nutrient) => nutrient.name === field)) {
       // Custom nutrients - allow empty string
-      const processedValue = value === "" ? "" : Number(value);
+      const processedValue = value === '' ? '' : Number(value);
       newVariant = {
         ...currentVariant,
         custom_nutrients: {
@@ -515,7 +515,7 @@ const EnhancedCustomFoodForm = ({
       };
     } else if (isNutrientField) {
       // Standard nutrient fields - allow empty string
-      const processedValue = value === "" ? "" : Number(value);
+      const processedValue = value === '' ? '' : Number(value);
       newVariant = {
         ...currentVariant,
         [field as keyof FormFoodVariant]: processedValue,
@@ -530,23 +530,23 @@ const EnhancedCustomFoodForm = ({
     const updatedErrors = [...variantErrors];
 
     // Validate serving_size
-    if (field === "serving_size") {
+    if (field === 'serving_size') {
       const numValue = Number(value);
       if (isNaN(numValue) || numValue <= 0) {
-        updatedErrors[index] = "Serving size must be a positive number.";
+        updatedErrors[index] = 'Serving size must be a positive number.';
       } else {
-        updatedErrors[index] = ""; // Clear error if valid
+        updatedErrors[index] = ''; // Clear error if valid
       }
       setVariantErrors(updatedErrors);
     }
 
     // Convert calories input from display unit (energyUnit) to internal kcal
-    if (field === "calories" && value !== "" && typeof value === "number") {
-      newVariant.calories = convertEnergy(value, energyUnit, "kcal");
+    if (field === 'calories' && value !== '' && typeof value === 'number') {
+      newVariant.calories = convertEnergy(value, energyUnit, 'kcal');
     }
 
     // If this variant is set to be the default, ensure all others are not
-    if (field === "is_default" && value === true) {
+    if (field === 'is_default' && value === true) {
       updatedVariants.forEach((v, i) => {
         if (i !== index) {
           v.is_default = false;
@@ -555,7 +555,7 @@ const EnhancedCustomFoodForm = ({
     }
 
     // Handle proportional scaling for locked variants when serving_size changes
-    if (field === "serving_size" && newVariant.is_locked) {
+    if (field === 'serving_size' && newVariant.is_locked) {
       const originalVariant = updatedOriginalVariants[index]; // Use the corresponding original variant
       const originalServingSize = originalVariant.serving_size; // Use the stored original serving size
       const newServingSize = Number(value);
@@ -565,23 +565,23 @@ const EnhancedCustomFoodForm = ({
         newVariant.is_locked = true; // Ensure is_locked is true if scaling is applied
 
         const nutrientFields: NumericFoodVariantKeys[] = [
-          "calories", // This will be in kcal
-          "protein",
-          "carbs",
-          "fat",
-          "saturated_fat",
-          "polyunsaturated_fat",
-          "monounsaturated_fat",
-          "trans_fat",
-          "cholesterol",
-          "sodium",
-          "potassium",
-          "dietary_fiber",
-          "sugars",
-          "vitamin_a",
-          "vitamin_c",
-          "calcium",
-          "iron",
+          'calories', // This will be in kcal
+          'protein',
+          'carbs',
+          'fat',
+          'saturated_fat',
+          'polyunsaturated_fat',
+          'monounsaturated_fat',
+          'trans_fat',
+          'cholesterol',
+          'sodium',
+          'potassium',
+          'dietary_fiber',
+          'sugars',
+          'vitamin_a',
+          'vitamin_c',
+          'calcium',
+          'iron',
         ];
 
         nutrientFields.forEach((nutrientField) => {
@@ -589,7 +589,7 @@ const EnhancedCustomFoodForm = ({
             nutrientField
           ] as number;
           newVariant[nutrientField] = Number(
-            (originalNutrientValue * ratio).toFixed(2),
+            (originalNutrientValue * ratio).toFixed(2)
           );
         });
       }
@@ -613,18 +613,21 @@ const EnhancedCustomFoodForm = ({
 
     // Perform validation for all variants before submission
     const newVariantErrors: string[] = variants.map((variant) => {
-      if (isNaN(Number(variant.serving_size)) || Number(variant.serving_size) <= 0) {
-        return "Serving size must be a positive number.";
+      if (
+        isNaN(Number(variant.serving_size)) ||
+        Number(variant.serving_size) <= 0
+      ) {
+        return 'Serving size must be a positive number.';
       }
-      return "";
+      return '';
     });
     setVariantErrors(newVariantErrors);
 
-    if (newVariantErrors.some((error) => error !== "")) {
+    if (newVariantErrors.some((error) => error !== '')) {
       toast({
-        title: "Validation Error",
-        description: "Please correct the errors in the unit variants.",
-        variant: "destructive",
+        title: 'Validation Error',
+        description: 'Please correct the errors in the unit variants.',
+        variant: 'destructive',
       });
       return;
     }
@@ -634,19 +637,19 @@ const EnhancedCustomFoodForm = ({
       const defaultVariantCount = variants.filter((v) => v.is_default).length;
       if (defaultVariantCount === 0) {
         toast({
-          title: "Validation Error",
+          title: 'Validation Error',
           description:
-            "At least one variant must be marked as the default unit.",
-          variant: "destructive",
+            'At least one variant must be marked as the default unit.',
+          variant: 'destructive',
         });
         setLoading(false);
         return;
       } else if (defaultVariantCount > 1) {
         toast({
-          title: "Validation Error",
+          title: 'Validation Error',
           description:
-            "Only one variant can be marked as the default unit. Please correct this.",
-          variant: "destructive",
+            'Only one variant can be marked as the default unit. Please correct this.',
+          variant: 'destructive',
         });
         setLoading(false);
         return;
@@ -655,16 +658,16 @@ const EnhancedCustomFoodForm = ({
       const primaryVariant = variants.find((v) => v.is_default);
       if (!primaryVariant) {
         toast({
-          title: "Error",
-          description: "No default variant found. This should not happen.",
-          variant: "destructive",
+          title: 'Error',
+          description: 'No default variant found. This should not happen.',
+          variant: 'destructive',
         });
         setLoading(false);
         return;
       }
 
       const foodData: Food = {
-        id: food?.id || "",
+        id: food?.id || '',
         name: formData.name,
         brand: formData.brand,
         is_quick_food: formData.is_quick_food,
@@ -680,13 +683,14 @@ const EnhancedCustomFoodForm = ({
         foodData,
         variantsToSave,
         user.id,
-        food?.id,
+        food?.id
       );
 
       toast({
-        title: "Success",
-        description: `Food ${food && food.id ? "updated" : "saved"
-          } successfully with ${variants.length} unit variant(s)`,
+        title: 'Success',
+        description: `Food ${
+          food && food.id ? 'updated' : 'saved'
+        } successfully with ${variants.length} unit variant(s)`,
       });
 
       if (food?.id && user?.id === food.user_id) {
@@ -695,13 +699,13 @@ const EnhancedCustomFoodForm = ({
       } else {
         if (!food || !food.id) {
           setFormData({
-            name: "",
-            brand: "",
+            name: '',
+            brand: '',
             is_quick_food: false,
           });
           const defaultVariant: FoodVariant = {
             serving_size: 100,
-            serving_unit: "g",
+            serving_unit: 'g',
             calories: 0,
             protein: 0,
             carbs: 0,
@@ -721,7 +725,7 @@ const EnhancedCustomFoodForm = ({
             iron: 0,
             is_default: true,
             is_locked: false,
-            glycemic_index: sanitizeGlycemicIndexFrontend("None"),
+            glycemic_index: sanitizeGlycemicIndexFrontend('None'),
             custom_nutrients: {},
           };
           setVariants([defaultVariant]);
@@ -733,13 +737,13 @@ const EnhancedCustomFoodForm = ({
 
       if (!food || !food.id) {
         setFormData({
-          name: "",
-          brand: "",
+          name: '',
+          brand: '',
           is_quick_food: false,
         });
         const defaultVariant: FoodVariant = {
           serving_size: 100,
-          serving_unit: "g",
+          serving_unit: 'g',
           calories: 0,
           protein: 0,
           carbs: 0,
@@ -759,7 +763,7 @@ const EnhancedCustomFoodForm = ({
           iron: 0,
           is_default: true,
           is_locked: false,
-          glycemic_index: sanitizeGlycemicIndexFrontend("None"),
+          glycemic_index: sanitizeGlycemicIndexFrontend('None'),
           custom_nutrients: {},
         };
         setVariants([defaultVariant]);
@@ -769,11 +773,11 @@ const EnhancedCustomFoodForm = ({
 
       onSave(savedFood);
     } catch (error) {
-      console.error("Error saving food:", error);
+      console.error('Error saving food:', error);
       toast({
-        title: "Error",
-        description: `Failed to ${food && food.id ? "update" : "save"} food`,
-        variant: "destructive",
+        title: 'Error',
+        description: `Failed to ${food && food.id ? 'update' : 'save'} food`,
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -792,14 +796,14 @@ const EnhancedCustomFoodForm = ({
       try {
         await updateFoodEntriesSnapshot(syncFoodId);
         toast({
-          title: "Success",
-          description: "Past diary entries have been updated.",
+          title: 'Success',
+          description: 'Past diary entries have been updated.',
         });
       } catch (error) {
         toast({
-          title: "Error",
-          description: "Failed to update past diary entries.",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Failed to update past diary entries.',
+          variant: 'destructive',
         });
       }
     }
@@ -812,7 +816,7 @@ const EnhancedCustomFoodForm = ({
       <Card>
         <CardHeader>
           <CardTitle>
-            {food && food.id ? "Edit Food" : "Add Custom Food"}
+            {food && food.id ? 'Edit Food' : 'Add Custom Food'}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -824,7 +828,7 @@ const EnhancedCustomFoodForm = ({
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => updateField("name", e.target.value)}
+                  onChange={(e) => updateField('name', e.target.value)}
                   required
                 />
               </div>
@@ -833,7 +837,7 @@ const EnhancedCustomFoodForm = ({
                 <Input
                   id="brand"
                   value={formData.brand}
-                  onChange={(e) => updateField("brand", e.target.value)}
+                  onChange={(e) => updateField('brand', e.target.value)}
                 />
               </div>
             </div>
@@ -844,7 +848,7 @@ const EnhancedCustomFoodForm = ({
                 id="is_quick_food"
                 checked={formData.is_quick_food}
                 onCheckedChange={(checked) =>
-                  updateField("is_quick_food", !!checked)
+                  updateField('is_quick_food', !!checked)
                 }
               />
               <Label htmlFor="is_quick_food" className="text-sm font-medium">
@@ -885,8 +889,8 @@ const EnhancedCustomFoodForm = ({
                             onChange={(e) =>
                               updateVariant(
                                 index,
-                                "serving_size",
-                                Number(e.target.value),
+                                'serving_size',
+                                Number(e.target.value)
                               )
                             }
                             className="w-24" // Fixed width for input
@@ -899,14 +903,14 @@ const EnhancedCustomFoodForm = ({
                           <Select
                             value={variant.serving_unit}
                             onValueChange={(value) =>
-                              updateVariant(index, "serving_unit", value)
+                              updateVariant(index, 'serving_unit', value)
                             }
                           >
                             <SelectTrigger
                               id={`serving-unit-${index}`}
                               className="w-32"
                             >
-                              {" "}
+                              {' '}
                               {/* Fixed width for select */}
                               <SelectValue />
                             </SelectTrigger>
@@ -928,7 +932,7 @@ const EnhancedCustomFoodForm = ({
 
                       {/* Default & Auto-Scale Checkboxes: wrap if needed */}
                       <div className="flex items-center gap-4 flex-wrap">
-                        {" "}
+                        {' '}
                         {/* Adjusted gap and added flex-wrap */}
                         <div className="flex items-center space-x-2">
                           <input
@@ -938,8 +942,8 @@ const EnhancedCustomFoodForm = ({
                             onChange={(e) =>
                               updateVariant(
                                 index,
-                                "is_default",
-                                e.target.checked,
+                                'is_default',
+                                e.target.checked
                               )
                             }
                             className="form-checkbox h-4 w-4 text-blue-600"
@@ -959,8 +963,8 @@ const EnhancedCustomFoodForm = ({
                             onChange={(e) =>
                               updateVariant(
                                 index,
-                                "is_locked",
-                                e.target.checked,
+                                'is_locked',
+                                e.target.checked
                               )
                             }
                             className="form-checkbox h-4 w-4 text-blue-600"
@@ -1001,19 +1005,19 @@ const EnhancedCustomFoodForm = ({
                     {/* Nutrition for this specific variant */}
                     <div className="space-y-4">
                       <h4 className="text-md font-medium">
-                        Nutrition per {variant.serving_size}{" "}
+                        Nutrition per {variant.serving_size}{' '}
                         {variant.serving_unit}
                       </h4>
                       {/* Glycemic Index for this variant */}
-                      {visibleNutrients.includes("glycemic_index") && (
+                      {visibleNutrients.includes('glycemic_index') && (
                         <div className="mt-4">
                           <Label htmlFor={`glycemic_index-${index}`}>
                             Glycemic Index (GI)
                           </Label>
                           <Select
-                            value={variant.glycemic_index || "None"}
+                            value={variant.glycemic_index || 'None'}
                             onValueChange={(value: GlycemicIndex) =>
-                              updateVariant(index, "glycemic_index", value)
+                              updateVariant(index, 'glycemic_index', value)
                             }
                           >
                             <SelectTrigger
@@ -1037,386 +1041,386 @@ const EnhancedCustomFoodForm = ({
                       )}
 
                       {/* Main Macros: Responsive Grid (1 col on mobile, 2 on sm, 3 on md, 4 on lg) */}
-                      {["calories", "protein", "carbs", "fat"].some(
-                        (nutrient) => visibleNutrients.includes(nutrient),
+                      {['calories', 'protein', 'carbs', 'fat'].some(
+                        (nutrient) => visibleNutrients.includes(nutrient)
                       ) && (
-                          <div className="mt-4">
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">
-                              Main Nutrients
-                            </h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                              {visibleNutrients.includes("calories") && (
-                                <div>
-                                  <Label>
-                                    Calories ({getEnergyUnitString(energyUnit)})
-                                  </Label>
-                                  <Input
-                                    type="number"
-                                    value={
-                                      variant.calories === ""
-                                        ? ""
-                                        : Math.round(
+                        <div className="mt-4">
+                          <h5 className="text-sm font-medium text-gray-700 mb-3">
+                            Main Nutrients
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {visibleNutrients.includes('calories') && (
+                              <div>
+                                <Label>
+                                  Calories ({getEnergyUnitString(energyUnit)})
+                                </Label>
+                                <Input
+                                  type="number"
+                                  value={
+                                    variant.calories === ''
+                                      ? ''
+                                      : Math.round(
                                           convertEnergy(
                                             variant.calories,
-                                            "kcal",
-                                            energyUnit,
-                                          ),
+                                            'kcal',
+                                            energyUnit
+                                          )
                                         )
-                                    }
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "calories",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                              {visibleNutrients.includes("protein") && (
-                                <div>
-                                  <Label>Protein (g)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.protein}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "protein",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                              {visibleNutrients.includes("carbs") && (
-                                <div>
-                                  <Label>Carbs (g)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.carbs}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "carbs",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                              {visibleNutrients.includes("fat") && (
-                                <div>
-                                  <Label>Fat (g)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.fat}
-                                    onChange={(e) =>
-                                      updateVariant(index, "fat", e.target.value)
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                            </div>
+                                  }
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'calories',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes('protein') && (
+                              <div>
+                                <Label>Protein (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.protein}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'protein',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes('carbs') && (
+                              <div>
+                                <Label>Carbs (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.carbs}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'carbs',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes('fat') && (
+                              <div>
+                                <Label>Fat (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.fat}
+                                  onChange={(e) =>
+                                    updateVariant(index, 'fat', e.target.value)
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
+                      )}
 
                       {/* Detailed Fat Information: Responsive Grid */}
                       {[
-                        "saturated_fat",
-                        "polyunsaturated_fat",
-                        "monounsaturated_fat",
-                        "trans_fat",
+                        'saturated_fat',
+                        'polyunsaturated_fat',
+                        'monounsaturated_fat',
+                        'trans_fat',
                       ].some((nutrient) =>
-                        visibleNutrients.includes(nutrient),
+                        visibleNutrients.includes(nutrient)
                       ) && (
-                          <div>
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">
-                              Fat Breakdown
-                            </h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                              {visibleNutrients.includes("saturated_fat") && (
-                                <div>
-                                  <Label>Saturated Fat (g)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.saturated_fat}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "saturated_fat",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                              {visibleNutrients.includes(
-                                "polyunsaturated_fat",
-                              ) && (
-                                  <div>
-                                    <Label>Polyunsaturated Fat (g)</Label>
-                                    <Input
-                                      type="number"
-                                      step="0.1"
-                                      value={variant.polyunsaturated_fat}
-                                      onChange={(e) =>
-                                        updateVariant(
-                                          index,
-                                          "polyunsaturated_fat",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder="0"
-                                      disabled={variant.is_locked}
-                                    />
-                                  </div>
-                                )}
-                              {visibleNutrients.includes(
-                                "monounsaturated_fat",
-                              ) && (
-                                  <div>
-                                    <Label>Monounsaturated Fat (g)</Label>
-                                    <Input
-                                      type="number"
-                                      step="0.1"
-                                      value={variant.monounsaturated_fat}
-                                      onChange={(e) =>
-                                        updateVariant(
-                                          index,
-                                          "monounsaturated_fat",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder="0"
-                                      disabled={variant.is_locked}
-                                    />
-                                  </div>
-                                )}
-                              {visibleNutrients.includes("trans_fat") && (
-                                <div>
-                                  <Label>Trans Fat (g)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.trans_fat}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "trans_fat",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                            </div>
+                        <div>
+                          <h5 className="text-sm font-medium text-gray-700 mb-3">
+                            Fat Breakdown
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {visibleNutrients.includes('saturated_fat') && (
+                              <div>
+                                <Label>Saturated Fat (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.saturated_fat}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'saturated_fat',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes(
+                              'polyunsaturated_fat'
+                            ) && (
+                              <div>
+                                <Label>Polyunsaturated Fat (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.polyunsaturated_fat}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'polyunsaturated_fat',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes(
+                              'monounsaturated_fat'
+                            ) && (
+                              <div>
+                                <Label>Monounsaturated Fat (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.monounsaturated_fat}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'monounsaturated_fat',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes('trans_fat') && (
+                              <div>
+                                <Label>Trans Fat (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.trans_fat}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'trans_fat',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
+                      )}
 
                       {/* Minerals and Other Nutrients: Responsive Grid */}
                       {[
-                        "cholesterol",
-                        "sodium",
-                        "potassium",
-                        "dietary_fiber",
+                        'cholesterol',
+                        'sodium',
+                        'potassium',
+                        'dietary_fiber',
                       ].some((nutrient) =>
-                        visibleNutrients.includes(nutrient),
+                        visibleNutrients.includes(nutrient)
                       ) && (
-                          <div>
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">
-                              Minerals & Other
-                            </h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                              {visibleNutrients.includes("cholesterol") && (
-                                <div>
-                                  <Label>Cholesterol (mg)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.cholesterol}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "cholesterol",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                              {visibleNutrients.includes("sodium") && (
-                                <div>
-                                  <Label>Sodium (mg)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.sodium}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "sodium",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                              {visibleNutrients.includes("potassium") && (
-                                <div>
-                                  <Label>Potassium (mg)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.potassium}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "potassium",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                              {visibleNutrients.includes("dietary_fiber") && (
-                                <div>
-                                  <Label>Dietary Fiber (g)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.dietary_fiber}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "dietary_fiber",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                            </div>
+                        <div>
+                          <h5 className="text-sm font-medium text-gray-700 mb-3">
+                            Minerals & Other
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {visibleNutrients.includes('cholesterol') && (
+                              <div>
+                                <Label>Cholesterol (mg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.cholesterol}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'cholesterol',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes('sodium') && (
+                              <div>
+                                <Label>Sodium (mg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.sodium}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'sodium',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes('potassium') && (
+                              <div>
+                                <Label>Potassium (mg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.potassium}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'potassium',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes('dietary_fiber') && (
+                              <div>
+                                <Label>Dietary Fiber (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.dietary_fiber}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'dietary_fiber',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
+                      )}
 
                       {/* Sugars and Vitamins: Responsive Grid */}
-                      {["sugars", "vitamin_a", "vitamin_c", "calcium"].some(
-                        (nutrient) => visibleNutrients.includes(nutrient),
+                      {['sugars', 'vitamin_a', 'vitamin_c', 'calcium'].some(
+                        (nutrient) => visibleNutrients.includes(nutrient)
                       ) && (
-                          <div>
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">
-                              Sugars & Vitamins
-                            </h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                              {visibleNutrients.includes("sugars") && (
-                                <div>
-                                  <Label>Sugars (g)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.sugars}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "sugars",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                              {visibleNutrients.includes("vitamin_a") && (
-                                <div>
-                                  <Label>Vitamin A (μg)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.vitamin_a}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "vitamin_a",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                              {visibleNutrients.includes("vitamin_c") && (
-                                <div>
-                                  <Label>Vitamin C (mg)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.vitamin_c}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "vitamin_c",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                              {visibleNutrients.includes("calcium") && (
-                                <div>
-                                  <Label>Calcium (mg)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={variant.calcium}
-                                    onChange={(e) =>
-                                      updateVariant(
-                                        index,
-                                        "calcium",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                    disabled={variant.is_locked}
-                                  />
-                                </div>
-                              )}
-                            </div>
+                        <div>
+                          <h5 className="text-sm font-medium text-gray-700 mb-3">
+                            Sugars & Vitamins
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {visibleNutrients.includes('sugars') && (
+                              <div>
+                                <Label>Sugars (g)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.sugars}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'sugars',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes('vitamin_a') && (
+                              <div>
+                                <Label>Vitamin A (μg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.vitamin_a}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'vitamin_a',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes('vitamin_c') && (
+                              <div>
+                                <Label>Vitamin C (mg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.vitamin_c}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'vitamin_c',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
+                            {visibleNutrients.includes('calcium') && (
+                              <div>
+                                <Label>Calcium (mg)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.calcium}
+                                  onChange={(e) =>
+                                    updateVariant(
+                                      index,
+                                      'calcium',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="0"
+                                  disabled={variant.is_locked}
+                                />
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
+                      )}
 
                       {/* Last row of nutrients: Responsive Grid */}
                       <div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {visibleNutrients.includes("iron") && (
+                          {visibleNutrients.includes('iron') && (
                             <div>
                               <Label>Iron (mg)</Label>
                               <Input
@@ -1424,7 +1428,7 @@ const EnhancedCustomFoodForm = ({
                                 step="0.1"
                                 value={variant.iron}
                                 onChange={(e) =>
-                                  updateVariant(index, "iron", e.target.value)
+                                  updateVariant(index, 'iron', e.target.value)
                                 }
                                 placeholder="0"
                                 disabled={variant.is_locked}
@@ -1437,7 +1441,7 @@ const EnhancedCustomFoodForm = ({
                     {customNutrients &&
                       customNutrients.length > 0 &&
                       customNutrients.some((n) =>
-                        visibleNutrients.includes(n.name),
+                        visibleNutrients.includes(n.name)
                       ) && (
                         <div>
                           <h5 className="text-sm font-medium text-gray-700 mb-3">
@@ -1456,14 +1460,14 @@ const EnhancedCustomFoodForm = ({
                                     step="0.1"
                                     value={
                                       variant.custom_nutrients?.[
-                                      nutrient.name
-                                      ] ?? ""
+                                        nutrient.name
+                                      ] ?? ''
                                     }
                                     onChange={(e) =>
                                       updateVariant(
                                         index,
                                         nutrient.name,
-                                        e.target.value,
+                                        e.target.value
                                       )
                                     }
                                     placeholder="0"
@@ -1481,10 +1485,10 @@ const EnhancedCustomFoodForm = ({
 
             <Button type="submit" disabled={loading} className="w-full">
               {loading
-                ? "Saving..."
+                ? 'Saving...'
                 : food && food.id
-                  ? "Update Food"
-                  : "Add Food"}
+                  ? 'Update Food'
+                  : 'Add Food'}
             </Button>
           </form>
         </CardContent>

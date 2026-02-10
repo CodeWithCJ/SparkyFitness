@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useTranslation } from "react-i18next";
-import { useLocation, Outlet, useNavigate } from "react-router-dom";
-import { debug, info, error } from "@/utils/logging";
+import type React from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLocation, Outlet, useNavigate } from 'react-router-dom';
+import { debug, info, error } from '@/utils/logging';
 import {
   Home,
   Activity, // Used for Check-In
@@ -14,23 +15,23 @@ import {
   Shield,
   Plus,
   X,
-} from "lucide-react";
-import { LucideIcon } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-import axios from "axios";
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import axios from 'axios';
 
-import SparkyChat from "../pages/Chat/SparkyChat";
-import AddComp from "@/layouts/AddComp";
-import ThemeToggle from "@/components/ThemeToggle";
-import ProfileSwitcher from "@/components/ProfileSwitcher";
-import GitHubStarCounter from "@/components/GitHubStarCounter";
-import GitHubSponsorButton from "@/components/GitHubSponsorButton";
-import GlobalNotificationIcon from "@/components/GlobalNotificationIcon";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
-import { useActiveUser } from "@/contexts/ActiveUserContext";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { useIsMobile } from "@/hooks/use-mobile";
+import SparkyChat from '../pages/Chat/SparkyChat';
+import AddComp from '@/layouts/AddComp';
+import ThemeToggle from '@/components/ThemeToggle';
+import ProfileSwitcher from '@/components/ProfileSwitcher';
+import GitHubStarCounter from '@/components/GitHubStarCounter';
+import GitHubSponsorButton from '@/components/GitHubSponsorButton';
+import GlobalNotificationIcon from '@/components/GlobalNotificationIcon';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AddCompItem {
   value: string;
@@ -54,39 +55,39 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
     activeUserName,
   } = useActiveUser();
   const { loggingLevel } = usePreferences();
-  debug(loggingLevel, "MainLayout: Component rendered.");
+  debug(loggingLevel, 'MainLayout: Component rendered.');
 
-  const [appVersion, setAppVersion] = useState("Loading...");
+  const [appVersion, setAppVersion] = useState('Loading...');
   const [isAddCompOpen, setIsAddCompOpen] = useState(false);
 
   useEffect(() => {
     const fetchVersion = async () => {
       try {
-        const response = await axios.get("/api/version/current");
+        const response = await axios.get('/api/version/current');
         setAppVersion(response.data.version);
       } catch (err) {
-        console.error("Error fetching app version for footer:", err);
-        setAppVersion("Error");
+        console.error('Error fetching app version for footer:', err);
+        setAppVersion('Error');
       }
     };
     fetchVersion();
   }, []);
 
   const handleSignOut = async () => {
-    info(loggingLevel, "MainLayout: Attempting to sign out.");
+    info(loggingLevel, 'MainLayout: Attempting to sign out.');
     try {
       await signOut();
       toast({
-        title: "Success",
-        description: "Signed out successfully",
+        title: 'Success',
+        description: 'Signed out successfully',
       });
-      navigate("/login"); // Navigate to login page after sign out
+      navigate('/login'); // Navigate to login page after sign out
     } catch (err) {
-      error(loggingLevel, "MainLayout: Sign out error:", err);
+      error(loggingLevel, 'MainLayout: Sign out error:', err);
       toast({
-        title: "Error",
-        description: "Failed to sign out",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to sign out',
+        variant: 'destructive',
       });
     }
   };
@@ -95,25 +96,25 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
     const items: AddCompItem[] = [];
     if (!isActingOnBehalf) {
       items.push(
-        { value: "checkin", label: "Check-In", icon: Activity },
-        { value: "foods", label: "Foods", icon: Utensils },
+        { value: 'checkin', label: 'Check-In', icon: Activity },
+        { value: 'foods', label: 'Foods', icon: Utensils },
         {
-          value: "exercises",
-          label: t("exercise.title", "Exercises"),
+          value: 'exercises',
+          label: t('exercise.title', 'Exercises'),
           icon: Dumbbell,
         },
-        { value: "goals", label: "Goals", icon: Target },
+        { value: 'goals', label: 'Goals', icon: Target }
       );
     } else {
-      if (hasWritePermission("checkin")) {
-        items.push({ value: "checkin", label: "Check-In", icon: Activity });
+      if (hasWritePermission('checkin')) {
+        items.push({ value: 'checkin', label: 'Check-In', icon: Activity });
       }
     }
     return items;
   }, [isActingOnBehalf, hasWritePermission, t]);
 
   const availableTabs = useMemo(() => {
-    debug(loggingLevel, "MainLayout: Calculating available tabs (desktop).", {
+    debug(loggingLevel, 'MainLayout: Calculating available tabs (desktop).', {
       isActingOnBehalf,
       hasPermission,
       hasWritePermission,
@@ -121,39 +122,39 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
     const tabs = [];
     if (!isActingOnBehalf) {
       tabs.push(
-        { value: "/", label: t("nav.diary"), icon: Home },
-        { value: "/checkin", label: t("nav.checkin"), icon: Activity },
-        { value: "/reports", label: t("nav.reports"), icon: BarChart3 },
-        { value: "/foods", label: t("nav.foods"), icon: Utensils },
+        { value: '/', label: t('nav.diary'), icon: Home },
+        { value: '/checkin', label: t('nav.checkin'), icon: Activity },
+        { value: '/reports', label: t('nav.reports'), icon: BarChart3 },
+        { value: '/foods', label: t('nav.foods'), icon: Utensils },
         {
-          value: "/exercises",
-          label: t("exercise.title", "Exercises"),
+          value: '/exercises',
+          label: t('exercise.title', 'Exercises'),
           icon: Dumbbell,
         },
-        { value: "/goals", label: t("nav.goals"), icon: Target },
-        { value: "/settings", label: t("nav.settings"), icon: SettingsIcon },
+        { value: '/goals', label: t('nav.goals'), icon: Target },
+        { value: '/settings', label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
-      if (hasWritePermission("diary")) {
-        tabs.push({ value: "/", label: t("nav.diary"), icon: Home });
+      if (hasWritePermission('diary')) {
+        tabs.push({ value: '/', label: t('nav.diary'), icon: Home });
       }
-      if (hasWritePermission("checkin")) {
+      if (hasWritePermission('checkin')) {
         tabs.push({
-          value: "/checkin",
-          label: t("nav.checkin"),
+          value: '/checkin',
+          label: t('nav.checkin'),
           icon: Activity,
         });
       }
-      if (hasPermission("reports")) {
+      if (hasPermission('reports')) {
         tabs.push({
-          value: "/reports",
-          label: t("nav.reports"),
+          value: '/reports',
+          label: t('nav.reports'),
           icon: BarChart3,
         });
       }
     }
-    if (user?.role === "admin" && !isActingOnBehalf) {
-      tabs.push({ value: "/admin", label: t("nav.admin"), icon: Shield });
+    if (user?.role === 'admin' && !isActingOnBehalf) {
+      tabs.push({ value: '/admin', label: t('nav.admin'), icon: Shield });
     }
     return tabs;
   }, [
@@ -166,7 +167,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
   ]);
 
   const availableMobileTabs = useMemo(() => {
-    debug(loggingLevel, "MainLayout: Calculating available tabs (mobile).", {
+    debug(loggingLevel, 'MainLayout: Calculating available tabs (mobile).', {
       isActingOnBehalf,
       hasPermission,
       hasWritePermission,
@@ -175,36 +176,36 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
     const mobileTabs = [];
     if (!isActingOnBehalf) {
       mobileTabs.push(
-        { value: "/", label: t("nav.diary"), icon: Home },
-        { value: "/reports", label: t("nav.reports"), icon: BarChart3 },
+        { value: '/', label: t('nav.diary'), icon: Home },
+        { value: '/reports', label: t('nav.reports'), icon: BarChart3 },
         {
-          value: "Add",
-          label: t("common.add", "Add"),
+          value: 'Add',
+          label: t('common.add', 'Add'),
           icon: isAddCompOpen ? X : Plus,
         },
-        { value: "/settings", label: t("nav.settings"), icon: SettingsIcon },
+        { value: '/settings', label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
-      if (hasWritePermission("diary")) {
-        mobileTabs.push({ value: "/", label: t("nav.diary"), icon: Home });
+      if (hasWritePermission('diary')) {
+        mobileTabs.push({ value: '/', label: t('nav.diary'), icon: Home });
       }
-      if (hasWritePermission("checkin")) {
+      if (hasWritePermission('checkin')) {
         mobileTabs.push({
-          value: "/checkin",
-          label: t("nav.checkin"),
+          value: '/checkin',
+          label: t('nav.checkin'),
           icon: Activity,
         });
       }
-      if (hasPermission("reports")) {
+      if (hasPermission('reports')) {
         mobileTabs.push({
-          value: "/reports",
-          label: t("nav.reports"),
+          value: '/reports',
+          label: t('nav.reports'),
           icon: BarChart3,
         });
       }
     }
-    if (user?.role === "admin" && !isActingOnBehalf) {
-      mobileTabs.push({ value: "/admin", label: t("nav.admin"), icon: Shield });
+    if (user?.role === 'admin' && !isActingOnBehalf) {
+      mobileTabs.push({ value: '/admin', label: t('nav.admin'), icon: Shield });
     }
     return mobileTabs;
   }, [
@@ -223,29 +224,29 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
       navigate(value);
       setIsAddCompOpen(false);
     },
-    [loggingLevel, navigate],
+    [loggingLevel, navigate]
   );
 
   const getGridClass = (count: number) => {
     switch (count) {
       case 1:
-        return "grid-cols-1";
+        return 'grid-cols-1';
       case 2:
-        return "grid-cols-2";
+        return 'grid-cols-2';
       case 3:
-        return "grid-cols-3";
+        return 'grid-cols-3';
       case 4:
-        return "grid-cols-4";
+        return 'grid-cols-4';
       case 5:
-        return "grid-cols-5";
+        return 'grid-cols-5';
       case 6:
-        return "grid-cols-6";
+        return 'grid-cols-6';
       case 7:
-        return "grid-cols-7";
+        return 'grid-cols-7';
       case 8:
-        return "grid-cols-8";
+        return 'grid-cols-8';
       default:
-        return "grid-cols-7";
+        return 'grid-cols-7';
     }
   };
 
@@ -260,9 +261,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-1">
             <img
-              src="/images/SparkyFitness.png"
+              src="/images/SparkyFitness.webp"
               alt="SparkyFitness Logo"
-              className="h-12 w-auto"
+              width={54}
+              height={72}
             />
             <h1 className="text-xl sm:text-2xl font-bold text-foreground dark:text-slate-300">
               SparkyFitness
@@ -295,15 +297,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
             </Button>
           </div>
         </div>
-        <nav className={`hidden sm:grid w-full gap-1 ${gridClass} mb-6 bg-slate-200/60 dark:bg-muted/50 p-1 rounded-lg`}>
+        <nav
+          className={`hidden sm:grid w-full gap-1 ${gridClass} mb-6 bg-slate-200/60 dark:bg-muted/50 p-1 rounded-lg`}
+        >
           {availableTabs.map(({ value, label, icon: Icon }) => (
             <Button
               key={value}
               variant="ghost"
-              className={`flex items-center gap-2 hover:bg-background/50 transition-all ${location.pathname === value
-                ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground"
-                }`}
+              className={`flex items-center gap-2 hover:bg-background/50 transition-all ${
+                location.pathname === value
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground'
+              }`}
               onClick={() => navigate(value)}
             >
               <Icon className="h-4 w-4" />
@@ -320,13 +325,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
             <Button
               key={value}
               variant="ghost"
-              className={`flex flex-col items-center gap-1 py-2 ${location.pathname ===
-                (value === "Add" ? location.pathname : value)
-                ? "text-primary"
-                : ""
-                }`}
+              className={`flex flex-col items-center gap-1 py-2 ${
+                location.pathname ===
+                (value === 'Add' ? location.pathname : value)
+                  ? 'text-primary'
+                  : ''
+              }`}
               onClick={() => {
-                if (value === "Add") {
+                if (value === 'Add') {
                   setIsAddCompOpen((prev) => !prev);
                 } else {
                   setIsAddCompOpen(false);

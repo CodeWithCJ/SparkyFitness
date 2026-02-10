@@ -34,7 +34,18 @@ interface FoodSuggestion {
 }
 
 interface MeasurementSuggestion {
-  type: 'weight' | 'waist' | 'hips' | 'neck' | 'steps' | 'blood_sugar' | 'blood_pressure_systolic' | 'blood_pressure_diastolic' | 'heart_rate' | 'body_fat' | 'temperature';
+  type:
+    | 'weight'
+    | 'waist'
+    | 'hips'
+    | 'neck'
+    | 'steps'
+    | 'blood_sugar'
+    | 'blood_pressure_systolic'
+    | 'blood_pressure_diastolic'
+    | 'heart_rate'
+    | 'body_fat'
+    | 'temperature';
   value: number;
   unit: string;
   date: string;
@@ -98,10 +109,23 @@ interface NutritionData {
 
 class SparkyAIService {
   private energyUnit: 'kcal' | 'kJ' = 'kcal'; // Default
-  private convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number = (val) => val; // Default passthrough
-  private getEnergyUnitString: (unit: 'kcal' | 'kJ') => string = (unit) => unit === 'kcal' ? 'kcal' : 'kJ'; // Default fallback
+  private convertEnergy: (
+    value: number,
+    fromUnit: 'kcal' | 'kJ',
+    toUnit: 'kcal' | 'kJ'
+  ) => number = (val) => val; // Default passthrough
+  private getEnergyUnitString: (unit: 'kcal' | 'kJ') => string = (unit) =>
+    unit === 'kcal' ? 'kcal' : 'kJ'; // Default fallback
 
-  constructor(energyUnit?: 'kcal' | 'kJ', convertEnergy?: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number, getEnergyUnitString?: (unit: 'kcal' | 'kJ') => string) {
+  constructor(
+    energyUnit?: 'kcal' | 'kJ',
+    convertEnergy?: (
+      value: number,
+      fromUnit: 'kcal' | 'kJ',
+      toUnit: 'kcal' | 'kJ'
+    ) => number,
+    getEnergyUnitString?: (unit: 'kcal' | 'kJ') => string
+  ) {
     if (energyUnit) this.energyUnit = energyUnit;
     if (convertEnergy) this.convertEnergy = convertEnergy;
     if (getEnergyUnitString) this.getEnergyUnitString = getEnergyUnitString;
@@ -125,7 +149,7 @@ class SparkyAIService {
         service_name: data.service_type,
         api_key: data.api_key, // Assuming API key is returned directly from backend
         custom_url: data.custom_url,
-        model_name: data.model_name
+        model_name: data.model_name,
       };
     } catch (error: any) {
       console.error('Error fetching AI service config:', error);
@@ -135,27 +159,28 @@ class SparkyAIService {
 
   private getDefaultModel(serviceName: string): string {
     const defaultModels: Record<string, string> = {
-      'openai': 'gpt-4o',
-      'google_gemini': 'gemini-pro',
-      'anthropic': 'claude-3-haiku-20240307',
-      'mistral': 'mistral-small',
-      'groq': 'llama3-8b-8192',
-      'grok': 'grok-beta',
-      'together': 'meta-llama/Llama-2-7b-chat-hf',
-      'openrouter': 'openai/gpt-3.5-turbo',
-      'perplexity': 'llama-3.1-sonar-small-128k-online',
-      'cohere': 'command-r-plus',
-      'huggingface': 'microsoft/DialoGPT-medium',
-      'replicate': 'meta/llama-2-70b-chat',
-      'vertex': 'gemini-pro',
-      'azure_openai': 'gpt-4',
-      'ollama': 'llama2'
+      openai: 'gpt-4o',
+      google_gemini: 'gemini-pro',
+      anthropic: 'claude-3-haiku-20240307',
+      mistral: 'mistral-small',
+      groq: 'llama3-8b-8192',
+      grok: 'grok-beta',
+      together: 'meta-llama/Llama-2-7b-chat-hf',
+      openrouter: 'openai/gpt-3.5-turbo',
+      perplexity: 'llama-3.1-sonar-small-128k-online',
+      cohere: 'command-r-plus',
+      huggingface: 'microsoft/DialoGPT-medium',
+      replicate: 'meta/llama-2-70b-chat',
+      vertex: 'gemini-pro',
+      azure_openai: 'gpt-4',
+      ollama: 'llama2',
     };
     return defaultModels[serviceName] || 'gpt-3.5-turbo';
   }
 
-
-  private extractMeasurementsFromMessage(message: string): MeasurementSuggestion[] {
+  private extractMeasurementsFromMessage(
+    message: string
+  ): MeasurementSuggestion[] {
     const measurements: MeasurementSuggestion[] = [];
     const lowerMessage = message.toLowerCase();
     const today = new Date().toISOString().split('T')[0];
@@ -185,7 +210,7 @@ class SparkyAIService {
           type: 'weight',
           value,
           unit,
-          date: today
+          date: today,
         });
       }
     }
@@ -212,7 +237,7 @@ class SparkyAIService {
           type: 'waist',
           value,
           unit,
-          date: today
+          date: today,
         });
       }
     }
@@ -232,7 +257,7 @@ class SparkyAIService {
           type: 'steps',
           value,
           unit: 'steps',
-          date: today
+          date: today,
         });
       }
     }
@@ -240,15 +265,28 @@ class SparkyAIService {
     return measurements;
   }
 
-  private async saveMeasurements(measurements: MeasurementSuggestion[]): Promise<boolean> {
+  private async saveMeasurements(
+    measurements: MeasurementSuggestion[]
+  ): Promise<boolean> {
     try {
       for (const measurement of measurements) {
-        if (measurement.type === 'weight' || measurement.type === 'waist' || measurement.type === 'hips' || measurement.type === 'neck' || measurement.type === 'steps') {
+        if (
+          measurement.type === 'weight' ||
+          measurement.type === 'waist' ||
+          measurement.type === 'hips' ||
+          measurement.type === 'neck' ||
+          measurement.type === 'steps'
+        ) {
           // Convert to metric for storage
           let valueToStore = measurement.value;
           if (measurement.type === 'weight' && measurement.unit === 'lbs') {
             valueToStore = measurement.value * 0.453592; // Convert lbs to kg
-          } else if ((measurement.type === 'waist' || measurement.type === 'hips' || measurement.type === 'neck') && measurement.unit === 'inches') {
+          } else if (
+            (measurement.type === 'waist' ||
+              measurement.type === 'hips' ||
+              measurement.type === 'neck') &&
+            measurement.unit === 'inches'
+          ) {
             valueToStore = measurement.value * 2.54; // Convert inches to cm
           }
 
@@ -282,7 +320,10 @@ class SparkyAIService {
     }
   }
 
-  private createMeasurementResponse(measurements: MeasurementSuggestion[], success: boolean): string {
+  private createMeasurementResponse(
+    measurements: MeasurementSuggestion[],
+    success: boolean
+  ): string {
     if (!success) {
       return "I'm sorry, I couldn't save your measurement data. Please make sure you're signed in and try again.";
     }
@@ -293,13 +334,16 @@ class SparkyAIService {
       response += `**${measurement.type.charAt(0).toUpperCase() + measurement.type.slice(1)}:** ${measurement.value} ${measurement.unit}\n`;
     }
 
-    response += "\nYour data has been saved and will be available in your Check-In and Reports sections for tracking progress over time.";
+    response +=
+      '\nYour data has been saved and will be available in your Check-In and Reports sections for tracking progress over time.';
 
     return response;
   }
 
-  private extractFoodsFromMessage(message: string): Array<{ name: string, quantity: number, unit: string }> {
-    const foods: Array<{ name: string, quantity: number, unit: string }> = [];
+  private extractFoodsFromMessage(
+    message: string
+  ): Array<{ name: string; quantity: number; unit: string }> {
+    const foods: Array<{ name: string; quantity: number; unit: string }> = [];
     const lowerMessage = message.toLowerCase();
 
     // Enhanced patterns for better food recognition including branded foods
@@ -318,7 +362,7 @@ class SparkyAIService {
       /(\d+)\s+(cup|cups|glass|glasses)\s+of\s+([a-zA-Z\s]+)/gi,
       /(\d+)\s+([a-zA-Z\s]{3,}?)(?:\s+and|\s*$|,)/gi,
 
-      // Word number + food patterns  
+      // Word number + food patterns
       /(one|two|three|four|five|six|seven|eight|nine|ten)\s+(idl[yi]s?|idly|idli)/gi,
       /(one|two|three|four|five|six|seven|eight|nine|ten)\s+(vadai?s?|vada|medu vada)/gi,
       /(one|two|three|four|five|six|seven|eight|nine|ten)\s+(dosa|dosai|masala dosa)/gi,
@@ -326,8 +370,16 @@ class SparkyAIService {
     ];
 
     const numberWords: { [key: string]: number } = {
-      'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
-      'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
+      one: 1,
+      two: 2,
+      three: 3,
+      four: 4,
+      five: 5,
+      six: 6,
+      seven: 7,
+      eight: 8,
+      nine: 9,
+      ten: 10,
     };
 
     for (const pattern of foodPatterns) {
@@ -340,7 +392,9 @@ class SparkyAIService {
         // Handle pizza patterns specifically
         if (match[0].toLowerCase().includes('pizza')) {
           if (match[1] && (match[3] || match[2])) {
-            quantity = isNaN(Number(match[1])) ? numberWords[match[1].toLowerCase()] || 1 : parseInt(match[1]);
+            quantity = isNaN(Number(match[1]))
+              ? numberWords[match[1].toLowerCase()] || 1
+              : parseInt(match[1]);
 
             // Extract brand and pizza type
             if (match[3] && match[4] === 'pizza') {
@@ -349,7 +403,7 @@ class SparkyAIService {
               foodName = `${match[2].trim()} Pizza`;
             }
 
-            unit = match[4] === 'pizza' ? 'slice' : (match[4] || 'slice');
+            unit = match[4] === 'pizza' ? 'slice' : match[4] || 'slice';
           }
         } else if (match[1] && match[2]) {
           // Handle numeric quantities
@@ -378,23 +432,41 @@ class SparkyAIService {
 
     // Fallback: Look for standalone food names if no patterns matched
     if (foods.length === 0) {
-      const commonFoods = ['idly', 'idli', 'vadai', 'vada', 'dosa', 'roti', 'rice', 'biryani', 'samosa', 'pizza'];
+      const commonFoods = [
+        'idly',
+        'idli',
+        'vadai',
+        'vada',
+        'dosa',
+        'roti',
+        'rice',
+        'biryani',
+        'samosa',
+        'pizza',
+      ];
       for (const food of commonFoods) {
         if (lowerMessage.includes(food)) {
           // Try to find quantity near the food name
           const foodIndex = lowerMessage.indexOf(food);
-          const beforeFood = lowerMessage.substring(Math.max(0, foodIndex - 20), foodIndex);
-          const numberMatch = beforeFood.match(/(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s*$/);
+          const beforeFood = lowerMessage.substring(
+            Math.max(0, foodIndex - 20),
+            foodIndex
+          );
+          const numberMatch = beforeFood.match(
+            /(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s*$/
+          );
 
           let quantity = 1;
           if (numberMatch) {
-            quantity = isNaN(Number(numberMatch[1])) ? numberWords[numberMatch[1]] || 1 : parseInt(numberMatch[1]);
+            quantity = isNaN(Number(numberMatch[1]))
+              ? numberWords[numberMatch[1]] || 1
+              : parseInt(numberMatch[1]);
           }
 
           foods.push({
             name: this.standardizeFoodName(food),
             quantity,
-            unit: food === 'pizza' ? 'slice' : 'piece'
+            unit: food === 'pizza' ? 'slice' : 'piece',
           });
           break;
         }
@@ -406,36 +478,41 @@ class SparkyAIService {
 
   private standardizeFoodName(name: string): string {
     const standardNames: { [key: string]: string } = {
-      'idly': 'Idli',
-      'idli': 'Idli',
-      'idlys': 'Idli',
-      'idlis': 'Idli',
-      'vadai': 'Medu Vada',
-      'vada': 'Medu Vada',
-      'vadais': 'Medu Vada',
-      'vadas': 'Medu Vada',
+      idly: 'Idli',
+      idli: 'Idli',
+      idlys: 'Idli',
+      idlis: 'Idli',
+      vadai: 'Medu Vada',
+      vada: 'Medu Vada',
+      vadais: 'Medu Vada',
+      vadas: 'Medu Vada',
       'medu vada': 'Medu Vada',
-      'dosa': 'Plain Dosa',
-      'dosai': 'Plain Dosa',
+      dosa: 'Plain Dosa',
+      dosai: 'Plain Dosa',
       'masala dosa': 'Masala Dosa',
-      'roti': 'Roti',
-      'chapati': 'Chapati',
-      'naan': 'Naan',
-      'rice': 'Steamed Rice',
-      'biryani': 'Chicken Biryani',
+      roti: 'Roti',
+      chapati: 'Chapati',
+      naan: 'Naan',
+      rice: 'Steamed Rice',
+      biryani: 'Chicken Biryani',
       'fried rice': 'Fried Rice',
-      'samosa': 'Samosa',
-      'samosas': 'Samosa',
+      samosa: 'Samosa',
+      samosas: 'Samosa',
       'dominos chicken pizza': 'Dominos Chicken Pizza',
       'chicken pizza': 'Chicken Pizza',
-      'pizza': 'Pizza'
+      pizza: 'Pizza',
     };
 
     const lowerName = name.toLowerCase().trim();
-    return standardNames[lowerName] || name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+    return (
+      standardNames[lowerName] ||
+      name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()
+    );
   }
 
-  private async getDetailedNutritionData(foods: Array<{ name: string, quantity: number, unit: string }>) {
+  private async getDetailedNutritionData(
+    foods: Array<{ name: string; quantity: number; unit: string }>
+  ) {
     const nutritionData = [];
 
     for (const food of foods) {
@@ -446,18 +523,22 @@ class SparkyAIService {
           nutritionData.push({
             ...knownNutrition,
             requested_quantity: food.quantity,
-            requested_unit: food.unit
+            requested_unit: food.unit,
           });
         } else {
           // Food not found in local knowledge base.
           // The AI call for unknown foods will be handled by SparkyNutritionCoach.
           // For now, add a basic fallback.
-          nutritionData.push(this.getBasicFoodNutrition(food.name, food.quantity, food.unit));
+          nutritionData.push(
+            this.getBasicFoodNutrition(food.name, food.quantity, food.unit)
+          );
         }
       } catch (error) {
         console.error(`Error getting nutrition for ${food.name}:`, error);
         // Add basic fallback on error as well
-        nutritionData.push(this.getBasicFoodNutrition(food.name, food.quantity, food.unit));
+        nutritionData.push(
+          this.getBasicFoodNutrition(food.name, food.quantity, food.unit)
+        );
       }
     }
 
@@ -466,7 +547,7 @@ class SparkyAIService {
 
   private getKnownFoodNutrition(foodName: string) {
     const knownFoods: { [key: string]: any } = {
-      'Idli': {
+      Idli: {
         name: 'Idli',
         serving_size: 1,
         serving_unit: 'piece',
@@ -486,7 +567,7 @@ class SparkyAIService {
         vitamin_a: 0,
         vitamin_c: 0,
         calcium: 20,
-        iron: 0.4
+        iron: 0.4,
       },
       'Medu Vada': {
         name: 'Medu Vada',
@@ -508,7 +589,7 @@ class SparkyAIService {
         vitamin_a: 5,
         vitamin_c: 2,
         calcium: 35,
-        iron: 1.1
+        iron: 1.1,
       },
       'Plain Dosa': {
         name: 'Plain Dosa',
@@ -530,7 +611,7 @@ class SparkyAIService {
         vitamin_a: 0,
         vitamin_c: 0,
         calcium: 40,
-        iron: 1.8
+        iron: 1.8,
       },
       'Masala Dosa': {
         name: 'Masala Dosa',
@@ -552,7 +633,7 @@ class SparkyAIService {
         vitamin_a: 15,
         vitamin_c: 12,
         calcium: 55,
-        iron: 2.2
+        iron: 2.2,
       },
       'Dominos Chicken Pizza': {
         name: 'Dominos Chicken Pizza',
@@ -574,7 +655,7 @@ class SparkyAIService {
         vitamin_a: 150,
         vitamin_c: 2,
         calcium: 180,
-        iron: 2.8
+        iron: 2.8,
       },
       'Chicken Pizza': {
         name: 'Chicken Pizza',
@@ -596,15 +677,18 @@ class SparkyAIService {
         vitamin_a: 140,
         vitamin_c: 1.5,
         calcium: 160,
-        iron: 2.5
-      }
+        iron: 2.5,
+      },
     };
 
     return knownFoods[foodName] || null;
   }
 
-
-  private getBasicFoodNutrition(foodName: string, quantity: number, unit: string) {
+  private getBasicFoodNutrition(
+    foodName: string,
+    quantity: number,
+    unit: string
+  ) {
     return {
       name: foodName,
       serving_size: 1,
@@ -627,11 +711,14 @@ class SparkyAIService {
       calcium: 30,
       iron: 1.0,
       requested_quantity: quantity,
-      requested_unit: unit
+      requested_unit: unit,
     };
   }
 
-  private createFoodSuggestionsFromNutrition(nutritionData: any[], originalMessage: string): FoodSuggestion[] {
+  private createFoodSuggestionsFromNutrition(
+    nutritionData: any[],
+    originalMessage: string
+  ): FoodSuggestion[] {
     const mealType = this.determineMealType(originalMessage);
     const suggestions: FoodSuggestion[] = [];
 
@@ -646,28 +733,35 @@ class SparkyAIService {
         protein: Math.round(nutrition.protein * multiplier * 10) / 10,
         carbs: Math.round(nutrition.carbs * multiplier * 10) / 10,
         fat: Math.round(nutrition.fat * multiplier * 10) / 10,
-        saturated_fat: Math.round(nutrition.saturated_fat * multiplier * 10) / 10,
+        saturated_fat:
+          Math.round(nutrition.saturated_fat * multiplier * 10) / 10,
         trans_fat: Math.round(nutrition.trans_fat * multiplier * 10) / 10,
-        monounsaturated_fat: Math.round(nutrition.monounsaturated_fat * multiplier * 10) / 10,
-        polyunsaturated_fat: Math.round(nutrition.polyunsaturated_fat * multiplier * 10) / 10,
+        monounsaturated_fat:
+          Math.round(nutrition.monounsaturated_fat * multiplier * 10) / 10,
+        polyunsaturated_fat:
+          Math.round(nutrition.polyunsaturated_fat * multiplier * 10) / 10,
         cholesterol: Math.round(nutrition.cholesterol * multiplier * 10) / 10,
         sodium: Math.round(nutrition.sodium * multiplier * 10) / 10,
         potassium: Math.round(nutrition.potassium * multiplier * 10) / 10,
-        dietary_fiber: Math.round(nutrition.dietary_fiber * multiplier * 10) / 10,
+        dietary_fiber:
+          Math.round(nutrition.dietary_fiber * multiplier * 10) / 10,
         sugars: Math.round(nutrition.sugars * multiplier * 10) / 10,
         vitamin_a: Math.round(nutrition.vitamin_a * multiplier * 10) / 10,
         vitamin_c: Math.round(nutrition.vitamin_c * multiplier * 10) / 10,
         calcium: Math.round(nutrition.calcium * multiplier * 10) / 10,
         iron: Math.round(nutrition.iron * multiplier * 10) / 10,
         meal_type: mealType,
-        is_existing: false
+        is_existing: false,
       });
     }
 
     return suggestions;
   }
 
-  private createNutritionResponse(nutritionData: any[], originalMessage: string): string {
+  private createNutritionResponse(
+    nutritionData: any[],
+    originalMessage: string
+  ): string {
     const mealType = this.determineMealType(originalMessage);
 
     let response = `Great! I've analyzed your ${mealType} and found nutritional information for:\n\n`;
@@ -691,28 +785,34 @@ class SparkyAIService {
     return response;
   }
 
-
-
-
-
-
-
-
   private determineMealType(message: string): string {
     const lowerMessage = message.toLowerCase();
 
-    if (lowerMessage.includes('breakfast') || lowerMessage.includes('morning')) {
+    if (
+      lowerMessage.includes('breakfast') ||
+      lowerMessage.includes('morning')
+    ) {
       return 'breakfast';
-    } else if (lowerMessage.includes('lunch') || lowerMessage.includes('noon')) {
+    } else if (
+      lowerMessage.includes('lunch') ||
+      lowerMessage.includes('noon')
+    ) {
       return 'lunch';
-    } else if (lowerMessage.includes('dinner') || lowerMessage.includes('evening') || lowerMessage.includes('tonight')) {
+    } else if (
+      lowerMessage.includes('dinner') ||
+      lowerMessage.includes('evening') ||
+      lowerMessage.includes('tonight')
+    ) {
       return 'dinner';
     } else if (lowerMessage.includes('snack')) {
       return 'snacks';
     }
 
     // Check for time references like "last sunday"
-    if (lowerMessage.includes('sunday') || lowerMessage.includes('last sunday')) {
+    if (
+      lowerMessage.includes('sunday') ||
+      lowerMessage.includes('last sunday')
+    ) {
       // Default Sunday evening meal to dinner
       return 'dinner';
     }
@@ -725,8 +825,9 @@ class SparkyAIService {
     return 'snacks';
   }
 
-
-  private extractCustomMeasurementsFromMessage(message: string): MeasurementSuggestion[] {
+  private extractCustomMeasurementsFromMessage(
+    message: string
+  ): MeasurementSuggestion[] {
     const measurements: MeasurementSuggestion[] = [];
     const lowerMessage = message.toLowerCase();
     const today = new Date().toISOString().split('T')[0];
@@ -782,7 +883,7 @@ class SparkyAIService {
           type: 'blood_sugar' as any,
           value,
           unit: 'mg/dL',
-          date: today
+          date: today,
         });
       }
     }
@@ -796,7 +897,7 @@ class SparkyAIService {
           type: 'cholesterol' as any,
           value,
           unit: 'mg/dL',
-          date: today
+          date: today,
         });
       }
     }
@@ -811,13 +912,13 @@ class SparkyAIService {
           type: 'blood_pressure_systolic' as any,
           value: systolic,
           unit: 'mmHg',
-          date: today
+          date: today,
         });
         measurements.push({
           type: 'blood_pressure_diastolic' as any,
           value: diastolic,
           unit: 'mmHg',
-          date: today
+          date: today,
         });
       }
     }
@@ -831,7 +932,7 @@ class SparkyAIService {
           type: 'heart_rate' as any,
           value,
           unit: 'bpm',
-          date: today
+          date: today,
         });
       }
     }
@@ -845,7 +946,7 @@ class SparkyAIService {
           type: 'body_fat' as any,
           value,
           unit: '%',
-          date: today
+          date: today,
         });
       }
     }
@@ -859,7 +960,7 @@ class SparkyAIService {
           type: 'temperature' as any,
           value,
           unit: '°F',
-          date: today
+          date: today,
         });
       }
     }
@@ -867,18 +968,27 @@ class SparkyAIService {
     return measurements;
   }
 
-  private async saveCustomMeasurements(measurements: MeasurementSuggestion[]): Promise<boolean> {
+  private async saveCustomMeasurements(
+    measurements: MeasurementSuggestion[]
+  ): Promise<boolean> {
     try {
       // Mapping of measurement types to category names and units
-      const categoryMapping: { [key: string]: { name: string, unit: string } } = {
-        'blood_sugar': { name: 'Blood Sugar', unit: 'mg/dL' },
-        'cholesterol': { name: 'Cholesterol', unit: 'mg/dL' },
-        'blood_pressure_systolic': { name: 'Blood Pressure (Systolic)', unit: 'mmHg' },
-        'blood_pressure_diastolic': { name: 'Blood Pressure (Diastolic)', unit: 'mmHg' },
-        'heart_rate': { name: 'Heart Rate', unit: 'bpm' },
-        'body_fat': { name: 'Body Fat', unit: '%' },
-        'temperature': { name: 'Temperature', unit: '°F' }
-      };
+      const categoryMapping: { [key: string]: { name: string; unit: string } } =
+        {
+          blood_sugar: { name: 'Blood Sugar', unit: 'mg/dL' },
+          cholesterol: { name: 'Cholesterol', unit: 'mg/dL' },
+          blood_pressure_systolic: {
+            name: 'Blood Pressure (Systolic)',
+            unit: 'mmHg',
+          },
+          blood_pressure_diastolic: {
+            name: 'Blood Pressure (Diastolic)',
+            unit: 'mmHg',
+          },
+          heart_rate: { name: 'Heart Rate', unit: 'bpm' },
+          body_fat: { name: 'Body Fat', unit: '%' },
+          temperature: { name: 'Temperature', unit: '°F' },
+        };
 
       for (const measurement of measurements) {
         const categoryInfo = categoryMapping[measurement.type as string];
@@ -886,15 +996,23 @@ class SparkyAIService {
           // Check if category exists
           let category: { id: string } | null = null;
           try {
-            category = await apiCall(`/measurements/custom-categories/${encodeURIComponent(categoryInfo.name)}`, {
-              method: 'GET',
-            });
+            category = await apiCall(
+              `/measurements/custom-categories/${encodeURIComponent(categoryInfo.name)}`,
+              {
+                method: 'GET',
+              }
+            );
           } catch (e: any) {
             if (e.message && e.message.includes('404')) {
               // Category not found, proceed to create
-              console.log(`Category "${categoryInfo.name}" not found, creating...`);
+              console.log(
+                `Category "${categoryInfo.name}" not found, creating...`
+              );
             } else {
-              console.error(`Error checking for custom category "${categoryInfo.name}":`, e);
+              console.error(
+                `Error checking for custom category "${categoryInfo.name}":`,
+                e
+              );
               return false;
             }
           }
@@ -902,17 +1020,23 @@ class SparkyAIService {
           if (!category || !category.id) {
             // Create category if it doesn't exist
             try {
-              const newCategory = await apiCall('/measurements/custom-categories', {
-                method: 'POST',
-                body: {
-                  name: categoryInfo.name,
-                  measurement_type: categoryInfo.unit,
-                  frequency: 'All'
-                },
-              });
+              const newCategory = await apiCall(
+                '/measurements/custom-categories',
+                {
+                  method: 'POST',
+                  body: {
+                    name: categoryInfo.name,
+                    measurement_type: categoryInfo.unit,
+                    frequency: 'All',
+                  },
+                }
+              );
               category = newCategory;
             } catch (createError: any) {
-              console.error(`Error creating ${categoryInfo.name} category:`, createError);
+              console.error(
+                `Error creating ${categoryInfo.name} category:`,
+                createError
+              );
               return false;
             }
           }
@@ -925,11 +1049,14 @@ class SparkyAIService {
                 category_id: category.id,
                 value: measurement.value,
                 entry_date: measurement.date,
-                entry_timestamp: new Date().toISOString()
+                entry_timestamp: new Date().toISOString(),
               },
             });
           } catch (saveError: any) {
-            console.error(`Error saving ${categoryInfo.name} measurement:`, saveError);
+            console.error(
+              `Error saving ${categoryInfo.name} measurement:`,
+              saveError
+            );
             return false;
           }
         }
@@ -946,30 +1073,39 @@ class SparkyAIService {
     try {
       // First, try to extract and save measurements
       const measurements = this.extractMeasurementsFromMessage(message);
-      const customMeasurements = this.extractCustomMeasurementsFromMessage(message);
+      const customMeasurements =
+        this.extractCustomMeasurementsFromMessage(message);
 
       let measurementSaveSuccess = true;
       if (measurements.length > 0) {
         measurementSaveSuccess = await this.saveMeasurements(measurements);
       }
       if (customMeasurements.length > 0) {
-        const customSaveSuccess = await this.saveCustomMeasurements(customMeasurements);
+        const customSaveSuccess =
+          await this.saveCustomMeasurements(customMeasurements);
         if (!customSaveSuccess) measurementSaveSuccess = false;
       }
 
       if (measurements.length > 0 || customMeasurements.length > 0) {
         const allMeasurements = [...measurements, ...customMeasurements];
         return {
-          content: this.createMeasurementResponse(allMeasurements, measurementSaveSuccess),
+          content: this.createMeasurementResponse(
+            allMeasurements,
+            measurementSaveSuccess
+          ),
           actionType: 'measurement',
-          measurementSuggestions: allMeasurements
+          measurementSuggestions: allMeasurements,
         };
       }
 
       // If no measurements, proceed with AI chat
       const activeService = await this.getActiveService();
       if (!activeService) {
-        return { content: "I'm sorry, I couldn't find an active AI service configuration. Please set one up in your settings.", actionType: 'general' };
+        return {
+          content:
+            "I'm sorry, I couldn't find an active AI service configuration. Please set one up in your settings.",
+          actionType: 'general',
+        };
       }
 
       // Placeholder for actual AI call
@@ -977,14 +1113,19 @@ class SparkyAIService {
       // using activeService.api_key, activeService.custom_url, activeService.model_name
       // and the user's message.
       // For now, we'll return a generic response.
-      return { content: "I'm sorry, I can only process measurements at the moment. AI chat functionality is under development.", actionType: 'general' };
-
+      return {
+        content:
+          "I'm sorry, I can only process measurements at the moment. AI chat functionality is under development.",
+        actionType: 'general',
+      };
     } catch (error: any) {
       console.error('Error processing message:', error);
-      return { content: `An unexpected error occurred: ${error.message}`, actionType: 'general' };
+      return {
+        content: `An unexpected error occurred: ${error.message}`,
+        actionType: 'general',
+      };
     }
   }
-
 }
 
 export default SparkyAIService;

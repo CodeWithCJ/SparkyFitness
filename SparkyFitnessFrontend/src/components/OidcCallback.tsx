@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import type React from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '../lib/auth-client';
 import { useAuth } from '../hooks/useAuth';
@@ -17,10 +18,14 @@ const OidcCallback: React.FC = () => {
       try {
         // Better Auth handles the actual code/state exchange via server-side handler.
         // Once the user is redirected here, the session should already be established.
-        const { data: session, error: sessionError } = await authClient.getSession();
+        const { data: session, error: sessionError } =
+          await authClient.getSession();
 
         if (sessionError) {
-          setError(sessionError.message || 'Failed to verify session after OIDC redirect.');
+          setError(
+            sessionError.message ||
+              'Failed to verify session after OIDC redirect.'
+          );
           return;
         }
 
@@ -40,7 +45,10 @@ const OidcCallback: React.FC = () => {
           setError('No active session found after OIDC redirect.');
         }
       } catch (err: any) {
-        setError(err.message || 'An unexpected error occurred during OIDC verification.');
+        setError(
+          err.message ||
+            'An unexpected error occurred during OIDC verification.'
+        );
       }
     };
 
@@ -51,7 +59,9 @@ const OidcCallback: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center flex-col gap-4">
       <h1 className="text-xl font-semibold">Completing Secure Login...</h1>
       {error && <p className="text-red-500 font-medium">Error: {error}</p>}
-      <p className="text-muted-foreground italic">Please wait while we finalize your session.</p>
+      <p className="text-muted-foreground italic">
+        Please wait while we finalize your session.
+      </p>
     </div>
   );
 };

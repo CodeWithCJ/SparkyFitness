@@ -1,4 +1,10 @@
-export type GlycemicIndex = 'None' | 'Very Low' | 'Low' | 'Medium' | 'High' | 'Very High';
+export type GlycemicIndex =
+  | 'None'
+  | 'Very Low'
+  | 'Low'
+  | 'Medium'
+  | 'High'
+  | 'Very High';
 
 export interface FoodVariant {
   id?: string;
@@ -35,7 +41,13 @@ export interface Food {
   user_id?: string;
   shared_with_public?: boolean;
   provider_external_id?: string;
-  provider_type?: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'mealie' | 'tandoor' | 'usda';
+  provider_type?:
+    | 'openfoodfacts'
+    | 'nutritionix'
+    | 'fatsecret'
+    | 'mealie'
+    | 'tandoor'
+    | 'usda';
   default_variant?: FoodVariant;
   variants?: FoodVariant[];
   is_quick_food?: boolean;

@@ -1,7 +1,7 @@
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { error } from "@/utils/logging";
+import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { error } from '@/utils/logging';
 
 const NotFound = () => {
   const location = useLocation();
@@ -10,7 +10,7 @@ const NotFound = () => {
   useEffect(() => {
     error(
       loggingLevel,
-      "404 Error: User attempted to access non-existent route:",
+      '404 Error: User attempted to access non-existent route:',
       location.pathname
     );
   }, [location.pathname, loggingLevel]);

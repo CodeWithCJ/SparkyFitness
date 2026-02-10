@@ -1,29 +1,29 @@
-import { useState, useEffect, useCallback } from "react";
-import { useTranslation } from "react-i18next";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useActiveUser } from "@/contexts/ActiveUserContext";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import DiaryTopControls from "./DiaryTopControls";
-import MealCard from "./MealCard";
-import ExerciseCard from "./ExerciseCard";
-import EditFoodEntryDialog from "./EditFoodEntryDialog";
-import FoodUnitSelector from "@/components/FoodUnitSelector";
-import CopyFoodEntryDialog from "@/pages/Diary/CopyFoodEntryDialog";
-import ConvertToMealDialog from "@/pages/Diary/ConvertToMealDialog";
-import EditMealFoodEntryDialog from "./EditMealFoodEntryDialog";
-import LogMealDialog from "@/pages/Diary/LogMealDialog";
-import { debug, info, warn, error } from "@/utils/logging";
-import { calculateFoodEntryNutrition } from "@/utils/nutritionCalculations";
-import { toast } from "@/hooks/use-toast";
+} from '@/components/ui/popover';
+import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import DiaryTopControls from './DiaryTopControls';
+import MealCard from './MealCard';
+import ExerciseCard from './ExerciseCard';
+import EditFoodEntryDialog from './EditFoodEntryDialog';
+import FoodUnitSelector from '@/components/FoodUnitSelector';
+import CopyFoodEntryDialog from '@/pages/Diary/CopyFoodEntryDialog';
+import ConvertToMealDialog from '@/pages/Diary/ConvertToMealDialog';
+import EditMealFoodEntryDialog from './EditMealFoodEntryDialog';
+import LogMealDialog from '@/pages/Diary/LogMealDialog';
+import { debug, info, warn, error } from '@/utils/logging';
+import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
+import { toast } from '@/hooks/use-toast';
 import {
   loadFoodEntries,
   loadGoals,
@@ -33,16 +33,19 @@ import {
   copyFoodEntriesFromYesterday,
   getFoodEntryMealsByDate, // New import
   deleteFoodEntryMeal, // New import
-} from "@/services/foodEntryService"; // ALL food related services now from foodEntryService
-import { getMealTypes, MealTypeDefinition } from "@/services/mealTypeService";
-import { Food, FoodVariant, GlycemicIndex } from "@/types/food";
-import { Meal as MealType, FoodEntryMeal } from "@/types/meal"; // Added FoodEntryMeal
-import { FoodEntry } from "@/types/food";
-import { ExpandedGoals } from "@/types/goals";
-import { PresetExercise, WorkoutPreset } from "@/types/workout";
+} from '@/services/foodEntryService'; // ALL food related services now from foodEntryService
+import {
+  getMealTypes,
+  type MealTypeDefinition,
+} from '@/services/mealTypeService';
+import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
+import type { Meal as MealType, FoodEntryMeal } from '@/types/meal';
+import type { FoodEntry } from '@/types/food';
+import type { ExpandedGoals } from '@/types/goals';
+import type { PresetExercise, WorkoutPreset } from '@/types/workout';
 
-import { customNutrientService } from "@/services/customNutrientService"; // Add import
-import { UserCustomNutrient } from "@/types/customNutrient"; // Add import
+import { customNutrientService } from '@/services/customNutrientService';
+import type { UserCustomNutrient } from '@/types/customNutrient';
 
 interface MealTotals {
   calories: number; // Stored internally as kcal
@@ -63,7 +66,6 @@ interface MealTotals {
   custom_nutrients?: Record<string, number>; // Add custom_nutrients support
   [key: string]: any; // Allow custom nutrients
 }
-
 
 const Diary = () => {
   const { t } = useTranslation();
@@ -86,12 +88,13 @@ const Diary = () => {
     []
   ); // Add state for custom nutrients
   const [selectedDate, setSelectedDate] = useState(
-    formatDateInUserTimezone(new Date(), "yyyy-MM-dd")
+    formatDateInUserTimezone(new Date(), 'yyyy-MM-dd')
   );
   const [date, setDate] = useState<Date>(new Date(selectedDate));
-  debug(loggingLevel, "FoodDiary component rendered for date:", selectedDate);
-  const [externalRefreshTrigger, setFoodDiaryRefreshTrigger] = useState<number>(0);
-    const [exercisesToLogFromPreset, setExercisesToLogFromPreset] = useState<
+  debug(loggingLevel, 'FoodDiary component rendered for date:', selectedDate);
+  const [externalRefreshTrigger, setFoodDiaryRefreshTrigger] =
+    useState<number>(0);
+  const [exercisesToLogFromPreset, setExercisesToLogFromPreset] = useState<
     PresetExercise[] | undefined
   >(undefined);
 
@@ -119,23 +122,23 @@ const Diary = () => {
   const [selectedMealTemplate, setSelectedMealTemplate] =
     useState<MealType | null>(null);
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
-  const [copySourceMealType, setCopySourceMealType] = useState<string>("");
+  const [copySourceMealType, setCopySourceMealType] = useState<string>('');
   const [isConvertToMealDialogOpen, setIsConvertToMealDialogOpen] =
     useState(false);
   const [convertToMealSourceMealType, setConvertToMealSourceMealType] =
-    useState<string>("");
+    useState<string>('');
 
   const [availableMealTypes, setAvailableMealTypes] = useState<
     MealTypeDefinition[]
   >([]);
-  const [selectedMealType, setSelectedMealType] = useState<string>("");
-  const [selectedMealTypeId, setSelectedMealTypeId] = useState<string>("");
+  const [selectedMealType, setSelectedMealType] = useState<string>('');
+  const [selectedMealTypeId, setSelectedMealTypeId] = useState<string>('');
 
   const currentUserId = activeUserId;
-  debug(loggingLevel, "Current user ID:", currentUserId);
+  debug(loggingLevel, 'Current user ID:', currentUserId);
 
   useEffect(() => {
-    debug(loggingLevel, "selectedDate useEffect triggered:", selectedDate);
+    debug(loggingLevel, 'selectedDate useEffect triggered:', selectedDate);
     setDate(parseDateInUserTimezone(selectedDate));
   }, [selectedDate, parseDateInUserTimezone]);
 
@@ -145,7 +148,7 @@ const Diary = () => {
         const types = await getMealTypes();
         setAvailableMealTypes(types);
       } catch (err) {
-        error(loggingLevel, "Error loading meal types:", err);
+        error(loggingLevel, 'Error loading meal types:', err);
       }
     };
     if (currentUserId) {
@@ -161,7 +164,7 @@ const Diary = () => {
           await customNutrientService.getCustomNutrients();
         setCustomNutrients(fetchedCustomNutrients);
       } catch (err) {
-        error(loggingLevel, "Error loading custom nutrients:", err);
+        error(loggingLevel, 'Error loading custom nutrients:', err);
       }
     };
     loadCustomNutrients();
@@ -171,29 +174,29 @@ const Diary = () => {
     if (
       value === null ||
       value === undefined ||
-      value === "" ||
-      value === "0.0" ||
+      value === '' ||
+      value === '0.0' ||
       value === 0
     ) {
-      return "None";
+      return 'None';
     }
     const validGlycemicIndexes: GlycemicIndex[] = [
-      "None",
-      "Very Low",
-      "Low",
-      "Medium",
-      "High",
-      "Very High",
+      'None',
+      'Very Low',
+      'Low',
+      'Medium',
+      'High',
+      'Very High',
     ];
     if (validGlycemicIndexes.includes(value as GlycemicIndex)) {
       return value as GlycemicIndex;
     }
-    return "None";
+    return 'None';
   }, []);
 
   const _calculateDayTotals = useCallback(
     (entries: FoodEntry[], meals: FoodEntryMeal[]) => {
-      debug(loggingLevel, "Calculating day totals for entries and meals:", {
+      debug(loggingLevel, 'Calculating day totals for entries and meals:', {
         entries,
         meals,
       });
@@ -243,13 +246,13 @@ const Diary = () => {
       const totals = combinedItems.reduce(
         (acc, item) => {
           Object.keys(acc).forEach((key) => {
-            if (key === "custom_nutrients") return; // Handle separately
+            if (key === 'custom_nutrients') return; // Handle separately
 
             const k = key as keyof MealTotals;
             const val = item.nutrition[k];
 
             // Safely add numbers, ignoring other types
-            if (typeof val === "number") {
+            if (typeof val === 'number') {
               (acc as any)[key] += val;
             }
           });
@@ -286,7 +289,7 @@ const Diary = () => {
         }
       );
 
-      info(loggingLevel, "Day totals calculated:", totals);
+      info(loggingLevel, 'Day totals calculated:', totals);
       setDayTotals(totals);
     },
     [loggingLevel]
@@ -295,16 +298,14 @@ const Diary = () => {
   const _loadFoodEntriesAndMeals = useCallback(async () => {
     debug(
       loggingLevel,
-      "Loading food entries and meals for date:",
+      'Loading food entries and meals for date:',
       selectedDate
     );
     if (!currentUserId) return;
 
     try {
       // Fetch standalone food entries
-      const fetchedFoodEntries = await loadFoodEntries(
-        selectedDate
-      );
+      const fetchedFoodEntries = await loadFoodEntries(selectedDate);
       const processedFoodEntries = (fetchedFoodEntries || []).map((entry) => ({
         ...entry,
         glycemic_index: normalizeGlycemicIndex(entry.glycemic_index),
@@ -316,24 +317,22 @@ const Diary = () => {
       setFoodEntries(standaloneFoodEntries);
       debug(
         loggingLevel,
-        "Processed standalone food entries:",
+        'Processed standalone food entries:',
         standaloneFoodEntries
       );
 
       // Fetch logged meal entries with components
-      const fetchedFoodEntryMeals = await getFoodEntryMealsByDate(
-        selectedDate
-      );
+      const fetchedFoodEntryMeals = await getFoodEntryMealsByDate(selectedDate);
       setFoodEntryMeals(fetchedFoodEntryMeals || []);
       debug(
         loggingLevel,
-        "Fetched food entry meals with components:",
+        'Fetched food entry meals with components:',
         fetchedFoodEntryMeals
       );
 
       _calculateDayTotals(standaloneFoodEntries, fetchedFoodEntryMeals);
     } catch (err) {
-      error(loggingLevel, "Error loading food entries or meals:", err);
+      error(loggingLevel, 'Error loading food entries or meals:', err);
     }
   }, [
     currentUserId,
@@ -344,20 +343,20 @@ const Diary = () => {
   ]);
 
   const _loadGoals = useCallback(async () => {
-    debug(loggingLevel, "Loading goals for date:", selectedDate);
+    debug(loggingLevel, 'Loading goals for date:', selectedDate);
     try {
       const goalData = await loadGoals(selectedDate);
-      info(loggingLevel, "Goals loaded successfully:", goalData);
+      info(loggingLevel, 'Goals loaded successfully:', goalData);
       setGoals(goalData);
     } catch (err) {
-      error(loggingLevel, "Error loading goals:", err);
+      error(loggingLevel, 'Error loading goals:', err);
     }
   }, [currentUserId, selectedDate, loggingLevel]);
 
   useEffect(() => {
     debug(
       loggingLevel,
-      "currentUserId, selectedDate, externalRefreshTrigger useEffect triggered.",
+      'currentUserId, selectedDate, externalRefreshTrigger useEffect triggered.',
       { currentUserId, selectedDate, externalRefreshTrigger }
     );
     if (currentUserId) {
@@ -374,9 +373,9 @@ const Diary = () => {
 
   const getEntryNutrition = useCallback(
     (item: FoodEntry | FoodEntryMeal): MealTotals => {
-      debug(loggingLevel, "Calculating entry nutrition for item:", item);
+      debug(loggingLevel, 'Calculating entry nutrition for item:', item);
       let nutrition: MealTotals;
-      if ("foods" in item) {
+      if ('foods' in item) {
         // It's a FoodEntryMeal, use its aggregated properties (assumed to be in kcal)
         // Note: The backend already scales component food entries by the meal quantity when creating,
         // and aggregates those scaled values. Do NOT multiply by quantity again here.
@@ -406,7 +405,7 @@ const Diary = () => {
           custom_nutrients: calculated.custom_nutrients || {},
         };
       }
-      debug(loggingLevel, "Calculated nutrition for item:", nutrition);
+      debug(loggingLevel, 'Calculated nutrition for item:', nutrition);
       return nutrition;
     },
     [loggingLevel]
@@ -439,14 +438,14 @@ const Diary = () => {
       const percentage = goals ? goals[percentageKey] || 0 : 0;
 
       let displayName = mealType;
-      if (mealType.toLowerCase() === "breakfast")
-        displayName = t("common.breakfast", "Breakfast");
-      else if (mealType.toLowerCase() === "lunch")
-        displayName = t("common.lunch", "Lunch");
-      else if (mealType.toLowerCase() === "dinner")
-        displayName = t("common.dinner", "Dinner");
-      else if (mealType.toLowerCase() === "snacks")
-        displayName = t("common.snacks", "Snacks");
+      if (mealType.toLowerCase() === 'breakfast')
+        displayName = t('common.breakfast', 'Breakfast');
+      else if (mealType.toLowerCase() === 'lunch')
+        displayName = t('common.lunch', 'Lunch');
+      else if (mealType.toLowerCase() === 'dinner')
+        displayName = t('common.dinner', 'Dinner');
+      else if (mealType.toLowerCase() === 'snacks')
+        displayName = t('common.snacks', 'Snacks');
 
       debug(
         loggingLevel,
@@ -457,34 +456,32 @@ const Diary = () => {
         name: displayName,
         type: mealType,
         entries: combinedEntries,
-        targetCalories: goals
-          ? (goals.calories * percentage) / 100
-          : 0,
+        targetCalories: goals ? (goals.calories * percentage) / 100 : 0,
       };
     },
     [foodEntries, foodEntryMeals, goals, loggingLevel, t]
   );
 
   const handleDataChange = useCallback(() => {
-    debug(loggingLevel, "Handling data change, triggering refresh.");
+    debug(loggingLevel, 'Handling data change, triggering refresh.');
     _loadFoodEntriesAndMeals();
     _loadGoals();
-    info(loggingLevel, "Dispatching foodDiaryRefresh event.");
-    window.dispatchEvent(new CustomEvent("foodDiaryRefresh"));
+    info(loggingLevel, 'Dispatching foodDiaryRefresh event.');
+    window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
   }, [debug, loggingLevel, _loadFoodEntriesAndMeals, _loadGoals, info]);
 
   const handleCopyClick = useCallback(
     (mealType: string) => {
       setCopySourceMealType(mealType);
       setIsCopyDialogOpen(true);
-      debug(loggingLevel, "Opening copy dialog for meal type:", mealType);
+      debug(loggingLevel, 'Opening copy dialog for meal type:', mealType);
     },
     [debug, loggingLevel]
   );
 
   const handleCopyFoodEntries = useCallback(
     async (targetDate: string, targetMealType: string) => {
-      debug(loggingLevel, "Attempting to copy food entries.", {
+      debug(loggingLevel, 'Attempting to copy food entries.', {
         selectedDate,
         copySourceMealType,
         targetDate,
@@ -497,24 +494,24 @@ const Diary = () => {
           targetDate,
           targetMealType
         );
-        info(loggingLevel, "Food entries copied successfully.");
+        info(loggingLevel, 'Food entries copied successfully.');
         toast({
-          title: t("foodDiary.success", "Success"),
+          title: t('foodDiary.success', 'Success'),
           description: t(
-            "foodDiary.entryCopied",
-            "Food entries copied successfully"
+            'foodDiary.entryCopied',
+            'Food entries copied successfully'
           ),
         });
         handleDataChange();
       } catch (err) {
-        error(loggingLevel, "Error copying food entries:", err);
+        error(loggingLevel, 'Error copying food entries:', err);
         toast({
-          title: t("foodDiary.error", "Error"),
+          title: t('foodDiary.error', 'Error'),
           description: t(
-            "foodDiary.entryCopyError",
-            "Failed to copy food entries."
+            'foodDiary.entryCopyError',
+            'Failed to copy food entries.'
           ),
-          variant: "destructive",
+          variant: 'destructive',
         });
       } finally {
         setIsCopyDialogOpen(false);
@@ -533,30 +530,30 @@ const Diary = () => {
 
   const handleCopyFromYesterday = useCallback(
     async (mealType: string) => {
-      debug(loggingLevel, "Attempting to copy food entries from yesterday.", {
+      debug(loggingLevel, 'Attempting to copy food entries from yesterday.', {
         selectedDate,
         mealType,
       });
       try {
         await copyFoodEntriesFromYesterday(mealType, selectedDate);
-        info(loggingLevel, "Food entries copied from yesterday successfully.");
+        info(loggingLevel, 'Food entries copied from yesterday successfully.');
         toast({
-          title: t("foodDiary.success", "Success"),
+          title: t('foodDiary.success', 'Success'),
           description: t(
-            "foodDiary.copiedFromYesterday",
-            "Food entries copied from yesterday successfully"
+            'foodDiary.copiedFromYesterday',
+            'Food entries copied from yesterday successfully'
           ),
         });
         handleDataChange();
       } catch (err) {
-        error(loggingLevel, "Error copying food entries from yesterday:", err);
+        error(loggingLevel, 'Error copying food entries from yesterday:', err);
         toast({
-          title: t("foodDiary.error", "Error"),
+          title: t('foodDiary.error', 'Error'),
           description: t(
-            "foodDiary.copyFromYesterdayError",
-            "Failed to copy food entries from yesterday."
+            'foodDiary.copyFromYesterdayError',
+            'Failed to copy food entries from yesterday.'
           ),
-          variant: "destructive",
+          variant: 'destructive',
         });
       }
     },
@@ -565,7 +562,7 @@ const Diary = () => {
 
   const getMealTotals = useCallback(
     (mealType: string): MealTotals => {
-      debug(loggingLevel, "Calculating meal totals for meal type:", mealType);
+      debug(loggingLevel, 'Calculating meal totals for meal type:', mealType);
 
       const entries = foodEntries.filter(
         (entry) => entry.meal_type === mealType
@@ -583,12 +580,12 @@ const Diary = () => {
         (acc, item) => {
           const itemNutrition = getEntryNutrition(item);
           Object.keys(acc).forEach((key) => {
-            if (key === "custom_nutrients") return; // Handle separately
+            if (key === 'custom_nutrients') return; // Handle separately
 
             const k = key as keyof MealTotals;
             const val = itemNutrition[k];
 
-            if (typeof val === "number") {
+            if (typeof val === 'number') {
               (acc as any)[key] += val;
             }
           });
@@ -632,26 +629,33 @@ const Diary = () => {
 
   const handleDateSelect = useCallback(
     (newDate: Date | undefined) => {
-      debug(loggingLevel, "Handling date select:", newDate);
+      debug(loggingLevel, 'Handling date select:', newDate);
       if (newDate) {
         setDate(newDate);
-        const dateString = formatDateInUserTimezone(newDate, "yyyy-MM-dd");
-        info(loggingLevel, "Date selected:", dateString);
+        const dateString = formatDateInUserTimezone(newDate, 'yyyy-MM-dd');
+        info(loggingLevel, 'Date selected:', dateString);
         setSelectedDate(dateString);
       }
     },
-    [debug, loggingLevel, setDate, formatDateInUserTimezone, info, setSelectedDate]
+    [
+      debug,
+      loggingLevel,
+      setDate,
+      formatDateInUserTimezone,
+      info,
+      setSelectedDate,
+    ]
   );
 
   const handlePreviousDay = useCallback(() => {
-    debug(loggingLevel, "Handling previous day button click.");
+    debug(loggingLevel, 'Handling previous day button click.');
     const previousDay = new Date(date);
     previousDay.setDate(previousDay.getDate() - 1);
     handleDateSelect(previousDay);
   }, [debug, loggingLevel, date, handleDateSelect]);
 
   const handleNextDay = useCallback(() => {
-    debug(loggingLevel, "Handling next day button click.");
+    debug(loggingLevel, 'Handling next day button click.');
     const nextDay = new Date(date);
     nextDay.setDate(nextDay.getDate() + 1);
     handleDateSelect(nextDay);
@@ -659,23 +663,21 @@ const Diary = () => {
 
   const handleFoodSelect = useCallback(
     async (item: Food | MealType, mealType: string) => {
+      const typeObj = availableMealTypes.find(
+        (t) => t.name.toLowerCase() === mealType.toLowerCase()
+      );
+      const typeId = typeObj?.id || '';
 
-
-      const typeObj = availableMealTypes.find(t => t.name.toLowerCase() === mealType.toLowerCase());
-      const typeId = typeObj?.id || "";
-
-
-
-      if ("is_custom" in item) {
+      if ('is_custom' in item) {
         // It's a Food
-        debug(loggingLevel, "Handling food select:", { food: item, mealType });
+        debug(loggingLevel, 'Handling food select:', { food: item, mealType });
         setSelectedFood(item as Food);
         setSelectedMealType(mealType); // Name
         setSelectedMealTypeId(typeId); // UUID
         setIsUnitSelectorOpen(true);
       } else {
         // It's a Meal Template (not FoodEntryMeal)
-        debug(loggingLevel, "Handling meal template select:", {
+        debug(loggingLevel, 'Handling meal template select:', {
           meal: item,
           mealType,
         });
@@ -705,7 +707,7 @@ const Diary = () => {
       unit: string,
       selectedVariant: FoodVariant
     ) => {
-      debug(loggingLevel, "Handling food unit select:", {
+      debug(loggingLevel, 'Handling food unit select:', {
         food,
         quantity,
         unit,
@@ -722,20 +724,20 @@ const Diary = () => {
           variant_id: selectedVariant.id,
           entry_date: formatDateInUserTimezone(
             parseDateInUserTimezone(selectedDate),
-            "yyyy-MM-dd"
+            'yyyy-MM-dd'
           ),
         });
-        info(loggingLevel, "Food entry added successfully.");
+        info(loggingLevel, 'Food entry added successfully.');
         toast({
-          title: t("foodDiary.success", "Success"),
+          title: t('foodDiary.success', 'Success'),
           description: t(
-            "foodDiary.entryAdded",
-            "Food entry added successfully"
+            'foodDiary.entryAdded',
+            'Food entry added successfully'
           ),
         });
         handleDataChange();
       } catch (err) {
-        error(loggingLevel, "Error adding food entry:", err);
+        error(loggingLevel, 'Error adding food entry:', err);
       }
     },
     [
@@ -758,10 +760,10 @@ const Diary = () => {
   );
 
   const handleRemoveEntry = useCallback(
-    async (itemId: string, itemType: "foodEntry" | "foodEntryMeal") => {
-      debug(loggingLevel, "Handling remove entry:", { itemId, itemType });
+    async (itemId: string, itemType: 'foodEntry' | 'foodEntryMeal') => {
+      debug(loggingLevel, 'Handling remove entry:', { itemId, itemType });
       try {
-        if (itemType === "foodEntryMeal") {
+        if (itemType === 'foodEntryMeal') {
           await deleteFoodEntryMeal(itemId); // userId is handled by backend RLS
           info(loggingLevel, `Food entry meal ${itemId} removed successfully.`);
         } else {
@@ -769,15 +771,15 @@ const Diary = () => {
           info(loggingLevel, `Food entry ${itemId} removed successfully.`);
         }
         toast({
-          title: t("foodDiary.success", "Success"),
+          title: t('foodDiary.success', 'Success'),
           description: t(
-            "foodDiary.entryRemoved",
-            "Food entry removed successfully"
+            'foodDiary.entryRemoved',
+            'Food entry removed successfully'
           ),
         });
         handleDataChange();
       } catch (err) {
-        error(loggingLevel, "Error removing food entry:", err);
+        error(loggingLevel, 'Error removing food entry:', err);
       }
     },
     [
@@ -794,19 +796,19 @@ const Diary = () => {
 
   const handleEditEntry = useCallback(
     (entry: FoodEntry | FoodEntryMeal) => {
-      debug(loggingLevel, "handleEditEntry called with entry:", entry);
+      debug(loggingLevel, 'handleEditEntry called with entry:', entry);
       if (!currentUserId) {
         error(
           loggingLevel,
-          "currentUserId is undefined when trying to edit entry."
+          'currentUserId is undefined when trying to edit entry.'
         );
         toast({
-          title: t("foodDiary.error", "Error"),
+          title: t('foodDiary.error', 'Error'),
           description: t(
-            "foodDiary.userNotFound",
-            "User not found, cannot edit entry."
+            'foodDiary.userNotFound',
+            'User not found, cannot edit entry.'
           ),
-          variant: "destructive",
+          variant: 'destructive',
         });
         return;
       }
@@ -839,7 +841,7 @@ const Diary = () => {
     (food: Food) => {
       debug(
         loggingLevel,
-        "Handling edit food, triggering data change for food:",
+        'Handling edit food, triggering data change for food:',
         food
       );
       handleDataChange();
@@ -848,13 +850,13 @@ const Diary = () => {
   );
 
   const handleExerciseAdded = useCallback(() => {
-    debug(loggingLevel, "Exercise added, triggering data change.");
+    debug(loggingLevel, 'Exercise added, triggering data change.');
     handleDataChange();
   }, [debug, loggingLevel, handleDataChange]);
 
   const handleWorkoutPresetSelected = useCallback(
     (preset: WorkoutPreset) => {
-      debug(loggingLevel, "Workout preset selected:", preset);
+      debug(loggingLevel, 'Workout preset selected:', preset);
       // TODO: Fix this type mismatch
       // setExercisesToLogFromPreset(preset.exercises.map(e => ({...e, reps: e.reps || null, weight: e.weight || null})) || []);
     },
@@ -867,7 +869,7 @@ const Diary = () => {
       setIsConvertToMealDialogOpen(true);
       debug(
         loggingLevel,
-        "Opening Convert to Meal dialog for meal type:",
+        'Opening Convert to Meal dialog for meal type:',
         mealType
       );
     },
@@ -881,7 +883,7 @@ const Diary = () => {
         <CardHeader>
           <div className="flex flex-col space-y-4 items-center sm:flex-row sm:justify-between sm:space-y-0">
             <CardTitle className="text-xl font-semibold ">
-              {t("foodDiary.title", "Food Diary")}
+              {t('foodDiary.title', 'Food Diary')}
             </CardTitle>
             <div className="flex items-center gap-2">
               <Button
@@ -898,15 +900,15 @@ const Diary = () => {
                   <Button
                     variant="outline"
                     className={cn(
-                      "justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
+                      'justify-start text-left font-normal',
+                      !date && 'text-muted-foreground'
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date ? (
                       formatDate(date)
                     ) : (
-                      <span>{t("foodDiary.pickADate", "Pick a Date")}</span>
+                      <span>{t('foodDiary.pickADate', 'Pick a Date')}</span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -949,34 +951,40 @@ const Diary = () => {
             customNutrients={customNutrients}
           />
 
-
           <div className="space-y-6">
             {availableMealTypes.length === 0 && (
-              <div className="text-center p-4 text-muted-foreground">Loading meal types...</div>
+              <div className="text-center p-4 text-muted-foreground">
+                Loading meal types...
+              </div>
             )}
 
-            {availableMealTypes.filter((meal) => meal.is_visible).map((mealTypeObj) => (
-              <MealCard
-                key={`meal-${mealTypeObj.id}-${externalRefreshTrigger}`}
-                // Pass the name for display and data retrieval, internally we handle the ID via handleFoodSelect
-                meal={{ ...getMealData(mealTypeObj.name), selectedDate: selectedDate }}
-                totals={getMealTotals(mealTypeObj.name)}
-                onFoodSelect={handleFoodSelect}
-                onEditEntry={handleEditEntry}
-                onEditFood={handleEditFood}
-                onRemoveEntry={(itemId, itemType) =>
-                  handleRemoveEntry(itemId, itemType)
-                }
-                getEntryNutrition={getEntryNutrition}
-                onMealAdded={handleDataChange}
-                onCopyClick={handleCopyClick}
-                onCopyFromYesterday={handleCopyFromYesterday}
-                onConvertToMealClick={handleConvertToMealClick}
-                energyUnit={energyUnit}
-                convertEnergy={convertEnergy}
-                customNutrients={customNutrients}
-              />
-            ))}
+            {availableMealTypes
+              .filter((meal) => meal.is_visible)
+              .map((mealTypeObj) => (
+                <MealCard
+                  key={`meal-${mealTypeObj.id}-${externalRefreshTrigger}`}
+                  // Pass the name for display and data retrieval, internally we handle the ID via handleFoodSelect
+                  meal={{
+                    ...getMealData(mealTypeObj.name),
+                    selectedDate: selectedDate,
+                  }}
+                  totals={getMealTotals(mealTypeObj.name)}
+                  onFoodSelect={handleFoodSelect}
+                  onEditEntry={handleEditEntry}
+                  onEditFood={handleEditFood}
+                  onRemoveEntry={(itemId, itemType) =>
+                    handleRemoveEntry(itemId, itemType)
+                  }
+                  getEntryNutrition={getEntryNutrition}
+                  onMealAdded={handleDataChange}
+                  onCopyClick={handleCopyClick}
+                  onCopyFromYesterday={handleCopyFromYesterday}
+                  onConvertToMealClick={handleConvertToMealClick}
+                  energyUnit={energyUnit}
+                  convertEnergy={convertEnergy}
+                  customNutrients={customNutrients}
+                />
+              ))}
 
             {/* Exercise Section */}
             <ExerciseCard
@@ -1126,12 +1134,12 @@ const Diary = () => {
         onOpenChange={setIsLogMealDialogOpen}
         date={formatDateInUserTimezone(
           parseDateInUserTimezone(selectedDate),
-          "yyyy-MM-dd"
+          'yyyy-MM-dd'
         )}
         mealType={selectedMealType}
         onSave={() => {
           handleDataChange();
-          info(loggingLevel, "Meal logged successfully via dialog.");
+          info(loggingLevel, 'Meal logged successfully via dialog.');
         }}
       />
 
@@ -1140,7 +1148,7 @@ const Diary = () => {
         <ConvertToMealDialog
           isOpen={isConvertToMealDialogOpen}
           onClose={() => setIsConvertToMealDialogOpen(false)}
-          selectedDate={formatDateInUserTimezone(date, "yyyy-MM-dd")}
+          selectedDate={formatDateInUserTimezone(date, 'yyyy-MM-dd')}
           mealType={convertToMealSourceMealType}
           onMealCreated={handleDataChange}
         />

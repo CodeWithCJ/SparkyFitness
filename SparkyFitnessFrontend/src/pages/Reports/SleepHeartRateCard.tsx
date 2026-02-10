@@ -1,7 +1,15 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 import { Heart } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
@@ -16,15 +24,33 @@ interface SleepHeartRateCardProps {
 }
 
 // Get status based on resting heart rate - returns translation key
-const getHRStatus = (value: number): { statusKey: string; statusDefault: string; color: string } => {
+const getHRStatus = (
+  value: number
+): { statusKey: string; statusDefault: string; color: string } => {
   if (value < 60) {
-    return { statusKey: 'reports.heartRateAthletic', statusDefault: 'Athletic', color: '#22c55e' };
+    return {
+      statusKey: 'reports.heartRateAthletic',
+      statusDefault: 'Athletic',
+      color: '#22c55e',
+    };
   } else if (value <= 80) {
-    return { statusKey: 'reports.heartRateNormal', statusDefault: 'Normal', color: '#22c55e' };
+    return {
+      statusKey: 'reports.heartRateNormal',
+      statusDefault: 'Normal',
+      color: '#22c55e',
+    };
   } else if (value <= 100) {
-    return { statusKey: 'reports.heartRateElevated', statusDefault: 'Elevated', color: '#f97316' };
+    return {
+      statusKey: 'reports.heartRateElevated',
+      statusDefault: 'Elevated',
+      color: '#f97316',
+    };
   } else {
-    return { statusKey: 'reports.heartRateHigh', statusDefault: 'High', color: '#ef4444' };
+    return {
+      statusKey: 'reports.heartRateHigh',
+      statusDefault: 'High',
+      color: '#ef4444',
+    };
   }
 };
 
@@ -40,20 +66,20 @@ const SleepHeartRateCard: React.FC<SleepHeartRateCardProps> = ({ data }) => {
   // Process data
   const { chartData, stats, latestValue } = useMemo(() => {
     const validData = data
-      .filter(d => d.resting_heart_rate !== null)
+      .filter((d) => d.resting_heart_rate !== null)
       .sort((a, b) => a.date.localeCompare(b.date));
 
     if (validData.length === 0) {
       return { chartData: [], stats: null, latestValue: null };
     }
 
-    const chartData = validData.map(d => ({
+    const chartData = validData.map((d) => ({
       date: d.date,
       displayDate: formatDateInUserTimezone(parseISO(d.date), 'MMM dd'),
       rhr: d.resting_heart_rate,
     }));
 
-    const rhrValues = validData.map(d => d.resting_heart_rate!);
+    const rhrValues = validData.map((d) => d.resting_heart_rate!);
 
     const stats = {
       avg: Math.round(rhrValues.reduce((a, b) => a + b, 0) / rhrValues.length),
@@ -61,7 +87,8 @@ const SleepHeartRateCard: React.FC<SleepHeartRateCardProps> = ({ data }) => {
       max: Math.max(...rhrValues),
     };
 
-    const latestValue = validData[validData.length - 1]?.resting_heart_rate ?? null;
+    const latestValue =
+      validData[validData.length - 1]?.resting_heart_rate ?? null;
 
     return { chartData, stats, latestValue };
   }, [data, formatDateInUserTimezone]);
@@ -81,7 +108,9 @@ const SleepHeartRateCard: React.FC<SleepHeartRateCardProps> = ({ data }) => {
         </CardHeader>
         <CardContent>
           <div className="h-32 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-            <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading...')}</span>
+            <span className="text-xs text-muted-foreground">
+              {t('common.loading', 'Loading...')}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -111,26 +140,44 @@ const SleepHeartRateCard: React.FC<SleepHeartRateCardProps> = ({ data }) => {
               {latestValue}
             </p>
             <p className="text-xs text-muted-foreground">bpm</p>
-            <p className="text-sm font-medium" style={{ color }}>{status}</p>
+            <p className="text-sm font-medium" style={{ color }}>
+              {status}
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">
             <div className="text-center">
               <p className="text-lg font-bold text-blue-500">{stats.avg}</p>
-              <p className="text-xs text-muted-foreground">{t('sleepHealth.avgHR', 'Avg')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('sleepHealth.avgHR', 'Avg')}
+              </p>
             </div>
             <div className="text-center">
-              <p className="text-lg font-bold text-gray-500">{stats.min}-{stats.max}</p>
-              <p className="text-xs text-muted-foreground">{t('sleepHealth.range', 'Range')}</p>
+              <p className="text-lg font-bold text-gray-500">
+                {stats.min}-{stats.max}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('sleepHealth.range', 'Range')}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Chart */}
         <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={0}
+            minHeight={0}
+            debounce={100}
+          >
             <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="hsl(var(--border))"
+              />
               <XAxis
                 dataKey="displayDate"
                 fontSize={10}
@@ -151,7 +198,7 @@ const SleepHeartRateCard: React.FC<SleepHeartRateCardProps> = ({ data }) => {
                   backgroundColor: 'hsl(var(--background))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '6px',
-                  color: 'hsl(var(--foreground))'
+                  color: 'hsl(var(--foreground))',
                 }}
                 formatter={(value: number) => [`${value} bpm`]}
               />

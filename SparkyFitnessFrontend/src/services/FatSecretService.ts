@@ -1,7 +1,7 @@
-import { toast } from "@/hooks/use-toast";
-import { apiCall } from './api'; // Import apiCall
+import { toast } from '@/hooks/use-toast';
+import { apiCall } from './api';
 
-const PROXY_BASE_URL = "/foods/fatsecret"; // Base path for FatSecret proxy endpoints
+const PROXY_BASE_URL = '/foods/fatsecret'; // Base path for FatSecret proxy endpoints
 
 export interface FatSecretFoodItem {
   food_id: string;
@@ -97,16 +97,22 @@ const parseFoodDescription = (description: string) => {
   };
 };
 
-export const searchFatSecretFoods = async (query: string, providerId: string) => {
+export const searchFatSecretFoods = async (
+  query: string,
+  providerId: string
+) => {
   try {
-    const data: FatSecretSearchResponse = await apiCall(`${PROXY_BASE_URL}/search?query=${encodeURIComponent(query)}`, {
-      method: "GET",
-      headers: {
-        'x-provider-id': providerId, // Pass providerId in a custom header
-      },
-    });
+    const data: FatSecretSearchResponse = await apiCall(
+      `${PROXY_BASE_URL}/search?query=${encodeURIComponent(query)}`,
+      {
+        method: 'GET',
+        headers: {
+          'x-provider-id': providerId, // Pass providerId in a custom header
+        },
+      }
+    );
     if (data.foods && data.foods.food) {
-      return data.foods.food.map(item => {
+      return data.foods.food.map((item) => {
         const parsedData = parseFoodDescription(item.food_description);
         return {
           food_id: item.food_id,
@@ -126,28 +132,36 @@ export const searchFatSecretFoods = async (query: string, providerId: string) =>
     }
     return [];
   } catch (error) {
-    console.error("Network error during FatSecret food search:", error);
+    console.error('Network error during FatSecret food search:', error);
     toast({
-      title: "Error",
-      description: "Network error during FatSecret search. Please try again.",
-      variant: "destructive",
+      title: 'Error',
+      description: 'Network error during FatSecret search. Please try again.',
+      variant: 'destructive',
     });
     return [];
   }
 };
 
-export const getFatSecretNutrients = async (foodId: string, providerId: string) => {
+export const getFatSecretNutrients = async (
+  foodId: string,
+  providerId: string
+) => {
   try {
-    const data: FatSecretFoodGetResponse = await apiCall(`${PROXY_BASE_URL}/nutrients?foodId=${encodeURIComponent(foodId)}`, {
-      method: "GET",
-      headers: {
-        'x-provider-id': providerId, // Pass providerId in a custom header
-      },
-    });
+    const data: FatSecretFoodGetResponse = await apiCall(
+      `${PROXY_BASE_URL}/nutrients?foodId=${encodeURIComponent(foodId)}`,
+      {
+        method: 'GET',
+        headers: {
+          'x-provider-id': providerId, // Pass providerId in a custom header
+        },
+      }
+    );
     // The proxy returns the raw FatSecret response, so we parse it here
     if (data.food && data.food.servings && data.food.servings.serving) {
       // Find the default serving or the first serving if no default is flagged
-      const defaultServing = data.food.servings.serving.find(s => s.is_default === "1") || data.food.servings.serving[0];
+      const defaultServing =
+        data.food.servings.serving.find((s) => s.is_default === '1') ||
+        data.food.servings.serving[0];
 
       if (defaultServing) {
         return {
@@ -158,8 +172,12 @@ export const getFatSecretNutrients = async (foodId: string, providerId: string) 
           carbohydrates: parseFloat(defaultServing.carbohydrate || '0'),
           fat: parseFloat(defaultServing.fat || '0'),
           saturated_fat: parseFloat(defaultServing.saturated_fat || '0'),
-          polyunsaturated_fat: parseFloat(defaultServing.polyunsaturated_fat || '0'),
-          monounsaturated_fat: parseFloat(defaultServing.monounsaturated_fat || '0'),
+          polyunsaturated_fat: parseFloat(
+            defaultServing.polyunsaturated_fat || '0'
+          ),
+          monounsaturated_fat: parseFloat(
+            defaultServing.monounsaturated_fat || '0'
+          ),
           trans_fat: parseFloat(defaultServing.trans_fat || '0'),
           cholesterol: parseFloat(defaultServing.cholesterol || '0'),
           sodium: parseFloat(defaultServing.sodium || '0'),
@@ -177,11 +195,15 @@ export const getFatSecretNutrients = async (foodId: string, providerId: string) 
     }
     return null;
   } catch (error) {
-    console.error("Network error during FatSecret nutrient lookup via proxy:", error);
+    console.error(
+      'Network error during FatSecret nutrient lookup via proxy:',
+      error
+    );
     toast({
-      title: "Error",
-      description: "Network error during FatSecret nutrient lookup. Please ensure your SparkyFitnessServer is running.",
-      variant: "destructive",
+      title: 'Error',
+      description:
+        'Network error during FatSecret nutrient lookup. Please ensure your SparkyFitnessServer is running.',
+      variant: 'destructive',
     });
     return null;
   }

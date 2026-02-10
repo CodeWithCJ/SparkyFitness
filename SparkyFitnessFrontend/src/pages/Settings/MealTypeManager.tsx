@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -11,19 +11,19 @@ import {
   DialogTrigger,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Plus, Trash2, Edit, Lock, Eye, EyeOff } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
-import { usePreferences } from "@/contexts/PreferencesContext";
+} from '@/components/ui/dialog';
+import { Plus, Trash2, Edit, Lock, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   getMealTypes,
   createMealType,
   updateMealType,
   deleteMealType,
-  MealTypeDefinition,
-} from "@/services/mealTypeService";
-import { Badge } from "@/components/ui/badge";
+  type MealTypeDefinition,
+} from '@/services/mealTypeService';
+import { Badge } from '@/components/ui/badge';
 
 const MealTypeManager = () => {
   const { t } = useTranslation();
@@ -37,7 +37,7 @@ const MealTypeManager = () => {
   const [editingMealType, setEditingMealType] =
     useState<MealTypeDefinition | null>(null);
 
-  const [newName, setNewName] = useState("");
+  const [newName, setNewName] = useState('');
   const [newSortOrder, setNewSortOrder] = useState(100);
 
   const fetchMealTypes = async () => {
@@ -46,14 +46,14 @@ const MealTypeManager = () => {
         const data = await getMealTypes();
         setMealTypes(data);
       } catch (error) {
-        console.error("Error fetching meal types:", error);
+        console.error('Error fetching meal types:', error);
         toast({
-          title: t("common.errorOccurred", "Error"),
+          title: t('common.errorOccurred', 'Error'),
           description: t(
-            "mealTypeManager.loadError",
-            "Failed to load meal types."
+            'mealTypeManager.loadError',
+            'Failed to load meal types.'
           ),
-          variant: "destructive",
+          variant: 'destructive',
         });
       }
     }
@@ -73,21 +73,21 @@ const MealTypeManager = () => {
       });
 
       toast({
-        title: t("common.success", "Success"),
-        description: t("mealTypeManager.addSuccess", "Meal category added."),
+        title: t('common.success', 'Success'),
+        description: t('mealTypeManager.addSuccess', 'Meal category added.'),
       });
 
-      setNewName("");
+      setNewName('');
       setNewSortOrder(100);
       setIsAddDialogOpen(false);
       fetchMealTypes();
-      window.dispatchEvent(new CustomEvent("foodDiaryRefresh"));
+      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
     } catch (error: any) {
       toast({
-        title: t("common.errorOccurred", "Error"),
+        title: t('common.errorOccurred', 'Error'),
         description:
-          error.response?.data?.error || t("common.error", "An error occurred"),
-        variant: "destructive",
+          error.response?.data?.error || t('common.error', 'An error occurred'),
+        variant: 'destructive',
       });
     }
   };
@@ -102,23 +102,23 @@ const MealTypeManager = () => {
       });
 
       toast({
-        title: t("common.success", "Success"),
+        title: t('common.success', 'Success'),
         description: t(
-          "mealTypeManager.updateSuccess",
-          "Meal category updated."
+          'mealTypeManager.updateSuccess',
+          'Meal category updated.'
         ),
       });
 
       setIsEditDialogOpen(false);
       setEditingMealType(null);
       fetchMealTypes();
-      window.dispatchEvent(new CustomEvent("foodDiaryRefresh"));
+      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
     } catch (error: any) {
       toast({
-        title: t("common.errorOccurred", "Error"),
+        title: t('common.errorOccurred', 'Error'),
         description:
-          error.response?.data?.error || t("common.error", "An error occurred"),
-        variant: "destructive",
+          error.response?.data?.error || t('common.error', 'An error occurred'),
+        variant: 'destructive',
       });
     }
   };
@@ -127,20 +127,20 @@ const MealTypeManager = () => {
     try {
       await deleteMealType(id);
       toast({
-        title: t("common.success", "Success"),
+        title: t('common.success', 'Success'),
         description: t(
-          "mealTypeManager.deleteSuccess",
-          "Meal category deleted."
+          'mealTypeManager.deleteSuccess',
+          'Meal category deleted.'
         ),
       });
       fetchMealTypes();
-      window.dispatchEvent(new CustomEvent("foodDiaryRefresh"));
+      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
     } catch (error: any) {
       toast({
-        title: t("common.errorOccurred", "Error"),
+        title: t('common.errorOccurred', 'Error'),
         description:
-          error.response?.data?.error || t("common.error", "Failed to delete."),
-        variant: "destructive",
+          error.response?.data?.error || t('common.error', 'Failed to delete.'),
+        variant: 'destructive',
       });
     }
   };
@@ -151,12 +151,12 @@ const MealTypeManager = () => {
 
       fetchMealTypes();
 
-      window.dispatchEvent(new CustomEvent("foodDiaryRefresh"));
+      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: 'Error',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
@@ -170,10 +170,10 @@ const MealTypeManager = () => {
   // Helper to translate system names
   const getDisplayName = (name: string) => {
     const lower = name.toLowerCase();
-    if (lower === "breakfast") return t("common.breakfast", "Breakfast");
-    if (lower === "lunch") return t("common.lunch", "Lunch");
-    if (lower === "dinner") return t("common.dinner", "Dinner");
-    if (lower === "snacks") return t("common.snacks", "Snacks");
+    if (lower === 'breakfast') return t('common.breakfast', 'Breakfast');
+    if (lower === 'lunch') return t('common.lunch', 'Lunch');
+    if (lower === 'dinner') return t('common.dinner', 'Dinner');
+    if (lower === 'snacks') return t('common.snacks', 'Snacks');
     return name;
   };
 
@@ -182,30 +182,30 @@ const MealTypeManager = () => {
       {/* Header / Add Button */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">
-          {t("mealTypeManager.title", "Meal Categories")}
+          {t('mealTypeManager.title', 'Meal Categories')}
         </h3>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="w-4 h-4 mr-2" />
-              {t("mealTypeManager.add", "Add Category")}
+              {t('mealTypeManager.add', 'Add Category')}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {t("mealTypeManager.addTitle", "Add Meal Category")}
+                {t('mealTypeManager.addTitle', 'Add Meal Category')}
               </DialogTitle>
               <DialogDescription>
                 {t(
-                  "mealTypeManager.addDesc",
-                  "Create a new meal category (e.g., Pre-Workout)."
+                  'mealTypeManager.addDesc',
+                  'Create a new meal category (e.g., Pre-Workout).'
                 )}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>{t("mealTypeManager.nameLabel", "Name")}</Label>
+                <Label>{t('mealTypeManager.nameLabel', 'Name')}</Label>
                 <Input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
@@ -214,7 +214,7 @@ const MealTypeManager = () => {
               </div>
               <div className="space-y-2">
                 <Label>
-                  {t("mealTypeManager.sortOrderLabel", "Sort Order")}
+                  {t('mealTypeManager.sortOrderLabel', 'Sort Order')}
                 </Label>
                 <Input
                   type="number"
@@ -223,13 +223,13 @@ const MealTypeManager = () => {
                 />
                 <p className="text-xs text-muted-foreground">
                   {t(
-                    "mealTypeManager.sortHelp",
-                    "Lower numbers appear first. (Breakfast=10, Lunch=20, Dinner=40)"
+                    'mealTypeManager.sortHelp',
+                    'Lower numbers appear first. (Breakfast=10, Lunch=20, Dinner=40)'
                   )}
                 </p>
               </div>
               <Button onClick={handleAdd} className="w-full">
-                {t("common.save", "Save")}
+                {t('common.save', 'Save')}
               </Button>
             </div>
           </DialogContent>
@@ -274,7 +274,7 @@ const MealTypeManager = () => {
                     size="sm"
                     onClick={() => toggleVisibility(item)}
                     title={
-                      item.is_visible ? "Hide from Diary" : "Show in Diary"
+                      item.is_visible ? 'Hide from Diary' : 'Show in Diary'
                     }
                   >
                     {item.is_visible ? (
@@ -322,19 +322,19 @@ const MealTypeManager = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {t("mealTypeManager.editTitle", "Edit Meals")}
+              {t('mealTypeManager.editTitle', 'Edit Meals')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>{t("mealTypeManager.nameLabel", "Name")}</Label>
+              <Label>{t('mealTypeManager.nameLabel', 'Name')}</Label>
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label>{t("mealTypeManager.sortOrderLabel", "Sort Order")}</Label>
+              <Label>{t('mealTypeManager.sortOrderLabel', 'Sort Order')}</Label>
               <Input
                 type="number"
                 value={newSortOrder}
@@ -346,10 +346,10 @@ const MealTypeManager = () => {
                 variant="outline"
                 onClick={() => setIsEditDialogOpen(false)}
               >
-                {t("common.cancel", "Cancel")}
+                {t('common.cancel', 'Cancel')}
               </Button>
               <Button onClick={handleEdit}>
-                {t("common.save", "Save Changes")}
+                {t('common.save', 'Save Changes')}
               </Button>
             </DialogFooter>
           </div>

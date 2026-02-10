@@ -1,7 +1,16 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceArea } from 'recharts';
+import {
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceArea,
+} from 'recharts';
 import { Wind } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
@@ -18,17 +27,33 @@ interface SleepRespirationCardProps {
 }
 
 // Get status based on respiration rate - returns translation key
-const getRespirationStatus = (value: number): { statusKey: string; statusDefault: string; color: string } => {
+const getRespirationStatus = (
+  value: number
+): { statusKey: string; statusDefault: string; color: string } => {
   if (value < 12) {
-    return { statusKey: 'reports.respirationLow', statusDefault: 'Low', color: '#f97316' };
+    return {
+      statusKey: 'reports.respirationLow',
+      statusDefault: 'Low',
+      color: '#f97316',
+    };
   } else if (value <= 20) {
-    return { statusKey: 'reports.respirationNormal', statusDefault: 'Normal', color: '#22c55e' };
+    return {
+      statusKey: 'reports.respirationNormal',
+      statusDefault: 'Normal',
+      color: '#22c55e',
+    };
   } else {
-    return { statusKey: 'reports.respirationElevated', statusDefault: 'Elevated', color: '#f97316' };
+    return {
+      statusKey: 'reports.respirationElevated',
+      statusDefault: 'Elevated',
+      color: '#f97316',
+    };
   }
 };
 
-const SleepRespirationCard: React.FC<SleepRespirationCardProps> = ({ data }) => {
+const SleepRespirationCard: React.FC<SleepRespirationCardProps> = ({
+  data,
+}) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);
@@ -40,14 +65,14 @@ const SleepRespirationCard: React.FC<SleepRespirationCardProps> = ({ data }) => 
   // Process data
   const { chartData, stats, latestValue } = useMemo(() => {
     const validData = data
-      .filter(d => d.average !== null)
+      .filter((d) => d.average !== null)
       .sort((a, b) => a.date.localeCompare(b.date));
 
     if (validData.length === 0) {
       return { chartData: [], stats: null, latestValue: null };
     }
 
-    const chartData = validData.map(d => ({
+    const chartData = validData.map((d) => ({
       date: d.date,
       displayDate: formatDateInUserTimezone(parseISO(d.date), 'MMM dd'),
       avg: d.average,
@@ -55,8 +80,10 @@ const SleepRespirationCard: React.FC<SleepRespirationCardProps> = ({ data }) => 
       highest: d.highest,
     }));
 
-    const avgValues = validData.map(d => d.average!);
-    const lowestValues = validData.filter(d => d.lowest !== null).map(d => d.lowest!);
+    const avgValues = validData.map((d) => d.average!);
+    const lowestValues = validData
+      .filter((d) => d.lowest !== null)
+      .map((d) => d.lowest!);
 
     const stats = {
       avg: Math.round(avgValues.reduce((a, b) => a + b, 0) / avgValues.length),
@@ -83,7 +110,9 @@ const SleepRespirationCard: React.FC<SleepRespirationCardProps> = ({ data }) => 
         </CardHeader>
         <CardContent>
           <div className="h-32 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-            <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading...')}</span>
+            <span className="text-xs text-muted-foreground">
+              {t('common.loading', 'Loading...')}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -109,18 +138,26 @@ const SleepRespirationCard: React.FC<SleepRespirationCardProps> = ({ data }) => 
               {Math.round(latestValue)}
             </p>
             <p className="text-xs text-muted-foreground">brpm</p>
-            <p className="text-sm font-medium" style={{ color }}>{status}</p>
+            <p className="text-sm font-medium" style={{ color }}>
+              {status}
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">
             <div className="text-center">
               <p className="text-lg font-bold text-blue-500">{stats.avg}</p>
-              <p className="text-xs text-muted-foreground">{t('sleepHealth.avgResp', 'Avg')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('sleepHealth.avgResp', 'Avg')}
+              </p>
             </div>
             {stats.lowest !== null && (
               <div className="text-center">
-                <p className="text-lg font-bold text-orange-500">{stats.lowest}</p>
-                <p className="text-xs text-muted-foreground">{t('sleepHealth.lowestResp', 'Lowest')}</p>
+                <p className="text-lg font-bold text-orange-500">
+                  {stats.lowest}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t('sleepHealth.lowestResp', 'Lowest')}
+                </p>
               </div>
             )}
           </div>
@@ -128,9 +165,19 @@ const SleepRespirationCard: React.FC<SleepRespirationCardProps> = ({ data }) => 
 
         {/* Chart */}
         <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={0}
+            minHeight={0}
+            debounce={100}
+          >
             <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="hsl(var(--border))"
+              />
               <XAxis
                 dataKey="displayDate"
                 fontSize={10}
@@ -151,7 +198,7 @@ const SleepRespirationCard: React.FC<SleepRespirationCardProps> = ({ data }) => 
                   backgroundColor: 'hsl(var(--background))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '6px',
-                  color: 'hsl(var(--foreground))'
+                  color: 'hsl(var(--foreground))',
                 }}
                 formatter={(value: number) => [`${value} brpm`]}
               />

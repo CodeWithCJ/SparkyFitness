@@ -1,8 +1,10 @@
 import { apiCall } from './api';
-import { Exercise as ExerciseInterface } from './exerciseSearchService';
+import type { Exercise as ExerciseInterface } from './exerciseSearchService';
 
 // Helper function to safely parse JSON strings that might be arrays
-export const parseJsonArray = (value: string | string[] | undefined): string[] | undefined => {
+export const parseJsonArray = (
+  value: string | string[] | undefined
+): string[] | undefined => {
   if (Array.isArray(value)) {
     return value;
   }
@@ -18,7 +20,8 @@ export const parseJsonArray = (value: string | string[] | undefined): string[] |
         const tempParsed = JSON.parse(currentString);
         if (typeof tempParsed === 'string') {
           // If JSON.parse results in a string, update currentString and try again
-          if (tempParsed !== currentString) { // Only change if actual parsing happened
+          if (tempParsed !== currentString) {
+            // Only change if actual parsing happened
             currentString = tempParsed;
             changed = true;
           }
@@ -79,7 +82,12 @@ interface ExercisePayload {
   images?: string[];
 }
 
-export type ExerciseOwnershipFilter = 'all' | 'own' | 'family' | 'public' | 'needs-review';
+export type ExerciseOwnershipFilter =
+  | 'all'
+  | 'own'
+  | 'family'
+  | 'public'
+  | 'needs-review';
 
 export const loadExercises = async (
   searchTerm: string = '',
@@ -115,7 +123,9 @@ export const loadExercises = async (
   };
 };
 
-export const createExercise = async (payload: ExercisePayload | FormData): Promise<Exercise> => {
+export const createExercise = async (
+  payload: ExercisePayload | FormData
+): Promise<Exercise> => {
   if (payload instanceof FormData) {
     return apiCall('/exercises', {
       method: 'POST',
@@ -130,7 +140,10 @@ export const createExercise = async (payload: ExercisePayload | FormData): Promi
   }
 };
 
-export const updateExercise = async (id: string, payload: Partial<ExercisePayload> | FormData): Promise<Exercise> => {
+export const updateExercise = async (
+  id: string,
+  payload: Partial<ExercisePayload> | FormData
+): Promise<Exercise> => {
   if (payload instanceof FormData) {
     return apiCall(`/exercises/${id}`, {
       method: 'PUT',
@@ -145,7 +158,10 @@ export const updateExercise = async (id: string, payload: Partial<ExercisePayloa
   }
 };
 
-export const deleteExercise = async (id: string, forceDelete: boolean = false): Promise<{ message?: string; status?: string } | void> => {
+export const deleteExercise = async (
+  id: string,
+  forceDelete: boolean = false
+): Promise<{ message?: string; status?: string } | void> => {
   const params = new URLSearchParams();
   if (forceDelete) {
     params.append('forceDelete', 'true');
@@ -155,9 +171,15 @@ export const deleteExercise = async (id: string, forceDelete: boolean = false): 
   });
 };
 
-export const updateExerciseShareStatus = async (id: string, sharedWithPublic: boolean): Promise<Exercise> => {
+export const updateExerciseShareStatus = async (
+  id: string,
+  sharedWithPublic: boolean
+): Promise<Exercise> => {
   const payload = new FormData();
-  payload.append('exerciseData', JSON.stringify({ shared_with_public: sharedWithPublic }));
+  payload.append(
+    'exerciseData',
+    JSON.stringify({ shared_with_public: sharedWithPublic })
+  );
   return apiCall(`/exercises/${id}`, {
     method: 'PUT',
     body: payload,
@@ -165,25 +187,32 @@ export const updateExerciseShareStatus = async (id: string, sharedWithPublic: bo
   });
 };
 
-export const getExerciseDeletionImpact = async (exerciseId: string): Promise<ExerciseDeletionImpact> => {
+export const getExerciseDeletionImpact = async (
+  exerciseId: string
+): Promise<ExerciseDeletionImpact> => {
   const response = await apiCall(`/exercises/${exerciseId}/deletion-impact`, {
     method: 'GET',
   });
   // Normalize shape: server may return counts; build isUsedByOthers based on otherUserReferences
-  const otherUserRefs = response.otherUserReferences ?? (response.otherUserReferencesCount ?? 0);
+  const otherUserRefs =
+    response.otherUserReferences ?? response.otherUserReferencesCount ?? 0;
   return {
     exerciseEntriesCount: response.exerciseEntriesCount ?? 0,
     isUsedByOthers: (otherUserRefs || 0) > 0,
     otherUserReferences: otherUserRefs || 0,
   } as ExerciseDeletionImpact;
 };
-export const getSuggestedExercises = async (limit: number): Promise<{ recentExercises: Exercise[]; topExercises: Exercise[] }> => {
+export const getSuggestedExercises = async (
+  limit: number
+): Promise<{ recentExercises: Exercise[]; topExercises: Exercise[] }> => {
   return apiCall(`/exercises/suggested?limit=${limit}`, {
     method: 'GET',
   });
 };
 
-export const updateExerciseEntriesSnapshot = async (exerciseId: string): Promise<void> => {
+export const updateExerciseEntriesSnapshot = async (
+  exerciseId: string
+): Promise<void> => {
   return apiCall(`/exercises/update-snapshot`, {
     method: 'POST',
     body: { exerciseId },
@@ -205,7 +234,14 @@ export const getExerciseById = async (id: string): Promise<Exercise> => {
   };
 };
 
-export const importExercisesFromCSV = async (formData: FormData): Promise<{ created: number; updated: number; failed: number; failedRows: any[] }> => {
+export const importExercisesFromCSV = async (
+  formData: FormData
+): Promise<{
+  created: number;
+  updated: number;
+  failed: number;
+  failedRows: any[];
+}> => {
   return apiCall('/exercises/import', {
     method: 'POST',
     body: formData,

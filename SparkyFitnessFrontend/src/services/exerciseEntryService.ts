@@ -1,12 +1,12 @@
 import { apiCall } from './api';
 import { getExerciseEntriesForDate as getDailyExerciseEntries } from './dailyProgressService';
-import { Exercise } from './exerciseSearchService'; // Import the comprehensive Exercise interface
-import { parseJsonArray } from './exerciseService'; // Import parseJsonArray
-import { ExerciseProgressData } from './reportsService'; // Import ExerciseProgressData
-import { WorkoutPresetSet } from '@/types/workout';
-import { ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor'; // New import
-import { debug } from '@/utils/logging'; // Import logging utility
-import { getUserLoggingLevel } from '@/utils/userPreferences'; // Import user logging level
+import type { Exercise } from './exerciseSearchService';
+import { parseJsonArray } from './exerciseService';
+import type { ExerciseProgressData } from './reportsService';
+import type { WorkoutPresetSet } from '@/types/workout';
+import type { ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor';
+import { debug } from '@/utils/logging';
+import { getUserLoggingLevel } from '@/utils/userPreferences';
 
 export interface ExerciseEntry {
   id: string;
@@ -66,8 +66,9 @@ export interface GroupedExerciseEntry {
   exercises?: ExerciseEntry[]; // This will hold the individual exercise entries
 }
 
-
-export const fetchExerciseEntries = async (selectedDate: string): Promise<GroupedExerciseEntry[]> => {
+export const fetchExerciseEntries = async (
+  selectedDate: string
+): Promise<GroupedExerciseEntry[]> => {
   const loggingLevel = getUserLoggingLevel();
   const response = await getDailyExerciseEntries(selectedDate);
 
@@ -75,26 +76,36 @@ export const fetchExerciseEntries = async (selectedDate: string): Promise<Groupe
     if (entry.type === 'preset') {
       return {
         ...entry,
-        exercises: entry.exercises ? entry.exercises.map((ex: any) => ({
-          ...ex,
-          sets: ex.sets ? parseJsonArray(ex.sets) : [], // Parse sets if it's a JSON string
-          exercise_snapshot: {
-            ...ex.exercise_snapshot, // Use the existing snapshot
-            equipment: parseJsonArray(ex.exercise_snapshot.equipment),
-            primary_muscles: parseJsonArray(ex.exercise_snapshot.primary_muscles),
-            secondary_muscles: parseJsonArray(ex.exercise_snapshot.secondary_muscles),
-            instructions: parseJsonArray(ex.exercise_snapshot.instructions),
-            images: parseJsonArray(ex.exercise_snapshot.images),
-          },
-          activity_details: ex.activity_details ? ex.activity_details
-            .map((detail: any) => ({
-              id: detail.id,
-              key: detail.detail_type,
-              value: typeof detail.detail_data === 'object' ? JSON.stringify(detail.detail_data, null, 2) : detail.detail_data,
-              provider_name: detail.provider_name,
-              detail_type: detail.detail_type,
-            })) : [],
-        })) : [],
+        exercises: entry.exercises
+          ? entry.exercises.map((ex: any) => ({
+              ...ex,
+              sets: ex.sets ? parseJsonArray(ex.sets) : [], // Parse sets if it's a JSON string
+              exercise_snapshot: {
+                ...ex.exercise_snapshot, // Use the existing snapshot
+                equipment: parseJsonArray(ex.exercise_snapshot.equipment),
+                primary_muscles: parseJsonArray(
+                  ex.exercise_snapshot.primary_muscles
+                ),
+                secondary_muscles: parseJsonArray(
+                  ex.exercise_snapshot.secondary_muscles
+                ),
+                instructions: parseJsonArray(ex.exercise_snapshot.instructions),
+                images: parseJsonArray(ex.exercise_snapshot.images),
+              },
+              activity_details: ex.activity_details
+                ? ex.activity_details.map((detail: any) => ({
+                    id: detail.id,
+                    key: detail.detail_type,
+                    value:
+                      typeof detail.detail_data === 'object'
+                        ? JSON.stringify(detail.detail_data, null, 2)
+                        : detail.detail_data,
+                    provider_name: detail.provider_name,
+                    detail_type: detail.detail_type,
+                  }))
+                : [],
+            }))
+          : [],
       };
     } else {
       return {
@@ -103,24 +114,36 @@ export const fetchExerciseEntries = async (selectedDate: string): Promise<Groupe
         exercise_snapshot: {
           ...entry.exercise_snapshot, // Use the existing snapshot
           equipment: parseJsonArray(entry.exercise_snapshot.equipment),
-          primary_muscles: parseJsonArray(entry.exercise_snapshot.primary_muscles),
-          secondary_muscles: parseJsonArray(entry.exercise_snapshot.secondary_muscles),
+          primary_muscles: parseJsonArray(
+            entry.exercise_snapshot.primary_muscles
+          ),
+          secondary_muscles: parseJsonArray(
+            entry.exercise_snapshot.secondary_muscles
+          ),
           instructions: parseJsonArray(entry.exercise_snapshot.instructions),
           images: parseJsonArray(entry.exercise_snapshot.images),
         },
-        activity_details: entry.activity_details ? entry.activity_details
-          .map((detail: any) => ({
-            id: detail.id,
-            key: detail.detail_type,
-            value: typeof detail.detail_data === 'object' ? JSON.stringify(detail.detail_data, null, 2) : detail.detail_data,
-            provider_name: detail.provider_name,
-            detail_type: detail.detail_type,
-          })) : [],
+        activity_details: entry.activity_details
+          ? entry.activity_details.map((detail: any) => ({
+              id: detail.id,
+              key: detail.detail_type,
+              value:
+                typeof detail.detail_data === 'object'
+                  ? JSON.stringify(detail.detail_data, null, 2)
+                  : detail.detail_data,
+              provider_name: detail.provider_name,
+              detail_type: detail.detail_type,
+            }))
+          : [],
       };
     }
   });
 
-  debug(loggingLevel, 'fetchExerciseEntries: Parsed entries with activity details:', parsedEntries);
+  debug(
+    loggingLevel,
+    'fetchExerciseEntries: Parsed entries with activity details:',
+    parsedEntries
+  );
   return parsedEntries;
 };
 
@@ -134,7 +157,11 @@ export const createExerciseEntry = async (payload: {
   distance?: number;
   avg_heart_rate?: number;
   imageFile?: File | null;
-  activity_details?: { provider_name?: string; detail_type: string; detail_data: string; }[]; // New field
+  activity_details?: {
+    provider_name?: string;
+    detail_type: string;
+    detail_data: string;
+  }[]; // New field
 }): Promise<ExerciseEntry> => {
   const { imageFile, ...entryData } = payload;
 
@@ -143,7 +170,7 @@ export const createExerciseEntry = async (payload: {
     formData.append('image', imageFile);
 
     // Append other data from the payload to formData
-    Object.keys(entryData).forEach(key => {
+    Object.keys(entryData).forEach((key) => {
       const value = (entryData as any)[key];
       if (value !== undefined && value !== null) {
         if (key === 'sets' && Array.isArray(value)) {
@@ -153,8 +180,7 @@ export const createExerciseEntry = async (payload: {
           formData.append(key, JSON.stringify(value));
         } else if (key === 'activity_details' && Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
-        }
-        else if (typeof value === 'object' && !Array.isArray(value)) {
+        } else if (typeof value === 'object' && !Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else {
           formData.append(key, value);
@@ -176,10 +202,16 @@ export const createExerciseEntry = async (payload: {
   }
 };
 
-export const logWorkoutPreset = async (workoutPresetId: string | number, entryDate: string): Promise<GroupedExerciseEntry> => {
+export const logWorkoutPreset = async (
+  workoutPresetId: string | number,
+  entryDate: string
+): Promise<GroupedExerciseEntry> => {
   return apiCall('/exercise-preset-entries', {
     method: 'POST',
-    body: JSON.stringify({ workout_preset_id: workoutPresetId, entry_date: entryDate }),
+    body: JSON.stringify({
+      workout_preset_id: workoutPresetId,
+      entry_date: entryDate,
+    }),
   });
 };
 
@@ -189,23 +221,33 @@ export const deleteExerciseEntry = async (entryId: string): Promise<void> => {
   });
 };
 
-export const deleteExercisePresetEntry = async (presetEntryId: string): Promise<void> => {
+export const deleteExercisePresetEntry = async (
+  presetEntryId: string
+): Promise<void> => {
   return apiCall(`/exercise-preset-entries/${presetEntryId}`, {
     method: 'DELETE',
   });
 };
 
-export const updateExerciseEntry = async (entryId: string, payload: {
-  duration_minutes?: number;
-  calories_burned?: number;
-  notes?: string;
-  sets?: WorkoutPresetSet[];
-  image_url?: string;
-  distance?: number;
-  avg_heart_rate?: number;
-  imageFile?: File | null;
-  activity_details?: { id?: string; provider_name?: string; detail_type: string; detail_data: string; }[]; // New field
-}): Promise<ExerciseEntry> => {
+export const updateExerciseEntry = async (
+  entryId: string,
+  payload: {
+    duration_minutes?: number;
+    calories_burned?: number;
+    notes?: string;
+    sets?: WorkoutPresetSet[];
+    image_url?: string;
+    distance?: number;
+    avg_heart_rate?: number;
+    imageFile?: File | null;
+    activity_details?: {
+      id?: string;
+      provider_name?: string;
+      detail_type: string;
+      detail_data: string;
+    }[]; // New field
+  }
+): Promise<ExerciseEntry> => {
   const { imageFile, ...entryData } = payload;
   const loggingLevel = getUserLoggingLevel();
   debug(loggingLevel, 'updateExerciseEntry payload:', payload);
@@ -215,7 +257,7 @@ export const updateExerciseEntry = async (entryId: string, payload: {
     const formData = new FormData();
     formData.append('image', imageFile);
 
-    Object.keys(entryData).forEach(key => {
+    Object.keys(entryData).forEach((key) => {
       const value = (entryData as any)[key];
       if (value !== undefined && value !== null) {
         if (key === 'sets' && Array.isArray(value)) {
@@ -224,8 +266,7 @@ export const updateExerciseEntry = async (entryId: string, payload: {
           formData.append(key, JSON.stringify(value));
         } else if (key === 'activity_details' && Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
-        }
-        else if (typeof value === 'object' && !Array.isArray(value)) {
+        } else if (typeof value === 'object' && !Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else {
           formData.append(key, value);
@@ -248,15 +289,23 @@ export const updateExerciseEntry = async (entryId: string, payload: {
   }
 };
 
-export const getExerciseProgressData = async (exerciseId: string, startDate: string, endDate: string, aggregationLevel: string = 'daily'): Promise<ExerciseProgressData[]> => {
+export const getExerciseProgressData = async (
+  exerciseId: string,
+  startDate: string,
+  endDate: string,
+  aggregationLevel: string = 'daily'
+): Promise<ExerciseProgressData[]> => {
   const params = new URLSearchParams({
     startDate,
     endDate,
     aggregationLevel,
   });
-  const response = await apiCall(`/exercise-entries/progress/${exerciseId}?${params.toString()}`, {
-    method: 'GET',
-  });
+  const response = await apiCall(
+    `/exercise-entries/progress/${exerciseId}?${params.toString()}`,
+    {
+      method: 'GET',
+    }
+  );
   // Ensure that exercise_entry_id and provider_name are included in the returned data
   return response.map((entry: ExerciseProgressData) => ({
     ...entry,
@@ -265,11 +314,17 @@ export const getExerciseProgressData = async (exerciseId: string, startDate: str
   }));
 };
 
-export const searchExercises = async (query: string, filterType: string): Promise<Exercise[]> => {
+export const searchExercises = async (
+  query: string,
+  filterType: string
+): Promise<Exercise[]> => {
   if (!query.trim()) {
     return [];
   }
-  const params = new URLSearchParams({ searchTerm: query, ownershipFilter: filterType });
+  const params = new URLSearchParams({
+    searchTerm: query,
+    ownershipFilter: filterType,
+  });
   const data = await apiCall(`/exercises?${params.toString()}`, {
     method: 'GET',
     suppress404Toast: true, // Suppress toast for 404
@@ -277,12 +332,18 @@ export const searchExercises = async (query: string, filterType: string): Promis
   return data.exercises || []; // Return empty array if 404 or no exercises found
 };
 
-export const getExerciseHistory = async (exerciseId: string, limit: number = 5): Promise<ExerciseEntry[]> => {
+export const getExerciseHistory = async (
+  exerciseId: string,
+  limit: number = 5
+): Promise<ExerciseEntry[]> => {
   const params = new URLSearchParams({
     limit: limit.toString(),
   });
-  const response = await apiCall(`/exercise-entries/history/${exerciseId}?${params.toString()}`, {
-    method: 'GET',
-  });
+  const response = await apiCall(
+    `/exercise-entries/history/${exerciseId}?${params.toString()}`,
+    {
+      method: 'GET',
+    }
+  );
   return response;
 };

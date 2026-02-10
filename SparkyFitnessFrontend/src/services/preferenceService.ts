@@ -1,5 +1,5 @@
 import { api } from './api';
-import { debug, error, UserLoggingLevel } from '@/utils/logging'; // Import logging utility and UserLoggingLevel enum
+import { debug, error, type UserLoggingLevel } from '@/utils/logging';
 
 export interface UserPreferences {
   bmr_algorithm?: string;
@@ -15,7 +15,9 @@ export interface UserPreferences {
   sugar_calculation_algorithm?: string;
 }
 
-export const getUserPreferences = async (loggingLevel: UserLoggingLevel): Promise<UserPreferences> => {
+export const getUserPreferences = async (
+  loggingLevel: UserLoggingLevel
+): Promise<UserPreferences> => {
   try {
     const response = await api.get('/user-preferences');
     debug(loggingLevel, 'API response for user preferences:', response); // Use debug logging
@@ -26,7 +28,10 @@ export const getUserPreferences = async (loggingLevel: UserLoggingLevel): Promis
   }
 };
 
-export const updateUserPreferences = async (preferences: UserPreferences, loggingLevel: UserLoggingLevel): Promise<UserPreferences> => {
+export const updateUserPreferences = async (
+  preferences: UserPreferences,
+  loggingLevel: UserLoggingLevel
+): Promise<UserPreferences> => {
   try {
     const response = await api.put('/user-preferences', { body: preferences });
     debug(loggingLevel, 'API response for user preferences:', response); // Use debug logging

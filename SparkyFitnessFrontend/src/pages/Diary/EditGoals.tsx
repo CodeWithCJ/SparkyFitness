@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react"; // Import React
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -9,35 +9,46 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Settings } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
-import { loadGoals, saveGoals } from "@/services/goalsService";
-import { GoalPreset } from "@/services/goalPresetService";
-import { getGoalPresets } from "@/services/goalPresetService";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+} from '@/components/ui/dialog';
+import { Settings } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
+import { loadGoals, saveGoals } from '@/services/goalsService';
+import type { GoalPreset } from '@/services/goalPresetService';
+import { getGoalPresets } from '@/services/goalPresetService';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { ExpandedGoals } from "@/types/goals";
-import MealPercentageManager, { MealPercentages } from "@/components/MealPercentageManager";
-import { Separator } from "@/components/ui/separator";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { useIsMobile } from "@/hooks/use-mobile";
+} from '@/components/ui/select';
+import type { ExpandedGoals } from '@/types/goals';
+import MealPercentageManager, {
+  type MealPercentages,
+} from '@/components/MealPercentageManager';
+import { Separator } from '@/components/ui/separator';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface EditGoalsProps {
   selectedDate: string;
   onGoalsUpdated: () => void;
   energyUnit: 'kcal' | 'kJ';
-  convertEnergy: (value: number, fromUnit: 'kcal' | 'kJ', toUnit: 'kcal' | 'kJ') => number;
+  convertEnergy: (
+    value: number,
+    fromUnit: 'kcal' | 'kJ',
+    toUnit: 'kcal' | 'kJ'
+  ) => number;
 }
 
-const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: EditGoalsProps) => {
+const EditGoals = ({
+  selectedDate,
+  onGoalsUpdated,
+  energyUnit,
+  convertEnergy,
+}: EditGoalsProps) => {
   const { user } = useAuth();
   const {
     formatDate,
@@ -51,14 +62,14 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
   // Helper functions for unit conversion
   const convertMlToSelectedUnit = (
     ml: number,
-    unit: "ml" | "oz" | "liter",
+    unit: 'ml' | 'oz' | 'liter'
   ): number => {
     switch (unit) {
-      case "oz":
+      case 'oz':
         return ml / 29.5735;
-      case "liter":
+      case 'liter':
         return ml / 1000;
-      case "ml":
+      case 'ml':
       default:
         return ml;
     }
@@ -66,21 +77,19 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
 
   const convertSelectedUnitToMl = (
     value: number,
-    unit: "ml" | "oz" | "liter",
+    unit: 'ml' | 'oz' | 'liter'
   ): number => {
     switch (unit) {
-      case "oz":
+      case 'oz':
         return value * 29.5735;
-      case "liter":
+      case 'liter':
         return value * 1000;
-      case "ml":
+      case 'ml':
       default:
         return value;
     }
   };
-  const platform = isMobile ? "mobile" : "desktop";
-
-
+  const platform = isMobile ? 'mobile' : 'desktop';
 
   const [goals, setGoals] = useState<ExpandedGoals>({
     calories: 2000, // kcal
@@ -113,7 +122,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
   });
   const [loading, setLoading] = useState(false);
   const goalPreferences = nutrientDisplayPreferences.find(
-    (p) => p.view_group === "goal" && p.platform === platform,
+    (p) => p.view_group === 'goal' && p.platform === platform
   );
   const visibleNutrients = goalPreferences
     ? goalPreferences.visible_nutrients
@@ -121,11 +130,11 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [goalPresets, setGoalPresets] = useState<GoalPreset[]>([]);
-  const [macroInputType, setMacroInputType] = useState<"grams" | "percentages">(
-    "grams",
+  const [macroInputType, setMacroInputType] = useState<'grams' | 'percentages'>(
+    'grams'
   );
   const [selectedPresetId, setSelectedPresetId] = useState<string | undefined>(
-    undefined,
+    undefined
   );
 
   useEffect(() => {
@@ -143,9 +152,9 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
       const goalData = await loadGoals(selectedDate);
       const cleanGoalValue = (
         value: any,
-        defaultValue: number | null,
+        defaultValue: number | null
       ): number | null => {
-        if (value === null || value === undefined || value === "") {
+        if (value === null || value === undefined || value === '') {
           return defaultValue;
         }
         const num = Number(value);
@@ -173,11 +182,11 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
         iron: cleanGoalValue(goalData.iron, 18),
         target_exercise_calories_burned: cleanGoalValue(
           goalData.target_exercise_calories_burned,
-          0,
+          0
         ),
         target_exercise_duration_minutes: cleanGoalValue(
           goalData.target_exercise_duration_minutes,
-          0,
+          0
         ),
         protein_percentage: cleanGoalValue(goalData.protein_percentage, null),
         carbs_percentage: cleanGoalValue(goalData.carbs_percentage, null),
@@ -194,12 +203,12 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
         goalData.carbs_percentage !== null &&
         goalData.fat_percentage !== null
       ) {
-        setMacroInputType("percentages");
+        setMacroInputType('percentages');
       } else {
-        setMacroInputType("grams");
+        setMacroInputType('grams');
       }
     } catch (error) {
-      console.error("Error loading goals:", error);
+      console.error('Error loading goals:', error);
     } finally {
       setLoading(false);
     }
@@ -210,11 +219,11 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
       const presets = await getGoalPresets();
       setGoalPresets(presets);
     } catch (error) {
-      console.error("Error loading goal presets:", error);
+      console.error('Error loading goal presets:', error);
       toast({
-        title: "Error",
-        description: "Failed to load goal presets.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load goal presets.',
+        variant: 'destructive',
       });
     }
   };
@@ -227,7 +236,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
 
       let goalsToSave = { ...goals };
 
-      if (macroInputType === "percentages") {
+      if (macroInputType === 'percentages') {
         // Calculate gram values from percentages, treating null/empty percentages as 0 for calculation
         const protein_percentage_val = goalsToSave.protein_percentage ?? 0;
         const carbs_percentage_val = goalsToSave.carbs_percentage ?? 0;
@@ -259,24 +268,24 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
         };
       }
 
-      console.log("Goals to save:", goalsToSave); // Add this line for debugging
+      console.log('Goals to save:', goalsToSave); // Add this line for debugging
       // Convert water_goal_ml to the correct backend field name if necessary
       // The backend expects water_goal_ml, so no conversion needed here.
       await saveGoals(selectedDate, goalsToSave, false);
 
       toast({
-        title: "Success",
-        description: "Goal updated for this specific date",
+        title: 'Success',
+        description: 'Goal updated for this specific date',
       });
 
       setOpen(false);
       onGoalsUpdated();
     } catch (error) {
-      console.error("Error saving goals:", error);
+      console.error('Error saving goals:', error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
       });
     } finally {
       setSaving(false);
@@ -323,9 +332,9 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
         preset.carbs_percentage !== null &&
         preset.fat_percentage !== null
       ) {
-        setMacroInputType("percentages");
+        setMacroInputType('percentages');
       } else {
-        setMacroInputType("grams");
+        setMacroInputType('grams');
       }
     }
   };
@@ -370,43 +379,54 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
           dinner_percentage: 25,
           snacks_percentage: 25,
         },
-        false,
+        false
       );
       toast({
-        title: "Success",
+        title: 'Success',
         description:
-          "Date-specific goal cleared. Default or weekly plan will now apply.",
+          'Date-specific goal cleared. Default or weekly plan will now apply.',
       });
       setOpen(false);
       onGoalsUpdated();
     } catch (error) {
-      console.error("Error clearing date-specific goal:", error);
+      console.error('Error clearing date-specific goal:', error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred while clearing the goal",
-        variant: "destructive",
+        title: 'Error',
+        description: 'An unexpected error occurred while clearing the goal',
+        variant: 'destructive',
       });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleMealPercentagesChange = React.useCallback((newPercentages: MealPercentages) => {
-    setGoals((prevGoals) => ({
-      ...prevGoals,
-      breakfast_percentage: newPercentages.breakfast,
-      lunch_percentage: newPercentages.lunch,
-      dinner_percentage: newPercentages.dinner,
-      snacks_percentage: newPercentages.snacks,
-    }));
-  }, []);
+  const handleMealPercentagesChange = React.useCallback(
+    (newPercentages: MealPercentages) => {
+      setGoals((prevGoals) => ({
+        ...prevGoals,
+        breakfast_percentage: newPercentages.breakfast,
+        lunch_percentage: newPercentages.lunch,
+        dinner_percentage: newPercentages.dinner,
+        snacks_percentage: newPercentages.snacks,
+      }));
+    },
+    []
+  );
 
-  const memoizedMealPercentages = React.useMemo(() => ({
-    breakfast: goals.breakfast_percentage,
-    lunch: goals.lunch_percentage,
-    dinner: goals.dinner_percentage,
-    snacks: goals.snacks_percentage,
-  }), [goals.breakfast_percentage, goals.lunch_percentage, goals.dinner_percentage, goals.snacks_percentage]);
+  const memoizedMealPercentages = React.useMemo(
+    () => ({
+      breakfast: goals.breakfast_percentage,
+      lunch: goals.lunch_percentage,
+      dinner: goals.dinner_percentage,
+      snacks: goals.snacks_percentage,
+    }),
+    [
+      goals.breakfast_percentage,
+      goals.lunch_percentage,
+      goals.dinner_percentage,
+      goals.snacks_percentage,
+    ]
+  );
 
   if (!user) {
     return null;
@@ -446,7 +466,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 <SelectContent>
                   {goalPresets
                     .filter(
-                      (preset) => preset.id !== undefined && preset.id !== "",
+                      (preset) => preset.id !== undefined && preset.id !== ''
                     )
                     .map((preset) => (
                       <SelectItem key={preset.id} value={preset.id!}>
@@ -466,18 +486,25 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
 
             <div className="grid grid-cols-2 gap-4">
               {/* Primary Macros */}
-              {visibleNutrients.includes("calories") && (
+              {visibleNutrients.includes('calories') && (
                 <div>
-                  <Label htmlFor="calories">Calories ({getEnergyUnitString(energyUnit)})</Label>
+                  <Label htmlFor="calories">
+                    Calories ({getEnergyUnitString(energyUnit)})
+                  </Label>
                   <Input
                     id="calories"
                     type="number"
-                    value={Math.round(convertEnergy(goals.calories, 'kcal', energyUnit))} // Display converted value
+                    value={Math.round(
+                      convertEnergy(goals.calories, 'kcal', energyUnit)
+                    )} // Display converted value
                     onChange={(e) =>
                       setGoals((prevGoals) => ({
                         ...prevGoals,
-                        calories: convertEnergy( // Convert input back to kcal for internal storage
-                          isNaN(Number(e.target.value)) ? 0 : Number(e.target.value),
+                        calories: convertEnergy(
+                          // Convert input back to kcal for internal storage
+                          isNaN(Number(e.target.value))
+                            ? 0
+                            : Number(e.target.value),
                           energyUnit,
                           'kcal'
                         ),
@@ -493,7 +520,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
               <Label className="text-left sm:text-right">Macros By</Label>
               <RadioGroup
                 value={macroInputType}
-                onValueChange={(value: "grams" | "percentages") =>
+                onValueChange={(value: 'grams' | 'percentages') =>
                   setMacroInputType(value)
                 }
                 className="flex items-center space-x-4 col-span-1"
@@ -509,9 +536,9 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
               </RadioGroup>
             </div>
 
-            {macroInputType === "grams" ? (
+            {macroInputType === 'grams' ? (
               <div className="grid grid-cols-2 gap-4">
-                {visibleNutrients.includes("protein") && (
+                {visibleNutrients.includes('protein') && (
                   <div>
                     <Label htmlFor="protein">Protein (g)</Label>
                     <Input
@@ -530,7 +557,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                   </div>
                 )}
 
-                {visibleNutrients.includes("carbs") && (
+                {visibleNutrients.includes('carbs') && (
                   <div>
                     <Label htmlFor="carbs">Carbs (g)</Label>
                     <Input
@@ -549,7 +576,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                   </div>
                 )}
 
-                {visibleNutrients.includes("fat") && (
+                {visibleNutrients.includes('fat') && (
                   <div>
                     <Label htmlFor="fat">Fat (g)</Label>
                     <Input
@@ -570,18 +597,18 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
-                {visibleNutrients.includes("protein") && (
+                {visibleNutrients.includes('protein') && (
                   <div>
                     <Label htmlFor="protein_percentage">Protein (%)</Label>
                     <Input
                       id="protein_percentage"
                       type="number"
-                      value={goals.protein_percentage ?? ""}
+                      value={goals.protein_percentage ?? ''}
                       onChange={(e) =>
                         setGoals({
                           ...goals,
                           protein_percentage:
-                            e.target.value === ""
+                            e.target.value === ''
                               ? null
                               : isNaN(Number(e.target.value))
                                 ? null
@@ -591,18 +618,18 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                     />
                   </div>
                 )}
-                {visibleNutrients.includes("carbs") && (
+                {visibleNutrients.includes('carbs') && (
                   <div>
                     <Label htmlFor="carbs_percentage">Carbs (%)</Label>
                     <Input
                       id="carbs_percentage"
                       type="number"
-                      value={goals.carbs_percentage ?? ""}
+                      value={goals.carbs_percentage ?? ''}
                       onChange={(e) =>
                         setGoals({
                           ...goals,
                           carbs_percentage:
-                            e.target.value === ""
+                            e.target.value === ''
                               ? null
                               : isNaN(Number(e.target.value))
                                 ? null
@@ -612,18 +639,18 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                     />
                   </div>
                 )}
-                {visibleNutrients.includes("fat") && (
+                {visibleNutrients.includes('fat') && (
                   <div>
                     <Label htmlFor="fat_percentage">Fat (%)</Label>
                     <Input
                       id="fat_percentage"
                       type="number"
-                      value={goals.fat_percentage ?? ""}
+                      value={goals.fat_percentage ?? ''}
                       onChange={(e) =>
                         setGoals({
                           ...goals,
                           fat_percentage:
-                            e.target.value === ""
+                            e.target.value === ''
                               ? null
                               : isNaN(Number(e.target.value))
                                 ? null
@@ -634,21 +661,24 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                   </div>
                 )}
                 <p className="col-span-2 text-center text-sm text-gray-500">
-                  Calculated Grams: Protein{" "}
+                  Calculated Grams: Protein{' '}
                   {(
-                    (convertEnergy(goals.calories, 'kcal', 'kcal') * (goals.protein_percentage || 0)) / // Still uses kcal for calculation
+                    (convertEnergy(goals.calories, 'kcal', 'kcal') *
+                      (goals.protein_percentage || 0)) / // Still uses kcal for calculation
                     100 /
                     4
                   ).toFixed(1)}
-                  g, Carbs{" "}
+                  g, Carbs{' '}
                   {(
-                    (convertEnergy(goals.calories, 'kcal', 'kcal') * (goals.carbs_percentage || 0)) / // Still uses kcal for calculation
+                    (convertEnergy(goals.calories, 'kcal', 'kcal') *
+                      (goals.carbs_percentage || 0)) / // Still uses kcal for calculation
                     100 /
                     4
                   ).toFixed(1)}
-                  g, Fat{" "}
+                  g, Fat{' '}
                   {(
-                    (convertEnergy(goals.calories, 'kcal', 'kcal') * (goals.fat_percentage || 0)) / // Still uses kcal for calculation
+                    (convertEnergy(goals.calories, 'kcal', 'kcal') *
+                      (goals.fat_percentage || 0)) / // Still uses kcal for calculation
                     100 /
                     9
                   ).toFixed(1)}
@@ -659,7 +689,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
 
             {/* Fat Types */}
             <div className="grid grid-cols-2 gap-4">
-              {visibleNutrients.includes("saturated_fat") && (
+              {visibleNutrients.includes('saturated_fat') && (
                 <div>
                   <Label htmlFor="saturated_fat">Sat Fat (g)</Label>
                   <Input
@@ -678,7 +708,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 </div>
               )}
 
-              {visibleNutrients.includes("polyunsaturated_fat") && (
+              {visibleNutrients.includes('polyunsaturated_fat') && (
                 <div>
                   <Label htmlFor="polyunsaturated_fat">Poly Fat (g)</Label>
                   <Input
@@ -697,7 +727,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 </div>
               )}
 
-              {visibleNutrients.includes("monounsaturated_fat") && (
+              {visibleNutrients.includes('monounsaturated_fat') && (
                 <div>
                   <Label htmlFor="monounsaturated_fat">Mono Fat (g)</Label>
                   <Input
@@ -716,7 +746,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 </div>
               )}
 
-              {visibleNutrients.includes("trans_fat") && (
+              {visibleNutrients.includes('trans_fat') && (
                 <div>
                   <Label htmlFor="trans_fat">Trans Fat (g)</Label>
                   <Input
@@ -736,7 +766,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
               )}
 
               {/* Other Nutrients */}
-              {visibleNutrients.includes("cholesterol") && (
+              {visibleNutrients.includes('cholesterol') && (
                 <div>
                   <Label htmlFor="cholesterol">Cholesterol (mg)</Label>
                   <Input
@@ -755,7 +785,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 </div>
               )}
 
-              {visibleNutrients.includes("sodium") && (
+              {visibleNutrients.includes('sodium') && (
                 <div>
                   <Label htmlFor="sodium">Sodium (mg)</Label>
                   <Input
@@ -774,7 +804,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 </div>
               )}
 
-              {visibleNutrients.includes("potassium") && (
+              {visibleNutrients.includes('potassium') && (
                 <div>
                   <Label htmlFor="potassium">Potassium (mg)</Label>
                   <Input
@@ -793,7 +823,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 </div>
               )}
 
-              {visibleNutrients.includes("dietary_fiber") && (
+              {visibleNutrients.includes('dietary_fiber') && (
                 <div>
                   <Label htmlFor="dietary_fiber">Fiber (g)</Label>
                   <Input
@@ -812,7 +842,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 </div>
               )}
 
-              {visibleNutrients.includes("sugars") && (
+              {visibleNutrients.includes('sugars') && (
                 <div>
                   <Label htmlFor="sugars">Sugars (g)</Label>
                   <Input
@@ -831,7 +861,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 </div>
               )}
 
-              {visibleNutrients.includes("vitamin_a") && (
+              {visibleNutrients.includes('vitamin_a') && (
                 <div>
                   <Label htmlFor="vitamin_a">Vitamin A (mcg)</Label>
                   <Input
@@ -850,7 +880,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 </div>
               )}
 
-              {visibleNutrients.includes("vitamin_c") && (
+              {visibleNutrients.includes('vitamin_c') && (
                 <div>
                   <Label htmlFor="vitamin_c">Vitamin C (mg)</Label>
                   <Input
@@ -869,7 +899,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 </div>
               )}
 
-              {visibleNutrients.includes("calcium") && (
+              {visibleNutrients.includes('calcium') && (
                 <div>
                   <Label htmlFor="calcium">Calcium (mg)</Label>
                   <Input
@@ -888,7 +918,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                 </div>
               )}
 
-              {visibleNutrients.includes("iron") && (
+              {visibleNutrients.includes('iron') && (
                 <div>
                   <Label htmlFor="iron">Iron (mg)</Label>
                   <Input
@@ -914,21 +944,21 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                   type="number"
                   value={convertMlToSelectedUnit(
                     goals.water_goal_ml,
-                    water_display_unit,
+                    water_display_unit
                   )}
                   onChange={(e) =>
                     setGoals({
                       ...goals,
                       water_goal_ml: convertSelectedUnitToMl(
                         Number(e.target.value),
-                        water_display_unit,
+                        water_display_unit
                       ),
                     })
                   }
                 />
                 <Select
                   value={water_display_unit}
-                  onValueChange={(value: "ml" | "oz" | "liter") =>
+                  onValueChange={(value: 'ml' | 'oz' | 'liter') =>
                     setWaterDisplayUnit(value)
                   }
                 >
@@ -955,7 +985,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                     setGoals({
                       ...goals,
                       target_exercise_calories_burned: isNaN(
-                        Number(e.target.value),
+                        Number(e.target.value)
                       )
                         ? 0
                         : Number(e.target.value),
@@ -975,7 +1005,7 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
                     setGoals({
                       ...goals,
                       target_exercise_duration_minutes: isNaN(
-                        Number(e.target.value),
+                        Number(e.target.value)
                       )
                         ? 0
                         : Number(e.target.value),
@@ -1002,13 +1032,13 @@ const EditGoals = ({ selectedDate, onGoalsUpdated, energyUnit, convertEnergy }: 
               disabled={
                 saving ||
                 goals.breakfast_percentage +
-                goals.lunch_percentage +
-                goals.dinner_percentage +
-                goals.snacks_percentage !==
-                100
+                  goals.lunch_percentage +
+                  goals.dinner_percentage +
+                  goals.snacks_percentage !==
+                  100
               }
             >
-              {saving ? "Saving..." : "Save Goals"}
+              {saving ? 'Saving...' : 'Save Goals'}
             </Button>
           </div>
         )}

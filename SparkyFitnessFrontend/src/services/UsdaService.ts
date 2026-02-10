@@ -45,19 +45,29 @@ export interface UsdaFoodDetails {
   iron?: number;
 }
 
-export const searchUsdaFoods = async (query: string, providerId: string, limit: number = 50): Promise<UsdaFoodSearchItem[]> => {
+export const searchUsdaFoods = async (
+  query: string,
+  providerId: string,
+  limit: number = 50
+): Promise<UsdaFoodSearchItem[]> => {
   try {
-    const response = await apiCall(`/foods/usda/search?query=${encodeURIComponent(query)}&pageSize=${limit}`, {
-      headers: { 'x-provider-id': providerId },
-    });
+    const response = await apiCall(
+      `/foods/usda/search?query=${encodeURIComponent(query)}&pageSize=${limit}`,
+      {
+        headers: { 'x-provider-id': providerId },
+      }
+    );
     return response.foods || [];
   } catch (error) {
-    console.error("Error searching USDA foods:", error);
+    console.error('Error searching USDA foods:', error);
     throw error;
   }
 };
 
-export const getUsdaFoodDetails = async (fdcId: number, providerId: string): Promise<UsdaFoodDetails | null> => {
+export const getUsdaFoodDetails = async (
+  fdcId: number,
+  providerId: string
+): Promise<UsdaFoodDetails | null> => {
   try {
     const response = await apiCall(`/foods/usda/details?fdcId=${fdcId}`, {
       headers: { 'x-provider-id': providerId },
@@ -69,7 +79,10 @@ export const getUsdaFoodDetails = async (fdcId: number, providerId: string): Pro
     if (response.foodNutrients) {
       response.foodNutrients.forEach((n: any) => {
         // USDA returns various spellings, try to normalize or check multiple
-        const name = n.nutrient?.name?.toLowerCase() || n.nutrientName?.toLowerCase() || '';
+        const name =
+          n.nutrient?.name?.toLowerCase() ||
+          n.nutrientName?.toLowerCase() ||
+          '';
         const unit = n.amount !== undefined ? n.unitName : n.nutrient?.unitName; // Check where unit is stored
         const unitLower = unit?.toLowerCase() || '';
         const nutrientId = n.nutrient?.id || n.nutrientId;
@@ -78,8 +91,15 @@ export const getUsdaFoodDetails = async (fdcId: number, providerId: string): Pro
         const value = n.amount !== undefined ? n.amount : n.value;
 
         // Energy: Check specific IDs first (1008, 2047, 2048) or name/unit match
-        if (nutrientId === 1008 || nutrientId === 2047 || nutrientId === 2048 ||
-          (name.includes('energy') && (unitLower === 'kcal' || unitLower === 'calorie' || name.includes('kcal')))) {
+        if (
+          nutrientId === 1008 ||
+          nutrientId === 2047 ||
+          nutrientId === 2048 ||
+          (name.includes('energy') &&
+            (unitLower === 'kcal' ||
+              unitLower === 'calorie' ||
+              name.includes('kcal')))
+        ) {
           nutrientMap.calories = value;
         } else if (name === 'protein') {
           nutrientMap.protein = value;
@@ -141,7 +161,6 @@ export const getUsdaFoodDetails = async (fdcId: number, providerId: string): Pro
       calcium: nutrientMap.calcium || 0,
       iron: nutrientMap.iron || 0,
     };
-
   } catch (error) {
     console.error(`Error getting USDA food details for fdcId ${fdcId}:`, error);
     return null;

@@ -7,7 +7,11 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, defaultValueOrOpts?: string | Record<string, unknown>) => {
       if (typeof defaultValueOrOpts === 'string') return defaultValueOrOpts;
-      if (defaultValueOrOpts && typeof defaultValueOrOpts === 'object' && 'defaultValue' in defaultValueOrOpts) {
+      if (
+        defaultValueOrOpts &&
+        typeof defaultValueOrOpts === 'object' &&
+        'defaultValue' in defaultValueOrOpts
+      ) {
         return defaultValueOrOpts.defaultValue as string;
       }
       return key;
@@ -39,7 +43,8 @@ jest.mock('@/utils/logging', () => ({
 // Mock services
 const mockGetMealPlanTemplates = jest.fn();
 jest.mock('@/services/mealPlanTemplateService', () => ({
-  getMealPlanTemplates: (...args: unknown[]) => mockGetMealPlanTemplates(...args),
+  getMealPlanTemplates: (...args: unknown[]) =>
+    mockGetMealPlanTemplates(...args),
   createMealPlanTemplate: jest.fn(),
   updateMealPlanTemplate: jest.fn(),
   deleteMealPlanTemplate: jest.fn(),
@@ -48,7 +53,9 @@ jest.mock('@/services/mealPlanTemplateService', () => ({
 // Mock MealPlanTemplateForm sub-component
 jest.mock('@/pages/Foods/MealPlanTemplateForm', () => {
   return function MockMealPlanTemplateForm() {
-    return <div data-testid="meal-plan-template-form">MealPlanTemplateForm</div>;
+    return (
+      <div data-testid="meal-plan-template-form">MealPlanTemplateForm</div>
+    );
   };
 });
 
@@ -72,7 +79,9 @@ describe('MealPlanCalendar', () => {
     render(<MealPlanCalendar />);
 
     await waitFor(() => {
-      expect(screen.getByText('mealPlanCalendar.noMealPlansFound')).toBeInTheDocument();
+      expect(
+        screen.getByText('mealPlanCalendar.noMealPlansFound')
+      ).toBeInTheDocument();
     });
   });
 });

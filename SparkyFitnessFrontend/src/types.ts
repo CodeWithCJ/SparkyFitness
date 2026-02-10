@@ -1,8 +1,3 @@
-export interface AuthResponse {
-  userId: string;
-  token: string;
-}
-
 export interface MoodEntry {
   id: string;
   user_id: string;
@@ -92,7 +87,7 @@ export interface SleepChartData {
 
 export const SLEEP_STAGE_COLORS: { [key: string]: string } = {
   awake: '#F87171', // red-400
-  rem: '#C084FC',   // purple-400
+  rem: '#C084FC', // purple-400
   light: '#60A5FA', // blue-400
-  deep: '#4ADE80',  // green-400
+  deep: '#4ADE80', // green-400
 };

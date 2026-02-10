@@ -1,7 +1,17 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import type React from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
 import { Activity } from 'lucide-react';
 import { getSpO2Color } from './SpO2Gauge';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -19,15 +29,33 @@ interface SpO2CardProps {
 }
 
 // Get status based on SpO2 value - returns translation key
-const getSpO2Status = (value: number): { statusKey: string; statusDefault: string; color: string } => {
+const getSpO2Status = (
+  value: number
+): { statusKey: string; statusDefault: string; color: string } => {
   if (value >= 95) {
-    return { statusKey: 'reports.spo2Excellent', statusDefault: 'Excellent', color: '#22c55e' };
+    return {
+      statusKey: 'reports.spo2Excellent',
+      statusDefault: 'Excellent',
+      color: '#22c55e',
+    };
   } else if (value >= 90) {
-    return { statusKey: 'reports.spo2Normal', statusDefault: 'Normal', color: '#22c55e' };
+    return {
+      statusKey: 'reports.spo2Normal',
+      statusDefault: 'Normal',
+      color: '#22c55e',
+    };
   } else if (value >= 80) {
-    return { statusKey: 'reports.spo2Low', statusDefault: 'Low', color: '#eab308' };
+    return {
+      statusKey: 'reports.spo2Low',
+      statusDefault: 'Low',
+      color: '#eab308',
+    };
   } else {
-    return { statusKey: 'reports.spo2VeryLow', statusDefault: 'Very Low', color: '#ef4444' };
+    return {
+      statusKey: 'reports.spo2VeryLow',
+      statusDefault: 'Very Low',
+      color: '#ef4444',
+    };
   }
 };
 
@@ -43,29 +71,34 @@ const SpO2Card: React.FC<SpO2CardProps> = ({ data }) => {
   // Filter out entries without SpO2 data and sort by date
   const validData = useMemo(() => {
     return data
-      .filter(d => d.average !== null && d.average !== undefined)
+      .filter((d) => d.average !== null && d.average !== undefined)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [data]);
 
   // Get latest day's data
-  const latestData = validData.length > 0 ? validData[validData.length - 1] : null;
+  const latestData =
+    validData.length > 0 ? validData[validData.length - 1] : null;
 
   // Calculate overall stats
   const stats = useMemo(() => {
     if (validData.length === 0) return null;
 
-    const averages = validData.map(d => d.average!);
-    const lowestValues = validData.filter(d => d.lowest !== null).map(d => d.lowest!);
+    const averages = validData.map((d) => d.average!);
+    const lowestValues = validData
+      .filter((d) => d.lowest !== null)
+      .map((d) => d.lowest!);
 
     return {
-      avgSpO2: Math.round(averages.reduce((a, b) => a + b, 0) / averages.length),
+      avgSpO2: Math.round(
+        averages.reduce((a, b) => a + b, 0) / averages.length
+      ),
       minSpO2: lowestValues.length > 0 ? Math.min(...lowestValues) : null,
     };
   }, [validData]);
 
   // Prepare chart data with formatted dates
   const chartData = useMemo(() => {
-    return validData.map(d => ({
+    return validData.map((d) => ({
       ...d,
       displayDate: formatDateInUserTimezone(parseISO(d.date), 'MMM dd'),
     }));
@@ -95,20 +128,31 @@ const SpO2Card: React.FC<SpO2CardProps> = ({ data }) => {
             <p className="text-4xl font-bold" style={{ color }}>
               {latestValue}%
             </p>
-            <p className="text-sm font-medium" style={{ color }}>{status}</p>
+            <p className="text-sm font-medium" style={{ color }}>
+              {status}
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">
             <div className="text-center">
-              <p className="text-lg font-bold text-green-500">{stats.avgSpO2}%</p>
-              <p className="text-xs text-muted-foreground">{t('sleepHealth.avgSpO2', 'Average')}</p>
+              <p className="text-lg font-bold text-green-500">
+                {stats.avgSpO2}%
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('sleepHealth.avgSpO2', 'Average')}
+              </p>
             </div>
             {stats.minSpO2 !== null && (
               <div className="text-center">
-                <p className="text-lg font-bold" style={{ color: getSpO2Color(stats.minSpO2) }}>
+                <p
+                  className="text-lg font-bold"
+                  style={{ color: getSpO2Color(stats.minSpO2) }}
+                >
                   {stats.minSpO2}%
                 </p>
-                <p className="text-xs text-muted-foreground">{t('sleepHealth.lowestSpO2', 'Lowest')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('sleepHealth.lowestSpO2', 'Lowest')}
+                </p>
               </div>
             )}
           </div>
@@ -117,9 +161,19 @@ const SpO2Card: React.FC<SpO2CardProps> = ({ data }) => {
         {/* Chart */}
         <div className="h-32">
           {isMounted ? (
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+              minWidth={0}
+              minHeight={0}
+              debounce={100}
+            >
               <BarChart data={chartData} barCategoryGap="20%">
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="hsl(var(--border))"
+                />
                 <XAxis
                   dataKey="displayDate"
                   fontSize={10}
@@ -141,20 +195,29 @@ const SpO2Card: React.FC<SpO2CardProps> = ({ data }) => {
                     backgroundColor: 'hsl(var(--background))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '6px',
-                    color: 'hsl(var(--foreground))'
+                    color: 'hsl(var(--foreground))',
                   }}
                   formatter={(value: number) => [`${value}%`]}
                 />
-                <Bar dataKey="average" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+                <Bar
+                  dataKey="average"
+                  radius={[4, 4, 0, 0]}
+                  isAnimationActive={false}
+                >
                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={getSpO2Color(entry.average || 0)} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={getSpO2Color(entry.average || 0)}
+                    />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-              <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading chart...')}</span>
+              <span className="text-xs text-muted-foreground">
+                {t('common.loading', 'Loading chart...')}
+              </span>
             </div>
           )}
         </div>
@@ -162,15 +225,24 @@ const SpO2Card: React.FC<SpO2CardProps> = ({ data }) => {
         {/* Legend */}
         <div className="flex justify-center gap-3 mt-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#22c55e' }} />
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: '#22c55e' }}
+            />
             <span>≥90%</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#eab308' }} />
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: '#eab308' }}
+            />
             <span>80-89%</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ef4444' }} />
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: '#ef4444' }}
+            />
             <span>&lt;80%</span>
           </div>
         </div>

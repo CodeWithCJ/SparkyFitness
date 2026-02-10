@@ -1,6 +1,6 @@
 import { apiCall } from './api';
-import { Exercise } from './exerciseSearchService'; // Import Exercise interface
-import { SleepAnalyticsData } from '../types'; // Import SleepAnalyticsData
+import type { Exercise } from './exerciseSearchService';
+import type { SleepAnalyticsData } from '../types';
 
 export interface NutritionData {
   date: string;
@@ -97,7 +97,8 @@ export interface DailyExerciseEntry {
   exercises: Exercise; // Use the comprehensive Exercise interface
   exercise_entry_id?: string; // New field
   provider_name?: string; // New field
-  sets: { // Define the structure of sets
+  sets: {
+    // Define the structure of sets
     id: string;
     set_number: number;
     set_type: string;
@@ -251,9 +252,12 @@ export const getExerciseDashboardData = async (
   if (equipment) params.append('equipment', equipment);
   if (muscle) params.append('muscle', muscle);
   if (exercise) params.append('exercise', exercise);
-  const response = await apiCall(`/reports/exercise-dashboard?${params.toString()}`, {
-    method: 'GET',
-  });
+  const response = await apiCall(
+    `/reports/exercise-dashboard?${params.toString()}`,
+    {
+      method: 'GET',
+    }
+  );
   return response;
 };
 

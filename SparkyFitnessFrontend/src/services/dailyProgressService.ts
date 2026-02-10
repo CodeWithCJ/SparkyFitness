@@ -8,10 +8,10 @@ export interface Goals {
   water_goal_ml: number;
 }
 
-import { FoodEntry } from '@/types/food'; // Import FoodEntry from the central types file
-import { GroupedExerciseEntry } from './exerciseEntryService'; // Import GroupedExerciseEntry
+import type { FoodEntry } from '@/types/food';
+import type { GroupedExerciseEntry } from './exerciseEntryService';
 
-import { WorkoutPresetSet } from '@/types/workout'; // Import WorkoutPresetSet
+import type { WorkoutPresetSet } from '@/types/workout';
 
 export interface ExerciseEntry {
   id: string;
@@ -48,16 +48,20 @@ export const getGoalsForDate = async (date: string): Promise<Goals> => {
     suppress404Toast: true, // Suppress toast for 404
   });
   // Ensure a default Goals object is returned if no data is found
-  return data || {
-    calories: 2000,
-    protein: 150,
-    carbs: 250,
-    fat: 67,
-    water_goal_ml: 1920, // Default to 8 glasses * 240ml
-  };
+  return (
+    data || {
+      calories: 2000,
+      protein: 150,
+      carbs: 250,
+      fat: 67,
+      water_goal_ml: 1920, // Default to 8 glasses * 240ml
+    }
+  );
 };
 
-export const getFoodEntriesForDate = async (date: string): Promise<FoodEntry[]> => {
+export const getFoodEntriesForDate = async (
+  date: string
+): Promise<FoodEntry[]> => {
   const data = await apiCall(`/food-entries/by-date/${date}`, {
     method: 'GET',
     suppress404Toast: true, // Suppress toast for 404
@@ -65,7 +69,9 @@ export const getFoodEntriesForDate = async (date: string): Promise<FoodEntry[]> 
   return data || []; // Return empty array if 404 (no food entries found)
 };
 
-export const getExerciseEntriesForDate = async (date: string): Promise<GroupedExerciseEntry[]> => {
+export const getExerciseEntriesForDate = async (
+  date: string
+): Promise<GroupedExerciseEntry[]> => {
   const params = new URLSearchParams({ selectedDate: date });
   const data = await apiCall(`/exercise-entries/by-date?${params.toString()}`, {
     method: 'GET',
@@ -74,16 +80,22 @@ export const getExerciseEntriesForDate = async (date: string): Promise<GroupedEx
   return data || []; // Return empty array if 404 (no exercise entries found)
 };
 
-export const getCheckInMeasurementsForDate = async (date: string): Promise<CheckInMeasurement | null> => {
+export const getCheckInMeasurementsForDate = async (
+  date: string
+): Promise<CheckInMeasurement | null> => {
   try {
     // For daily metrics like steps we must fetch the measurement for the exact date only.
     // Use the exact-date endpoint so older measurements (e.g. previous-days' steps) are not reused.
-    const measurement = await apiCall(`/measurements/check-in/${encodeURIComponent(date)}`, {
-      method: 'GET',
-      suppress404Toast: true,
-    });
+    const measurement = await apiCall(
+      `/measurements/check-in/${encodeURIComponent(date)}`,
+      {
+        method: 'GET',
+        suppress404Toast: true,
+      }
+    );
     return measurement || null; // Normalize to null when not found
-  } catch (error: any) { // Explicitly type error as any
+  } catch (error: any) {
+    // Explicitly type error as any
     // If it's a 404 and we suppressed the toast, it means no measurement was found.
     // Return null as expected by the component.
     if (error.message.includes('404')) {

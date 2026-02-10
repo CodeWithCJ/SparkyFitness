@@ -1,13 +1,24 @@
 import { apiCall } from './api';
 
-import { Food, FoodDeletionImpact, FoodSearchResult, FoodVariant } from '@/types/food';
+import type {
+  Food,
+  FoodDeletionImpact,
+  FoodSearchResult,
+  FoodVariant,
+} from '@/types/food';
 
 export type FoodFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
 
 export interface ExternalDataProvider {
   id: string;
   provider_name: string;
-  provider_type: 'openfoodfacts' | 'nutritionix' | 'fatsecret' | 'wger' | 'mealie' | 'tandoor';
+  provider_type:
+    | 'openfoodfacts'
+    | 'nutritionix'
+    | 'fatsecret'
+    | 'wger'
+    | 'mealie'
+    | 'tandoor';
   app_id: string | null;
   app_key: string | null;
   is_active: boolean;
@@ -73,7 +84,9 @@ export const searchFoods = async (
   return response as FoodSearchResult; // Cast the response to FoodSearchResult
 };
 
-export const getFoodVariantsByFoodId = async (foodId: string): Promise<FoodVariant[]> => {
+export const getFoodVariantsByFoodId = async (
+  foodId: string
+): Promise<FoodVariant[]> => {
   const response = await apiCall(`/foods/food-variants?food_id=${foodId}`, {
     method: 'GET',
   });
@@ -89,7 +102,8 @@ export const loadFoods = async (
   userId?: string
 ): Promise<{ foods: Food[]; totalCount: number }> => {
   const params = new URLSearchParams();
-  if (searchTerm) { // Only add searchTerm if it's not empty
+  if (searchTerm) {
+    // Only add searchTerm if it's not empty
     params.append('searchTerm', searchTerm);
   }
   params.append('foodFilter', foodFilter);
@@ -97,20 +111,30 @@ export const loadFoods = async (
   params.append('itemsPerPage', itemsPerPage.toString());
   if (userId) params.append('userId', userId);
   params.append('sortBy', sortBy); // Add sortBy parameter
-  const response = await apiCall(`/foods/foods-paginated?${params.toString()}`, {
-    method: 'GET',
-  });
+  const response = await apiCall(
+    `/foods/foods-paginated?${params.toString()}`,
+    {
+      method: 'GET',
+    }
+  );
   return response;
 };
 
-export const togglePublicSharing = async (foodId: string, currentState: boolean): Promise<void> => {
+export const togglePublicSharing = async (
+  foodId: string,
+  currentState: boolean
+): Promise<void> => {
   return apiCall(`/foods/${foodId}`, {
     method: 'PUT',
     body: { shared_with_public: !currentState },
   });
 };
 
-export const deleteFood = async (foodId: string, forceDelete: boolean = false, userId?: string): Promise<{ message: string; status: string }> => {
+export const deleteFood = async (
+  foodId: string,
+  forceDelete: boolean = false,
+  userId?: string
+): Promise<{ message: string; status: string }> => {
   const params = new URLSearchParams();
   if (userId) params.append('userId', userId);
   if (forceDelete) {
@@ -128,14 +152,19 @@ export const createFood = async (payload: FoodPayload): Promise<Food> => {
   });
 };
 
-export const getFoodDeletionImpact = async (foodId: string): Promise<FoodDeletionImpact> => {
+export const getFoodDeletionImpact = async (
+  foodId: string
+): Promise<FoodDeletionImpact> => {
   const response = await apiCall(`/foods/${foodId}/deletion-impact`, {
     method: 'GET',
   });
   return response;
 };
 
-export const updateFood = async (id: string, payload: Partial<FoodPayload>): Promise<Food> => {
+export const updateFood = async (
+  id: string,
+  payload: Partial<FoodPayload>
+): Promise<Food> => {
   return apiCall(`/foods/${id}`, {
     method: 'PUT',
     body: payload,
@@ -148,8 +177,12 @@ export const getFoodById = async (foodId: string): Promise<Food> => {
   });
 };
 
-export const getFoodDataProviders = async (userId?: string): Promise<ExternalDataProvider[]> => {
-  const url = userId ? `/external-providers/user/${userId}` : '/external-providers/current-user'; // Use a context-aware endpoint if available, but fallback to userId
+export const getFoodDataProviders = async (
+  userId?: string
+): Promise<ExternalDataProvider[]> => {
+  const url = userId
+    ? `/external-providers/user/${userId}`
+    : '/external-providers/current-user'; // Use a context-aware endpoint if available, but fallback to userId
   const response = await apiCall(url, {
     method: 'GET',
   });
@@ -178,7 +211,9 @@ export const searchMealieFoods = async (
   return response;
 };
 
-export const updateFoodEntriesSnapshot = async (foodId: string): Promise<void> => {
+export const updateFoodEntriesSnapshot = async (
+  foodId: string
+): Promise<void> => {
   return apiCall(`/foods/update-snapshot`, {
     method: 'POST',
     body: { foodId },
@@ -237,13 +272,16 @@ export const getTandoorFoodDetails = async (
   const params = new URLSearchParams();
   params.append('id', id);
 
-  const response = await apiCall(`/foods/tandoor/details?${params.toString()}`, {
-    method: 'GET',
-    headers: {
-      'x-tandoor-base-url': baseUrl,
-      'x-tandoor-api-key': apiKey,
-      'x-provider-id': providerId,
-    },
-  });
+  const response = await apiCall(
+    `/foods/tandoor/details?${params.toString()}`,
+    {
+      method: 'GET',
+      headers: {
+        'x-tandoor-base-url': baseUrl,
+        'x-tandoor-api-key': apiKey,
+        'x-provider-id': providerId,
+      },
+    }
+  );
   return response;
 };

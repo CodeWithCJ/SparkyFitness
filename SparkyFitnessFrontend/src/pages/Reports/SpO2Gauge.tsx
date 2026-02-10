@@ -1,42 +1,44 @@
-import React from 'react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface SpO2GaugeProps {
-  value: number;        // 0-100
-  size?: number;        // px, default 160
+  value: number; // 0-100
+  size?: number; // px, default 160
   strokeWidth?: number; // px, default 12
 }
 
-const getSpO2StatusInfo = (value: number): { status: string; color: string; description: string } => {
+const getSpO2StatusInfo = (
+  value: number
+): { status: string; color: string; description: string } => {
   if (value < 70) {
     return {
       status: 'Critical',
       color: '#ef4444',
-      description: 'Dangerously low oxygen levels. Seek medical attention.'
+      description: 'Dangerously low oxygen levels. Seek medical attention.',
     };
   } else if (value < 80) {
     return {
       status: 'Low',
       color: '#f97316',
-      description: 'Below normal oxygen levels. Monitor closely.'
+      description: 'Below normal oxygen levels. Monitor closely.',
     };
   } else if (value < 90) {
     return {
       status: 'Moderate',
       color: '#eab308',
-      description: 'Slightly below optimal levels.'
+      description: 'Slightly below optimal levels.',
     };
   } else if (value < 95) {
     return {
       status: 'Normal',
       color: '#22c55e',
-      description: 'Healthy oxygen saturation levels.'
+      description: 'Healthy oxygen saturation levels.',
     };
   } else {
     return {
       status: 'Excellent',
       color: '#22c55e',
-      description: 'Optimal oxygen saturation.'
+      description: 'Optimal oxygen saturation.',
     };
   }
 };
@@ -52,7 +54,7 @@ export const getSpO2Color = (value: number): string => {
 const SpO2Gauge: React.FC<SpO2GaugeProps> = ({
   value,
   size = 160,
-  strokeWidth = 12
+  strokeWidth = 12,
 }) => {
   const { t } = useTranslation();
   const { status, color, description } = getSpO2StatusInfo(value);
@@ -69,7 +71,10 @@ const SpO2Gauge: React.FC<SpO2GaugeProps> = ({
   // SpO2 typically ranges from 60-100%, map to gauge
   const minValue = 60;
   const maxValue = 100;
-  const normalizedValue = Math.max(0, Math.min(100, ((value - minValue) / (maxValue - minValue)) * 100));
+  const normalizedValue = Math.max(
+    0,
+    Math.min(100, ((value - minValue) / (maxValue - minValue)) * 100)
+  );
   const filledLength = (normalizedValue / 100) * arcLength;
 
   // Rotation to start from bottom-left (135 degrees from top)
@@ -77,10 +82,10 @@ const SpO2Gauge: React.FC<SpO2GaugeProps> = ({
 
   // Create gradient segments for the background arc
   const segments = [
-    { start: 0, end: 0.25, color: '#ef4444' },      // <70% - red
-    { start: 0.25, end: 0.5, color: '#f97316' },    // 70-79% - orange
-    { start: 0.5, end: 0.75, color: '#eab308' },    // 80-89% - yellow
-    { start: 0.75, end: 1, color: '#22c55e' },      // 90-100% - green
+    { start: 0, end: 0.25, color: '#ef4444' }, // <70% - red
+    { start: 0.25, end: 0.5, color: '#f97316' }, // 70-79% - orange
+    { start: 0.5, end: 0.75, color: '#eab308' }, // 80-89% - yellow
+    { start: 0.75, end: 1, color: '#22c55e' }, // 90-100% - green
   ];
 
   return (
@@ -152,8 +157,12 @@ const SpO2Gauge: React.FC<SpO2GaugeProps> = ({
 
       {/* Status text */}
       <div className="text-center mt-2">
-        <p className="font-semibold text-lg" style={{ color }}>{t(`reports.spo2Status.${status.toLowerCase()}`, status)}</p>
-        <p className="text-sm text-muted-foreground max-w-[200px]">{t(`reports.spo2Description.${status.toLowerCase()}`, description)}</p>
+        <p className="font-semibold text-lg" style={{ color }}>
+          {t(`reports.spo2Status.${status.toLowerCase()}`, status)}
+        </p>
+        <p className="text-sm text-muted-foreground max-w-[200px]">
+          {t(`reports.spo2Description.${status.toLowerCase()}`, description)}
+        </p>
       </div>
     </div>
   );

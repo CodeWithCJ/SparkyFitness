@@ -1,7 +1,16 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceArea } from 'recharts';
+import {
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceArea,
+} from 'recharts';
 import { Activity } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
@@ -22,18 +31,36 @@ interface TransformedData {
 }
 
 // Get status based on HRV relative to baseline - returns translation key
-const getHRVStatus = (hrv: number, baselineLow: number, baselineHigh: number): { statusKey: string; statusDefault: string; color: string } => {
+const getHRVStatus = (
+  hrv: number,
+  baselineLow: number,
+  baselineHigh: number
+): { statusKey: string; statusDefault: string; color: string } => {
   if (hrv < baselineLow) {
-    return { statusKey: 'reports.hrvLow', statusDefault: 'Low', color: '#f97316' };
+    return {
+      statusKey: 'reports.hrvLow',
+      statusDefault: 'Low',
+      color: '#f97316',
+    };
   } else if (hrv > baselineHigh) {
-    return { statusKey: 'reports.hrvElevated', statusDefault: 'High', color: '#3b82f6' };
+    return {
+      statusKey: 'reports.hrvElevated',
+      statusDefault: 'High',
+      color: '#3b82f6',
+    };
   } else {
-    return { statusKey: 'reports.hrvBalanced', statusDefault: 'Balanced', color: '#22c55e' };
+    return {
+      statusKey: 'reports.hrvBalanced',
+      statusDefault: 'Balanced',
+      color: '#22c55e',
+    };
   }
 };
 
 // Calculate baseline from historical data (mean ± 1 std dev)
-const calculateBaseline = (values: number[]): { low: number; high: number; avg: number } => {
+const calculateBaseline = (
+  values: number[]
+): { low: number; high: number; avg: number } => {
   if (values.length === 0) return { low: 0, high: 100, avg: 50 };
 
   const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
@@ -42,14 +69,15 @@ const calculateBaseline = (values: number[]): { low: number; high: number; avg: 
     return { low: avg * 0.8, high: avg * 1.2, avg };
   }
 
-  const squaredDiffs = values.map(v => Math.pow(v - avg, 2));
-  const avgSquaredDiff = squaredDiffs.reduce((sum, v) => sum + v, 0) / values.length;
+  const squaredDiffs = values.map((v) => (v - avg) ** 2);
+  const avgSquaredDiff =
+    squaredDiffs.reduce((sum, v) => sum + v, 0) / values.length;
   const stdDev = Math.sqrt(avgSquaredDiff);
 
   return {
     low: Math.max(0, avg - stdDev),
     high: avg + stdDev,
-    avg
+    avg,
   };
 };
 
@@ -65,14 +93,19 @@ const HRVCard: React.FC<HRVCardProps> = ({ data }) => {
   // Transform and process data
   const { transformedData, latestHRV, baseline, stats } = useMemo(() => {
     const validData = data
-      .filter(d => d.avg_overnight_hrv != null)
+      .filter((d) => d.avg_overnight_hrv != null)
       .sort((a, b) => a.date.localeCompare(b.date));
 
     if (validData.length === 0) {
-      return { transformedData: [], latestHRV: null, baseline: { low: 0, high: 100, avg: 50 }, stats: null };
+      return {
+        transformedData: [],
+        latestHRV: null,
+        baseline: { low: 0, high: 100, avg: 50 },
+        stats: null,
+      };
     }
 
-    const hrvValues = validData.map(d => d.avg_overnight_hrv!);
+    const hrvValues = validData.map((d) => d.avg_overnight_hrv!);
     const baseline = calculateBaseline(hrvValues);
 
     const transformed: TransformedData[] = validData.map((entry) => ({
@@ -84,7 +117,9 @@ const HRVCard: React.FC<HRVCardProps> = ({ data }) => {
     const latestHRV = transformed[transformed.length - 1]?.hrv ?? null;
 
     const stats = {
-      avg: Math.round(hrvValues.reduce((sum, v) => sum + v, 0) / hrvValues.length),
+      avg: Math.round(
+        hrvValues.reduce((sum, v) => sum + v, 0) / hrvValues.length
+      ),
     };
 
     return { transformedData: transformed, latestHRV, baseline, stats };
@@ -105,18 +140,24 @@ const HRVCard: React.FC<HRVCardProps> = ({ data }) => {
         </CardHeader>
         <CardContent>
           <div className="h-32 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-            <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading...')}</span>
+            <span className="text-xs text-muted-foreground">
+              {t('common.loading', 'Loading...')}
+            </span>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const { statusKey, statusDefault, color } = getHRVStatus(latestHRV, baseline.low, baseline.high);
+  const { statusKey, statusDefault, color } = getHRVStatus(
+    latestHRV,
+    baseline.low,
+    baseline.high
+  );
   const status = t(statusKey, statusDefault);
 
   // Calculate Y-axis domain
-  const hrvValues = transformedData.map(d => d.hrv!);
+  const hrvValues = transformedData.map((d) => d.hrv!);
   const minHRV = Math.min(...hrvValues, baseline.low);
   const maxHRV = Math.max(...hrvValues, baseline.high);
   const yMin = Math.max(0, Math.floor(minHRV - 10));
@@ -138,28 +179,44 @@ const HRVCard: React.FC<HRVCardProps> = ({ data }) => {
               {Math.round(latestHRV)}
             </p>
             <p className="text-xs text-muted-foreground">ms</p>
-            <p className="text-sm font-medium" style={{ color }}>{status}</p>
+            <p className="text-sm font-medium" style={{ color }}>
+              {status}
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">
             <div className="text-center">
               <p className="text-lg font-bold text-blue-500">{stats?.avg}</p>
-              <p className="text-xs text-muted-foreground">{t('sleepHealth.avgHRV', 'Avg')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('sleepHealth.avgHRV', 'Avg')}
+              </p>
             </div>
             <div className="text-center">
               <p className="text-lg font-bold text-gray-500">
                 {Math.round(baseline.low)}-{Math.round(baseline.high)}
               </p>
-              <p className="text-xs text-muted-foreground">{t('sleepHealth.baseline', 'Baseline')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('sleepHealth.baseline', 'Baseline')}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Chart */}
         <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={0}
+            minHeight={0}
+            debounce={100}
+          >
             <ComposedChart data={transformedData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="hsl(var(--border))"
+              />
               <XAxis
                 dataKey="displayDate"
                 fontSize={10}
@@ -180,7 +237,7 @@ const HRVCard: React.FC<HRVCardProps> = ({ data }) => {
                   backgroundColor: 'hsl(var(--background))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '6px',
-                  color: 'hsl(var(--foreground))'
+                  color: 'hsl(var(--foreground))',
                 }}
                 formatter={(value: number) => [`${value?.toFixed(0)} ms`]}
               />
@@ -204,7 +261,10 @@ const HRVCard: React.FC<HRVCardProps> = ({ data }) => {
         </div>
 
         <div className="text-center mt-2 text-xs text-muted-foreground">
-          {t('sleepHealth.hrvDisclaimer', '*Baseline from your data (mean ± std dev)')}
+          {t(
+            'sleepHealth.hrvDisclaimer',
+            '*Baseline from your data (mean ± std dev)'
+          )}
         </div>
       </CardContent>
     </Card>

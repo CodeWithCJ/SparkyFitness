@@ -1,4 +1,4 @@
-import { ExpandedGoals } from '@/types/goals';
+import type { ExpandedGoals } from '@/types/goals';
 
 export const DEFAULT_GOALS: ExpandedGoals = {
   calories: 2000,

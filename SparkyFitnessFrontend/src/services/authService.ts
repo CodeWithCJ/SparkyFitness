@@ -1,5 +1,5 @@
 import { authClient } from '../lib/auth-client';
-import { AuthResponse, LoginSettings } from '../types/auth';
+import type { AuthResponse, LoginSettings } from '../types/auth';
 
 export const requestMagicLink = async (email: string): Promise<void> => {
   const { error } = await authClient.signIn.magicLink({
@@ -9,7 +9,11 @@ export const requestMagicLink = async (email: string): Promise<void> => {
   if (error) throw error;
 };
 
-export const registerUser = async (email: string, password: string, fullName: string): Promise<AuthResponse> => {
+export const registerUser = async (
+  email: string,
+  password: string,
+  fullName: string
+): Promise<AuthResponse> => {
   const { data, error } = await authClient.signUp.email({
     email,
     password,
@@ -33,13 +37,14 @@ export const registerUser = async (email: string, password: string, fullName: st
   } as AuthResponse;
 };
 
-
-export const loginUser = async (email: string, password: string): Promise<AuthResponse> => {
+export const loginUser = async (
+  email: string,
+  password: string
+): Promise<AuthResponse> => {
   const { data, error } = await authClient.signIn.email({
     email,
     password,
   });
-
 
   if (error) {
     if (error.status === 401) {
@@ -76,7 +81,10 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
   if (error) throw error;
 };
 
-export const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+export const resetPassword = async (
+  token: string,
+  newPassword: string
+): Promise<void> => {
   const { error } = await authClient.resetPassword({
     newPassword,
     token,
@@ -91,7 +99,10 @@ export const logoutUser = async (): Promise<void> => {
   window.location.href = '/';
 };
 
-export const initiateOidcLogin = async (providerId: string, requestSignUp: boolean = false) => {
+export const initiateOidcLogin = async (
+  providerId: string,
+  requestSignUp: boolean = false
+) => {
   await authClient.signIn.sso({
     providerId: providerId,
     callbackURL: window.location.origin,

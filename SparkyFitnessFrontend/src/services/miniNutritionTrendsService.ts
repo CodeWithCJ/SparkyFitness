@@ -19,9 +19,12 @@ export const loadMiniNutritionTrendData = async (
     startDate,
     endDate,
   });
-  const data = await apiCall(`/reports/mini-nutrition-trends?${params.toString()}`, {
-    method: 'GET',
-    suppress404Toast: true, // Suppress toast for 404
-  });
+  const data = await apiCall(
+    `/reports/mini-nutrition-trends?${params.toString()}`,
+    {
+      method: 'GET',
+      suppress404Toast: true, // Suppress toast for 404
+    }
+  );
   return data || []; // Return empty array if 404 (no data found)
 };

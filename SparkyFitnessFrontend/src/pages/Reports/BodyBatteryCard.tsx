@@ -1,9 +1,21 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 import { Battery } from 'lucide-react';
-import { CustomCategory, CustomMeasurementData } from '@/services/reportsService';
+import type {
+  CustomCategory,
+  CustomMeasurementData,
+} from '@/services/reportsService';
 import BodyBatteryGauge from './BodyBatteryGauge';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
@@ -15,7 +27,7 @@ const BODY_BATTERY_METRICS = [
   'Body Battery At Wake',
   'Body Battery Charged',
   'Body Battery Drained',
-  'Body Battery Current'
+  'Body Battery Current',
 ];
 
 interface BodyBatteryCardProps {
@@ -33,7 +45,10 @@ interface BodyBatteryDay {
   drained: number | null;
 }
 
-const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({ categories, measurementsData }) => {
+const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
+  categories,
+  measurementsData,
+}) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);
@@ -44,17 +59,17 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({ categories, measureme
 
   // Get Body Battery categories
   const bodyBatteryCategories = useMemo(() => {
-    return categories.filter(cat => BODY_BATTERY_METRICS.includes(cat.name));
+    return categories.filter((cat) => BODY_BATTERY_METRICS.includes(cat.name));
   }, [categories]);
 
   // Transform data: group by date, pivot metrics into single object per day
   const transformedData = useMemo(() => {
     const dataByDate: Record<string, BodyBatteryDay> = {};
 
-    bodyBatteryCategories.forEach(category => {
+    bodyBatteryCategories.forEach((category) => {
       const data = measurementsData[category.id] || [];
 
-      data.forEach(entry => {
+      data.forEach((entry) => {
         const date = entry.entry_date;
         if (!dataByDate[date]) {
           dataByDate[date] = {
@@ -64,11 +79,14 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({ categories, measureme
             lowest: null,
             at_wake: null,
             charged: null,
-            drained: null
+            drained: null,
           };
         }
 
-        const value = typeof entry.value === 'string' ? parseFloat(entry.value) : entry.value;
+        const value =
+          typeof entry.value === 'string'
+            ? parseFloat(entry.value)
+            : entry.value;
 
         switch (category.name) {
           case 'Body Battery Highest':
@@ -91,11 +109,16 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({ categories, measureme
     });
 
     // Sort by date and return array
-    return Object.values(dataByDate).sort((a, b) => a.date.localeCompare(b.date));
+    return Object.values(dataByDate).sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
   }, [bodyBatteryCategories, measurementsData, formatDateInUserTimezone]);
 
   // Get latest day's data for gauge
-  const latestData = transformedData.length > 0 ? transformedData[transformedData.length - 1] : null;
+  const latestData =
+    transformedData.length > 0
+      ? transformedData[transformedData.length - 1]
+      : null;
 
   // Use at_wake if available, otherwise highest
   const gaugeValue = latestData?.at_wake ?? latestData?.highest ?? 0;
@@ -124,23 +147,47 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({ categories, measureme
             {/* Charged/Drained Stats */}
             <div className="flex justify-center gap-8 mt-4">
               <div className="text-center">
-                <p className="text-2xl font-bold text-green-500">+{Math.round(chargedValue)}</p>
-                <p className="text-sm text-muted-foreground">{t('reports.charged', 'Charged')}</p>
+                <p className="text-2xl font-bold text-green-500">
+                  +{Math.round(chargedValue)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t('reports.charged', 'Charged')}
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-red-500">-{Math.round(drainedValue)}</p>
-                <p className="text-sm text-muted-foreground">{t('reports.drained', 'Drained')}</p>
+                <p className="text-2xl font-bold text-red-500">
+                  -{Math.round(drainedValue)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t('reports.drained', 'Drained')}
+                </p>
               </div>
             </div>
           </div>
 
           {/* Right side: Trend chart */}
           <div className="h-64">
-            <p className="text-sm font-medium mb-2">{t('reports.trend', 'Trend')}</p>
+            <p className="text-sm font-medium mb-2">
+              {t('reports.trend', 'Trend')}
+            </p>
             {isMounted ? (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
-                <BarChart data={transformedData} barGap={0} barCategoryGap="20%">
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={0}
+                minHeight={0}
+                debounce={100}
+              >
+                <BarChart
+                  data={transformedData}
+                  barGap={0}
+                  barCategoryGap="20%"
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="hsl(var(--border))"
+                  />
                   <XAxis
                     dataKey="displayDate"
                     fontSize={11}
@@ -158,13 +205,13 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({ categories, measureme
                     contentStyle={{
                       backgroundColor: 'hsl(var(--background))',
                       border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px'
+                      borderRadius: '6px',
                     }}
                     formatter={(value: number, name: string) => {
                       const labels: Record<string, string> = {
                         highest: t('reports.highest', 'Highest'),
                         at_wake: t('reports.atWake', 'At Wake'),
-                        lowest: t('reports.lowest', 'Lowest')
+                        lowest: t('reports.lowest', 'Lowest'),
                       };
                       return [Math.round(value), labels[name] || name];
                     }}
@@ -174,19 +221,36 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({ categories, measureme
                       const labels: Record<string, string> = {
                         highest: t('reports.highest', 'Highest'),
                         at_wake: t('reports.atWake', 'At Wake'),
-                        lowest: t('reports.lowest', 'Lowest')
+                        lowest: t('reports.lowest', 'Lowest'),
                       };
                       return labels[value] || value;
                     }}
                   />
-                  <Bar dataKey="highest" fill="#3b82f6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                  <Bar dataKey="at_wake" fill="#06b6d4" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                  <Bar dataKey="lowest" fill="#6b7280" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  <Bar
+                    dataKey="highest"
+                    fill="#3b82f6"
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive={false}
+                  />
+                  <Bar
+                    dataKey="at_wake"
+                    fill="#06b6d4"
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive={false}
+                  />
+                  <Bar
+                    dataKey="lowest"
+                    fill="#6b7280"
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive={false}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                <span className="text-xs text-muted-foreground">{t('common.loading', 'Loading charts...')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('common.loading', 'Loading charts...')}
+                </span>
               </div>
             )}
           </div>

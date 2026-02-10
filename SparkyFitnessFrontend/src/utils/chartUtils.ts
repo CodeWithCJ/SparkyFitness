@@ -27,7 +27,12 @@ export function calculateSmartYAxisDomain(
     forceMin?: number; // Force a specific minimum value for the Y-axis
   } = {}
 ): [number, number] | [number, string] | undefined {
-  const { marginPercent = 0.1, useZeroBaseline = false, minRangeThreshold = 0.3, forceMin } = options;
+  const {
+    marginPercent = 0.1,
+    useZeroBaseline = false,
+    minRangeThreshold = 0.3,
+    forceMin,
+  } = options;
 
   if (!data || data.length === 0) {
     return undefined;
@@ -35,7 +40,7 @@ export function calculateSmartYAxisDomain(
 
   // Extract valid numeric values
   const values = data
-    .map(item => typeof item[dataKey] === 'number' ? item[dataKey] : null)
+    .map((item) => (typeof item[dataKey] === 'number' ? item[dataKey] : null))
     .filter((val): val is number => val !== null && !isNaN(val));
 
   if (values.length === 0) {
@@ -87,7 +92,7 @@ export function excludeIncompleteDay(
 
   const today = new Date(currentDate).toDateString();
 
-  return data.filter(item => {
+  return data.filter((item) => {
     const itemDate = item.date || item.entry_date;
     if (!itemDate) return true;
 
@@ -120,7 +125,7 @@ export function shouldExcludeIncompleteDay(dataKey: string): boolean {
     'vitamin_a',
     'vitamin_c',
     'calcium',
-    'iron'
+    'iron',
   ];
 
   return nutritionMetrics.includes(dataKey.toLowerCase());
@@ -143,7 +148,7 @@ export function getChartConfig(dataKey: string) {
       useZeroBaseline: false, // Explicitly set to false for weight charts
       marginPercent: 0.05, // Smaller margin for body measurements
       minRangeThreshold: 0.2, // More likely to use min-max scaling
-      forceMin: undefined // Will be set dynamically in MeasurementChartsGrid
+      forceMin: undefined, // Will be set dynamically in MeasurementChartsGrid
     };
   }
 
@@ -152,7 +157,7 @@ export function getChartConfig(dataKey: string) {
       useSmartScaling: true,
       excludeIncompleteDay: false,
       marginPercent: 0.1,
-      minRangeThreshold: 0.3
+      minRangeThreshold: 0.3,
     };
   }
 
@@ -161,7 +166,7 @@ export function getChartConfig(dataKey: string) {
       useSmartScaling: true,
       excludeIncompleteDay: false,
       marginPercent: 0.15, // Larger margin for micronutrients
-      minRangeThreshold: 0.4
+      minRangeThreshold: 0.4,
     };
   }
 
@@ -170,6 +175,6 @@ export function getChartConfig(dataKey: string) {
     useSmartScaling: true,
     excludeIncompleteDay: false,
     marginPercent: 0.1,
-    minRangeThreshold: 0.3
+    minRangeThreshold: 0.3,
   };
 }

@@ -1,16 +1,16 @@
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Droplet } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
-import { apiCall } from "@/services/api";
-import { usePreferences } from "@/contexts/PreferencesContext";
-import { convertMlToSelectedUnit } from "@/utils/nutritionCalculations";
-import { debug } from "@/utils/logging";
-import { useWaterContainer } from "@/contexts/WaterContainerContext";
-import { useActiveUser } from "@/contexts/ActiveUserContext"; // Import useActiveUser
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Droplet } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
+import { apiCall } from '@/services/api';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { convertMlToSelectedUnit } from '@/utils/nutritionCalculations';
+import { debug } from '@/utils/logging';
+import { useWaterContainer } from '@/contexts/WaterContainerContext';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 
 interface WaterIntakeProps {
   selectedDate: string;
@@ -35,12 +35,12 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       loadWaterData();
     };
 
-    window.addEventListener("measurementsRefresh", handleRefresh);
-    window.addEventListener("foodDiaryRefresh", handleRefresh);
+    window.addEventListener('measurementsRefresh', handleRefresh);
+    window.addEventListener('foodDiaryRefresh', handleRefresh);
 
     return () => {
-      window.removeEventListener("measurementsRefresh", handleRefresh);
-      window.removeEventListener("foodDiaryRefresh", handleRefresh);
+      window.removeEventListener('measurementsRefresh', handleRefresh);
+      window.removeEventListener('foodDiaryRefresh', handleRefresh);
     };
   }, [user, activeUserId, selectedDate]); // Add activeUserId dependency
 
@@ -49,8 +49,10 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       const currentUserId = activeUserId || user?.id;
       if (!currentUserId) return;
 
-      const goalData = await apiCall(`/goals/for-date?date=${selectedDate}&userId=${currentUserId}`);
-      debug(loggingLevel, "WaterIntake: goalData received:", goalData);
+      const goalData = await apiCall(
+        `/goals/for-date?date=${selectedDate}&userId=${currentUserId}`
+      );
+      debug(loggingLevel, 'WaterIntake: goalData received:', goalData);
       if (
         goalData &&
         goalData.water_goal_ml !== undefined &&
@@ -59,19 +61,19 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
         setWaterGoalMl(
           Number(goalData.water_goal_ml) === 0
             ? 1920
-            : Number(goalData.water_goal_ml),
+            : Number(goalData.water_goal_ml)
         );
       } else {
         setWaterGoalMl(1920);
       }
 
       const waterData = await apiCall(
-        `/measurements/water-intake/${selectedDate}?userId=${currentUserId}`,
+        `/measurements/water-intake/${selectedDate}?userId=${currentUserId}`
       );
       if (Array.isArray(waterData) && waterData.length > 0) {
         const totalWaterMl = waterData.reduce(
           (sum, record) => sum + Number(record.water_ml),
-          0,
+          0
         );
         setWaterMl(totalWaterMl);
       } else if (waterData && waterData.water_ml !== undefined) {
@@ -80,22 +82,22 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
         setWaterMl(0);
       }
     } catch (error) {
-      console.error("Error loading water data:", error);
+      console.error('Error loading water data:', error);
       setWaterMl(0);
     }
   };
 
   const saveWaterIntake = async (
     changeDrinks: number,
-    containerId: number | null,
+    containerId: number | null
   ) => {
     if (!user) return;
 
     try {
       setLoading(true);
 
-      await apiCall("/measurements/water-intake", {
-        method: "POST",
+      await apiCall('/measurements/water-intake', {
+        method: 'POST',
         body: {
           user_id: activeUserId || user.id, // Use activeUserId or authenticated user.id
           entry_date: selectedDate,
@@ -105,19 +107,19 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       });
 
       toast({
-        title: t("foodDiary.success", "Success"),
-        description: t("foodDiary.waterIntake.updated", "Water intake updated"),
+        title: t('foodDiary.success', 'Success'),
+        description: t('foodDiary.waterIntake.updated', 'Water intake updated'),
       });
-      window.dispatchEvent(new Event("measurementsRefresh"));
+      window.dispatchEvent(new Event('measurementsRefresh'));
     } catch (error) {
-      console.error("Error:", error);
+      console.error('Error:', error);
       toast({
-        title: t("foodDiary.error", "Error"),
+        title: t('foodDiary.error', 'Error'),
         description: t(
-          "foodDiary.waterIntake.updateError",
-          "Failed to save water intake",
+          'foodDiary.waterIntake.updateError',
+          'Failed to save water intake'
         ),
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -139,7 +141,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center text-base dark:text-slate-300">
           <Droplet className="w-4 h-4 mr-2" />
-          {t("foodDiary.waterIntake.title", "Water Intake")}
+          {t('foodDiary.waterIntake.title', 'Water Intake')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col justify-between p-3 dark:text-slate-300">
@@ -148,13 +150,13 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
           <div className="text-xl font-bold">
             {convertMlToSelectedUnit(
               waterMl,
-              activeContainer?.unit || water_display_unit,
-            ).toFixed(activeContainer?.unit === "ml" ? 0 : 2)}{" "}
-            /{" "}
+              activeContainer?.unit || water_display_unit
+            ).toFixed(activeContainer?.unit === 'ml' ? 0 : 2)}{' '}
+            /{' '}
             {convertMlToSelectedUnit(
               waterGoalMl,
-              activeContainer?.unit || water_display_unit,
-            ).toFixed(activeContainer?.unit === "ml" ? 0 : 2)}
+              activeContainer?.unit || water_display_unit
+            ).toFixed(activeContainer?.unit === 'ml' ? 0 : 2)}
           </div>
           <div className="text-gray-500 text-xs">
             {activeContainer?.unit || water_display_unit}
@@ -226,23 +228,23 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
         </div>
         <div className="text-center text-gray-500 text-xs mt-2">
           {activeContainer
-            ? t("foodDiary.waterIntake.perDrink", {
-              volume: convertMlToSelectedUnit(
-                activeContainer.volume /
-                activeContainer.servings_per_container,
-                activeContainer.unit,
-              ).toFixed(activeContainer.unit === "ml" ? 0 : 2),
-              unit: activeContainer.unit,
-              defaultValue: `${convertMlToSelectedUnit(activeContainer.volume / activeContainer.servings_per_container, activeContainer.unit).toFixed(activeContainer.unit === "ml" ? 0 : 2)} ${activeContainer.unit} per drink`,
-            })
-            : t("foodDiary.waterIntake.defaultPerDrink", {
-              volume: convertMlToSelectedUnit(
-                250,
-                water_display_unit,
-              ).toFixed(water_display_unit === "ml" ? 0 : 2),
-              unit: water_display_unit,
-              defaultValue: `${convertMlToSelectedUnit(250, water_display_unit).toFixed(water_display_unit === "ml" ? 0 : 2)} ${water_display_unit} per drink (default)`,
-            })}
+            ? t('foodDiary.waterIntake.perDrink', {
+                volume: convertMlToSelectedUnit(
+                  activeContainer.volume /
+                    activeContainer.servings_per_container,
+                  activeContainer.unit
+                ).toFixed(activeContainer.unit === 'ml' ? 0 : 2),
+                unit: activeContainer.unit,
+                defaultValue: `${convertMlToSelectedUnit(activeContainer.volume / activeContainer.servings_per_container, activeContainer.unit).toFixed(activeContainer.unit === 'ml' ? 0 : 2)} ${activeContainer.unit} per drink`,
+              })
+            : t('foodDiary.waterIntake.defaultPerDrink', {
+                volume: convertMlToSelectedUnit(
+                  250,
+                  water_display_unit
+                ).toFixed(water_display_unit === 'ml' ? 0 : 2),
+                unit: water_display_unit,
+                defaultValue: `${convertMlToSelectedUnit(250, water_display_unit).toFixed(water_display_unit === 'ml' ? 0 : 2)} ${water_display_unit} per drink (default)`,
+              })}
         </div>
       </CardContent>
     </Card>

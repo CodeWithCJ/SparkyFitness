@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
+import type React from 'react';
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from '@/hooks/use-toast';
 import { apiCall } from '@/services/api';
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from '@/hooks/useAuth';
 import TooltipWarning from '@/components/TooltipWarning';
 
 interface GarminConnectSettingsProps {
@@ -13,19 +14,30 @@ interface GarminConnectSettingsProps {
   onMfaComplete?: () => void;
 }
 
-const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusChange, initialClientState, onMfaComplete }) => {
+const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({
+  onStatusChange,
+  initialClientState,
+  onMfaComplete,
+}) => {
   const { user } = useAuth();
   const [garminEmail, setGarminEmail] = useState('');
   const [garminPassword, setGarminPassword] = useState('');
   const [garminMfaCode, setGarminMfaCode] = useState('');
-  const [garminClientState, setGarminClientState] = useState<string | null>(initialClientState || null);
-  const [showGarminMfaInput, setShowGarminMfaInput] = useState(!!initialClientState);
+  const [garminClientState, setGarminClientState] = useState<string | null>(
+    initialClientState || null
+  );
+  const [showGarminMfaInput, setShowGarminMfaInput] =
+    useState(!!initialClientState);
   const [garminData, setGarminData] = useState({ steps: null, weight: null });
   const [loading, setLoading] = useState(false);
   const [isGarminLinked, setIsGarminLinked] = useState(false);
-  const [hasInitialGarminCheckRun, setHasInitialGarminCheckRun] = useState(false);
-  const [garminStatus, setGarminStatus] = useState({ isLinked: false, lastUpdated: null, tokenExpiresAt: null });
-
+  const [hasInitialGarminCheckRun, setHasInitialGarminCheckRun] =
+    useState(false);
+  const [garminStatus, setGarminStatus] = useState({
+    isLinked: false,
+    lastUpdated: null,
+    tokenExpiresAt: null,
+  });
 
   const fetchGarminStatus = async () => {
     if (!user) return;
@@ -38,7 +50,11 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
       console.log('isGarminLinked after fetch:', response.isLinked);
     } catch (error) {
       console.error('Failed to fetch Garmin status:', error);
-      setGarminStatus({ isLinked: false, lastUpdated: null, tokenExpiresAt: null });
+      setGarminStatus({
+        isLinked: false,
+        lastUpdated: null,
+        tokenExpiresAt: null,
+      });
       setIsGarminLinked(false);
     }
   };
@@ -64,21 +80,41 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
     try {
       // Fetch daily summary (for steps)
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      const dailySummaryResponse = await apiCall(`/integrations/garmin/sync/daily_summary`, {
-        method: 'POST',
-        body: JSON.stringify({ date: today }),
-      });
-      if (dailySummaryResponse && dailySummaryResponse.data && dailySummaryResponse.data.steps) {
-        setGarminData(prevState => ({ ...prevState, steps: dailySummaryResponse.data.steps }));
+      const dailySummaryResponse = await apiCall(
+        `/integrations/garmin/sync/daily_summary`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ date: today }),
+        }
+      );
+      if (
+        dailySummaryResponse &&
+        dailySummaryResponse.data &&
+        dailySummaryResponse.data.steps
+      ) {
+        setGarminData((prevState) => ({
+          ...prevState,
+          steps: dailySummaryResponse.data.steps,
+        }));
       }
 
       // Fetch body composition (for weight)
-      const bodyCompResponse = await apiCall(`/integrations/garmin/sync/body_composition`, {
-        method: 'POST',
-        body: JSON.stringify({ startDate: today, endDate: today }),
-      });
-      if (bodyCompResponse && bodyCompResponse.data && bodyCompResponse.data.weight) {
-        setGarminData(prevState => ({ ...prevState, weight: bodyCompResponse.data.weight }));
+      const bodyCompResponse = await apiCall(
+        `/integrations/garmin/sync/body_composition`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ startDate: today, endDate: today }),
+        }
+      );
+      if (
+        bodyCompResponse &&
+        bodyCompResponse.data &&
+        bodyCompResponse.data.weight
+      ) {
+        setGarminData((prevState) => ({
+          ...prevState,
+          weight: bodyCompResponse.data.weight,
+        }));
       }
       setIsGarminLinked(true); // Data fetched successfully, so Garmin is linked
       // After successful sync, refresh status
@@ -86,18 +122,19 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
       setGarminStatus(updatedStatus);
     } catch (error: any) {
       console.error('Failed to sync Garmin data:', error);
-      if (error.message.includes("Garmin Connect not linked for this user.")) {
+      if (error.message.includes('Garmin Connect not linked for this user.')) {
         setIsGarminLinked(false);
         toast({
-          title: "Garmin Connect Not Linked",
-          description: "Your Garmin Connect account is not linked. Please log in.",
-          variant: "destructive",
+          title: 'Garmin Connect Not Linked',
+          description:
+            'Your Garmin Connect account is not linked. Please log in.',
+          variant: 'destructive',
         });
       } else {
         toast({
-          title: "Error",
+          title: 'Error',
           description: `Failed to sync Garmin data: ${error.message}`,
-          variant: "destructive",
+          variant: 'destructive',
         });
       }
     } finally {
@@ -108,9 +145,9 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
   const handleGarminLogin = async () => {
     if (!user) {
       toast({
-        title: "Error",
-        description: "User not authenticated. Please log in.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'User not authenticated. Please log in.',
+        variant: 'destructive',
       });
       return;
     }
@@ -125,13 +162,14 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
         setGarminClientState(result.client_state);
         setShowGarminMfaInput(true);
         toast({
-          title: "MFA Required",
-          description: "Please enter the MFA code from your Garmin Connect app.",
+          title: 'MFA Required',
+          description:
+            'Please enter the MFA code from your Garmin Connect app.',
         });
       } else if (result.status === 'success') {
         toast({
-          title: "Success",
-          description: "Garmin Connect linked successfully!",
+          title: 'Success',
+          description: 'Garmin Connect linked successfully!',
         });
         setShowGarminMfaInput(false);
         setGarminMfaCode('');
@@ -145,9 +183,9 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
     } catch (error: any) {
       console.error('Login Error:', error);
       toast({
-        title: "Login Error",
+        title: 'Login Error',
         description: `Failed to connect to Garmin: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -157,9 +195,9 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
   const handleGarminMfaSubmit = async () => {
     if (!user) {
       toast({
-        title: "Error",
-        description: "User not authenticated. Please log in.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'User not authenticated. Please log in.',
+        variant: 'destructive',
       });
       return;
     }
@@ -167,13 +205,16 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
     try {
       const result = await apiCall(`/integrations/garmin/resume_login`, {
         method: 'POST',
-        body: JSON.stringify({ client_state: garminClientState, mfa_code: garminMfaCode }),
+        body: JSON.stringify({
+          client_state: garminClientState,
+          mfa_code: garminMfaCode,
+        }),
       });
 
       if (result.status === 'success') {
         toast({
-          title: "Success",
-          description: "Garmin Connect linked successfully!",
+          title: 'Success',
+          description: 'Garmin Connect linked successfully!',
         });
         setShowGarminMfaInput(false);
         setGarminMfaCode('');
@@ -187,17 +228,18 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
       } else {
         // Handle other potential statuses or errors from the backend
         toast({
-          title: "MFA Error",
-          description: result.message || "Failed to submit MFA code. Please try again.",
-          variant: "destructive",
+          title: 'MFA Error',
+          description:
+            result.message || 'Failed to submit MFA code. Please try again.',
+          variant: 'destructive',
         });
       }
     } catch (error: any) {
       console.error('MFA Error:', error);
       toast({
-        title: "MFA Error",
+        title: 'MFA Error',
         description: `Failed to submit MFA code: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -207,9 +249,9 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
   const handleUnlinkGarmin = async () => {
     if (!user) {
       toast({
-        title: "Error",
-        description: "User not authenticated. Please log in.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'User not authenticated. Please log in.',
+        variant: 'destructive',
       });
       return;
     }
@@ -219,11 +261,15 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
         method: 'POST',
       });
       toast({
-        title: "Garmin Unlinked",
-        description: "Your Garmin Connect account has been unlinked.",
+        title: 'Garmin Unlinked',
+        description: 'Your Garmin Connect account has been unlinked.',
       });
       setIsGarminLinked(false);
-      setGarminStatus({ isLinked: false, lastUpdated: null, tokenExpiresAt: null });
+      setGarminStatus({
+        isLinked: false,
+        lastUpdated: null,
+        tokenExpiresAt: null,
+      });
       setGarminData({ steps: null, weight: null });
       setGarminEmail('');
       setGarminPassword('');
@@ -233,9 +279,9 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
     } catch (error: any) {
       console.error('Failed to unlink Garmin:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to unlink Garmin: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -245,15 +291,14 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
   const handleManualSync = async () => {
     if (!user) {
       toast({
-        title: "Error",
-        description: "User not authenticated. Please log in.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'User not authenticated. Please log in.',
+        variant: 'destructive',
       });
       return;
     }
     setLoading(true);
     try {
-
       // If linked, proceed with full sync
       const today = new Date().toISOString().split('T')[0];
       await apiCall(`/integrations/garmin/sync/daily_summary`, {
@@ -265,16 +310,16 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
         body: JSON.stringify({ startDate: today, endDate: today }),
       });
       toast({
-        title: "Sync Initiated",
-        description: "Garmin data sync initiated. Check back shortly.",
+        title: 'Sync Initiated',
+        description: 'Garmin data sync initiated. Check back shortly.',
       });
       syncGarminData();
     } catch (error: any) {
       console.error('Manual Sync Error:', error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to initiate manual sync: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -283,44 +328,56 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
 
   return (
     <div className="space-y-4">
-  
-      <TooltipWarning warningMsg={"Garmin Connect integration is tested with few metrics only. Ensure your Docker Compose is updated to include Garmin section."} />
+      <TooltipWarning
+        warningMsg={
+          'Garmin Connect integration is tested with few metrics only. Ensure your Docker Compose is updated to include Garmin section.'
+        }
+      />
       <p className="text-sm text-muted-foreground">
-        Sparky Fitness does not store your Garmin email or password. They are used only during login to obtain secure tokens.
+        Sparky Fitness does not store your Garmin email or password. They are
+        used only during login to obtain secure tokens.
       </p>
-      {!garminStatus.isLinked && !showGarminMfaInput && !initialClientState && ( // Show login form if not linked and not in MFA
-        <form onSubmit={(e) => { e.preventDefault(); handleGarminLogin(); }} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="garmin-email">Garmin Email</Label>
-              <Input
-                id="settings-garmin-email"
-                type="email"
-                placeholder="Enter your Garmin email"
-                value={garminEmail}
-                onChange={(e) => setGarminEmail(e.target.value)}
-                disabled={loading}
-                autoComplete="username"
-              />
+      {!garminStatus.isLinked &&
+        !showGarminMfaInput &&
+        !initialClientState && ( // Show login form if not linked and not in MFA
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleGarminLogin();
+            }}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="garmin-email">Garmin Email</Label>
+                <Input
+                  id="settings-garmin-email"
+                  type="email"
+                  placeholder="Enter your Garmin email"
+                  value={garminEmail}
+                  onChange={(e) => setGarminEmail(e.target.value)}
+                  disabled={loading}
+                  autoComplete="username"
+                />
+              </div>
+              <div>
+                <Label htmlFor="garmin-password">Garmin Password</Label>
+                <Input
+                  id="settings-garmin-password"
+                  type="password"
+                  placeholder="Enter your Garmin password"
+                  value={garminPassword}
+                  onChange={(e) => setGarminPassword(e.target.value)}
+                  disabled={loading}
+                  autoComplete="current-password"
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="garmin-password">Garmin Password</Label>
-              <Input
-                id="settings-garmin-password"
-                type="password"
-                placeholder="Enter your Garmin password"
-                value={garminPassword}
-                onChange={(e) => setGarminPassword(e.target.value)}
-                disabled={loading}
-                autoComplete="current-password"
-              />
-            </div>
-          </div>
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Connecting...' : 'Connect Garmin'}
-          </Button>
-        </form>
-      )}
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Connecting...' : 'Connect Garmin'}
+            </Button>
+          </form>
+        )}
 
       {showGarminMfaInput && ( // Show MFA input if MFA is required
         <>
@@ -345,7 +402,6 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({ onStatusC
       {garminData.weight !== null && (
         <p className="text-sm">Last Synced Weight: {garminData.weight} kg</p>
       )}
-
     </div>
   );
 };

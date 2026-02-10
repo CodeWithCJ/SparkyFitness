@@ -14,7 +14,17 @@ export interface NutritionData {
 }
 
 export interface CoachResponse {
-  action: 'food_added' | 'exercise_added' | 'measurement_added' | 'log_water' | 'food_options' | 'exercise_options' | 'advice' | 'none' | 'chat' | 'water_added';
+  action:
+    | 'food_added'
+    | 'exercise_added'
+    | 'measurement_added'
+    | 'log_water'
+    | 'food_options'
+    | 'exercise_options'
+    | 'advice'
+    | 'none'
+    | 'chat'
+    | 'water_added';
   response: string;
   metadata?: any;
   entryDate?: string; // Optional date for the entry (YYYY-MM-DD)

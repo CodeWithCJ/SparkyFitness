@@ -24,8 +24,13 @@ export const userManagementService = {
     return response as User[];
   },
 
-  updateUserFullName: async (userId: string, newFullName: string): Promise<void> => {
-    await api.put(`/admin/users/${userId}/full-name`, { body: { full_name: newFullName } });
+  updateUserFullName: async (
+    userId: string,
+    newFullName: string
+  ): Promise<void> => {
+    await api.put(`/admin/users/${userId}/full-name`, {
+      body: { full_name: newFullName },
+    });
   },
 
   deleteUser: async (userId: string): Promise<void> => {
@@ -36,11 +41,17 @@ export const userManagementService = {
     await api.post(`/admin/users/${userId}/reset-password`);
   },
 
-  updateUserStatus: async (userId: string, isActive: boolean): Promise<void> => {
+  updateUserStatus: async (
+    userId: string,
+    isActive: boolean
+  ): Promise<void> => {
     await api.put(`/admin/users/${userId}/status`, { body: { isActive } });
   },
 
-  updateUserRole: async (userId: string, role: 'user' | 'admin'): Promise<void> => {
+  updateUserRole: async (
+    userId: string,
+    role: 'user' | 'admin'
+  ): Promise<void> => {
     await api.put(`/admin/users/${userId}/role`, { body: { role } });
   },
 
