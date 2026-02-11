@@ -39,21 +39,6 @@ export const useUpdateSettings = () => {
   });
 };
 
-export const useOidcProviders = () => {
-  const { t } = useTranslation();
-
-  return useQuery({
-    queryKey: ['oidc-providers'],
-    queryFn: () => oidcSettingsService.getProviders(),
-    meta: {
-      errorTitle: t('admin.oidcSettings.error', 'Error'),
-      errorMessage: t(
-        'admin.oidcSettings.errorLoadingProviders',
-        'Failed to fetch OIDC providers.'
-      ),
-    },
-  });
-};
 export const useUsers = (
   searchTerm: string,
   sortBy: string,
