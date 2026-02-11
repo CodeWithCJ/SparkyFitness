@@ -1,7 +1,8 @@
+import { oidcKeys } from '@/api/keys/admin';
 import {
   OidcProvider,
   oidcSettingsService,
-} from '@/services/oidcSettingsService';
+} from '@/api/Admin/oidcSettingsService';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
@@ -9,7 +10,7 @@ export const useOidcProviders = () => {
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: ['oidc-providers'],
+    queryKey: oidcKeys.all,
     queryFn: () => oidcSettingsService.getProviders(),
     meta: {
       errorTitle: t('admin.oidcSettings.error', 'Error'),
@@ -26,7 +27,7 @@ export const useDeleteOidcProvider = () => {
   return useMutation({
     mutationFn: (id: number) => oidcSettingsService.deleteProvider(id),
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ['oidc-providers'] });
+      return queryClient.invalidateQueries({ queryKey: oidcKeys.all });
     },
   });
 };
@@ -37,7 +38,7 @@ export const useCreateOidcProvider = () => {
     mutationFn: (provider: OidcProvider) =>
       oidcSettingsService.createProvider(provider),
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ['oidc-providers'] });
+      return queryClient.invalidateQueries({ queryKey: oidcKeys.all });
     },
   });
 };
@@ -48,7 +49,7 @@ export const useUpdateOidcProvider = () => {
     mutationFn: (provider: OidcProvider) =>
       oidcSettingsService.updateProvider(provider.id!, provider),
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ['oidc-providers'] });
+      return queryClient.invalidateQueries({ queryKey: oidcKeys.all });
     },
   });
 };

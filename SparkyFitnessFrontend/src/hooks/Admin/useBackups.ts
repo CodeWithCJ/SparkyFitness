@@ -1,5 +1,11 @@
-import { BackupSettingsResponse, fetchBackupSettings } from '@/api/admin';
-import { api } from '@/services/api';
+import {
+  BackupSettingsResponse,
+  fetchBackupSettings,
+  restoreBackup,
+  saveBackupSettings,
+  triggerManualBackup,
+} from '@/api/Admin/backup';
+import { backupKeys } from '@/api/keys/admin';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
@@ -7,7 +13,7 @@ export const useBackupSettings = () => {
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: ['backup-settings'],
+    queryKey: backupKeys.all,
     queryFn: fetchBackupSettings,
     meta: {
       errorTitle: t('admin.backupSettings.error', 'Error'),
@@ -23,9 +29,9 @@ export const useUpdateBackupSettings = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Partial<BackupSettingsResponse>) =>
-      api.post('/admin/backup/settings', { body: data }),
+      saveBackupSettings(data),
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ['backupSettings'] });
+      return queryClient.invalidateQueries({ queryKey: backupKeys.all });
     },
   });
 };
@@ -33,16 +39,15 @@ export const useUpdateBackupSettings = () => {
 export const useTriggerManualBackup = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => api.post('/admin/backup/manual'),
+    mutationFn: triggerManualBackup,
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ['backupSettings'] });
+      return queryClient.invalidateQueries({ queryKey: backupKeys.all });
     },
   });
 };
 
 export const useRestoreBackup = () => {
   return useMutation({
-    mutationFn: (formData: FormData) =>
-      api.post('/admin/backup/restore', { body: formData, isFormData: true }),
+    mutationFn: restoreBackup,
   });
 };

@@ -3,16 +3,14 @@ import { useTranslation } from 'react-i18next';
 import {
   GlobalSettings,
   globalSettingsService,
-} from '@/services/globalSettingsService';
-import { oidcSettingsService } from '@/services/oidcSettingsService';
-import { userManagementService } from '@/services/userManagementService';
-import { fetchBackupSettings } from '@/api/admin';
+} from '@/api/Admin/globalSettingsService';
+import { settingsKeys } from '@/api/keys/admin';
 
 export const useSettings = () => {
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: ['settings'],
+    queryKey: settingsKeys.all,
     queryFn: () => globalSettingsService.getSettings(),
     meta: {
       errorTitle: t(
@@ -34,27 +32,7 @@ export const useUpdateSettings = () => {
     mutationFn: (settings: GlobalSettings) =>
       globalSettingsService.saveSettings(settings),
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ['settings'] });
-    },
-  });
-};
-
-export const useUsers = (
-  searchTerm: string,
-  sortBy: string,
-  sortOrder: string
-) => {
-  const { t } = useTranslation();
-
-  return useQuery({
-    queryKey: ['users', { searchTerm, sortBy, sortOrder }],
-    queryFn: () => userManagementService.getUsers(),
-    meta: {
-      errorTitle: t('admin.userManagement.error', 'Error'),
-      errorMessage: t(
-        'admin.userManagement.errorLoadingUsers',
-        'Failed to fetch user data.'
-      ),
+      return queryClient.invalidateQueries({ queryKey: settingsKeys.all });
     },
   });
 };

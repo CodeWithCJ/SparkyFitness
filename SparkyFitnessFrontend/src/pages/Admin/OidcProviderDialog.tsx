@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   oidcSettingsService,
   type OidcProvider,
-} from '../../services/oidcSettingsService';
+} from '../../api/Admin/oidcSettingsService';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {

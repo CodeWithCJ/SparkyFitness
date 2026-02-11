@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type OidcProvider } from '../../services/oidcSettingsService';
+import { type OidcProvider } from '../../api/Admin/oidcSettingsService';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +28,7 @@ import {
   useUpdateOidcProvider,
   useUploadOidcLogo,
 } from '@/hooks/Admin/useOidcProvider';
-import { ProviderDialog } from './ProviderDialog';
+import { ProviderDialog } from './OidcProviderDialog';
 
 const OidcSettings: React.FC = () => {
   const { t } = useTranslation();

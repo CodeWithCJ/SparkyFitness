@@ -7,7 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { type GlobalSettings } from '../../services/globalSettingsService';
+import { type GlobalSettings } from '../../api/Admin/globalSettingsService';
 import { toast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';

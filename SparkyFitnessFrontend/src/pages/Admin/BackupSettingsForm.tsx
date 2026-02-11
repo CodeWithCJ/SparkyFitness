@@ -2,7 +2,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Save, Play, Upload } from 'lucide-react';
-import { BackupSettingsResponse } from '@/api/admin';
+import { BackupSettingsResponse } from '@/api/Admin/backup';
 
 interface BackupSettingsFormProps {
   initialSettings: BackupSettingsResponse;

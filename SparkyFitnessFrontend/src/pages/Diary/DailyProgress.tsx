@@ -27,7 +27,7 @@ import type { FoodEntry } from '@/types/food';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getUserPreferences } from '@/services/preferenceService';
 import { calculateBmr, type BmrAlgorithm } from '@/services/bmrService';
-import { userManagementService } from '@/services/userManagementService';
+import { userManagementService } from '@/api/Admin/userManagementService';
 
 const DailyProgress = ({
   selectedDate,

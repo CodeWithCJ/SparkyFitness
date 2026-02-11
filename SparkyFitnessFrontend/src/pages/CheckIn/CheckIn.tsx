@@ -47,7 +47,7 @@ import {
   calculateBodyFatNavy,
 } from '@/services/bodyCompositionService';
 import { getUserPreferences } from '@/services/preferenceService';
-import { userManagementService } from '@/services/userManagementService';
+import { userManagementService } from '@/api/Admin/userManagementService';
 import SleepEntrySection from './SleepEntrySection';
 import HomeDashboardFasting from './HomeDashboardFasting';
 import { getFastingHistory } from '@/services/fastingService';
