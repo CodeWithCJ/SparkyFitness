@@ -1,5 +1,4 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Info, Lock, Clipboard } from 'lucide-react';
 import {
@@ -17,47 +16,22 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import OidcSettings from './OidcSettings';
 import { Button } from '@/components/ui/button';
+import { useSettings } from '@/hooks/useAdmin';
+import { useQueryClient } from '@tanstack/react-query';
 
 const AuthenticationSettings: React.FC = () => {
   const { t } = useTranslation();
-  const [settings, setSettings] = useState<GlobalSettings | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const fetchedSettings = await globalSettingsService.getSettings();
-        setSettings(fetchedSettings);
-      } catch (error) {
-        toast({
-          title: t(
-            'admin.authenticationSettings.errorLoadingSettings',
-            'Error'
-          ),
-          description: t(
-            'admin.authenticationSettings.errorLoadingSettingsDescription',
-            'Failed to load authentication settings.'
-          ),
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSettings();
-  }, [t]);
+  const { data: settings, isLoading: loading } = useSettings();
+  const queryClient = useQueryClient();
 
   const handleSwitchChange = async (
     id: keyof GlobalSettings,
     checked: boolean
   ) => {
-    if (!settings) return;
-
     const newSettings = { ...settings, [id]: checked };
-    setSettings(newSettings); // Optimistically update the UI
-
     try {
       await globalSettingsService.saveSettings(newSettings);
+      await queryClient.invalidateQueries({ queryKey: ['settings'] });
       toast({
         title: t(
           'admin.authenticationSettings.settingsSaved',
@@ -77,7 +51,6 @@ const AuthenticationSettings: React.FC = () => {
         ),
         variant: 'destructive',
       });
-      setSettings(settings); // Revert optimistic update on failure
     }
   };
 

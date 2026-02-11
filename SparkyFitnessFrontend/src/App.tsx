@@ -1,6 +1,10 @@
 import type React from 'react';
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query';
 import { PreferencesProvider } from '@/contexts/PreferencesContext';
 import { ChatbotVisibilityProvider } from '@/contexts/ChatbotVisibilityContext';
 import LanguageHandler from '@/components/LanguageHandler';
@@ -18,6 +22,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { FastingProvider } from '@/contexts/FastingContext';
 import OidcCallback from '@/components/OidcCallback';
 import { useActiveUser } from './contexts/ActiveUserContext';
+import { toast } from './hooks/use-toast';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 const Auth = lazy(() => import('@/pages/Auth/Auth'));
 const ForgotPassword = lazy(() => import('@/pages/Auth/ForgotPassword'));
 const ResetPassword = lazy(() => import('@/pages/Auth/ResetPassword'));
@@ -43,7 +49,28 @@ const WithingsCallback = lazy(
 const FitbitCallback = lazy(
   () => import('@/pages/Integrations/FitbitCallback')
 );
+
+declare module '@tanstack/react-query' {
+  interface Register {
+    queryMeta: {
+      errorTitle?: string;
+      errorMessage?: string;
+    };
+  }
+}
+
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (_error, query) => {
+      if (query.meta?.errorMessage) {
+        toast({
+          title: (query.meta.errorTitle ?? 'Error', 'Error'),
+          description: query.meta.errorMessage,
+          variant: 'destructive',
+        });
+      }
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 30,
@@ -127,6 +154,7 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ReactQueryDevtools initialIsOpen={false} />
       <PreferencesProvider>
         <LanguageHandler />
         <ThemeProvider>

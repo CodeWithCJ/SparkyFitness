@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/accordion';
 import { Shield } from 'lucide-react';
 import { info, debug } from '../../utils/logging';
+import { useBackupSettings } from '@/hooks/useAdmin';
 
 const BackupSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -24,6 +25,7 @@ const BackupSettings: React.FC = () => {
   const [backupTime, setBackupTime] = useState<string>('02:00');
   const [retentionDays, setRetentionDays] = useState<number>(7);
   const [lastBackupStatus, setLastBackupStatus] = useState('');
+  const { data } = useBackupSettings();
   const [backupLocation, setBackupLocation] = useState(
     '/app/SparkyFitnessServer/backup'
   ); // Default from backend
@@ -41,8 +43,6 @@ const BackupSettings: React.FC = () => {
   // Fetch current backup settings and status from backend
   const fetchBackupSettings = async () => {
     try {
-      const response = await api.get('/admin/backup/settings');
-      const data = response || {}; // Ensure data is an object even if response is null/undefined
       setBackupEnabled(data.backupEnabled ?? false);
       setBackupDays(data.backupDays || []);
 

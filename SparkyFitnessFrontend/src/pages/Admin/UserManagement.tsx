@@ -31,49 +31,28 @@ import {
   userManagementService,
   type User,
 } from '../../services/userManagementService';
+import { useUsers } from '@/hooks/useAdmin';
+import { useQueryClient } from '@tanstack/react-query';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const UserManagement: React.FC = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editedUser, setEditedUser] = useState<User | null>(null);
   const [sortBy, setSortBy] = useState<keyof User>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [accordionOpen, setAccordionOpen] = useState<string[]>([]); // Keep accordion closed by default
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const fetchedUsers = await userManagementService.getUsers(searchTerm); // Fetch without sort parameters
-      setUsers(fetchedUsers);
-    } catch (err: any) {
-      setError(
-        err.message ||
-          t(
-            'admin.userManagement.errorLoadingUsers',
-            'Failed to fetch user data.'
-          )
-      );
-      toast({
-        title: t('admin.userManagement.error', 'Error'),
-        description: t(
-          'admin.userManagement.errorLoadingUsers',
-          'Failed to fetch user data.'
-        ),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, [searchTerm, sortBy, sortOrder, t]); // Re-fetch when search term or sort changes
+  const queryClient = useQueryClient();
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const {
+    data: users,
+    isLoading,
+    isError,
+  } = useUsers(debouncedSearchTerm, sortBy, sortOrder);
 
   const handleSaveFullName = async (
     userId: string,
@@ -103,11 +82,7 @@ const UserManagement: React.FC = () => {
     setLoading(true);
     try {
       await userManagementService.updateUserFullName(userId, newFullName);
-      setUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          u.id === userId ? { ...u, full_name: newFullName } : u
-        )
-      );
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
       toast({
         title: t('success', 'Success'),
         description: t('admin.userManagement.fullNameUpdated', {
@@ -134,15 +109,13 @@ const UserManagement: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    setLoading(true);
     try {
       await userManagementService.deleteUser(userId);
-      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
       toast({
         title: t('success', 'Success'),
         description: t('admin.userManagement.deleteSuccess', {
@@ -164,7 +137,6 @@ const UserManagement: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
     }
   };
 
@@ -179,7 +151,6 @@ const UserManagement: React.FC = () => {
     ) {
       return;
     }
-    setLoading(true);
     try {
       await userManagementService.resetUserPassword(userId);
       toast({
@@ -206,7 +177,6 @@ const UserManagement: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
     }
   };
 
@@ -231,11 +201,6 @@ const UserManagement: React.FC = () => {
     setLoading(true);
     try {
       await userManagementService.updateUserStatus(userId, actualNewStatus);
-      setUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          u.id === userId ? { ...u, is_active: actualNewStatus } : u
-        )
-      );
       toast({
         title: t('success', 'Success'),
         description: t('admin.userManagement.userStatusUpdated', {
@@ -244,7 +209,7 @@ const UserManagement: React.FC = () => {
           defaultValue: `User ${userName} ${action}d successfully.`,
         }),
       });
-      await fetchUsers(); // Re-fetch users to get the latest status
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
     } catch (err: any) {
       setError(
         err.message ||
@@ -286,9 +251,7 @@ const UserManagement: React.FC = () => {
     setLoading(true);
     try {
       await userManagementService.updateUserRole(userId, newRole);
-      setUsers((prevUsers) =>
-        prevUsers.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
-      );
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
       toast({
         title: t('success', 'Success'),
         description: t('admin.userManagement.userRoleUpdated', {
@@ -332,13 +295,7 @@ const UserManagement: React.FC = () => {
     setLoading(true);
     try {
       await userManagementService.resetUserMfa(userId);
-      setUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          u.id === userId
-            ? { ...u, mfa_totp_enabled: false, mfa_email_enabled: false }
-            : u
-        )
-      );
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
       toast({
         title: t('success', 'Success'),
         description: t('admin.userManagement.resetMfaSuccess', {
@@ -364,7 +321,7 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading || isLoading) {
     return (
       <div>
         {t('admin.userManagement.loadingUsers', 'Loading user data...')}
@@ -372,7 +329,7 @@ const UserManagement: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error || isError) {
     return (
       <div className="text-red-500">
         {t('admin.userManagement.error', 'Error')}: {error}

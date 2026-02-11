@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   oidcSettingsService,
@@ -41,46 +41,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useOidcProviders } from '@/hooks/useAdmin';
+import { useQueryClient } from '@tanstack/react-query';
 
 const OidcSettings: React.FC = () => {
   const { t } = useTranslation();
-  const [providers, setProviders] = useState<OidcProvider[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<OidcProvider | null>(
     null
   );
-
-  const fetchProviders = useCallback(async () => {
-    try {
-      setLoading(true);
-      const fetchedProviders = await oidcSettingsService.getProviders();
-      setProviders(fetchedProviders);
-    } catch (err: any) {
-      setError(
-        err.message ||
-          t(
-            'admin.oidcSettings.errorLoadingProviders',
-            'Failed to fetch OIDC providers.'
-          )
-      );
-      toast({
-        title: t('admin.oidcSettings.error', 'Error'),
-        description: t(
-          'admin.oidcSettings.errorLoadingProviders',
-          'Failed to fetch OIDC providers.'
-        ),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    fetchProviders();
-  }, [fetchProviders]);
+  const queryClient = useQueryClient();
+  const {
+    data: providers,
+    isLoading: loading,
+    isError: error,
+  } = useOidcProviders();
 
   const handleAddNew = () => {
     setSelectedProvider({
@@ -122,7 +97,7 @@ const OidcSettings: React.FC = () => {
             'OIDC provider deleted successfully.'
           ),
         });
-        fetchProviders();
+        await queryClient.invalidateQueries({ queryKey: ['oidc-providers'] });
       } catch (err: any) {
         toast({
           title: t('admin.oidcSettings.error', 'Error'),
@@ -158,7 +133,7 @@ const OidcSettings: React.FC = () => {
         });
       }
       setIsDialogOpen(false);
-      fetchProviders();
+      queryClient.invalidateQueries({ queryKey: ['oidc-providers'] });
     } catch (err: any) {
       toast({
         title: t('admin.oidcSettings.error', 'Error'),
@@ -191,7 +166,7 @@ const OidcSettings: React.FC = () => {
           defaultValue: `Provider ${field === 'is_active' ? 'status' : 'auto-register'} updated.`,
         }),
       });
-      fetchProviders();
+      queryClient.invalidateQueries({ queryKey: ['oidc-providers'] });
     } catch (err: any) {
       toast({
         title: t('admin.oidcSettings.error', 'Error'),
