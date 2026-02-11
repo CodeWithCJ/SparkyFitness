@@ -7,51 +7,49 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import {
-  globalSettingsService,
-  type GlobalSettings,
-} from '../../services/globalSettingsService';
+import { type GlobalSettings } from '../../services/globalSettingsService';
 import { toast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import OidcSettings from './OidcSettings';
 import { Button } from '@/components/ui/button';
-import { useSettings } from '@/hooks/useAdmin';
-import { useQueryClient } from '@tanstack/react-query';
+import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 
 const AuthenticationSettings: React.FC = () => {
   const { t } = useTranslation();
   const { data: settings, isLoading: loading } = useSettings();
-  const queryClient = useQueryClient();
 
-  const handleSwitchChange = async (
-    id: keyof GlobalSettings,
-    checked: boolean
-  ) => {
+  const { mutate: updateSettings } = useUpdateSettings();
+
+  const handleSwitchChange = (id: keyof GlobalSettings, checked: boolean) => {
+    if (!settings) return;
+
     const newSettings = { ...settings, [id]: checked };
-    try {
-      await globalSettingsService.saveSettings(newSettings);
-      await queryClient.invalidateQueries({ queryKey: ['settings'] });
-      toast({
-        title: t(
-          'admin.authenticationSettings.settingsSaved',
-          'Settings Saved'
-        ),
-        description: t(
-          'admin.authenticationSettings.loginSettingUpdated',
-          'Login setting updated successfully.'
-        ),
-      });
-    } catch (error) {
-      toast({
-        title: t('admin.authenticationSettings.error', 'Error'),
-        description: t(
-          'admin.authenticationSettings.failedToSaveLoginSettings',
-          'Failed to save login settings.'
-        ),
-        variant: 'destructive',
-      });
-    }
+
+    updateSettings(newSettings, {
+      onSuccess: () => {
+        toast({
+          title: t(
+            'admin.authenticationSettings.settingsSaved',
+            'Settings Saved'
+          ),
+          description: t(
+            'admin.authenticationSettings.loginSettingUpdated',
+            'Login setting updated successfully.'
+          ),
+        });
+      },
+      onError: () => {
+        toast({
+          title: t('admin.authenticationSettings.error', 'Error'),
+          description: t(
+            'admin.authenticationSettings.failedToSaveLoginSettings',
+            'Failed to save login settings.'
+          ),
+          variant: 'destructive',
+        });
+      },
+    });
   };
 
   if (loading) {

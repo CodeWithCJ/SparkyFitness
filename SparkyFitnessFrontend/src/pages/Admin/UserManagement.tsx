@@ -31,7 +31,7 @@ import {
   userManagementService,
   type User,
 } from '../../services/userManagementService';
-import { useUsers } from '@/hooks/useAdmin';
+import { useUsers } from '@/hooks/Admin/useSettings';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/useDebounce';
 

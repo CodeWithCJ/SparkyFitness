@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   GlobalSettings,
   globalSettingsService,
-} from '../services/globalSettingsService';
+} from '@/services/globalSettingsService';
 import { oidcSettingsService } from '@/services/oidcSettingsService';
 import { userManagementService } from '@/services/userManagementService';
 import { fetchBackupSettings } from '@/api/admin';
@@ -26,6 +26,19 @@ export const useSettings = () => {
     },
   });
 };
+
+export const useUpdateSettings = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (settings: GlobalSettings) =>
+      globalSettingsService.saveSettings(settings),
+    onSuccess: () => {
+      return queryClient.invalidateQueries({ queryKey: ['settings'] });
+    },
+  });
+};
+
 export const useOidcProviders = () => {
   const { t } = useTranslation();
 
@@ -56,21 +69,6 @@ export const useUsers = (
       errorMessage: t(
         'admin.userManagement.errorLoadingUsers',
         'Failed to fetch user data.'
-      ),
-    },
-  });
-};
-export const useBackupSettings = () => {
-  const { t } = useTranslation();
-
-  return useQuery({
-    queryKey: ['backup-settings'],
-    queryFn: fetchBackupSettings,
-    meta: {
-      errorTitle: t('admin.backupSettings.error', 'Error'),
-      errorMessage: t(
-        'admin.backupSettings.failedToFetchSettings',
-        'Failed to fetch backup settings.'
       ),
     },
   });

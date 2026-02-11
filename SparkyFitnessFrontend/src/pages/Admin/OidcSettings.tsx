@@ -41,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useOidcProviders } from '@/hooks/useAdmin';
+import { useOidcProviders } from '@/hooks/Admin/useSettings';
 import { useQueryClient } from '@tanstack/react-query';
 
 const OidcSettings: React.FC = () => {
