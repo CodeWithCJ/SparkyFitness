@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Save, Play, Upload } from 'lucide-react';
 import { BackupSettingsResponse } from '@/api/Admin/backup';
+import { Input } from '@/components/ui/input';
 
 interface BackupSettingsFormProps {
   initialSettings: BackupSettingsResponse;
@@ -105,7 +106,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
             'Enable Scheduled Backups:'
           )}
         </label>
-        <input
+        <Input
           type="checkbox"
           checked={backupEnabled}
           onChange={(e) => setBackupEnabled(e.target.checked)}
@@ -122,11 +123,11 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
             <div className="flex flex-wrap gap-2">
               {daysOfWeek.map((day) => (
                 <label key={day} className="inline-flex items-center">
-                  <input
+                  <Input
                     type="checkbox"
                     checked={backupDays.includes(day)}
                     onChange={() => handleDayChange(day)}
-                    className="form-checkbox h-4 w-4 text-blue-600"
+                    className=" form-checkbox h-4 w-4 text-blue-600"
                   />
                   <span className="ml-2 text-gray-700">
                     {t(`common.${day.toLowerCase()}`, day)}
@@ -137,14 +138,22 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
           </div>
 
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">
-              {t('admin.backupSettings.backupTime', 'Backup Time:')}
+            <label
+              className="block text-gray-700 text-sm font-bold mb-2"
+              htmlFor="backupTime"
+            >
+              {t('admin.backupSettings.backupTime', {
+                timezone: new Date()
+                  .toLocaleTimeString('en-us', { timeZoneName: 'short' })
+                  .split(' ')[2],
+                defaultValue: `Backup Time (${new Date().toLocaleTimeString('en-us', { timeZoneName: 'short' }).split(' ')[2]}):`,
+              })}
             </label>
-            <input
+            <Input
               type="time"
               value={backupTime}
               onChange={(e) => setBackupTime(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              className="bg-muted shadow appearance-none border rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline"
             />
           </div>
 
@@ -155,12 +164,12 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
                 'Keep backups for (days):'
               )}
             </label>
-            <input
+            <Input
               type="number"
               value={retentionDays}
               onChange={(e) => setRetentionDays(parseInt(e.target.value))}
               min="1"
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              className="bg-muted shadow appearance-none border rounded w-full py-2 px-3  leading-tight focus:outline-none focus:shadow-outline"
             />
           </div>
         </>
@@ -218,26 +227,37 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
           <Upload className="h-5 w-5" />
           {t('admin.backupSettings.restoreBackup', 'Restore Backup')}
         </h3>
-        {/* ... Warntexte ... */}
-        <p className="text-red-600 mb-4 text-sm font-semibold">
+        <p className="text-orange-500 mb-2">
+          <strong>
+            {t(
+              'admin.backupSettings.restoreWarningImportant',
+              'Important Note:'
+            )}
+          </strong>{' '}
           {t(
-            'admin.backupSettings.restoreWarningCaution',
-            'WARNING: Restoring wipes data.'
+            'admin.backupSettings.restoreWarningImportantText',
+            "This backup functionality is new and should be used with caution. While it creates a backup, it's highly recommended to create additional backups independently of this application. Always follow the 3-2-1 backup strategy (3 copies of your data, on 2 different media, with 1 copy offsite) to ensure data safety. The functionality of restore may not work properly in all scenarios, so do not rely solely on this in-app backup."
           )}
         </p>
-
+        <p className="text-red-600 mb-2">
+          {t('admin.backupSettings.restoreWarningCaution', 'WARNING:')}{' '}
+          {t(
+            'admin.backupSettings.restoreWarningCautionText',
+            'Restoring a backup will wipe all current data and replace it with the backup content. Proceed with extreme caution. Restart the server manually after restoring.'
+          )}
+        </p>
         <div className="relative">
           {isRestoring && (
             <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
             </div>
           )}
-          <input
+          <Input
             type="file"
             accept=".tar.gz"
             disabled={isRestoring}
             onChange={handleFileChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 disabled:opacity-50"
+            className="block w-full h-15 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 disabled:opacity-50"
           />
         </div>
       </div>

@@ -94,7 +94,7 @@ const BackupSettings: React.FC = () => {
 
   return (
     <Accordion type="multiple" className="w-full">
-      <AccordionItem value="backup-settings" className="border rounded-lg mb-4">
+      <AccordionItem value="backup-settings" className="border rounded-lg">
         <AccordionTrigger
           className="flex items-center gap-2 p-4 hover:no-underline"
           description={t(

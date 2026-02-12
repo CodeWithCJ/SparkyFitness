@@ -333,7 +333,7 @@ const UserManagement: React.FC = () => {
         <AccordionContent className="p-4 pt-0 space-y-6">
           <Card className="w-full mx-auto">
             <CardContent>
-              <div className="relative mb-4">
+              <div className="mt-3 relative mb-4">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder={t(
@@ -342,7 +342,7 @@ const UserManagement: React.FC = () => {
                   )}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
+                  className="pl-8 "
                 />
               </div>
 

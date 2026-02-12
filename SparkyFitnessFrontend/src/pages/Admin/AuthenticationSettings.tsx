@@ -30,8 +30,8 @@ const AuthenticationSettings: React.FC = () => {
       onSuccess: () => {
         toast({
           title: t(
-            'admin.authenticationSettings.settingsSaved',
-            'Settings Saved'
+            'admin.authenticationSettings.errorLoadingSettings',
+            'Error'
           ),
           description: t(
             'admin.authenticationSettings.loginSettingUpdated',
@@ -173,28 +173,6 @@ const AuthenticationSettings: React.FC = () => {
               </code>
             </div>
           </div>
-        </AccordionContent>
-      </AccordionItem>
-
-      <AccordionItem
-        value="oidc-provider-settings"
-        className="border rounded-lg"
-      >
-        <AccordionTrigger
-          className="flex items-center gap-2 p-4 hover:no-underline"
-          description={t(
-            'admin.authenticationSettings.oidcProviderManagement.description',
-            'Configure your OpenID Connect (OIDC) providers.'
-          )}
-        >
-          <Lock className="h-5 w-5" />
-          {t(
-            'admin.authenticationSettings.oidcProviderManagement.title',
-            'OIDC Provider Management'
-          )}
-        </AccordionTrigger>
-        <AccordionContent className="p-4 pt-0">
-          <OidcSettings />
         </AccordionContent>
       </AccordionItem>
     </Accordion>

@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Lock } from 'lucide-react';
 import {
   useCreateOidcProvider,
   useDeleteOidcProvider,
@@ -29,6 +29,12 @@ import {
   useUploadOidcLogo,
 } from '@/hooks/Admin/useOidcProvider';
 import { ProviderDialog } from './OidcProviderDialog';
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion';
 
 const OidcSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -197,97 +203,123 @@ const OidcSettings: React.FC = () => {
     );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {t('admin.oidcSettings.title', 'OIDC Authentication Providers')}
-        </CardTitle>
-        <CardDescription>
-          {t(
-            'admin.oidcSettings.description',
-            'Manage OIDC providers for user authentication.'
+    <Accordion type="multiple" className="w-full">
+      <AccordionItem
+        value="oidc-provider-settings"
+        className="border rounded-lg"
+      >
+        <AccordionTrigger
+          className="flex items-center gap-2 p-4 hover:no-underline"
+          description={t(
+            'admin.authenticationSettings.oidcProviderManagement.description',
+            'Configure your OpenID Connect (OIDC) providers.'
           )}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex justify-end mb-4">
-          <Button onClick={handleAddNew}>
-            <PlusCircle className="mr-2 h-4 w-4" />{' '}
-            {t('admin.oidcSettings.addNewProvider', 'Add New Provider')}
-          </Button>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('admin.oidcSettings.logo', 'Logo')}</TableHead>
-              <TableHead>
-                {t('admin.oidcSettings.displayName', 'Display Name')}
-              </TableHead>
-              <TableHead>{t('admin.oidcSettings.active', 'Active')}</TableHead>
-              <TableHead>
-                {t('admin.oidcSettings.autoRegister', 'Auto Register')}
-              </TableHead>
-              <TableHead className="text-right">
-                {t('admin.oidcSettings.actions', 'Actions')}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {providers.map((provider) => (
-              <TableRow key={provider.id}>
-                <TableCell>
-                  <img
-                    src={provider.logo_url || '/oidc-logo.png'}
-                    alt={`${provider.display_name} logo`}
-                    className="h-8 w-8 object-contain"
-                  />
-                </TableCell>
-                <TableCell>{provider.display_name}</TableCell>
-                <TableCell>
-                  <Switch
-                    checked={provider.is_active}
-                    onCheckedChange={() =>
-                      handleToggleChange(provider, 'is_active')
-                    }
-                  />
-                </TableCell>
-                <TableCell>
-                  <Switch
-                    checked={provider.auto_register}
-                    onCheckedChange={() =>
-                      handleToggleChange(provider, 'auto_register')
-                    }
-                  />
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(provider)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(provider.id!)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {isDialogOpen && selectedProvider && (
-          <ProviderDialog
-            provider={selectedProvider}
-            onSave={handleSave}
-            onClose={() => setIsDialogOpen(false)}
-          />
-        )}
-      </CardContent>
-    </Card>
+        >
+          <Lock className="h-5 w-5" />
+          {t(
+            'admin.authenticationSettings.oidcProviderManagement.title',
+            'OIDC Provider Management'
+          )}
+        </AccordionTrigger>
+        <AccordionContent className="p-4 pt-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {t('admin.oidcSettings.title', 'OIDC Authentication Providers')}
+              </CardTitle>
+              <CardDescription>
+                {t(
+                  'admin.oidcSettings.description',
+                  'Manage OIDC providers for user authentication.'
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-end mb-4">
+                <Button onClick={handleAddNew}>
+                  <PlusCircle className="mr-2 h-4 w-4" />{' '}
+                  {t('admin.oidcSettings.addNewProvider', 'Add New Provider')}
+                </Button>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      {t('admin.oidcSettings.logo', 'Logo')}
+                    </TableHead>
+                    <TableHead>
+                      {t('admin.oidcSettings.displayName', 'Display Name')}
+                    </TableHead>
+                    <TableHead>
+                      {t('admin.oidcSettings.active', 'Active')}
+                    </TableHead>
+                    <TableHead>
+                      {t('admin.oidcSettings.autoRegister', 'Auto Register')}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t('admin.oidcSettings.actions', 'Actions')}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {providers.map((provider) => (
+                    <TableRow key={provider.id}>
+                      <TableCell>
+                        <img
+                          src={provider.logo_url || '/oidc-logo.png'}
+                          alt={`${provider.display_name} logo`}
+                          className="h-8 w-8 object-contain"
+                        />
+                      </TableCell>
+                      <TableCell>{provider.display_name}</TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={provider.is_active}
+                          onCheckedChange={() =>
+                            handleToggleChange(provider, 'is_active')
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={provider.auto_register}
+                          onCheckedChange={() =>
+                            handleToggleChange(provider, 'auto_register')
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(provider)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(provider.id!)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {isDialogOpen && selectedProvider && (
+                <ProviderDialog
+                  provider={selectedProvider}
+                  onSave={handleSave}
+                  onClose={() => setIsDialogOpen(false)}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 };
 
