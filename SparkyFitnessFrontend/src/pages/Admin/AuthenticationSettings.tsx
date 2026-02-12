@@ -1,5 +1,4 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Info, Lock, Clipboard } from 'lucide-react';
 import {
@@ -8,77 +7,49 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import {
-  globalSettingsService,
-  type GlobalSettings,
-} from '../../services/globalSettingsService';
+import { type GlobalSettings } from '../../api/Admin/globalSettingsService';
 import { toast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import OidcSettings from './OidcSettings';
 import { Button } from '@/components/ui/button';
+import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 
 const AuthenticationSettings: React.FC = () => {
   const { t } = useTranslation();
-  const [settings, setSettings] = useState<GlobalSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: settings, isLoading: loading } = useSettings();
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const fetchedSettings = await globalSettingsService.getSettings();
-        setSettings(fetchedSettings);
-      } catch (error) {
-        toast({
-          title: t(
-            'admin.authenticationSettings.errorLoadingSettings',
-            'Error'
-          ),
-          description: t(
-            'admin.authenticationSettings.errorLoadingSettingsDescription',
-            'Failed to load authentication settings.'
-          ),
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSettings();
-  }, [t]);
+  const { mutate: updateSettings } = useUpdateSettings();
 
-  const handleSwitchChange = async (
-    id: keyof GlobalSettings,
-    checked: boolean
-  ) => {
+  const handleSwitchChange = (id: keyof GlobalSettings, checked: boolean) => {
     if (!settings) return;
 
     const newSettings = { ...settings, [id]: checked };
-    setSettings(newSettings); // Optimistically update the UI
 
-    try {
-      await globalSettingsService.saveSettings(newSettings);
-      toast({
-        title: t(
-          'admin.authenticationSettings.settingsSaved',
-          'Settings Saved'
-        ),
-        description: t(
-          'admin.authenticationSettings.loginSettingUpdated',
-          'Login setting updated successfully.'
-        ),
-      });
-    } catch (error) {
-      toast({
-        title: t('admin.authenticationSettings.error', 'Error'),
-        description: t(
-          'admin.authenticationSettings.failedToSaveLoginSettings',
-          'Failed to save login settings.'
-        ),
-        variant: 'destructive',
-      });
-      setSettings(settings); // Revert optimistic update on failure
-    }
+    updateSettings(newSettings, {
+      onSuccess: () => {
+        toast({
+          title: t(
+            'admin.authenticationSettings.settingsSaved',
+            'Settings Saved'
+          ),
+          description: t(
+            'admin.authenticationSettings.loginSettingUpdated',
+            'Login setting updated successfully.'
+          ),
+        });
+      },
+      onError: () => {
+        toast({
+          title: t('admin.authenticationSettings.error', 'Error'),
+          description: t(
+            'admin.authenticationSettings.failedToSaveLoginSettings',
+            'Failed to save login settings.'
+          ),
+          variant: 'destructive',
+        });
+      },
+    });
   };
 
   if (loading) {
@@ -202,28 +173,6 @@ const AuthenticationSettings: React.FC = () => {
               </code>
             </div>
           </div>
-        </AccordionContent>
-      </AccordionItem>
-
-      <AccordionItem
-        value="oidc-provider-settings"
-        className="border rounded-lg"
-      >
-        <AccordionTrigger
-          className="flex items-center gap-2 p-4 hover:no-underline"
-          description={t(
-            'admin.authenticationSettings.oidcProviderManagement.description',
-            'Configure your OpenID Connect (OIDC) providers.'
-          )}
-        >
-          <Lock className="h-5 w-5" />
-          {t(
-            'admin.authenticationSettings.oidcProviderManagement.title',
-            'OIDC Provider Management'
-          )}
-        </AccordionTrigger>
-        <AccordionContent className="p-4 pt-0">
-          <OidcSettings />
         </AccordionContent>
       </AccordionItem>
     </Accordion>

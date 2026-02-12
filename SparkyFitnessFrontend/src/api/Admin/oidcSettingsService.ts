@@ -1,7 +1,7 @@
-import { apiCall } from './api';
+import { apiCall } from '@/services/api';
 
 export interface OidcProvider {
-  id?: number;
+  id?: string;
   issuer_url: string;
   client_id: string;
   client_secret?: string;
@@ -20,6 +20,11 @@ export interface OidcProvider {
   provider_id?: string;
 }
 
+export interface CreateOidcProvider {
+  id: string;
+  message: string;
+}
+
 const oidcSettingsService = {
   getProviders: async (): Promise<OidcProvider[]> => {
     return await apiCall('/admin/oidc-settings');
@@ -29,7 +34,9 @@ const oidcSettingsService = {
     return await apiCall(`/admin/oidc-settings/${id}`);
   },
 
-  createProvider: async (provider: OidcProvider): Promise<OidcProvider> => {
+  createProvider: async (
+    provider: OidcProvider
+  ): Promise<CreateOidcProvider> => {
     return await apiCall('/admin/oidc-settings', {
       method: 'POST',
       body: provider,
@@ -37,7 +44,7 @@ const oidcSettingsService = {
   },
 
   updateProvider: async (
-    id: number,
+    id: string,
     provider: OidcProvider
   ): Promise<OidcProvider> => {
     return await apiCall(`/admin/oidc-settings/${id}`, {
@@ -46,13 +53,13 @@ const oidcSettingsService = {
     });
   },
 
-  deleteProvider: async (id: number): Promise<void> => {
+  deleteProvider: async (id: string): Promise<void> => {
     await apiCall(`/admin/oidc-settings/${id}`, {
       method: 'DELETE',
     });
   },
 
-  uploadLogo: async (id: number, logo: File): Promise<{ logoUrl: string }> => {
+  uploadLogo: async (id: string, logo: File): Promise<{ logoUrl: string }> => {
     const formData = new FormData();
     formData.append('logo', logo);
     return await apiCall(`/admin/oidc-settings/${id}/logo`, {
