@@ -76,7 +76,7 @@ const OidcSettings: React.FC = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm(t('admin.oidcSettings.deleteConfirm', 'Are you sure?')))
       return;
 
@@ -105,27 +105,26 @@ const OidcSettings: React.FC = () => {
     try {
       let currentProvider = { ...provider };
 
-      if (currentProvider.id && logoFile) {
-        try {
-          const uploadResponse = await uploadLogo({
-            id: currentProvider.id,
-            file: logoFile,
-          });
-          currentProvider.logo_url = uploadResponse.logoUrl;
-        } catch (uploadErr) {
-          toast({
-            title: t('admin.oidcSettings.error', 'Error'),
-            description: t(
-              'admin.oidcSettings.uploadFailed',
-              'Failed to upload logo.'
-            ),
-            variant: 'destructive',
-          });
-          return;
-        }
-      }
-
       if (currentProvider.id) {
+        if (logoFile) {
+          try {
+            const uploadResponse = await uploadLogo({
+              id: currentProvider.id,
+              file: logoFile,
+            });
+            currentProvider.logo_url = uploadResponse.logoUrl;
+          } catch (uploadErr) {
+            toast({
+              title: t('admin.oidcSettings.error', 'Error'),
+              description: t(
+                'admin.oidcSettings.uploadFailed',
+                'Failed to upload logo.'
+              ),
+              variant: 'destructive',
+            });
+            return;
+          }
+        }
         await updateProvider(currentProvider);
         toast({
           title: t('success', 'Success'),
@@ -135,7 +134,32 @@ const OidcSettings: React.FC = () => {
           ),
         });
       } else {
-        await createProvider(currentProvider);
+        const newProvider = await createProvider(currentProvider);
+        // provider id is only known after creating it. The upload logo function shouldn't take the id of the provider in the future. The mapping from provider to logo is down with url
+        if (logoFile && newProvider.id) {
+          try {
+            const uploadResponse = await uploadLogo({
+              id: newProvider.id,
+              file: logoFile,
+            });
+            const providerToUpdate = {
+              ...currentProvider,
+              id: newProvider.id,
+              logo_url: uploadResponse.logoUrl,
+            };
+            await updateProvider(providerToUpdate);
+          } catch (uploadError) {
+            console.error(uploadError);
+            toast({
+              title: t('warning', 'Warning'),
+              description: t(
+                'admin.oidcSettings.logoUploadFailed',
+                'Provider created, but logo upload failed.'
+              ),
+              variant: 'destructive',
+            });
+          }
+        }
         toast({
           title: t('success', 'Success'),
           description: t(

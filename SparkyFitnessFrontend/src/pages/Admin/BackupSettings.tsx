@@ -17,12 +17,13 @@ import {
   useRestoreBackup,
 } from '@/hooks/Admin/useBackups';
 import { BackupSettingsForm } from './BackupSettingsForm';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 const BackupSettings: React.FC = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { signOut } = useAuth();
-
+  const { loggingLevel } = usePreferences();
   const { data: settings, isLoading } = useBackupSettings();
   const { mutate: saveSettings, isPending: isSaving } =
     useUpdateBackupSettings();
@@ -73,7 +74,7 @@ const BackupSettings: React.FC = () => {
     const formData = new FormData();
     formData.append('backupFile', file);
 
-    debug(null, 'Restoring...');
+    debug(loggingLevel, 'Restoring...');
 
     restoreBackup(formData, {
       onSuccess: async () => {

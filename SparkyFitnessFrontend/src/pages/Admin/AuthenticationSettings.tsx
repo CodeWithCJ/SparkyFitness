@@ -30,8 +30,8 @@ const AuthenticationSettings: React.FC = () => {
       onSuccess: () => {
         toast({
           title: t(
-            'admin.authenticationSettings.errorLoadingSettings',
-            'Error'
+            'admin.authenticationSettings.settingsSaved',
+            'Settings Saved'
           ),
           description: t(
             'admin.authenticationSettings.loginSettingUpdated',

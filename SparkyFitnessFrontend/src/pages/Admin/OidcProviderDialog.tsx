@@ -29,7 +29,7 @@ import {
 
 export const ProviderDialog: React.FC<{
   provider: OidcProvider;
-  onSave: (provider: OidcProvider) => void;
+  onSave: (provider: OidcProvider, logoFile: File | null) => void;
   onClose: () => void;
 }> = ({ provider, onSave, onClose }) => {
   const { t } = useTranslation();
@@ -119,36 +119,15 @@ export const ProviderDialog: React.FC<{
     setEditedProvider((prev) => ({ ...prev, [id]: checked }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const providerToSave = { ...editedProvider };
-
-    if (logoFile && providerToSave.id) {
-      try {
-        const uploadResponse = await oidcSettingsService.uploadLogo(
-          providerToSave.id,
-          logoFile
-        );
-        providerToSave.logo_url = uploadResponse.logoUrl;
-      } catch (err) {
-        toast({
-          title: t('admin.oidcSettings.error', 'Error'),
-          description: t(
-            'admin.oidcSettings.uploadFailed',
-            'Failed to upload logo.'
-          ),
-          variant: 'destructive',
-        });
-        return; // Stop the save process if logo upload fails
-      }
-    }
-    onSave(providerToSave);
-  };
-
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px]">
-        <form onSubmit={handleSubmit}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSave(editedProvider, logoFile);
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               {editedProvider.id
@@ -521,7 +500,7 @@ export const ProviderDialog: React.FC<{
             <Button type="button" variant="outline" onClick={onClose}>
               {t('admin.oidcSettings.cancel', 'Cancel')}
             </Button>
-            <Button type="submit">
+            <Button disabled={editedProvider.domain === ''} type="submit">
               {t('admin.oidcSettings.save', 'Save')}
             </Button>
           </DialogFooter>

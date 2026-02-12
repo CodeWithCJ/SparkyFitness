@@ -25,7 +25,7 @@ export const useOidcProviders = () => {
 export const useDeleteOidcProvider = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => oidcSettingsService.deleteProvider(id),
+    mutationFn: (id: string) => oidcSettingsService.deleteProvider(id),
     onSuccess: () => {
       return queryClient.invalidateQueries({ queryKey: oidcKeys.all });
     },
@@ -56,7 +56,7 @@ export const useUpdateOidcProvider = () => {
 
 export const useUploadOidcLogo = () => {
   return useMutation({
-    mutationFn: ({ id, file }: { id: number; file: File }) =>
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
       oidcSettingsService.uploadLogo(id, file),
   });
 };

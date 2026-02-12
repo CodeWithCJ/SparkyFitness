@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Loader2, Save, Play, Upload } from 'lucide-react';
 import { BackupSettingsResponse } from '@/api/Admin/backup';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 
 interface BackupSettingsFormProps {
   initialSettings: BackupSettingsResponse;
@@ -106,12 +108,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
             'Enable Scheduled Backups:'
           )}
         </label>
-        <Input
-          type="checkbox"
-          checked={backupEnabled}
-          onChange={(e) => setBackupEnabled(e.target.checked)}
-          className="form-checkbox h-5 w-5 text-blue-600"
-        />
+        <Switch checked={backupEnabled} onCheckedChange={setBackupEnabled} />
       </div>
 
       {backupEnabled && (
@@ -195,10 +192,10 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
       </div>
 
       <div className="flex gap-4 mb-6 flex-wrap">
-        <button
+        <Button
           onClick={handleSubmit}
           disabled={isSaving}
-          className="bg-blue-500 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center gap-2"
+          className="flex items-center gap-2"
         >
           {isSaving ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -206,11 +203,11 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
             <Save className="h-4 w-4" />
           )}
           {t('admin.backupSettings.saveSettings', 'Save Settings')}
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={onManualBackup}
           disabled={isRunningBackup}
-          className="bg-green-500 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center gap-2"
+          className="flex items-center gap-2"
         >
           {isRunningBackup ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -218,7 +215,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
             <Play className="h-4 w-4" />
           )}
           {t('admin.backupSettings.runManualBackup', 'Run Manual Backup Now')}
-        </button>
+        </Button>
       </div>
 
       {/* Restore Section */}

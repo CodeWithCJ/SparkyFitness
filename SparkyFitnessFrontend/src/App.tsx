@@ -64,7 +64,7 @@ const queryClient = new QueryClient({
     onError: (_error, query) => {
       if (query.meta?.errorMessage) {
         toast({
-          title: (query.meta.errorTitle ?? 'Error', 'Error'),
+          title: query.meta.errorTitle ?? 'Error',
           description: query.meta.errorMessage,
           variant: 'destructive',
         });

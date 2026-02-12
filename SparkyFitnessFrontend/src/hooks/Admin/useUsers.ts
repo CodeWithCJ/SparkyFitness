@@ -12,7 +12,7 @@ export const useUsers = (
 
   return useQuery({
     queryKey: userKeys.list({ searchTerm, sortBy, sortOrder }),
-    queryFn: () => userManagementService.getUsers(),
+    queryFn: () => userManagementService.getUsers(searchTerm),
     meta: {
       errorTitle: t('admin.userManagement.error', 'Error'),
       errorMessage: t(
@@ -28,7 +28,7 @@ export const useUpdateUserFullName = () => {
   return useMutation({
     mutationFn: ({ userId, fullName }: { userId: string; fullName: string }) =>
       userManagementService.updateUserFullName(userId, fullName),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
   });
 };
 
