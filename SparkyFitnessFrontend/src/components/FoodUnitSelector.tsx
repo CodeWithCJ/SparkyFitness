@@ -18,8 +18,9 @@ import {
 } from '@/components/ui/select';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn, error } from '@/utils/logging';
-import { loadFoodVariants } from '@/services/foodUnitService';
 import type { Food, FoodVariant } from '@/types/food';
+import { useQueryClient } from '@tanstack/react-query';
+import { foodVariantsOptions } from '@/hooks/Foods/useFoodVariants';
 
 interface FoodUnitSelectorProps {
   food: Food;
@@ -60,6 +61,7 @@ const FoodUnitSelector = ({
   );
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     debug(loggingLevel, 'FoodUnitSelector open/food useEffect triggered.', {
@@ -84,7 +86,7 @@ const FoodUnitSelector = ({
     debug(loggingLevel, 'Loading food variants for food ID:', food?.id);
     setLoading(true);
     try {
-      const data = await loadFoodVariants(food.id);
+      const data = await queryClient.fetchQuery(foodVariantsOptions(food.id));
 
       // The food object passed to this component already contains the default variant's data
       const primaryUnit: FoodVariant = {

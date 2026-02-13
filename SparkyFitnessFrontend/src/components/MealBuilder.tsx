@@ -19,7 +19,6 @@ import { toast } from '@/hooks/use-toast';
 import { warn, error } from '@/utils/logging';
 import type { Food, FoodVariant } from '@/types/food';
 import type { Meal, MealFood, MealPayload } from '@/types/meal';
-import { createMeal, updateMeal, getMealById } from '@/services/mealService';
 import {
   createFoodEntryMeal,
   updateFoodEntryMeal,
@@ -27,6 +26,12 @@ import {
 } from '@/services/foodEntryService';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import FoodSearchDialog from './FoodSearchDialog';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  mealViewOptions,
+  useCreateMealMutation,
+  useUpdateMealMutation,
+} from '@/hooks/Foods/useMeals';
 
 interface MealBuilderProps {
   mealId?: string; // Optional: if editing an existing meal template
@@ -55,7 +60,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 }) => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
-  const { loggingLevel, foodDisplayLimit } = usePreferences();
+  const { loggingLevel } = usePreferences();
   const [mealName, setMealName] = useState('');
   const [mealDescription, setMealDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -74,14 +79,17 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     mealFood: MealFood;
     index: number;
   } | null>(null);
+  const queryClient = useQueryClient();
 
+  const { mutateAsync: updateMeal } = useUpdateMealMutation();
+  const { mutateAsync: createMeal } = useCreateMealMutation();
   useEffect(() => {
     const fetchMealData = async () => {
       if (!activeUserId) return;
 
       if (source === 'meal-management' && mealId) {
         try {
-          const meal = await getMealById(activeUserId, mealId);
+          const meal = await queryClient.fetchQuery(mealViewOptions(mealId));
           if (meal) {
             setMealName(meal.name);
             setMealDescription(meal.description || '');
@@ -133,7 +141,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       } else if (source === 'food-diary' && !foodEntryId && mealId) {
         // NEW: Fetch template for logging new meal
         try {
-          const meal = await getMealById(activeUserId, mealId);
+          const meal = await queryClient.fetchQuery(mealViewOptions(mealId));
           if (meal) {
             setMealName(meal.name);
             setMealDescription(meal.description || '');
@@ -330,9 +338,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       };
 
       try {
-        let resultMeal;
+        let resultMeal: Meal;
         if (mealId) {
-          resultMeal = await updateMeal(activeUserId!, mealId, mealData);
+          resultMeal = await updateMeal({ mealId, mealPayload: mealData });
           toast({
             title: t('mealBuilder.successTitle', 'Success'),
             description: t(
@@ -341,7 +349,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             ),
           });
         } else {
-          resultMeal = await createMeal(activeUserId!, mealData);
+          resultMeal = await createMeal({ mealPayload: mealData });
           toast({
             title: t('mealBuilder.successTitle', 'Success'),
             description: t(

@@ -51,10 +51,6 @@ jest.mock('@/services/mealService', () => ({
   getMealById: (...args: unknown[]) => mockGetMealById(...args),
 }));
 
-jest.mock('@/services/foodService', () => ({
-  searchFoods: jest.fn(),
-}));
-
 jest.mock('@/services/foodEntryService', () => ({
   createFoodEntryMeal: jest.fn(),
   updateFoodEntryMeal: jest.fn(),

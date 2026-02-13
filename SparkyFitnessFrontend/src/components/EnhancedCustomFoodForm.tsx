@@ -17,15 +17,15 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
-import {
-  isUUID,
-  saveFood,
-  loadFoodVariants, // Also re-add loadFoodVariants as it's used
-} from '@/services/enhancedCustomFoodFormService';
-import { updateFoodEntriesSnapshot } from '@/services/foodService';
+import { isUUID } from '@/services/enhancedCustomFoodFormService';
 import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
-import type { UserCustomNutrient } from '@/types/customNutrient';
-import { customNutrientService } from '@/services/customNutrientService';
+import { useUpdateFoodEntriesSnapshotMutation } from '@/hooks/Foods/useFoods';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  foodVariantsOptions,
+  useSaveFoodMutation,
+} from '@/hooks/Foods/useFoodVariants';
 
 type NumericFoodVariantKeys = Exclude<
   keyof FoodVariant,
@@ -189,9 +189,11 @@ const EnhancedCustomFoodForm = ({
   const [variantErrors, setVariantErrors] = useState<string[]>([]); // State to hold errors for each variant
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [syncFoodId, setSyncFoodId] = useState<string | null>(null);
-  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>(
-    []
-  );
+  const queryClient = useQueryClient();
+  const { data: customNutrients } = useCustomNutrients();
+  const { mutateAsync: updateFoodEntriesSnapshot } =
+    useUpdateFoodEntriesSnapshotMutation();
+  const { mutateAsync: saveFood } = useSaveFoodMutation();
 
   const foodDatabasePreferences = nutrientDisplayPreferences.find(
     (p) => p.view_group === 'food_database' && p.platform === platform
@@ -210,25 +212,6 @@ const EnhancedCustomFoodForm = ({
     brand: '',
     is_quick_food: false,
   });
-
-  useEffect(() => {
-    const fetchCustomNutrients = async () => {
-      try {
-        const nutrients = await customNutrientService.getCustomNutrients();
-        setCustomNutrients(nutrients);
-      } catch (error) {
-        console.error('Failed to fetch custom nutrients', error);
-        toast({
-          title: 'Error',
-          description:
-            'Could not load custom nutrients. Please try again later.',
-          variant: 'destructive',
-        });
-      }
-    };
-
-    fetchCustomNutrients();
-  }, []);
 
   useEffect(() => {
     if (food) {
@@ -313,7 +296,7 @@ const EnhancedCustomFoodForm = ({
     if (!food?.id || !isUUID(food.id)) return; // Ensure food.id is a valid UUID
 
     try {
-      const data = await loadFoodVariants(food.id);
+      const data = await queryClient.fetchQuery(foodVariantsOptions(food.id));
 
       let loadedVariants: FormFoodVariant[] = [];
       let defaultVariant: FoodVariant | undefined;
@@ -679,12 +662,12 @@ const EnhancedCustomFoodForm = ({
       // Convert form variants (with possible empty strings) to proper FoodVariant (with numbers)
       const variantsToSave = variants.map(formVariantToFoodVariant);
 
-      const savedFood = await saveFood(
+      const savedFood = await saveFood({
         foodData,
-        variantsToSave,
-        user.id,
-        food?.id
-      );
+        variants: variantsToSave,
+        userId: user.id,
+        foodId: food?.id,
+      });
 
       toast({
         title: 'Success',

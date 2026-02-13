@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
-import { createMealFromDiary } from '@/services/mealService';
+import { createMealFromDiary } from '@/api/Foods/meals';
 import { debug, info, error } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
 

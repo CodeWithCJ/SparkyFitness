@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '@/services/api';
 import type { MealPlanTemplate } from '@/types/meal';
 
 export const getMealPlanTemplates = async (
@@ -12,8 +12,15 @@ export const createMealPlanTemplate = async (
   templateData: Partial<MealPlanTemplate>,
   currentClientDate?: string
 ): Promise<MealPlanTemplate> => {
+  // rename assignments to day_presets because of backend inconsistencies
+  const { assignments, ...restData } = templateData as any;
   return await api.post('/meal-plan-templates', {
-    body: { ...templateData, userId, currentClientDate },
+    body: {
+      ...restData,
+      day_presets: assignments,
+      userId,
+      currentClientDate,
+    },
   });
 };
 

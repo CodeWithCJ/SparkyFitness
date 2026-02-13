@@ -1,4 +1,4 @@
-import { apiCall } from './api';
+import { apiCall } from '../../services/api';
 import type {
   Meal,
   MealPayload,
@@ -8,15 +8,11 @@ import type {
 
 export type MealFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
 
-export const createMeal = async (
-  userId: string,
-  mealData: MealPayload
-): Promise<Meal> => {
+export const createMeal = async (mealData: MealPayload): Promise<Meal> => {
   return await apiCall(`/meals`, { method: 'POST', body: mealData });
 };
 
 export const getMeals = async (
-  userId: string,
   filter: MealFilter = 'all',
   searchTerm: string = ''
 ): Promise<Meal[]> => {
@@ -31,15 +27,11 @@ export const getMeals = async (
   return await apiCall(url, { method: 'GET', params });
 };
 
-export const getMealById = async (
-  userId: string,
-  mealId: string
-): Promise<Meal> => {
+export const getMealById = async (mealId: string): Promise<Meal> => {
   return await apiCall(`/meals/${mealId}`, { method: 'GET' });
 };
 
 export const updateMeal = async (
-  userId: string,
   mealId: string,
   mealData: Partial<MealPayload>
 ): Promise<Meal> => {
@@ -47,7 +39,6 @@ export const updateMeal = async (
 };
 
 export const deleteMeal = async (
-  userId: string,
   mealId: string,
   force: boolean = false
 ): Promise<{ message: string }> => {
@@ -61,21 +52,18 @@ export const deleteMeal = async (
 };
 
 export const getMealDeletionImpact = async (
-  userId: string,
   mealId: string
 ): Promise<MealDeletionImpact> => {
   return await apiCall(`/meals/${mealId}/deletion-impact`, { method: 'GET' });
 };
 
 export const createMealPlanEntry = async (
-  userId: string,
   planData: MealPlanTemplate
 ): Promise<MealPlanTemplate> => {
   return await apiCall(`/meals/plan`, { method: 'POST', body: planData });
 };
 
 export const getMealPlanEntries = async (
-  userId: string,
   startDate: string,
   endDate: string
 ): Promise<MealPlanTemplate[]> => {
@@ -87,7 +75,6 @@ export const getMealPlanEntries = async (
 };
 
 export const updateMealPlanEntry = async (
-  userId: string,
   planId: string,
   planData: MealPlanTemplate
 ): Promise<MealPlanTemplate> => {
@@ -97,15 +84,11 @@ export const updateMealPlanEntry = async (
   });
 };
 
-export const deleteMealPlanEntry = async (
-  userId: string,
-  planId: string
-): Promise<void> => {
+export const deleteMealPlanEntry = async (planId: string): Promise<void> => {
   await apiCall(`/meals/plan/${planId}`, { method: 'DELETE' });
 };
 
 export const logMealPlanEntryToDiary = async (
-  userId: string,
   mealPlanId: string,
   targetDate?: string
 ): Promise<any[]> => {
@@ -116,7 +99,6 @@ export const logMealPlanEntryToDiary = async (
 };
 
 export const logDayMealPlanToDiary = async (
-  userId: string,
   planDate: string,
   targetDate?: string
 ): Promise<any[]> => {

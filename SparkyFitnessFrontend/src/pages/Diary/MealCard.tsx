@@ -562,14 +562,6 @@ const MealCard = ({
                 Edit the nutritional information for this food in your database.
               </DialogDescription>
             </DialogHeader>
-            {/* The EnhancedCustomFoodForm expects a 'food' object, but editingFoodEntry now has flattened properties.
-                This part needs to be re-evaluated if editing food details is still desired.
-                For now, commenting out to prevent errors. */}
-            {/* <EnhancedCustomFoodForm
-              food={editingFood}
-              onSave={handleSaveFood}
-              visibleNutrients={foodDatabaseVisibleNutrients}
-            /> */}
             <p className="text-red-500">
               Editing food details is temporarily unavailable due to schema
               changes.

@@ -68,9 +68,8 @@ import type { MoodEntry, StressDataPoint } from '@/types';
 import { getExerciseDashboardData } from '@/services/reportsService';
 import { getRawStressData } from '@/services/customMeasurementService';
 import { getMoodEntries } from '@/services/moodService';
-import { customNutrientService } from '@/services/customNutrientService';
-import type { UserCustomNutrient } from '@/types/customNutrient';
 import MoodChart from '@/pages/Reports/MoodChart';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 
 interface ExtendedNutritionData extends NutritionData {
   [key: string]: number | string; // Add index signature for custom nutrients
@@ -120,9 +119,6 @@ const Reports = () => {
   >({});
   const [rawStressData, setRawStressData] = useState<StressDataPoint[]>([]); // New state for raw stress data
   const [moodData, setMoodData] = useState<MoodEntry[]>([]); // New state for mood data
-  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>(
-    []
-  );
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [fastingData, setFastingData] = useState<FastingLog[]>([]);
@@ -131,6 +127,7 @@ const Reports = () => {
   const [activeTab, setActiveTab] = useState('charts');
   const [isMounted, setIsMounted] = useState(false);
 
+  const { data: customNutrients } = useCustomNutrients();
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -246,7 +243,6 @@ const Reports = () => {
         getRawStressData(),
         getMoodEntries(startDate, endDate),
         getFastingDataRange(startDate, endDate),
-        customNutrientService.getCustomNutrients(),
       ]);
 
       // Process results from Promise.allSettled
@@ -256,7 +252,6 @@ const Reports = () => {
         rawStressDataResult,
         moodEntriesResult,
         fastingDataResult,
-        customNutrientsResult,
       ] = results;
       debug(
         loggingLevel,
@@ -374,17 +369,6 @@ const Reports = () => {
           fastingDataResult.reason
         );
         setFastingData([]);
-      }
-
-      if (customNutrientsResult.status === 'fulfilled') {
-        setCustomNutrients(customNutrientsResult.value);
-      } else {
-        error(
-          loggingLevel,
-          'Reports: Failed to load custom nutrients:',
-          customNutrientsResult.reason
-        );
-        setCustomNutrients([]);
       }
 
       info(loggingLevel, 'Reports: Reports loaded successfully.');

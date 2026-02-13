@@ -1,5 +1,5 @@
 import { toast } from '@/hooks/use-toast';
-import { apiCall } from './api';
+import { apiCall } from '@/services/api';
 
 // Function to fetch food data provider details from your backend
 const fetchFoodDataProvider = async (providerId: string) => {
@@ -17,24 +17,6 @@ const fetchFoodDataProvider = async (providerId: string) => {
   }
 };
 
-interface NutritionixFoodItem {
-  food_name: string;
-  brand_name?: string;
-  serving_qty: number;
-  serving_unit: string;
-  nf_calories: number;
-  nf_total_fat: number;
-  nf_saturated_fat: number;
-  nf_cholesterol: number;
-  nf_sodium: number;
-  nf_total_carbohydrate: number;
-  nf_dietary_fiber: number;
-  nf_sugars: number;
-  nf_protein: number;
-  nf_potassium: number;
-  nf_p: number; // Phosphorus
-}
-
 interface NutritionixInstantSearchResponse {
   common: { food_name: string; photo: { thumb: string } }[];
   branded: {
@@ -50,10 +32,6 @@ interface NutritionixInstantSearchResponse {
     nix_item_id: string;
     full_nutrients?: { attr_id: number; value: number }[]; // Add this for detailed branded item lookup
   }[];
-}
-
-interface NutritionixNutrientsResponse {
-  foods: NutritionixFoodItem[];
 }
 
 const NUTRITIONIX_API_BASE_URL = 'https://trackapi.nutritionix.com/v2';

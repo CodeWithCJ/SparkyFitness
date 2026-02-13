@@ -22,26 +22,13 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import EnhancedCustomFoodForm from './EnhancedCustomFoodForm';
-import ImportFromCSV from './FoodImportFromCSV';
+import ImportFromCSV from '../pages/Foods/FoodImportFromCSV.tsx';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { debug, error } from '@/utils/logging';
-import {
-  searchNutritionixFoods,
-  getNutritionixNutrients,
-  getNutritionixBrandedNutrients,
-} from '@/services/NutritionixService';
-import { getMeals } from '@/services/mealService';
-import {
-  searchFatSecretFoods,
-  getFatSecretNutrients,
-  type FatSecretFoodItem,
-} from '@/services/FatSecretService';
-import {
-  searchMealieFoods, // Import searchMealieFoods
-  searchTandoorFoods, // Import searchTandoorFoods
-} from '@/services/foodService';
-import { searchUsdaFoods, getUsdaFoodDetails } from '@/services/UsdaService'; // Import USDA service functions
+import { getMeals } from '@/api/Foods/meals.ts';
+import { type FatSecretFoodItem } from '@/api/Foods/fatSecret.ts';
+import {} from '@/api/Foods/foodService.ts';
 import {
   Select,
   SelectContent,
@@ -55,8 +42,26 @@ import { apiCall } from '@/services/api';
 import { getProviderCategory } from '@/services/externalProviderService';
 import type { Food, FoodVariant, CSVData } from '@/types/food';
 import type { Meal } from '@/types/meal';
-import { customNutrientService } from '@/services/customNutrientService';
 import type { UserCustomNutrient } from '@/types/customNutrient';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  searchMealieOptions,
+  searchTandoorOptions,
+} from '@/hooks/Foods/useFoods.ts';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients.tsx';
+import {
+  fatSecretNutrientOptions,
+  searchFatSecretOptions,
+} from '@/hooks/Foods/useFatSecret.ts';
+import {
+  nutritionixBrandedNutrientsOptions,
+  nutritionixNaturalNutrientsOptions,
+  searchNutritionixOptions,
+} from '@/hooks/Foods/useNutrionix.ts';
+import {
+  searchUsdaOptions,
+  usdaFoodDetailsOptions,
+} from '@/hooks/Foods/useUSDA.ts';
 
 interface OpenFoodFactsProduct {
   product_name: string;
@@ -92,8 +97,6 @@ const NutrientGrid = ({
   getEnergyUnitString,
   customNutrients = [],
 }) => {
-  const { t } = useTranslation(); // Import useTranslation here
-
   const nutrientDetails: {
     [key: string]: { color: string; label: string; unit: string };
   } = {
@@ -259,11 +262,9 @@ const EnhancedFoodSearch = ({
   >(null); // To store the ID of the selected provider
   const [hasOnlineSearchBeenPerformed, setHasOnlineSearchBeenPerformed] =
     useState(false);
-  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>(
-    []
-  ); // Custom nutrients state
   const BarcodeScanner = React.lazy(() => import('./BarcodeScanner.tsx'));
-
+  const queryClient = useQueryClient();
+  const { data: customNutrients } = useCustomNutrients();
   // Load food data providers and set default
   useEffect(() => {
     const loadFoodDataProviders = async () => {
@@ -290,18 +291,6 @@ const EnhancedFoodSearch = ({
     };
     loadFoodDataProviders();
   }, [user, defaultFoodDataProviderId]);
-
-  useEffect(() => {
-    const fetchCustomNutrients = async () => {
-      try {
-        const fetched = await customNutrientService.getCustomNutrients();
-        setCustomNutrients(fetched);
-      } catch (err) {
-        error(loggingLevel, 'Error fetching custom nutrients:', err);
-      }
-    };
-    fetchCustomNutrients();
-  }, [loggingLevel]);
 
   const searchDatabase = useCallback(
     async (term: string) => {
@@ -522,7 +511,7 @@ const EnhancedFoodSearch = ({
     };
 
     try {
-      const res = await apiCall(`/foods/import-from-csv`, {
+      await apiCall(`/foods/import-from-csv`, {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -561,10 +550,9 @@ const EnhancedFoodSearch = ({
 
   const handleMealSearch = useCallback(
     async (term: string) => {
-      if (!activeUserId) return;
       setLoading(true);
       try {
-        const results = await getMeals(activeUserId, 'all', term);
+        const results = await getMeals('all', term);
         setMeals(results);
       } catch (err) {
         error(loggingLevel, 'Error searching meals:', err);
@@ -630,40 +618,42 @@ const EnhancedFoodSearch = ({
       if (provider.provider_type === 'openfoodfacts') {
         await searchOpenFoodFacts();
       } else if (provider.provider_type === 'nutritionix') {
-        const results = await searchNutritionixFoods(
-          searchTerm,
-          selectedFoodDataProvider
+        const results = await queryClient.fetchQuery(
+          searchNutritionixOptions(searchTerm, selectedFoodDataProvider)
         );
         setNutritionixResults(results);
       } else if (provider.provider_type === 'fatsecret') {
-        const results = await searchFatSecretFoods(
-          searchTerm,
-          selectedFoodDataProvider
+        const results = await queryClient.fetchQuery(
+          searchFatSecretOptions(searchTerm, selectedFoodDataProvider)
         );
         setFatSecretResults(results);
       } else if (provider.provider_type === 'mealie') {
-        const results = await searchMealieFoods(
-          searchTerm,
-          provider.base_url,
-          provider.app_key,
-          activeUserId!,
-          provider.id
+        const results = await queryClient.fetchQuery(
+          searchMealieOptions(
+            searchTerm,
+            provider.base_url,
+            provider.app_key,
+            provider.id
+          )
         );
         setFoods(results);
       } else if (provider.provider_type === 'tandoor') {
-        const results = await searchTandoorFoods(
-          searchTerm,
-          provider.base_url,
-          provider.app_key, // Tandoor uses app_key as API key
-          activeUserId!,
-          provider.id
+        const results = await queryClient.fetchQuery(
+          searchTandoorOptions(
+            searchTerm,
+            provider.base_url,
+            provider.app_key, // Tandoor uses app_key as API key
+            provider.id
+          )
         );
         setFoods(results);
       } else if (provider.provider_type === 'usda') {
-        const results = await searchUsdaFoods(
-          searchTerm,
-          selectedFoodDataProvider,
-          foodDisplayLimit
+        const results = await queryClient.fetchQuery(
+          searchUsdaOptions(
+            searchTerm,
+            selectedFoodDataProvider,
+            foodDisplayLimit
+          )
         );
         setUsdaResults(results);
         debug(loggingLevel, 'USDA Search Results:', results); // Add logging here
@@ -828,9 +818,8 @@ const EnhancedFoodSearch = ({
 
   const handleUsdaEdit = async (item: any) => {
     setLoading(true);
-    const nutrientData = await getUsdaFoodDetails(
-      item.fdcId,
-      selectedFoodDataProvider
+    const nutrientData = await queryClient.fetchQuery(
+      usdaFoodDetailsOptions(item.fdcId, selectedFoodDataProvider)
     );
     setLoading(false);
 
@@ -890,15 +879,13 @@ const EnhancedFoodSearch = ({
     let nutrientData;
     if (item.brand) {
       // It's a branded item, use nix_item_id to get full details
-      nutrientData = await getNutritionixBrandedNutrients(
-        item.id, // The 'id' for branded items is the nix_item_id
-        selectedFoodDataProvider
+      nutrientData = await queryClient.fetchQuery(
+        nutritionixBrandedNutrientsOptions(item.id, selectedFoodDataProvider)
       );
     } else {
       // It's a common item, use natural language query
-      nutrientData = await getNutritionixNutrients(
-        item.name, // The 'name' for common items is the food_name
-        selectedFoodDataProvider
+      nutrientData = await queryClient.fetchQuery(
+        nutritionixNaturalNutrientsOptions(item.name, selectedFoodDataProvider)
       );
     }
     setLoading(false);
@@ -960,9 +947,8 @@ const EnhancedFoodSearch = ({
   const handleFatSecretEdit = async (item: FatSecretFoodItem) => {
     setLoading(true);
     // Only fetch detailed nutrients when "Edit & Add" is clicked
-    const nutrientData = await getFatSecretNutrients(
-      item.food_id,
-      selectedFoodDataProvider
+    const nutrientData = await queryClient.fetchQuery(
+      fatSecretNutrientOptions(item.food_id, selectedFoodDataProvider)
     );
     setLoading(false);
 
@@ -995,28 +981,6 @@ const EnhancedFoodSearch = ({
 
     // Since Mealie and Tandoor search results are already in the `Food` format,
     // we can directly use the food object for the edit dialog.
-    setEditingProduct(food);
-    setShowEditDialog(true);
-    setLoading(false);
-  };
-
-  const handleTandoorEdit = async (food: Food) => {
-    setLoading(true);
-    const provider = foodDataProviders.find(
-      (p) => p.id === selectedFoodDataProvider
-    );
-    if (!provider) {
-      toast({
-        title: 'Error',
-        description: 'Could not find the selected food provider.',
-        variant: 'destructive',
-      });
-      setLoading(false);
-      return;
-    }
-
-    // Tandoor search results are already in the `Food` format,
-    // so we can directly use the food object for the edit dialog.
     setEditingProduct(food);
     setShowEditDialog(true);
     setLoading(false);

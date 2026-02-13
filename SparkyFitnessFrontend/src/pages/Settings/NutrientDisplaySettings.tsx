@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { apiCall } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
-import { customNutrientService } from '@/services/customNutrientService';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 
 const baseNutrients = [
   'calories',
@@ -47,7 +47,6 @@ const NutrientDisplaySettings: React.FC = () => {
   const { nutrientDisplayPreferences, loadNutrientDisplayPreferences } =
     usePreferences();
   const [preferences, setPreferences] = useState<NutrientPreference[]>([]);
-  const [allNutrients, setAllNutrients] = useState<string[]>(baseNutrients);
   const [syncState, setSyncState] = useState<Record<string, boolean>>({});
   const [activePlatformTab, setActivePlatformTab] = useState<
     'desktop' | 'mobile'
@@ -55,27 +54,15 @@ const NutrientDisplaySettings: React.FC = () => {
   const [activeViewGroupTab, setActiveViewGroupTab] =
     useState<string>('summary');
 
+  const { data: customNutrients } = useCustomNutrients();
+
+  const allNutrients = [
+    ...baseNutrients,
+    ...customNutrients.map((n) => n.name),
+  ];
   useEffect(() => {
     setPreferences(nutrientDisplayPreferences);
   }, [nutrientDisplayPreferences]);
-
-  useEffect(() => {
-    const fetchCustomNutrients = async () => {
-      try {
-        const customNutrients =
-          await customNutrientService.getCustomNutrients();
-        const customNutrientNames = customNutrients.map((n) => n.name);
-        setAllNutrients([...baseNutrients, ...customNutrientNames]);
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to load custom nutrients for display settings.',
-          variant: 'destructive',
-        });
-      }
-    };
-    fetchCustomNutrients();
-  }, []);
 
   useEffect(() => {
     const handler = setTimeout(() => {
