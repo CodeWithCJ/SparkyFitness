@@ -82,7 +82,7 @@ const resolveMessage = (
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (e, query) => {
-      error(getUserLoggingLevel(), `Query Error: ${e}`);
+      error(getUserLoggingLevel(), 'Query Error: ', e);
       if (query.meta?.errorMessage) {
         toast({
           title:
@@ -97,7 +97,7 @@ const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (err, variables, _context, mutation) => {
       const loggingLevel = getUserLoggingLevel();
-      error(loggingLevel, `Mutation Error: ${err}`);
+      error(loggingLevel, 'Mutation Error: ', err);
       const resolvedErrorMessage = resolveMessage(
         mutation.meta?.errorMessage,
         err,

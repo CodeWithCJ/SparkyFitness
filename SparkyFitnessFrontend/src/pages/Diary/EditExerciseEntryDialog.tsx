@@ -15,7 +15,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
-import { formatWeight } from '@/utils/numberFormatting';
 import { fetchExerciseDetails } from '@/services/editExerciseEntryService';
 import {
   updateExerciseEntry,
@@ -167,14 +166,17 @@ const SortableSetItem = React.memo(
               <Input
                 id={`weight-${setIndex}`}
                 type="number"
-                value={
-                  set.weight !== undefined && set.weight !== null
-                    ? formatWeight(set.weight)
-                    : ''
-                }
-                onChange={(e) =>
-                  handleSetChange(setIndex, 'weight', Number(e.target.value))
-                }
+                value={set.weight ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const newValue = val === '' ? null : Number(val);
+                  handleSetChange(setIndex, 'weight', newValue);
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '') {
+                    handleSetChange(setIndex, 'weight', 0);
+                  }
+                }}
               />
             </div>
             <div className="md:col-span-1">
@@ -502,7 +504,7 @@ const EditExerciseEntryDialog = ({
         notes: notes,
         sets: sets.map((set) => ({
           ...set,
-          weight: convertWeight(set.weight, weightUnit, 'kg'),
+          weight: convertWeight(set.weight ?? 0, weightUnit, 'kg'),
         })),
         imageFile: imageFile,
         image_url: imageUrl,
