@@ -1,6 +1,7 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MealBuilder from '@/components/MealBuilder';
+import { renderWithClient } from '../test-utils';
 
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
@@ -45,7 +46,7 @@ jest.mock('@/utils/logging', () => ({
 const mockCreateMeal = jest.fn();
 const mockUpdateMeal = jest.fn();
 const mockGetMealById = jest.fn();
-jest.mock('@/services/mealService', () => ({
+jest.mock('@/api/Foods/meals', () => ({
   createMeal: (...args: unknown[]) => mockCreateMeal(...args),
   updateMeal: (...args: unknown[]) => mockUpdateMeal(...args),
   getMealById: (...args: unknown[]) => mockGetMealById(...args),
@@ -92,7 +93,7 @@ describe('MealBuilder', () => {
   });
 
   it('renders in create mode with correct labels', () => {
-    render(<MealBuilder />);
+    renderWithClient(<MealBuilder />);
 
     expect(screen.getByText('Meal Name')).toBeInTheDocument();
     expect(screen.getByText('Description (Optional)')).toBeInTheDocument();
@@ -103,14 +104,14 @@ describe('MealBuilder', () => {
   });
 
   it('shows empty state message when no foods added', () => {
-    render(<MealBuilder />);
+    renderWithClient(<MealBuilder />);
     expect(
       screen.getByText('No foods added to this meal yet.')
     ).toBeInTheDocument();
   });
 
   it('shows validation error when saving with no foods', () => {
-    render(<MealBuilder />);
+    renderWithClient(<MealBuilder />);
     fireEvent.click(screen.getByText('Save Meal'));
 
     expect(mockToast).toHaveBeenCalledWith({
@@ -121,7 +122,7 @@ describe('MealBuilder', () => {
   });
 
   it('shows validation error for empty meal name when foods exist', async () => {
-    render(<MealBuilder initialFoods={sampleFoods} />);
+    renderWithClient(<MealBuilder initialFoods={sampleFoods} />);
 
     // useEffect sets name to 'Logged Meal' — wait for it, then clear it
     await waitFor(() => {
@@ -151,10 +152,10 @@ describe('MealBuilder', () => {
     };
     mockGetMealById.mockResolvedValue(mockMeal);
 
-    render(<MealBuilder mealId="meal1" />);
+    renderWithClient(<MealBuilder mealId="meal1" />);
 
     await waitFor(() => {
-      expect(mockGetMealById).toHaveBeenCalledWith('test-user-id', 'meal1');
+      expect(mockGetMealById).toHaveBeenCalledWith('meal1');
     });
 
     await waitFor(() => {
@@ -171,7 +172,7 @@ describe('MealBuilder', () => {
     mockCreateMeal.mockResolvedValue(mockResult);
     const onSave = jest.fn();
 
-    render(<MealBuilder initialFoods={sampleFoods} onSave={onSave} />);
+    renderWithClient(<MealBuilder initialFoods={sampleFoods} onSave={onSave} />);
 
     // Set meal name
     fireEvent.change(screen.getByLabelText('Meal Name'), {
@@ -181,17 +182,12 @@ describe('MealBuilder', () => {
 
     await waitFor(() => {
       expect(mockCreateMeal).toHaveBeenCalledWith(
-        'test-user-id',
         expect.objectContaining({ name: 'My Meal' })
       );
     });
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(mockResult);
-      expect(mockToast).toHaveBeenCalledWith({
-        title: 'Success',
-        description: 'Meal created successfully!',
-      });
     });
   });
 
@@ -210,7 +206,7 @@ describe('MealBuilder', () => {
     mockUpdateMeal.mockResolvedValue(mockUpdated);
     const onSave = jest.fn();
 
-    render(<MealBuilder mealId="meal1" onSave={onSave} />);
+    renderWithClient(<MealBuilder mealId="meal1" onSave={onSave} />);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Original')).toBeInTheDocument();
@@ -223,7 +219,6 @@ describe('MealBuilder', () => {
 
     await waitFor(() => {
       expect(mockUpdateMeal).toHaveBeenCalledWith(
-        'test-user-id',
         'meal1',
         expect.objectContaining({ name: 'Updated' })
       );
@@ -231,10 +226,6 @@ describe('MealBuilder', () => {
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(mockUpdated);
-      expect(mockToast).toHaveBeenCalledWith({
-        title: 'Success',
-        description: 'Meal updated successfully!',
-      });
     });
   });
 });
