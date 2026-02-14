@@ -12,6 +12,7 @@ import {
 import { Plus, Download, Upload, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { Textarea } from '@/components/ui/textarea';
 
 interface ImportFromCSVProps {
   onSave: (foodData: Omit<CSVData, 'id'>[]) => Promise<void>;
@@ -81,6 +82,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   const [loading, setLoading] = useState(false);
   const [csvData, setCsvData] = useState<CSVData[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
+  const [csvText, setCsvText] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const textFields = new Set(['name', 'brand']);
@@ -147,6 +149,43 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       data.push(row);
     }
     return data;
+  };
+
+  const handleTextImport = () => {
+    if (!csvText || csvText.trim() === '') {
+      toast({
+        title: 'Import Error',
+        description: 'Please paste some CSV data first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const lines = csvText.split('\n');
+    const fileHeaders = lines[0].split(',').map((h) => h.trim());
+    const areHeadersValid =
+      requiredHeaders.length === fileHeaders.length &&
+      requiredHeaders.every((value, index) => value === fileHeaders[index]);
+
+    if (!areHeadersValid) {
+      toast({
+        title: 'Invalid CSV Format',
+        description: 'Headers do not match required format. Use the template.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const parsedData = parseCSV(csvText);
+    if (parsedData.length > 0) {
+      setHeaders(Object.keys(parsedData[0]).filter((key) => key !== 'id'));
+      setCsvData(parsedData);
+      setCsvText(''); // Feld leeren nach Erfolg
+      toast({
+        title: 'Success',
+        description: `Loaded ${parsedData.length} rows from text.`,
+      });
+    }
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -377,6 +416,22 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                 </Button>
               )}
             </div>
+            <div className="flex gap-2 items-center">
+              <Textarea
+                placeholder="Or paste CSV content here..."
+                value={csvText}
+                onChange={(e) => setCsvText(e.target.value)}
+                className="min-h-[80px]"
+              />
+              <Button
+                type="button"
+                onClick={handleTextImport}
+                variant="secondary"
+                className="whitespace-nowrap h-[40px]"
+              >
+                Parse Text
+              </Button>
+            </div>
             <input
               ref={fileInputRef}
               type="file"
@@ -535,7 +590,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
           <Button
             type="submit"
             disabled={loading || csvData.length === 0}
-            className="w-full flex items-center justify-center gap-2"
+            className="w-52 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -545,7 +600,9 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
             ) : (
               <>
                 <Upload size={16} /> Import
-                {csvData.length > 0 ? `${csvData.length} Records` : 'Data'}
+                {csvData.length > 0
+                  ? ` ${csvData.length}  ${csvData.length === 1 ? 'Record' : 'Records'} `
+                  : ' Data'}
               </>
             )}
           </Button>
