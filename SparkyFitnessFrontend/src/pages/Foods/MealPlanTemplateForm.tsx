@@ -545,7 +545,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                                 return (
                                   <div
                                     key={idx}
-                                    className="flex flex-col p-3 border rounded-md space-y-2 bg-white"
+                                    className="flex flex-col p-3 border rounded-md space-y-2 bg-gray-50 dark:bg-gray-800"
                                   >
                                     <div className="flex items-center justify-between">
                                       <span className="font-medium">
