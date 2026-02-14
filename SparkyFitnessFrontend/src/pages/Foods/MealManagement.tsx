@@ -80,21 +80,9 @@ const MealManagement: React.FC = () => {
 
   const handleDeleteMeal = async (mealId: string, force: boolean = false) => {
     try {
-      const result = await deleteMeal({ mealId, force });
-      toast({
-        title: t('common.success', 'Success'),
-        description: result.message,
-      });
+      await deleteMeal({ mealId, force });
     } catch (err) {
       error(loggingLevel, 'Failed to delete meal:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t('mealManagement.failedToDeleteMeal', {
-          errorMessage: err instanceof Error ? err.message : String(err),
-          defaultValue: `Failed to delete meal: ${err instanceof Error ? err.message : String(err)}`,
-        }),
-        variant: 'destructive',
-      });
     } finally {
       setMealToDelete(null);
       setDeletionImpact(null);
@@ -110,27 +98,12 @@ const MealManagement: React.FC = () => {
       setMealToDelete(mealId);
     } catch (err) {
       error(loggingLevel, 'Failed to get meal deletion impact:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'mealManagement.couldNotCheckMealUsage',
-          'Could not check meal usage.'
-        ),
-        variant: 'destructive',
-      });
     }
   };
 
   const handleMealSave = (meal: Meal) => {
     setShowMealBuilderDialog(false);
     queryClient.invalidateQueries({ queryKey: mealKeys.all });
-    toast({
-      title: t('common.success', 'Success'),
-      description: t('mealManagement.mealSavedSuccessfully', {
-        mealName: meal.name,
-        defaultValue: `Meal "${meal.name}" saved successfully.`,
-      }),
-    });
   };
 
   const handleMealCancel = () => {
@@ -144,14 +117,6 @@ const MealManagement: React.FC = () => {
       setViewingMeal(fullMeal);
     } catch (err) {
       error(loggingLevel, 'Failed to fetch meal details:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'mealManagement.couldNotLoadMealDetails',
-          'Could not load meal details.'
-        ),
-        variant: 'destructive',
-      });
     }
   };
 
@@ -183,23 +148,8 @@ const MealManagement: React.FC = () => {
           })) || [],
       };
       await updateMeal({ mealId, mealPayload });
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'mealManagement.mealSharedPublicly',
-          'Meal shared publicly.'
-        ),
-      });
     } catch (err) {
       error(loggingLevel, 'Failed to share meal:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t('mealManagement.failedToShareMeal', {
-          errorMessage: err instanceof Error ? err.message : String(err),
-          defaultValue: `Failed to share meal: ${err instanceof Error ? err.message : String(err)}`,
-        }),
-        variant: 'destructive',
-      });
     }
   };
 
@@ -231,20 +181,8 @@ const MealManagement: React.FC = () => {
           })) || [],
       };
       await updateMeal({ mealId, mealPayload });
-      toast({
-        title: t('common.success', 'Success'),
-        description: t('mealManagement.mealUnshared', 'Meal unshared.'),
-      });
     } catch (err) {
       error(loggingLevel, 'Failed to unshare meal:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t('mealManagement.failedToUnshareMeal', {
-          errorMessage: err instanceof Error ? err.message : String(err),
-          defaultValue: `Failed to unshare meal: ${err instanceof Error ? err.message : String(err)}`,
-        }),
-        variant: 'destructive',
-      });
     }
   };
 

@@ -11,7 +11,6 @@ export const useCustomNutrients = () => {
     queryKey: customNutrientsKeys.all,
     queryFn: () => customNutrientService.getCustomNutrients(),
     meta: {
-      errorTitle: t('common.error', 'Error'),
       errorMessage: t(
         'customNutrients.failedToLoadNutrients',
         'Failed to load custom Nutrients.'
@@ -28,6 +27,10 @@ export const useCreateCustomNutrientMutation = () => {
       return queryClient.invalidateQueries({
         queryKey: customNutrientsKeys.all,
       });
+    },
+    meta: {
+      errorMessage: 'Failed to add custom nutrient.',
+      successMessage: 'Custom nutrient added successfully.',
     },
   });
 };
@@ -51,6 +54,10 @@ export const useUpdateCustomNutrientMutation = () => {
         queryKey: customNutrientsKeys.all,
       });
     },
+    meta: {
+      errorMessage: 'Failed to update custom nutrient.',
+      successMessage: 'Custom nutrient updated successfully.',
+    },
   });
 };
 
@@ -63,6 +70,10 @@ export const useDeleteCustomNutrientMutation = () => {
       return queryClient.invalidateQueries({
         queryKey: customNutrientsKeys.all,
       });
+    },
+    meta: {
+      errorMessage: 'Failed to delete custom nutrient.',
+      successMessage: 'Custom nutrient deleted successfully.',
     },
   });
 };

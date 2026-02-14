@@ -668,14 +668,6 @@ const EnhancedCustomFoodForm = ({
         userId: user.id,
         foodId: food?.id,
       });
-
-      toast({
-        title: 'Success',
-        description: `Food ${
-          food && food.id ? 'updated' : 'saved'
-        } successfully with ${variants.length} unit variant(s)`,
-      });
-
       if (food?.id && user?.id === food.user_id) {
         setSyncFoodId(savedFood.id);
         setShowSyncConfirmation(true);
@@ -757,11 +749,6 @@ const EnhancedCustomFoodForm = ({
       onSave(savedFood);
     } catch (error) {
       console.error('Error saving food:', error);
-      toast({
-        title: 'Error',
-        description: `Failed to ${food && food.id ? 'update' : 'save'} food`,
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
     }
@@ -778,16 +765,8 @@ const EnhancedCustomFoodForm = ({
     if (syncFoodId) {
       try {
         await updateFoodEntriesSnapshot(syncFoodId);
-        toast({
-          title: 'Success',
-          description: 'Past diary entries have been updated.',
-        });
       } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to update past diary entries.',
-          variant: 'destructive',
-        });
+        // The toast will be handled by the QueryClient's mutationCache
       }
     }
     setShowSyncConfirmation(false);

@@ -52,7 +52,7 @@ import {
   useCreateFoodMutation,
   useDeleteFoodMutation,
   useFoods,
-  useToogleFoodPublicMutation,
+  useToggleFoodPublicMutation,
 } from '@/hooks/Foods/useFoods';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -120,8 +120,8 @@ const FoodDatabaseManager: React.FC = () => {
   const [foodFilter, setFoodFilter] = useState<FoodFilter>('all');
   const [sortOrder, setSortOrder] = useState<string>('name:asc');
   const [showFoodUnitSelectorDialog, setShowFoodUnitSelectorDialog] =
-    useState(false); // New state
-  const [foodToAddToMeal, setFoodToAddToMeal] = useState<Food | null>(null); // New state
+    useState(false);
+  const [foodToAddToMeal, setFoodToAddToMeal] = useState<Food | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deletionImpact, setDeletionImpact] =
     useState<FoodDeletionImpact | null>(null);
@@ -135,76 +135,28 @@ const FoodDatabaseManager: React.FC = () => {
     itemsPerPage,
     sortOrder
   );
-  const { mutateAsync: togglePublicSharing } = useToogleFoodPublicMutation();
+  const { mutate: togglePublicSharing } = useToggleFoodPublicMutation();
   const { mutateAsync: deleteFood } = useDeleteFoodMutation();
   const { mutateAsync: createFoodEntry } = useCreateFoodMutation();
 
-  const handleShareFood = async (foodId: string, currentState: boolean) => {
-    try {
-      await togglePublicSharing({ foodId, currentState });
-
-      toast({
-        title: t('common.success', 'Success'),
-        description: !currentState
-          ? t(
-              'foodDatabaseManager.foodSharedWithPublic',
-              'Food shared with public'
-            )
-          : t('foodDatabaseManager.foodMadePrivate', 'Food made private'),
-      });
-    } catch (error: any) {
-      console.error('Error:', error);
-    }
-  };
-
   const handleDeleteRequest = async (food: Food) => {
     if (!user || !activeUserId) return;
-    try {
-      const impact = await queryClient.fetchQuery(
-        foodDeletionImpactOptions(food.id)
-      );
+    const impact = await queryClient.fetchQuery(
+      foodDeletionImpactOptions(food.id)
+    );
 
-      setDeletionImpact(impact);
-      setFoodToDelete(food);
-      setShowDeleteConfirmation(true);
-    } catch (error: any) {
-      console.error('Error fetching deletion impact:', error);
-      toast({
-        title: t('common.error', 'Error'),
-        description:
-          error.message ||
-          t(
-            'foodDatabaseManager.failedToFetchDeletionImpact',
-            'Could not fetch deletion impact. Please try again.'
-          ),
-        variant: 'destructive',
-      });
-    }
+    setDeletionImpact(impact);
+    setFoodToDelete(food);
+    setShowDeleteConfirmation(true);
   };
 
   const confirmDelete = async (force: boolean = false) => {
     if (!foodToDelete || !activeUserId) return;
     info(loggingLevel, `confirmDelete called with force: ${force}`);
-    try {
-      const result = await deleteFood({ foodId: foodToDelete.id, force });
-      toast({
-        title: t('common.success', 'Success'),
-        description: result.message,
-      });
-    } catch (error: any) {
-      console.error('Error deleting food:', error);
-      toast({
-        title: t('common.error', 'Error'),
-        description:
-          error.message ||
-          t('foodDatabaseManager.failedToDeleteFood', 'Failed to delete food.'),
-        variant: 'destructive',
-      });
-    } finally {
-      setShowDeleteConfirmation(false);
-      setFoodToDelete(null);
-      setDeletionImpact(null);
-    }
+    await deleteFood({ foodId: foodToDelete.id, force });
+    setShowDeleteConfirmation(false);
+    setFoodToDelete(null);
+    setDeletionImpact(null);
   };
 
   const handleEdit = (food: Food) => {
@@ -219,13 +171,6 @@ const FoodDatabaseManager: React.FC = () => {
 
   const handleFoodSelected = (food: Food) => {
     setShowFoodSearchDialog(false);
-    toast({
-      title: t('foodDatabaseManager.foodAdded', 'Food Added'),
-      description: t('foodDatabaseManager.foodAddedSuccess', {
-        foodName: food.name,
-        defaultValue: `${food.name} has been added to your database.`,
-      }),
-    });
   };
 
   const handleAddFoodToMeal = async (
@@ -246,38 +191,19 @@ const FoodDatabaseManager: React.FC = () => {
       return;
     }
 
-    try {
-      await createFoodEntry({
-        foodData: {
-          food_id: food.id!,
-          meal_type: 'breakfast', // Default to breakfast for now, or make dynamic
-          quantity: quantity,
-          unit: unit,
-          entry_date: new Date().toISOString().split('T')[0], // Current date
-          variant_id: selectedVariant.id || null,
-        },
-      });
+    await createFoodEntry({
+      foodData: {
+        food_id: food.id!,
+        meal_type: 'breakfast', // Default to breakfast for now, or make dynamic
+        quantity: quantity,
+        unit: unit,
+        entry_date: new Date().toISOString().split('T')[0], // Current date
+        variant_id: selectedVariant.id || null,
+      },
+    });
 
-      toast({
-        title: t('common.success', 'Success'),
-        description: t('foodDatabaseManager.foodAddedToMealSuccess', {
-          foodName: food.name,
-          defaultValue: `${food.name} has been added to your meal.`,
-        }),
-      });
-      setShowFoodUnitSelectorDialog(false);
-      setFoodToAddToMeal(null);
-    } catch (error: any) {
-      console.error('Error adding food to meal:', error);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t('foodDatabaseManager.failedToAddFoodToMeal', {
-          foodName: food.name,
-          defaultValue: `Failed to add ${food.name} to meal.`,
-        }),
-        variant: 'destructive',
-      });
-    }
+    setShowFoodUnitSelectorDialog(false);
+    setFoodToAddToMeal(null);
   };
 
   const handlePageChange = (page: number) => {
@@ -545,10 +471,11 @@ const FoodDatabaseManager: React.FC = () => {
                                   size="sm"
                                   variant="ghost"
                                   onClick={() =>
-                                    handleShareFood(
-                                      food.id,
-                                      food.shared_with_public || false
-                                    )
+                                    togglePublicSharing({
+                                      foodId: food.id,
+                                      currentState:
+                                        food.shared_with_public || false,
+                                    })
                                   }
                                   disabled={!canEdit(food)} // Disable if not editable
                                 >

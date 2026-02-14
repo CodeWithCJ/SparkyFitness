@@ -353,11 +353,6 @@ const Reports = () => {
           moodEntriesResult.reason
         );
         setMoodData([]); // Ensure moodData is always an array
-        toast({
-          title: 'Mood Data Error',
-          description: 'Failed to load mood entries.',
-          variant: 'destructive',
-        });
       }
 
       if (fastingDataResult.status === 'fulfilled') {
@@ -374,14 +369,6 @@ const Reports = () => {
       info(loggingLevel, 'Reports: Reports loaded successfully.');
     } catch (error) {
       error(loggingLevel, 'Reports: Error loading reports:', error);
-      toast({
-        title: t('reports.errorToastTitle', 'Error'),
-        description: t(
-          'reports.errorLoadingReports',
-          'Failed to load reports.'
-        ),
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
       debug(loggingLevel, 'Reports: Loading state set to false.');

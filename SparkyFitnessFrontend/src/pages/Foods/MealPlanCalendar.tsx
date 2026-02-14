@@ -65,10 +65,6 @@ const MealPlanCalendar: React.FC = () => {
           'MealPlanCalendar: Updating template in state:',
           updatedTemplate
         ); // Use debug
-        toast({
-          title: t('common.success'),
-          description: t('mealPlanCalendar.updateSuccess'),
-        });
       } else {
         const newTemplate = await createMealPlanTemplate({
           userId: activeUserId,
@@ -80,19 +76,11 @@ const MealPlanCalendar: React.FC = () => {
           'MealPlanCalendar: Adding new template to state:',
           newTemplate
         ); // Use debug
-        toast({
-          title: t('common.success'),
-          description: t('mealPlanCalendar.createSuccess'),
-        });
       }
       setIsFormOpen(false);
       window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
     } catch (error) {
-      toast({
-        title: t('common.error'),
-        description: t('mealPlanCalendar.saveTemplateError'),
-        variant: 'destructive',
-      });
+      // The toast will be handled by the QueryClient's mutationCache
     }
   };
 
@@ -104,16 +92,8 @@ const MealPlanCalendar: React.FC = () => {
       return;
     try {
       await deleteMealPlanTemplate({ userId: activeUserId, templateId });
-      toast({
-        title: t('common.success'),
-        description: t('mealPlanCalendar.deleteSuccess'),
-      });
     } catch (error) {
-      toast({
-        title: t('common.error'),
-        description: t('mealPlanCalendar.deleteTemplateError'),
-        variant: 'destructive',
-      });
+      // The toast will be handled by the QueryClient's mutationCache
     }
   };
 
@@ -139,18 +119,8 @@ const MealPlanCalendar: React.FC = () => {
         templateData: { ...templateToUpdate, is_active: isActive },
         currentClientDate,
       });
-      toast({
-        title: t('common.success'),
-        description: t('mealPlanCalendar.toggleStatusSuccess', {
-          status: isActive ? 'activated' : 'deactivated',
-        }),
-      });
     } catch (error) {
-      toast({
-        title: t('common.error'),
-        description: t('mealPlanCalendar.toggleStatusError'),
-        variant: 'destructive',
-      });
+      // The toast will be handled by the QueryClient's mutationCache
     }
   };
 

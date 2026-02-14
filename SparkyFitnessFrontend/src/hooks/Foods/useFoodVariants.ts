@@ -10,6 +10,9 @@ export const foodVariantsOptions = (foodId: string) => ({
   queryKey: foodVariantKeys.byFood(foodId),
   queryFn: () => loadFoodVariants(foodId),
   enabled: !!foodId,
+  meta: {
+    errorMessage: 'Failed to load food variants.',
+  },
 });
 
 export const useSaveFoodMutation = () => {
@@ -32,6 +35,10 @@ export const useSaveFoodMutation = () => {
       queryClient.invalidateQueries({
         queryKey: foodKeys.all,
       });
+    },
+    meta: {
+      errorMessage: 'Failed to save custom nutrient.',
+      successMessage: 'Food saved successfully.',
     },
   });
 };

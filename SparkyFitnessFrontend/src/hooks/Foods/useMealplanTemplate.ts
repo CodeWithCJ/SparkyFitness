@@ -26,6 +26,7 @@ export const useMealPlanTemplates = (userId: string) => {
 };
 export const useCreateMealPlanMutation = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: ({
       userId,
@@ -41,10 +42,21 @@ export const useCreateMealPlanMutation = () => {
         queryKey: mealPlanKeys.all(variables.userId),
       });
     },
+    meta: {
+      errorMessage: t(
+        'mealManagement.failedToCreateMealPlan',
+        'Failed to create meal plan.'
+      ),
+      successMessage: t(
+        'mealManagement.mealPlanCreatedSuccessfully',
+        'Meal plan created successfully.'
+      ),
+    },
   });
 };
 export const useUpdateMealPlanMutation = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: ({
       userId,
@@ -66,10 +78,21 @@ export const useUpdateMealPlanMutation = () => {
         queryKey: mealPlanKeys.all(variables.userId),
       });
     },
+    meta: {
+      errorMessage: t(
+        'mealManagement.failedToUpdateMealPlan',
+        'Failed to update meal plan.'
+      ),
+      successMessage: t(
+        'mealManagement.mealPlanUpdatedSuccessfully',
+        'Meal plan updated successfully.'
+      ),
+    },
   });
 };
 export const useDeleteMealPlanMutation = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: ({
       userId,
@@ -82,6 +105,16 @@ export const useDeleteMealPlanMutation = () => {
       return queryClient.invalidateQueries({
         queryKey: mealPlanKeys.all(variables.userId),
       });
+    },
+    meta: {
+      errorMessage: t(
+        'mealManagement.failedToDeleteMealPlan',
+        'Failed to delete meal plan.'
+      ),
+      successMessage: t(
+        'mealManagement.mealPlanDeletedSuccessfully',
+        'Meal plan deleted successfully.'
+      ),
     },
   });
 };

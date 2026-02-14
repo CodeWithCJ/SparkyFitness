@@ -13,6 +13,9 @@ export const searchNutritionixOptions = (
   queryKey: nutritionixKeys.search(query, providerId),
   queryFn: () => searchNutritionixFoods(query, providerId),
   enabled: !!query && !!providerId,
+  meta: {
+    errorMessage: 'Failed to search Nutritionix foods.',
+  },
 });
 
 export const nutritionixNaturalNutrientsOptions = (
@@ -22,6 +25,9 @@ export const nutritionixNaturalNutrientsOptions = (
   queryKey: nutritionixKeys.naturalNutrients(query, providerId),
   queryFn: () => getNutritionixNutrients(query, providerId),
   enabled: !!query && !!providerId,
+  meta: {
+    errorMessage: 'Failed to load Nutritionix natural nutrients.',
+  },
 });
 
 export const nutritionixBrandedNutrientsOptions = (
@@ -31,4 +37,7 @@ export const nutritionixBrandedNutrientsOptions = (
   queryKey: nutritionixKeys.brandedNutrients(nixItemId, providerId),
   queryFn: () => getNutritionixBrandedNutrients(nixItemId, providerId),
   enabled: !!nixItemId && !!providerId,
+  meta: {
+    errorMessage: 'Failed to load Nutritionix branded nutrients.',
+  },
 });

@@ -341,34 +341,12 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         let resultMeal: Meal;
         if (mealId) {
           resultMeal = await updateMeal({ mealId, mealPayload: mealData });
-          toast({
-            title: t('mealBuilder.successTitle', 'Success'),
-            description: t(
-              'mealBuilder.mealUpdatedSuccess',
-              'Meal updated successfully!'
-            ),
-          });
         } else {
           resultMeal = await createMeal({ mealPayload: mealData });
-          toast({
-            title: t('mealBuilder.successTitle', 'Success'),
-            description: t(
-              'mealBuilder.mealCreatedSuccess',
-              'Meal created successfully!'
-            ),
-          });
         }
         onSave?.(resultMeal);
       } catch (err) {
         error(loggingLevel, 'Error saving meal:', err);
-        toast({
-          title: t('mealBuilder.errorTitle', 'Error'),
-          description: t('mealBuilder.saveMealError', {
-            error: err instanceof Error ? err.message : String(err),
-            defaultValue: `Failed to save meal: ${err instanceof Error ? err.message : String(err)}`,
-          }),
-          variant: 'destructive',
-        });
       }
     } else if (source === 'food-diary') {
       if (!foodEntryDate || !foodEntryMealType || !activeUserId) {

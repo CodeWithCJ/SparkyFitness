@@ -48,7 +48,7 @@ import {
   searchMealieOptions,
   searchTandoorOptions,
 } from '@/hooks/Foods/useFoods.ts';
-import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients.tsx';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients.ts';
 import {
   fatSecretNutrientOptions,
   searchFatSecretOptions,

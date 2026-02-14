@@ -33,16 +33,23 @@ export const mealDeletionImpactOptions = (mealId: string) => ({
   queryFn: () => getMealDeletionImpact(mealId),
   staleTime: 1000 * 10,
   enabled: !!mealId,
+  meta: {
+    errorMessage: 'Failed to load meal deletion impact.',
+  },
 });
 export const mealViewOptions = (mealId: string) => ({
   queryKey: mealKeys.one(mealId),
   queryFn: () => getMealById(mealId),
   staleTime: 1000 * 10,
   enabled: !!mealId,
+  meta: {
+    errorMessage: 'Failed to load meal details.',
+  },
 });
 
 export const useDeleteMealMutation = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: ({
       mealId,
@@ -56,10 +63,21 @@ export const useDeleteMealMutation = () => {
         queryKey: mealKeys.all,
       });
     },
+    meta: {
+      errorMessage: t(
+        'mealManagement.failedToDeleteMeal',
+        'Failed to delete meal.'
+      ),
+      successMessage: t(
+        'mealManagement.mealDeletedSuccessfully',
+        'Meal deleted successfully.'
+      ),
+    },
   });
 };
 export const useUpdateMealMutation = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: ({
       mealId,
@@ -73,10 +91,21 @@ export const useUpdateMealMutation = () => {
         queryKey: mealKeys.all,
       });
     },
+    meta: {
+      errorMessage: t(
+        'mealManagement.failedToUpdateMeal',
+        'Failed to update meal.'
+      ),
+      successMessage: t(
+        'mealManagement.mealUpdatedSuccessfully',
+        'Meal updated successfully.'
+      ),
+    },
   });
 };
 export const useCreateMealMutation = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: ({ mealPayload }: { mealPayload: MealPayload }) =>
       createMeal(mealPayload),
@@ -84,6 +113,16 @@ export const useCreateMealMutation = () => {
       return queryClient.invalidateQueries({
         queryKey: mealKeys.all,
       });
+    },
+    meta: {
+      errorMessage: t(
+        'mealManagement.failedToCreateMeal',
+        'Failed to create meal.'
+      ),
+      successMessage: t(
+        'mealManagement.mealCreatedSuccessfully',
+        'Meal created successfully.'
+      ),
     },
   });
 };

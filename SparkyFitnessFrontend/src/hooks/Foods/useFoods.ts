@@ -21,6 +21,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 
 export const useFoods = (
   searchTerm: string,
@@ -43,7 +44,6 @@ export const useFoods = (
       loadFoods(searchTerm, foodFilter, currentPage, itemsPerPage, sortOrder),
     placeholderData: keepPreviousData,
     meta: {
-      errorTitle: t('common.error', 'Error'),
       errorMessage: t(
         'mealManagement.failedToLoadMeals',
         'Failed to load meals.'
@@ -51,8 +51,9 @@ export const useFoods = (
     },
   });
 };
-export const useToogleFoodPublicMutation = () => {
+export const useToggleFoodPublicMutation = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: ({
       foodId,
@@ -66,6 +67,21 @@ export const useToogleFoodPublicMutation = () => {
         queryKey: foodKeys.all,
       });
     },
+    meta: {
+      errorMessage: t(
+        'foodDatabaseManager.failedToUpdateSharing',
+        'Failed to update sharing status.'
+      ),
+      successMessage: (_data, variables) => {
+        const typedVars = variables as { food: string; currentState: boolean };
+        return !typedVars.currentState
+          ? t(
+              'foodDatabaseManager.foodSharedWithPublic',
+              'Food shared with public'
+            )
+          : t('foodDatabaseManager.foodMadePrivate', 'Food made private');
+      },
+    },
   });
 };
 export const foodDeletionImpactOptions = (foodId: string) => ({
@@ -73,6 +89,12 @@ export const foodDeletionImpactOptions = (foodId: string) => ({
   queryFn: () => getFoodDeletionImpact(foodId),
   staleTime: 1000 * 10,
   enabled: !!foodId,
+  meta: {
+    errorMessage: i18n.t(
+      'foodDatabaseManager.failedToFetchDeletionImpact',
+      'Could not fetch deletion impact. Please try again.'
+    ),
+  },
 });
 
 export const foodViewOptions = (foodId: string) => ({
@@ -80,7 +102,14 @@ export const foodViewOptions = (foodId: string) => ({
   queryFn: () => getFoodById(foodId),
   staleTime: 1000 * 10,
   enabled: !!foodId,
+  meta: {
+    errorMessage: i18n.t(
+      'foodDatabaseManager.failedToLoadFoodDetails',
+      'Failed to load food details.'
+    ),
+  },
 });
+
 export const searchMealieOptions = (
   query: string,
   baseUrl: string,
@@ -90,7 +119,14 @@ export const searchMealieOptions = (
   queryKey: providerKeys.one(query, providerId),
   queryFn: () => searchMealieFoods(query, baseUrl, apiKey, providerId),
   staleTime: 1000 * 10,
+  meta: {
+    errorMessage: i18n.t(
+      'foodDatabaseManager.failedToSearchMealie',
+      'Failed to search Mealie foods.'
+    ),
+  },
 });
+
 export const searchTandoorOptions = (
   query: string,
   baseUrl: string,
@@ -100,9 +136,17 @@ export const searchTandoorOptions = (
   queryKey: providerKeys.one(query, providerId),
   queryFn: () => searchTandoorFoods(query, baseUrl, apiKey, providerId),
   staleTime: 1000 * 10,
+  meta: {
+    errorMessage: i18n.t(
+      'foodDatabaseManager.failedToSearchTandoor',
+      'Failed to search Tandoor foods.'
+    ),
+  },
 });
+
 export const useDeleteFoodMutation = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: ({
       foodId,
@@ -116,10 +160,19 @@ export const useDeleteFoodMutation = () => {
         queryKey: foodKeys.all,
       });
     },
+    meta: {
+      errorMessage: t(
+        'foodDatabaseManager.failedToDeleteFood',
+        'Failed to delete food.'
+      ),
+
+      successMessage: 'Food deleted successfully.',
+    },
   });
 };
 export const useCreateFoodMutation = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: ({ foodData }: { foodData: FoodEntryCreateData }) =>
       createFoodEntry(foodData),
@@ -128,16 +181,38 @@ export const useCreateFoodMutation = () => {
         queryKey: foodKeys.all,
       });
     },
+    meta: {
+      errorMessage: t(
+        'foodDatabaseManager.failedToAddFood',
+        'Failed to add food.'
+      ),
+      successMessage: t(
+        'foodDatabaseManager.foodAddedSuccessfully',
+        'Food added successfully.'
+      ),
+    },
   });
 };
+
 export const useUpdateFoodEntriesSnapshotMutation = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: (syncFoodId: string) => updateFoodEntriesSnapshot(syncFoodId),
     onSuccess: () => {
       return queryClient.invalidateQueries({
         queryKey: foodKeys.all,
       });
+    },
+    meta: {
+      errorMessage: t(
+        'foodDatabaseManager.failedToUpdateFoodSnapshot',
+        'Failed to update food entries snapshot.'
+      ),
+      successMessage: t(
+        'foodDatabaseManager.foodSnapshotUpdatedSuccessfully',
+        'Food entries snapshot updated successfully.'
+      ),
     },
   });
 };
