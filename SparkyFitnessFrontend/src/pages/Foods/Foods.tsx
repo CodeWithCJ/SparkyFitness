@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,17 +43,18 @@ import { info } from '@/utils/logging';
 import EnhancedCustomFoodForm from '@/components/EnhancedCustomFoodForm';
 import FoodSearchDialog from '@/components/FoodSearchDialog';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
-import {
-  loadFoods,
-  togglePublicSharing,
-  deleteFood as deleteFoodService,
-  getFoodDeletionImpact,
-  type FoodFilter,
-} from '@/services/foodService';
-import { createFoodEntry } from '@/services/foodEntryService';
+import { type FoodFilter } from '@/api/Foods/foodService';
 import type { Food, FoodVariant, FoodDeletionImpact } from '@/types/food';
 import MealManagement from './MealManagement';
 import MealPlanCalendar from './MealPlanCalendar';
+import {
+  foodDeletionImpactOptions,
+  useCreateFoodMutation,
+  useDeleteFoodMutation,
+  useFoods,
+  useToggleFoodPublicMutation,
+} from '@/hooks/Foods/useFoods';
+import { useQueryClient } from '@tanstack/react-query';
 
 const FoodDatabaseManager: React.FC = () => {
   const { t } = useTranslation();
@@ -110,140 +111,52 @@ const FoodDatabaseManager: React.FC = () => {
     ? quickInfoPreferences.visible_nutrients
     : ['calories', 'protein', 'carbs', 'fat'];
 
-  const [foods, setFoods] = useState<Food[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingFood, setEditingFood] = useState<Food | null>(null);
-  const [loading, setLoading] = useState(true);
   const [showFoodSearchDialog, setShowFoodSearchDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const [foodFilter, setFoodFilter] = useState<FoodFilter>('all');
   const [sortOrder, setSortOrder] = useState<string>('name:asc');
   const [showFoodUnitSelectorDialog, setShowFoodUnitSelectorDialog] =
-    useState(false); // New state
-  const [foodToAddToMeal, setFoodToAddToMeal] = useState<Food | null>(null); // New state
+    useState(false);
+  const [foodToAddToMeal, setFoodToAddToMeal] = useState<Food | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deletionImpact, setDeletionImpact] =
     useState<FoodDeletionImpact | null>(null);
   const [foodToDelete, setFoodToDelete] = useState<Food | null>(null);
 
-  useEffect(() => {
-    if (user && activeUserId) {
-      // Always fetch foods when user and activeUserId are available
-      fetchFoodsData();
-    }
-  }, [
-    user,
-    activeUserId,
+  const queryClient = useQueryClient();
+  const { data: foodData, isLoading: loading } = useFoods(
     searchTerm,
+    foodFilter,
     currentPage,
     itemsPerPage,
-    foodFilter,
-    sortOrder,
-  ]); // Removed activeTab from dependencies
-
-  useEffect(() => {
-    const handleRefresh = () => fetchFoodsData();
-    window.addEventListener('foodDatabaseRefresh', handleRefresh);
-    return () => {
-      window.removeEventListener('foodDatabaseRefresh', handleRefresh);
-    };
-  }, []);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, itemsPerPage, foodFilter]);
-
-  const fetchFoodsData = async () => {
-    try {
-      setLoading(true);
-
-      const { foods: fetchedFoods, totalCount: fetchedTotalCount } =
-        await loadFoods(
-          searchTerm,
-          foodFilter,
-          currentPage,
-          itemsPerPage,
-          sortOrder // Pass the new sortOrder
-        );
-      setFoods(fetchedFoods || []);
-      setTotalCount(fetchedTotalCount || 0);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleShareFood = async (foodId: string, currentState: boolean) => {
-    try {
-      await togglePublicSharing(foodId, currentState);
-
-      toast({
-        title: t('common.success', 'Success'),
-        description: !currentState
-          ? t(
-              'foodDatabaseManager.foodSharedWithPublic',
-              'Food shared with public'
-            )
-          : t('foodDatabaseManager.foodMadePrivate', 'Food made private'),
-      });
-
-      fetchFoodsData();
-    } catch (error: any) {
-      console.error('Error:', error);
-    }
-  };
+    sortOrder
+  );
+  const { mutate: togglePublicSharing } = useToggleFoodPublicMutation();
+  const { mutateAsync: deleteFood } = useDeleteFoodMutation();
+  const { mutateAsync: createFoodEntry } = useCreateFoodMutation();
 
   const handleDeleteRequest = async (food: Food) => {
     if (!user || !activeUserId) return;
-    try {
-      const impact = await getFoodDeletionImpact(food.id);
-      setDeletionImpact(impact);
-      setFoodToDelete(food);
-      setShowDeleteConfirmation(true);
-    } catch (error: any) {
-      console.error('Error fetching deletion impact:', error);
-      toast({
-        title: t('common.error', 'Error'),
-        description:
-          error.message ||
-          t(
-            'foodDatabaseManager.failedToFetchDeletionImpact',
-            'Could not fetch deletion impact. Please try again.'
-          ),
-        variant: 'destructive',
-      });
-    }
+    const impact = await queryClient.fetchQuery(
+      foodDeletionImpactOptions(food.id)
+    );
+
+    setDeletionImpact(impact);
+    setFoodToDelete(food);
+    setShowDeleteConfirmation(true);
   };
 
   const confirmDelete = async (force: boolean = false) => {
     if (!foodToDelete || !activeUserId) return;
     info(loggingLevel, `confirmDelete called with force: ${force}`);
-    try {
-      const result = await deleteFoodService(foodToDelete.id, force);
-      toast({
-        title: t('common.success', 'Success'),
-        description: result.message, // Use the message from the backend
-      });
-      fetchFoodsData();
-    } catch (error: any) {
-      // Add type annotation for error
-      console.error('Error deleting food:', error);
-      toast({
-        title: t('common.error', 'Error'),
-        description:
-          error.message ||
-          t('foodDatabaseManager.failedToDeleteFood', 'Failed to delete food.'), // Use error message from backend if available
-        variant: 'destructive',
-      });
-    } finally {
-      setShowDeleteConfirmation(false);
-      setFoodToDelete(null);
-      setDeletionImpact(null);
-    }
+    await deleteFood({ foodId: foodToDelete.id, force });
+    setShowDeleteConfirmation(false);
+    setFoodToDelete(null);
+    setDeletionImpact(null);
   };
 
   const handleEdit = (food: Food) => {
@@ -251,22 +164,13 @@ const FoodDatabaseManager: React.FC = () => {
     setShowEditDialog(true);
   };
 
-  const handleSaveComplete = (savedFood: Food) => {
-    fetchFoodsData();
+  const handleSaveComplete = () => {
     setShowEditDialog(false);
     setEditingFood(null);
   };
 
   const handleFoodSelected = (food: Food) => {
     setShowFoodSearchDialog(false);
-    fetchFoodsData();
-    toast({
-      title: t('foodDatabaseManager.foodAdded', 'Food Added'),
-      description: t('foodDatabaseManager.foodAddedSuccess', {
-        foodName: food.name,
-        defaultValue: `${food.name} has been added to your database.`,
-      }),
-    });
   };
 
   const handleAddFoodToMeal = async (
@@ -287,36 +191,19 @@ const FoodDatabaseManager: React.FC = () => {
       return;
     }
 
-    try {
-      await createFoodEntry({
+    await createFoodEntry({
+      foodData: {
         food_id: food.id!,
         meal_type: 'breakfast', // Default to breakfast for now, or make dynamic
         quantity: quantity,
         unit: unit,
         entry_date: new Date().toISOString().split('T')[0], // Current date
         variant_id: selectedVariant.id || null,
-      });
+      },
+    });
 
-      toast({
-        title: t('common.success', 'Success'),
-        description: t('foodDatabaseManager.foodAddedToMealSuccess', {
-          foodName: food.name,
-          defaultValue: `${food.name} has been added to your meal.`,
-        }),
-      });
-      setShowFoodUnitSelectorDialog(false);
-      setFoodToAddToMeal(null);
-    } catch (error: any) {
-      console.error('Error adding food to meal:', error);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t('foodDatabaseManager.failedToAddFoodToMeal', {
-          foodName: food.name,
-          defaultValue: `Failed to add ${food.name} to meal.`,
-        }),
-        variant: 'destructive',
-      });
-    }
+    setShowFoodUnitSelectorDialog(false);
+    setFoodToAddToMeal(null);
   };
 
   const handlePageChange = (page: number) => {
@@ -358,41 +245,6 @@ const FoodDatabaseManager: React.FC = () => {
     return null; // No badge from getFoodSourceBadge if it's public and not owned by user
   };
 
-  const getFilterTitle = () => {
-    switch (foodFilter) {
-      case 'all':
-        return t('foodDatabaseManager.allFoodsCount', {
-          count: totalCount,
-          defaultValue: `All Foods (${totalCount})`,
-        });
-      case 'mine':
-        return t('foodDatabaseManager.myFoodsCount', {
-          count: totalCount,
-          defaultValue: `My Foods (${totalCount})`,
-        });
-      case 'family':
-        return t('foodDatabaseManager.familyFoodsCount', {
-          count: totalCount,
-          defaultValue: `Family Foods (${totalCount})`,
-        });
-      case 'public':
-        return t('foodDatabaseManager.publicFoodsCount', {
-          count: totalCount,
-          defaultValue: `Public Foods (${totalCount})`,
-        });
-      case 'needs-review':
-        return t('foodDatabaseManager.foodsNeedingReviewCount', {
-          count: totalCount,
-          defaultValue: `Foods Needing Review (${totalCount})`,
-        });
-      default:
-        return t('foodDatabaseManager.foodsCount', {
-          count: totalCount,
-          defaultValue: `Foods (${totalCount})`,
-        });
-    }
-  };
-
   const getEmptyMessage = () => {
     switch (foodFilter) {
       case 'all':
@@ -422,7 +274,9 @@ const FoodDatabaseManager: React.FC = () => {
     }
   };
 
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const totalPages = foodData
+    ? Math.ceil(foodData.totalCount / itemsPerPage)
+    : 0;
 
   if (!user || !activeUserId) {
     return (
@@ -572,13 +426,13 @@ const FoodDatabaseManager: React.FC = () => {
             </div>
           ) : (
             <>
-              {foods.length === 0 ? (
+              {foodData.foods.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   {getEmptyMessage()}
                 </div>
               ) : (
                 <div className="grid gap-3">
-                  {foods.map((food) => (
+                  {foodData.foods.map((food) => (
                     <div
                       key={food.id}
                       className="flex flex-col p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-3"
@@ -617,10 +471,11 @@ const FoodDatabaseManager: React.FC = () => {
                                   size="sm"
                                   variant="ghost"
                                   onClick={() =>
-                                    handleShareFood(
-                                      food.id,
-                                      food.shared_with_public || false
-                                    )
+                                    togglePublicSharing({
+                                      foodId: food.id,
+                                      currentState:
+                                        food.shared_with_public || false,
+                                    })
                                   }
                                   disabled={!canEdit(food)} // Disable if not editable
                                 >
@@ -781,7 +636,7 @@ const FoodDatabaseManager: React.FC = () => {
                 </PaginationItem>
 
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNumber;
+                  let pageNumber: number;
                   if (totalPages <= 5) {
                     pageNumber = i + 1;
                   } else if (currentPage <= 3) {

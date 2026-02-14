@@ -1,6 +1,5 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
-import { customNutrientService } from '../../services/customNutrientService';
+import { useState } from 'react';
 import type { UserCustomNutrient } from '../../types/customNutrient';
 import { useToast } from '../../hooks/use-toast';
 import { Button } from '../../components/ui/button';
@@ -26,34 +25,27 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '../../components/ui/alert-dialog';
+import {
+  useCreateCustomNutrientMutation,
+  useCustomNutrients,
+  useDeleteCustomNutrientMutation,
+  useUpdateCustomNutrientMutation,
+} from '@/hooks/Foods/useCustomNutrients';
 
 const CustomNutrientsSettings: React.FC = () => {
-  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>(
-    []
-  );
   const [newNutrientName, setNewNutrientName] = useState('');
   const [newNutrientUnit, setNewNutrientUnit] = useState('');
   const [editingNutrient, setEditingNutrient] =
     useState<UserCustomNutrient | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchCustomNutrients();
-  }, []);
-
-  const fetchCustomNutrients = async () => {
-    try {
-      const data = await customNutrientService.getCustomNutrients();
-      setCustomNutrients(data);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch custom nutrients.',
-        variant: 'destructive',
-      });
-    }
-  };
-
+  const { data: customNutrients } = useCustomNutrients();
+  const { mutateAsync: createCustomNutrient } =
+    useCreateCustomNutrientMutation();
+  const { mutateAsync: updateCustomNutrient } =
+    useUpdateCustomNutrientMutation();
+  const { mutateAsync: deleteCustomNutrient } =
+    useDeleteCustomNutrientMutation();
   const handleAddNutrient = async () => {
     if (!newNutrientName || !newNutrientUnit) {
       toast({
@@ -64,26 +56,12 @@ const CustomNutrientsSettings: React.FC = () => {
       return;
     }
 
-    try {
-      const newNutrient = await customNutrientService.createCustomNutrient({
-        name: newNutrientName,
-        unit: newNutrientUnit,
-      });
-      setCustomNutrients((prevNutrients) => [...prevNutrients, newNutrient]);
-      toast({
-        title: 'Success',
-        description: 'Custom nutrient added successfully.',
-      });
-      setNewNutrientName('');
-      setNewNutrientUnit('');
-      // No need to call fetchCustomNutrients() here, as we've already updated the state
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to add custom nutrient.',
-        variant: 'destructive',
-      });
-    }
+    await createCustomNutrient({
+      name: newNutrientName,
+      unit: newNutrientUnit,
+    });
+    setNewNutrientName('');
+    setNewNutrientUnit('');
   };
 
   const handleEditNutrient = async () => {
@@ -95,42 +73,16 @@ const CustomNutrientsSettings: React.FC = () => {
       });
       return;
     }
-
-    try {
-      await customNutrientService.updateCustomNutrient(editingNutrient.id, {
-        name: editingNutrient.name,
-        unit: editingNutrient.unit,
-      });
-      toast({
-        title: 'Success',
-        description: 'Custom nutrient updated successfully.',
-      });
-      setEditingNutrient(null);
-      fetchCustomNutrients();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update custom nutrient.',
-        variant: 'destructive',
-      });
-    }
+    await updateCustomNutrient({
+      nutrientId: editingNutrient.id,
+      name: editingNutrient.name,
+      unit: editingNutrient.unit,
+    });
+    setEditingNutrient(null);
   };
 
   const handleDeleteNutrient = async (id: string) => {
-    try {
-      await customNutrientService.deleteCustomNutrient(id);
-      toast({
-        title: 'Success',
-        description: 'Custom nutrient deleted successfully.',
-      });
-      fetchCustomNutrients();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete custom nutrient.',
-        variant: 'destructive',
-      });
-    }
+    await deleteCustomNutrient(id);
   };
 
   return (

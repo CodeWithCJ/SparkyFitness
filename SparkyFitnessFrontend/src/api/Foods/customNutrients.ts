@@ -1,5 +1,5 @@
-import type { UserCustomNutrient } from '../types/customNutrient';
-import { api } from './api';
+import type { UserCustomNutrient } from '../../types/customNutrient';
+import { api } from '../../services/api';
 
 export const customNutrientService = {
   async createCustomNutrient(
@@ -17,11 +17,6 @@ export const customNutrientService = {
   async getCustomNutrients(): Promise<UserCustomNutrient[]> {
     const response = await api.get('/custom-nutrients');
     return response; // Directly return the response, as api.get already returns the parsed data
-  },
-
-  async getCustomNutrientById(id: string): Promise<UserCustomNutrient> {
-    const response = await api.get(`/custom-nutrients/${id}`);
-    return response.data;
   },
 
   async updateCustomNutrient(

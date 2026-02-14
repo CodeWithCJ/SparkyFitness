@@ -13,7 +13,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, error } from '@/utils/logging';
 import { toast } from '@/hooks/use-toast';
@@ -23,12 +22,13 @@ import type {
   MealPlanTemplateAssignment,
 } from '@/types/meal';
 import type { Food, FoodVariant } from '@/types/food';
-import { getMealById } from '@/services/mealService';
-import { getFoodById } from '@/services/foodService';
 import FoodSearchDialog from '@/components/FoodSearchDialog';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import MealUnitSelector from './MealUnitSelector';
 import { Edit, X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { mealViewOptions } from '@/hooks/Foods/useMeals';
+import { foodViewOptions } from '@/hooks/Foods/useFoods';
 
 // Extended assignment type with nutrition data for display
 interface ExtendedAssignment extends MealPlanTemplateAssignment {
@@ -52,7 +52,6 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
-  const { activeUserId } = useActiveUser();
   const { loggingLevel } = usePreferences(); // Get loggingLevel from preferences
   const [planName, setPlanName] = useState(template?.plan_name || '');
   const [description, setDescription] = useState(template?.description || '');
@@ -86,17 +85,16 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     number | null
   >(null);
 
+  const queryClient = useQueryClient();
   // Helper function to fetch nutrition data for an assignment
   const fetchNutritionForAssignment = async (
     assignment: MealPlanTemplateAssignment
   ): Promise<ExtendedAssignment> => {
     try {
-      if (
-        assignment.item_type === 'meal' &&
-        assignment.meal_id &&
-        activeUserId
-      ) {
-        const meal = await getMealById(activeUserId, assignment.meal_id);
+      if (assignment.item_type === 'meal' && assignment.meal_id) {
+        const meal = await queryClient.fetchQuery(
+          mealViewOptions(assignment.meal_id)
+        );
         if (meal && meal.foods) {
           // Calculate total nutrition from meal's component foods
           let totalCalories = 0;
@@ -122,12 +120,11 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
             serving_unit: meal.serving_unit || 'serving',
           };
         }
-      } else if (
-        assignment.item_type === 'food' &&
-        assignment.food_id &&
-        activeUserId
-      ) {
-        const food = await getFoodById(assignment.food_id);
+      } else if (assignment.item_type === 'food' && assignment.food_id) {
+        const food = await queryClient.fetchQuery(
+          foodViewOptions(assignment.food_id)
+        );
+
         if (food && food.default_variant) {
           const variant = food.default_variant;
           return {
@@ -150,11 +147,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
   // Fetch nutrition data for existing assignments when template loads
   useEffect(() => {
     const loadNutritionForAssignments = async () => {
-      if (
-        template?.assignments &&
-        template.assignments.length > 0 &&
-        activeUserId
-      ) {
+      if (template?.assignments && template.assignments.length > 0) {
         const extendedPromises = template.assignments.map((assignment) =>
           fetchNutritionForAssignment(assignment)
         );
@@ -164,19 +157,12 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     };
 
     loadNutritionForAssignments();
-  }, [template?.id, activeUserId]); // Only run when template ID changes
+  }, [template?.id]); // Only run when template ID changes
 
   const handleAddFood = (day: number, mealType: string) => {
     setCurrentDay(day);
     setCurrentMealType(mealType);
     setIsFoodSelectionOpen(true);
-  };
-
-  const handleMealSelected = (meal: Meal) => {
-    if (currentDay === null || currentMealType === null) return;
-    // Instead of immediately adding, open quantity selector
-    setSelectedMeal(meal);
-    setIsMealUnitSelectorOpen(true);
   };
 
   const handleMealUnitSelected = async (
@@ -322,9 +308,11 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
 
     setEditingAssignmentIndex(index);
 
-    if (assignment.item_type === 'meal' && assignment.meal_id && activeUserId) {
+    if (assignment.item_type === 'meal' && assignment.meal_id) {
       try {
-        const meal = await getMealById(activeUserId, assignment.meal_id);
+        const meal = await queryClient.fetchQuery(
+          mealViewOptions(assignment.meal_id)
+        );
         setSelectedMeal(meal);
         setIsMealUnitSelectorOpen(true);
       } catch (err) {
@@ -332,7 +320,9 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
       }
     } else if (assignment.item_type === 'food' && assignment.food_id) {
       try {
-        const food = await getFoodById(assignment.food_id);
+        const food = await queryClient.fetchQuery(
+          foodViewOptions(assignment.food_id)
+        );
         setSelectedFood(food);
         setIsFoodUnitSelectorOpen(true);
       } catch (err) {

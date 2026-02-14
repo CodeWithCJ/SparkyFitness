@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -12,63 +12,32 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { debug, info } from '@/utils/logging';
+import { debug } from '@/utils/logging';
 import { toast } from '@/hooks/use-toast';
 import type { MealPlanTemplate } from '@/types/meal';
-import {
-  getMealPlanTemplates,
-  createMealPlanTemplate,
-  updateMealPlanTemplate,
-  deleteMealPlanTemplate,
-} from '@/services/mealPlanTemplateService';
 import MealPlanTemplateForm from './MealPlanTemplateForm';
 import { Edit, Plus, Trash2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  useCreateMealPlanMutation,
+  useDeleteMealPlanMutation,
+  useMealPlanTemplates,
+  useUpdateMealPlanMutation,
+} from '@/hooks/Foods/useMealplanTemplate';
 
 const MealPlanCalendar: React.FC = () => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
   const { loggingLevel } = usePreferences(); // Get loggingLevel from preferences
-  const [templates, setTemplates] = useState<MealPlanTemplate[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<
     MealPlanTemplate | undefined
   >(undefined);
   const isMobile = useIsMobile();
-  const fetchTemplates = async () => {
-    if (!activeUserId) return;
-    setIsLoading(true);
-    try {
-      const fetchedTemplates = await getMealPlanTemplates(activeUserId);
-      debug(
-        loggingLevel,
-        'MealPlanCalendar: Fetched Templates:',
-        fetchedTemplates
-      ); // Use debug
-      setTemplates(
-        fetchedTemplates.sort((a, b) => a.plan_name.localeCompare(b.plan_name))
-      );
-    } catch (error) {
-      toast({
-        title: t('common.error'),
-        description: t('mealPlanCalendar.fetchTemplatesError'),
-        variant: 'destructive',
-      });
-      setTemplates([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    info(
-      loggingLevel,
-      'MealPlanCalendar: Fetching templates for user:',
-      activeUserId
-    ); // Use info
-    fetchTemplates();
-  }, [activeUserId, loggingLevel]); // Add loggingLevel to dependency array
+  const { data: templates, isLoading } = useMealPlanTemplates(activeUserId);
+  const { mutateAsync: createMealPlanTemplate } = useCreateMealPlanMutation();
+  const { mutateAsync: updateMealPlanTemplate } = useUpdateMealPlanMutation();
+  const { mutateAsync: deleteMealPlanTemplate } = useDeleteMealPlanMutation();
 
   const handleCreate = () => {
     setSelectedTemplate(undefined);
@@ -86,50 +55,32 @@ const MealPlanCalendar: React.FC = () => {
       const currentClientDate = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
 
       if (templateData.id) {
-        const updatedTemplate = await updateMealPlanTemplate(
-          activeUserId,
-          templateData.id,
+        const updatedTemplate = await updateMealPlanTemplate({
+          userId: activeUserId,
           templateData,
-          currentClientDate
-        );
+          currentClientDate,
+        });
         debug(
           loggingLevel,
           'MealPlanCalendar: Updating template in state:',
           updatedTemplate
         ); // Use debug
-        setTemplates((prev) =>
-          prev.map((t) => (t.id === updatedTemplate.id ? updatedTemplate : t))
-        );
-        toast({
-          title: t('common.success'),
-          description: t('mealPlanCalendar.updateSuccess'),
-        });
       } else {
-        const newTemplate = await createMealPlanTemplate(
-          activeUserId,
+        const newTemplate = await createMealPlanTemplate({
+          userId: activeUserId,
           templateData,
-          currentClientDate
-        );
+          currentClientDate,
+        });
         debug(
           loggingLevel,
           'MealPlanCalendar: Adding new template to state:',
           newTemplate
         ); // Use debug
-        setTemplates((prev) => [...prev, newTemplate]);
-        toast({
-          title: t('common.success'),
-          description: t('mealPlanCalendar.createSuccess'),
-        });
       }
       setIsFormOpen(false);
       window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
-      fetchTemplates(); // Refresh the list of templates after saving
     } catch (error) {
-      toast({
-        title: t('common.error'),
-        description: t('mealPlanCalendar.saveTemplateError'),
-        variant: 'destructive',
-      });
+      // The toast will be handled by the QueryClient's mutationCache
     }
   };
 
@@ -140,18 +91,9 @@ const MealPlanCalendar: React.FC = () => {
     )
       return;
     try {
-      await deleteMealPlanTemplate(activeUserId, templateId);
-      toast({
-        title: t('common.success'),
-        description: t('mealPlanCalendar.deleteSuccess'),
-      });
-      fetchTemplates();
+      await deleteMealPlanTemplate({ userId: activeUserId, templateId });
     } catch (error) {
-      toast({
-        title: t('common.error'),
-        description: t('mealPlanCalendar.deleteTemplateError'),
-        variant: 'destructive',
-      });
+      // The toast will be handled by the QueryClient's mutationCache
     }
   };
 
@@ -171,25 +113,14 @@ const MealPlanCalendar: React.FC = () => {
         return;
       }
       const currentClientDate = new Date().toISOString().split('T')[0];
-      await updateMealPlanTemplate(
-        activeUserId,
-        templateId,
-        { ...templateToUpdate, is_active: isActive },
-        currentClientDate
-      );
-      toast({
-        title: t('common.success'),
-        description: t('mealPlanCalendar.toggleStatusSuccess', {
-          status: isActive ? 'activated' : 'deactivated',
-        }),
+
+      await updateMealPlanTemplate({
+        userId: activeUserId,
+        templateData: { ...templateToUpdate, is_active: isActive },
+        currentClientDate,
       });
-      fetchTemplates();
     } catch (error) {
-      toast({
-        title: t('common.error'),
-        description: t('mealPlanCalendar.toggleStatusError'),
-        variant: 'destructive',
-      });
+      // The toast will be handled by the QueryClient's mutationCache
     }
   };
 

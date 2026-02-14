@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import {
+  MutationCache,
   QueryCache,
   QueryClient,
   QueryClientProvider,
@@ -24,6 +25,9 @@ import OidcCallback from '@/components/OidcCallback';
 import { useActiveUser } from './contexts/ActiveUserContext';
 import { toast } from './hooks/use-toast';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { error } from '@/utils/logging';
+import i18n from '@/i18n';
+import { getUserLoggingLevel } from '@/utils/userPreferences';
 const Auth = lazy(() => import('@/pages/Auth/Auth'));
 const ForgotPassword = lazy(() => import('@/pages/Auth/ForgotPassword'));
 const ResetPassword = lazy(() => import('@/pages/Auth/ResetPassword'));
@@ -56,17 +60,71 @@ declare module '@tanstack/react-query' {
       errorTitle?: string;
       errorMessage?: string;
     };
+    mutationMeta: {
+      successMessage?: string | ((data: unknown, variables: unknown) => string);
+      errorMessage?: string | ((error: unknown, variables: unknown) => string);
+      errorTitle?: string;
+    };
   }
 }
 
+// helper function to allow variables in toast messages
+const resolveMessage = (
+  message: string | ((...args: any[]) => string) | undefined,
+  ...args: any[]
+): string | undefined => {
+  if (typeof message === 'function') {
+    return message(...args);
+  }
+  return message;
+};
+
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
-    onError: (_error, query) => {
+    onError: (e, query) => {
+      error(getUserLoggingLevel(), 'Query Error: ', e);
       if (query.meta?.errorMessage) {
         toast({
-          title: query.meta.errorTitle ?? 'Error',
+          title:
+            (query.meta.errorTitle as string) ??
+            i18n.t('common.error', 'Error'),
           description: query.meta.errorMessage,
           variant: 'destructive',
+        });
+      }
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (err, variables, _context, mutation) => {
+      const loggingLevel = getUserLoggingLevel();
+      error(loggingLevel, 'Mutation Error: ', err);
+      const resolvedErrorMessage = resolveMessage(
+        mutation.meta?.errorMessage,
+        err,
+        variables
+      );
+      const description =
+        resolvedErrorMessage ||
+        (err instanceof Error ? err.message : 'An error occurred');
+      toast({
+        title:
+          (mutation.meta?.errorTitle as string) ||
+          i18n.t('common.error', 'Error'),
+        description: description,
+        variant: 'destructive',
+      });
+    },
+    onSuccess: (data, variables, _context, mutation) => {
+      const message = resolveMessage(
+        mutation.meta?.successMessage,
+        data,
+        variables
+      );
+
+      if (message) {
+        toast({
+          title: i18n.t('common.success', 'Success'),
+          description: message,
         });
       }
     },

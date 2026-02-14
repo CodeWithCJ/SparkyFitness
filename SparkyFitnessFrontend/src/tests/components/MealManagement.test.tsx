@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MealManagement from '@/pages/Foods/MealManagement';
+import { renderWithClient } from '../test-utils';
 
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
@@ -42,7 +43,7 @@ jest.mock('@/utils/logging', () => ({
 
 // Mock services
 const mockGetMeals = jest.fn();
-jest.mock('@/services/mealService', () => ({
+jest.mock('@/api/Foods/meals', () => ({
   getMeals: (...args: unknown[]) => mockGetMeals(...args),
   deleteMeal: jest.fn(),
   getMealById: jest.fn(),
@@ -65,7 +66,7 @@ describe('MealManagement', () => {
   it('renders title and empty state when no meals exist', async () => {
     mockGetMeals.mockResolvedValue([]);
 
-    render(<MealManagement />);
+    renderWithClient(<MealManagement />);
 
     expect(screen.getByText('Meal Management')).toBeInTheDocument();
 
@@ -94,7 +95,7 @@ describe('MealManagement', () => {
       },
     ]);
 
-    render(<MealManagement />);
+    renderWithClient(<MealManagement />);
 
     await waitFor(() => {
       expect(screen.getByText('Breakfast Bowl')).toBeInTheDocument();

@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MealPlanCalendar from '../../pages/Foods/MealPlanCalendar';
+import { renderWithClient } from '../test-utils';
 
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
@@ -42,7 +43,7 @@ jest.mock('@/utils/logging', () => ({
 
 // Mock services
 const mockGetMealPlanTemplates = jest.fn();
-jest.mock('@/services/mealPlanTemplateService', () => ({
+jest.mock('@/api/Foods/mealPlanTemplate', () => ({
   getMealPlanTemplates: (...args: unknown[]) =>
     mockGetMealPlanTemplates(...args),
   createMealPlanTemplate: jest.fn(),
@@ -67,7 +68,7 @@ describe('MealPlanCalendar', () => {
   it('renders heading', async () => {
     mockGetMealPlanTemplates.mockResolvedValue([]);
 
-    render(<MealPlanCalendar />);
+    renderWithClient(<MealPlanCalendar />);
 
     // Title uses t('mealPlanCalendar.title') with no fallback, so mock returns the key
     expect(screen.getByText('mealPlanCalendar.title')).toBeInTheDocument();
@@ -76,7 +77,7 @@ describe('MealPlanCalendar', () => {
   it('shows empty state after loading', async () => {
     mockGetMealPlanTemplates.mockResolvedValue([]);
 
-    render(<MealPlanCalendar />);
+    renderWithClient(<MealPlanCalendar />);
 
     await waitFor(() => {
       expect(

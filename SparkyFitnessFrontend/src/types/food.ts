@@ -67,11 +67,6 @@ export interface FoodDeletionImpact {
   familySharedUsers: string[];
 }
 
-export interface FoodSearchResult {
-  recentFoods?: Food[];
-  topFoods?: Food[];
-  searchResults?: Food[];
-}
 export interface FoodEntry {
   id: string;
   food_id?: string; // Make optional as it might be a meal_id

@@ -19,14 +19,12 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn, error } from '@/utils/logging';
-import {
-  loadFoodVariants,
-  updateFoodEntry,
-} from '@/services/editFoodEntryService';
-import { getFoodById } from '@/services/foodService';
-import type { FoodVariant, FoodEntry, Food } from '@/types/food';
-import type { UserCustomNutrient } from '@/types/customNutrient';
-import { customNutrientService } from '@/services/customNutrientService';
+import type { FoodVariant, FoodEntry } from '@/types/food';
+import { foodViewOptions } from '@/hooks/Foods/useFoods';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import { foodVariantsOptions } from '@/hooks/Foods/useFoodVariants';
+import { updateFoodEntry } from '@/services/foodEntryService';
 
 interface EditFoodEntryDialogProps {
   entry: FoodEntry | null;
@@ -48,7 +46,6 @@ const EditFoodEntryDialog = ({
   });
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    // This component does not import useTranslation, so we'll hardcode or pass t() from parent if it were needed for translation
     return unit === 'kcal' ? 'kcal' : 'kJ';
   };
   const [quantity, setQuantity] = useState(1);
@@ -57,32 +54,10 @@ const EditFoodEntryDialog = ({
   );
   const [variants, setVariants] = useState<FoodVariant[]>([]);
   const [loading, setLoading] = useState(false);
-  const [latestFood, setLatestFood] = useState<Food | null>(null); // New state for latest food
-  const [latestVariant, setLatestVariant] = useState<FoodVariant | null>(null); // New state for latest variant
-  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>(
-    []
-  );
+  const [latestVariant, setLatestVariant] = useState<FoodVariant | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const fetchCustomNutrients = async () => {
-      try {
-        const nutrients = await customNutrientService.getCustomNutrients();
-        setCustomNutrients(nutrients);
-      } catch (error) {
-        console.error('Failed to fetch custom nutrients', error);
-        toast({
-          title: 'Error',
-          description:
-            'Could not load custom nutrients. Please try again later.',
-          variant: 'destructive',
-        });
-      }
-    };
-
-    if (open) {
-      fetchCustomNutrients();
-    }
-  }, [open]);
+  const { data: customNutrients } = useCustomNutrients();
 
   useEffect(() => {
     debug(loggingLevel, 'EditFoodEntryDialog entry/open useEffect triggered.', {
@@ -116,11 +91,14 @@ const EditFoodEntryDialog = ({
     setLoading(true);
     try {
       // Fetch latest food details
-      const foodData = await getFoodById(entry.food_id);
-      setLatestFood(foodData);
+      const foodData = await queryClient.fetchQuery(
+        foodViewOptions(entry.food_id)
+      );
 
       // Fetch latest variants for the food
-      const variantsData = await loadFoodVariants(entry.food_id);
+      const variantsData = await queryClient.fetchQuery(
+        foodVariantsOptions(entry.food_id)
+      );
 
       // Determine the primary unit from the fetched food data's default variant
       const defaultVariant =
@@ -229,101 +207,6 @@ const EditFoodEntryDialog = ({
       debug(loggingLevel, 'Selected variant:', initialSelectedVariant);
     } catch (err) {
       error(loggingLevel, 'Error loading food or variants:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadVariants = async () => {
-    debug(loggingLevel, 'Loading food variants for food ID:', entry?.food_id);
-    if (!entry) {
-      warn(loggingLevel, 'loadVariants called with no entry.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const data = await loadFoodVariants(entry.food_id);
-
-      // The primary unit is now the food_variants object directly from the entry
-      const primaryUnit: FoodVariant = {
-        id: entry.food_variants?.id || entry.food_id, // Use variant ID if available, otherwise food ID
-        serving_size: entry.food_variants?.serving_size || 100,
-        serving_unit: entry.food_variants?.serving_unit || 'g',
-        calories: entry.food_variants?.calories || 0, // kcal
-        protein: entry.food_variants?.protein || 0,
-        carbs: entry.food_variants?.carbs || 0,
-        fat: entry.food_variants?.fat || 0,
-        saturated_fat: entry.food_variants?.saturated_fat || 0,
-        polyunsaturated_fat: entry.food_variants?.polyunsaturated_fat || 0,
-        monounsaturated_fat: entry.food_variants?.monounsaturated_fat || 0,
-        trans_fat: entry.food_variants?.trans_fat || 0,
-        cholesterol: entry.food_variants?.cholesterol || 0,
-        sodium: entry.food_variants?.sodium || 0,
-        potassium: entry.food_variants?.potassium || 0,
-        dietary_fiber: entry.food_variants?.dietary_fiber || 0,
-        sugars: entry.food_variants?.sugars || 0,
-        vitamin_a: entry.food_variants?.vitamin_a || 0,
-        vitamin_c: entry.food_variants?.vitamin_c || 0,
-        calcium: entry.food_variants?.calcium || 0,
-        iron: entry.food_variants?.iron || 0,
-        custom_nutrients: entry.food_variants?.custom_nutrients || {},
-      };
-
-      let combinedVariants: FoodVariant[] = [primaryUnit];
-
-      if (data && data.length > 0) {
-        info(loggingLevel, 'Food variants loaded successfully:', data);
-        const variantsFromDb = data.map((variant) => ({
-          id: variant.id,
-          serving_size: variant.serving_size,
-          serving_unit: variant.serving_unit,
-          calories: variant.calories || 0, // kcal
-          protein: variant.protein || 0,
-          carbs: variant.carbs || 0,
-          fat: variant.fat || 0,
-          saturated_fat: variant.saturated_fat || 0,
-          polyunsaturated_fat: variant.polyunsaturated_fat || 0,
-          monounsaturated_fat: variant.monounsaturated_fat || 0,
-          trans_fat: variant.trans_fat || 0,
-          cholesterol: variant.cholesterol || 0,
-          sodium: variant.sodium || 0,
-          potassium: variant.potassium || 0,
-          dietary_fiber: variant.dietary_fiber || 0,
-          sugars: variant.sugars || 0,
-          vitamin_a: variant.vitamin_a || 0,
-          vitamin_c: variant.vitamin_c || 0,
-          calcium: variant.calcium || 0,
-          iron: variant.iron || 0,
-          custom_nutrients: variant.custom_nutrients || {},
-        }));
-
-        // Ensure the primary unit is always included and is the first option.
-        // Then, add any other variants from the database that are not the primary unit (based on ID).
-        const otherVariants = variantsFromDb.filter(
-          (variant) => variant.id !== primaryUnit.id
-        );
-        combinedVariants = [primaryUnit, ...otherVariants];
-      } else {
-        info(
-          loggingLevel,
-          'No additional variants found, using primary food unit only.'
-        );
-      }
-
-      setVariants(combinedVariants);
-
-      // Set selected variant based on entry.variant_id or default to primaryUnit
-      const initialSelectedVariant =
-        combinedVariants.find(
-          (v) =>
-            (entry.variant_id && v.id === entry.variant_id) ||
-            (!entry.variant_id && v.id === primaryUnit.id) // If no variant_id, use the default variant
-        ) || primaryUnit;
-      setSelectedVariant(initialSelectedVariant);
-      debug(loggingLevel, 'Selected variant:', initialSelectedVariant);
-    } catch (err) {
-      error(loggingLevel, 'Error loading variants:', err);
     } finally {
       setLoading(false);
     }

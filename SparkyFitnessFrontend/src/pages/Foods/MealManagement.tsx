@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,19 +18,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Edit, Trash2, Eye, Filter, Share2, Lock } from 'lucide-react';
-import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 import { error } from '@/utils/logging';
 import type { Meal, MealFood, MealPayload } from '@/types/meal';
-import {
-  getMeals,
-  deleteMeal,
-  getMealById,
-  type MealFilter,
-  getMealDeletionImpact,
-  updateMeal,
-} from '@/services/mealService';
+import { type MealFilter } from '@/api/Foods/meals';
 import type { MealDeletionImpact } from '@/types/meal';
 import {
   Select,
@@ -42,14 +34,21 @@ import {
 import { Badge } from '@/components/ui/badge';
 import MealBuilder from '@/components/MealBuilder';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  mealDeletionImpactOptions,
+  mealViewOptions,
+  useDeleteMealMutation,
+  useMeals,
+  useUpdateMealMutation,
+} from '@/hooks/Foods/useMeals';
+import { useQueryClient } from '@tanstack/react-query';
+import { mealKeys } from '@/api/keys/meals';
 
 // This component is now a standalone library for managing meal templates.
 // Interactions with the meal plan calendar are handled by the calendar itself.
 const MealManagement: React.FC = () => {
   const { t } = useTranslation();
-  const { activeUserId } = useActiveUser();
   const { loggingLevel } = usePreferences();
-  const [meals, setMeals] = useState<Meal[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<MealFilter>('all');
   const [editingMealId, setEditingMealId] = useState<string | undefined>(
@@ -64,27 +63,10 @@ const MealManagement: React.FC = () => {
   const [mealToDelete, setMealToDelete] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
-  const fetchMeals = useCallback(async () => {
-    if (!activeUserId) return;
-    try {
-      const fetchedMeals = await getMeals(activeUserId, filter);
-      setMeals(fetchedMeals || []); // Ensure it's always an array
-    } catch (err) {
-      error(loggingLevel, 'Failed to fetch meals:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'mealManagement.failedToLoadMeals',
-          'Failed to load meals.'
-        ),
-        variant: 'destructive',
-      });
-    }
-  }, [activeUserId, loggingLevel, filter]);
-
-  useEffect(() => {
-    fetchMeals();
-  }, [fetchMeals]);
+  const { data: meals } = useMeals(filter);
+  const { mutateAsync: deleteMeal } = useDeleteMealMutation();
+  const { mutateAsync: updateMeal } = useUpdateMealMutation();
+  const queryClient = useQueryClient();
 
   const handleCreateNewMeal = () => {
     setEditingMealId(undefined);
@@ -97,24 +79,10 @@ const MealManagement: React.FC = () => {
   };
 
   const handleDeleteMeal = async (mealId: string, force: boolean = false) => {
-    if (!activeUserId) return;
     try {
-      const result = await deleteMeal(activeUserId, mealId, force);
-      toast({
-        title: t('common.success', 'Success'),
-        description: result.message,
-      });
-      fetchMeals();
+      await deleteMeal({ mealId, force });
     } catch (err) {
       error(loggingLevel, 'Failed to delete meal:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t('mealManagement.failedToDeleteMeal', {
-          errorMessage: err instanceof Error ? err.message : String(err),
-          defaultValue: `Failed to delete meal: ${err instanceof Error ? err.message : String(err)}`,
-        }),
-        variant: 'destructive',
-      });
     } finally {
       setMealToDelete(null);
       setDeletionImpact(null);
@@ -122,34 +90,20 @@ const MealManagement: React.FC = () => {
   };
 
   const openDeleteConfirmation = async (mealId: string) => {
-    if (!activeUserId) return;
     try {
-      const impact = await getMealDeletionImpact(activeUserId, mealId);
+      const impact = await queryClient.fetchQuery(
+        mealDeletionImpactOptions(mealId)
+      );
       setDeletionImpact(impact);
       setMealToDelete(mealId);
     } catch (err) {
       error(loggingLevel, 'Failed to get meal deletion impact:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'mealManagement.couldNotCheckMealUsage',
-          'Could not check meal usage.'
-        ),
-        variant: 'destructive',
-      });
     }
   };
 
   const handleMealSave = (meal: Meal) => {
     setShowMealBuilderDialog(false);
-    fetchMeals();
-    toast({
-      title: t('common.success', 'Success'),
-      description: t('mealManagement.mealSavedSuccessfully', {
-        mealName: meal.name,
-        defaultValue: `Meal "${meal.name}" saved successfully.`,
-      }),
-    });
+    queryClient.invalidateQueries({ queryKey: mealKeys.all });
   };
 
   const handleMealCancel = () => {
@@ -157,28 +111,20 @@ const MealManagement: React.FC = () => {
   };
 
   const handleViewDetails = async (meal: Meal) => {
-    if (!activeUserId) return;
     try {
       // Fetch full meal details including foods
-      const fullMeal = await getMealById(activeUserId, meal.id!);
+      const fullMeal = await queryClient.fetchQuery(mealViewOptions(meal.id));
       setViewingMeal(fullMeal);
     } catch (err) {
       error(loggingLevel, 'Failed to fetch meal details:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'mealManagement.couldNotLoadMealDetails',
-          'Could not load meal details.'
-        ),
-        variant: 'destructive',
-      });
     }
   };
 
   const handleShareMeal = async (mealId: string) => {
-    if (!activeUserId) return;
     try {
-      const mealToUpdate = await getMealById(activeUserId, mealId);
+      const mealToUpdate = await queryClient.fetchQuery(
+        mealViewOptions(mealId)
+      );
       if (!mealToUpdate) {
         throw new Error('Meal not found.');
       }
@@ -201,32 +147,17 @@ const MealManagement: React.FC = () => {
             serving_unit: food.serving_unit,
           })) || [],
       };
-      await updateMeal(activeUserId, mealId, mealPayload);
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'mealManagement.mealSharedPublicly',
-          'Meal shared publicly.'
-        ),
-      });
-      fetchMeals();
+      await updateMeal({ mealId, mealPayload });
     } catch (err) {
       error(loggingLevel, 'Failed to share meal:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t('mealManagement.failedToShareMeal', {
-          errorMessage: err instanceof Error ? err.message : String(err),
-          defaultValue: `Failed to share meal: ${err instanceof Error ? err.message : String(err)}`,
-        }),
-        variant: 'destructive',
-      });
     }
   };
 
   const handleUnshareMeal = async (mealId: string) => {
-    if (!activeUserId) return;
     try {
-      const mealToUpdate = await getMealById(activeUserId, mealId);
+      const mealToUpdate = await queryClient.fetchQuery(
+        mealViewOptions(mealId)
+      );
       if (!mealToUpdate) {
         throw new Error('Meal not found.');
       }
@@ -249,28 +180,17 @@ const MealManagement: React.FC = () => {
             serving_unit: food.serving_unit,
           })) || [],
       };
-      await updateMeal(activeUserId, mealId, mealPayload);
-      toast({
-        title: t('common.success', 'Success'),
-        description: t('mealManagement.mealUnshared', 'Meal unshared.'),
-      });
-      fetchMeals();
+      await updateMeal({ mealId, mealPayload });
     } catch (err) {
       error(loggingLevel, 'Failed to unshare meal:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t('mealManagement.failedToUnshareMeal', {
-          errorMessage: err instanceof Error ? err.message : String(err),
-          defaultValue: `Failed to unshare meal: ${err instanceof Error ? err.message : String(err)}`,
-        }),
-        variant: 'destructive',
-      });
     }
   };
 
-  const filteredMeals = meals.filter((meal) =>
-    meal.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMeals = meals
+    ? meals.filter((meal) =>
+        meal.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : [];
 
   return (
     <TooltipProvider>

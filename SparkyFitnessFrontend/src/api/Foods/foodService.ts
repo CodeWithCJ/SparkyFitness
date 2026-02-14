@@ -1,11 +1,6 @@
-import { apiCall } from './api';
+import { apiCall } from '../../services/api';
 
-import type {
-  Food,
-  FoodDeletionImpact,
-  FoodSearchResult,
-  FoodVariant,
-} from '@/types/food';
+import type { Food, FoodDeletionImpact } from '@/types/food';
 
 export type FoodFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
 
@@ -54,45 +49,10 @@ interface FoodPayload {
   custom_nutrients?: Record<string, string | number>;
 }
 
-export const searchFoods = async (
-  name: string = '', // Make name optional with a default empty string
-  targetUserId?: string,
-  exactMatch: boolean = false,
-  broadMatch: boolean = false,
-  checkCustom: boolean = false,
-  limit?: number, // Make limit optional
-  mealType?: string
-): Promise<FoodSearchResult> => {
-  const params = new URLSearchParams();
-  if (name) {
-    params.append('name', name);
-    if (targetUserId) params.append('targetUserId', targetUserId);
-    params.append('exactMatch', exactMatch.toString());
-    params.append('broadMatch', broadMatch.toString());
-    params.append('checkCustom', checkCustom.toString());
-  }
-  if (limit !== undefined) {
-    params.append('limit', limit.toString());
-  }
-  if (mealType !== undefined) {
-    params.append('mealType', mealType);
-  }
-
-  const response = await apiCall(`/foods?${params.toString()}`, {
-    method: 'GET',
-  });
-  return response as FoodSearchResult; // Cast the response to FoodSearchResult
-};
-
-export const getFoodVariantsByFoodId = async (
-  foodId: string
-): Promise<FoodVariant[]> => {
-  const response = await apiCall(`/foods/food-variants?food_id=${foodId}`, {
-    method: 'GET',
-  });
-  return response;
-};
-
+interface LoadFoodsResponse {
+  foods: Food[];
+  totalCount: number;
+}
 export const loadFoods = async (
   searchTerm: string,
   foodFilter: FoodFilter,
@@ -100,7 +60,7 @@ export const loadFoods = async (
   itemsPerPage: number,
   sortBy: string = 'name:asc', // Default sort by name ascending
   userId?: string
-): Promise<{ foods: Food[]; totalCount: number }> => {
+): Promise<LoadFoodsResponse> => {
   const params = new URLSearchParams();
   if (searchTerm) {
     // Only add searchTerm if it's not empty
@@ -161,40 +121,16 @@ export const getFoodDeletionImpact = async (
   return response;
 };
 
-export const updateFood = async (
-  id: string,
-  payload: Partial<FoodPayload>
-): Promise<Food> => {
-  return apiCall(`/foods/${id}`, {
-    method: 'PUT',
-    body: payload,
-  });
-};
-
 export const getFoodById = async (foodId: string): Promise<Food> => {
   return apiCall(`/foods/${foodId}`, {
     method: 'GET',
   });
 };
 
-export const getFoodDataProviders = async (
-  userId?: string
-): Promise<ExternalDataProvider[]> => {
-  const url = userId
-    ? `/external-providers/user/${userId}`
-    : '/external-providers/current-user'; // Use a context-aware endpoint if available, but fallback to userId
-  const response = await apiCall(url, {
-    method: 'GET',
-  });
-  console.log('Response from getFoodDataProviders:', response); // Added log
-  return response;
-};
-
 export const searchMealieFoods = async (
   query: string,
   baseUrl: string,
   apiKey: string,
-  userId: string,
   providerId: string
 ): Promise<Food[]> => {
   const params = new URLSearchParams();
@@ -220,32 +156,10 @@ export const updateFoodEntriesSnapshot = async (
   });
 };
 
-export const getMealieFoodDetails = async (
-  slug: string,
-  baseUrl: string,
-  apiKey: string,
-  userId: string,
-  providerId: string
-): Promise<Food | null> => {
-  const params = new URLSearchParams();
-  params.append('slug', slug);
-
-  const response = await apiCall(`/foods/mealie/details?${params.toString()}`, {
-    method: 'GET',
-    headers: {
-      'x-mealie-base-url': baseUrl,
-      'x-mealie-api-key': apiKey,
-      'x-provider-id': providerId,
-    },
-  });
-  return response;
-};
-
 export const searchTandoorFoods = async (
   query: string,
   baseUrl: string,
   apiKey: string,
-  userId: string,
   providerId: string
 ): Promise<Food[]> => {
   const params = new URLSearchParams();
@@ -260,28 +174,4 @@ export const searchTandoorFoods = async (
     },
   });
   return response || [];
-};
-
-export const getTandoorFoodDetails = async (
-  id: string, // Tandoor uses 'id' for details
-  baseUrl: string,
-  apiKey: string,
-  userId: string,
-  providerId: string
-): Promise<Food | null> => {
-  const params = new URLSearchParams();
-  params.append('id', id);
-
-  const response = await apiCall(
-    `/foods/tandoor/details?${params.toString()}`,
-    {
-      method: 'GET',
-      headers: {
-        'x-tandoor-base-url': baseUrl,
-        'x-tandoor-api-key': apiKey,
-        'x-provider-id': providerId,
-      },
-    }
-  );
-  return response;
 };

@@ -10,7 +10,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Download, Upload, Trash2 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 

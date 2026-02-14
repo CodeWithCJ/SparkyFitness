@@ -44,8 +44,7 @@ import type { FoodEntry } from '@/types/food';
 import type { ExpandedGoals } from '@/types/goals';
 import type { PresetExercise, WorkoutPreset } from '@/types/workout';
 
-import { customNutrientService } from '@/services/customNutrientService';
-import type { UserCustomNutrient } from '@/types/customNutrient';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 
 interface MealTotals {
   calories: number; // Stored internally as kcal
@@ -84,9 +83,6 @@ const Diary = () => {
   const [editingFoodEntryMeal, setEditingFoodEntryMeal] =
     useState<FoodEntryMeal | null>(null); // State for editing logged meal entry
   const [goals, setGoals] = useState<ExpandedGoals | null>(null);
-  const [customNutrients, setCustomNutrients] = useState<UserCustomNutrient[]>(
-    []
-  ); // Add state for custom nutrients
   const [selectedDate, setSelectedDate] = useState(
     formatDateInUserTimezone(new Date(), 'yyyy-MM-dd')
   );
@@ -135,6 +131,7 @@ const Diary = () => {
   const [selectedMealTypeId, setSelectedMealTypeId] = useState<string>('');
 
   const currentUserId = activeUserId;
+  const { data: customNutrients } = useCustomNutrients();
   debug(loggingLevel, 'Current user ID:', currentUserId);
 
   useEffect(() => {
@@ -155,20 +152,6 @@ const Diary = () => {
       fetchMealTypes();
     }
   }, [currentUserId, loggingLevel]);
-
-  // Load custom nutrients
-  useEffect(() => {
-    const loadCustomNutrients = async () => {
-      try {
-        const fetchedCustomNutrients =
-          await customNutrientService.getCustomNutrients();
-        setCustomNutrients(fetchedCustomNutrients);
-      } catch (err) {
-        error(loggingLevel, 'Error loading custom nutrients:', err);
-      }
-    };
-    loadCustomNutrients();
-  }, [loggingLevel]);
 
   const normalizeGlycemicIndex = useCallback((value: any): GlycemicIndex => {
     if (
