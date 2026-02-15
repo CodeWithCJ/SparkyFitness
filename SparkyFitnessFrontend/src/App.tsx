@@ -53,9 +53,7 @@ const WithingsCallback = lazy(
 const FitbitCallback = lazy(
   () => import('@/pages/Integrations/FitbitCallback')
 );
-const PolarCallback = lazy(
-  () => import('@/pages/Integrations/PolarCallback')
-);
+const PolarCallback = lazy(() => import('@/pages/Integrations/PolarCallback'));
 
 declare module '@tanstack/react-query' {
   interface Register {
@@ -250,10 +248,7 @@ const App = () => {
                       path="/fitbit/callback"
                       element={<FitbitCallback />}
                     />
-                    <Route
-                      path="/polar/callback"
-                      element={<PolarCallback />}
-                    />
+                    <Route path="/polar/callback" element={<PolarCallback />} />
                     <Route path="/oidc-callback" element={<OidcCallback />} />
                     <Route
                       path="/"

@@ -48,7 +48,7 @@ const FitbitCallback = () => {
     };
 
     processCallback();
-  }, [location, navigate, toast]);
+  }, [location, navigate, toast, linkFitbitAccount]);
 
   return <CallbackStatus loading={loading} message={message} />;
 };

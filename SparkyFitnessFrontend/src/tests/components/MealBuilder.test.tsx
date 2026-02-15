@@ -172,7 +172,9 @@ describe('MealBuilder', () => {
     mockCreateMeal.mockResolvedValue(mockResult);
     const onSave = jest.fn();
 
-    renderWithClient(<MealBuilder initialFoods={sampleFoods} onSave={onSave} />);
+    renderWithClient(
+      <MealBuilder initialFoods={sampleFoods} onSave={onSave} />
+    );
 
     // Set meal name
     fireEvent.change(screen.getByLabelText('Meal Name'), {

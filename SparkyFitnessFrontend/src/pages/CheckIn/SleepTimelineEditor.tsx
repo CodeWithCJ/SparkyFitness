@@ -192,10 +192,12 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
           prevEvents.filter(
             (event) =>
               !(
-                (parseISO(event.start_time) < newEnd &&
-                  parseISO(event.end_time) > newStart) || // Event overlaps with cleared range
-                (parseISO(event.start_time) >= newStart &&
-                  parseISO(event.end_time) <= newEnd) // Event is within cleared range
+                (
+                  (parseISO(event.start_time) < newEnd &&
+                    parseISO(event.end_time) > newStart) || // Event overlaps with cleared range
+                  (parseISO(event.start_time) >= newStart &&
+                    parseISO(event.end_time) <= newEnd)
+                ) // Event is within cleared range
               )
           )
         );

@@ -78,6 +78,9 @@ jobs:
       - name: Run Type Check
         run: npx tsc -b
 
+      - name: Run Format Check
+        run: npx prettier . --check
+
       - name: Run linting
         run: pnpm run lint
         continue-on-error: true

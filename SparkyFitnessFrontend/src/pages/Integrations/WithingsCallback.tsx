@@ -42,7 +42,7 @@ const WithingsCallback = () => {
     };
 
     processCallback();
-  }, [location, navigate]);
+  }, [location, navigate, toast, linkWithingsAccount]);
 
   return <CallbackStatus loading={loading} message={message} />;
 };
