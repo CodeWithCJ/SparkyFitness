@@ -15,18 +15,18 @@ export interface ExternalDataProvider {
   id: string;
   provider_name: string;
   provider_type:
-  | 'openfoodfacts'
-  | 'nutritionix'
-  | 'fatsecret'
-  | 'wger'
-  | 'mealie'
-  | 'free-exercise-db'
-  | 'withings'
-  | 'garmin'
-  | 'tandoor'
-  | 'usda'
-  | 'fitbit'
-  | 'polar';
+    | 'openfoodfacts'
+    | 'nutritionix'
+    | 'fatsecret'
+    | 'wger'
+    | 'mealie'
+    | 'free-exercise-db'
+    | 'withings'
+    | 'garmin'
+    | 'tandoor'
+    | 'usda'
+    | 'fitbit'
+    | 'polar';
   app_id: string | null;
   app_key: string | null;
   is_active: boolean;
@@ -166,10 +166,10 @@ const ExternalProviderSettings = () => {
               prev.map((p) =>
                 p.id === provider.id
                   ? {
-                    ...p,
-                    fitbit_last_sync_at: fitbitStatus.lastSyncAt,
-                    fitbit_token_expires: fitbitStatus.tokenExpiresAt,
-                  }
+                      ...p,
+                      fitbit_last_sync_at: fitbitStatus.lastSyncAt,
+                      fitbit_token_expires: fitbitStatus.tokenExpiresAt,
+                    }
                   : p
               )
             );
@@ -198,10 +198,10 @@ const ExternalProviderSettings = () => {
               prev.map((p) =>
                 p.id === provider.id
                   ? {
-                    ...p,
-                    polar_last_sync_at: polarStatus.lastSyncAt,
-                    polar_token_expires: polarStatus.tokenExpiresAt,
-                  }
+                      ...p,
+                      polar_last_sync_at: polarStatus.lastSyncAt,
+                      polar_token_expires: polarStatus.tokenExpiresAt,
+                    }
                   : p
               )
             );
@@ -249,17 +249,17 @@ const ExternalProviderSettings = () => {
       provider_type: editData.provider_type,
       app_id:
         editData.provider_type === 'mealie' ||
-          editData.provider_type === 'tandoor' ||
-          editData.provider_type === 'free-exercise-db' ||
-          editData.provider_type === 'wger'
+        editData.provider_type === 'tandoor' ||
+        editData.provider_type === 'free-exercise-db' ||
+        editData.provider_type === 'wger'
           ? null
           : editData.app_id || null,
       app_key: editData.app_key || null,
       is_active: editData.is_active,
       base_url:
         editData.provider_type === 'mealie' ||
-          editData.provider_type === 'tandoor' ||
-          editData.provider_type === 'free-exercise-db'
+        editData.provider_type === 'tandoor' ||
+        editData.provider_type === 'free-exercise-db'
           ? editData.base_url || null
           : null,
       withings_last_sync_at:
@@ -279,17 +279,15 @@ const ExternalProviderSettings = () => {
           ? editData.fitbit_token_expires
           : null,
       polar_last_sync_at:
-        editData.provider_type === 'polar'
-          ? editData.polar_last_sync_at
-          : null,
+        editData.provider_type === 'polar' ? editData.polar_last_sync_at : null,
       polar_token_expires:
         editData.provider_type === 'polar'
           ? editData.polar_token_expires
           : null,
       sync_frequency:
         editData.provider_type === 'withings' ||
-          editData.provider_type === 'garmin' ||
-          editData.provider_type === 'fitbit'
+        editData.provider_type === 'garmin' ||
+        editData.provider_type === 'fitbit'
           ? editData.sync_frequency
           : null,
     };

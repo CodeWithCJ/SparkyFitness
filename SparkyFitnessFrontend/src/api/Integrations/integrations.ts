@@ -1,5 +1,4 @@
 import { apiCall } from '@/services/api';
-import { post } from '@/utils/api';
 
 interface IntegrationPayload {
   code: string;
@@ -17,6 +16,14 @@ export const linkWithingsAccount = async (
   data: IntegrationPayload
 ): Promise<void> => {
   return apiCall('/withings/callback', {
+    method: 'POST',
+    body: data,
+  });
+};
+export const linkPolarFlowAccount = async (
+  data: IntegrationPayload
+): Promise<void> => {
+  return apiCall('/integrations/polar/callback', {
     method: 'POST',
     body: data,
   });
