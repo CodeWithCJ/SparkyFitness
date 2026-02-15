@@ -1,6 +1,6 @@
-import { apiCall } from './api';
+import { apiCall } from '@/services/api';
 
-interface OnboardingData {
+export interface OnboardingData {
   sex: 'male' | 'female' | '';
   primaryGoal: 'lose_weight' | 'maintain_weight' | 'gain_weight' | '';
   currentWeight: number | '';

@@ -1,12 +1,12 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
-import { debug, error } from '@/utils/logging';
+import { debug } from '@/utils/logging';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
 import OnBoarding from '@/components/Onboarding/OnBoarding';
 import MainLayout from '@/layouts/MainLayout';
-import { getOnboardingStatus } from '@/services/onboardingService';
+import { useOnboardingStatus } from '@/hooks/Onboarding/useOnboarding';
+import { useState } from 'react';
 
 interface IndexProps {
   onShowAboutDialog: () => void;
@@ -17,34 +17,16 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
   const { loggingLevel } = usePreferences();
   debug(loggingLevel, 'Index: Component rendered (onboarding check).');
 
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
-  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+  // only fetch when auth is loaded and user exists
+  const { data, isLoading: queryLoading } = useOnboardingStatus(
+    !authLoading && !!user
+  );
+  const [hasSkipped, setHasSkipped] = useState(false);
 
-  useEffect(() => {
-    const checkOnboardingStatus = async () => {
-      if (authLoading || !user) {
-        if (!authLoading && !user) {
-          setIsCheckingStatus(false);
-        }
-        return;
-      }
-
-      setIsCheckingStatus(true);
-      try {
-        const { onboardingComplete } = await getOnboardingStatus();
-        setNeedsOnboarding(!onboardingComplete);
-      } catch (err) {
-        error(loggingLevel, 'Index: Error fetching onboarding status:', err);
-        setNeedsOnboarding(false);
-      } finally {
-        setIsCheckingStatus(false);
-      }
-    };
-
-    checkOnboardingStatus();
-  }, [user, authLoading, loggingLevel]);
-
-  if (isCheckingStatus) {
+  const isLoading = authLoading || (!!user && queryLoading);
+  const needsOnboarding =
+    !hasSkipped && user && data?.onboardingComplete === false;
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <p className="text-xl text-white">Loading...</p>
@@ -53,9 +35,7 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
   }
 
   if (needsOnboarding) {
-    return (
-      <OnBoarding onOnboardingComplete={() => setNeedsOnboarding(false)} />
-    );
+    return <OnBoarding onOnboardingComplete={() => setHasSkipped(true)} />;
   }
 
   // Render MainLayout if onboarding is complete

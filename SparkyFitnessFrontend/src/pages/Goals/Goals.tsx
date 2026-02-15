@@ -58,14 +58,15 @@ import {
 } from '@/components/ui/select';
 import MealPercentageManager from '@/components/MealPercentageManager';
 import { Separator } from '@/components/ui/separator';
-import { resetOnboardingStatus } from '@/services/onboardingService';
 
 import type { ExpandedGoals } from '@/types/goals';
 import { DEFAULT_GOALS } from '@/constants/goals';
+import { useResetOnboarding } from '@/hooks/Onboarding/useOnboarding';
 
 const GoalsSettings = () => {
   const { t } = useTranslation();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const { mutateAsync: resetOnboardingStatus } = useResetOnboarding();
   const {
     dateFormat,
     formatDateInUserTimezone,
@@ -570,22 +571,8 @@ const GoalsSettings = () => {
     setSaving(true);
     try {
       await resetOnboardingStatus();
-      toast({
-        title: t('goals.goalsSettings.success', 'Success'),
-        description: t(
-          'goals.goalsSettings.resetOnboardingSuccess',
-          'Onboarding status has been reset. The page will now reload.'
-        ),
-      });
       window.location.reload();
-    } catch (error: any) {
-      console.error('Error resetting onboarding status:', error);
-      toast({
-        title: t('goals.goalsSettings.error', 'Error'),
-        description: `${t('goals.goalsSettings.errorResettingOnboarding', 'Failed to reset onboarding status:')} ${error.message}`,
-        variant: 'destructive',
-      });
-    } finally {
+    } catch {
       setSaving(false);
     }
   };
