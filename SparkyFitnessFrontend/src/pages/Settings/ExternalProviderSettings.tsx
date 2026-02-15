@@ -225,29 +225,24 @@ const ExternalProviderSettings = () => {
         (p: ExternalDataProvider) => p.provider_type === 'hevy'
       );
       if (hevyProviders.length > 0) {
-        for (const provider of hevyProviders) {
-          try {
-            const hevyStatus = await apiCall(`/integrations/hevy/status`);
-            setProviders((prev) =>
-              prev.map((p) =>
-                p.id === provider.id
-                  ? {
-                      ...p,
-                      hevy_last_sync_at: hevyStatus.lastSyncAt,
-                      hevy_connect_status: hevyStatus.connected
-                        ? 'connected'
-                        : 'disconnected',
-                    }
-                  : p
-              )
-            );
-          } catch (hevyError) {
-            console.error(
-              'Failed to fetch Hevy specific status for provider:',
-              provider.id,
-              hevyError
-            );
-          }
+        try {
+          // Fetch Hevy status once, as it returns general user status
+          const hevyStatus = await apiCall(`/integrations/hevy/status`);
+          setProviders((prev) =>
+            prev.map((p) =>
+              p.provider_type === 'hevy'
+                ? {
+                    ...p,
+                    hevy_last_sync_at: hevyStatus.lastSyncAt,
+                    hevy_connect_status: hevyStatus.connected
+                      ? 'connected'
+                      : 'disconnected',
+                  }
+                : p
+            )
+          );
+        } catch (hevyError) {
+          console.error('Failed to fetch Hevy status:', hevyError);
         }
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

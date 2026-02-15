@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Save, X, Clipboard } from 'lucide-react';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { apiCall } from '@/services/api';
+import { syncHevyData } from '@/api/Integrations/integrations';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -214,13 +215,7 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
         // We wrap this in its own try/catch so that a sync error (like a bad key)
         // doesn't make the user think the provider wasn't added at all.
         try {
-          await apiCall(
-            `/integrations/hevy/sync${fullSyncOnConnect ? '?fullSync=true' : ''}`,
-            {
-              method: 'POST',
-              body: JSON.stringify({ providerId: data.id }),
-            }
-          );
+          await syncHevyData(fullSyncOnConnect, data.id);
         } catch (syncError: any) {
           console.error('Initial Hevy sync failed:', syncError);
           toast({
