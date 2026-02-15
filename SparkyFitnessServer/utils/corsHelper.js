@@ -67,7 +67,7 @@ function createCorsOriginChecker(configuredFrontendUrl, allowPrivateNetworks = f
     // Reject requests with no origin for security
     // Non-browser clients (mobile apps, API clients) should use JWT/API key authentication
     if (!origin) {
-      console.info('CORS: Rejected request with no Origin header');
+      //console.info('CORS: Rejected request with no Origin header');
       return callback(null, false);
     }
 

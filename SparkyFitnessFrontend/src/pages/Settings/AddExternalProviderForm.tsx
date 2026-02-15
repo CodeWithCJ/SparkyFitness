@@ -25,6 +25,7 @@ interface AddExternalProviderFormProps {
   onAddSuccess: () => void;
   handleConnectWithings: (providerId: string) => Promise<void>;
   handleConnectFitbit: (providerId: string) => Promise<void>;
+  handleConnectPolar: (providerId: string) => Promise<void>;
   onGarminMfaRequired: (clientState: string) => void; // New prop for MFA handling
 }
 
@@ -36,6 +37,7 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
   onAddSuccess,
   handleConnectWithings,
   handleConnectFitbit,
+  handleConnectPolar,
   onGarminMfaRequired,
 }) => {
   const { user } = useAuth();
@@ -176,18 +178,18 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
             provider_type: newProvider.provider_type,
             app_id:
               newProvider.provider_type === 'mealie' ||
-              newProvider.provider_type === 'tandoor' ||
-              newProvider.provider_type === 'free-exercise-db' ||
-              newProvider.provider_type === 'wger' ||
-              newProvider.provider_type === 'usda'
+                newProvider.provider_type === 'tandoor' ||
+                newProvider.provider_type === 'free-exercise-db' ||
+                newProvider.provider_type === 'wger' ||
+                newProvider.provider_type === 'usda'
                 ? null
                 : newProvider.app_id || null,
             app_key: newProvider.app_key || null,
             is_active: newProvider.is_active,
             base_url:
               newProvider.provider_type === 'mealie' ||
-              newProvider.provider_type === 'tandoor' ||
-              newProvider.provider_type === 'free-exercise-db'
+                newProvider.provider_type === 'tandoor' ||
+                newProvider.provider_type === 'free-exercise-db'
                 ? newProvider.base_url || null
                 : null,
             sync_frequency: ['withings', 'garmin', 'fitbit'].includes(
@@ -221,6 +223,9 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
       }
       if (data && data.is_active && data.provider_type === 'fitbit') {
         handleConnectFitbit(data.id);
+      }
+      if (data && data.is_active && data.provider_type === 'polar') {
+        handleConnectPolar(data.id);
       }
       // For Garmin, the connection is handled during the addProvider call itself,
       // so no separate handleConnectGarmin call is needed here.
@@ -375,48 +380,48 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
           )}
           {(newProvider.provider_type === 'nutritionix' ||
             newProvider.provider_type === 'fatsecret') && (
-            <>
-              <div>
-                <Label htmlFor="new_app_id">App ID</Label>
-                <Input
-                  id="new_app_id"
-                  type="text"
-                  value={newProvider.app_id}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_id: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter App ID"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <Label htmlFor="new_app_key">App Key</Label>
-                <Input
-                  id="new_app_key"
-                  type="password"
-                  value={newProvider.app_key}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_key: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter App Key"
-                  autoComplete="off"
-                />
-              </div>
-              {newProvider.provider_type === 'fatsecret' && (
-                <p className="text-sm text-muted-foreground col-span-2">
-                  Note: For Fatsecret, you need to set up **your public IP**
-                  whitelisting in your Fatsecret developer account. This process
-                  can take up to 24 hours.
-                </p>
-              )}
-            </>
-          )}
+              <>
+                <div>
+                  <Label htmlFor="new_app_id">App ID</Label>
+                  <Input
+                    id="new_app_id"
+                    type="text"
+                    value={newProvider.app_id}
+                    onChange={(e) =>
+                      setNewProvider((prev) => ({
+                        ...prev,
+                        app_id: e.target.value,
+                      }))
+                    }
+                    placeholder="Enter App ID"
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="new_app_key">App Key</Label>
+                  <Input
+                    id="new_app_key"
+                    type="password"
+                    value={newProvider.app_key}
+                    onChange={(e) =>
+                      setNewProvider((prev) => ({
+                        ...prev,
+                        app_key: e.target.value,
+                      }))
+                    }
+                    placeholder="Enter App Key"
+                    autoComplete="off"
+                  />
+                </div>
+                {newProvider.provider_type === 'fatsecret' && (
+                  <p className="text-sm text-muted-foreground col-span-2">
+                    Note: For Fatsecret, you need to set up **your public IP**
+                    whitelisting in your Fatsecret developer account. This process
+                    can take up to 24 hours.
+                  </p>
+                )}
+              </>
+            )}
           {newProvider.provider_type === 'nutritionix' && (
             <p className="text-sm text-muted-foreground col-span-2">
               Get your App ID and App Key from the{' '}
@@ -621,6 +626,78 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
             </>
           )}
 
+          {newProvider.provider_type === 'polar' && (
+            <>
+              <div>
+                <Label htmlFor="new_app_id">Client ID</Label>
+                <Input
+                  id="new_app_id"
+                  type="text"
+                  value={newProvider.app_id}
+                  onChange={(e) =>
+                    setNewProvider((prev) => ({
+                      ...prev,
+                      app_id: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter Polar Client ID"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label htmlFor="new_app_key">Client Secret</Label>
+                <Input
+                  id="new_app_key"
+                  type="password"
+                  value={newProvider.app_key}
+                  onChange={(e) =>
+                    setNewProvider((prev) => ({
+                      ...prev,
+                      app_key: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter Polar Client Secret"
+                  autoComplete="off"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground col-span-2">
+                Polar integration uses OAuth2. You will be redirected to Polar
+                to authorize access after adding the provider.
+                <br />
+                In your{' '}
+                <a
+                  href="https://admin.polaraccesslink.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 underline"
+                >
+                  Polar AccessLink Admin
+                </a>
+                , you must set your callback URL to:
+                <strong className="flex items-center">
+                  {`${window.location.origin}/polar/callback`}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-2 h-5 w-5"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigator.clipboard.writeText(
+                        `${window.location.origin}/polar/callback`
+                      );
+                      toast({
+                        title: 'Copied!',
+                        description: 'Callback URL copied to clipboard.',
+                      });
+                    }}
+                  >
+                    <Clipboard className="h-4 w-4" />
+                  </Button>
+                </strong>
+              </p>
+            </>
+          )}
+
           {newProvider.provider_type === 'garmin' && (
             <>
               <div>
@@ -668,29 +745,30 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
 
           {(newProvider.provider_type === 'withings' ||
             newProvider.provider_type === 'garmin' ||
-            newProvider.provider_type === 'fitbit') && (
-            <div>
-              <Label htmlFor="new_sync_frequency">Sync Frequency</Label>
-              <Select
-                value={newProvider.sync_frequency || 'manual'}
-                onValueChange={(value) =>
-                  setNewProvider((prev) => ({
-                    ...prev,
-                    sync_frequency: value as 'hourly' | 'daily' | 'manual',
-                  }))
-                }
-              >
-                <SelectTrigger id="new_sync_frequency">
-                  <SelectValue placeholder="Select sync frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual">Manual</SelectItem>
-                  <SelectItem value="hourly">Hourly</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+            newProvider.provider_type === 'fitbit' ||
+            newProvider.provider_type === 'polar') && (
+              <div>
+                <Label htmlFor="new_sync_frequency">Sync Frequency</Label>
+                <Select
+                  value={newProvider.sync_frequency || 'manual'}
+                  onValueChange={(value) =>
+                    setNewProvider((prev) => ({
+                      ...prev,
+                      sync_frequency: value as 'hourly' | 'daily' | 'manual',
+                    }))
+                  }
+                >
+                  <SelectTrigger id="new_sync_frequency">
+                    <SelectValue placeholder="Select sync frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="hourly">Hourly</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
           <div className="flex items-center space-x-2">
             <Switch

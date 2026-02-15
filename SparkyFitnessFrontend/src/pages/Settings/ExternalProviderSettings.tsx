@@ -15,17 +15,18 @@ export interface ExternalDataProvider {
   id: string;
   provider_name: string;
   provider_type:
-    | 'openfoodfacts'
-    | 'nutritionix'
-    | 'fatsecret'
-    | 'wger'
-    | 'mealie'
-    | 'free-exercise-db'
-    | 'withings'
-    | 'garmin'
-    | 'tandoor'
-    | 'usda'
-    | 'fitbit';
+  | 'openfoodfacts'
+  | 'nutritionix'
+  | 'fatsecret'
+  | 'wger'
+  | 'mealie'
+  | 'free-exercise-db'
+  | 'withings'
+  | 'garmin'
+  | 'tandoor'
+  | 'usda'
+  | 'fitbit'
+  | 'polar';
   app_id: string | null;
   app_key: string | null;
   is_active: boolean;
@@ -43,6 +44,8 @@ export interface ExternalDataProvider {
   withings_token_expires?: string;
   fitbit_last_sync_at?: string;
   fitbit_token_expires?: string;
+  polar_last_sync_at?: string;
+  polar_token_expires?: string;
   is_strictly_private?: boolean;
 }
 
@@ -170,10 +173,10 @@ const ExternalProviderSettings = () => {
               prev.map((p) =>
                 p.id === provider.id
                   ? {
-                      ...p,
-                      fitbit_last_sync_at: fitbitStatus.lastSyncAt,
-                      fitbit_token_expires: fitbitStatus.tokenExpiresAt,
-                    }
+                    ...p,
+                    fitbit_last_sync_at: fitbitStatus.lastSyncAt,
+                    fitbit_token_expires: fitbitStatus.tokenExpiresAt,
+                  }
                   : p
               )
             );
@@ -221,17 +224,17 @@ const ExternalProviderSettings = () => {
       provider_type: editData.provider_type,
       app_id:
         editData.provider_type === 'mealie' ||
-        editData.provider_type === 'tandoor' ||
-        editData.provider_type === 'free-exercise-db' ||
-        editData.provider_type === 'wger'
+          editData.provider_type === 'tandoor' ||
+          editData.provider_type === 'free-exercise-db' ||
+          editData.provider_type === 'wger'
           ? null
           : editData.app_id || null,
       app_key: editData.app_key || null,
       is_active: editData.is_active,
       base_url:
         editData.provider_type === 'mealie' ||
-        editData.provider_type === 'tandoor' ||
-        editData.provider_type === 'free-exercise-db'
+          editData.provider_type === 'tandoor' ||
+          editData.provider_type === 'free-exercise-db'
           ? editData.base_url || null
           : null,
       withings_last_sync_at:
@@ -250,10 +253,18 @@ const ExternalProviderSettings = () => {
         editData.provider_type === 'fitbit'
           ? editData.fitbit_token_expires
           : null,
+      polar_last_sync_at:
+        editData.provider_type === 'polar'
+          ? editData.polar_last_sync_at
+          : null,
+      polar_token_expires:
+        editData.provider_type === 'polar'
+          ? editData.polar_token_expires
+          : null,
       sync_frequency:
         editData.provider_type === 'withings' ||
-        editData.provider_type === 'garmin' ||
-        editData.provider_type === 'fitbit'
+          editData.provider_type === 'garmin' ||
+          editData.provider_type === 'fitbit'
           ? editData.sync_frequency
           : null,
     };
@@ -596,6 +607,82 @@ const ExternalProviderSettings = () => {
     }
   };
 
+  const handleConnectPolar = async (providerId: string) => {
+    setLoading(true);
+    try {
+      const response = await apiCall(`/integrations/polar/authorize`, {
+        method: 'GET',
+      });
+      if (response && response.authUrl) {
+        window.location.href = response.authUrl;
+      } else {
+        throw new Error('Failed to get Polar authorization URL.');
+      }
+    } catch (error: any) {
+      console.error('Error connecting to Polar:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to connect to Polar: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnectPolar = async (providerId: string) => {
+    if (
+      !confirm(
+        'Are you sure you want to disconnect from Polar? This will revoke access and delete all associated tokens.'
+      )
+    )
+      return;
+
+    setLoading(true);
+    try {
+      await apiCall(`/integrations/polar/disconnect`, {
+        method: 'POST',
+      });
+      toast({
+        title: 'Success',
+        description: 'Disconnected from Polar successfully.',
+      });
+      loadProviders();
+    } catch (error: any) {
+      console.error('Error disconnecting from Polar:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to disconnect from Polar: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualSyncPolar = async (providerId: string) => {
+    setLoading(true);
+    try {
+      await apiCall(`/integrations/polar/sync`, {
+        method: 'POST',
+      });
+      toast({
+        title: 'Success',
+        description: 'Polar data synchronization initiated.',
+      });
+      loadProviders();
+    } catch (error: any) {
+      console.error('Error initiating manual Polar sync:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to initiate manual Polar sync: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const startEditing = (provider: ExternalDataProvider) => {
     setEditingProvider(provider.id);
     setEditData({
@@ -615,6 +702,8 @@ const ExternalProviderSettings = () => {
       withings_token_expires: provider.withings_token_expires || '',
       fitbit_last_sync_at: provider.fitbit_last_sync_at || '',
       fitbit_token_expires: provider.fitbit_token_expires || '',
+      polar_last_sync_at: provider.polar_last_sync_at || '',
+      polar_token_expires: provider.polar_token_expires || '',
     });
   };
 
@@ -634,6 +723,7 @@ const ExternalProviderSettings = () => {
     { value: 'withings', label: 'Withings' },
     { value: 'garmin', label: 'Garmin' },
     { value: 'fitbit', label: 'Fitbit' },
+    { value: 'polar', label: 'Polar Flow' },
     { value: 'usda', label: 'USDA' },
   ];
 
@@ -655,6 +745,7 @@ const ExternalProviderSettings = () => {
             getProviderTypes={getProviderTypes}
             handleConnectWithings={handleConnectWithings}
             handleConnectFitbit={handleConnectFitbit}
+            handleConnectPolar={handleConnectPolar}
             onGarminMfaRequired={handleGarminMfaRequiredFromAddForm}
           />
 
@@ -695,6 +786,9 @@ const ExternalProviderSettings = () => {
                 handleConnectFitbit={handleConnectFitbit}
                 handleManualSyncFitbit={handleManualSyncFitbit}
                 handleDisconnectFitbit={handleDisconnectFitbit}
+                handleConnectPolar={handleConnectPolar}
+                handleManualSyncPolar={handleManualSyncPolar}
+                handleDisconnectPolar={handleDisconnectPolar}
                 startEditing={startEditing}
                 handleDeleteProvider={handleDeleteProvider}
                 toggleProviderPublicSharing={toggleProviderPublicSharing}

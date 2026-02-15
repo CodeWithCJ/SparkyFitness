@@ -41,6 +41,7 @@ const garminRoutes = require('./routes/garminRoutes'); // Import Garmin routes
 const withingsRoutes = require('./routes/withingsRoutes'); // Import Withings routes
 const withingsDataRoutes = require('./routes/withingsDataRoutes'); // Import Withings Data routes
 const fitbitRoutes = require('./routes/fitbitRoutes'); // Import Fitbit routes
+const polarRoutes = require('./routes/polarRoutes'); // Import Polar routes
 const moodRoutes = require('./routes/moodRoutes'); // Import Mood routes
 const fastingRoutes = require('./routes/fastingRoutes'); // Import Fasting routes
 const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
@@ -317,6 +318,7 @@ app.use("/api/admin/backup", backupRoutes);
 app.use("/api/admin/auth", adminAuthRoutes);
 app.use("/api/integrations/withings/data", withingsDataRoutes);
 app.use("/api/integrations/fitbit", fitbitRoutes);
+app.use("/api/integrations/polar", polarRoutes);
 app.use("/api/mood", moodRoutes);
 app.use("/api/fasting", fastingRoutes);
 app.use("/api/admin", adminRoutes);
