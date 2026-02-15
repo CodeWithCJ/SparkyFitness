@@ -26,6 +26,7 @@ import {
   Repeat,
   Weight,
   Timer,
+  Activity,
 } from 'lucide-react';
 import ExerciseActivityDetailsEditor, {
   type ActivityDetailKeyValuePair,
@@ -166,6 +167,24 @@ const SortableSetItem = React.memo(
               onChange={(e) =>
                 handleSetChange(index, 'weight', Number(e.target.value))
               }
+            />
+          </div>
+          <div className="md:col-span-1">
+            <Label className="flex items-center">
+              <Activity className="h-4 w-4 mr-1" style={{ color: '#10b981' }} />
+              {t('exercise.logExerciseEntryDialog.rpeLabel', 'RPE')}
+            </Label>
+            <Input
+              type="number"
+              min="0"
+              max="10"
+              step="0.5"
+              value={set.rpe ?? ''}
+              onChange={(e) => {
+                const val = e.target.value === '' ? undefined : Number(e.target.value);
+                handleSetChange(index, 'rpe', val);
+              }}
+              placeholder="1-10"
             />
           </div>
           <div className="md:col-span-1">

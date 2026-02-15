@@ -230,7 +230,7 @@ const ExternalProviderSettings = () => {
       if (hevyProviders.length > 0) {
         for (const provider of hevyProviders) {
           try {
-            const hevyStatus = await apiCall(`/hevy/status`);
+            const hevyStatus = await apiCall(`/integrations/hevy/status`);
             setProviders((prev) =>
               prev.map((p) =>
                 p.id === provider.id

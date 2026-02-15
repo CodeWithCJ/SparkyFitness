@@ -1069,7 +1069,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                 )}
               </div>
               {/* Contributing Note for specific providers */}
-              {['fitbit', 'withings', 'polar', 'garmin'].includes(
+              {['fitbit', 'withings', 'polar', 'garmin', 'hevy'].includes(
                 provider.provider_type
               ) && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 text-sm text-yellow-800 dark:text-yellow-200 mt-2">

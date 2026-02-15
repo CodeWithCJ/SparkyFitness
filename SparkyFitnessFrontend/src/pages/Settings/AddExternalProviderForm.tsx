@@ -211,12 +211,23 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
 
       if (newProvider.provider_type === 'hevy' && newProvider.is_active) {
         // Trigger initial sync for Hevy if activated
-        await apiCall(
-          `/hevy/sync${fullSyncOnConnect ? '?fullSync=true' : ''}`,
-          {
-            method: 'POST',
-          }
-        );
+        // We wrap this in its own try/catch so that a sync error (like a bad key)
+        // doesn't make the user think the provider wasn't added at all.
+        try {
+          await apiCall(
+            `/integrations/hevy/sync${fullSyncOnConnect ? '?fullSync=true' : ''}`,
+            {
+              method: 'POST',
+            }
+          );
+        } catch (syncError: any) {
+          console.error('Initial Hevy sync failed:', syncError);
+          toast({
+            title: 'Sync Warning',
+            description: `Provider added, but initial sync failed: ${syncError.message}. Please check your API key in settings.`,
+            variant: 'destructive',
+          });
+        }
       }
 
       toast({

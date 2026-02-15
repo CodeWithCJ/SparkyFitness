@@ -29,25 +29,16 @@ export const linkPolarFlowAccount = async (
   });
 };
 
-export const connectHevyAccount = async (data: {
-  apiKey: string;
-}): Promise<void> => {
-  return apiCall('/hevy/connect', {
-    method: 'POST',
-    body: data,
-  });
-};
-
 export const syncHevyData = async (
   fullSync: boolean = false
 ): Promise<void> => {
-  return apiCall(`/hevy/sync${fullSync ? '?fullSync=true' : ''}`, {
+  return apiCall(`/integrations/hevy/sync${fullSync ? '?fullSync=true' : ''}`, {
     method: 'POST',
   });
 };
 
 export const disconnectHevyAccount = async (): Promise<void> => {
-  return apiCall('/hevy/disconnect', {
+  return apiCall('/integrations/hevy/disconnect', {
     method: 'POST',
   });
 };

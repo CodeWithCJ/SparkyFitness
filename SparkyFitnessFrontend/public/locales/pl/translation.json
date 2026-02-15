@@ -1,12 +1,12 @@
 {
-  "nav": {
-    "diary": "Pamiętnik",
-    "reports": "Raporty",
-    "goals": "Cele",
-    "settings": "Ustawienia",
-    "admin": "Administrator"
-  },
-  "aboutDialog": {
-    "title": "O SparkyFitness"
-  }
+    "nav": {
+        "diary": "Pamiętnik",
+        "reports": "Raporty",
+        "goals": "Cele",
+        "settings": "Ustawienia",
+        "admin": "Administrator"
+    },
+    "aboutDialog": {
+        "title": "O SparkyFitness"
+    }
 }
