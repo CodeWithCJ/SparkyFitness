@@ -81,6 +81,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
     if (currentUserId && selectedDate) {
       fetchSleepEntries();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, selectedDate]);
 
   const fetchSleepEntries = async () => {

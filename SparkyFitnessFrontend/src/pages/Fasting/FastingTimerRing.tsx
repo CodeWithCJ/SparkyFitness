@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useId } from 'react';
 import { cn } from '@/lib/utils';
 import { Flame } from 'lucide-react';
 
@@ -73,7 +73,7 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
   const dash = (progress / 100) * circumference;
 
   // make gradient/filter ids unique so multiple instances don't clash
-  const rand = useMemo(() => Math.random().toString(36).slice(2, 9), []);
+  const rand = useId();
   const gradId = `fastGradient-${rand}`;
   const shadowId = `ringShadow-${rand}`;
 

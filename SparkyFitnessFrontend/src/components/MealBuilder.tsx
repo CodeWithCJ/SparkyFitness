@@ -180,6 +180,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       // Check for foodEntryId
       fetchMealData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     mealId,
     activeUserId,
@@ -276,6 +277,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       setSelectedFoodForUnitSelection(null);
       setEditingMealFood(null); // Clear editing state
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [editingMealFood, mealFoods]
   );
 
@@ -288,6 +290,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         'Food removed from meal.'
       ),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSaveMeal = useCallback(async () => {
@@ -407,6 +410,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     mealName,
     mealDescription,

@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 
 const PasskeySettings = () => {
   const { t } = useTranslation();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [passkeys, setPasskeys] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [newPasskeyName, setNewPasskeyName] = useState('');
@@ -28,6 +29,7 @@ const PasskeySettings = () => {
       const { data, error } = await authClient.passkey.listUserPasskeys();
       if (error) throw error;
       setPasskeys(data || []);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -58,6 +60,7 @@ const PasskeySettings = () => {
       });
       setNewPasskeyName('');
       fetchPasskeys();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: 'Registration Failed',
@@ -78,6 +81,7 @@ const PasskeySettings = () => {
 
       toast({ title: 'Success', description: 'Passkey deleted.' });
       fetchPasskeys();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: 'Error',

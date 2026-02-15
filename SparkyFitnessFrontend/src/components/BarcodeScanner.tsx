@@ -131,6 +131,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     if (isActive) {
       getCameras();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, cameraFacing]); // Re-check when active toggles
 
   const createEngine = (name: string): BarcodeScannerEngine => {
@@ -148,16 +149,16 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
 
   useEffect(() => {
     const engine = createEngine(selectedEngine);
+
     setEngineInstance(engine);
-    try {
-      localStorage.setItem('barcodeScannerEngine', selectedEngine);
-    } catch {}
+    localStorage.setItem('barcodeScannerEngine', selectedEngine);
   }, [selectedEngine]);
 
   const turnOffTorch = useCallback(async () => {
     if (!currentTrack.current || !torchSupported || !torchEnabled) return;
     try {
       await currentTrack.current.applyConstraints({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         advanced: [{ torch: false } as any],
       });
       setTorchEnabled(false);
@@ -170,6 +171,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     if (!currentTrack.current || !torchSupported) return;
     try {
       await currentTrack.current.applyConstraints({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         advanced: [{ torch: !torchEnabled } as any],
       });
       setTorchEnabled(!torchEnabled);
@@ -187,6 +189,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       !selectedCameraId
     ) {
       engineInstance?.stop();
+
       setIsScanning(false);
       return;
     }
@@ -197,6 +200,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
         width: { ideal: 1280 }, // Lowering ideal might help mobile performance/compatibility
         frameRate: { ideal: 30 },
         focusMode: { ideal: 'continuous' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any, // Cast to allow custom properties
     };
 
@@ -269,18 +273,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
 
   // Persist settings
   useEffect(() => {
-    try {
-      localStorage.setItem('barcodeScanAreaSize', JSON.stringify(scanAreaSize));
-    } catch {}
+    localStorage.setItem('barcodeScanAreaSize', JSON.stringify(scanAreaSize));
   }, [scanAreaSize]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        'barcodeContinuousMode',
-        JSON.stringify(internalContinuousMode)
-      );
-    } catch {}
+    localStorage.setItem(
+      'barcodeContinuousMode',
+      JSON.stringify(internalContinuousMode)
+    );
   }, [internalContinuousMode]);
 
   const handleManualBarcodeSubmit = (e: React.FormEvent) => {

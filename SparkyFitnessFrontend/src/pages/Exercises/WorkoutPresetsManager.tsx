@@ -31,9 +31,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-type WorkoutPresetsManagerProps = {};
-
-const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => {
+const WorkoutPresetsManager = () => {
   // Removed onUsePreset prop
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -104,6 +102,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => {
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [user?.id, page, loggingLevel]
   ); // Removed 'loading' from dependencies
 
@@ -157,6 +156,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => {
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [user?.id, loggingLevel, toast, loadPresets]
   );
 
@@ -200,6 +200,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => {
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [user?.id, loggingLevel, toast, loadPresets]
   );
 
@@ -240,6 +241,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => {
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [user?.id, loggingLevel, toast, loadPresets]
   );
 
@@ -268,6 +270,7 @@ const WorkoutPresetsManager: React.FC<WorkoutPresetsManagerProps> = () => {
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [user?.id, loggingLevel, toast]
   );
 

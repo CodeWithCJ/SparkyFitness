@@ -44,6 +44,7 @@ export const loadFamilyAccess = async (
     method: 'GET',
     suppress404Toast: true,
   });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const transformedData: FamilyAccess[] = (data || []).map((item: any) => ({
     id: item.id,
     owner_user_id: item.owner_user_id,

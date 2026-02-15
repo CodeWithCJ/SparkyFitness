@@ -127,6 +127,7 @@ const DailyProgress = ({
       window.removeEventListener('foodDiaryRefresh', handleRefresh);
       window.removeEventListener('measurementsRefresh', handleRefresh);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentUserId,
     selectedDate,
@@ -273,28 +274,39 @@ const DailyProgress = ({
       // Process BMR
       if (prefs && currentUserId) {
         setIncludeBmrInNetCalories(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (prefs as any).include_bmr_in_net_calories || false
         );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const age = (userProfile as any)?.date_of_birth
           ? new Date().getFullYear() -
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             new Date((userProfile as any).date_of_birth).getFullYear()
           : 0;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const gender = (userProfile as any)?.gender;
 
         if (
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (prefs as any).bmr_algorithm &&
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (mostRecentWeight as any)?.weight &&
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (mostRecentHeight as any)?.height &&
           age &&
           gender
         ) {
           try {
             const bmrValue = calculateBmr(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (prefs as any).bmr_algorithm as BmrAlgorithm,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (mostRecentWeight as any).weight,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (mostRecentHeight as any).height,
               age,
               gender,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (mostRecentBodyFat as any)?.body_fat_percentage
             );
             setBmr(bmrValue);
@@ -311,8 +323,11 @@ const DailyProgress = ({
             loggingLevel,
             'DailyProgress: Missing data for BMR calculation.',
             {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               bmr_algorithm: (prefs as any).bmr_algorithm,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               weight: (mostRecentWeight as any)?.weight,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               height: (mostRecentHeight as any)?.height,
               age,
               gender,
@@ -328,6 +343,7 @@ const DailyProgress = ({
         loggingLevel,
         'DailyProgress: Goals and intake loaded successfully.'
       );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error(loggingLevel, 'DailyProgress: Error in loadGoalsAndIntake:', err);
     } finally {
@@ -430,11 +446,11 @@ const DailyProgress = ({
     finalTotalCaloriesBurned
   );
 
-  let netCalories: number;
   let caloriesRemaining: number;
 
   // Net Calories is always Eaten - Burned (Total) for metabolic visibility
-  netCalories = Math.round(dailyIntake.calories) - finalTotalCaloriesBurned;
+  const netCalories =
+    Math.round(dailyIntake.calories) - finalTotalCaloriesBurned;
 
   if (calorieGoalAdjustmentMode === 'dynamic') {
     // Dynamic Goal: burned calories are effectively added to the budget

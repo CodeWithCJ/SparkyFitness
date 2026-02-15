@@ -44,6 +44,7 @@ const getSpO2StatusInfo = (
 };
 
 // Get color for a specific SpO2 value (for bar chart)
+// eslint-disable-next-line react-refresh/only-export-components
 export const getSpO2Color = (value: number): string => {
   if (value < 70) return '#ef4444';
   if (value < 80) return '#f97316';
@@ -168,5 +169,6 @@ const SpO2Gauge: React.FC<SpO2GaugeProps> = ({
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { getSpO2StatusInfo };
 export default SpO2Gauge;

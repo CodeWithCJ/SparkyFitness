@@ -28,9 +28,9 @@ import {
   getSuggestedExercises,
   loadExercises,
   createExercise,
-  type Exercise,
   type ExerciseOwnershipFilter,
 } from '@/services/exerciseService';
+import type { Exercise } from '@/services/exerciseSearchService';
 import type {
   WorkoutPresetSet,
   WorkoutPreset,
@@ -151,6 +151,7 @@ const ExerciseCard = ({
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentUserId,
     selectedDate,
@@ -171,6 +172,7 @@ const ExerciseCard = ({
     if (currentUserId) {
       _fetchExerciseEntries();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentUserId,
     selectedDate,
@@ -606,12 +608,14 @@ const ExerciseCard = ({
     (sum, groupedEntry) => {
       // This value is in kcal
       if (groupedEntry.type === 'individual') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const calories = parseFloat(groupedEntry.calories_burned as any);
         return sum + (isNaN(calories) ? 0 : calories);
       } else if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
         return (
           sum +
           groupedEntry.exercises.reduce((presetSum, entry) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const calories = parseFloat(entry.calories_burned as any);
             return presetSum + (isNaN(calories) ? 0 : calories);
           }, 0)

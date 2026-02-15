@@ -47,6 +47,7 @@ export const processExerciseInput = async (
           method: 'GET',
         }
       );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       searchError = err; // Assign error to searchError
       error(
@@ -95,6 +96,7 @@ export const processExerciseInput = async (
           body: formData,
           isFormData: true,
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         error(
           userLoggingLevel,
@@ -129,6 +131,7 @@ export const processExerciseInput = async (
             : undefined,
         },
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error(
         userLoggingLevel,

@@ -18,7 +18,7 @@ import {
 import { Dumbbell, Edit, Trash2, Settings, Play } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { ExerciseEntry } from '@/services/exerciseEntryService';
-import type { Exercise } from '@/services/exerciseService';
+import type { Exercise } from '@/services/exerciseSearchService';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';
 
 interface ExerciseEntryDisplayProps {

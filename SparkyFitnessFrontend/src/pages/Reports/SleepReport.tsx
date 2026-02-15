@@ -34,6 +34,7 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
     if (activeUserId && startDate && endDate) {
       fetchSleepData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeUserId, startDate, endDate]);
 
   const fetchSleepData = async () => {

@@ -17,6 +17,7 @@ export const getMeals = async (
   searchTerm: string = ''
 ): Promise<Meal[]> => {
   let url = `/meals`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const params: { [key: string]: any } = { filter };
 
   if (searchTerm) {
@@ -91,6 +92,7 @@ export const deleteMealPlanEntry = async (planId: string): Promise<void> => {
 export const logMealPlanEntryToDiary = async (
   mealPlanId: string,
   targetDate?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> => {
   return await apiCall(`/meals/plan/${mealPlanId}/log-to-diary`, {
     method: 'POST',
@@ -101,6 +103,7 @@ export const logMealPlanEntryToDiary = async (
 export const logDayMealPlanToDiary = async (
   planDate: string,
   targetDate?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> => {
   return await apiCall(`/meals/plan/log-day-to-diary`, {
     method: 'POST',

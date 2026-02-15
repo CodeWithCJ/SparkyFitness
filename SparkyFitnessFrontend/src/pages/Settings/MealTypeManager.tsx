@@ -61,6 +61,7 @@ const MealTypeManager = () => {
 
   useEffect(() => {
     fetchMealTypes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleAdd = async () => {
@@ -82,6 +83,7 @@ const MealTypeManager = () => {
       setIsAddDialogOpen(false);
       fetchMealTypes();
       window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: t('common.errorOccurred', 'Error'),
@@ -113,6 +115,7 @@ const MealTypeManager = () => {
       setEditingMealType(null);
       fetchMealTypes();
       window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: t('common.errorOccurred', 'Error'),
@@ -135,6 +138,7 @@ const MealTypeManager = () => {
       });
       fetchMealTypes();
       window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: t('common.errorOccurred', 'Error'),
@@ -152,6 +156,7 @@ const MealTypeManager = () => {
       fetchMealTypes();
 
       window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: 'Error',

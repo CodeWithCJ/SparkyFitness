@@ -1,4 +1,18 @@
 {
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0"
+  },
+  "lint-staged": {
+    "SparkyFitnessFrontend/**/*.{ts,tsx}": [
+      "npx eslint --config SparkyFitnessFrontend/eslint.config.js --fix --max-warnings 0",
+      "npx prettier --write",
+      "npm run test --prefix SparkyFitnessFrontend -- --findRelatedTests --passWithNoTests"
+    ]
+  },
   "dependencies": {
     "@types/react-beautiful-dnd": "^13.1.8",
     "js-yaml": "^4.1.0",

@@ -157,6 +157,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     };
 
     loadNutritionForAssignments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template?.id]); // Only run when template ID changes
 
   const handleAddFood = (day: number, mealType: string) => {

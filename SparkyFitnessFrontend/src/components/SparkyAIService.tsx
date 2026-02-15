@@ -151,6 +151,7 @@ class SparkyAIService {
         custom_url: data.custom_url,
         model_name: data.model_name,
       };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error fetching AI service config:', error);
       return null;
@@ -290,6 +291,7 @@ class SparkyAIService {
             valueToStore = measurement.value * 2.54; // Convert inches to cm
           }
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const dataToSave: any = {
             entry_date: measurement.date,
           };
@@ -314,6 +316,7 @@ class SparkyAIService {
       }
 
       return true;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error in saveMeasurements:', error);
       return false;
@@ -546,6 +549,7 @@ class SparkyAIService {
   }
 
   private getKnownFoodNutrition(foodName: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const knownFoods: { [key: string]: any } = {
       Idli: {
         name: 'Idli',
@@ -716,6 +720,7 @@ class SparkyAIService {
   }
 
   private createFoodSuggestionsFromNutrition(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     nutritionData: any[],
     originalMessage: string
   ): FoodSuggestion[] {
@@ -759,6 +764,7 @@ class SparkyAIService {
   }
 
   private createNutritionResponse(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     nutritionData: any[],
     originalMessage: string
   ): string {
@@ -880,6 +886,7 @@ class SparkyAIService {
       while ((match = pattern.exec(message)) !== null) {
         const value = parseFloat(match[1]);
         measurements.push({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           type: 'blood_sugar' as any,
           value,
           unit: 'mg/dL',
@@ -894,6 +901,7 @@ class SparkyAIService {
       while ((match = pattern.exec(message)) !== null) {
         const value = parseFloat(match[1]);
         measurements.push({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           type: 'cholesterol' as any,
           value,
           unit: 'mg/dL',
@@ -909,12 +917,14 @@ class SparkyAIService {
         const systolic = parseFloat(match[1]);
         const diastolic = parseFloat(match[2]);
         measurements.push({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           type: 'blood_pressure_systolic' as any,
           value: systolic,
           unit: 'mmHg',
           date: today,
         });
         measurements.push({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           type: 'blood_pressure_diastolic' as any,
           value: diastolic,
           unit: 'mmHg',
@@ -929,6 +939,7 @@ class SparkyAIService {
       while ((match = pattern.exec(message)) !== null) {
         const value = parseFloat(match[1]);
         measurements.push({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           type: 'heart_rate' as any,
           value,
           unit: 'bpm',
@@ -943,6 +954,7 @@ class SparkyAIService {
       while ((match = pattern.exec(message)) !== null) {
         const value = parseFloat(match[1]);
         measurements.push({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           type: 'body_fat' as any,
           value,
           unit: '%',
@@ -957,6 +969,7 @@ class SparkyAIService {
       while ((match = pattern.exec(message)) !== null) {
         const value = parseFloat(match[1]);
         measurements.push({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           type: 'temperature' as any,
           value,
           unit: '°F',
@@ -1002,6 +1015,7 @@ class SparkyAIService {
                 method: 'GET',
               }
             );
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (e: any) {
             if (e.message && e.message.includes('404')) {
               // Category not found, proceed to create
@@ -1032,6 +1046,7 @@ class SparkyAIService {
                 }
               );
               category = newCategory;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (createError: any) {
               console.error(
                 `Error creating ${categoryInfo.name} category:`,
@@ -1052,6 +1067,7 @@ class SparkyAIService {
                 entry_timestamp: new Date().toISOString(),
               },
             });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (saveError: any) {
             console.error(
               `Error saving ${categoryInfo.name} measurement:`,
@@ -1063,6 +1079,7 @@ class SparkyAIService {
       }
 
       return true;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error in saveCustomMeasurements:', error);
       return false;
@@ -1118,6 +1135,7 @@ class SparkyAIService {
           "I'm sorry, I can only process measurements at the moment. AI chat functionality is under development.",
         actionType: 'general',
       };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error processing message:', error);
       return {

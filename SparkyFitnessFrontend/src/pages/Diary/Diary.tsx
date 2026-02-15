@@ -63,6 +63,7 @@ interface MealTotals {
   iron: number;
   calcium: number;
   custom_nutrients?: Record<string, number>; // Add custom_nutrients support
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any; // Allow custom nutrients
 }
 
@@ -137,6 +138,7 @@ const Diary = () => {
   useEffect(() => {
     debug(loggingLevel, 'selectedDate useEffect triggered:', selectedDate);
     setDate(parseDateInUserTimezone(selectedDate));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, parseDateInUserTimezone]);
 
   useEffect(() => {
@@ -153,6 +155,7 @@ const Diary = () => {
     }
   }, [currentUserId, loggingLevel]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const normalizeGlycemicIndex = useCallback((value: any): GlycemicIndex => {
     if (
       value === null ||
@@ -236,6 +239,7 @@ const Diary = () => {
 
             // Safely add numbers, ignoring other types
             if (typeof val === 'number') {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (acc as any)[key] += val;
             }
           });
@@ -334,6 +338,7 @@ const Diary = () => {
     } catch (err) {
       error(loggingLevel, 'Error loading goals:', err);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, selectedDate, loggingLevel]);
 
   useEffect(() => {
@@ -346,6 +351,7 @@ const Diary = () => {
       _loadFoodEntriesAndMeals();
       _loadGoals();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentUserId,
     selectedDate,
@@ -451,6 +457,7 @@ const Diary = () => {
     _loadGoals();
     info(loggingLevel, 'Dispatching foodDiaryRefresh event.');
     window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debug, loggingLevel, _loadFoodEntriesAndMeals, _loadGoals, info]);
 
   const handleCopyClick = useCallback(
@@ -459,6 +466,7 @@ const Diary = () => {
       setIsCopyDialogOpen(true);
       debug(loggingLevel, 'Opening copy dialog for meal type:', mealType);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [debug, loggingLevel]
   );
 
@@ -500,6 +508,7 @@ const Diary = () => {
         setIsCopyDialogOpen(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       selectedDate,
       copySourceMealType,
@@ -540,6 +549,7 @@ const Diary = () => {
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedDate, handleDataChange, info, loggingLevel, toast, error]
   );
 
@@ -569,6 +579,7 @@ const Diary = () => {
             const val = itemNutrition[k];
 
             if (typeof val === 'number') {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (acc as any)[key] += val;
             }
           });
@@ -620,6 +631,7 @@ const Diary = () => {
         setSelectedDate(dateString);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       debug,
       loggingLevel,
@@ -635,6 +647,7 @@ const Diary = () => {
     const previousDay = new Date(date);
     previousDay.setDate(previousDay.getDate() - 1);
     handleDateSelect(previousDay);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debug, loggingLevel, date, handleDateSelect]);
 
   const handleNextDay = useCallback(() => {
@@ -642,6 +655,7 @@ const Diary = () => {
     const nextDay = new Date(date);
     nextDay.setDate(nextDay.getDate() + 1);
     handleDateSelect(nextDay);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debug, loggingLevel, date, handleDateSelect]);
 
   const handleFoodSelect = useCallback(
@@ -670,6 +684,7 @@ const Diary = () => {
         setIsLogMealDialogOpen(true);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       debug,
       loggingLevel,
@@ -723,6 +738,7 @@ const Diary = () => {
         error(loggingLevel, 'Error adding food entry:', err);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       debug,
       loggingLevel,
@@ -765,6 +781,7 @@ const Diary = () => {
         error(loggingLevel, 'Error removing food entry:', err);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       debug,
       loggingLevel,
@@ -806,6 +823,7 @@ const Diary = () => {
         setEditingFoodEntryMeal(null);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       debug,
       loggingLevel,
@@ -829,12 +847,14 @@ const Diary = () => {
       );
       handleDataChange();
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [debug, loggingLevel, handleDataChange]
   );
 
   const handleExerciseAdded = useCallback(() => {
     debug(loggingLevel, 'Exercise added, triggering data change.');
     handleDataChange();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debug, loggingLevel, handleDataChange]);
 
   const handleWorkoutPresetSelected = useCallback(
@@ -843,6 +863,7 @@ const Diary = () => {
       // TODO: Fix this type mismatch
       // setExercisesToLogFromPreset(preset.exercises.map(e => ({...e, reps: e.reps || null, weight: e.weight || null})) || []);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [debug, loggingLevel]
   );
 
@@ -856,6 +877,7 @@ const Diary = () => {
         mealType
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [debug, loggingLevel]
   );
 

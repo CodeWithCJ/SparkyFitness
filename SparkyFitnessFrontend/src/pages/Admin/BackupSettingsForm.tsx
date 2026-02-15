@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 
 interface BackupSettingsFormProps {
   initialSettings: BackupSettingsResponse;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSave: (settings: any) => void;
   onManualBackup: () => void;
   onRestore: (file: File) => void;

@@ -21,7 +21,9 @@ import {
 } from '@/components/ui/select';
 import { XCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { updateExercise, type Exercise } from '@/services/exerciseService';
+import { updateExercise } from '@/services/exerciseService';
+
+import type { Exercise } from '@/services/exerciseSearchService';
 import { error } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
@@ -165,6 +167,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
         variant: 'destructive',
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     exerciseToEdit,
     editExerciseName,

@@ -26,5 +26,6 @@ export interface ExpandedGoals {
   lunch_percentage: number;
   dinner_percentage: number;
   snacks_percentage: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any; // Allow custom nutrients
 }

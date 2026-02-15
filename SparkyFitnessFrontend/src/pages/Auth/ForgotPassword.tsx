@@ -34,6 +34,7 @@ const ForgotPassword = () => {
       setMessage(
         'If an account with that email exists, a password reset link has been sent.'
       );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setMessage(err.message || 'An unexpected error occurred.');
     } finally {

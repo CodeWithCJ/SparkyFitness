@@ -62,7 +62,7 @@ export class Html5QrcodeEngine implements BarcodeScannerEngine {
         (decodedText) => {
           if (this.callback) this.callback(decodedText);
         },
-        (errorMessage) => {
+        (_errorMessage) => {
           // parse error, ignore it.
         }
       );
@@ -70,9 +70,7 @@ export class Html5QrcodeEngine implements BarcodeScannerEngine {
       console.error('Error starting html5-qrcode:', err);
       this.isScanning = false;
       // cleanup if failed start
-      try {
-        await this.html5QrCode.clear();
-      } catch (e) {}
+      this.html5QrCode.clear();
       throw err;
     }
   }

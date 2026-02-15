@@ -36,6 +36,7 @@ const EditMealFoodEntryDialog = ({
     );
     if (open && foodEntry?.foods) {
       // Only set when dialog is open and foodEntryMeal has foods
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(true);
       setInitialMealFoods(foodEntry.foods);
       setLoading(false);

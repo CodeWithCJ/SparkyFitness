@@ -32,6 +32,7 @@ interface ExternalProviderListProps {
   editingProvider: string | null;
   editData: Partial<ExternalDataProvider>;
   loading: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any; // Replace with a more specific user type if available
   handleUpdateProvider: (providerId: string) => void;
   setEditData: React.Dispatch<
@@ -54,6 +55,7 @@ interface ExternalProviderListProps {
   handleDeleteProvider: (providerId: string) => void;
   toggleProviderPublicSharing: (providerId: string, isPublic: boolean) => void;
   loadProviders: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toast: any; // Replace with a more specific toast type if available
   cancelEditing: () => void;
 }
@@ -771,6 +773,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                                   : 'Provider made private',
                               });
                               loadProviders();
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             } catch (err: any) {
                               toast({
                                 title: 'Error',

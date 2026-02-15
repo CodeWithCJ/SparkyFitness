@@ -38,25 +38,6 @@ const MoodChart: React.FC<MoodChartProps> = ({ data, title }) => {
     notes: entry.notes,
   }));
 
-  // Custom Tooltip for Mood Chart
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const entry = payload[0].payload;
-      return (
-        <div className="p-2 bg-background border rounded-md shadow-md">
-          <p className="label">{`${formatDateInUserTimezone(entry.date, 'MMM dd, yyyy')}`}</p>
-          <p className="intro">{`${t('mood.moodValue', 'Mood Value')}: ${entry.moodValue} ${entry.moodDisplay.emoji} (${entry.moodDisplay.label})`}</p>
-          {entry.notes && (
-            <p className="desc" style={{ marginTop: '5px' }}>
-              {t('mood.notes', 'Notes: ') + entry.notes}
-            </p>
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
-
   if (!isMounted) {
     return (
       <Card>
@@ -141,3 +122,26 @@ const MoodChart: React.FC<MoodChartProps> = ({ data, title }) => {
 };
 
 export default MoodChart;
+
+// Custom Tooltip for Mood Chart
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CustomTooltip = ({ active, payload }: any) => {
+  const { t } = useTranslation();
+  const { formatDateInUserTimezone } = usePreferences();
+
+  if (active && payload && payload.length) {
+    const entry = payload[0].payload;
+    return (
+      <div className="p-2 bg-background border rounded-md shadow-md">
+        <p className="label">{`${formatDateInUserTimezone(entry.date, 'MMM dd, yyyy')}`}</p>
+        <p className="intro">{`${t('mood.moodValue', 'Mood Value')}: ${entry.moodValue} ${entry.moodDisplay.emoji} (${entry.moodDisplay.label})`}</p>
+        {entry.notes && (
+          <p className="desc" style={{ marginTop: '5px' }}>
+            {t('mood.notes', 'Notes: ') + entry.notes}
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+};

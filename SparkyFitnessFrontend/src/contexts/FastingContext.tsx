@@ -65,6 +65,7 @@ export const FastingProvider: React.FC<{ children: ReactNode }> = ({
       const fast = await fastingService.getCurrentFast();
       debug(loggingLevel, `[FastingContext] Active fast fetched:`, fast);
       setActiveFast(fast);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error(loggingLevel, '[FastingContext] Failed to fetch active fast', err);
       setActiveFast(null);
@@ -111,6 +112,7 @@ export const FastingProvider: React.FC<{ children: ReactNode }> = ({
         fastingType
       );
       setActiveFast(newFast);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       // If fast already exists (400), refresh the state to get it
       if (
@@ -147,6 +149,7 @@ export const FastingProvider: React.FC<{ children: ReactNode }> = ({
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useFasting = () => {
   const context = useContext(FastingContext);
   if (context === undefined) {

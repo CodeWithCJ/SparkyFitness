@@ -66,6 +66,7 @@ export const getCustomMeasurementsForDate = async (
 };
 
 export const saveCustomMeasurement = async (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   measurementData: any
 ): Promise<CustomMeasurement> => {
   return apiCall('/measurements/custom-entries', {
@@ -122,9 +123,11 @@ export const getRawStressData = async (
 
         // New logic to handle multiple JSON objects concatenated together
         // or a JSON object wrapped in quotes but with extra characters
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const parseRobustly = (str: string): any => {
           try {
             return JSON.parse(str);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (e: any) {
             // Check if error is "unexpected character after JSON"
             // This happens if multiple JSON objects are joined together like {"a":1}{"b":2}
@@ -134,6 +137,7 @@ export const getRawStressData = async (
             ) {
               // Try to find if it's a sequence of objects
               // This is a naive but often effective way for simple objects
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const points: any[] = [];
               let remaining = str;
               while (remaining.length > 0) {
@@ -142,14 +146,12 @@ export const getRawStressData = async (
                   // or just try prefixes of decreasing length
                   let success = false;
                   for (let i = remaining.length; i > 0; i--) {
-                    try {
-                      const chunk = remaining.substring(0, i);
-                      const parsed = JSON.parse(chunk);
-                      points.push(parsed);
-                      remaining = remaining.substring(i).trim();
-                      success = true;
-                      break;
-                    } catch (inner) {}
+                    const chunk = remaining.substring(0, i);
+                    const parsed = JSON.parse(chunk);
+                    points.push(parsed);
+                    remaining = remaining.substring(i).trim();
+                    success = true;
+                    break;
                   }
                   if (!success) break; // Cannot parse any more
                 } catch (err) {

@@ -36,6 +36,7 @@ const FitbitCallback = () => {
       try {
         await linkFitbitAccount({ code, state });
         setMessage('Fitbit account successfully linked!');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         console.error('Error processing Fitbit callback:', error);
         setMessage('Error linking Fitbit account.');

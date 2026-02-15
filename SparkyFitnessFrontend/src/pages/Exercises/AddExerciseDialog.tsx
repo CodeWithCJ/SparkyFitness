@@ -23,12 +23,13 @@ import ExerciseSearch from './ExerciseSearch';
 import WorkoutPresetSelector from './WorkoutPresetSelector';
 import ExerciseImportCSV, { type ExerciseCSVData } from './ExerciseImportCSV';
 import ExerciseEntryHistoryImportCSV from './ExerciseEntryHistoryImportCSV';
-import { createExercise, type Exercise } from '@/services/exerciseService';
+import { createExercise } from '@/services/exerciseService';
 import type { WorkoutPreset } from '@/types/workout';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { XCircle } from 'lucide-react';
 import { apiCall } from '@/services/api';
+import type { Exercise } from '@/services/exerciseSearchService';
 
 interface AddExerciseDialogProps {
   open: boolean;

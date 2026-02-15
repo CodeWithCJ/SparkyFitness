@@ -75,6 +75,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
           data.user.id,
           data.user.id,
           data.user.email,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (data.user as any).role || 'user',
           'password',
           true,
@@ -84,6 +85,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
       } else if (error) {
         throw error;
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast({
         title: t(
@@ -111,6 +113,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
         title: 'Code Sent',
         description: 'A verification code has been sent to your email.',
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast({
         title: 'Error',
@@ -134,6 +137,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
           data.user.id,
           data.user.id,
           data.user.email,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (data.user as any).role || 'user',
           'password',
           true,
@@ -143,6 +147,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
       } else if (error) {
         throw error;
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast({
         title: 'Error',
@@ -166,6 +171,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
           data.user.id,
           data.user.id,
           data.user.email,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (data.user as any).role || 'user',
           'password',
           true,
@@ -175,6 +181,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
       } else if (error) {
         throw error;
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast({
         title: t(

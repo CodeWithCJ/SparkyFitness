@@ -3,6 +3,7 @@ import { debug, type UserLoggingLevel } from '../../utils/logging';
 
 // Function to handle conversational intents (ask_question, chat)
 export const processChatInput = async (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any,
   aiResponseText: string,
   userLoggingLevel: UserLoggingLevel

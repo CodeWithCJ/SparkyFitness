@@ -60,6 +60,7 @@ const MiniNutritionTrends = ({
     if (user && activeUserId) {
       loadTrendData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     user,
     activeUserId,
@@ -95,6 +96,7 @@ const MiniNutritionTrends = ({
     label,
     energyUnit,
     convertEnergy,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -179,6 +181,7 @@ const MiniNutritionTrends = ({
       data,
     }: {
       nutrient: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       details: any;
       data: DayData[];
     }) => (

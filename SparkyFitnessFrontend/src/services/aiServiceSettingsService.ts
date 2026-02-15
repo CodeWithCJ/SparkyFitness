@@ -23,6 +23,7 @@ export const getAIServices = async (): Promise<AIService[]> => {
       suppress404Toast: true, // Suppress toast for 404
     });
     return services || []; // Return empty array if 404 (no services found)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     // If it's a 404, it means no services are found, which is a valid scenario.
     // We return an empty array in this case, and the calling function will handle it.
@@ -40,6 +41,7 @@ export const getPreferences = async (): Promise<UserPreferences> => {
       suppress404Toast: true, // Suppress toast for 404
     });
     return preferences;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     // If it's a 404, it means no preferences are found, which is a valid scenario.
     // We return null in this case, and the calling function will handle it.
@@ -58,6 +60,7 @@ export const getActiveAiServiceSetting =
         suppress404Toast: true, // Suppress toast for 404
       });
       return setting;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.message && err.message.includes('404')) {
         return null;

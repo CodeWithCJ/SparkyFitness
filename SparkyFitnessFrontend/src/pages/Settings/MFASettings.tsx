@@ -7,24 +7,16 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
 import { Eye, EyeOff, Copy, RefreshCw, Lock } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
-import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { log } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import QRCode from 'react-qr-code';
 
-type MFASettingsProps = {};
-
-const MFASettings: React.FC<MFASettingsProps> = () => {
+const MFASettings = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const { loggingLevel } = usePreferences();
   const [loading, setLoading] = useState(false);
-  const {
-    data: session,
-    isPending: sessionLoading,
-    refetch,
-  } = authClient.useSession();
+  const { data: session, refetch } = authClient.useSession();
 
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [emailMfaEnabled, setEmailMfaEnabled] = useState(false);
@@ -46,10 +38,12 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
   useEffect(() => {
     if (session?.user) {
       console.log('DEBUG: Session User:', session.user);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setTotpEnabled(!!(session.user as any).mfaTotpEnabled);
       // Better Auth doesn't store email_mfa_enabled natively in user object by default,
       // but we added it to the table. We might need a separate fetch or custom user field.
       // For now, let's assume it's available via session or a small custom fetch.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setEmailMfaEnabled(!!(session.user as any).mfaEmailEnabled);
     }
   }, [session]);
@@ -107,6 +101,7 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
       setShowPasswordPrompt(false);
       setConfirmPassword(''); // Clear password after use
       setPendingAction(null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       log(loggingLevel, 'ERROR', 'MFA Action Error:', error);
       toast({
@@ -131,6 +126,7 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
       await refetch();
       setOtpAuthUrl(null); // Clear OTP URL after successful verification
       setTotpCode(''); // Clear TOTP code after successful verification
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       log(loggingLevel, 'ERROR', 'Error verifying TOTP:', error);
       toast({
@@ -156,6 +152,7 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
       toast({ title: 'Success', description: 'Email MFA enabled!' });
       // Refresh session to pick up changes - force bypass of local fetch cache
       await refetch();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -180,6 +177,7 @@ const MFASettings: React.FC<MFASettingsProps> = () => {
       toast({ title: 'Success', description: 'Email MFA disabled.' });
       // Refresh session to pick up changes - force bypass of local fetch cache
       await refetch();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: 'Error',

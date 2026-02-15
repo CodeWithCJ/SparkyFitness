@@ -38,6 +38,7 @@ export const MagicLinkRequestDialog: React.FC<MagicLinkRequestDialogProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEmail(initialEmail || ''); // Reset email when dialog opens
     }
   }, [isOpen, initialEmail]);

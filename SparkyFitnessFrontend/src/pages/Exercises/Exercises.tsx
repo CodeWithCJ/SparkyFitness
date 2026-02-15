@@ -118,6 +118,7 @@ const ExerciseDatabaseManager = () => {
     if (user?.id) {
       loadExercisesData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const loadExercisesData = async () => {
@@ -147,6 +148,7 @@ const ExerciseDatabaseManager = () => {
 
   useEffect(() => {
     loadExercisesData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     user?.id,
     searchTerm,

@@ -11,6 +11,7 @@ interface FoodEntryUpdateData {
 export const updateFoodEntry = async (
   id: string,
   data: FoodEntryUpdateData
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   const response = await apiCall(`/food-entries/${id}`, {
     method: 'PUT',
@@ -32,6 +33,7 @@ export interface FoodEntryCreateData {
 
 export const createFoodEntry = async (
   data: FoodEntryCreateData
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   const response = await apiCall('/food-entries', {
     method: 'POST',
@@ -40,6 +42,7 @@ export const createFoodEntry = async (
   return response;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const removeFoodEntry = async (id: string): Promise<any> => {
   const response = await apiCall(`/food-entries/${id}`, {
     method: 'DELETE',
@@ -54,6 +57,7 @@ export const loadFoodEntries = async (date: string): Promise<FoodEntry[]> => {
   return response;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const loadGoals = async (date: string): Promise<any> => {
   // Adjust return type as needed
   const response = await apiCall(`/goals/by-date/${date}`, {
@@ -67,6 +71,7 @@ export const copyFoodEntries = async (
   sourceMealType: string,
   targetDate: string,
   targetMealType: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   const response = await apiCall('/food-entries/copy', {
     method: 'POST',
@@ -78,6 +83,7 @@ export const copyFoodEntries = async (
 export const copyFoodEntriesFromYesterday = async (
   mealType: string,
   targetDate: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   const response = await apiCall('/food-entries/copy-yesterday', {
     method: 'POST',
@@ -149,6 +155,7 @@ export const getFoodEntryMealsByDate = async (
 
 export const deleteFoodEntryMeal = async (
   foodEntryMealId: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   const response = await apiCall(`/food-entry-meals/${foodEntryMealId}`, {
     method: 'DELETE',

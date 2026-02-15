@@ -15,6 +15,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 interface LapTableProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   lapDTOs: any[];
   isMaximized?: boolean; // Added for ZoomableChart integration
   zoomLevel?: number; // Added for ZoomableChart integration
@@ -71,6 +72,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
   let currentCumulativeDistance = 0;
   let currentCumulativeDuration = 0;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const processedLaps = lapDTOs.map((lap: any) => {
     const lapDistance = lap.distance
       ? convertDistance(lap.distance / 1000, 'km', distanceUnit)
@@ -78,6 +80,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
     const lapDurationSeconds = lap.duration || 0;
     const lapDurationMinutes = lapDurationSeconds / 60;
 
+    // eslint-disable-next-line react-hooks/immutability
     currentCumulativeDistance += lapDistance;
     currentCumulativeDuration += lapDurationMinutes;
 
@@ -94,7 +97,9 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
   });
 
   const sortedLaps = [...processedLaps].sort((a, b) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let aValue = (a as any)[sortColumn];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let bValue = (b as any)[sortColumn];
 
     // Special handling for pace columns which are formatted strings
@@ -292,6 +297,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
             </tr>
           </thead>
           <tbody>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {sortedLaps.map((lap: any, index: number) => (
               <tr key={index} className="hover:bg-muted">
                 <td className="py-2 px-4 border-b border-border text-left">

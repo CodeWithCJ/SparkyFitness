@@ -89,6 +89,7 @@ const OidcSettings: React.FC = () => {
           'OIDC provider deleted successfully.'
         ),
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast({
         title: t('admin.oidcSettings.error', 'Error'),
@@ -101,10 +102,11 @@ const OidcSettings: React.FC = () => {
     }
   };
 
-  const handleSave = async (provider: OidcProvider, logoFile?: File | null) => {
+  const handleSave = async (
+    currentProvider: OidcProvider,
+    logoFile?: File | null
+  ) => {
     try {
-      let currentProvider = { ...provider };
-
       if (currentProvider.id) {
         if (logoFile) {
           try {
@@ -170,6 +172,7 @@ const OidcSettings: React.FC = () => {
       }
 
       setIsDialogOpen(false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast({
         title: t('admin.oidcSettings.error', 'Error'),

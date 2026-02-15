@@ -46,6 +46,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [isSyncing, setIsSyncing] = useState(true); // Track initial hydration
   const navigate = useNavigate();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const prevSessionRef = React.useRef<any>(null);
 
   // Only show global loading during initial hydration (isSyncing).
@@ -77,11 +78,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     if (session?.user && (!user || user.id !== session.user.id)) {
       const sessionUser = {
         id: session.user.id,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         activeUserId: (session.user as any).activeUserId || session.user.id,
         email: session.user.email,
         fullName: session.user.name || null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         role: (session.user as any).role || 'user',
         twoFactorEnabled: !!session.user.twoFactorEnabled,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mfaEmailEnabled: !!(session.user as any).mfaEmailEnabled,
       };
 
@@ -92,6 +96,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       // This runs on every session update to ensure we are strictly in sync with the backend.
       import('../services/api').then(({ apiCall }) => {
         apiCall('/identity/user')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .then((realUserData: any) => {
             setUser((prev) => {
               if (!prev) return prev;
@@ -250,6 +255,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

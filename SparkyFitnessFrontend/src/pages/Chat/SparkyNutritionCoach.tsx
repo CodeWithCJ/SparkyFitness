@@ -29,6 +29,7 @@ import { processWaterInput } from '@/services/Chatbot/Chatbot_WaterHandler';
 import { processChatInput } from '@/services/Chatbot/Chatbot_ChatHandler';
 
 const SparkyNutritionCoach = forwardRef<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   any,
   {
     userLoggingLevel: UserLoggingLevel;
@@ -58,8 +59,10 @@ const SparkyNutritionCoach = forwardRef<
     const { t } = useTranslation();
 
     useImperativeHandle(ref, () => ({
+      // eslint-disable-next-line react-hooks/immutability
       getTodaysNutrition,
       processUserInput: (input, imageFile, transactionId) =>
+        // eslint-disable-next-line react-hooks/immutability
         handleUserInput(input, imageFile, transactionId),
       addFoodOption: (optionIndex, originalMetadata, transactionId) =>
         addFoodOption(
@@ -72,6 +75,7 @@ const SparkyNutritionCoach = forwardRef<
       saveMessageToHistory: (
         content: string,
         messageType: 'user' | 'assistant',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         metadata?: any
       ) => saveMessageToHistory(content, messageType, metadata),
       clearHistory: (autoClearPreference: string) =>
@@ -89,6 +93,7 @@ const SparkyNutritionCoach = forwardRef<
           goalsData = await apiCall(`/goals/for-date?date=${date}`, {
             method: 'GET',
           });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
           goalsError = err;
         }
@@ -115,6 +120,7 @@ const SparkyNutritionCoach = forwardRef<
           foodEntries = await apiCall(`/food-entries/${date}`, {
             method: 'GET',
           });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
           foodError = err;
         }
@@ -153,6 +159,7 @@ const SparkyNutritionCoach = forwardRef<
           exerciseEntries = await apiCall(`/exercise-entries/${date}`, {
             method: 'GET',
           });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
           error(
             userLoggingLevel,
@@ -250,6 +257,7 @@ const SparkyNutritionCoach = forwardRef<
 
         let parsedResponse: {
           intent: string;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data: any;
           response?: string;
           entryDate?: string;
@@ -447,38 +455,44 @@ const SparkyNutritionCoach = forwardRef<
           // Map the raw AI response to the FoodOption interface
           const foodOptions: FoodOption[] = (
             Array.isArray(rawFoodOptions) ? rawFoodOptions : []
-          ).map((rawOption: any) => {
-            debug(userLoggingLevel, 'Raw AI food option received:', rawOption); // Changed to debug for more detailed info
-            const mappedOption: FoodOption = {
-              name: rawOption.food_name || rawOption.name || 'Unknown Food', // Map food_name or name to name
-              calories: rawOption.calories || 0,
-              protein: rawOption.macros?.protein || rawOption.protein || 0,
-              carbs: rawOption.macros?.carbs || rawOption.carbs || 0,
-              fat: rawOption.macros?.fat || rawOption.fat || 0,
-              serving_size: parseFloat(rawOption.serving_size) || 1,
-              serving_unit: rawOption.serving_unit || 'serving',
-              saturated_fat:
-                rawOption.macros?.saturated_fat || rawOption.saturated_fat,
-              polyunsaturated_fat:
-                rawOption.macros?.polyunsaturated_fat ||
-                rawOption.polyunsaturated_fat,
-              monounsaturated_fat:
-                rawOption.macros?.monounsaturated_fat ||
-                rawOption.monounsaturated_fat,
-              trans_fat: rawOption.macros?.trans_fat || rawOption.trans_fat,
-              cholesterol: rawOption.cholesterol,
-              sodium: rawOption.sodium,
-              potassium: rawOption.potassium,
-              dietary_fiber: rawOption.dietary_fiber,
-              sugars: rawOption.sugars,
-              vitamin_a: rawOption.vitamin_a,
-              vitamin_c: rawOption.vitamin_c,
-              calcium: rawOption.calcium,
-              iron: rawOption.iron,
-            };
-            debug(userLoggingLevel, 'Mapped food option:', mappedOption); // Changed to debug
-            return mappedOption;
-          });
+          )
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((rawOption: any) => {
+              debug(
+                userLoggingLevel,
+                'Raw AI food option received:',
+                rawOption
+              ); // Changed to debug for more detailed info
+              const mappedOption: FoodOption = {
+                name: rawOption.food_name || rawOption.name || 'Unknown Food', // Map food_name or name to name
+                calories: rawOption.calories || 0,
+                protein: rawOption.macros?.protein || rawOption.protein || 0,
+                carbs: rawOption.macros?.carbs || rawOption.carbs || 0,
+                fat: rawOption.macros?.fat || rawOption.fat || 0,
+                serving_size: parseFloat(rawOption.serving_size) || 1,
+                serving_unit: rawOption.serving_unit || 'serving',
+                saturated_fat:
+                  rawOption.macros?.saturated_fat || rawOption.saturated_fat,
+                polyunsaturated_fat:
+                  rawOption.macros?.polyunsaturated_fat ||
+                  rawOption.polyunsaturated_fat,
+                monounsaturated_fat:
+                  rawOption.macros?.monounsaturated_fat ||
+                  rawOption.monounsaturated_fat,
+                trans_fat: rawOption.macros?.trans_fat || rawOption.trans_fat,
+                cholesterol: rawOption.cholesterol,
+                sodium: rawOption.sodium,
+                potassium: rawOption.potassium,
+                dietary_fiber: rawOption.dietary_fiber,
+                sugars: rawOption.sugars,
+                vitamin_a: rawOption.vitamin_a,
+                vitamin_c: rawOption.vitamin_c,
+                calcium: rawOption.calcium,
+                iron: rawOption.iron,
+              };
+              debug(userLoggingLevel, 'Mapped food option:', mappedOption); // Changed to debug
+              return mappedOption;
+            });
 
           // Basic validation to ensure the mapped objects have expected properties
           if (

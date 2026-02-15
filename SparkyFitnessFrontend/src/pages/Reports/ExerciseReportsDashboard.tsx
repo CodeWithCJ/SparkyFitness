@@ -52,7 +52,9 @@ const calculateTotalTonnage = (
     return (
       totalTonnage +
       entry.sets.reduce((entryTonnage, set) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const weight = parseFloat(set.weight as any) || 0;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const reps = parseInt(set.reps as any) || 0;
         return entryTonnage + weight * reps;
       }, 0)
@@ -165,6 +167,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
     } else {
       setWidgetLayout(defaultLayout);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -282,6 +285,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedExercisesForChart,
     startDate,
@@ -752,6 +756,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                     debounce={100}
                   >
                     <BarChart
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       onClick={(e: any) =>
                         e &&
                         e.activePayload &&
@@ -896,6 +901,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                     debounce={100}
                   >
                     <BarChart
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       onClick={(e: any) =>
                         e &&
                         e.activePayload &&
@@ -1044,6 +1050,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
                     debounce={100}
                   >
                     <BarChart
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       onClick={(e: any) =>
                         e &&
                         e.activePayload &&

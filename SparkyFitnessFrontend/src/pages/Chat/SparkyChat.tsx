@@ -35,6 +35,7 @@ const SparkyChat = () => {
   }, [loading]); // Add loading to dependency array
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     checkEnabledServices();
   }, [checkEnabledServices]);
 

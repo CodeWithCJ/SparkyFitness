@@ -82,6 +82,7 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
       setSelectedDate(date);
       debug(loggingLevel, 'Selected date in dialog:', date);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [debug, loggingLevel]
   );
 
@@ -90,6 +91,7 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
       setSelectedMealType(value);
       debug(loggingLevel, 'Selected meal type in dialog:', value);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [debug, loggingLevel]
   );
 
@@ -108,6 +110,7 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
     } else {
       warn(loggingLevel, 'No date selected for copying.');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedDate,
     selectedMealType,

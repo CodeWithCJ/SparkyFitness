@@ -56,11 +56,14 @@ interface ActivityMetrics {
   geoPolylineDTO?: {
     polyline: { lat: number; lon: number }[];
   };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   activityDetailMetrics: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metricDescriptors: any[];
 }
 
 interface ActivitySplits {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   lapDTOs: any[];
 }
 
@@ -71,6 +74,7 @@ export interface WorkoutData {
   estimatedDurationInSecs?: number;
   workoutSegments?: {
     segmentOrder: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     workoutSteps: any[];
   }[];
   // Add other workout-specific fields as needed
@@ -81,6 +85,7 @@ interface ActivityData {
     activity: ActivityDetails;
     details: ActivityMetrics;
     splits: ActivitySplits;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     hr_in_timezones: any[];
   } | null;
   workout: WorkoutData | null;
@@ -151,6 +156,7 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
     if (exerciseEntryId && providerName) {
       fetchActivityData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exerciseEntryId, providerName]);
 
   if (loading) {
@@ -173,6 +179,7 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
   // This section will need to be refactored to be more generic or use helper functions
   // based on the providerName if other providers have different data structures.
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const processChartData = (metrics: any[]) => {
     if (!metrics || metrics.length === 0) return [];
 
@@ -187,9 +194,11 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
     }
 
     const timestampDescriptor = metricDescriptors.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (d: any) => d.key === 'directTimestamp'
     );
     const distanceDescriptor = metricDescriptors.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (d: any) => d.key === 'sumDistance'
     );
 
@@ -202,15 +211,19 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
       return [];
     }
     const speedDescriptor = metricDescriptors.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (d: any) => d.key === 'directSpeed'
     );
     const heartRateDescriptor = metricDescriptors.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (d: any) => d.key === 'directHeartRate'
     );
     const runCadenceDescriptor = metricDescriptors.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (d: any) => d.key === 'directRunCadence'
     );
     const elevationDescriptor = metricDescriptors.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (d: any) => d.key === 'directElevation'
     );
 
@@ -222,6 +235,7 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
     // to the metrics that are actually present in the 'metrics' array.
     // This assumes that the order of metrics in the 'metrics' array corresponds
     // to the order of the relevant descriptors in 'metricDescriptors'.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     metricDescriptors.forEach((descriptor: any) => {
       // Only map the keys we are interested in for the chart
       // This list should match the order of metrics in activityDetailMetrics[0].metrics
@@ -332,6 +346,7 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
     }
 
     const processedMetrics = metrics
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((metric: any) => {
         const currentTimestamp = parseFloat(metric.metrics[timestampIndex]);
         const currentDistance = parseFloat(metric.metrics[distanceIndex]);
@@ -382,12 +397,14 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
           elevation: elevation,
         };
       })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter(Boolean) as any[]; // Filter out null entries and assert type
 
     // Sort by timestamp to ensure chronological order
     processedMetrics.sort((a, b) => a.timestamp - b.timestamp);
 
     // Downsampling
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sampledData: any[] = [];
     const maxPoints = 50; // Maximum number of points to display on the chart
     const samplingRate = Math.max(
@@ -412,35 +429,43 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
     activityData.activity?.details?.activityDetailMetrics
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const paceData = allChartData.filter((data: any) => data.speed > 0); // Filter out zero speeds for meaningful pace
   const heartRateData = allChartData.filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (data: any) => data.heartRate !== null && data.heartRate > 0
   );
   const runCadenceData = allChartData.filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (data: any) => data.runCadence > 0
   );
   const elevationData = allChartData.filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (data: any) => data.elevation !== null
   );
 
   info(
     loggingLevel,
     'Pace Data Timestamps:',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     paceData.map((d: any) => d.timestamp)
   );
   info(
     loggingLevel,
     'Heart Rate Data Timestamps:',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     heartRateData.map((d: any) => d.timestamp)
   );
   info(
     loggingLevel,
     'Elevation Data Timestamps:',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     elevationData.map((d: any) => d.timestamp)
   );
   info(loggingLevel, 'Filtered Heart Rate Data:', heartRateData);
 
   const hrInTimezonesData = activityData.activity?.hr_in_timezones?.map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (zone: any) => ({
       name: `Zone ${zone.zoneNumber} (${zone.zoneLowBoundary} bpm)`,
       'Time in Zone (s)': zone.secsInZone,
@@ -489,6 +514,7 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
     }
   } else if (paceData.length > 0) {
     const totalPaceKm = paceData.reduce(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (sum: number, dataPoint: any) => sum + dataPoint.pace,
       0
     ); // pace is min/km
@@ -572,7 +598,8 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
               <span>
                 {t('reports.activityReport.event')}{' '}
                 {typeof activityData.activity.activity.eventType === 'object'
-                  ? (activityData.activity.activity.eventType as any).typeKey ||
+                  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (activityData.activity.activity.eventType as any).typeKey ||
                     t('common.notApplicable')
                   : activityData.activity.activity.eventType}
               </span>
@@ -581,7 +608,8 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
               <span className="mr-4">
                 {t('reports.activityReport.course')}{' '}
                 {typeof activityData.activity.activity.course === 'object'
-                  ? (activityData.activity.activity.course as any).typeKey ||
+                  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (activityData.activity.activity.course as any).typeKey ||
                     t('common.notApplicable')
                   : activityData.activity.activity.course}
               </span>
@@ -590,7 +618,8 @@ const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
               <span className="mr-4">
                 {t('reports.activityReport.gear')}{' '}
                 {typeof activityData.activity.activity.gear === 'object'
-                  ? (activityData.activity.activity.gear as any).typeKey ||
+                  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (activityData.activity.activity.gear as any).typeKey ||
                     t('common.notApplicable')
                   : activityData.activity.activity.gear}
               </span>

@@ -1,4 +1,4 @@
-import { Exercise } from '@/services/exerciseService';
+import { Exercise } from '@/services/exerciseSearchService';
 
 export interface PresetExercise {
   id: string;
@@ -35,6 +35,7 @@ export interface WorkoutPresetExercise {
   exercise_id: string;
   image_url?: string;
   exercise_name: string; // Populated from backend join
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   exercise: any; // Full exercise object
   sets: WorkoutPresetSet[];
 }

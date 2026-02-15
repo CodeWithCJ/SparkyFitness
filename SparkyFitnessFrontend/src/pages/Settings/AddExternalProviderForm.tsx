@@ -229,6 +229,7 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
       }
       // For Garmin, the connection is handled during the addProvider call itself,
       // so no separate handleConnectGarmin call is needed here.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error adding external data provider:', error);
       toast({

@@ -39,6 +39,7 @@ export const getMoodEntries = async (
       startDate,
       endDate,
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params: any = { startDate, endDate };
     if (userId) params.userId = userId;
     const response = await api.get('/mood', {
@@ -72,6 +73,7 @@ export const getMoodEntryByDate = async (
     });
     debug(userLoggingLevel, 'Response from getMoodEntryByDate API:', response);
     return response;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     if (err.message && err.message.includes('404')) {
       info(getUserLoggingLevel(), `No mood entry found for date ${entryDate}.`);

@@ -47,6 +47,7 @@ export const ProviderDialog: React.FC<{
         const url = new URL(provider.redirect_uris[0]);
         const defaultOrigin = window.location.origin;
         if (url.origin !== defaultOrigin) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setIsManualRedirectUri(true);
           setBaseUrlOverride(url.origin);
         }
@@ -66,6 +67,7 @@ export const ProviderDialog: React.FC<{
     const fullUri = `${cleanBase}${suffix}`;
 
     if (editedProvider.redirect_uris?.[0] !== fullUri) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditedProvider((prev) => ({
         ...prev,
         redirect_uris: [fullUri],

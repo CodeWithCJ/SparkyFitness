@@ -1,6 +1,7 @@
 import { debug, error } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let cachedSchema: any = null;
 
 const GITHUB_RAW_BASE_URL =

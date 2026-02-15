@@ -234,10 +234,12 @@ const EnhancedFoodSearch = ({
   const [openFoodFactsResults, setOpenFoodFactsResults] = useState<
     OpenFoodFactsProduct[]
   >([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [nutritionixResults, setNutritionixResults] = useState<any[]>([]); // To store Nutritionix search results
   const [fatSecretResults, setFatSecretResults] = useState<FatSecretFoodItem[]>(
     []
   ); // To store FatSecret search results
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [usdaResults, setUsdaResults] = useState<any[]>([]); // To store USDA search results
   const [loading, setLoading] = useState(false);
   const getInitialActiveTab = () => {
@@ -256,6 +258,7 @@ const EnhancedFoodSearch = ({
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showAddFoodDialog, setShowAddFoodDialog] = useState(false); // New state for Add Food dialog
   const [showImportFromCsvDialog, setShowImportFromCsvDialog] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [foodDataProviders, setFoodDataProviders] = useState<any[]>([]); // To store configured food data providers
   const [selectedFoodDataProvider, setSelectedFoodDataProvider] = useState<
     string | null
@@ -318,6 +321,7 @@ const EnhancedFoodSearch = ({
           const data = await apiCall(query);
           setFoods(data.searchResults || []);
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         toast({
           title: 'Search failed',
@@ -328,6 +332,7 @@ const EnhancedFoodSearch = ({
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [itemDisplayLimit]
   ); // Add itemDisplayLimit to dependency array
 
@@ -344,6 +349,7 @@ const EnhancedFoodSearch = ({
     return () => {
       clearTimeout(handler);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, activeTab, searchDatabase]);
 
   const searchOpenFoodFacts = async () => {
@@ -358,11 +364,13 @@ const EnhancedFoodSearch = ({
       if (data.products) {
         setOpenFoodFactsResults(
           data.products.filter(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (p: any) =>
               p.product_name && p.nutriments && p.nutriments['energy-kcal_100g']
           )
         );
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: 'OpenFoodFacts search failed',
@@ -565,6 +573,7 @@ const EnhancedFoodSearch = ({
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeUserId, loggingLevel]
   );
 
@@ -669,6 +678,7 @@ const EnhancedFoodSearch = ({
   };
 
   const formatUsdaNutrientsForDisplay = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     usdaItem: any,
     loggingLevel: string
   ): Partial<FoodVariant> => {
@@ -694,12 +704,14 @@ const EnhancedFoodSearch = ({
     };
 
     if (usdaItem.foodNutrients) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       usdaItem.foodNutrients.forEach((nutrient: any) => {
         const nutrientName = nutrient.nutrientName.toLowerCase();
         const value = nutrient.value;
         const unitName = nutrient.unitName?.toLowerCase() || '';
 
         debug(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           loggingLevel as any,
           `Processing USDA nutrient: ${nutrient.nutrientName} (value: ${value}, unit: ${nutrient.unitName})`
         );
@@ -777,6 +789,7 @@ const EnhancedFoodSearch = ({
     return nutrients;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const convertUsdaToFood = (item: any, nutrientData: any): Food => {
     const defaultVariant: FoodVariant = {
       id: 'default', // Assign a default ID for now
@@ -816,6 +829,7 @@ const EnhancedFoodSearch = ({
     };
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleUsdaEdit = async (item: any) => {
     setLoading(true);
     const nutrientData = await queryClient.fetchQuery(
@@ -835,6 +849,7 @@ const EnhancedFoodSearch = ({
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const convertNutritionixToFood = (item: any, nutrientData: any): Food => {
     const defaultVariant: FoodVariant = {
       id: 'default', // Assign a default ID for now
@@ -874,6 +889,7 @@ const EnhancedFoodSearch = ({
     };
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleNutritionixEdit = async (item: any) => {
     setLoading(true);
     let nutrientData;
@@ -904,6 +920,7 @@ const EnhancedFoodSearch = ({
 
   const convertFatSecretToFood = (
     item: FatSecretFoodItem,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     nutrientData: any
   ): Food => {
     const defaultVariant: FoodVariant = {

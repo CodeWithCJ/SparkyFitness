@@ -85,6 +85,7 @@ export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({
       // If user logs out, clear the active container
       setActiveContainer(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [water_display_unit, currentUserId, loading]);
 
   const refreshContainers = () => {
@@ -100,6 +101,7 @@ export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useWaterContainer = () => {
   const context = useContext(WaterContainerContext);
   if (context === undefined) {

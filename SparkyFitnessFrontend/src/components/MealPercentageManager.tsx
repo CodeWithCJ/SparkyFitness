@@ -87,6 +87,7 @@ const MealPercentageManager = ({
     ) {
       setPercentages(initialPercentages);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPercentages]);
 
   useEffect(() => {
@@ -122,9 +123,11 @@ const MealPercentageManager = ({
     (meal: keyof MealPercentages, value: number) => {
       setPercentages((prev) => {
         const newPercentages = { ...prev, [meal]: value };
+
         return autoBalance(newPercentages, meal, locks, selectedTemplateName);
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [locks, selectedTemplateName]
   );
 
@@ -160,6 +163,7 @@ const MealPercentageManager = ({
         currentPercentages[m] = perMealShare;
       });
     }
+
     return normalizePercentages(currentPercentages, changedMeal, currentLocks);
   };
 
@@ -183,6 +187,7 @@ const MealPercentageManager = ({
       });
       setPercentages(normalizePercentages(newPercentages, undefined, locks));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [percentages, locks]);
 
   const normalizePercentages = (

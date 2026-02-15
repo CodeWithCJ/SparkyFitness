@@ -58,6 +58,7 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
         variant: 'destructive',
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, loggingLevel, toast]);
 
   useEffect(() => {
@@ -66,6 +67,7 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
 
   useEffect(() => {
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
+
     setFilteredPresets(
       allPresets.filter((preset) =>
         preset.name.toLowerCase().includes(lowerCaseSearchTerm)

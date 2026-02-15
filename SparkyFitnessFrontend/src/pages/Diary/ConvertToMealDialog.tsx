@@ -84,6 +84,7 @@ const ConvertToMealDialog: React.FC<ConvertToMealDialogProps> = ({
       info(loggingLevel, 'ConvertToMealDialog: Meal created successfully.');
       onMealCreated();
       onClose();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error(loggingLevel, 'ConvertToMealDialog: Error creating meal:', err);
       toast({

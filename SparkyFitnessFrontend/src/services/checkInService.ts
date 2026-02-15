@@ -48,6 +48,7 @@ export interface CombinedMeasurement {
   type: 'custom' | 'standard' | 'fasting' | 'stress' | 'exercise';
   display_name: string;
   display_unit?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   custom_categories?: any;
   fasting_type?: string;
   duration_minutes?: number;
@@ -102,6 +103,7 @@ export const updateCheckInMeasurementField = async (payload: {
 
 export const loadExistingCheckInMeasurements = async (
   selectedDate: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   return apiCall(`/measurements/check-in/${selectedDate}`, {
     method: 'GET',
@@ -111,6 +113,7 @@ export const loadExistingCheckInMeasurements = async (
 
 export const loadExistingCustomMeasurements = async (
   selectedDate: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   return apiCall(`/measurements/custom-entries/${selectedDate}`, {
     method: 'GET',
@@ -118,6 +121,7 @@ export const loadExistingCustomMeasurements = async (
   });
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const saveCheckInMeasurements = async (payload: any): Promise<void> => {
   await apiCall('/measurements/check-in', {
     method: 'POST',
@@ -125,6 +129,7 @@ export const saveCheckInMeasurements = async (payload: any): Promise<void> => {
   });
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const saveCustomMeasurement = async (payload: any): Promise<void> => {
   await apiCall('/measurements/custom-entries', {
     method: 'POST',

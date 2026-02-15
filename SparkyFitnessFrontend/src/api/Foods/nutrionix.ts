@@ -138,6 +138,7 @@ export const getNutritionixNutrients = async (
   };
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = await apiCall(
       `${NUTRITIONIX_API_BASE_URL}/natural/nutrients`,
       {
@@ -212,6 +213,7 @@ export const getNutritionixBrandedNutrients = async (
   };
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = await apiCall(`${NUTRITIONIX_API_BASE_URL}/search/item`, {
       method: 'GET',
       headers,

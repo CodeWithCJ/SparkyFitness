@@ -42,6 +42,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       window.removeEventListener('measurementsRefresh', handleRefresh);
       window.removeEventListener('foodDiaryRefresh', handleRefresh);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, activeUserId, selectedDate]); // Add activeUserId dependency
 
   const loadWaterData = async () => {

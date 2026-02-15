@@ -15,7 +15,7 @@ import type {
   GroupedExerciseEntry,
   ExerciseEntry,
 } from '@/services/exerciseEntryService';
-import type { Exercise } from '@/services/exerciseService';
+import type { Exercise } from '@/services/exerciseSearchService';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';

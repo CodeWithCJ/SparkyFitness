@@ -52,6 +52,7 @@ const HomeDashboardFasting: React.FC<HomeDashboardFastingProps> = ({
   const [stats, setStats] = useState<FastingStats | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
     loadStats();
   }, [activeFast]);
 

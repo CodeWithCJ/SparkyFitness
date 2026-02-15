@@ -125,6 +125,7 @@ const CheckIn = () => {
     return () => {
       window.removeEventListener('measurementsRefresh', handleRefresh);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, loadPreferences]);
 
   useEffect(() => {
@@ -137,6 +138,7 @@ const CheckIn = () => {
       loadExistingData();
       fetchAllRecentMeasurements();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentUserId,
     selectedDate,
@@ -661,6 +663,7 @@ const CheckIn = () => {
 
     try {
       // Save standard check-in measurements
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const measurementData: any = {
         entry_date: selectedDate, // Use selectedDate directly
       };
@@ -739,6 +742,7 @@ const CheckIn = () => {
           entryTimestamp = currentTime.toISOString();
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customMeasurementData: any = {
           category_id: categoryId,
           notes: customNotes[categoryId] || '',
@@ -951,6 +955,7 @@ const CheckIn = () => {
           ),
         });
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error(loggingLevel, 'CheckIn: Error calculating body fat:', err);
       toast({

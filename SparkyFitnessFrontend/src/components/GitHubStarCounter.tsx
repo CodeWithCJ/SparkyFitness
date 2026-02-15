@@ -104,6 +104,7 @@ const GitHubStarCounter: React.FC<GitHubStarCounterProps> = ({
     };
 
     fetchStarCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner, repo]);
 
   if (!starCount) {

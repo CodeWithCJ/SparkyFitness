@@ -38,21 +38,17 @@ const EndFastDialog: React.FC<EndFastDialogProps> = ({
   };
 
   const [startLocal, setStartLocal] = React.useState<string>(() => {
-    try {
-      if (initialStartISO) {
-        const d = new Date(initialStartISO);
-        return formatForLocalInput(d);
-      }
-    } catch (e) {}
+    if (initialStartISO) {
+      const d = new Date(initialStartISO);
+      return formatForLocalInput(d);
+    }
     return '';
   });
   const [endLocal, setEndLocal] = React.useState<string>(() => {
-    try {
-      if (initialEndISO) {
-        const d = new Date(initialEndISO);
-        return formatForLocalInput(d);
-      }
-    } catch (e) {}
+    if (initialEndISO) {
+      const d = new Date(initialEndISO);
+      return formatForLocalInput(d);
+    }
     return '';
   });
 

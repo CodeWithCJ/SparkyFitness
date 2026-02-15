@@ -78,8 +78,11 @@ const SortableSetItem = React.memo(
   }: {
     set: WorkoutPresetSet;
     setIndex: number;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleSetChange: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleDuplicateSet: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleRemoveSet: Function;
     weightUnit: string;
   }) => {
@@ -355,6 +358,7 @@ const EditExerciseEntryDialog = ({
       'imageFile=',
       imageFile
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notes, imageUrl, imageFile]);
 
   useEffect(() => {
@@ -367,6 +371,7 @@ const EditExerciseEntryDialog = ({
       setCaloriesBurnedInput('');
       setShowCaloriesWarning(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sets]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -385,6 +390,7 @@ const EditExerciseEntryDialog = ({
   const handleSetChange = (
     setIndex: number,
     field: keyof WorkoutPresetSet,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     value: any
   ) => {
     debug(

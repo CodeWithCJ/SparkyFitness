@@ -34,6 +34,7 @@ const fetchUserPreferences = async (userId: string) => {
       suppress404Toast: true,
     });
     return data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     if (err.message && err.message.includes('404')) {
       return null;
@@ -44,6 +45,7 @@ const fetchUserPreferences = async (userId: string) => {
 };
 
 // Function to upsert user preferences to the backend
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const upsertUserPreferences = async (payload: any) => {
   try {
     const data = await apiCall('/user-preferences', {
@@ -156,6 +158,7 @@ const PreferencesContext = createContext<PreferencesContextType | undefined>(
   undefined
 );
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePreferences = () => {
   const context = useContext(PreferencesContext);
   if (!context) {
@@ -644,6 +647,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const data = await apiCall('/preferences/nutrient-display');
       setNutrientDisplayPreferences(data);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Error fetching nutrient display preferences:', err);
     }
@@ -721,6 +725,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       loggingLevel,
       'PreferencesProvider: Initializing PreferencesProvider.'
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
