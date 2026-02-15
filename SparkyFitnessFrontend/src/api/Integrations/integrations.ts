@@ -3,7 +3,7 @@ import { post } from '@/utils/api';
 
 interface IntegrationPayload {
   code: string;
-  state: string;
+  state: string | null;
 }
 export const linkFitbitAccount = async (
   data: IntegrationPayload
