@@ -1064,16 +1064,22 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs p-4">
                         <p>
-                          Help improve this integration by sharing anonymized mock data!
+                          Help improve this integration by sharing anonymized
+                          mock data!
                         </p>
                         <p className="mt-2 font-mono text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-2 rounded border border-gray-200 dark:border-gray-700">
                           SPARKY_FITNESS_SAVE_MOCK_DATA=true
                         </p>
                         <p className="mt-2 text-xs">
-                          Add this variable to the <strong>SparkyFitnessServer</strong> container & restart the container. Syncing after setup will generate JSON files in <code>/app/SparkyFitnessServer/mock_data</code>.
+                          Add this variable to the{' '}
+                          <strong>SparkyFitnessServer</strong> container &
+                          restart the container. Syncing after setup will
+                          generate JSON files in{' '}
+                          <code>/app/SparkyFitnessServer/mock_data</code>.
                         </p>
                         <p className="mt-2 text-xs">
-                          Share files with <strong>CodewithCJ</strong> on Discord. Ensure data is anonymized.
+                          Share files with <strong>CodewithCJ</strong> on
+                          Discord. Ensure data is anonymized.
                         </p>
                       </TooltipContent>
                     </Tooltip>
