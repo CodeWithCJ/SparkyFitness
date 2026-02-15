@@ -30,7 +30,7 @@ const PolarCallback = () => {
             try {
                 await apiCall('/integrations/polar/callback', {
                     method: 'POST',
-                    body: JSON.stringify({ code }), // Polar service expects { code } in body
+                    body: JSON.stringify({ code, state }), // Pass state to backend for validation
                 });
 
                 setMessage('Polar account successfully linked!');

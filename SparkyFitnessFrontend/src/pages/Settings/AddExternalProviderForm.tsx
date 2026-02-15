@@ -662,7 +662,9 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
               </div>
               <p className="text-sm text-muted-foreground col-span-2">
                 Polar integration uses OAuth2. You will be redirected to Polar
-                to authorize access after adding the provider.
+                to authorize access. <strong>Important:</strong> Polar only shares data
+                recorded <em>after</em> you link your account. Historical data cannot be
+                imported due to Polar API limitations.
                 <br />
                 In your{' '}
                 <a

@@ -159,13 +159,6 @@ const ExternalProviderSettings = () => {
         (p: ExternalDataProvider) => p.provider_type === 'fitbit' && p.has_token
       );
       if (fitbitProviders.length > 0) {
-        setProviders((prev) =>
-          prev.map((p) => {
-            const isFitbit = fitbitProviders.find((fp) => fp.id === p.id);
-            return isFitbit ? p : p; // We'll update them below
-          })
-        );
-
         for (const provider of fitbitProviders) {
           try {
             const fitbitStatus = await apiCall(`/integrations/fitbit/status`);
@@ -185,6 +178,38 @@ const ExternalProviderSettings = () => {
               'Failed to fetch Fitbit specific status for provider:',
               provider.id,
               fitbitError
+            );
+          }
+        }
+      }
+
+      // Fetch Polar status if applicable
+      const polarProviders = updatedProviders.filter(
+        (p: ExternalDataProvider) => p.provider_type === 'polar' && p.has_token
+      );
+      if (polarProviders.length > 0) {
+        for (const provider of polarProviders) {
+          try {
+            const polarStatus = await apiCall(`/integrations/polar/status`, {
+              method: 'GET',
+              params: { providerId: provider.id },
+            });
+            setProviders((prev) =>
+              prev.map((p) =>
+                p.id === provider.id
+                  ? {
+                    ...p,
+                    polar_last_sync_at: polarStatus.lastSyncAt,
+                    polar_token_expires: polarStatus.tokenExpiresAt,
+                  }
+                  : p
+              )
+            );
+          } catch (polarError) {
+            console.error(
+              'Failed to fetch Polar specific status for provider:',
+              provider.id,
+              polarError
             );
           }
         }
@@ -612,6 +637,7 @@ const ExternalProviderSettings = () => {
     try {
       const response = await apiCall(`/integrations/polar/authorize`, {
         method: 'GET',
+        params: { providerId },
       });
       if (response && response.authUrl) {
         window.location.href = response.authUrl;
@@ -642,6 +668,7 @@ const ExternalProviderSettings = () => {
     try {
       await apiCall(`/integrations/polar/disconnect`, {
         method: 'POST',
+        body: JSON.stringify({ providerId }),
       });
       toast({
         title: 'Success',
@@ -665,6 +692,7 @@ const ExternalProviderSettings = () => {
     try {
       await apiCall(`/integrations/polar/sync`, {
         method: 'POST',
+        body: JSON.stringify({ providerId }),
       });
       toast({
         title: 'Success',

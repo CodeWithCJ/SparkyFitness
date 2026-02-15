@@ -62,8 +62,8 @@ function _saveToLocalFile(filename, data) {
  * @param {number} userId - The ID of the user to sync data for
  * @param {string} syncType - 'manual' or 'scheduled'
  */
-async function syncPolarData(userId, syncType = 'manual') {
-    log('info', `[polarService] Starting Polar sync (${syncType}) for user ${userId}. ENV_SAVE_MOCK_DATA=${process.env.SPARKY_FITNESS_SAVE_MOCK_DATA}`);
+async function syncPolarData(userId, syncType = 'manual', providerId) {
+    log('info', `[polarService] Starting Polar sync (${syncType}) for user ${userId}${providerId ? ` (Provider ID: ${providerId})` : ''}. ENV_SAVE_MOCK_DATA=${process.env.SPARKY_FITNESS_SAVE_MOCK_DATA}`);
 
     // Check if we should load from local mock data
     if (POLAR_DATA_SOURCE === 'local') {
@@ -90,14 +90,24 @@ async function syncPolarData(userId, syncType = 'manual') {
             if (cachedData.exercises) {
                 await polarDataProcessor.processPolarExercises(userId, userId, cachedData.exercises);
             }
+            if (cachedData.activities) {
+                await polarDataProcessor.processPolarActivity(userId, userId, cachedData.activities);
+            }
+            if (cachedData.sleep) {
+                await polarDataProcessor.processPolarSleep(userId, userId, cachedData.sleep);
+            }
+            if (cachedData.nightlyRecharge) {
+                await polarDataProcessor.processPolarNightlyRecharge(userId, userId, cachedData.nightlyRecharge);
+            }
 
             // Update last_sync_at
             const client = await getSystemClient();
             try {
-                await client.query(
-                    `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'`,
-                    [userId]
-                );
+                const updateQuery = providerId
+                    ? { text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE id = $1 AND user_id = $2`, values: [providerId, userId] }
+                    : { text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'`, values: [userId] };
+
+                await client.query(updateQuery.text, updateQuery.values);
             } finally {
                 client.release();
             }
@@ -114,7 +124,7 @@ async function syncPolarData(userId, syncType = 'manual') {
         log('info', `[polarService] Fetching live Polar data for user ${userId}`);
 
         // Get access token and external user ID
-        const { accessToken, externalUserId } = await polarIntegrationService.getValidAccessToken(userId);
+        const { accessToken, externalUserId } = await polarIntegrationService.getValidAccessToken(userId, providerId);
 
         // Fetch data
         // Fetch data
@@ -164,6 +174,10 @@ async function syncPolarData(userId, syncType = 'manual') {
             }
         }
 
+        // Fetch Sleep and Nightly Recharge (non-transactional, but we pull recent data)
+        const newSleep = await polarIntegrationService.fetchRecentSleepData(userId, accessToken);
+        const newRecharge = await polarIntegrationService.fetchRecentNightlyRecharge(userId, accessToken);
+
         // Remove duplicates from arrays before processing?
         // Simple distinct by ID for exercises:
         allExercises = Array.from(new Map(allExercises.map(ex => [ex.id, ex])).values());
@@ -185,13 +199,22 @@ async function syncPolarData(userId, syncType = 'manual') {
             await polarDataProcessor.processPolarActivity(userId, userId, allActivities);
         }
 
+        if (newSleep && newSleep.length > 0) {
+            await polarDataProcessor.processPolarSleep(userId, userId, newSleep);
+        }
+
+        if (newRecharge && newRecharge.length > 0) {
+            await polarDataProcessor.processPolarNightlyRecharge(userId, userId, newRecharge);
+        }
+
         // Update last_sync_at
         const client = await getSystemClient();
         try {
-            await client.query(
-                `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'`,
-                [userId]
-            );
+            const updateQuery = providerId
+                ? { text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE id = $1 AND user_id = $2`, values: [providerId, userId] }
+                : { text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'`, values: [userId] };
+
+            await client.query(updateQuery.text, updateQuery.values);
         } finally {
             client.release();
         }
@@ -204,7 +227,9 @@ async function syncPolarData(userId, syncType = 'manual') {
             data: {
                 physicalInfo: physicalInfo,
                 exercises: allExercises,
-                activities: allActivities
+                activities: allActivities,
+                sleep: newSleep,
+                nightlyRecharge: newRecharge
             }
         };
 
@@ -224,16 +249,17 @@ async function syncPolarData(userId, syncType = 'manual') {
  * Get Polar connection status
  * @param {number} userId 
  */
-async function getStatus(userId) {
-    return await polarIntegrationService.getStatus(userId);
+async function getStatus(userId, providerId) {
+    return await polarIntegrationService.getStatus(userId, providerId);
 }
 
 /**
  * Disconnect Polar provider
  * @param {number} userId 
+ * @param {string} providerId
  */
-async function disconnectPolar(userId) {
-    return await polarIntegrationService.disconnectPolar(userId);
+async function disconnectPolar(userId, providerId) {
+    return await polarIntegrationService.disconnectPolar(userId, providerId);
 }
 
 module.exports = {

@@ -1,6 +1,7 @@
 // SparkyFitnessServer/integrations/polar/polarService.js
 
 const axios = require('axios');
+const crypto = require('crypto');
 const { getClient, getSystemClient } = require('../../db/poolManager');
 const { encrypt, decrypt, ENCRYPTION_KEY } = require('../../security/encryption');
 const { log } = require('../../config/logging');
@@ -13,15 +14,14 @@ const POLAR_API_BASE_URL = 'https://www.polaraccesslink.com/v3';
 /**
  * Construct the Polar authorization URL.
  */
-async function getAuthorizationUrl(userId, redirectUri) {
+async function getAuthorizationUrl(userId, redirectUri, providerId) {
     const client = await getSystemClient();
     try {
-        const result = await client.query(
-            `SELECT encrypted_app_id, app_id_iv, app_id_tag
-             FROM external_data_providers
-             WHERE user_id = $1 AND provider_type = 'polar'`,
-            [userId]
-        );
+        const query = providerId
+            ? { text: `SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE id = $1 AND user_id = $2`, values: [providerId, userId] }
+            : { text: `SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE user_id = $1 AND provider_type = 'polar'`, values: [userId] };
+
+        const result = await client.query(query.text, query.values);
 
         if (result.rows.length === 0) {
             throw new Error('Polar client credentials not found for user.');
@@ -31,7 +31,14 @@ async function getAuthorizationUrl(userId, redirectUri) {
         const clientId = await decrypt(encrypted_app_id, app_id_iv, app_id_tag, ENCRYPTION_KEY);
 
         const scope = 'accesslink.read_all';
-        const state = userId;
+        const state = crypto.randomBytes(16).toString('hex');
+
+        // Store state in DB for validation during callback
+        const updateQuery = providerId
+            ? { text: `UPDATE external_data_providers SET oauth_state = $1 WHERE id = $2 AND user_id = $3`, values: [state, providerId, userId] }
+            : { text: `UPDATE external_data_providers SET oauth_state = $1 WHERE user_id = $2 AND provider_type = 'polar'`, values: [state, userId] };
+
+        await client.query(updateQuery.text, updateQuery.values);
 
         return `${POLAR_AUTH_URL}?response_type=code&client_id=${clientId}&scope=${scope}&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`;
     } finally {
@@ -42,21 +49,40 @@ async function getAuthorizationUrl(userId, redirectUri) {
 /**
  * Exchange authorization code for tokens.
  */
-async function exchangeCodeForTokens(userId, code, redirectUri) {
+async function exchangeCodeForTokens(userId, code, state, redirectUri, providerId) {
     const client = await getSystemClient();
     try {
-        const providerResult = await client.query(
-            `SELECT encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag
-             FROM external_data_providers
-             WHERE user_id = $1 AND provider_type = 'polar'`,
-            [userId]
-        );
+        const providerQuery = providerId
+            ? {
+                text: `SELECT id, encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag, oauth_state
+                       FROM external_data_providers
+                       WHERE id = $1 AND user_id = $2`, values: [providerId, userId]
+            }
+            : {
+                text: `SELECT id, encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag, oauth_state
+                       FROM external_data_providers
+                       WHERE oauth_state = $1 AND user_id = $2 AND provider_type = 'polar'`, values: [state, userId]
+            };
+
+        const providerResult = await client.query(providerQuery.text, providerQuery.values);
 
         if (providerResult.rows.length === 0) {
             throw new Error('Polar client credentials not found for user.');
         }
 
-        const { encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag } = providerResult.rows[0];
+        const {
+            id: finalProviderId,
+            encrypted_app_id, app_id_iv, app_id_tag,
+            encrypted_app_key, app_key_iv, app_key_tag,
+            oauth_state: storedState
+        } = providerResult.rows[0];
+
+        // Validate state to prevent CSRF
+        if (!storedState || storedState !== state) {
+            log('warn', `[Polar] State mismatch for user ${userId}. Received: ${state}, Stored: ${storedState}`);
+            throw new Error('Invalid OAuth state. Potential CSRF attack.');
+        }
+
         const clientId = await decrypt(encrypted_app_id, app_id_iv, app_id_tag, ENCRYPTION_KEY);
         const clientSecret = await decrypt(encrypted_app_key, app_key_iv, app_key_tag, ENCRYPTION_KEY);
 
@@ -72,16 +98,26 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
 
         const { access_token, expires_in, x_user_id } = response.data;
 
-        const encryptedAccessToken = await encrypt(access_token, ENCRYPTION_KEY);
+        const encryptedAccess = await encrypt(access_token, ENCRYPTION_KEY);
+        // Polar AccessLink tokens are long-lived and don't typically include a refresh token.
+        // However, if the API ever provides one, we should store it. For now, we'll store a placeholder.
+        const encryptedRefresh = await encrypt('no_refresh_token', ENCRYPTION_KEY); // Placeholder
+        const expiresAt = new Date(Date.now() + (expires_in || 0) * 1000);
+        const polarUserId = x_user_id;
 
+        // Clear oauth_state after use and update tokens
         await client.query(
             `UPDATE external_data_providers
              SET encrypted_access_token = $1, access_token_iv = $2, access_token_tag = $3,
-                 token_expires_at = $4, external_user_id = $5, is_active = TRUE, updated_at = NOW()
-             WHERE user_id = $6 AND provider_type = 'polar'`,
+                 encrypted_refresh_token = $4, refresh_token_iv = $5, refresh_token_tag = $6,
+                 token_expires_at = $7, external_user_id = $8, oauth_state = NULL, is_active = TRUE, updated_at = NOW()
+             WHERE id = $9`,
             [
-                encryptedAccessToken.encryptedText, encryptedAccessToken.iv, encryptedAccessToken.tag,
-                new Date(Date.now() + (expires_in || 0) * 1000), x_user_id, userId
+                encryptedAccess.encryptedText, encryptedAccess.iv, encryptedAccess.tag,
+                encryptedRefresh.encryptedText, encryptedRefresh.iv, encryptedRefresh.tag,
+                expiresAt,
+                polarUserId,
+                finalProviderId
             ]
         );
 
@@ -143,15 +179,22 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
  * Check for available notifications (Basic Auth).
  * Lists users who have new data available.
  */
-async function checkNotifications(userId) {
+async function checkNotifications(userId, providerId) {
     const client = await getSystemClient();
     try {
-        const result = await client.query(
-            `SELECT encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag, external_user_id
-             FROM external_data_providers
-             WHERE user_id = $1 AND provider_type = 'polar'`,
-            [userId]
-        );
+        const query = providerId
+            ? {
+                text: `SELECT encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag, external_user_id
+                       FROM external_data_providers
+                       WHERE id = $1 AND user_id = $2`, values: [providerId, userId]
+            }
+            : {
+                text: `SELECT encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag, external_user_id
+                       FROM external_data_providers
+                       WHERE user_id = $1 AND provider_type = 'polar'`, values: [userId]
+            };
+
+        const result = await client.query(query.text, query.values);
 
         if (result.rows.length === 0) {
             log('warn', `[Polar] Credentials not found for user ${userId} when checking notifications.`);
@@ -198,15 +241,22 @@ async function checkNotifications(userId) {
 /**
  * Get a valid access token and external user ID.
  */
-async function getValidAccessToken(userId) {
+async function getValidAccessToken(userId, providerId) {
     const client = await getClient(userId);
     try {
-        const providerResult = await client.query(
-            `SELECT encrypted_access_token, access_token_iv, access_token_tag, token_expires_at, external_user_id
-             FROM external_data_providers
-             WHERE user_id = $1 AND provider_type = 'polar'`,
-            [userId]
-        );
+        const query = providerId
+            ? {
+                text: `SELECT encrypted_access_token, access_token_iv, access_token_tag, token_expires_at, external_user_id
+                       FROM external_data_providers
+                       WHERE id = $1 AND user_id = $2`, values: [providerId, userId]
+            }
+            : {
+                text: `SELECT encrypted_access_token, access_token_iv, access_token_tag, token_expires_at, external_user_id
+                       FROM external_data_providers
+                       WHERE user_id = $1 AND provider_type = 'polar'`, values: [userId]
+            };
+
+        const providerResult = await client.query(query.text, query.values);
 
         if (providerResult.rows.length === 0) {
             throw new Error('Polar provider not configured for user.');
@@ -282,7 +332,6 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
                 log('error', `Error fetching physical info resource ${url}: ${err.message}`);
             }
         }
-
         // 3. Commit Transaction
         if (transactionId) {
             await commitTransaction(userId, externalUserId, accessToken, transactionId, 'physical-information');
@@ -292,6 +341,25 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
     } catch (error) {
         log('error', `Error fetching Polar physical info for user ${userId}: ${error.message}`);
         // Return empty array to allow other fetches to proceed
+        return [];
+    }
+}
+
+/**
+ * Fetch recent Polar Physical Info using List API.
+ */
+async function fetchRecentPhysicalInfo(userId, accessToken) {
+    try {
+        log('info', `Fetching recent Polar physical info (List API) for user ${userId}...`);
+        const response = await axios.get(`${POLAR_API_BASE_URL}/users/physical-information`, {
+            headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
+        });
+
+        const physicalInfo = response.data['physical-informations'] || [];
+        log('info', `Fetched ${physicalInfo.length} recent physical info entries (List API) for user ${userId}.`);
+        return physicalInfo;
+    } catch (error) {
+        log('error', `Error fetching recent Polar physical info (List API) for user ${userId}: ${error.message}`);
         return [];
     }
 }
@@ -453,6 +521,44 @@ async function fetchUserProfile(userId, externalUserId, accessToken) {
 }
 
 /**
+ * Fetch recent Sleep data using List API (last 28 days).
+ */
+async function fetchRecentSleepData(userId, accessToken) {
+    try {
+        log('info', `Fetching recent Polar sleep data (List API) for user ${userId}...`);
+        const response = await axios.get(`${POLAR_API_BASE_URL}/users/sleep`, {
+            headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
+        });
+
+        const sleepData = response.data.nights || [];
+        log('info', `Fetched ${sleepData.length} nights of recent sleep data (List API) for user ${userId}.`);
+        return sleepData;
+    } catch (error) {
+        log('error', `Error fetching recent Polar sleep data (List API) for user ${userId}: ${error.message}`);
+        return [];
+    }
+}
+
+/**
+ * Fetch recent Nightly Recharge data using List API (last 28 days).
+ */
+async function fetchRecentNightlyRecharge(userId, accessToken) {
+    try {
+        log('info', `Fetching recent Polar nightly recharge data (List API) for user ${userId}...`);
+        const response = await axios.get(`${POLAR_API_BASE_URL}/users/nightly-recharge`, {
+            headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
+        });
+
+        const rechargeData = response.data.recharges || [];
+        log('info', `Fetched ${rechargeData.length} records of recent nightly recharge data (List API) for user ${userId}.`);
+        return rechargeData;
+    } catch (error) {
+        log('error', `Error fetching recent Polar nightly recharge data (List API) for user ${userId}: ${error.message}`);
+        return [];
+    }
+}
+
+/**
  * Fetch and process Polar data.
  * @deprecated Use services/polarService.js for orchestration and mock data support.
  */
@@ -476,23 +582,26 @@ async function fetchAndProcessPolarData(userId, createdByUserId) {
 /**
  * Disconnect Polar account.
  */
-async function disconnectPolar(userId) {
+async function disconnectPolar(userId, providerId) {
     const client = await getClient(userId);
     try {
-        const accessToken = await getValidAccessToken(userId);
+        const query = providerId
+            ? {
+                text: `UPDATE external_data_providers
+                       SET encrypted_access_token = NULL, access_token_iv = NULL, access_token_tag = NULL,
+                           token_expires_at = NULL, external_user_id = NULL, is_active = FALSE, updated_at = NOW()
+                       WHERE id = $1 AND user_id = $2`, values: [providerId, userId]
+            }
+            : {
+                text: `UPDATE external_data_providers
+                       SET encrypted_access_token = NULL, access_token_iv = NULL, access_token_tag = NULL,
+                           token_expires_at = NULL, external_user_id = NULL, is_active = FALSE, updated_at = NOW()
+                       WHERE user_id = $1 AND provider_type = 'polar'`, values: [userId]
+            };
 
-        // Revoke with Polar if possible (Polar AccessLink V3/OAuth2 typically uses revocation)
-        // For now, we clear our database.
+        await client.query(query.text, query.values);
 
-        await client.query(
-            `UPDATE external_data_providers
-             SET encrypted_access_token = NULL, access_token_iv = NULL, access_token_tag = NULL,
-                 token_expires_at = NULL, external_user_id = NULL, is_active = FALSE, updated_at = NOW()
-             WHERE user_id = $1 AND provider_type = 'polar'`,
-            [userId]
-        );
-
-        log('info', `Polar account disconnected for user ${userId}`);
+        log('info', `Polar account disconnected for user ${userId}${providerId ? ` (Provider ID: ${providerId})` : ''}`);
         return { success: true };
     } catch (error) {
         log('error', `Error disconnecting Polar account for user ${userId}: ${error.message}`);
@@ -502,15 +611,22 @@ async function disconnectPolar(userId) {
     }
 }
 
-async function getStatus(userId) {
+async function getStatus(userId, providerId) {
     const client = await getClient(userId);
     try {
-        const result = await client.query(
-            `SELECT last_sync_at, token_expires_at, is_active
-             FROM external_data_providers
-             WHERE user_id = $1 AND provider_type = 'polar'`,
-            [userId]
-        );
+        const query = providerId
+            ? {
+                text: `SELECT last_sync_at, token_expires_at, is_active
+                       FROM external_data_providers
+                       WHERE id = $1 AND user_id = $2`, values: [providerId, userId]
+            }
+            : {
+                text: `SELECT last_sync_at, token_expires_at, is_active
+                       FROM external_data_providers
+                       WHERE user_id = $1 AND provider_type = 'polar'`, values: [userId]
+            };
+
+        const result = await client.query(query.text, query.values);
 
         if (result.rows.length === 0) {
             return { connected: false, lastSyncAt: null, tokenExpiresAt: null };
@@ -531,12 +647,15 @@ module.exports = {
     getAuthorizationUrl,
     exchangeCodeForTokens,
     fetchPhysicalInfo,
+    fetchRecentPhysicalInfo,
     fetchExercises,
     fetchRecentExercises,
     fetchDailyActivity,
     fetchRecentDailyActivity,
-    fetchUserProfile, // export
-    checkNotifications, // export
+    fetchRecentSleepData,
+    fetchRecentNightlyRecharge,
+    fetchUserProfile,
+    checkNotifications,
     fetchAndProcessPolarData,
     disconnectPolar,
     getStatus,
