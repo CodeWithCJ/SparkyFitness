@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChevronLeft, Check, Utensils, CalendarIcon } from 'lucide-react';
-import { submitOnboardingData } from '@/services/onboardingService';
 import {
   saveCheckInMeasurements,
   getMostRecentMeasurement,
@@ -13,7 +12,6 @@ import { saveGoals } from '@/services/goalsService';
 import { apiCall } from '@/services/api';
 import { DEFAULT_GOALS } from '@/constants/goals';
 import { format, parseISO } from 'date-fns';
-import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { ExpandedGoals } from '@/types/goals';
 import { getDietTemplate } from '@/constants/dietTemplates';
@@ -38,6 +36,7 @@ import type {
   SugarCalculationAlgorithm,
 } from '@/types/nutrientAlgorithms';
 import PersonalPlan from './PersonalPlan';
+import { useSubmitOnboarding } from '@/hooks/Onboarding/useOnboarding';
 
 interface OptionButtonProps {
   label: string;
@@ -179,6 +178,7 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
     fat: false,
   });
 
+  const { mutateAsync: submitOnboardingData } = useSubmitOnboarding();
   // Helper functions for water unit conversion
   const convertMlToSelectedUnit = (
     ml: number,
@@ -548,20 +548,12 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
     } catch (e) {
       console.error('Failed to sync goals', e);
     }
-
     try {
       await submitOnboardingData(dataToSubmit);
-      toast({
-        title: 'Success!',
-        description: 'Your personalized plan is ready to go.',
-      });
       onOnboardingComplete();
     } catch (error) {
-      toast({
-        title: 'Submission Error',
-        description: 'Could not save your plan. Please try again.',
-        variant: 'destructive',
-      });
+      // The mutation hook handles showing an error toast.
+      // We just need to reset the loading state if submission fails.
       setIsSubmitting(false);
     }
   };
