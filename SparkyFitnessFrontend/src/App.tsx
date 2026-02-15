@@ -53,6 +53,9 @@ const WithingsCallback = lazy(
 const FitbitCallback = lazy(
   () => import('@/pages/Integrations/FitbitCallback')
 );
+const PolarCallback = lazy(
+  () => import('@/pages/Integrations/PolarCallback')
+);
 
 declare module '@tanstack/react-query' {
   interface Register {
@@ -226,7 +229,7 @@ const App = () => {
                 <Suspense
                   fallback={
                     <div className="min-h-screen flex items-center justify-center">
-                      Lade Seite...
+                      Loading Site...
                     </div>
                   }
                 >
@@ -246,6 +249,10 @@ const App = () => {
                     <Route
                       path="/fitbit/callback"
                       element={<FitbitCallback />}
+                    />
+                    <Route
+                      path="/polar/callback"
+                      element={<PolarCallback />}
                     />
                     <Route path="/oidc-callback" element={<OidcCallback />} />
                     <Route

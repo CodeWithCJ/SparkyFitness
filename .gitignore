@@ -60,3 +60,6 @@ WIP/
 
 # Docker Volume
 docker/docker_volume/
+
+# TypeScript
+*.tsbuildinfo

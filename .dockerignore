@@ -45,3 +45,6 @@ SparkyFitnessServer/temp_uploads/
 
 # Docker Volume
 docker/docker_volume/
+
+# TypeScript
+*.tsbuildinfo

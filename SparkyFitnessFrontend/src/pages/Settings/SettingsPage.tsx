@@ -643,13 +643,13 @@ const Settings = () => {
                       <Camera className="h-4 w-4 mr-2" />
                       {uploadingImage
                         ? t(
-                            'settings.profileInformation.uploading',
-                            'Uploading...'
-                          )
+                          'settings.profileInformation.uploading',
+                          'Uploading...'
+                        )
                         : t(
-                            'settings.profileInformation.changePhoto',
-                            'Change Photo'
-                          )}
+                          'settings.profileInformation.changePhoto',
+                          'Change Photo'
+                        )}
                     </span>
                   </Button>
                 </Label>
@@ -1124,9 +1124,9 @@ const Settings = () => {
               {loading
                 ? t('settings.profileInformation.saving', 'Saving...')
                 : t(
-                    'settings.waterTracking.saveWaterDisplayUnit',
-                    'Save Water Display Unit'
-                  )}
+                  'settings.waterTracking.saveWaterDisplayUnit',
+                  'Save Water Display Unit'
+                )}
             </Button>
             <Separator />
             <WaterContainerManager />
@@ -1262,7 +1262,7 @@ const Settings = () => {
             <TooltipWarning
               warningMsg={t(
                 'settings.foodExerciseDataProviders.invalidKeyLengthWarning',
-                'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.'
+                'If you encounter an "Invalid key length" error, ensure your encryption key in the server\'s env variables are 64 hex.'
               )}
             />
             <ExternalProviderSettings />
@@ -1285,7 +1285,7 @@ const Settings = () => {
             <TooltipWarning
               warningMsg={t(
                 'settings.aiService.invalidKeyLengthWarning',
-                'If you encounter an "Invalid key length" error, ensure your encryption and JWT authentication keys in the server\'s env variables are 64 hex.'
+                'If you encounter an "Invalid key length" error, ensure your encryption key in the server\'s env variables are 64 hex.'
               )}
             />
             <AIServiceSettings />
@@ -1429,9 +1429,9 @@ const Settings = () => {
                   {generatingApiKey
                     ? t('settings.apiKeyManagement.generating', 'Generating...')
                     : t(
-                        'settings.apiKeyManagement.generate',
-                        'Generate New Key'
-                      )}
+                      'settings.apiKeyManagement.generate',
+                      'Generate New Key'
+                    )}
                 </Button>
               </div>
 
@@ -1447,9 +1447,9 @@ const Settings = () => {
                   {cleaningUpKeys
                     ? t('common.processing', 'Processing...')
                     : t(
-                        'settings.apiKeyManagement.cleanupExpired',
-                        'Cleanup Expired Keys'
-                      )}
+                      'settings.apiKeyManagement.cleanupExpired',
+                      'Cleanup Expired Keys'
+                    )}
                 </Button>
               </div>
             </div>
@@ -1734,9 +1734,9 @@ const Settings = () => {
                 {loading
                   ? t('settings.accountSecurity.updating', 'Updating...')
                   : t(
-                      'settings.accountSecurity.updatePassword',
-                      'Update Password'
-                    )}
+                    'settings.accountSecurity.updatePassword',
+                    'Update Password'
+                  )}
               </Button>
             </form>
             <Separator />

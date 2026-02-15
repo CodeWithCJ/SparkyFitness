@@ -47,6 +47,9 @@ interface ExternalProviderListProps {
   handleConnectFitbit: (providerId: string) => void;
   handleManualSyncFitbit: (providerId: string) => void;
   handleDisconnectFitbit: (providerId: string) => void;
+  handleConnectPolar: (providerId: string) => void;
+  handleManualSyncPolar: (providerId: string) => void;
+  handleDisconnectPolar: (providerId: string) => void;
   startEditing: (provider: ExternalDataProvider) => void;
   handleDeleteProvider: (providerId: string) => void;
   toggleProviderPublicSharing: (providerId: string, isPublic: boolean) => void;
@@ -73,6 +76,9 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
   handleConnectFitbit,
   handleManualSyncFitbit,
   handleDisconnectFitbit,
+  handleConnectPolar,
+  handleManualSyncPolar,
+  handleDisconnectPolar,
   startEditing,
   handleDeleteProvider,
   toggleProviderPublicSharing,
@@ -140,89 +146,89 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
               {(editData.provider_type === 'mealie' ||
                 editData.provider_type === 'tandoor' ||
                 editData.provider_type === 'free-exercise-db') && (
-                <>
-                  <div>
-                    <Label>App URL</Label>
-                    <Input
-                      type="text"
-                      value={editData.base_url || ''}
-                      onChange={(e) =>
-                        setEditData((prev) => ({
-                          ...prev,
-                          base_url: e.target.value,
-                        }))
-                      }
-                      placeholder={
-                        editData.provider_type === 'tandoor'
-                          ? 'e.g., http://your-tandoor-instance.com'
-                          : 'e.g., http://your-mealie-instance.com'
-                      }
-                      autoComplete="off"
-                    />
-                  </div>
-                  <div>
-                    <Label>API Key</Label>
-                    <Input
-                      type="password"
-                      value={editData.app_key || ''}
-                      onChange={(e) =>
-                        setEditData((prev) => ({
-                          ...prev,
-                          app_key: e.target.value,
-                        }))
-                      }
-                      placeholder={
-                        editData.provider_type === 'tandoor'
-                          ? 'Enter Tandoor API Key'
-                          : 'Enter Mealie API Key'
-                      }
-                      autoComplete="off"
-                    />
-                  </div>
-                </>
-              )}
+                  <>
+                    <div>
+                      <Label>App URL</Label>
+                      <Input
+                        type="text"
+                        value={editData.base_url || ''}
+                        onChange={(e) =>
+                          setEditData((prev) => ({
+                            ...prev,
+                            base_url: e.target.value,
+                          }))
+                        }
+                        placeholder={
+                          editData.provider_type === 'tandoor'
+                            ? 'e.g., http://your-tandoor-instance.com'
+                            : 'e.g., http://your-mealie-instance.com'
+                        }
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <Label>API Key</Label>
+                      <Input
+                        type="password"
+                        value={editData.app_key || ''}
+                        onChange={(e) =>
+                          setEditData((prev) => ({
+                            ...prev,
+                            app_key: e.target.value,
+                          }))
+                        }
+                        placeholder={
+                          editData.provider_type === 'tandoor'
+                            ? 'Enter Tandoor API Key'
+                            : 'Enter Mealie API Key'
+                        }
+                        autoComplete="off"
+                      />
+                    </div>
+                  </>
+                )}
               {(editData.provider_type === 'nutritionix' ||
                 editData.provider_type === 'fatsecret') && (
-                <>
-                  <div>
-                    <Label>App ID</Label>
-                    <Input
-                      type="text"
-                      value={editData.app_id || ''}
-                      onChange={(e) =>
-                        setEditData((prev) => ({
-                          ...prev,
-                          app_id: e.target.value,
-                        }))
-                      }
-                      placeholder="Enter App ID"
-                      autoComplete="off"
-                    />
-                  </div>
-                  <div>
-                    <Label>App Key</Label>
-                    <Input
-                      type="password"
-                      value={editData.app_key || ''}
-                      onChange={(e) =>
-                        setEditData((prev) => ({
-                          ...prev,
-                          app_key: e.target.value,
-                        }))
-                      }
-                      placeholder="Enter App Key"
-                      autoComplete="off"
-                    />
-                  </div>
-                  {editData.provider_type === 'fatsecret' && (
-                    <p className="text-sm text-muted-foreground col-span-2">
-                      Note: For Fatsecret, you need to set up **your public IP**
-                      whitelisting in your Fatsecret developer account. This
-                      process can take up to 24 hours.
-                    </p>
-                  )}
-                </>
-              )}
+                  <>
+                    <div>
+                      <Label>App ID</Label>
+                      <Input
+                        type="text"
+                        value={editData.app_id || ''}
+                        onChange={(e) =>
+                          setEditData((prev) => ({
+                            ...prev,
+                            app_id: e.target.value,
+                          }))
+                        }
+                        placeholder="Enter App ID"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <Label>App Key</Label>
+                      <Input
+                        type="password"
+                        value={editData.app_key || ''}
+                        onChange={(e) =>
+                          setEditData((prev) => ({
+                            ...prev,
+                            app_key: e.target.value,
+                          }))
+                        }
+                        placeholder="Enter App Key"
+                        autoComplete="off"
+                      />
+                    </div>
+                    {editData.provider_type === 'fatsecret' && (
+                      <p className="text-sm text-muted-foreground col-span-2">
+                        Note: For Fatsecret, you need to set up **your public IP**
+                        whitelisting in your Fatsecret developer account. This
+                        process can take up to 24 hours.
+                      </p>
+                    )}
+                  </>
+                )}
               {editData.provider_type === 'nutritionix' && (
                 <p className="text-sm text-muted-foreground col-span-2">
                   Get your App ID and App Key from the{' '}
@@ -355,7 +361,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                 <>
                   {/* Show connection status for connected Garmin accounts instead of credential fields */}
                   {provider.garmin_connect_status === 'linked' ||
-                  provider.garmin_connect_status === 'connected' ? (
+                    provider.garmin_connect_status === 'connected' ? (
                     <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                       <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                         <div className="h-2 w-2 bg-green-500 rounded-full"></div>
@@ -483,29 +489,30 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
               )}
               {(editData.provider_type === 'withings' ||
                 editData.provider_type === 'garmin' ||
-                editData.provider_type === 'fitbit') && (
-                <div>
-                  <Label htmlFor="edit_sync_frequency">Sync Frequency</Label>
-                  <Select
-                    value={editData.sync_frequency || 'manual'}
-                    onValueChange={(value) =>
-                      setEditData((prev) => ({
-                        ...prev,
-                        sync_frequency: value as 'hourly' | 'daily' | 'manual',
-                      }))
-                    }
-                  >
-                    <SelectTrigger id="edit_sync_frequency">
-                      <SelectValue placeholder="Select sync frequency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">Manual</SelectItem>
-                      <SelectItem value="hourly">Hourly</SelectItem>
-                      <SelectItem value="daily">Daily</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+                editData.provider_type === 'fitbit' ||
+                editData.provider_type === 'polar') && (
+                  <div>
+                    <Label htmlFor="edit_sync_frequency">Sync Frequency</Label>
+                    <Select
+                      value={editData.sync_frequency || 'manual'}
+                      onValueChange={(value) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          sync_frequency: value as 'hourly' | 'daily' | 'manual',
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="edit_sync_frequency">
+                        <SelectValue placeholder="Select sync frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Manual</SelectItem>
+                        <SelectItem value="hourly">Hourly</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               <div className="flex items-center space-x-2">
                 <Switch
                   checked={editData.is_active || false}
@@ -532,17 +539,17 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                   <h4 className="font-medium">{provider.provider_name}</h4>
                   {(provider.visibility === 'private' ||
                     provider.user_id === user?.id) && (
-                    <>
-                      <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">
-                        Private
-                      </span>
-                      {provider.shared_with_public && (
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded ml-2">
-                          Public
+                      <>
+                        <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">
+                          Private
                         </span>
-                      )}
-                    </>
-                  )}
+                        {provider.shared_with_public && (
+                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded ml-2">
+                            Public
+                          </span>
+                        )}
+                      </>
+                    )}
                   {provider.user_id !== user?.id &&
                     provider.visibility === 'public' && (
                       <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
@@ -695,6 +702,52 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                         </TooltipProvider>
                       </>
                     )}
+                  {provider.provider_type === 'polar' &&
+                    provider.is_active &&
+                    provider.has_token && (
+                      <>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleManualSyncPolar(provider.id)
+                                }
+                                disabled={loading}
+                                className="ml-2 text-blue-500"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Sync Now</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleDisconnectPolar(provider.id)
+                                }
+                                disabled={loading}
+                                className="ml-2 text-red-500"
+                              >
+                                <Link2Off className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Disconnect</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                   {provider.visibility === 'private' ? (
@@ -762,6 +815,20 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                             disabled={loading}
                           >
                             Connect Fitbit
+                          </Button>
+                        )}
+
+                      {/* Connect Polar Button */}
+                      {provider.provider_type === 'polar' &&
+                        provider.is_active &&
+                        !provider.has_token && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleConnectPolar(provider.id)}
+                            disabled={loading}
+                          >
+                            Connect Polar
                           </Button>
                         )}
 
@@ -909,6 +976,30 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                   </div>
                 )}
               </div>
+              {/* Contributing Note for specific providers */}
+              {['fitbit', 'withings', 'polar', 'garmin'].includes(
+                provider.provider_type
+              ) && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 text-sm text-yellow-800 dark:text-yellow-200 mt-2">
+                    <p>
+                      <strong>Note from the Developer:</strong> I don't own{' '}
+                      {provider.provider_name} devices, so this integration might be
+                      imperfect.
+                    </p>
+                    <p className="mt-1">
+                      If you'd like to help improve it, you can contribute anonymized
+                      mock data! Set{' '}
+                      <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">
+                        SPARKY_FITNESS_SAVE_MOCK_DATA=true
+                      </code>{' '}
+                      in your server environment variables to generate JSON files in the mock_data folder of Server container,
+                      then share them with <strong>CodewithCJ</strong> on Discord.
+                    </p>
+                    <p className="mt-1 text-xs opacity-80">
+                      Please ensure any shared data is anonymized.
+                    </p>
+                  </div>
+                )}
             </div>
           )}
         </div>

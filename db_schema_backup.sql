@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict caPYqiQ8y1UqUPpirBHhS0afJx4iTF0Nc3PWk1hIdZf2p9DctMeCY44jYxZLzXp
+\restrict mmFe3I6PE40bsSY7o0STpSpymGM7H7RF1jRwqceFHFBJGpcbSbj0PHsG0r579Ve
 
 -- Dumped from database version 15.15
 -- Dumped by pg_dump version 18.0
@@ -453,10 +453,12 @@ CREATE FUNCTION public.handle_new_user() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 BEGIN
+  -- Ensure onboarding_status exists (using ON CONFLICT to avoid errors if app-level init already did this)
   INSERT INTO public.onboarding_status (user_id)
-  VALUES (new.id);
+  VALUES (new.id)
+  ON CONFLICT (user_id) DO NOTHING;
 
-  -- Call the new function to create default external data providers
+  -- Create default external data providers
   PERFORM public.create_default_external_data_providers(new.id);
 
   RETURN new;
@@ -673,6 +675,49 @@ $$;
 
 
 --
+-- Name: sync_user_mfa_master_flag(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sync_user_mfa_master_flag() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    NEW.two_factor_enabled := (NEW.mfa_totp_enabled OR NEW.mfa_email_enabled);
+    RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sync_user_totp_flag(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sync_user_totp_flag() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    target_user_id UUID;
+    has_secret BOOLEAN;
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        target_user_id := OLD.user_id;
+    ELSE
+        target_user_id := NEW.user_id;
+    END IF;
+
+    -- Check if a secret currently exists for this user
+    SELECT EXISTS (SELECT 1 FROM "two_factor" WHERE user_id = target_user_id AND secret IS NOT NULL) INTO has_secret;
+
+    -- Update the mfa_totp_enabled flag in the user table
+    -- This will in turn trigger sync_user_mfa_master_flag via the BEFORE UPDATE trigger on user
+    UPDATE "user" SET mfa_totp_enabled = has_secret WHERE id = target_user_id;
+
+    RETURN NULL;
+END;
+$$;
+
+
+--
 -- Name: trigger_set_timestamp(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -844,8 +889,8 @@ CREATE TABLE public.api_key (
     last_refill_at timestamp with time zone,
     enabled boolean DEFAULT true,
     rate_limit_enabled boolean DEFAULT true,
-    rate_limit_time_window integer,
-    rate_limit_max integer,
+    rate_limit_time_window integer DEFAULT 60000,
+    rate_limit_max integer DEFAULT 100,
     request_count integer DEFAULT 0,
     remaining integer,
     last_request timestamp with time zone,
@@ -1485,7 +1530,8 @@ CREATE TABLE public.meal_types (
     name text NOT NULL,
     user_id uuid,
     sort_order integer DEFAULT 0,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    is_visible boolean DEFAULT true NOT NULL
 );
 
 
@@ -1889,6 +1935,18 @@ CREATE TABLE public.user_ignored_updates (
     user_id uuid NOT NULL,
     variant_id uuid NOT NULL,
     ignored_at_timestamp timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: user_meal_visibilities; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_meal_visibilities (
+    user_id uuid NOT NULL,
+    meal_type_id uuid NOT NULL,
+    is_visible boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -2822,6 +2880,14 @@ ALTER TABLE ONLY public.user_ignored_updates
 
 
 --
+-- Name: user_meal_visibilities user_meal_visibilities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_meal_visibilities
+    ADD CONSTRAINT user_meal_visibilities_pkey PRIMARY KEY (user_id, meal_type_id);
+
+
+--
 -- Name: user_nutrient_display_preferences user_nutrient_display_preferenc_user_id_view_group_platform_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3259,13 +3325,6 @@ CREATE UNIQUE INDEX unique_backup_settings_row ON public.backup_settings USING b
 
 
 --
--- Name: users on_auth_user_created; Type: TRIGGER; Schema: auth; Owner: -
---
-
-CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
-
---
 -- Name: user ensure_first_user_is_admin; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3277,6 +3336,20 @@ CREATE TRIGGER ensure_first_user_is_admin BEFORE INSERT ON public."user" FOR EAC
 --
 
 CREATE TRIGGER on_profile_created AFTER INSERT ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.create_user_preferences();
+
+
+--
+-- Name: user on_public_user_created; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER on_public_user_created AFTER INSERT ON public."user" FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+
+--
+-- Name: TRIGGER on_public_user_created ON "user"; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TRIGGER on_public_user_created ON public."user" IS 'Initializes onboarding status and default external providers for new users created via Better Auth.';
 
 
 --
@@ -3298,6 +3371,20 @@ CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_custom_nutrients FOR E
 --
 
 CREATE TRIGGER set_user_nutrient_display_preferences_updated_at BEFORE UPDATE ON public.user_nutrient_display_preferences FOR EACH ROW EXECUTE FUNCTION public.set_updated_at_timestamp();
+
+
+--
+-- Name: user trg_sync_user_mfa_master_flag; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_sync_user_mfa_master_flag BEFORE UPDATE OF mfa_totp_enabled, mfa_email_enabled ON public."user" FOR EACH ROW EXECUTE FUNCTION public.sync_user_mfa_master_flag();
+
+
+--
+-- Name: two_factor trg_sync_user_totp_flag; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_sync_user_totp_flag AFTER INSERT OR DELETE OR UPDATE ON public.two_factor FOR EACH ROW EXECUTE FUNCTION public.sync_user_totp_flag();
 
 
 --
@@ -4004,6 +4091,22 @@ ALTER TABLE ONLY public.user_custom_nutrients
 
 ALTER TABLE ONLY public.user_ignored_updates
     ADD CONSTRAINT user_ignored_updates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_meal_visibilities user_meal_visibilities_meal_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_meal_visibilities
+    ADD CONSTRAINT user_meal_visibilities_meal_type_id_fkey FOREIGN KEY (meal_type_id) REFERENCES public.meal_types(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_meal_visibilities user_meal_visibilities_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_meal_visibilities
+    ADD CONSTRAINT user_meal_visibilities_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -5392,6 +5495,20 @@ GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO sparky_uat;
 
 
 --
+-- Name: FUNCTION sync_user_mfa_master_flag(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.sync_user_mfa_master_flag() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION sync_user_totp_flag(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.sync_user_totp_flag() TO sparky_uat;
+
+
+--
 -- Name: FUNCTION trigger_set_timestamp(); Type: ACL; Schema: public; Owner: -
 --
 
@@ -5847,6 +5964,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky
 
 
 --
+-- Name: TABLE user_meal_visibilities; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO sparky_uat;
+
+
+--
 -- Name: TABLE user_nutrient_display_preferences; Type: ACL; Schema: public; Owner: -
 --
 
@@ -6046,5 +6170,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict caPYqiQ8y1UqUPpirBHhS0afJx4iTF0Nc3PWk1hIdZf2p9DctMeCY44jYxZLzXp
+\unrestrict mmFe3I6PE40bsSY7o0STpSpymGM7H7RF1jRwqceFHFBJGpcbSbj0PHsG0r579Ve
 
