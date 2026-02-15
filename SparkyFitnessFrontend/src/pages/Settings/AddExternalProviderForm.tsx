@@ -216,11 +216,12 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
         // doesn't make the user think the provider wasn't added at all.
         try {
           await syncHevyData(fullSyncOnConnect, data.id);
-        } catch (syncError: any) {
+        } catch (error: unknown) {
+          const syncError = error as Error;
           console.error('Initial Hevy sync failed:', syncError);
           toast({
             title: 'Sync Warning',
-            description: `Provider added, but initial sync failed: ${syncError.message}. Please check your API key in settings.`,
+            description: `Provider added, but initial sync failed: ${syncError.message || 'Unknown error'}. Please check your API key in settings.`,
             variant: 'destructive',
           });
         }
