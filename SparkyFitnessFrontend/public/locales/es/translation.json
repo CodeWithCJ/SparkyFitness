@@ -239,7 +239,7 @@
       "noDataFoundDescription": "El archivo CSV contiene cabeceras pero no filas de datos.",
       "validationError": "Error de validación",
       "nameEmptyError": "El campo \"name\" no puede estar vacío.",
-      "copied": "Copiado",
+      "copied": "Copiado!",
       "copiedToClipboard": "\"{{value}}\" copiado al portapapeles."
     },
     "playbackModal": {

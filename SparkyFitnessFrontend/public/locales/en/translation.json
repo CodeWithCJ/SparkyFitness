@@ -477,12 +477,12 @@
     "foodExerciseDataProviders": {
       "title": "Food & Exercise Data Providers",
       "description": "Configure external food and exercise data sources and synchronize data with Garmin Connect",
-      "invalidKeyLengthWarning": "If you encounter an \"Invalid key length\" error, ensure your encryption and JWT authentication keys in the server's env variables are 64 hex."
+      "invalidKeyLengthWarning": "If you encounter an \"Invalid key length\" error, ensure your encryption key in the server's env variables are 64 hex."
     },
     "aiService": {
       "title": "AI Service",
       "description": "Manage settings for AI-powered features",
-      "invalidKeyLengthWarning": "If you encounter an \"Invalid key length\" error, ensure your encryption and JWT authentication keys in the server's env variables are 64 hex."
+      "invalidKeyLengthWarning": "If you encounter an \"Invalid key length\" error, ensure your encryption key in the server's env variables are 64 hex."
     },
     "apiKeyManagement": {
       "title": "API Key Management",

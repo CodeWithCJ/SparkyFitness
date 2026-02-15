@@ -28,3 +28,13 @@ export const linkPolarFlowAccount = async (
     body: data,
   });
 };
+
+export const syncHevyData = async (
+  fullSync: boolean = false,
+  providerId?: string
+): Promise<void> => {
+  return apiCall(`/integrations/hevy/sync${fullSync ? '?fullSync=true' : ''}`, {
+    method: 'POST',
+    body: JSON.stringify({ providerId }),
+  });
+};

@@ -28,6 +28,7 @@ export interface WorkoutPresetSet {
   duration?: number; // in minutes
   rest_time?: number; // in seconds
   notes?: string;
+  rpe?: number;
 }
 
 export interface WorkoutPresetExercise {

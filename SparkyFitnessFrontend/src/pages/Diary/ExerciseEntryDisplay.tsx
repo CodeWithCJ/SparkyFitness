@@ -100,6 +100,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
                         ` • Reps: ${String(set.reps)}`}
                       {Number.isFinite(set.weight) &&
                         ` • Weight: ${convertWeight(set.weight, 'kg', weightUnit).toFixed(1)} ${weightUnit}`}
+                      {Number.isFinite(set.rpe) && ` • RPE: ${set.rpe}`}
                     </span>
                   ))}
                 </>

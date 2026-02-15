@@ -50,6 +50,7 @@ import {
   Timer,
   Plus,
   XCircle,
+  Activity,
 } from 'lucide-react';
 import {
   Select,
@@ -106,7 +107,7 @@ const SortableSetItem = React.memo(
           <div {...listeners}>
             <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-8 gap-2 flex-grow items-center">
+          <div className="grid grid-cols-1 md:grid-cols-9 gap-2 flex-grow items-center">
             <div className="md:col-span-1">
               <Label>
                 {t('exercise.editExerciseEntryDialog.setLabel', 'Set')}
@@ -180,6 +181,29 @@ const SortableSetItem = React.memo(
                     handleSetChange(setIndex, 'weight', 0);
                   }
                 }}
+              />
+            </div>
+            <div className="md:col-span-1">
+              <Label htmlFor={`rpe-${setIndex}`} className="flex items-center">
+                <Activity
+                  className="h-4 w-4 mr-1"
+                  style={{ color: '#10b981' }}
+                />{' '}
+                {t('exercise.editExerciseEntryDialog.rpeLabel', 'RPE')}
+              </Label>
+              <Input
+                id={`rpe-${setIndex}`}
+                type="number"
+                min="0"
+                max="10"
+                step="0.5"
+                value={set.rpe ?? ''}
+                onChange={(e) => {
+                  const val =
+                    e.target.value === '' ? undefined : Number(e.target.value);
+                  handleSetChange(setIndex, 'rpe', val);
+                }}
+                placeholder="1-10"
               />
             </div>
             <div className="md:col-span-1">

@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Save, X, Clipboard } from 'lucide-react';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { apiCall } from '@/services/api';
+import { syncHevyData } from '@/api/Integrations/integrations';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -57,6 +58,7 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
       garmin_token_expires: '',
     }
   );
+  const [fullSyncOnConnect, setFullSyncOnConnect] = useState(false);
 
   const handleAddProvider = async () => {
     if (!user) {
@@ -134,6 +136,13 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
         variant: 'destructive',
       });
       return;
+    } else if (newProvider.provider_type === 'hevy' && !newProvider.app_key) {
+      toast({
+        title: 'Error',
+        description: `Please provide an API Key for Hevy`,
+        variant: 'destructive',
+      });
+      return;
     }
 
     try {
@@ -199,6 +208,23 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
               : null,
           }),
         });
+      }
+
+      if (newProvider.provider_type === 'hevy' && newProvider.is_active) {
+        // Trigger initial sync for Hevy if activated
+        // We wrap this in its own try/catch so that a sync error (like a bad key)
+        // doesn't make the user think the provider wasn't added at all.
+        try {
+          await syncHevyData(fullSyncOnConnect, data.id);
+        } catch (error: unknown) {
+          const syncError = error as Error;
+          console.error('Initial Hevy sync failed:', syncError);
+          toast({
+            title: 'Sync Warning',
+            description: `Provider added, but initial sync failed: ${syncError.message || 'Unknown error'}. Please check your API key in settings.`,
+            variant: 'destructive',
+          });
+        }
       }
 
       toast({
@@ -746,10 +772,45 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
             </>
           )}
 
+          {newProvider.provider_type === 'hevy' && (
+            <>
+              <div>
+                <Label htmlFor="new_app_key">Hevy API Key</Label>
+                <Input
+                  id="new_app_key"
+                  type="password"
+                  value={newProvider.app_key}
+                  onChange={(e) =>
+                    setNewProvider((prev) => ({
+                      ...prev,
+                      app_key: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter Hevy API Key"
+                  autoComplete="off"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground col-span-2">
+                Get your API Key from Hevy Settings &#62; API Key.
+              </p>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="full_sync_on_connect"
+                  checked={fullSyncOnConnect}
+                  onCheckedChange={setFullSyncOnConnect}
+                />
+                <Label htmlFor="full_sync_on_connect">
+                  Sync entire history on connect
+                </Label>
+              </div>
+            </>
+          )}
+
           {(newProvider.provider_type === 'withings' ||
             newProvider.provider_type === 'garmin' ||
             newProvider.provider_type === 'fitbit' ||
-            newProvider.provider_type === 'polar') && (
+            newProvider.provider_type === 'polar' ||
+            newProvider.provider_type === 'hevy') && (
             <div>
               <Label htmlFor="new_sync_frequency">Sync Frequency</Label>
               <Select
