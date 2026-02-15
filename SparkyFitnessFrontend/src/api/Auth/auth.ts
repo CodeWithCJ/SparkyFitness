@@ -1,5 +1,5 @@
-import { authClient } from '../lib/auth-client';
-import type { AuthResponse, LoginSettings } from '../types/auth';
+import { authClient } from '@/lib/auth-client';
+import type { AuthResponse, LoginSettings } from '@/types/auth';
 
 export const requestMagicLink = async (email: string): Promise<void> => {
   const { error } = await authClient.signIn.magicLink({
@@ -161,4 +161,14 @@ export const verifyMagicLink = async (token: string): Promise<AuthResponse> => {
     role: ((data as any)?.user as any)?.role || 'user',
     fullName: (data as any)?.user?.name || '',
   } as AuthResponse;
+};
+
+export const getMfaFactors = async (email: string) => {
+  const response = await fetch(
+    `/api/auth/mfa-factors?email=${encodeURIComponent(email)}`
+  );
+  if (!response.ok) {
+    throw new Error('Failed to fetch MFA factors');
+  }
+  return await response.json();
 };

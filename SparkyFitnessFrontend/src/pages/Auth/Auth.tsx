@@ -16,24 +16,24 @@ import { Zap, Loader2, Fingerprint } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
 import { authClient } from '@/lib/auth-client';
-import {
-  registerUser,
-  loginUser,
-  initiateOidcLogin,
-  getOidcProviders,
-  getLoginSettings,
-  verifyMagicLink,
-  requestMagicLink,
-} from '@/services/authService';
+
 import { useAuth } from '@/hooks/useAuth';
-import type {
-  AuthResponse,
-  LoginSettings,
-  OidcProvider,
-} from '../../types/auth';
+import type { AuthResponse } from '@/types/auth';
 import useToggle from '@/hooks/use-toggle';
 import PasswordToggle from '../../components/PasswordToggle';
 import MfaChallenge from './MfaChallenge';
+import {
+  mfaFactorsOptions,
+  useAuthSettings,
+  useInitiateOidcLoginMutation,
+  useLoginUserMutation,
+  useOidcProvidersQuery,
+  useRegisterUserMutation,
+  useRequestMagicLinkMutation,
+  useVerifyMagicLinkMutation,
+} from '@/hooks/Auth/useAuth';
+import { MagicLinkRequestDialog } from './MagicLinkRequestDialog';
+import { useQueryClient } from '@tanstack/react-query';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -41,23 +41,11 @@ const Auth = () => {
   const { signIn, user: authUser, loading: authLoading } = useAuth();
   debug(loggingLevel, 'Auth: Component rendered.');
 
-  // Debugging Mount/Unmount
-  useEffect(() => {
-    // console.log("DEBUG: Auth.tsx MOUNTED");
-    // return () => console.log("DEBUG: Auth.tsx UNMOUNTED");
-  }, []);
-
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [loginSettings, setLoginSettings] = useState<LoginSettings>({
-    email: { enabled: true },
-    oidc: { enabled: false, providers: [] },
-    warning: null,
-  });
-  const [oidcProviders, setOidcProviders] = useState<OidcProvider[]>([]);
   const { isToggled: showPassword, toggleHandler: passwordToggleHandler } =
     useToggle();
   // State for MFA challenge
@@ -67,13 +55,21 @@ const Auth = () => {
   const [isMagicLinkRequestDialogOpen, setIsMagicLinkRequestDialogOpen] =
     useState(false);
 
+  const queryClient = useQueryClient();
+  const { data: loginSettings } = useAuthSettings();
+  const { data: oidcProviders } = useOidcProvidersQuery(
+    !!loginSettings?.oidc?.enabled
+  );
+  const { mutateAsync: loginUser } = useLoginUserMutation();
+  const { mutateAsync: registerUser } = useRegisterUserMutation();
+  const { mutateAsync: requestMagicLink } = useRequestMagicLinkMutation();
+  const { mutateAsync: verifyMagicLink } = useVerifyMagicLinkMutation();
+  const { mutateAsync: initiateOidcLogin } = useInitiateOidcLoginMutation();
+
   useEffect(() => {
     const fetchAuthSettings = async () => {
       // PREVENT AUTO-REDIRECT: If we already have a user or are still loading auth status
       if (authUser || authLoading) {
-        console.log(
-          'Auth Page: Guard triggered - user session already active or loading.'
-        );
         if (authUser) {
           navigate('/');
         }
@@ -81,16 +77,16 @@ const Auth = () => {
       }
 
       try {
-        const settings = await getLoginSettings();
-        setLoginSettings(settings);
-
-        if (settings.oidc.enabled) {
-          const providers = await getOidcProviders();
-          setOidcProviders(providers);
+        if (
+          loginSettings &&
+          oidcProviders.length === 1 &&
+          loginSettings.oidc.enabled
+        ) {
+          const providers = oidcProviders[0];
 
           // AUTO-REDIRECT LOGIC: Only when email is disabled and exactly 1 OIDC provider is active
           if (
-            !settings.email.enabled &&
+            !loginSettings.email.enabled &&
             providers.length === 1 &&
             !authUser &&
             !authLoading
@@ -114,12 +110,6 @@ const Auth = () => {
           'Auth: Failed to fetch login settings or OIDC providers:',
           err
         );
-        setLoginSettings({
-          email: { enabled: true },
-          oidc: { enabled: false, providers: [] },
-          warning:
-            'Could not load login settings from server. Defaulting to email login.',
-        });
       }
     };
     fetchAuthSettings();
@@ -212,14 +202,11 @@ const Auth = () => {
 
       if ((mfaEmail === undefined || mfaTotp === undefined) && userEmail) {
         try {
-          const factorRes = await fetch(
-            `/api/auth/mfa-factors?email=${encodeURIComponent(userEmail)}`
+          const factors = await queryClient.fetchQuery(
+            mfaFactorsOptions(userEmail)
           );
-          if (factorRes.ok) {
-            const factors = await factorRes.json();
-            mfaEmail = factors.mfa_email_enabled;
-            mfaTotp = factors.mfa_totp_enabled;
-          }
+          mfaEmail = factors.mfa_email_enabled;
+          mfaTotp = factors.mfa_totp_enabled;
         } catch (e) {
           error(loggingLevel, 'Auth: Failed to fetch MFA factors:', e);
           // Default to TOTP if we can't fetch factors but MFA is required
@@ -370,31 +357,17 @@ const Auth = () => {
 
     setLoading(true);
 
-    try {
-      const data: any = await registerUser(email, password, fullName);
-      info(loggingLevel, 'Auth: Sign up successful.');
-      toast({
-        title: 'Success',
-        description: 'Account created successfully!',
-      });
-      signIn(
-        data.userId,
-        data.userId,
-        email,
-        data.role || 'user',
-        'password',
-        true,
-        fullName
-      );
-    } catch (err: any) {
-      error(loggingLevel, 'Auth: Sign up failed:', err);
-      toast({
-        title: 'Error',
-        description:
-          err.message || 'An unexpected error occurred during sign up.',
-        variant: 'destructive',
-      });
-    }
+    const data: any = await registerUser({ email, password, fullName });
+    info(loggingLevel, 'Auth: Sign up successful.');
+    signIn(
+      data.userId,
+      data.userId,
+      email,
+      data.role || 'user',
+      'password',
+      true,
+      fullName
+    );
 
     setLoading(false);
     debug(loggingLevel, 'Auth: Sign up loading state set to false.');
@@ -403,23 +376,8 @@ const Auth = () => {
   const handleRequestMagicLink = async (dialogEmail: string) => {
     info(loggingLevel, 'Auth: Attempting to request magic link.');
     setLoading(true);
-    try {
-      await requestMagicLink(dialogEmail);
-      toast({
-        title: 'Magic Link Sent',
-        description:
-          'If an account with that email exists, a magic link has been sent to your inbox.',
-      });
-    } catch (err: any) {
-      error(loggingLevel, 'Auth: Request magic link failed:', err);
-      toast({
-        title: 'Error',
-        description: err.message || 'Failed to request magic link.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+    await requestMagicLink(dialogEmail);
+    setLoading(false);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -428,7 +386,7 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const data: AuthResponse = await loginUser(email, password);
+      const data: AuthResponse = await loginUser({ email, password });
 
       if (data.status === 'MFA_REQUIRED' || data.twoFactorRedirect) {
         const mfaShown = await triggerMfaChallenge(data, email, {
@@ -450,10 +408,6 @@ const Auth = () => {
       }
 
       info(loggingLevel, 'Auth: Sign in successful.');
-      toast({
-        title: 'Success',
-        description: 'Logged in successfully!',
-      });
       signIn(
         data.userId,
         data.userId,
@@ -465,12 +419,6 @@ const Auth = () => {
       );
     } catch (err: any) {
       error(loggingLevel, 'Auth: Sign in failed:', err);
-      toast({
-        title: 'Error',
-        description:
-          err.message || 'An unexpected error occurred during sign in.',
-        variant: 'destructive',
-      });
     }
 
     setLoading(false);
@@ -481,7 +429,7 @@ const Auth = () => {
     info(loggingLevel, 'Auth: Attempting Passkey sign-in.');
     setLoading(true);
     try {
-      const { data, error } = await authClient.signIn.passkey();
+      const { error } = await authClient.signIn.passkey();
       if (error) throw error;
 
       info(loggingLevel, 'Auth: Passkey sign-in successful.');
@@ -535,13 +483,13 @@ const Auth = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {loginSettings.warning && (
+              {loginSettings?.warning && (
                 <div className="mb-4 p-3 rounded-md bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">
                   <p className="font-semibold">Warning</p>
                   <p>{loginSettings.warning}</p>
                 </div>
               )}
-              {loginSettings.email.enabled ? (
+              {loginSettings?.email.enabled ? (
                 <Tabs defaultValue="signin" className="w-full">
                   <TabsList className="h-10 grid w-full grid-cols-2">
                     <TabsTrigger
@@ -646,9 +594,9 @@ const Auth = () => {
                     >
                       <Zap className="h-4 w-4 mr-2" /> Request Magic Link
                     </Button>
-                    {loginSettings.oidc.enabled && (
+                    {loginSettings?.oidc.enabled && (
                       <>
-                        {oidcProviders.map((provider) => (
+                        {oidcProviders?.map((provider) => (
                           <Button
                             key={provider.id}
                             variant="outline"
@@ -751,7 +699,7 @@ const Auth = () => {
                 </Tabs>
               ) : (
                 <div>
-                  {loginSettings.oidc.enabled && oidcProviders.length > 0 ? (
+                  {loginSettings?.oidc.enabled && oidcProviders?.length > 0 ? (
                     oidcProviders.map((provider) => (
                       <Button
                         key={provider.id}
@@ -789,83 +737,6 @@ const Auth = () => {
         initialEmail={email} // Pass the email from the main Auth component
       />
     </>
-  );
-};
-
-interface MagicLinkRequestDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onRequest: (email: string) => Promise<void>;
-  loading: boolean;
-  initialEmail?: string; // Add optional initialEmail prop
-}
-
-const MagicLinkRequestDialog: React.FC<MagicLinkRequestDialogProps> = ({
-  isOpen,
-  onClose,
-  onRequest,
-  loading,
-  initialEmail, // Add initialEmail prop
-}) => {
-  const [email, setEmail] = useState(initialEmail || ''); // Use initialEmail for default value
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log(
-      'MagicLinkRequestDialog: Sending magic link request for email:',
-      email
-    ); // Add logging
-    await onRequest(email);
-    onClose();
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      setEmail(initialEmail || ''); // Reset email when dialog opens
-    }
-  }, [isOpen, initialEmail]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <Card className="w-full max-w-md p-6">
-        <CardHeader>
-          <CardTitle>Request Magic Link</CardTitle>
-          <CardDescription>
-            Enter your email to receive a magic link for login.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="magic-link-email">Email</Label>
-              <Input
-                id="magic-link-email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Sending...' : 'Send Magic Link'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
   );
 };
 

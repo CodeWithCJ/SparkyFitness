@@ -13,9 +13,9 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
-import { resetPassword } from '@/services/authService';
 import useToggle from '@/hooks/use-toggle';
 import PasswordToggle from '@/components/PasswordToggle';
+import { useResetPasswordMutation } from '@/hooks/Auth/useAuth';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -30,6 +30,7 @@ const ResetPassword = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const { isToggled: showPassword, toggleHandler: passwordToggleHandler } =
     useToggle();
+  const { mutateAsync: resetPassword } = useResetPasswordMutation();
 
   const token = searchParams.get('token');
 
@@ -90,23 +91,13 @@ const ResetPassword = () => {
     }
 
     try {
-      await resetPassword(token, newPassword);
+      await resetPassword({ token, newPassword });
       setMessage(
         'Your password has been reset successfully. You can now sign in with your new password.'
       );
-      toast({
-        title: 'Success',
-        description: 'Password reset successfully!',
-      });
       navigate('/'); // Redirect to root
     } catch (err: any) {
-      error(loggingLevel, 'ResetPassword: Password reset failed:', err);
       setMessage(err.message || 'An unexpected error occurred.');
-      toast({
-        title: 'Error',
-        description: err.message || 'Failed to reset password.',
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
     }
