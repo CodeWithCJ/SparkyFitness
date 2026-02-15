@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { CallbackStatus } from './CallbackStatus';
 import { useLinkWithingsMutation } from '@/hooks/Integrations/useIntegrations';
 
@@ -9,6 +9,7 @@ const WithingsCallback = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('Processing Withings data...');
+  const { toast } = useToast();
   const { mutateAsync: linkWithingsAccount } = useLinkWithingsMutation();
   useEffect(() => {
     const processCallback = async () => {
@@ -42,7 +43,7 @@ const WithingsCallback = () => {
     };
 
     processCallback();
-  }, [location, navigate, toast, linkWithingsAccount]);
+  }, [location, navigate, linkWithingsAccount]);
 
   return <CallbackStatus loading={loading} message={message} />;
 };
