@@ -1,6 +1,7 @@
 const { betterAuth } = require("better-auth");
 const { APIError } = require("better-auth/api");
 const { Pool } = require("pg");
+const { log } = require("./config/logging");
 console.log("[AUTH] auth.js module is being loaded...");
 
 // Create a dedicated pool for Better Auth
@@ -259,7 +260,7 @@ const auth = betterAuth({
             .filter(Boolean)
             .map(url => url.replace(/\/$/, ''));
         
-        console.log('[AUTH] Trusted origins:', finalOrigins);
+        log('info', '[AUTH] Trusted origins:', finalOrigins);
         return finalOrigins;
     })(),
 
