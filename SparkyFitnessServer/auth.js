@@ -255,9 +255,12 @@ const auth = betterAuth({
             }
         }
 
-        return [...new Set(origins)] // Remove duplicates
+        const finalOrigins = [...new Set(origins)] // Remove duplicates
             .filter(Boolean)
             .map(url => url.replace(/\/$/, ''));
+        
+        console.log('[AUTH] Trusted origins:', finalOrigins);
+        return finalOrigins;
     })(),
 
     databaseHooks: {
