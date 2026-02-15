@@ -144,7 +144,7 @@ const AddExerciseDialog = ({
           'Exercise added successfully'
         ),
       });
-      
+
       onExerciseAdded(createdExercise, 'custom');
       onOpenChange(false);
       setNewExerciseName('');
