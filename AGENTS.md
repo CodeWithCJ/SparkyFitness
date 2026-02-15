@@ -113,6 +113,10 @@ The database uses PostgreSQL. The root file `db_schema_backup.sql` contains the 
     - `android.yml`: Builds Android APK/AAB.
     - `docker-deploy.yml`: Automated Docker build & push on release.
     - `manual-docker-deploy.yml`: Manual trigger for Docker image creation.
+- **CI Checks**:
+    - Before committing, the following checks must pass for the frontend:
+    - `npm run lint` (ESLint)
+    - `npx prettier . --check` (Code formatting)
 - **Scripts**:
     - `docker-entrypoint.sh` & `docker-helper.sh` facilitate container startup.
     - **Proxy Configuration**:
@@ -169,7 +173,7 @@ The database uses PostgreSQL. The root file `db_schema_backup.sql` contains the 
 - **Framework**: React 18, TypeScript, Vite
 - **Styling**: Tailwind CSS, Shadcn/UI (@radix-ui/*), Lucide React
 - **Routing**: React Router DOM v6
-- **State Management**: React Query (Server State), React Context (Global State), React Hook Form + Zod (Forms)
+- **State Management**: TanStack Query (Server State via hooks in `src/hooks/` and API definitions in `src/api/`), React Context (Global State), React Hook Form + Zod (Forms).
 
 ### Global State Management (Context API)
 The application relies heavily on React Context for global state, wrapped in `App.tsx`:
@@ -193,6 +197,9 @@ Routes are defined in `AppContent.tsx` and protected via `useAuth` and `useActiv
     - `/meals`: Meal Management (Requires 'diary' permission).
     - `/meal-plan`: Meal Plan Calendar (Requires 'diary' permission).
     - `/reports/mood`: Mood Reports (Requires 'reports' permission).
+
+### Layouts
+The `src/layouts/` directory contains reusable page structures and layout components.
 
 ### Component Structure & Domains
 The application is organized into functional domains, often corresponding to main navigation tabs:
