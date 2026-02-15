@@ -1,5 +1,8 @@
 // SparkyFitnessServer/integrations/hevy/hevyService.js
 
+const fs = require('fs');
+const path = require('path');
+const moment = require('moment');
 const axios = require('axios');
 const { getClient, getSystemClient } = require('../../db/poolManager');
 const { encrypt, decrypt, ENCRYPTION_KEY } = require('../../security/encryption');
@@ -7,6 +10,55 @@ const { log } = require('../../config/logging');
 const hevyDataProcessor = require('./hevyDataProcessor');
 
 const HEVY_API_BASE_URL = 'https://api.hevyapp.com';
+
+// Configuration for data mocking/caching
+const HEVY_DATA_SOURCE = process.env.SPARKY_FITNESS_HEVY_DATA_SOURCE || 'hevy';
+const SAVE_MOCK_DATA = process.env.SPARKY_FITNESS_SAVE_MOCK_DATA === 'true'; // Defaults to false
+const MOCK_DATA_DIR = path.join(__dirname, '..', '..', 'mock_data');
+
+// Ensure mock_data directory exists
+if (!fs.existsSync(MOCK_DATA_DIR)) {
+    fs.mkdirSync(MOCK_DATA_DIR, { recursive: true });
+    log('info', `[hevyService] Created mock_data directory at ${MOCK_DATA_DIR}`);
+}
+
+log('info', `[hevyService] Hevy data source configured to: ${HEVY_DATA_SOURCE}`);
+
+/**
+ * Load data from a local JSON file in the mock_data directory
+ * @param {string} filename - Name of the file to load
+ * @returns {object|null} - Parsed JSON data or null if file doesn't exist
+ */
+function _loadFromLocalFile(filename) {
+    const filepath = path.join(MOCK_DATA_DIR, filename);
+    if (fs.existsSync(filepath)) {
+        try {
+            const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+            log('info', `[hevyService] Data loaded from local file: ${filepath}`);
+            return data;
+        } catch (error) {
+            log('error', `[hevyService] Error reading mock data file ${filepath}: ${error.message}`);
+            return null;
+        }
+    }
+    log('warn', `[hevyService] Local file not found: ${filepath}`);
+    return null;
+}
+
+/**
+ * Save data to a local JSON file in the mock_data directory
+ * @param {string} filename - Name of the file to save
+ * @param {object} data - Data to save as JSON
+ */
+function _saveToLocalFile(filename, data) {
+    const filepath = path.join(MOCK_DATA_DIR, filename);
+    try {
+        fs.writeFileSync(filepath, JSON.stringify(data, null, 2), 'utf8');
+        log('info', `[hevyService] Data saved to local file: ${filepath}`);
+    } catch (error) {
+        log('error', `[hevyService] Error saving to mock data file ${filepath}: ${error.message}`);
+    }
+}
 
 /**
  * Get the Hevy API key for a user from the database.
@@ -107,6 +159,59 @@ async function getExerciseTemplates(userId, page = 1, pageSize = 10) {
  */
 async function syncHevyData(userId, createdByUserId, fullSync = false) {
     log('info', `Starting Hevy ${fullSync ? 'FULL' : 'INCREMENTAL'} synchronization for user ${userId}...`);
+
+    if (HEVY_DATA_SOURCE === 'local') {
+        log('info', `[hevyService] Loading Hevy data from local mock file for user ${userId}`);
+        const mockData = _loadFromLocalFile('hevy_mock_data.json');
+
+        if (!mockData) {
+            throw new Error(
+                'Local Hevy mock data file not found. Please run a sync with SPARKY_FITNESS_HEVY_DATA_SOURCE unset (or set to "hevy") ' +
+                'to fetch from live Hevy API and automatically save the data for future local use.'
+            );
+        }
+
+        log('info', `[hevyService] Successfully loaded mock data for user ${userId}. Sync date: ${mockData.sync_date || 'unknown'}`);
+
+        try {
+            const data = mockData.data || {};
+
+            // 1. Process user info
+            if (data.userInfo) {
+                await hevyDataProcessor.processHevyUserInfo(userId, createdByUserId, data.userInfo);
+            }
+
+            // 2. Process workouts
+            if (data.workouts && Array.isArray(data.workouts)) {
+                await hevyDataProcessor.processHevyWorkouts(userId, createdByUserId, data.workouts);
+            }
+
+            // 3. Update last sync time
+            const client = await getSystemClient();
+            try {
+                await client.query(
+                    `UPDATE external_data_providers
+                     SET last_sync_at = NOW(), updated_at = NOW()
+                     WHERE user_id = $1 AND provider_type = 'hevy'`,
+                    [userId]
+                );
+            } finally {
+                client.release();
+            }
+
+            log('info', `[hevyService] Hevy sync from local cache completed for user ${userId}.`);
+            return {
+                success: true,
+                processedCount: (data.workouts || []).length,
+                source: 'local_cache',
+                cached_date: mockData.sync_date
+            };
+        } catch (error) {
+            log('error', `[hevyService] Error processing cached Hevy data for user ${userId}:`, error.message);
+            throw error;
+        }
+    }
+
     try {
         // 0. Sync user info (measurements)
         const userInfoData = await getUserInfo(userId);
@@ -117,6 +222,8 @@ async function syncHevyData(userId, createdByUserId, fullSync = false) {
         let hasMore = true;
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const allWorkouts = [];
 
         while (hasMore) {
             log('debug', `Fetching Hevy workouts page ${currentPage}...`);
@@ -132,6 +239,11 @@ async function syncHevyData(userId, createdByUserId, fullSync = false) {
             // Process this page of workouts
             await hevyDataProcessor.processHevyWorkouts(userId, createdByUserId, workouts);
             totalProcessed += workouts.length;
+
+            // Collect for mock data
+            if (SAVE_MOCK_DATA) {
+                allWorkouts.push(...workouts);
+            }
 
             // Decision to continue
             if (fullSync) {
@@ -167,8 +279,22 @@ async function syncHevyData(userId, createdByUserId, fullSync = false) {
             client.release();
         }
 
+        // 4. Save fetched data to mock file
+        if (SAVE_MOCK_DATA) {
+            const mockDataPayload = {
+                user_id: userId,
+                sync_date: moment().format('YYYY-MM-DD HH:mm:ss'),
+                full_sync: fullSync,
+                data: {
+                    userInfo: userInfoData,
+                    workouts: allWorkouts
+                }
+            };
+            _saveToLocalFile('hevy_mock_data.json', mockDataPayload);
+        }
+
         log('info', `Hevy synchronization completed for user ${userId}. Total processed: ${totalProcessed}`);
-        return { success: true, processedCount: totalProcessed };
+        return { success: true, processedCount: totalProcessed, source: 'live_api' };
     } catch (error) {
         log('error', `Hevy synchronization failed for user ${userId}: ${error.message}`);
         throw error;
