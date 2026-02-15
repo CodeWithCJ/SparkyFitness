@@ -10,6 +10,10 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import AddExternalProviderForm from './AddExternalProviderForm';
 import ExternalProviderList from './ExternalProviderList';
 import GarminConnectSettings from './GarminConnectSettings';
+import {
+  syncHevyData,
+  disconnectHevyAccount,
+} from '@/api/Integrations/integrations';
 
 export interface ExternalDataProvider {
   id: string;
@@ -26,7 +30,8 @@ export interface ExternalDataProvider {
     | 'tandoor'
     | 'usda'
     | 'fitbit'
-    | 'polar';
+    | 'polar'
+    | 'hevy';
   app_id: string | null;
   app_key: string | null;
   is_active: boolean;
@@ -46,6 +51,8 @@ export interface ExternalDataProvider {
   fitbit_token_expires?: string;
   polar_last_sync_at?: string;
   polar_token_expires?: string;
+  hevy_last_sync_at?: string;
+  hevy_connect_status?: 'connected' | 'disconnected';
   is_strictly_private?: boolean;
 }
 
@@ -215,6 +222,37 @@ const ExternalProviderSettings = () => {
           }
         }
       }
+
+      // Fetch Hevy status if applicable
+      const hevyProviders = updatedProviders.filter(
+        (p: ExternalDataProvider) => p.provider_type === 'hevy'
+      );
+      if (hevyProviders.length > 0) {
+        for (const provider of hevyProviders) {
+          try {
+            const hevyStatus = await apiCall(`/hevy/status`);
+            setProviders((prev) =>
+              prev.map((p) =>
+                p.id === provider.id
+                  ? {
+                      ...p,
+                      hevy_last_sync_at: hevyStatus.lastSyncAt,
+                      hevy_connect_status: hevyStatus.connected
+                        ? 'connected'
+                        : 'disconnected',
+                    }
+                  : p
+              )
+            );
+          } catch (hevyError) {
+            console.error(
+              'Failed to fetch Hevy specific status for provider:',
+              provider.id,
+              hevyError
+            );
+          }
+        }
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error loading external data providers:', error);
@@ -289,7 +327,8 @@ const ExternalProviderSettings = () => {
       sync_frequency:
         editData.provider_type === 'withings' ||
         editData.provider_type === 'garmin' ||
-        editData.provider_type === 'fitbit'
+        editData.provider_type === 'fitbit' ||
+        editData.provider_type === 'hevy'
           ? editData.sync_frequency
           : null,
     };
@@ -726,6 +765,60 @@ const ExternalProviderSettings = () => {
     }
   };
 
+  const handleManualSyncHevy = async (
+    providerId: string,
+    fullSync: boolean = false
+  ) => {
+    setLoading(true);
+    try {
+      await syncHevyData(fullSync);
+      toast({
+        title: 'Success',
+        description: `Hevy data ${fullSync ? 'full history' : 'recent'} synchronization initiated.`,
+      });
+      loadProviders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('Error initiating manual Hevy sync:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to initiate manual Hevy sync: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnectHevy = async (providerId: string) => {
+    if (
+      !confirm(
+        'Are you sure you want to disconnect from Hevy? This will delete your API key connection.'
+      )
+    )
+      return;
+
+    setLoading(true);
+    try {
+      await disconnectHevyAccount();
+      toast({
+        title: 'Success',
+        description: 'Disconnected from Hevy successfully.',
+      });
+      loadProviders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('Error disconnecting from Hevy:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to disconnect from Hevy: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const startEditing = (provider: ExternalDataProvider) => {
     setEditingProvider(provider.id);
     setEditData({
@@ -767,6 +860,7 @@ const ExternalProviderSettings = () => {
     { value: 'garmin', label: 'Garmin' },
     { value: 'fitbit', label: 'Fitbit' },
     { value: 'polar', label: 'Polar Flow' },
+    { value: 'hevy', label: 'Hevy' },
     { value: 'usda', label: 'USDA' },
   ];
 
@@ -832,6 +926,8 @@ const ExternalProviderSettings = () => {
                 handleConnectPolar={handleConnectPolar}
                 handleManualSyncPolar={handleManualSyncPolar}
                 handleDisconnectPolar={handleDisconnectPolar}
+                handleManualSyncHevy={handleManualSyncHevy}
+                handleDisconnectHevy={handleDisconnectHevy}
                 startEditing={startEditing}
                 handleDeleteProvider={handleDeleteProvider}
                 toggleProviderPublicSharing={toggleProviderPublicSharing}

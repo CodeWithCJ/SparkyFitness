@@ -51,6 +51,11 @@ interface ExternalProviderListProps {
   handleConnectPolar: (providerId: string) => void;
   handleManualSyncPolar: (providerId: string) => void;
   handleDisconnectPolar: (providerId: string) => void;
+  handleManualSyncHevy: (
+    providerId: string,
+    fullSync?: boolean
+  ) => Promise<void>;
+  handleDisconnectHevy: (providerId: string) => Promise<void>;
   startEditing: (provider: ExternalDataProvider) => void;
   handleDeleteProvider: (providerId: string) => void;
   toggleProviderPublicSharing: (providerId: string, isPublic: boolean) => void;
@@ -81,6 +86,8 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
   handleConnectPolar,
   handleManualSyncPolar,
   handleDisconnectPolar,
+  handleManualSyncHevy,
+  handleDisconnectHevy,
   startEditing,
   handleDeleteProvider,
   toggleProviderPublicSharing,
@@ -489,6 +496,28 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                   </p>
                 </>
               )}
+              {editData.provider_type === 'hevy' && (
+                <>
+                  <div>
+                    <Label>Hevy API Key</Label>
+                    <Input
+                      type="password"
+                      value={editData.app_key || ''}
+                      onChange={(e) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          app_key: e.target.value,
+                        }))
+                      }
+                      placeholder="Enter Hevy API Key"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground col-span-2">
+                    Get your API Key from Hevy Settings &#62; API Key.
+                  </p>
+                </>
+              )}
               {(editData.provider_type === 'withings' ||
                 editData.provider_type === 'garmin' ||
                 editData.provider_type === 'fitbit' ||
@@ -750,6 +779,66 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                         </TooltipProvider>
                       </>
                     )}
+                  {provider.provider_type === 'hevy' && provider.is_active && (
+                    <>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleManualSyncHevy(provider.id)}
+                              disabled={loading}
+                              className="ml-2 text-blue-500"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Sync Recently (7 Days)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                handleManualSyncHevy(provider.id, true)
+                              }
+                              disabled={loading}
+                              className="ml-2 text-cyan-500"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Sync All History</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDisconnectHevy(provider.id)}
+                              disabled={loading}
+                              className="ml-2 text-red-500"
+                            >
+                              <Link2Off className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Disconnect</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {provider.visibility === 'private' ? (

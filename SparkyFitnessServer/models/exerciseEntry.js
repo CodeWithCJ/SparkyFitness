@@ -196,10 +196,10 @@ async function _updateExerciseEntryWithClient(client, id, userId, updateData, up
     await client.query('DELETE FROM exercise_entry_sets WHERE exercise_entry_id = $1', [id]);
     if (Array.isArray(updateData.sets) && updateData.sets.length > 0) {
       const setsValues = updateData.sets.map(set => [
-        id, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
+        id, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes, set.rpe
       ]);
       const setsQuery = format(
-        `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
+        `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L`,
         setsValues
       );
       await client.query(setsQuery);
@@ -299,10 +299,10 @@ async function createExerciseEntry(userId, entryData, createdByUserId, entrySour
 
       if (entryData.sets && entryData.sets.length > 0) {
         const setsValues = entryData.sets.map(set => [
-          newEntryId, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
+          newEntryId, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes, set.rpe
         ]);
         const setsQuery = format(
-          `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
+          `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L`,
           setsValues
         );
         await client.query(setsQuery);
@@ -328,7 +328,7 @@ async function getExerciseEntryById(id, userId) {
                COALESCE(
                  (SELECT json_agg(set_data ORDER BY set_data.set_number)
                   FROM (
-                    SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes
+                    SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
                     FROM exercise_entry_sets ees
                     WHERE ees.exercise_entry_id = ee.id
                   ) AS set_data
@@ -447,10 +447,10 @@ async function updateExerciseEntry(id, userId, actingUserId, updateData) {
       // Insert new sets if provided and not empty
       if (Array.isArray(updateData.sets) && updateData.sets.length > 0) {
         const setsValues = updateData.sets.map(set => [
-          id, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
+          id, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes, set.rpe
         ]);
         const setsQuery = format(
-          `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
+          `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L`,
           setsValues
         );
         await client.query(setsQuery);
@@ -497,7 +497,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -622,7 +622,7 @@ async function getExerciseProgressData(userId, exerciseId, startDate, endDate) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -656,7 +656,7 @@ async function getExerciseHistory(userId, exerciseId, limit = 5) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
