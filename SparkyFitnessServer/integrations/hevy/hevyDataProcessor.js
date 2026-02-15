@@ -118,8 +118,7 @@ async function processSingleWorkout(userId, createdByUserId, workout) {
         weight: set.weight_kg,
         reps: set.reps,
         duration: set.duration_seconds ? set.duration_seconds / 60 : null,
-        rpe: set.rpe, // This requires the migration to be applied
-        notes: set.rpe ? `RPE: ${set.rpe}` : null, // Fallback: store RPE in notes if column doesn't exist yet
+        rpe: set.rpe,
       })),
     };
 

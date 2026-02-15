@@ -218,6 +218,7 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
             `/integrations/hevy/sync${fullSyncOnConnect ? '?fullSync=true' : ''}`,
             {
               method: 'POST',
+              body: JSON.stringify({ providerId: data.id }),
             }
           );
         } catch (syncError: any) {

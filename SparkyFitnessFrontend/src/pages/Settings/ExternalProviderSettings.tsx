@@ -10,10 +10,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import AddExternalProviderForm from './AddExternalProviderForm';
 import ExternalProviderList from './ExternalProviderList';
 import GarminConnectSettings from './GarminConnectSettings';
-import {
-  syncHevyData,
-  disconnectHevyAccount,
-} from '@/api/Integrations/integrations';
+import { syncHevyData } from '@/api/Integrations/integrations';
 
 export interface ExternalDataProvider {
   id: string;
@@ -771,7 +768,7 @@ const ExternalProviderSettings = () => {
   ) => {
     setLoading(true);
     try {
-      await syncHevyData(fullSync);
+      await syncHevyData(fullSync, providerId);
       toast({
         title: 'Success',
         description: `Hevy data ${fullSync ? 'full history' : 'recent'} synchronization initiated.`,
@@ -783,35 +780,6 @@ const ExternalProviderSettings = () => {
       toast({
         title: 'Error',
         description: `Failed to initiate manual Hevy sync: ${error.message}`,
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDisconnectHevy = async (providerId: string) => {
-    if (
-      !confirm(
-        'Are you sure you want to disconnect from Hevy? This will delete your API key connection.'
-      )
-    )
-      return;
-
-    setLoading(true);
-    try {
-      await disconnectHevyAccount();
-      toast({
-        title: 'Success',
-        description: 'Disconnected from Hevy successfully.',
-      });
-      loadProviders();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error disconnecting from Hevy:', error);
-      toast({
-        title: 'Error',
-        description: `Failed to disconnect from Hevy: ${error.message}`,
         variant: 'destructive',
       });
     } finally {
@@ -927,7 +895,6 @@ const ExternalProviderSettings = () => {
                 handleManualSyncPolar={handleManualSyncPolar}
                 handleDisconnectPolar={handleDisconnectPolar}
                 handleManualSyncHevy={handleManualSyncHevy}
-                handleDisconnectHevy={handleDisconnectHevy}
                 startEditing={startEditing}
                 handleDeleteProvider={handleDeleteProvider}
                 toggleProviderPublicSharing={toggleProviderPublicSharing}

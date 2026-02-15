@@ -17,11 +17,13 @@ router.post("/sync", authMiddleware.authenticate, async (req, res) => {
   try {
     const userId = req.userId;
     const createdByUserId = req.userId; // Currently same as userId
+    const { providerId } = req.body;
     const { fullSync } = req.query;
     const result = await hevyService.syncHevyData(
       userId,
       createdByUserId,
       fullSync === "true",
+      providerId,
     );
     res.status(200).json(result);
   } catch (error) {
@@ -37,29 +39,6 @@ router.post("/sync", authMiddleware.authenticate, async (req, res) => {
 
     res.status(500).json({
       message: "Error initiating manual Hevy sync",
-      error: error.message,
-    });
-  }
-});
-
-/**
- * @swagger
- * /api/integrations/hevy/disconnect:
- *   post:
- *     summary: Disconnect Hevy account
- *     tags: [External Integrations]
- */
-router.post("/disconnect", authMiddleware.authenticate, async (req, res) => {
-  try {
-    const userId = req.userId;
-    await hevyService.disconnectHevy(userId);
-    res
-      .status(200)
-      .json({ message: "Hevy account disconnected successfully." });
-  } catch (error) {
-    log("error", `Error disconnecting Hevy account: ${error.message}`);
-    res.status(500).json({
-      message: "Error disconnecting Hevy account",
       error: error.message,
     });
   }

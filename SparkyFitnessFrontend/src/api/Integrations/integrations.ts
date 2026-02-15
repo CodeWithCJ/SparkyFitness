@@ -30,15 +30,11 @@ export const linkPolarFlowAccount = async (
 };
 
 export const syncHevyData = async (
-  fullSync: boolean = false
+  fullSync: boolean = false,
+  providerId?: string
 ): Promise<void> => {
   return apiCall(`/integrations/hevy/sync${fullSync ? '?fullSync=true' : ''}`, {
     method: 'POST',
-  });
-};
-
-export const disconnectHevyAccount = async (): Promise<void> => {
-  return apiCall('/integrations/hevy/disconnect', {
-    method: 'POST',
+    body: JSON.stringify({ providerId }),
   });
 };

@@ -55,7 +55,6 @@ interface ExternalProviderListProps {
     providerId: string,
     fullSync?: boolean
   ) => Promise<void>;
-  handleDisconnectHevy: (providerId: string) => Promise<void>;
   startEditing: (provider: ExternalDataProvider) => void;
   handleDeleteProvider: (providerId: string) => void;
   toggleProviderPublicSharing: (providerId: string, isPublic: boolean) => void;
@@ -87,7 +86,6 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
   handleManualSyncPolar,
   handleDisconnectPolar,
   handleManualSyncHevy,
-  handleDisconnectHevy,
   startEditing,
   handleDeleteProvider,
   toggleProviderPublicSharing,
@@ -819,24 +817,6 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDisconnectHevy(provider.id)}
-                              disabled={loading}
-                              className="ml-2 text-red-500"
-                            >
-                              <Link2Off className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Disconnect</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
                     </>
                   )}
                 </div>
@@ -1072,25 +1052,32 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
               {['fitbit', 'withings', 'polar', 'garmin', 'hevy'].includes(
                 provider.provider_type
               ) && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 text-sm text-yellow-800 dark:text-yellow-200 mt-2">
-                  <p>
-                    <strong>Note from the Developer:</strong> I don't own{' '}
-                    {provider.provider_name} devices, so this integration might
-                    be imperfect.
-                  </p>
-                  <p className="mt-1">
-                    If you'd like to help improve it, you can contribute
-                    anonymized mock data! Set{' '}
-                    <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">
-                      SPARKY_FITNESS_SAVE_MOCK_DATA=true
-                    </code>{' '}
-                    in your server environment variables to generate JSON files
-                    in the mock_data folder of Server container, then share them
-                    with <strong>CodewithCJ</strong> on Discord.
-                  </p>
-                  <p className="mt-1 text-xs opacity-80">
-                    Please ensure any shared data is anonymized.
-                  </p>
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-2 text-xs text-yellow-800 dark:text-yellow-200 mt-2 flex items-center gap-1">
+                  <strong>Note from CodewithCJ:</strong> I don't own{' '}
+                  {provider.provider_name} device/subscription.
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="underline cursor-help decoration-dotted ml-1">
+                          How to improve this?
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs p-4">
+                        <p>
+                          Help improve this integration by sharing anonymized mock data!
+                        </p>
+                        <p className="mt-2 font-mono text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-2 rounded border border-gray-200 dark:border-gray-700">
+                          SPARKY_FITNESS_SAVE_MOCK_DATA=true
+                        </p>
+                        <p className="mt-2 text-xs">
+                          Add this variable to the <strong>SparkyFitnessServer</strong> container & restart the container. Syncing after setup will generate JSON files in <code>/app/SparkyFitnessServer/mock_data</code>.
+                        </p>
+                        <p className="mt-2 text-xs">
+                          Share files with <strong>CodewithCJ</strong> on Discord. Ensure data is anonymized.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               )}
             </div>
