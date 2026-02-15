@@ -10,7 +10,7 @@ export const linkFitbitAccount = async (
 ): Promise<void> => {
   return apiCall('/integrations/fitbit/callback', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: data,
   });
 };
 export const linkWithingsAccount = async (
