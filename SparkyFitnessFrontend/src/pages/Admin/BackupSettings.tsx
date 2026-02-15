@@ -31,6 +31,7 @@ const BackupSettings: React.FC = () => {
     useTriggerManualBackup();
   const { mutate: restoreBackup, isPending: isRestoring } = useRestoreBackup();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSave = (newSettings: any) => {
     saveSettings(newSettings, {
       onSuccess: () =>
@@ -38,6 +39,7 @@ const BackupSettings: React.FC = () => {
           title: t('success', 'Success'),
           description: t('admin.backupSettings.backupSettingsSaved', 'Saved.'),
         }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onError: (err: any) =>
         toast({
           title: t('error', 'Error'),
@@ -49,11 +51,13 @@ const BackupSettings: React.FC = () => {
 
   const handleManualBackup = () => {
     runManualBackup(undefined, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onSuccess: (res: any) =>
         toast({
           title: t('success', 'Success'),
           description: res?.message || 'Backup done.',
         }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onError: (err: any) =>
         toast({
           title: t('error', 'Error'),
@@ -84,6 +88,7 @@ const BackupSettings: React.FC = () => {
         });
         await signOut();
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onError: (err: any) =>
         toast({
           title: t('error', 'Error'),

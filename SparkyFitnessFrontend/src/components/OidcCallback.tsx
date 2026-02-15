@@ -35,6 +35,7 @@ const OidcCallback: React.FC = () => {
             session.user.id,
             session.user.id, // Better Auth user is always the active user initially
             session.user.email,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (session.user as any).role || 'user',
             'oidc',
             false, // Don't navigate automatically, we do it below
@@ -44,6 +45,7 @@ const OidcCallback: React.FC = () => {
         } else {
           setError('No active session found after OIDC redirect.');
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         setError(
           err.message ||

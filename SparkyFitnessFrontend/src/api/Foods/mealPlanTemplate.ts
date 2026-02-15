@@ -13,6 +13,7 @@ export const createMealPlanTemplate = async (
   currentClientDate?: string
 ): Promise<MealPlanTemplate> => {
   // rename assignments to day_presets because of backend inconsistencies
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { assignments, ...restData } = templateData as any;
   return await api.post('/meal-plan-templates', {
     body: {

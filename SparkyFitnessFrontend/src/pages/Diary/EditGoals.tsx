@@ -143,6 +143,7 @@ const EditGoals = ({
       loadGoalPresets();
       setSelectedPresetId(undefined); // Reset selected preset when dialog opens
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedDate, open]);
 
   const fetchGoals = async () => {
@@ -151,6 +152,7 @@ const EditGoals = ({
 
       const goalData = await loadGoals(selectedDate);
       const cleanGoalValue = (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         value: any,
         defaultValue: number | null
       ): number | null => {

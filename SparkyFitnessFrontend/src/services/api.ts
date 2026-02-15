@@ -3,7 +3,9 @@ import { getUserLoggingLevel } from '@/utils/userPreferences';
 import * as logging from '@/utils/logging';
 
 interface ApiCallOptions extends RequestInit {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params?: Record<string, any>;
   suppress404Toast?: boolean; // New option to suppress toast for 404 errors
   externalApi?: boolean;
@@ -17,6 +19,7 @@ export const API_BASE_URL = '/api';
 export async function apiCall(
   endpoint: string,
   options?: ApiCallOptions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const userLoggingLevel = getUserLoggingLevel();
   let url = options?.externalApi ? endpoint : `${API_BASE_URL}${endpoint}`;
@@ -79,6 +82,7 @@ export async function apiCall(
     );
 
     if (!response.ok) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let errorData: any;
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.indexOf('application/json') !== -1) {
@@ -165,6 +169,7 @@ export async function apiCall(
     );
     //console.log(`API Call: Returning JSON response for ${url}:`, jsonResponse); // Added console.log
     return jsonResponse;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     logging.error(userLoggingLevel, 'API call network error:', err); // Log the raw error object for better debugging

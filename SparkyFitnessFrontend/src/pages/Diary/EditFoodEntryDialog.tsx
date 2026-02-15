@@ -59,6 +59,12 @@ const EditFoodEntryDialog = ({
 
   const { data: customNutrients } = useCustomNutrients();
 
+  const focusAndSelect = useCallback((e) => {
+    if (e) {
+      e.focus();
+      e.select();
+    }
+  }, []);
   useEffect(() => {
     debug(loggingLevel, 'EditFoodEntryDialog entry/open useEffect triggered.', {
       entry,
@@ -68,6 +74,7 @@ const EditFoodEntryDialog = ({
       setQuantity(entry.quantity || 1);
       loadFoodAndVariants(); // Call new function to load both food and variants
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entry, open]);
 
   const loadFoodAndVariants = async () => {
@@ -223,6 +230,7 @@ const EditFoodEntryDialog = ({
     }
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updateData: any = {
         quantity: quantity,
         unit: selectedVariant.serving_unit,
@@ -269,6 +277,7 @@ const EditFoodEntryDialog = ({
     debug(loggingLevel, 'Calculated ratio for edit dialog:', ratio);
 
     // Apply the ratio to the selected variant's nutrition values
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const nutrition: any = {
       calories: latestVariant.calories * ratio || 0, // Use latestVariant, this is in kcal
       protein: latestVariant.protein * ratio || 0, // Use latestVariant
@@ -302,12 +311,6 @@ const EditFoodEntryDialog = ({
   };
 
   const nutrition = calculateNutrition();
-  const focusAndSelect = useCallback((e) => {
-    if (e) {
-      e.focus();
-      e.select();
-    }
-  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

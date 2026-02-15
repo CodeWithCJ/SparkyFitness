@@ -46,6 +46,7 @@ export const useRegisterUserMutation = () => {
         'auth.registerSuccess',
         'Account created successfully!'
       ),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       errorMessage: (error: any) =>
         error.code === '23505'
           ? t('auth.emailExists', 'User with this email already exists.')

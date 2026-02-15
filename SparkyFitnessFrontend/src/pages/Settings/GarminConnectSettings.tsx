@@ -61,6 +61,7 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({
 
   useEffect(() => {
     fetchGarminStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
@@ -120,6 +121,7 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({
       // After successful sync, refresh status
       const updatedStatus = await apiCall('/integrations/garmin/status');
       setGarminStatus(updatedStatus);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Failed to sync Garmin data:', error);
       if (error.message.includes('Garmin Connect not linked for this user.')) {
@@ -180,6 +182,7 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({
           onMfaComplete();
         }
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Login Error:', error);
       toast({
@@ -234,6 +237,7 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({
           variant: 'destructive',
         });
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('MFA Error:', error);
       toast({
@@ -276,6 +280,7 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({
       setGarminMfaCode('');
       setShowGarminMfaInput(false);
       onStatusChange(); // Notify parent component of status change
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Failed to unlink Garmin:', error);
       toast({
@@ -314,6 +319,7 @@ const GarminConnectSettings: React.FC<GarminConnectSettingsProps> = ({
         description: 'Garmin data sync initiated. Check back shortly.',
       });
       syncGarminData();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Manual Sync Error:', error);
       toast({

@@ -43,6 +43,7 @@ const WithingsCallback = () => {
     };
 
     processCallback();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, navigate, linkWithingsAccount]);
 
   return <CallbackStatus loading={loading} message={message} />;

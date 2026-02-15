@@ -88,6 +88,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEditableBedtime(format(parsedBedtime, 'HH:mm'));
     setEditableWakeTime(format(parsedWakeTime, 'HH:mm'));
   }, [parsedBedtime, parsedWakeTime]);
@@ -96,6 +97,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
     const filteredInitialEvents =
       (initialStageEvents?.filter(Boolean) as SleepStageEvent[]) || [];
     if (filteredInitialEvents.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStageEvents(filteredInitialEvents);
     } else {
       const duration = totalDurationMinutes * 60;

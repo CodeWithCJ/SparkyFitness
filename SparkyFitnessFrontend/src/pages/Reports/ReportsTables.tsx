@@ -88,6 +88,7 @@ interface ReportsTablesProps {
   measurementData: MeasurementData[];
   customCategories: CustomCategory[];
   customMeasurementsData: Record<string, CustomMeasurementData[]>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prData: any; // Add prData to props
   showWeightInKg: boolean;
   showMeasurementsInCm: boolean;

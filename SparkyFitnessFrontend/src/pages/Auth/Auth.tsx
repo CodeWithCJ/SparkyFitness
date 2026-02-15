@@ -50,6 +50,7 @@ const Auth = () => {
     useToggle();
   // State for MFA challenge
   const [showMfaChallenge, setShowMfaChallenge] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [mfaChallengeProps, setMfaChallengeProps] = useState<any>(null); // Store MFA data
   // State for Magic Link Request Dialog
   const [isMagicLinkRequestDialogOpen, setIsMagicLinkRequestDialogOpen] =
@@ -113,6 +114,7 @@ const Auth = () => {
       }
     };
     fetchAuthSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggingLevel, authUser, authLoading, navigate]);
 
   // Passkey Conditional UI (Autofill)
@@ -159,6 +161,7 @@ const Auth = () => {
                 },
               },
             });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (err: any) {
             // Silently fail for autofill, especially for AbortError
             if (err.name === 'AbortError') {
@@ -307,6 +310,7 @@ const Auth = () => {
               data.fullName
             );
           }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
           error(loggingLevel, 'Auth: Magic link login failed:', err);
           toast({
@@ -321,6 +325,7 @@ const Auth = () => {
       };
       handleMagicLinkLogin();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggingLevel, navigate, signIn, email]); // Add email to dependencies if it's used in mfaChallengeProps and might change.
 
   const validatePassword = (pwd: string) => {
@@ -357,6 +362,7 @@ const Auth = () => {
 
     setLoading(true);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = await registerUser({ email, password, fullName });
     info(loggingLevel, 'Auth: Sign up successful.');
     signIn(
@@ -417,6 +423,7 @@ const Auth = () => {
         true,
         data.fullName
       );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error(loggingLevel, 'Auth: Sign in failed:', err);
     }
@@ -435,6 +442,7 @@ const Auth = () => {
       info(loggingLevel, 'Auth: Passkey sign-in successful.');
       toast({ title: 'Success', description: 'Logged in with Passkey!' });
       navigate('/');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error(loggingLevel, 'Auth: Passkey sign-in failed:', err);
       toast({

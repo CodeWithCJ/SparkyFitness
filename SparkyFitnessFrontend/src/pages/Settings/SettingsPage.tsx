@@ -146,6 +146,7 @@ const Settings = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // State for API Key Management
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [showApiKey, setShowApiKey] = useState<string | null>(null); // Stores the ID of the key to show
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null); // New state to show secret key once
@@ -164,6 +165,7 @@ const Settings = () => {
       loadApiKeys(); // Load API keys
       setNewEmail(user.email || ''); // Initialize newEmail here
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]); // Removed loadUserPreferencesFromContext from dependency array
 
   useEffect(() => {
@@ -202,6 +204,7 @@ const Settings = () => {
         URL.revokeObjectURL(avatarObjectURL);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.avatar_url]);
 
   const loadCustomCategories = async () => {
@@ -212,6 +215,7 @@ const Settings = () => {
         method: 'GET',
       });
       setCustomCategories(data || []);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error loading custom categories:', error);
       toast({
@@ -228,6 +232,7 @@ const Settings = () => {
       const { data, error } = await authClient.apiKey.list();
       if (error) throw error;
       setApiKeys(data || []);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error loading API keys:', error);
       toast({
@@ -260,6 +265,7 @@ const Settings = () => {
       });
       setNewApiKeyDescription('');
       loadApiKeys(); // Reload keys to show the new one in the list
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error generating API key:', error);
       toast({
@@ -293,6 +299,7 @@ const Settings = () => {
         description: 'API key deleted successfully!',
       });
       loadApiKeys(); // Reload keys
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error deleting API key:', error);
       toast({
@@ -320,6 +327,7 @@ const Settings = () => {
         description: `API key ${enabled ? 'enabled' : 'disabled'} successfully!`,
       });
       loadApiKeys();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error toggling API key:', error);
       toast({
@@ -336,9 +344,9 @@ const Settings = () => {
     if (!user) return;
     setCleaningUpKeys(true);
     try {
-      const { error } = await (
-        authClient.apiKey as any
-      ).deleteAllExpiredApiKeys({});
+      const { error } =
+        await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (authClient.apiKey as any).deleteAllExpiredApiKeys({});
       if (error) throw error;
 
       toast({
@@ -346,6 +354,7 @@ const Settings = () => {
         description: 'All expired API keys have been removed.',
       });
       loadApiKeys();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error cleaning up API keys:', error);
       toast({
@@ -373,6 +382,7 @@ const Settings = () => {
         bio: data.bio || '',
         gender: data.gender || '', // Set gender from fetched profile
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error loading profile:', error);
       toast({
@@ -404,6 +414,7 @@ const Settings = () => {
         description: 'Profile updated successfully',
       });
       loadProfile();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating profile:', error);
       toast({
@@ -426,6 +437,7 @@ const Settings = () => {
         description: 'Preferences updated successfully',
       });
       window.location.reload();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating preferences:', error);
       toast({
@@ -475,6 +487,7 @@ const Settings = () => {
         new_password: '',
         confirm_password: '',
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating password:', error);
       toast({
@@ -509,6 +522,7 @@ const Settings = () => {
         description:
           'Email update initiated. Please check your new email for confirmation.',
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating email:', error);
       toast({
@@ -565,6 +579,7 @@ const Settings = () => {
         description: 'Profile picture updated successfully',
       });
       loadProfile(); // Reload profile to display the new avatar
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error uploading image:', error);
       toast({

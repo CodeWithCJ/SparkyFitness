@@ -94,6 +94,7 @@ export const getCheckInMeasurementsForDate = async (
       }
     );
     return measurement || null; // Normalize to null when not found
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     // Explicitly type error as any
     // If it's a 404 and we suppressed the toast, it means no measurement was found.

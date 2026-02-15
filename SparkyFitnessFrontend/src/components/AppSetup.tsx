@@ -5,6 +5,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { info } from '@/utils/logging';
 
 interface AppSetupProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setLatestRelease: (release: any) => void;
   setShowNewReleaseDialog: (show: boolean) => void;
 }

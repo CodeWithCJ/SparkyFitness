@@ -18,6 +18,7 @@ export class QuaggaEngine implements BarcodeScannerEngine {
 
     this.isScanning = true;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const liveStreamConfig: any = {
       type: 'LiveStream',
       target: this.containerElement!,

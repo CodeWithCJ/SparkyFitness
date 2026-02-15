@@ -15,6 +15,7 @@ export const fileToBase64 = (file: File): Promise<string> => {
 export const saveMessageToHistory = async (
   content: string,
   messageType: 'user' | 'assistant',
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: any
 ) => {
   try {

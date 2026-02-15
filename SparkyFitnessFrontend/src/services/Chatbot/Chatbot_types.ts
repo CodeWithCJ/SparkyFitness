@@ -26,6 +26,7 @@ export interface CoachResponse {
     | 'chat'
     | 'water_added';
   response: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: any;
   entryDate?: string; // Optional date for the entry (YYYY-MM-DD)
 }

@@ -77,6 +77,7 @@ const NutrientDisplaySettings: React.FC = () => {
     return () => {
       clearTimeout(handler);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preferences]);
 
   const savePreferences = async () => {
@@ -100,6 +101,7 @@ const NutrientDisplaySettings: React.FC = () => {
             body: JSON.stringify({ visible_nutrients: pref.visible_nutrients }),
           }
         );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         toast({
           title: 'Error',
@@ -211,6 +213,7 @@ const NutrientDisplaySettings: React.FC = () => {
             defaultPreference.visible_nutrients
           );
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         toast({
           title: 'Error',

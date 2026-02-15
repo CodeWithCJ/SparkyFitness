@@ -84,10 +84,14 @@ const SortableSetItem = React.memo(
   }: {
     set: WorkoutPresetSet;
     index: number;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleSetChange: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleDuplicateSet: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleRemoveSet: Function;
     weightUnit: string;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     t: Function;
   }) => {
     const { attributes, listeners, setNodeRef, transform, transition } =
@@ -305,6 +309,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   const handleSetChange = (
     index: number,
     field: keyof WorkoutPresetSet,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     value: any
   ) => {
     debug(
@@ -357,6 +362,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     })
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {

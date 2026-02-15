@@ -105,6 +105,7 @@ const UserManagement: React.FC = () => {
           setEditingUserId(null);
           setEditedUser(null);
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onError: (err: any) => {
           toast({
             title: t('error', 'Error'),
@@ -133,6 +134,7 @@ const UserManagement: React.FC = () => {
           title: t('success', 'Success'),
           description: t('admin.userManagement.deleteSuccess', 'User deleted.'),
         }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onError: (err: any) =>
         toast({
           title: t('error', 'Error'),
@@ -162,6 +164,7 @@ const UserManagement: React.FC = () => {
             'Password reset initiated.'
           ),
         }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onError: (err: any) =>
         toast({
           title: t('error', 'Error'),
@@ -198,6 +201,7 @@ const UserManagement: React.FC = () => {
               `User ${action}d.`
             ),
           }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onError: (err: any) =>
           toast({
             title: t('error', 'Error'),
@@ -231,6 +235,7 @@ const UserManagement: React.FC = () => {
               `Role updated to ${newRole}.`
             ),
           }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onError: (err: any) =>
           toast({
             title: t('error', 'Error'),
@@ -255,6 +260,7 @@ const UserManagement: React.FC = () => {
           title: t('success', 'Success'),
           description: t('admin.userManagement.resetMfaSuccess', 'MFA reset.'),
         }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onError: (err: any) =>
         toast({
           title: t('error', 'Error'),
@@ -286,6 +292,7 @@ const UserManagement: React.FC = () => {
       const aValue = a[sortBy];
       const bValue = b[sortBy];
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const compare = (valA: any, valB: any) => {
         if (typeof valA === 'string' && typeof valB === 'string')
           return valA.localeCompare(valB);
@@ -534,6 +541,7 @@ const UserManagement: React.FC = () => {
   );
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const SortableHead = ({ label, col, currentSort, sortOrder, onSort }: any) => (
   <TableHead
     className="cursor-pointer select-none"
@@ -546,6 +554,7 @@ const SortableHead = ({ label, col, currentSort, sortOrder, onSort }: any) => (
   </TableHead>
 );
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ActionButton = ({ icon, onClick, tooltip, variant = 'outline' }: any) => (
   <TooltipProvider>
     <Tooltip>

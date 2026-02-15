@@ -134,6 +134,7 @@ const sanitizeGlycemicIndexFrontend = (
 };
 
 interface EnhancedCustomFoodFormProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSave: (foodData: any) => void;
   food?: Food;
   initialVariants?: FoodVariant[]; // New prop for pre-populating variants
@@ -290,6 +291,7 @@ const EnhancedCustomFoodForm = ({
       setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
       setVariantErrors([null]); // Initialize error for the single default variant
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [food, initialVariants, customNutrients]);
 
   const loadExistingVariants = async () => {

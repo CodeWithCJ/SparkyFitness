@@ -20,6 +20,7 @@ export interface Message {
   content: string;
   isUser: boolean;
   timestamp: Date;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: any;
 }
 
@@ -49,6 +50,7 @@ export const loadChatHistory = async (
   const data = await apiCall(`/chat/sparky-chat-history?${params.toString()}`, {
     method: 'GET',
   });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data || []).map((item: any) => {
     const timestamp = new Date(item.created_at);
     if (isNaN(timestamp.getTime())) {
@@ -67,6 +69,7 @@ export const loadChatHistory = async (
 export const saveMessageToHistory = async (
   content: string,
   messageType: 'user' | 'assistant',
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: any
 ): Promise<void> => {
   await apiCall(`/chat/save-history`, {
@@ -91,6 +94,7 @@ export const processUserInput = async (
   input: string,
   image: File | null,
   transactionId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   lastBotMessageMetadata: any,
   userLoggingLevel: UserLoggingLevel,
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string,
@@ -141,6 +145,7 @@ export const processUserInput = async (
 
     let parsedResponse: {
       intent: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data: any;
       response?: string;
       entryDate?: string;
@@ -308,6 +313,7 @@ export const processUserInput = async (
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const getTodaysNutrition = async (date: string): Promise<any> => {
   const params = new URLSearchParams({ date });
   return apiCall(`/food-entries/nutrition/today?${params.toString()}`, {
@@ -340,6 +346,7 @@ const getAIResponse = async (
       input
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const messagesToSend: any[] = [];
     // Add previous messages for context, limiting to the last 10 for brevity
     const historyLimit = 10;
@@ -360,6 +367,7 @@ const getAIResponse = async (
     });
 
     // Add the current user message
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userMessageContent: any[] = [];
     if (input.trim()) {
       userMessageContent.push({ type: 'text', text: input.trim() });
@@ -393,6 +401,7 @@ const getAIResponse = async (
       action: 'advice',
       response: response.content,
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     error(userLoggingLevel, `[${transactionId}] Error in getAIResponse:`, err);
     if (err.message && err.message.includes('503')) {
@@ -441,36 +450,38 @@ const callAIForFoodOptions = async (
 
       const foodOptions: FoodOption[] = (
         Array.isArray(rawFoodOptions) ? rawFoodOptions : []
-      ).map((rawOption: any) => {
-        debug(userLoggingLevel, 'Raw AI food option received:', rawOption);
-        const mappedOption: FoodOption = {
-          name: rawOption.food_name || rawOption.name || 'Unknown Food',
-          calories: rawOption.calories || 0,
-          protein: rawOption.macros?.protein || rawOption.protein || 0,
-          carbs: rawOption.macros?.carbs || rawOption.carbs || 0,
-          fat: rawOption.macros?.fat || rawOption.fat || 0,
-          serving_size: parseFloat(rawOption.serving_size) || 1,
-          serving_unit: rawOption.serving_unit || 'serving',
-          saturated_fat:
-            rawOption.macros?.saturated_fat || rawOption.saturated_fat,
-          polyunsaturated_fat:
-            rawOption.polyunsaturated_fat || rawOption.polyunsaturated_fat,
-          monounsaturated_fat:
-            rawOption.monounsaturated_fat || rawOption.monounsaturated_fat,
-          trans_fat: rawOption.trans_fat || rawOption.trans_fat,
-          cholesterol: rawOption.cholesterol,
-          sodium: rawOption.sodium,
-          potassium: rawOption.potassium,
-          dietary_fiber: rawOption.dietary_fiber,
-          sugars: rawOption.sugars,
-          vitamin_a: rawOption.vitamin_a,
-          vitamin_c: rawOption.vitamin_c,
-          calcium: rawOption.calcium,
-          iron: rawOption.iron,
-        };
-        debug(userLoggingLevel, 'Mapped food option:', mappedOption);
-        return mappedOption;
-      });
+      )
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((rawOption: any) => {
+          debug(userLoggingLevel, 'Raw AI food option received:', rawOption);
+          const mappedOption: FoodOption = {
+            name: rawOption.food_name || rawOption.name || 'Unknown Food',
+            calories: rawOption.calories || 0,
+            protein: rawOption.macros?.protein || rawOption.protein || 0,
+            carbs: rawOption.macros?.carbs || rawOption.carbs || 0,
+            fat: rawOption.macros?.fat || rawOption.fat || 0,
+            serving_size: parseFloat(rawOption.serving_size) || 1,
+            serving_unit: rawOption.serving_unit || 'serving',
+            saturated_fat:
+              rawOption.macros?.saturated_fat || rawOption.saturated_fat,
+            polyunsaturated_fat:
+              rawOption.polyunsaturated_fat || rawOption.polyunsaturated_fat,
+            monounsaturated_fat:
+              rawOption.monounsaturated_fat || rawOption.monounsaturated_fat,
+            trans_fat: rawOption.trans_fat || rawOption.trans_fat,
+            cholesterol: rawOption.cholesterol,
+            sodium: rawOption.sodium,
+            potassium: rawOption.potassium,
+            dietary_fiber: rawOption.dietary_fiber,
+            sugars: rawOption.sugars,
+            vitamin_a: rawOption.vitamin_a,
+            vitamin_c: rawOption.vitamin_c,
+            calcium: rawOption.calcium,
+            iron: rawOption.iron,
+          };
+          debug(userLoggingLevel, 'Mapped food option:', mappedOption);
+          return mappedOption;
+        });
 
       if (
         foodOptions.every(
@@ -502,6 +513,7 @@ const callAIForFoodOptions = async (
       );
       return [];
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     error(userLoggingLevel, 'Error in callAIForFoodOptions:', err);
     return [];

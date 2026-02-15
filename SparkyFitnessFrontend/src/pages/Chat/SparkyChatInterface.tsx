@@ -33,10 +33,12 @@ const SparkyChatInterface = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [userPreferences, setUserPreferences] = useState<any>(null); // State to store user preferences
   const [activeAIServiceSetting, setActiveAIServiceSetting] =
     useState<AIService | null>(null); // State to store active AI service setting
   const [selectedImage, setSelectedImage] = useState<File | null>(null); // State to store the selected image file
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const coachRef = useRef<any>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +78,7 @@ const SparkyChatInterface = () => {
     return () => {
       // Any cleanup needed when the component unmounts
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userPreferences, isInitialized]); // Dependencies for the effect (userId and preferences might load async)
 
   // Effect to listen for clear chat history event
@@ -111,6 +114,7 @@ const SparkyChatInterface = () => {
     return () => {
       window.removeEventListener('clearChatHistory', handleClearChatHistory);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coachRef.current]); // Dependencies for the effect
 
   const loadUserPreferencesAndHistory = async () => {

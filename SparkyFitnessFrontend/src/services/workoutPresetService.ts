@@ -50,6 +50,7 @@ export const searchWorkoutPresets = async (
   searchTerm: string,
   limit?: number
 ): Promise<WorkoutPreset[]> => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const params: Record<string, any> = { searchTerm };
   if (limit !== undefined) {
     params.limit = limit;

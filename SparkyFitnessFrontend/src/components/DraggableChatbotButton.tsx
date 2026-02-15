@@ -73,6 +73,7 @@ const DraggableChatbotButton: React.FC = () => {
     } else {
       setDefaultPosition();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setDefaultPosition = () => {
@@ -130,6 +131,7 @@ const DraggableChatbotButton: React.FC = () => {
     } else if (!loading && !user) {
       setHasAiProvider(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user?.id]);
 
   useEffect(() => {
@@ -242,6 +244,7 @@ const DraggableChatbotButton: React.FC = () => {
 
   const handleMouseUp = useCallback(() => {
     handleInteractionEnd();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDragging, hasDragged, dragPosition, snapToEdge]);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
@@ -267,6 +270,7 @@ const DraggableChatbotButton: React.FC = () => {
         handleClick();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDragging, hasDragged, dragPosition, snapToEdge]);
 
   const handleClick = () => {

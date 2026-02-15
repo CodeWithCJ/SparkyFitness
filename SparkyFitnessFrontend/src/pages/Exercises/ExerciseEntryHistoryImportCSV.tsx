@@ -235,6 +235,7 @@ const ExerciseEntryHistoryImportCSV = ({
         groupAndValidateData(rows);
         setLoading(false);
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       error: (error: any) => {
         console.error('CSV parsing error:', error);
         toast({
@@ -464,6 +465,7 @@ const ExerciseEntryHistoryImportCSV = ({
         ),
       });
       onImportComplete();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const errorMessage = error.details?.failedEntries
         ? t(
@@ -471,6 +473,7 @@ const ExerciseEntryHistoryImportCSV = ({
             'Some entries failed to import: {{details}}',
             {
               details: error.details.failedEntries
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .map((e: any) => e.entry.exercise_name + ' - ' + e.reason)
                 .join(', '),
             }

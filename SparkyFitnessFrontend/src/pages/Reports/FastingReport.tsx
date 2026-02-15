@@ -129,11 +129,13 @@ export const FastingReport: React.FC<FastingReportProps> = ({
     marginPercent: config.marginPercent,
     minRangeThreshold: config.minRangeThreshold,
     useZeroBaseline: true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }) as any;
   const trendDomain = calculateSmartYAxisDomain(trendData, 'avg', {
     marginPercent: config.marginPercent,
     minRangeThreshold: config.minRangeThreshold,
     useZeroBaseline: false,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }) as any;
 
   return (
@@ -221,6 +223,7 @@ export const FastingReport: React.FC<FastingReportProps> = ({
                           }}
                           tickFormatter={(val) => {
                             if (val === null || val === undefined) return '';
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const num = Number(val as any);
                             return Number.isNaN(num)
                               ? String(val)
@@ -228,6 +231,7 @@ export const FastingReport: React.FC<FastingReportProps> = ({
                           }}
                         />
                         <Tooltip
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           formatter={(value: any) => {
                             if (value === null || value === undefined)
                               return '';
@@ -358,6 +362,7 @@ export const FastingReport: React.FC<FastingReportProps> = ({
                           }}
                           tickFormatter={(val) => {
                             if (val === null || val === undefined) return '';
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const num = Number(val as any);
                             return Number.isNaN(num)
                               ? String(val)
@@ -365,6 +370,7 @@ export const FastingReport: React.FC<FastingReportProps> = ({
                           }}
                         />
                         <Tooltip
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           formatter={(value: any) => {
                             if (value === null || value === undefined)
                               return '';

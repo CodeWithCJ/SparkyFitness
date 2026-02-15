@@ -19,20 +19,24 @@ export const getCategories = async (
     suppress404Toast: true,
   });
   info(loggingLevel, 'Raw API response for getCategories:', response);
-  return response
-    .filter((cat: any) => {
-      const id = cat && cat.id ? String(cat.id) : '';
-      if (!id) {
-        error(
-          loggingLevel,
-          'Category fetched with missing or invalid ID, filtering out:',
-          cat
-        );
-        return false; // Filter out categories without a valid ID
-      }
-      return true;
-    })
-    .map((cat: any) => ({ ...cat, id: String(cat.id) })); // Ensure ID is string for valid categories
+  return (
+    response
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((cat: any) => {
+        const id = cat && cat.id ? String(cat.id) : '';
+        if (!id) {
+          error(
+            loggingLevel,
+            'Category fetched with missing or invalid ID, filtering out:',
+            cat
+          );
+          return false; // Filter out categories without a valid ID
+        }
+        return true;
+      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((cat: any) => ({ ...cat, id: String(cat.id) }))
+  ); // Ensure ID is string for valid categories
 };
 
 export const addCategory = async (

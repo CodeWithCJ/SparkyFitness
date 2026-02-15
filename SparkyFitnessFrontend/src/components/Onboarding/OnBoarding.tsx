@@ -266,6 +266,7 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
     };
 
     fetchExistingData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once on mount
 
   // Calculated plan (moved up to avoid use-before-declaration)
@@ -413,6 +414,7 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
     setLocalEnergyUnit(energyUnit);
   }, [energyUnit]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSelect = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setTimeout(() => nextStep(), 250);

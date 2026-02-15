@@ -72,12 +72,14 @@ export const fetchExerciseEntries = async (
   const loggingLevel = getUserLoggingLevel();
   const response = await getDailyExerciseEntries(selectedDate);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsedEntries: GroupedExerciseEntry[] = response.map((entry: any) => {
     if (entry.type === 'preset') {
       return {
         ...entry,
         exercises: entry.exercises
-          ? entry.exercises.map((ex: any) => ({
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            entry.exercises.map((ex: any) => ({
               ...ex,
               sets: ex.sets ? parseJsonArray(ex.sets) : [], // Parse sets if it's a JSON string
               exercise_snapshot: {
@@ -93,7 +95,8 @@ export const fetchExerciseEntries = async (
                 images: parseJsonArray(ex.exercise_snapshot.images),
               },
               activity_details: ex.activity_details
-                ? ex.activity_details.map((detail: any) => ({
+                ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ex.activity_details.map((detail: any) => ({
                     id: detail.id,
                     key: detail.detail_type,
                     value:
@@ -124,7 +127,8 @@ export const fetchExerciseEntries = async (
           images: parseJsonArray(entry.exercise_snapshot.images),
         },
         activity_details: entry.activity_details
-          ? entry.activity_details.map((detail: any) => ({
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            entry.activity_details.map((detail: any) => ({
               id: detail.id,
               key: detail.detail_type,
               value:
@@ -171,6 +175,7 @@ export const createExerciseEntry = async (payload: {
 
     // Append other data from the payload to formData
     Object.keys(entryData).forEach((key) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const value = (entryData as any)[key];
       if (value !== undefined && value !== null) {
         if (key === 'sets' && Array.isArray(value)) {
@@ -179,8 +184,6 @@ export const createExerciseEntry = async (payload: {
         } else if (typeof value === 'object' && !Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else if (key === 'activity_details' && Array.isArray(value)) {
-          formData.append(key, JSON.stringify(value));
-        } else if (typeof value === 'object' && !Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else {
           formData.append(key, value);
@@ -258,6 +261,7 @@ export const updateExerciseEntry = async (
     formData.append('image', imageFile);
 
     Object.keys(entryData).forEach((key) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const value = (entryData as any)[key];
       if (value !== undefined && value !== null) {
         if (key === 'sets' && Array.isArray(value)) {
@@ -265,8 +269,6 @@ export const updateExerciseEntry = async (
         } else if (typeof value === 'object' && !Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else if (key === 'activity_details' && Array.isArray(value)) {
-          formData.append(key, JSON.stringify(value));
-        } else if (typeof value === 'object' && !Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else {
           formData.append(key, value);

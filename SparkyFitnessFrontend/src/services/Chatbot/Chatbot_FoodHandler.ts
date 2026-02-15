@@ -111,6 +111,7 @@ export const processFoodInput = async (
           method: 'GET',
         }
       );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error(
         userLoggingLevel,
@@ -140,6 +141,7 @@ export const processFoodInput = async (
             method: 'GET',
           }
         );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         error(
           userLoggingLevel,
@@ -201,6 +203,7 @@ export const processFoodInput = async (
             variant_id: food.default_variant.id, // Populate variant_id
           },
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         error(
           userLoggingLevel,
@@ -263,6 +266,7 @@ export const processFoodInput = async (
 // Function to add a selected food option to the diary
 export const addFoodOption = async (
   optionIndex: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   originalMetadata: any,
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string,
   userLoggingLevel: UserLoggingLevel,
@@ -303,6 +307,7 @@ export const addFoodOption = async (
           method: 'GET',
         }
       );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error(
         userLoggingLevel,
@@ -341,6 +346,7 @@ export const addFoodOption = async (
               method: 'GET',
             }
           );
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
           error(
             userLoggingLevel,
@@ -396,6 +402,7 @@ export const addFoodOption = async (
                 iron: selectedOption.iron,
               },
             });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (err: any) {
             error(
               userLoggingLevel,
@@ -446,6 +453,7 @@ export const addFoodOption = async (
             is_custom: true,
           },
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         error(userLoggingLevel, `[${transactionId}] Error creating food:`, err);
         return {
@@ -484,6 +492,7 @@ export const addFoodOption = async (
           variant_id: variantId,
         },
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       error(
         userLoggingLevel,

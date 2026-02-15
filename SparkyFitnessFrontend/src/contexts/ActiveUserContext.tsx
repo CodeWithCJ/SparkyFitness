@@ -39,7 +39,7 @@ interface ActiveUserContextType {
 const ActiveUserContext = createContext<ActiveUserContextType | undefined>(
   undefined
 );
-
+// eslint-disable-next-line react-refresh/only-export-components
 export const useActiveUser = () => {
   const context = useContext(ActiveUserContext);
   if (context === undefined) {
@@ -73,6 +73,7 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({
 
         // Initial name set, will be refined once accessibleUsers load
         setActiveUserName(user.fullName || user.email || 'You');
+
         loadAccessibleUsers(currentActiveUserId);
       } else {
         info(
@@ -84,6 +85,7 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({
         setAccessibleUsers([]);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading, loggingLevel]);
 
   const loadAccessibleUsers = useCallback(
@@ -117,6 +119,7 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({
 
         // Transform the data to ensure proper typing
         const transformedData: AccessibleUser[] = (data || []).map(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (item: any) => ({
             user_id: item.user_id,
             full_name: item.full_name,
@@ -173,6 +176,7 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({
     if (user && !loading) {
       loadAccessibleUsers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading]); // Remove loadAccessibleUsers from dependency array
 
   // Sync activeUserId from auth context when it changes (e.g., after context switch)
@@ -189,6 +193,7 @@ export const ActiveUserProvider: React.FC<{ children: React.ReactNode }> = ({
       // Reload accessible users to ensure we have the latest data
       loadAccessibleUsers(user.activeUserId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.activeUserId, user?.id, activeUserId, loggingLevel]);
 
   // Dedicated effect to update activeUserName whenever activeUserId changes

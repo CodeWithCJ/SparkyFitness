@@ -85,6 +85,7 @@ export interface DailyFoodEntry {
     iron?: number;
   };
   custom_nutrients?: Record<string, number>; // Add custom_nutrients
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any; // Add index signature to allow for custom nutrient properties
 }
 

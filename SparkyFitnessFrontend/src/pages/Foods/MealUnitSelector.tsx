@@ -49,9 +49,11 @@ const MealUnitSelector = ({
     });
     if (open && meal) {
       // Set initial values or defaults
+
       setQuantity(initialQuantity !== undefined ? initialQuantity : 1.0);
       setUnit(initialUnit || meal.serving_unit || 'serving');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, meal, initialQuantity, initialUnit]);
 
   const handleSubmit = (event) => {

@@ -75,8 +75,10 @@ export const getUsdaFoodDetails = async (
 
     if (!response) return null;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const nutrientMap: any = {};
     if (response.foodNutrients) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       response.foodNutrients.forEach((n: any) => {
         // USDA returns various spellings, try to normalize or check multiple
         const name =

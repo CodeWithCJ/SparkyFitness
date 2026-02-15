@@ -49,9 +49,11 @@ import type { TFunction } from 'i18next';
 import MealPercentageManager from '@/components/MealPercentageManager';
 
 interface PersonalPlanProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   plan: any;
   editedPlan: ExpandedGoals | null;
   setEditedPlan: React.Dispatch<React.SetStateAction<ExpandedGoals | null>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   formData: any;
   t: TFunction; // Use correct type from i18next
   localEnergyUnit: 'kcal' | 'kJ';

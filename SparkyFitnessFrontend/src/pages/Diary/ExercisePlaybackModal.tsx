@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import type { Exercise } from '@/services/exerciseService';
+import type { Exercise } from '@/services/exerciseSearchService';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn } from '@/utils/logging';
 
@@ -52,6 +52,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
   const imageTimerRef = useRef<NodeJS.Timeout | null>(null);
   const prevExerciseIdRef = useRef<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const instructions = exercise?.instructions || [];
   const images = exercise?.images || [];
 
@@ -300,6 +301,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
       stopImageSlideshow();
       setIsPlaying(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, exercise, stopImageSlideshow, startImageSlideshow, loggingLevel]);
 
   useEffect(() => {
@@ -424,6 +426,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     } else {
       info(loggingLevel, '[handlePrevious] Already at the first instruction.');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentInstructionIndex,
     instructions.length,

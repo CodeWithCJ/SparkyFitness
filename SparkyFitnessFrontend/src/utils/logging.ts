@@ -13,7 +13,9 @@ export type UserLoggingLevel = LogLevel; // Export for use with usePreferences
 export const log = (
   userLoggingLevel: UserLoggingLevel,
   level: LogLevel,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   message: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ...optionalParams: any[]
 ) => {
   const userLevelValue = LOGGING_LEVELS[userLoggingLevel];
@@ -38,21 +40,29 @@ export const log = (
 // Helper functions for each level, now accepting loggingLevel
 export const debug = (
   userLoggingLevel: UserLoggingLevel,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   message: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ...optionalParams: any[]
 ) => log(userLoggingLevel, 'DEBUG', message, ...optionalParams);
 export const info = (
   userLoggingLevel: UserLoggingLevel,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   message: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ...optionalParams: any[]
 ) => log(userLoggingLevel, 'INFO', message, ...optionalParams);
 export const warn = (
   userLoggingLevel: UserLoggingLevel,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   message: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ...optionalParams: any[]
 ) => log(userLoggingLevel, 'WARN', message, ...optionalParams);
 export const error = (
   userLoggingLevel: UserLoggingLevel,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   message: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ...optionalParams: any[]
 ) => log(userLoggingLevel, 'ERROR', message, ...optionalParams);

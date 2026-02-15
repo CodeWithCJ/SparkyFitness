@@ -206,6 +206,7 @@ const GoalsSettings = () => {
       loadGoalPresets();
       loadWeeklyPlans();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadGoals = async () => {
@@ -1988,6 +1989,7 @@ const GoalsSettings = () => {
                   </Label>
                   <Select
                     value={
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       (currentWeeklyPlan as any)[`${day}_preset_id`] ||
                       undefined
                     }

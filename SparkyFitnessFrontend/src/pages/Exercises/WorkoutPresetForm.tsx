@@ -18,7 +18,6 @@ import type {
   WorkoutPresetExercise,
   WorkoutPresetSet,
 } from '@/types/workout';
-import type { Exercise } from '@/services/exerciseService';
 import AddExerciseDialog from './AddExerciseDialog';
 import ExerciseHistoryDisplay from '../../components/ExerciseHistoryDisplay';
 import {
@@ -57,6 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { Exercise } from '@/services/exerciseSearchService';
 
 interface WorkoutPresetFormProps {
   isOpen: boolean;
@@ -78,12 +78,16 @@ const SortableSetItem = React.memo(
     onRemoveSet,
     weightUnit,
   }: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     t: any;
     set: WorkoutPresetSet;
     exerciseIndex: number;
     setIndex: number;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     onSetChange: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     onDuplicateSet: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     onRemoveSet: Function;
     weightUnit: string;
   }) => {
@@ -301,12 +305,18 @@ const SortableExerciseItem = React.memo(
   }: {
     ex: WorkoutPresetExercise;
     exerciseIndex: number;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleRemoveExercise: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleSetChange: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleDuplicateSet: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleRemoveSet: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleAddSet: Function;
     weightUnit: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     t: any;
   }) => {
     const {
@@ -411,6 +421,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         })) || []
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialPreset]);
 
   const handleAddExercise = (exercise: Exercise) => {
@@ -444,6 +455,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
       exerciseIndex: number,
       setIndex: number,
       field: keyof WorkoutPresetSet,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       value: any
     ) => {
       setExercises((prev) =>

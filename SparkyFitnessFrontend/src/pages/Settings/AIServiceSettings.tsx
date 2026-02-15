@@ -62,6 +62,7 @@ const AIServiceSettings = () => {
       loadServices();
       loadPreferences();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadServices = async () => {
@@ -70,6 +71,7 @@ const AIServiceSettings = () => {
     try {
       const data = await getAIServices();
       setServices(data);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error loading AI services:', error);
       toast({
@@ -88,6 +90,7 @@ const AIServiceSettings = () => {
       setPreferences({
         auto_clear_history: data.auto_clear_history || 'never',
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error loading preferences:', error);
       toast({
@@ -143,6 +146,7 @@ const AIServiceSettings = () => {
       });
       setShowAddForm(false);
       loadServices();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error adding AI service:', error);
       toast({
@@ -195,6 +199,7 @@ const AIServiceSettings = () => {
       setEditingService(null);
       setEditData({});
       loadServices();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating AI service:', error);
       toast({
@@ -218,6 +223,7 @@ const AIServiceSettings = () => {
         description: 'AI service deleted successfully',
       });
       loadServices();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error deleting AI service:', error);
       toast({
@@ -257,6 +263,7 @@ const AIServiceSettings = () => {
         description: `AI service ${isActive ? 'activated' : 'deactivated'}`,
       });
       loadServices();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating AI service status:', error);
       toast({
@@ -279,6 +286,7 @@ const AIServiceSettings = () => {
         title: 'Success',
         description: 'Chat preferences updated successfully',
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating preferences:', error);
       toast({

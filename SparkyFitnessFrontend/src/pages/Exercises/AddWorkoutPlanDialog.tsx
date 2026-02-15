@@ -105,8 +105,11 @@ const SortableSetItem = React.memo(
     set: WorkoutPresetSet;
     assignmentIndex: number;
     setIndex: number;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleSetChangeInPlan: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleDuplicateSetInPlan: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleRemoveSetInPlan: Function;
     weightUnit: string;
   }) => {
@@ -311,13 +314,20 @@ const SortableAssignmentItem = React.memo(
     assignment: WorkoutPlanAssignment;
     originalIndex: number;
     workoutPresets: WorkoutPreset[];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleCopyAssignment: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleRemoveAssignment: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleSetChangeInPlan: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleDuplicateSetInPlan: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleRemoveSetInPlan: Function;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     handleAddSetInPlan: Function;
     weightUnit: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     t: any;
   }) => {
     const {
@@ -548,6 +558,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
       setIsActive(true);
       setAssignments([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, user?.id, initialData]);
 
   const fetchPresetsAndExercises = async () => {
@@ -579,6 +590,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
   const handleAssignmentChange = (
     index: number,
     field: keyof WorkoutPlanAssignment,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     value: any
   ) => {
     setAssignments((prev) =>
@@ -591,6 +603,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
       assignmentIndex: number,
       setIndex: number,
       field: keyof WorkoutPresetSet,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       value: any
     ) => {
       debug(
@@ -614,6 +627,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
         })
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [loggingLevel, weightUnit, convertWeight]
   );
 

@@ -36,14 +36,18 @@ const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({
   } = workoutData;
 
   // Helper function to flatten workout steps, handling nested RepeatGroupDTOs
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getAllExecutableSteps = (segments: any[]) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const executableSteps: any[] = [];
     segments?.forEach((segment) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       segment.workoutSteps?.forEach((step: any) => {
         if (step.type === 'ExecutableStepDTO') {
           executableSteps.push(step);
         } else if (step.type === 'RepeatGroupDTO' && step.workoutSteps) {
           // Recursively get executable steps from nested repeat groups
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           step.workoutSteps.forEach((nestedStep: any) => {
             if (nestedStep.type === 'ExecutableStepDTO') {
               executableSteps.push(nestedStep);
@@ -80,6 +84,7 @@ const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({
     string,
     { setName: string; avgWeight: number; avgReps: number }[]
   > = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   allExecutableSteps.forEach((step: any, stepIndex: number) => {
     if (step.exerciseName) {
       const exerciseName = step.exerciseName;
@@ -239,6 +244,7 @@ const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {allExecutableSteps.map((step: any, index: number) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">

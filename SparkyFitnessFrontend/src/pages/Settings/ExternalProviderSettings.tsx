@@ -75,6 +75,7 @@ const ExternalProviderSettings = () => {
       });
 
       const updatedProviders = await Promise.all(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         providersData.map(async (provider: any) => {
           if (provider.provider_type === 'garmin') {
             try {
@@ -214,6 +215,7 @@ const ExternalProviderSettings = () => {
           }
         }
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error loading external data providers:', error);
       toast({
@@ -318,6 +320,7 @@ const ExternalProviderSettings = () => {
       } else if (data && defaultFoodDataProviderId === data.id) {
         setDefaultFoodDataProviderId(null);
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating external data provider:', error);
       toast({
@@ -350,6 +353,7 @@ const ExternalProviderSettings = () => {
       if (defaultFoodDataProviderId === providerId) {
         setDefaultFoodDataProviderId(null);
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error deleting external data provider:', error);
       toast({
@@ -388,6 +392,7 @@ const ExternalProviderSettings = () => {
       } else if (data && defaultFoodDataProviderId === data.id) {
         setDefaultFoodDataProviderId(null);
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating external data provider status:', error);
       toast({
@@ -411,6 +416,7 @@ const ExternalProviderSettings = () => {
       } else {
         throw new Error('Failed to get Withings authorization URL.');
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error connecting to Withings:', error);
       toast({
@@ -441,6 +447,7 @@ const ExternalProviderSettings = () => {
         description: 'Disconnected from Withings successfully.',
       });
       loadProviders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error disconnecting from Withings:', error);
       toast({
@@ -464,6 +471,7 @@ const ExternalProviderSettings = () => {
         description: 'Withings data synchronization initiated.',
       });
       loadProviders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual sync:', error);
       toast({
@@ -486,6 +494,7 @@ const ExternalProviderSettings = () => {
         description: 'Garmin connection flow initiated (placeholder).',
       });
       loadProviders(); // Reload to reflect potential status changes
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error connecting to Garmin:', error);
       toast({
@@ -517,6 +526,7 @@ const ExternalProviderSettings = () => {
         description: 'Disconnected from Garmin successfully.',
       });
       loadProviders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error disconnecting from Garmin:', error);
       toast({
@@ -542,6 +552,7 @@ const ExternalProviderSettings = () => {
         description: 'Garmin data synchronization initiated.',
       });
       loadProviders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Garmin sync:', error);
       toast({
@@ -565,6 +576,7 @@ const ExternalProviderSettings = () => {
       } else {
         throw new Error('Failed to get Fitbit authorization URL.');
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error connecting to Fitbit:', error);
       toast({
@@ -595,6 +607,7 @@ const ExternalProviderSettings = () => {
         description: 'Disconnected from Fitbit successfully.',
       });
       loadProviders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error disconnecting from Fitbit:', error);
       toast({
@@ -618,6 +631,7 @@ const ExternalProviderSettings = () => {
         description: 'Fitbit data synchronization initiated.',
       });
       loadProviders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Fitbit sync:', error);
       toast({
@@ -642,6 +656,7 @@ const ExternalProviderSettings = () => {
       } else {
         throw new Error('Failed to get Polar authorization URL.');
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error connecting to Polar:', error);
       toast({
@@ -673,6 +688,7 @@ const ExternalProviderSettings = () => {
         description: 'Disconnected from Polar successfully.',
       });
       loadProviders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error disconnecting from Polar:', error);
       toast({
@@ -697,6 +713,7 @@ const ExternalProviderSettings = () => {
         description: 'Polar data synchronization initiated.',
       });
       loadProviders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Polar sync:', error);
       toast({

@@ -273,6 +273,7 @@ const ExerciseSearch = ({
     if (searchSource === 'internal' && user?.id) {
       handleSearch('', true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchSource, user?.id]);
 
   // Effect for handling search logic
@@ -295,6 +296,7 @@ const ExerciseSearch = ({
     return () => {
       clearTimeout(handler);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, equipmentFilter, muscleGroupFilter, searchSource]);
 
   useEffect(() => {
@@ -351,6 +353,7 @@ const ExerciseSearch = ({
       }
     };
     fetchFilters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggingLevel, toast]);
 
   const fetchProviders = useCallback(async () => {

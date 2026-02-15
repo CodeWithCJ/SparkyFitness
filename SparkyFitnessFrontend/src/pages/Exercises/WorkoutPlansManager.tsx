@@ -25,9 +25,7 @@ import {
 import type { WorkoutPlanTemplate } from '@/types/workout';
 import AddWorkoutPlanDialog from './AddWorkoutPlanDialog';
 
-type WorkoutPlansManagerProps = {};
-
-const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
+const WorkoutPlansManager = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { loggingLevel } = usePreferences();
@@ -42,6 +40,7 @@ const WorkoutPlansManager: React.FC<WorkoutPlansManagerProps> = ({}) => {
     if (user?.id) {
       loadPlans();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const loadPlans = async () => {

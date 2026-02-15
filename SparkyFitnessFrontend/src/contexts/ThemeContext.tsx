@@ -14,6 +14,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
@@ -78,6 +79,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   // Update resolved theme when theme setting changes
   useEffect(() => {
     if (theme === 'system') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResolvedTheme(getSystemTheme());
     } else {
       setResolvedTheme(theme);

@@ -96,6 +96,7 @@ const ResetPassword = () => {
         'Your password has been reset successfully. You can now sign in with your new password.'
       );
       navigate('/'); // Redirect to root
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setMessage(err.message || 'An unexpected error occurred.');
     } finally {

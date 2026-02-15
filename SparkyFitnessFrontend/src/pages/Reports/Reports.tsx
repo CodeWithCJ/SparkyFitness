@@ -76,6 +76,7 @@ interface ExtendedNutritionData extends NutritionData {
 }
 
 interface ExtendedDailyFoodEntry extends DailyFoodEntry {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any; // Add index signature for custom nutrients
 }
 
@@ -219,6 +220,7 @@ const Reports = () => {
       window.removeEventListener('measurementsRefresh', handleRefresh);
       window.removeEventListener('exerciseRefresh', handleRefresh); // Clean up exercise refresh listener
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     user,
     activeUserId,
@@ -445,6 +447,7 @@ const Reports = () => {
         return entries.reduce(
           (total, entry) => {
             const calculatedNutrition = calculateFoodEntryNutrition(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               entry as any
             ); // Cast to any for now
 
@@ -523,6 +526,7 @@ const Reports = () => {
           // Add individual entries
           entries.forEach((entry) => {
             const calculatedNutrition = calculateFoodEntryNutrition(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               entry as any
             ); // Cast to any for now
 
@@ -787,7 +791,9 @@ const Reports = () => {
             measurement.waist ||
             measurement.hips ||
             measurement.steps ||
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (measurement as any).height ||
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (measurement as any).body_fat_percentage
         )
         .map((measurement) => [
@@ -797,11 +803,15 @@ const Reports = () => {
           measurement.waist ? measurement.waist.toFixed(1) : '',
           measurement.hips ? measurement.hips.toFixed(1) : '',
           measurement.steps || '',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (measurement as any).height
-            ? (measurement as any).height.toFixed(1)
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (measurement as any).height.toFixed(1)
             : '',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (measurement as any).body_fat_percentage
-            ? (measurement as any).body_fat_percentage.toFixed(1)
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (measurement as any).body_fat_percentage.toFixed(1)
             : '',
         ]);
 
@@ -1028,6 +1038,7 @@ const Reports = () => {
   };
 
   // Helper function to get smart Y-axis domain for custom measurements
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getCustomYAxisDomain = (data: any[]) => {
     const config = getChartConfig('value');
     return calculateSmartYAxisDomain(data, 'value', {

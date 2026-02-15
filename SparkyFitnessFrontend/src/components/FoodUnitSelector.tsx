@@ -80,6 +80,7 @@ const FoodUnitSelector = ({
           : food.default_variant?.serving_size || 1
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, food, initialQuantity, initialUnit, initialVariantId]);
 
   const loadVariantsData = async () => {

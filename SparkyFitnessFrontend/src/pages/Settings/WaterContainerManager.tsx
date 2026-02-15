@@ -34,6 +34,7 @@ const WaterContainerManager: React.FC = () => {
 
   useEffect(() => {
     fetchContainers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchContainers = async () => {
@@ -175,6 +176,7 @@ const WaterContainerManager: React.FC = () => {
                 <p className="font-semibold">
                   {c.name} -{' '}
                   {convertMlToSelectedUnit(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     parseFloat(c.volume as any),
                     c.unit
                   ).toFixed(2)}{' '}

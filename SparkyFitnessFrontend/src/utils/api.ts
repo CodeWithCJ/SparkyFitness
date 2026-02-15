@@ -31,6 +31,7 @@ export const get = async <T>(url: string): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const post = async <T>(url: string, body: any): Promise<T> => {
   const response = await fetch(url, {
     method: 'POST',
@@ -43,6 +44,7 @@ export const post = async <T>(url: string, body: any): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const put = async <T>(url: string, body: any): Promise<T> => {
   const response = await fetch(url, {
     method: 'PUT',

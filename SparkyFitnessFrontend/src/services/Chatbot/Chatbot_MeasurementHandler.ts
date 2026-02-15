@@ -9,6 +9,7 @@ import {
 import { apiCall } from '../api';
 
 // Function to upsert check-in measurements
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const upsertCheckInMeasurement = async (payload: any) => {
   try {
     const data = await apiCall('/measurements/check-in', {
@@ -33,6 +34,7 @@ const searchCustomCategory = async (name: string) => {
       }
     );
     return data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     // If it's a 404, it means no category is found, which is a valid scenario.
     // We return null in this case, and the calling function will handle it.
@@ -83,6 +85,7 @@ const insertCustomMeasurement = async (payload: {
 
 // Function to process measurement input
 export const processMeasurementInput = async (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any,
   entryDate: string | undefined,
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string,
@@ -119,6 +122,7 @@ export const processMeasurementInput = async (
       if (
         ['weight', 'neck', 'waist', 'hips', 'steps'].includes(measurementType)
       ) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updateData: any = {
           entry_date: dateToUse,
         };
@@ -127,6 +131,7 @@ export const processMeasurementInput = async (
         let upsertError = null;
         try {
           await upsertCheckInMeasurement(updateData);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
           upsertError = err;
         }
@@ -151,9 +156,11 @@ export const processMeasurementInput = async (
 
         let categoryId: string;
         let existingCategory = null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let categorySearchError: any = null;
         try {
           existingCategory = await searchCustomCategory(customMeasurementName);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
           categorySearchError = err;
         }
@@ -183,6 +190,7 @@ export const processMeasurementInput = async (
             `Custom category "${customMeasurementName}" not found, creating...`
           );
           let newCategory = null;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let categoryCreateError: any = null;
           try {
             newCategory = await createCustomCategory({
@@ -190,6 +198,7 @@ export const processMeasurementInput = async (
               frequency: 'Daily',
               measurement_type: 'numeric',
             });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (err: any) {
             categoryCreateError = err;
           }
@@ -208,6 +217,7 @@ export const processMeasurementInput = async (
 
         // Now insert the custom measurement entry
         const valueToLog = measurement.value ?? measurement.systolic;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let customEntryError: any = null;
 
         if (valueToLog === undefined || valueToLog === null) {
@@ -226,6 +236,7 @@ export const processMeasurementInput = async (
             value: valueToLog,
             entry_timestamp: new Date().toISOString(),
           });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
           customEntryError = err;
         }

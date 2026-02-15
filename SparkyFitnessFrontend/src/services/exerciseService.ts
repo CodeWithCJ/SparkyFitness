@@ -1,5 +1,5 @@
 import { apiCall } from './api';
-import type { Exercise as ExerciseInterface } from './exerciseSearchService';
+import { Exercise } from './exerciseSearchService';
 
 // Helper function to safely parse JSON strings that might be arrays
 export const parseJsonArray = (
@@ -51,10 +51,6 @@ export const parseJsonArray = (
   }
   return undefined;
 };
-
-export interface Exercise extends ExerciseInterface {
-  // No additional fields needed here, as ExerciseInterface is comprehensive
-}
 
 export interface ExerciseDeletionImpact {
   exerciseEntriesCount: number;
@@ -108,6 +104,7 @@ export const loadExercises = async (
     method: 'GET',
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsedExercises = response.exercises.map((exercise: any) => ({
     ...exercise,
     equipment: parseJsonArray(exercise.equipment),
@@ -240,6 +237,7 @@ export const importExercisesFromCSV = async (
   created: number;
   updated: number;
   failed: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   failedRows: any[];
 }> => {
   return apiCall('/exercises/import', {
