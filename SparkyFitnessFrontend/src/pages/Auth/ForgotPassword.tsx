@@ -9,10 +9,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { debug, info, error } from '@/utils/logging';
-import { requestPasswordReset } from '@/services/authService';
+import { debug, info } from '@/utils/logging';
+import { useRequestPasswordResetMutation } from '@/hooks/Auth/useAuth';
 
 const ForgotPassword = () => {
   const { loggingLevel } = usePreferences();
@@ -21,6 +20,8 @@ const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const { mutateAsync: requestPasswordReset } =
+    useRequestPasswordResetMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,22 +34,8 @@ const ForgotPassword = () => {
       setMessage(
         'If an account with that email exists, a password reset link has been sent.'
       );
-      toast({
-        title: 'Success',
-        description: 'Password reset email sent (if applicable).',
-      });
     } catch (err: any) {
-      error(
-        loggingLevel,
-        'ForgotPassword: Password reset request failed:',
-        err
-      );
       setMessage(err.message || 'An unexpected error occurred.');
-      toast({
-        title: 'Error',
-        description: err.message || 'Failed to send password reset email.',
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
     }
