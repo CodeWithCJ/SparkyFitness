@@ -142,58 +142,48 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
             </div>
           )}
           {/* Image Display Logic */}
-          <div className="mt-2">
-            <Dialog>
-              <DialogTrigger asChild>
-                <img
-                  src={
-                    exerciseEntry.image_url
-                      ? exerciseEntry.image_url
-                      : exerciseEntry.exercise_snapshot?.images &&
-                          exerciseEntry.exercise_snapshot.images.length > 0
-                        ? exerciseEntry.exercise_snapshot.source
-                          ? `/uploads/exercises/${exerciseEntry.exercise_snapshot.images[0]}`
-                          : exerciseEntry.exercise_snapshot.images[0]
-                        : ''
-                  }
-                  alt={exerciseEntry.exercise_snapshot?.name || 'Exercise'}
-                  className="w-16 h-16 object-cover rounded cursor-pointer"
-                  style={{
-                    display:
-                      exerciseEntry.image_url ||
-                      (exerciseEntry.exercise_snapshot?.images &&
-                        exerciseEntry.exercise_snapshot.images.length > 0)
-                        ? 'block'
-                        : 'none',
-                  }}
-                />
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl">
-                <DialogHeader>
-                  <DialogTitle>
-                    {exerciseEntry.exercise_snapshot?.name || 'Exercise Image'}
-                  </DialogTitle>
-                  <DialogDescription>
-                    Preview of the exercise image.
-                  </DialogDescription>
-                </DialogHeader>
-                <img
-                  src={
-                    exerciseEntry.image_url
-                      ? exerciseEntry.image_url
-                      : exerciseEntry.exercise_snapshot?.images &&
-                          exerciseEntry.exercise_snapshot.images.length > 0
-                        ? exerciseEntry.exercise_snapshot.source
-                          ? `/uploads/exercises/${exerciseEntry.exercise_snapshot.images[0]}`
-                          : exerciseEntry.exercise_snapshot.images[0]
-                        : ''
-                  }
-                  alt={exerciseEntry.exercise_snapshot?.name || 'Exercise'}
-                  className="w-full h-auto object-contain"
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
+          {(() => {
+            const imageUrl = exerciseEntry.image_url
+              ? exerciseEntry.image_url
+              : exerciseEntry.exercise_snapshot?.images &&
+                  exerciseEntry.exercise_snapshot.images.length > 0
+                ? exerciseEntry.exercise_snapshot.source
+                  ? `/uploads/exercises/${exerciseEntry.exercise_snapshot.images[0]}`
+                  : exerciseEntry.exercise_snapshot.images[0]
+                : null;
+
+            if (!imageUrl) return null;
+
+            return (
+              <div className="mt-2">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <img
+                      src={imageUrl}
+                      alt={exerciseEntry.exercise_snapshot?.name || 'Exercise'}
+                      className="w-16 h-16 object-cover rounded cursor-pointer"
+                    />
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {exerciseEntry.exercise_snapshot?.name ||
+                          'Exercise Image'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Preview of the exercise image.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <img
+                      src={imageUrl}
+                      alt={exerciseEntry.exercise_snapshot?.name || 'Exercise'}
+                      className="w-full h-auto object-contain"
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
+            );
+          })()}
         </div>
       </div>
       <div className="flex items-center space-x-1">

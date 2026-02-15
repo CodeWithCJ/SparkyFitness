@@ -136,7 +136,7 @@ const AddExerciseDialog = ({
         formData.append('images', file);
       });
 
-      await createExercise(formData);
+      const createdExercise = await createExercise(formData);
       toast({
         title: t('common.success', 'Success'),
         description: t(
@@ -144,21 +144,8 @@ const AddExerciseDialog = ({
           'Exercise added successfully'
         ),
       });
-      // Assuming the newly created exercise is returned by createExercise
-      // For now, we'll just pass a placeholder or refetch if necessary.
-      // A more robust solution would be to return the created exercise from createExercise.
-      onExerciseAdded(
-        {
-          id: 'temp-id',
-          name: newExerciseName,
-          category: newExerciseCategory,
-          calories_per_hour:
-            manualCaloriesPerHour !== undefined
-              ? manualCaloriesPerHour
-              : newExerciseCalories,
-        },
-        'custom'
-      );
+
+      onExerciseAdded(createdExercise, 'custom');
       onOpenChange(false);
       setNewExerciseName('');
       setNewExerciseCategory('general');
