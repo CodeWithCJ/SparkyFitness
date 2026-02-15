@@ -548,8 +548,14 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
     } catch (e) {
       console.error('Failed to sync goals', e);
     }
-    await submitOnboardingData(dataToSubmit);
-    onOnboardingComplete();
+    try {
+      await submitOnboardingData(dataToSubmit);
+      onOnboardingComplete();
+    } catch (error) {
+      // The mutation hook handles showing an error toast.
+      // We just need to reset the loading state if submission fails.
+      setIsSubmitting(false);
+    }
   };
 
   const handleMacroValueChange = (

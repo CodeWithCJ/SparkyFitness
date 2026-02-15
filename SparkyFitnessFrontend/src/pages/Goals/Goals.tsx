@@ -569,9 +569,12 @@ const GoalsSettings = () => {
       return;
     }
     setSaving(true);
-    await resetOnboardingStatus();
-    window.location.reload();
-    setSaving(false);
+    try {
+      await resetOnboardingStatus();
+      window.location.reload();
+    } catch {
+      setSaving(false);
+    }
   };
 
   const isMobile = useIsMobile();
