@@ -181,7 +181,8 @@ const SortableSetItem = React.memo(
               step="0.5"
               value={set.rpe ?? ''}
               onChange={(e) => {
-                const val = e.target.value === '' ? undefined : Number(e.target.value);
+                const val =
+                  e.target.value === '' ? undefined : Number(e.target.value);
                 handleSetChange(index, 'rpe', val);
               }}
               placeholder="1-10"

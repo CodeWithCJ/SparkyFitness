@@ -184,10 +184,7 @@ const SortableSetItem = React.memo(
               />
             </div>
             <div className="md:col-span-1">
-              <Label
-                htmlFor={`rpe-${setIndex}`}
-                className="flex items-center"
-              >
+              <Label htmlFor={`rpe-${setIndex}`} className="flex items-center">
                 <Activity
                   className="h-4 w-4 mr-1"
                   style={{ color: '#10b981' }}
@@ -202,7 +199,8 @@ const SortableSetItem = React.memo(
                 step="0.5"
                 value={set.rpe ?? ''}
                 onChange={(e) => {
-                  const val = e.target.value === '' ? undefined : Number(e.target.value);
+                  const val =
+                    e.target.value === '' ? undefined : Number(e.target.value);
                   handleSetChange(setIndex, 'rpe', val);
                 }}
                 placeholder="1-10"
