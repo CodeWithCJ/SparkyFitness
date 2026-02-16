@@ -111,10 +111,14 @@ export const logoutUser = async (): Promise<void> => {
   window.location.href = '/';
 };
 
-export const initiateOidcLogin = async (
-  providerId: string,
-  requestSignUp: boolean = false
-) => {
+export interface OidcLoginParams {
+  providerId: string;
+  requestSignUp?: boolean;
+}
+export const initiateOidcLogin = async ({
+  providerId,
+  requestSignUp = false,
+}: OidcLoginParams) => {
   await authClient.signIn.sso({
     providerId: providerId,
     callbackURL: window.location.origin,

@@ -98,13 +98,7 @@ export const useAuthSettings = () => {
 export const useInitiateOidcLoginMutation = () => {
   const { t } = useTranslation();
   return useMutation({
-    mutationFn: ({
-      providerId,
-      requestSignUp = false,
-    }: {
-      providerId: string;
-      requestSignUp?: boolean;
-    }) => initiateOidcLogin(providerId, requestSignUp),
+    mutationFn: initiateOidcLogin,
     meta: {
       // Kein Success-Message nötig, da Redirect erfolgt
       errorMessage: t('auth.oidcError', 'Failed to initiate provider login.'),
