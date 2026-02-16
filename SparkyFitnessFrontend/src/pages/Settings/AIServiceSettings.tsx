@@ -13,7 +13,17 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Bot, Plus, Trash2, Edit, Save, X } from 'lucide-react';
+import {
+  Bot,
+  Plus,
+  Trash2,
+  Edit,
+  Save,
+  X,
+  Globe,
+  User,
+  RotateCcw,
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -26,10 +36,21 @@ import {
   type AIService,
   type UserPreferences,
 } from '@/services/aiServiceSettingsService';
+import { globalSettingsService } from '@/api/Admin/globalSettingsService';
+import { useQuery } from '@tanstack/react-query';
 
 const AIServiceSettings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Check if user AI config is allowed
+  const { data: isUserConfigAllowed = true, isLoading: settingsLoading } = useQuery<boolean>({
+    queryKey: ['userAiConfigAllowed'],
+    queryFn: () => globalSettingsService.isUserAiConfigAllowed(),
+    retry: false,
+    staleTime: 60000, // Cache for 1 minute
+  });
+
   const [services, setServices] = useState<AIService[]>([]);
   const [preferences, setPreferences] = useState<UserPreferences>({
     auto_clear_history: 'never',
@@ -79,6 +100,96 @@ const AIServiceSettings = () => {
         description: error.message || 'Failed to load AI services',
         variant: 'destructive',
       });
+    }
+  };
+
+  // Check if user has overridden global settings
+  const hasUserOverride = () => {
+    return services.some((s) => !s.is_global && s.is_active);
+  };
+
+  // Get active global setting
+  const getActiveGlobalSetting = () => {
+    return services.find((s) => s.is_global && s.is_active);
+  };
+
+  // Handle override: create user-specific setting from global
+  const handleOverrideGlobal = async () => {
+    const globalSetting = getActiveGlobalSetting();
+    if (!globalSetting) {
+      toast({
+        title: 'Error',
+        description: 'No active global setting found to override',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Create a user-specific copy of the global setting
+      const overrideData = {
+        service_name: `${globalSetting.service_name} (My Override)`,
+        service_type: globalSetting.service_type,
+        api_key: '', // User will need to enter their own API key
+        custom_url: globalSetting.custom_url,
+        system_prompt: globalSetting.system_prompt || '',
+        is_active: true,
+        model_name: globalSetting.model_name || null,
+      };
+      await addAIService(overrideData);
+      toast({
+        title: 'Success',
+        description:
+          'Global settings overridden. You can now customize your own settings.',
+      });
+      loadServices();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('Error overriding global settings:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to override global settings',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle revert: delete all user-specific settings to use global
+  const handleRevertToGlobal = async () => {
+    if (
+      !confirm(
+        'Are you sure you want to delete all your custom AI service settings and use the global settings instead?'
+      )
+    ) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Delete all user-specific settings
+      const userSettings = services.filter((s) => !s.is_global);
+      for (const setting of userSettings) {
+        await deleteAIService(setting.id);
+      }
+      toast({
+        title: 'Success',
+        description:
+          'Reverted to global settings. Your custom settings have been deleted.',
+      });
+      loadServices();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('Error reverting to global settings:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to revert to global settings',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -402,7 +513,7 @@ const AIServiceSettings = () => {
                 }))
               }
             >
-              <SelectTrigger>
+              <SelectTrigger id="auto_clear_history">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -435,18 +546,72 @@ const AIServiceSettings = () => {
             Note: Not all AI models and services have been fully tested for all
             features. Please verify functionality after configuration.
           </p>
+          {!isUserConfigAllowed && (
+            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                  Per-user AI configuration is disabled
+                </span>
+              </div>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-2">
+                You can only use the global AI service settings configured by your administrator.
+                Contact your administrator if you need to configure a custom AI service.
+              </p>
+            </div>
+          )}
+          {isUserConfigAllowed && getActiveGlobalSetting() && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Using Global Setting:{' '}
+                    {getActiveGlobalSetting()?.service_name}
+                  </span>
+                </div>
+                {!hasUserOverride() && (
+                  <Button
+                    onClick={handleOverrideGlobal}
+                    variant="outline"
+                    size="sm"
+                    disabled={loading}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Override Global Settings
+                  </Button>
+                )}
+                {hasUserOverride() && (
+                  <Button
+                    onClick={handleRevertToGlobal}
+                    variant="outline"
+                    size="sm"
+                    disabled={loading}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Use Global Settings
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                {hasUserOverride()
+                  ? 'You have overridden the global settings with your own configuration.'
+                  : 'You are currently using the organization-wide global AI service settings. You can override these with your own settings if needed.'}
+              </p>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Add New Service Button */}
-          {!showAddForm && (
+          {/* Add New Service Button - Only show if user config is allowed */}
+          {isUserConfigAllowed && !showAddForm && (
             <Button onClick={() => setShowAddForm(true)} variant="outline">
               <Plus className="h-4 w-4 mr-2" />
               Add New AI Service
             </Button>
           )}
 
-          {/* Add New Service Form */}
-          {showAddForm && (
+          {/* Add New Service Form - Only show if user config is allowed */}
+          {isUserConfigAllowed && showAddForm && (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -484,7 +649,7 @@ const AIServiceSettings = () => {
                       }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="new_service_type">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -530,27 +695,27 @@ const AIServiceSettings = () => {
               {(newService.service_type === 'custom' ||
                 newService.service_type === 'ollama' ||
                 newService.service_type === 'openai_compatible') && (
-                <div>
-                  <Label htmlFor="new_custom_url">Custom URL</Label>
-                  <Input
-                    id="new_custom_url"
-                    value={newService.custom_url}
-                    onChange={(e) =>
-                      setNewService((prev) => ({
-                        ...prev,
-                        custom_url: e.target.value,
-                      }))
-                    }
-                    placeholder={
-                      newService.service_type === 'ollama'
-                        ? 'http://localhost:11434'
-                        : newService.service_type === 'openai_compatible'
-                          ? 'https://api.example.com/v1'
-                          : 'https://api.example.com/v1'
-                    }
-                  />
-                </div>
-              )}
+                  <div>
+                    <Label htmlFor="new_custom_url">Custom URL</Label>
+                    <Input
+                      id="new_custom_url"
+                      value={newService.custom_url}
+                      onChange={(e) =>
+                        setNewService((prev) => ({
+                          ...prev,
+                          custom_url: e.target.value,
+                        }))
+                      }
+                      placeholder={
+                        newService.service_type === 'ollama'
+                          ? 'http://localhost:11434'
+                          : newService.service_type === 'openai_compatible'
+                            ? 'https://api.example.com/v1'
+                            : 'https://api.example.com/v1'
+                      }
+                    />
+                  </div>
+                )}
 
               <div className="flex items-center space-x-2 mb-4">
                 <Switch
@@ -674,283 +839,331 @@ const AIServiceSettings = () => {
           {services.length > 0 && (
             <>
               <Separator />
-              <h3 className="text-lg font-medium">Configured Services</h3>
+              <h3 className="text-lg font-medium">
+                {isUserConfigAllowed ? 'Configured Services' : 'Available AI Services'}
+              </h3>
 
               <div className="space-y-4">
-                {services.map((service) => (
-                  <div key={service.id} className="border rounded-lg p-4">
-                    {editingService === service.id ? (
-                      // Edit Mode
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          handleUpdateService(service.id);
-                        }}
-                        className="space-y-4"
-                      >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label>Service Name</Label>
-                            <Input
-                              value={editData.service_name || ''}
-                              onChange={(e) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  service_name: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label>Service Type</Label>
-                            <Select
-                              value={editData.service_type || ''}
-                              onValueChange={(value) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  service_type: value,
-                                  model_name: '',
-                                }))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {getServiceTypes().map((type) => (
-                                  <SelectItem
-                                    key={type.value}
-                                    value={type.value}
-                                  >
-                                    {type.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>
-                            API Key{' '}
-                            {editData.service_type === 'ollama'
-                              ? '(Optional)'
-                              : ''}
-                          </Label>
-                          <Input
-                            type="password"
-                            value={editData.api_key || ''}
-                            onChange={(e) =>
-                              setEditData((prev) => ({
-                                ...prev,
-                                api_key: e.target.value,
-                              }))
-                            }
-                            placeholder={
-                              editData.service_type === 'ollama'
-                                ? 'Not required for Ollama'
-                                : 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-                            }
-                            autoComplete="off"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {editData.service_type === 'ollama'
-                              ? 'API key is optional for Ollama. If provided, it will be stored encrypted.'
-                              : 'Enter your API key if you wish to update it. It will be stored encrypted.'}
-                          </p>
-                        </div>
-
-                        {(editData.service_type === 'custom' ||
-                          editData.service_type === 'ollama' ||
-                          editData.service_type === 'openai_compatible') && (
-                          <div>
-                            <Label>Custom URL</Label>
-                            <Input
-                              value={editData.custom_url || ''}
-                              onChange={(e) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  custom_url: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                        )}
-
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Switch
-                            id="edit_use_custom_model"
-                            checked={editData.showCustomModelInput || false}
-                            onCheckedChange={(checked) =>
-                              setEditData((prev) => ({
-                                ...prev,
-                                showCustomModelInput: checked,
-                                model_name: '',
-                                custom_model_name: '',
-                              }))
-                            }
-                          />
-                          <Label htmlFor="edit_use_custom_model">
-                            Use Custom Model Name
-                          </Label>
-                        </div>
-
-                        {!editData.showCustomModelInput &&
-                          getModelOptions(editData.service_type || '').length >
-                            0 && (
+                {services
+                  .filter((service) => isUserConfigAllowed || service.is_global) // Only show global when disabled
+                  .map((service) => (
+                    <div key={service.id} className="border rounded-lg p-4">
+                      {editingService === service.id ? (
+                        // Edit Mode
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            handleUpdateService(service.id);
+                          }}
+                          className="space-y-4"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <Label>Model</Label>
+                              <Label htmlFor="edit_service_name">Service Name</Label>
+                              <Input
+                                id="edit_service_name"
+                                value={editData.service_name || ''}
+                                onChange={(e) =>
+                                  setEditData((prev) => ({
+                                    ...prev,
+                                    service_name: e.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="edit_service_type">Service Type</Label>
                               <Select
-                                value={editData.model_name || ''}
+                                value={editData.service_type || ''}
                                 onValueChange={(value) =>
                                   setEditData((prev) => ({
                                     ...prev,
-                                    model_name: value,
+                                    service_type: value,
+                                    model_name: '',
                                   }))
                                 }
                               >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a model" />
+                                <SelectTrigger id="edit_service_type">
+                                  <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {getModelOptions(
-                                    editData.service_type || ''
-                                  ).map((model) => (
-                                    <SelectItem key={model} value={model}>
-                                      {model}
+                                  {getServiceTypes().map((type) => (
+                                    <SelectItem
+                                      key={type.value}
+                                      value={type.value}
+                                    >
+                                      {type.label}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                             </div>
-                          )}
-                        {editData.showCustomModelInput && (
+                          </div>
+
                           <div>
-                            <Label>Custom Model Name</Label>
+                            <Label htmlFor="edit_api_key">
+                              API Key{' '}
+                              {editData.service_type === 'ollama'
+                                ? '(Optional)'
+                                : ''}
+                            </Label>
                             <Input
-                              value={editData.custom_model_name || ''}
+                              id="edit_api_key"
+                              type="password"
+                              value={editData.api_key || ''}
                               onChange={(e) =>
                                 setEditData((prev) => ({
                                   ...prev,
-                                  custom_model_name: e.target.value,
+                                  api_key: e.target.value,
                                 }))
                               }
-                              placeholder="Enter custom model name"
+                              placeholder={
+                                editData.service_type === 'ollama'
+                                  ? 'Not required for Ollama'
+                                  : 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+                              }
+                              autoComplete="off"
                             />
                             <p className="text-xs text-muted-foreground mt-1">
-                              Enter the exact name of your custom model.
+                              {editData.service_type === 'ollama'
+                                ? 'API key is optional for Ollama. If provided, it will be stored encrypted.'
+                                : 'Enter your API key if you wish to update it. It will be stored encrypted.'}
                             </p>
                           </div>
-                        )}
 
-                        <div>
-                          <Label>System Prompt (Additional Instructions)</Label>
-                          <Textarea
-                            value={editData.system_prompt || ''}
-                            onChange={(e) =>
-                              setEditData((prev) => ({
-                                ...prev,
-                                system_prompt: e.target.value,
-                              }))
-                            }
-                            placeholder="Additional instructions for the AI assistant..."
-                            rows={3}
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            These instructions will be added to the AI context
-                            in addition to project documentation
-                          </p>
-                        </div>
+                          {(editData.service_type === 'custom' ||
+                            editData.service_type === 'ollama' ||
+                            editData.service_type === 'openai_compatible') && (
+                              <div>
+                                <Label htmlFor="edit_custom_url">Custom URL</Label>
+                                <Input
+                                  id="edit_custom_url"
+                                  value={editData.custom_url || ''}
+                                  onChange={(e) =>
+                                    setEditData((prev) => ({
+                                      ...prev,
+                                      custom_url: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+                            )}
 
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={editData.is_active || false}
-                            onCheckedChange={(checked) =>
-                              setEditData((prev) => ({
-                                ...prev,
-                                is_active: checked,
-                              }))
-                            }
-                          />
-                          <Label>Active service</Label>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button type="submit" disabled={loading}>
-                            <Save className="h-4 w-4 mr-2" />
-                            Save Changes
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={cancelEditing}
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Cancel
-                          </Button>
-                        </div>
-                      </form>
-                    ) : (
-                      // View Mode
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-medium">
-                              {service.service_name}
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              {getServiceTypes().find(
-                                (t) => t.value === service.service_type
-                              )?.label || service.service_type}
-                              {service.model_name && ` - ${service.model_name}`}
-                              {service.custom_url && ` - ${service.custom_url}`}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center space-x-2 mb-4">
                             <Switch
-                              checked={service.is_active}
+                              id="edit_use_custom_model"
+                              checked={editData.showCustomModelInput || false}
                               onCheckedChange={(checked) =>
-                                handleToggleActive(service.id, checked)
+                                setEditData((prev) => ({
+                                  ...prev,
+                                  showCustomModelInput: checked,
+                                  model_name: '',
+                                  custom_model_name: '',
+                                }))
                               }
-                              disabled={loading}
                             />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => startEditing(service)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteService(service.id)}
-                              disabled={loading}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <Label htmlFor="edit_use_custom_model">
+                              Use Custom Model Name
+                            </Label>
                           </div>
-                        </div>
 
-                        {service.system_prompt && (
+                          {!editData.showCustomModelInput &&
+                            getModelOptions(editData.service_type || '').length >
+                            0 && (
+                              <div>
+                                <Label htmlFor="edit_model_name_select">Model</Label>
+                                <Select
+                                  value={editData.model_name || ''}
+                                  onValueChange={(value) =>
+                                    setEditData((prev) => ({
+                                      ...prev,
+                                      model_name: value,
+                                    }))
+                                  }
+                                >
+                                  <SelectTrigger id="edit_model_name_select">
+                                    <SelectValue placeholder="Select a model" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {getModelOptions(
+                                      editData.service_type || ''
+                                    ).map((model) => (
+                                      <SelectItem key={model} value={model}>
+                                        {model}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                          {editData.showCustomModelInput && (
+                            <div>
+                              <Label>Custom Model Name</Label>
+                              <Input
+                                value={editData.custom_model_name || ''}
+                                onChange={(e) =>
+                                  setEditData((prev) => ({
+                                    ...prev,
+                                    custom_model_name: e.target.value,
+                                  }))
+                                }
+                                placeholder="Enter custom model name"
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Enter the exact name of your custom model.
+                              </p>
+                            </div>
+                          )}
+
                           <div>
-                            <Label className="text-xs">System Prompt:</Label>
-                            <p className="text-sm text-muted-foreground mt-1 p-2 bg-muted rounded">
-                              {service.system_prompt}
+                            <Label htmlFor="edit_system_prompt">System Prompt (Additional Instructions)</Label>
+                            <Textarea
+                              id="edit_system_prompt"
+                              value={editData.system_prompt || ''}
+                              onChange={(e) =>
+                                setEditData((prev) => ({
+                                  ...prev,
+                                  system_prompt: e.target.value,
+                                }))
+                              }
+                              placeholder="Additional instructions for the AI assistant..."
+                              rows={3}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              These instructions will be added to the AI context
+                              in addition to project documentation
                             </p>
                           </div>
-                        )}
 
-                        {/* Removed display of API Key Env Var as it's no longer relevant for user-provided keys */}
-                        {/* {service.is_active && (
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              checked={editData.is_active || false}
+                              onCheckedChange={(checked) =>
+                                setEditData((prev) => ({
+                                  ...prev,
+                                  is_active: checked,
+                                }))
+                              }
+                            />
+                            <Label>Active service</Label>
+                          </div>
+                          {/* Added Label for new_service_type based on instruction, assuming it's for a new service form not present in this snippet */}
+                          {/* This placement is based on the provided "Code Edit" snippet in the instruction,
+                              which shows it after the is_active switch and before the buttons.
+                              If this label is intended for an "add new service" form, it should be placed there.
+                              As the instruction only provides a snippet and asks to add the label,
+                              I'm placing it where the snippet implies it should go relative to the surrounding elements. */}
+                          <Label htmlFor="new_service_type">Service Type</Label>
+
+                          <div className="flex gap-2">
+                            <Button type="submit" disabled={loading}>
+                              <Save className="h-4 w-4 mr-2" />
+                              Save Changes
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={cancelEditing}
+                            >
+                              <X className="h-4 w-4 mr-2" />
+                              Cancel
+                            </Button>
+                          </div>
+                        </form>
+                      ) : (
+                        // View Mode
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium">
+                                  {service.service_name}
+                                </h4>
+                                {service.is_global ? (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-xs flex items-center gap-1">
+                                    <Globe className="h-3 w-3" />
+                                    Global
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full text-xs flex items-center gap-1">
+                                    <User className="h-3 w-3" />
+                                    Your Setting
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {getServiceTypes().find(
+                                  (t) => t.value === service.service_type
+                                )?.label || service.service_type}
+                                {service.model_name && ` - ${service.model_name}`}
+                                {service.custom_url && ` - ${service.custom_url}`}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!service.is_global && isUserConfigAllowed && (
+                                <Switch
+                                  checked={service.is_active}
+                                  onCheckedChange={(checked) =>
+                                    handleToggleActive(service.id, checked)
+                                  }
+                                  disabled={loading}
+                                />
+                              )}
+                              {service.is_global && service.is_active && (
+                                <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full text-xs">
+                                  Active
+                                </span>
+                              )}
+                              {!service.is_global && isUserConfigAllowed && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => startEditing(service)}
+                                    aria-label="Edit Service"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleDeleteService(service.id)
+                                    }
+                                    disabled={loading}
+                                    aria-label="Delete Service"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                              {service.is_global && (
+                                <span className="text-xs text-muted-foreground">
+                                  Managed by administrator
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {service.system_prompt && (
+                            <div>
+                              <Label className="text-xs">System Prompt:</Label>
+                              <p className="text-sm text-muted-foreground mt-1 p-2 bg-muted rounded">
+                                {service.system_prompt}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Removed display of API Key Env Var as it's no longer relevant for user-provided keys */}
+                          {/* {service.is_active && (
                             <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
                               Active
                             </span>
                           )} */}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
               </div>
             </>
           )}
@@ -959,9 +1172,16 @@ const AIServiceSettings = () => {
             <div className="text-center py-8 text-muted-foreground">
               <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No AI services configured yet.</p>
-              <p className="text-sm">
-                Add your first AI service to get started with Sparky.
-              </p>
+              {isUserConfigAllowed && (
+                <p className="text-sm">
+                  Add your first AI service to get started with Sparky.
+                </p>
+              )}
+              {!isUserConfigAllowed && (
+                <p className="text-sm">
+                  Please contact your administrator to configure an AI service.
+                </p>
+              )}
             </div>
           )}
         </CardContent>
