@@ -39,6 +39,8 @@ interface MealTotals {
   sodium?: number;
   cholesterol?: number;
   saturated_fat?: number;
+  monounsaturated_fat?: number;
+  polyunsaturated_fat?: number;
   trans_fat?: number;
   potassium?: number;
   vitamin_a?: number;
@@ -159,6 +161,8 @@ const MealCard = ({
     'sodium',
     'cholesterol',
     'saturated_fat',
+    'monounsaturated_fat',
+    'polyunsaturated_fat',
     'trans_fat',
     'potassium',
     'vitamin_a',
@@ -225,6 +229,8 @@ const MealCard = ({
     sodium: { color: 'text-purple-500', label: 'sodium', unit: 'mg' },
     cholesterol: { color: 'text-indigo-500', label: 'cholesterol', unit: 'mg' },
     saturated_fat: { color: 'text-red-500', label: 'sat fat', unit: 'g' },
+    monounsaturated_fat: { color: 'text-emerald-500', label: 'mono fat', unit: 'g' },
+    polyunsaturated_fat: { color: 'text-lime-500', label: 'poly fat', unit: 'g' },
     trans_fat: { color: 'text-red-700', label: 'trans fat', unit: 'g' },
     potassium: { color: 'text-teal-500', label: 'potassium', unit: 'mg' },
     vitamin_a: { color: 'text-yellow-400', label: 'vit a', unit: 'mcg' },
@@ -432,7 +438,10 @@ const MealCard = ({
                           )}
                       </div>
                       <div
-                        className={`grid grid-cols-${visibleNutrientsForGrid.length} gap-x-4 text-xs sm:text-sm mt-2`}
+                        className="grid gap-x-4 gap-y-2 text-xs sm:text-sm mt-2 w-full"
+                        style={{
+                          gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '60px' : '80px'}, 1fr))`,
+                        }}
                       >
                         {visibleNutrientsForGrid.map((nutrient) => {
                           const details = nutrientDetails[nutrient];
@@ -444,7 +453,7 @@ const MealCard = ({
                             entryNutrition.custom_nutrients?.[nutrient] ??
                             0;
                           return (
-                            <div key={nutrient} className="text-center">
+                            <div key={nutrient} className="text-center min-w-[60px]">
                               <div className={`font-medium ${details.color}`}>
                                 {typeof value === 'number'
                                   ? nutrient === 'calories'
@@ -512,7 +521,10 @@ const MealCard = ({
                   {meal.name} Total:
                 </span>
                 <div
-                  className={`grid grid-cols-${visibleNutrientsForGrid.length} justify-end gap-x-4 text-xs sm:text-sm`}
+                  className="grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-[35%] sm:ml-auto"
+                  style={{
+                    gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '40px' : '60px'}, 1fr))`,
+                  }}
                 >
                   {visibleNutrientsForGrid.map((nutrient) => {
                     const details = nutrientDetails[nutrient];
@@ -523,7 +535,7 @@ const MealCard = ({
                         ? val
                         : totals.custom_nutrients?.[nutrient]) ?? 0;
                     return (
-                      <div key={nutrient} className="text-center">
+                      <div key={nutrient} className="text-center min-w-[40px]">
                         <div className={`font-bold ${details.color}`}>
                           {typeof value === 'number'
                             ? nutrient === 'calories'

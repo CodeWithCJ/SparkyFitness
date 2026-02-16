@@ -56,6 +56,8 @@ interface MealTotals {
   sodium: number;
   cholesterol: number;
   saturated_fat: number;
+  monounsaturated_fat: number;
+  polyunsaturated_fat: number;
   trans_fat: number;
   potassium: number;
   vitamin_a: number;
@@ -105,6 +107,8 @@ const Diary = () => {
     sodium: 0,
     cholesterol: 0,
     saturated_fat: 0,
+    monounsaturated_fat: 0,
+    polyunsaturated_fat: 0,
     trans_fat: 0,
     potassium: 0,
     vitamin_a: 0,
@@ -217,6 +221,8 @@ const Diary = () => {
             sodium: meal.sodium || 0,
             cholesterol: meal.cholesterol || 0,
             saturated_fat: meal.saturated_fat || 0,
+            monounsaturated_fat: meal.monounsaturated_fat || 0,
+            polyunsaturated_fat: meal.polyunsaturated_fat || 0,
             trans_fat: meal.trans_fat || 0,
             potassium: meal.potassium || 0,
             vitamin_a: meal.vitamin_a || 0,
@@ -266,6 +272,8 @@ const Diary = () => {
           sodium: 0,
           cholesterol: 0,
           saturated_fat: 0,
+          monounsaturated_fat: 0,
+          polyunsaturated_fat: 0,
           trans_fat: 0,
           potassium: 0,
           vitamin_a: 0,
@@ -378,6 +386,8 @@ const Diary = () => {
           sodium: item.sodium || 0,
           cholesterol: item.cholesterol || 0,
           saturated_fat: item.saturated_fat || 0,
+          monounsaturated_fat: item.monounsaturated_fat || 0,
+          polyunsaturated_fat: item.polyunsaturated_fat || 0,
           trans_fat: item.trans_fat || 0,
           potassium: item.potassium || 0,
           vitamin_a: item.vitamin_a || 0,
@@ -606,6 +616,8 @@ const Diary = () => {
           sodium: 0,
           cholesterol: 0,
           saturated_fat: 0,
+          monounsaturated_fat: 0,
+          polyunsaturated_fat: 0,
           trans_fat: 0,
           potassium: 0,
           vitamin_a: 0,

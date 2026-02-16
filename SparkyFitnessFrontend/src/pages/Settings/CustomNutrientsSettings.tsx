@@ -31,8 +31,10 @@ import {
   useDeleteCustomNutrientMutation,
   useUpdateCustomNutrientMutation,
 } from '@/hooks/Foods/useCustomNutrients';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 const CustomNutrientsSettings: React.FC = () => {
+  const { loadNutrientDisplayPreferences } = usePreferences();
   const [newNutrientName, setNewNutrientName] = useState('');
   const [newNutrientUnit, setNewNutrientUnit] = useState('');
   const [editingNutrient, setEditingNutrient] =
@@ -60,6 +62,7 @@ const CustomNutrientsSettings: React.FC = () => {
       name: newNutrientName,
       unit: newNutrientUnit,
     });
+    await loadNutrientDisplayPreferences();
     setNewNutrientName('');
     setNewNutrientUnit('');
   };

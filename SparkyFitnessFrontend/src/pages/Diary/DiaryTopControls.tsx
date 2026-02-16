@@ -65,15 +65,15 @@ const DiaryTopControls = ({
       : t('common.kJUnit', 'kJ');
   };
   const { t } = useTranslation();
-  const goalPreferences = nutrientDisplayPreferences.find(
-    (p) => p.view_group === 'goal' && p.platform === platform
+  const summaryPreferences = nutrientDisplayPreferences.find(
+    (p) => p.view_group === 'summary' && p.platform === platform
   );
 
   const visibleNutrients = useMemo(() => {
-    return goalPreferences
-      ? goalPreferences.visible_nutrients
+    return summaryPreferences
+      ? summaryPreferences.visible_nutrients
       : Object.keys(DEFAULT_GOALS);
-  }, [goalPreferences]);
+  }, [summaryPreferences]);
 
   const nutrientDetails: {
     [key: string]: { color: string; label: string; unit: string };
@@ -121,6 +121,16 @@ const DiaryTopControls = ({
     saturated_fat: {
       color: 'bg-red-500',
       label: t('diary.nutrientLabels.satFat', 'sat fat'),
+      unit: 'g',
+    },
+    monounsaturated_fat: {
+      color: 'bg-emerald-500',
+      label: t('diary.nutrientLabels.monoFat', 'mono fat'),
+      unit: 'g',
+    },
+    polyunsaturated_fat: {
+      color: 'bg-lime-500',
+      label: t('diary.nutrientLabels.polyFat', 'poly fat'),
       unit: 'g',
     },
     trans_fat: {
@@ -187,7 +197,12 @@ const DiaryTopControls = ({
             </div>
           </CardHeader>
           <CardContent className="pb-4">
-            <div className={`grid grid-cols-3 lg:grid-cols-5 gap-3`}>
+            <div
+              className="grid gap-x-4 gap-y-6"
+              style={{
+                gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '80px' : '120px'}, 1fr))`,
+              }}
+            >
               {visibleNutrients.map((nutrient) => {
                 let details = nutrientDetails[nutrient];
 
