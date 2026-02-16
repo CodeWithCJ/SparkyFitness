@@ -1025,7 +1025,7 @@ const EnhancedFoodSearch = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex sm:flex-row flex-col gap-2 ">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2">
         {!hideDatabaseTab && (
           <Button
             variant={activeTab === 'database' ? 'default' : 'outline'}
