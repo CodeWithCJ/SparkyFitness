@@ -99,7 +99,10 @@ const Auth = () => {
             // Safety timeout to catch any late-arriving sessions
             const timer = setTimeout(() => {
               if (!authUser) {
-                initiateOidcLogin(providers[0].id, providers[0].auto_register);
+                initiateOidcLogin({
+                  providerId: providers[0].id,
+                  requestSignUp: providers[0].auto_register,
+                });
               }
             }, 800);
             return () => clearTimeout(timer);
@@ -610,10 +613,10 @@ const Auth = () => {
                             variant="outline"
                             className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
                             onClick={() =>
-                              initiateOidcLogin(
-                                provider.id,
-                                provider.auto_register
-                              )
+                              initiateOidcLogin({
+                                providerId: provider.id,
+                                requestSignUp: provider.auto_register,
+                              })
                             }
                           >
                             {provider.logo_url && (
@@ -713,7 +716,9 @@ const Auth = () => {
                         key={provider.id}
                         variant="outline"
                         className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
-                        onClick={() => initiateOidcLogin(provider.id)}
+                        onClick={() =>
+                          initiateOidcLogin({ providerId: provider.id })
+                        }
                       >
                         {provider.logo_url && (
                           <img
