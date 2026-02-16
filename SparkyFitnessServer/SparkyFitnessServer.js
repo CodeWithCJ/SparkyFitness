@@ -65,6 +65,7 @@ const withingsService = require('./integrations/withings/withingsService'); // I
 const garminConnectService = require('./integrations/garminconnect/garminConnectService'); // Import garminConnectService
 const garminService = require('./services/garminService'); // Import garminService
 const fitbitService = require('./services/fitbitService'); // Import fitbitService
+const { syncEnvToDatabase } = require('./services/aiConfigService'); // Import AI config sync service
 const mealTypeRoutes = require("./routes/mealTypeRoutes");
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
@@ -418,6 +419,22 @@ applyMigrations()
       const userRepository = require("./models/userRepository");
       const adminUser = await userRepository.findUserByEmail(process.env.SPARKY_FITNESS_ADMIN_EMAIL);
       if (adminUser) await userRepository.updateUserRole(adminUser.id, "admin");
+    }
+
+    // Sync AI service configuration from environment variables to database if enabled
+    const shouldSyncEnvToDb = process.env.SPARKY_FITNESS_AI_SYNC_ENV_TO_DB === 'true' || process.env.SPARKY_FITNESS_AI_SYNC_ENV_TO_DB === '1';
+    if (shouldSyncEnvToDb) {
+      try {
+        const result = await syncEnvToDatabase();
+        if (result) {
+          log('info', 'AI service configuration synced from environment variables to database on startup');
+        } else {
+          log('info', 'No valid AI service configuration found in environment variables, skipping sync');
+        }
+      } catch (error) {
+        log('error', 'Error syncing AI service configuration from environment variables on startup:', error);
+        // Don't fail server startup if sync fails, just log the error
+      }
     }
 
     app.listen(PORT, () => {
