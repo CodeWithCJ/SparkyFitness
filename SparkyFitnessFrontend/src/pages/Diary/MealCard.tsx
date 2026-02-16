@@ -229,8 +229,16 @@ const MealCard = ({
     sodium: { color: 'text-purple-500', label: 'sodium', unit: 'mg' },
     cholesterol: { color: 'text-indigo-500', label: 'cholesterol', unit: 'mg' },
     saturated_fat: { color: 'text-red-500', label: 'sat fat', unit: 'g' },
-    monounsaturated_fat: { color: 'text-emerald-500', label: 'mono fat', unit: 'g' },
-    polyunsaturated_fat: { color: 'text-lime-500', label: 'poly fat', unit: 'g' },
+    monounsaturated_fat: {
+      color: 'text-emerald-500',
+      label: 'mono fat',
+      unit: 'g',
+    },
+    polyunsaturated_fat: {
+      color: 'text-lime-500',
+      label: 'poly fat',
+      unit: 'g',
+    },
     trans_fat: { color: 'text-red-700', label: 'trans fat', unit: 'g' },
     potassium: { color: 'text-teal-500', label: 'potassium', unit: 'mg' },
     vitamin_a: { color: 'text-yellow-400', label: 'vit a', unit: 'mcg' },
@@ -453,7 +461,10 @@ const MealCard = ({
                             entryNutrition.custom_nutrients?.[nutrient] ??
                             0;
                           return (
-                            <div key={nutrient} className="text-center min-w-[60px]">
+                            <div
+                              key={nutrient}
+                              className="text-center min-w-[60px]"
+                            >
                               <div className={`font-medium ${details.color}`}>
                                 {typeof value === 'number'
                                   ? nutrient === 'calories'
