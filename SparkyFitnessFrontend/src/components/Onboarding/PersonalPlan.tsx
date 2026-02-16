@@ -22,6 +22,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import type { ExpandedGoals } from '@/types/goals';
+import type { UserCustomNutrient } from '@/types/customNutrient';
 import { DIET_TEMPLATES, getDietTemplate } from '@/constants/dietTemplates';
 import {
   FatBreakdownAlgorithm,
@@ -92,6 +93,7 @@ interface PersonalPlanProps {
   setLocalSugarAlgorithm: (algo: SugarCalculationAlgorithm) => void;
   handleSubmit: () => void;
   isSubmitting: boolean;
+  customNutrients?: UserCustomNutrient[];
 }
 
 const PersonalPlan: React.FC<PersonalPlanProps> = ({
@@ -123,6 +125,7 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
   setLocalSugarAlgorithm,
   handleSubmit,
   isSubmitting,
+  customNutrients,
 }) => {
   const memoizedInitialPercentages = useMemo(
     () => ({
@@ -282,7 +285,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
         <div className="text-6xl font-extrabold text-green-500 flex justify-center">
           <Input
             type="number"
-            value={editedPlan?.calories ?? ''}
+            step={1}
+            value={editedPlan?.calories ? editedPlan.calories.toFixed(0) : ''}
             onChange={(e) =>
               setEditedPlan((prev) =>
                 prev ? { ...prev, calories: Number(e.target.value) } : null
@@ -421,7 +425,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
-                        value={Math.round(customPercentages.carbs)}
+                        step={1}
+                        value={Math.round(customPercentages.carbs).toFixed(0)}
                         onChange={(e) =>
                           handleMacroValueChange(
                             'carbs',
@@ -473,7 +478,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
-                        value={Math.round(customPercentages.protein)}
+                        step={1}
+                        value={Math.round(customPercentages.protein).toFixed(0)}
                         onChange={(e) =>
                           handleMacroValueChange(
                             'protein',
@@ -522,7 +528,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
-                        value={Math.round(customPercentages.fat)}
+                        step={1}
+                        value={Math.round(customPercentages.fat).toFixed(0)}
                         onChange={(e) =>
                           handleMacroValueChange(
                             'fat',
@@ -715,7 +722,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.carbs ?? ''}
+                      step={0.1}
+                      value={(editedPlan?.carbs ?? 0).toFixed(1)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -749,7 +757,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.protein ?? ''}
+                      step={0.1}
+                      value={(editedPlan?.protein ?? 0).toFixed(1)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -783,7 +792,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.fat ?? ''}
+                      step={0.1}
+                      value={(editedPlan?.fat ?? 0).toFixed(1)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev ? { ...prev, fat: Number(e.target.value) } : null
@@ -803,7 +813,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.dietary_fiber ?? ''}
+                      step={0.1}
+                      value={(editedPlan?.dietary_fiber ?? 0).toFixed(1)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -836,7 +847,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.saturated_fat ?? ''}
+                      step={0.1}
+                      value={(editedPlan?.saturated_fat ?? 0).toFixed(1)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -858,7 +870,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.trans_fat ?? ''}
+                      step={0.1}
+                      value={(editedPlan?.trans_fat ?? 0).toFixed(1)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -880,7 +893,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.polyunsaturated_fat ?? ''}
+                      step={0.1}
+                      value={(editedPlan?.polyunsaturated_fat ?? 0).toFixed(1)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -905,7 +919,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.monounsaturated_fat ?? ''}
+                      step={0.1}
+                      value={(editedPlan?.monounsaturated_fat ?? 0).toFixed(1)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -941,7 +956,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.cholesterol ?? ''}
+                      step={1}
+                      value={(editedPlan?.cholesterol ?? 0).toFixed(0)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -963,7 +979,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.sodium ?? ''}
+                      step={1}
+                      value={(editedPlan?.sodium ?? 0).toFixed(0)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -985,7 +1002,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.potassium ?? ''}
+                      step={1}
+                      value={(editedPlan?.potassium ?? 0).toFixed(0)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -1007,7 +1025,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.calcium ?? ''}
+                      step={1}
+                      value={(editedPlan?.calcium ?? 0).toFixed(0)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -1029,7 +1048,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.iron ?? ''}
+                      step={0.1}
+                      value={(editedPlan?.iron ?? 0).toFixed(1)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -1062,7 +1082,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.sugars ?? ''}
+                      step={0.1}
+                      value={(editedPlan?.sugars ?? 0).toFixed(1)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -1084,7 +1105,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.vitamin_a ?? ''}
+                      step={1}
+                      value={(editedPlan?.vitamin_a ?? 0).toFixed(0)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -1106,7 +1128,8 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
-                      value={editedPlan?.vitamin_c ?? ''}
+                      step={0.1}
+                      value={(editedPlan?.vitamin_c ?? 0).toFixed(1)}
                       onChange={(e) =>
                         setEditedPlan((prev) =>
                           prev
@@ -1124,7 +1147,48 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
           </Table>
         </div>
 
-        {/* 5. Hydration & Exercise */}
+        {/* 5. Custom Nutrients (Conditionally Rendered) */}
+        {customNutrients && customNutrients.length > 0 && (
+          <div className="bg-[#1c1c1e] rounded-2xl overflow-hidden border border-gray-800">
+            <div className="bg-[#2c2c2e] px-4 py-3 border-b border-gray-800">
+              <h3 className="text-white font-bold text-sm">Custom Nutrients</h3>
+            </div>
+            <Table>
+              <TableBody>
+                {customNutrients.map((cn) => (
+                  <TableRow
+                    key={cn.id}
+                    className="border-gray-800 hover:bg-transparent"
+                  >
+                    <TableCell className="font-medium text-gray-300 text-sm">
+                      {cn.name}
+                    </TableCell>
+                    <TableCell className="text-right text-white font-bold">
+                      <div className="flex items-center justify-end gap-1">
+                        <Input
+                          type="number"
+                          step={0.1}
+                          value={(editedPlan?.[cn.name] ?? 0).toFixed(1)}
+                          onChange={(e) =>
+                            setEditedPlan((prev) =>
+                              prev
+                                ? { ...prev, [cn.name]: Number(e.target.value) }
+                                : null
+                            )
+                          }
+                          className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                        />
+                        <span className="text-sm">{cn.unit}</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {/* 6. Hydration & Exercise */}
         <div className="bg-[#1c1c1e] rounded-2xl overflow-hidden border border-gray-800">
           <div className="bg-[#2c2c2e] px-4 py-3 border-b border-gray-800">
             <h3 className="text-white font-bold text-sm">
@@ -1152,12 +1216,13 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <Input
                       type="number"
+                      step={0.1}
                       value={
                         editedPlan?.water_goal_ml
                           ? convertMlToSelectedUnit(
                               editedPlan.water_goal_ml,
                               localWaterUnit
-                            )
+                            ).toFixed(1)
                           : ''
                       }
                       onChange={(e) => {

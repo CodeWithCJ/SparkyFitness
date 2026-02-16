@@ -45,6 +45,11 @@ interface DiaryTopControlsProps {
   customNutrients?: UserCustomNutrient[]; // Add customNutrients prop
 }
 
+import {
+  getNutrientMetadata,
+  formatNutrientValue,
+} from '@/utils/nutrientUtils';
+
 const DiaryTopControls = ({
   selectedDate,
   dayTotals = { calories: 0, protein: 0, carbs: 0, fat: 0, dietary_fiber: 0 },
@@ -74,96 +79,6 @@ const DiaryTopControls = ({
       ? summaryPreferences.visible_nutrients
       : Object.keys(DEFAULT_GOALS);
   }, [summaryPreferences]);
-
-  const nutrientDetails: {
-    [key: string]: { color: string; label: string; unit: string };
-  } = {
-    calories: {
-      color: 'bg-green-500',
-      label: getEnergyUnitString(energyUnit),
-      unit: '',
-    },
-    protein: {
-      color: 'bg-blue-500',
-      label: t('diary.nutrientLabels.protein', 'protein'),
-      unit: 'g',
-    },
-    carbs: {
-      color: 'bg-orange-500',
-      label: t('diary.nutrientLabels.carbs', 'carbs'),
-      unit: 'g',
-    },
-    fat: {
-      color: 'bg-yellow-500',
-      label: t('diary.nutrientLabels.fat', 'fat'),
-      unit: 'g',
-    },
-    dietary_fiber: {
-      color: 'bg-green-600',
-      label: t('diary.nutrientLabels.fiber', 'fiber'),
-      unit: 'g',
-    },
-    sugars: {
-      color: 'bg-pink-500',
-      label: t('diary.nutrientLabels.sugar', 'sugar'),
-      unit: 'g',
-    },
-    sodium: {
-      color: 'bg-purple-500',
-      label: t('diary.nutrientLabels.sodium', 'sodium'),
-      unit: 'mg',
-    },
-    cholesterol: {
-      color: 'bg-indigo-500',
-      label: t('diary.nutrientLabels.cholesterol', 'cholesterol'),
-      unit: 'mg',
-    },
-    saturated_fat: {
-      color: 'bg-red-500',
-      label: t('diary.nutrientLabels.satFat', 'sat fat'),
-      unit: 'g',
-    },
-    monounsaturated_fat: {
-      color: 'bg-emerald-500',
-      label: t('diary.nutrientLabels.monoFat', 'mono fat'),
-      unit: 'g',
-    },
-    polyunsaturated_fat: {
-      color: 'bg-lime-500',
-      label: t('diary.nutrientLabels.polyFat', 'poly fat'),
-      unit: 'g',
-    },
-    trans_fat: {
-      color: 'bg-red-700',
-      label: t('diary.nutrientLabels.transFat', 'trans fat'),
-      unit: 'g',
-    },
-    potassium: {
-      color: 'bg-teal-500',
-      label: t('diary.nutrientLabels.potassium', 'potassium'),
-      unit: 'mg',
-    },
-    vitamin_a: {
-      color: 'bg-yellow-400',
-      label: t('diary.nutrientLabels.vitA', 'vit a'),
-      unit: 'mcg',
-    },
-    vitamin_c: {
-      color: 'bg-orange-400',
-      label: t('diary.nutrientLabels.vitC', 'vit c'),
-      unit: 'mg',
-    },
-    iron: {
-      color: 'bg-gray-500',
-      label: t('diary.nutrientLabels.iron', 'iron'),
-      unit: 'mg',
-    },
-    calcium: {
-      color: 'bg-blue-400',
-      label: t('diary.nutrientLabels.calcium', 'calcium'),
-      unit: 'mg',
-    },
-  };
 
   debug(loggingLevel, 'DiaryTopControls component rendered.', {
     selectedDate,
@@ -204,36 +119,34 @@ const DiaryTopControls = ({
               }}
             >
               {visibleNutrients.map((nutrient) => {
-                let details = nutrientDetails[nutrient];
+                const metadata = getNutrientMetadata(nutrient, customNutrients);
+                const total = dayTotals[nutrient as keyof DayTotals] || 0;
+                const goal = goals[nutrient as keyof Goals] || 0;
 
-                // If standard details missing, check custom nutrients
-                if (!details && customNutrients) {
-                  const customNutrient = customNutrients.find(
-                    (cn) => cn.name === nutrient
-                  );
-                  if (customNutrient) {
-                    details = {
-                      color: 'bg-indigo-400', // Default color for custom nutrients
-                      label: customNutrient.name,
-                      unit: customNutrient.unit,
-                    };
-                  }
-                }
-
-                if (!details) return null;
-
-                const total = dayTotals[nutrient as keyof DayTotals] || 0; // This is kcal
-                const goal = goals[nutrient as keyof Goals] || 0; // This is kcal
-
-                // Convert to display unit for rendering
-                const displayedTotal =
+                const displayTotal =
                   nutrient === 'calories'
-                    ? convertEnergy(total, 'kcal', energyUnit)
-                    : total;
-                const displayedGoal =
+                    ? Math.round(
+                        convertEnergy(total, 'kcal', energyUnit)
+                      ).toString()
+                    : formatNutrientValue(nutrient, total, customNutrients);
+
+                const displayGoal =
                   nutrient === 'calories'
-                    ? convertEnergy(goal, 'kcal', energyUnit)
-                    : goal;
+                    ? Math.round(
+                        convertEnergy(goal, 'kcal', energyUnit)
+                      ).toString()
+                    : formatNutrientValue(nutrient, goal, customNutrients);
+
+                const unit =
+                  nutrient === 'calories'
+                    ? getEnergyUnitString(energyUnit)
+                    : metadata.unit;
+
+                const label = t(metadata.label, metadata.defaultLabel);
+                const colorClass = metadata.color;
+                const barColor = metadata.color
+                  .replace('text-', 'bg-')
+                  .split(' ')[0]; // Use first bg color
 
                 const percentage =
                   goal > 0 ? Math.min((total / goal) * 100, 100) : 0;
@@ -241,24 +154,18 @@ const DiaryTopControls = ({
                 return (
                   <div key={nutrient} className="text-center">
                     <div
-                      className={`text-lg sm:text-xl font-bold text-${details.color.split('-')[1]}-600`}
+                      className={`text-lg sm:text-xl font-bold ${colorClass}`}
                     >
-                      {displayedTotal.toFixed(nutrient === 'calories' ? 0 : 1)}
-                      {nutrient === 'calories'
-                        ? getEnergyUnitString(energyUnit)
-                        : details.unit}
+                      {displayTotal}
+                      {unit}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {t('diary.of', 'of')}{' '}
-                      {displayedGoal.toFixed(nutrient === 'calories' ? 0 : 1)}
-                      {nutrient === 'calories'
-                        ? getEnergyUnitString(energyUnit)
-                        : details.unit}{' '}
-                      {details.label}
+                      {t('diary.of', 'of')} {displayGoal}
+                      {unit} {label}
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                       <div
-                        className={`${details.color} h-1.5 rounded-full`}
+                        className={`${barColor} h-1.5 rounded-full`}
                         style={{ width: `${percentage}%` }}
                       />
                     </div>

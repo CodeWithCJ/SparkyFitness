@@ -31,103 +31,10 @@ export const DEFAULT_GOALS: ExpandedGoals = {
   snacks_percentage: 25,
 };
 
+import { CENTRAL_NUTRIENT_CONFIG } from './nutrients';
+
 export const NUTRIENT_CONFIG = [
-  {
-    id: 'protein',
-    label: 'goals.goalsSettings.protein',
-    default: 'Protein (g)',
-    group: 'macros',
-  },
-  {
-    id: 'carbs',
-    label: 'goals.goalsSettings.carbohydrates',
-    default: 'Carbohydrates (g)',
-    group: 'macros',
-  },
-  {
-    id: 'fat',
-    label: 'goals.goalsSettings.fat',
-    default: 'Fat (g)',
-    group: 'macros',
-  },
-  {
-    id: 'saturated_fat',
-    label: 'goals.goalsSettings.saturatedFat',
-    default: 'Saturated Fat (g)',
-    group: 'fats',
-  },
-  {
-    id: 'polyunsaturated_fat',
-    label: 'goals.goalsSettings.polyunsaturatedFat',
-    default: 'Polyunsaturated Fat (g)',
-    group: 'fats',
-  },
-  {
-    id: 'monounsaturated_fat',
-    label: 'goals.goalsSettings.monounsaturatedFat',
-    default: 'Monounsaturated Fat (g)',
-    group: 'fats',
-  },
-  {
-    id: 'trans_fat',
-    label: 'goals.goalsSettings.transFat',
-    default: 'Trans Fat (g)',
-    group: 'fats',
-  },
-  {
-    id: 'cholesterol',
-    label: 'goals.goalsSettings.cholesterol',
-    default: 'Cholesterol (mg)',
-    group: 'minerals',
-  },
-  {
-    id: 'sodium',
-    label: 'goals.goalsSettings.sodium',
-    default: 'Sodium (mg)',
-    group: 'minerals',
-  },
-  {
-    id: 'potassium',
-    label: 'goals.goalsSettings.potassium',
-    default: 'Potassium (mg)',
-    group: 'minerals',
-  },
-  {
-    id: 'dietary_fiber',
-    label: 'goals.goalsSettings.dietaryFiber',
-    default: 'Dietary Fiber (g)',
-    group: 'minerals',
-  },
-  {
-    id: 'sugars',
-    label: 'goals.goalsSettings.sugars',
-    default: 'Sugars (g)',
-    group: 'minerals',
-  },
-  {
-    id: 'vitamin_a',
-    label: 'goals.goalsSettings.vitaminA',
-    default: 'Vitamin A (mcg)',
-    group: 'minerals',
-  },
-  {
-    id: 'vitamin_c',
-    label: 'goals.goalsSettings.vitaminC',
-    default: 'Vitamin C (mg)',
-    group: 'minerals',
-  },
-  {
-    id: 'calcium',
-    label: 'goals.goalsSettings.calcium',
-    default: 'Calcium (mg)',
-    group: 'minerals',
-  },
-  {
-    id: 'iron',
-    label: 'goals.goalsSettings.iron',
-    default: 'Iron (mg)',
-    group: 'minerals',
-  },
+  ...Object.values(CENTRAL_NUTRIENT_CONFIG).filter((n) => n.id !== 'calories'),
 ];
 
 export const DEFAULT_PLAN: Partial<WeeklyGoalPlan> = {

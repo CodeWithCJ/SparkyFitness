@@ -229,7 +229,8 @@ const Diary = () => {
             vitamin_c: meal.vitamin_c || 0,
             iron: meal.iron || 0,
             calcium: meal.calcium || 0,
-            custom_nutrients: {}, // Placeholder for meals
+            custom_nutrients:
+              (meal.custom_nutrients as Record<string, number>) || {},
           },
           meal_type: meal.meal_type,
         });
@@ -394,7 +395,8 @@ const Diary = () => {
           vitamin_c: item.vitamin_c || 0,
           iron: item.iron || 0,
           calcium: item.calcium || 0,
-          custom_nutrients: {}, // Meals don't support custom nutrients yet in this view
+          custom_nutrients:
+            (item.custom_nutrients as Record<string, number>) || {},
         };
       } else {
         // It's a FoodEntry

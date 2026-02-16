@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCallback, useMemo } from 'react';
 import { ExpandedGoals } from '@/types/goals';
 import { WaterAndExerciseFields } from './WaterAndExerciseFields';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 interface DailyGoalsProps {
   goals: ExpandedGoals;
   setGoals: React.Dispatch<React.SetStateAction<ExpandedGoals>>;
@@ -30,6 +31,7 @@ export const DailyGoals = ({
   const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { data: customNutrients } = useCustomNutrients();
 
   const memoizedGoalsPercentages = useMemo(
     () => ({
@@ -100,16 +102,17 @@ export const DailyGoals = ({
               <div className="space-y-1.5">
                 <Label htmlFor="calories">
                   {t(
-                    'goals.goalsSettings.calories',
+                    'nutrition.calories',
                     `Calories (${getEnergyUnitString(energyUnit)})`
                   )}
                 </Label>
                 <Input
                   id="calories"
                   type="number"
+                  step={1}
                   value={Math.round(
                     convertEnergy(goals.calories, 'kcal', energyUnit)
-                  )}
+                  ).toFixed(0)}
                   onChange={(e) =>
                     setGoals({
                       ...goals,
@@ -126,12 +129,26 @@ export const DailyGoals = ({
             {NUTRIENT_CONFIG.map((f) => (
               <NutrientInput
                 key={f.id}
-                field={f}
+                nutrientId={f.id}
                 state={goals}
                 setState={setGoals}
                 visibleNutrients={visibleNutrients}
+                customNutrients={customNutrients}
               />
             ))}
+            {/* Custom Nutrients */}
+            {customNutrients?.map((cn) => {
+              return (
+                <NutrientInput
+                  key={cn.id}
+                  nutrientId={cn.name}
+                  state={goals}
+                  setState={setGoals}
+                  visibleNutrients={visibleNutrients}
+                  customNutrients={customNutrients}
+                />
+              );
+            })}
           </div>
           <Separator className="my-5" />
           <WaterAndExerciseFields

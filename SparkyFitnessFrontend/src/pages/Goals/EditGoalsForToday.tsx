@@ -33,6 +33,8 @@ import { DEFAULT_GOALS, NUTRIENT_CONFIG } from '@/constants/goals';
 import { NutrientInput } from '@/pages/Goals/NutrientInput';
 import { WaterAndExerciseFields } from '@/pages/Goals/WaterAndExerciseFields';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import type { UserCustomNutrient } from '@/types/customNutrient';
 
 interface EditGoalsProps {
   selectedDate: string;
@@ -57,11 +59,13 @@ const EditGoalsForm = ({
   initialData,
   onSave,
   isSaving,
+  customNutrients,
 }: {
   initialData: ExpandedGoals;
   selectedDate: string;
   onSave: (goals: ExpandedGoals, clear?: boolean) => Promise<void>;
   isSaving: boolean;
+  customNutrients: UserCustomNutrient[];
 }) => {
   const {
     energyUnit,
@@ -90,10 +94,23 @@ const EditGoalsForm = ({
   );
 
   const visibleNutrients = useMemo(() => {
-    return goalPreferences
+    const base = goalPreferences
       ? goalPreferences.visible_nutrients
       : Object.keys(DEFAULT_GOALS);
-  }, [goalPreferences]);
+
+    // In the goal editor, we should ensure the newly fixed fats are always visible
+    // if they are in DEFAULT_GOALS, even if the user hasn't toggled them yet.
+    const mustInclude = [
+      'saturated_fat',
+      'polyunsaturated_fat',
+      'monounsaturated_fat',
+      'trans_fat',
+    ];
+    const merged = Array.from(new Set([...base, ...mustInclude]));
+
+    // Also include custom nutrients in the visibility list so they aren't filtered out by NutrientInput
+    return [...merged, ...customNutrients.map((cn) => cn.name)];
+  }, [goalPreferences, customNutrients]);
 
   const currentMacroTotal = useMemo(() => {
     if (macroInputType === 'grams') return 100;
@@ -157,10 +174,12 @@ const EditGoalsForm = ({
         <div className="space-y-1.5">
           <Label>Calories ({getEnergyUnitString(energyUnit)})</Label>
           <Input
+            id="calories"
             type="number"
+            step={1}
             value={Math.round(
               convertEnergy(goals.calories, 'kcal', energyUnit)
-            )}
+            ).toFixed(0)}
             onChange={(e) =>
               setGoals((prev) => ({
                 ...prev,
@@ -204,10 +223,13 @@ const EditGoalsForm = ({
             </Label>
             <Input
               type="number"
+              step={0.1}
               value={
                 macroInputType === 'grams'
-                  ? (goals[m] ?? '')
-                  : (goals[`${m}_percentage` as keyof ExpandedGoals] ?? '')
+                  ? (goals[m] ?? 0).toFixed(1)
+                  : (
+                      goals[`${m}_percentage` as keyof ExpandedGoals] ?? 0
+                    ).toFixed(1)
               }
               onChange={(e) => {
                 const val = Number(e.target.value);
@@ -264,12 +286,27 @@ const EditGoalsForm = ({
         ).map((f) => (
           <NutrientInput
             key={f.id}
-            field={f}
+            nutrientId={f.id}
             state={goals}
             setState={(val) => setGoals(val)}
             visibleNutrients={visibleNutrients}
+            customNutrients={customNutrients}
           />
         ))}
+
+        {/* Custom Nutrients */}
+        {customNutrients?.map((cn) => {
+          return (
+            <NutrientInput
+              key={cn.id}
+              nutrientId={cn.name}
+              state={goals}
+              setState={(val) => setGoals(val)}
+              visibleNutrients={visibleNutrients}
+              customNutrients={customNutrients}
+            />
+          );
+        })}
       </div>
 
       <Separator />
@@ -321,6 +358,7 @@ const EditGoalsForToday = ({
 
   const { data: serverGoals, isLoading } = useDailyGoals(selectedDate);
   const { mutateAsync: saveGoals, isPending: saving } = useSaveGoalsMutation();
+  const { data: customNutrients = [] } = useCustomNutrients();
 
   const handleSave = async (goalsToSave: ExpandedGoals, clear = false) => {
     if (!user) return;
@@ -377,6 +415,7 @@ const EditGoalsForToday = ({
               selectedDate={selectedDate}
               onSave={handleSave}
               isSaving={saving}
+              customNutrients={customNutrients}
             />
           )
         )}

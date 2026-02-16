@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Target } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,8 @@ import { GoalPresetsSection } from './GoalPresetsSection';
 import { DailyGoals } from './DailyGoals';
 import { ResetOnboarding } from './ResetOnboarding';
 import { GoalPresetDialog } from './GoalPresetDialog';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import { DEFAULT_GOALS } from '@/constants/goals';
 
 export const GoalsContent = ({
   today,
@@ -42,6 +44,7 @@ export const GoalsContent = ({
   useState<WeeklyGoalPlan | null>(null);
 
   const { data: goalPresets = [] } = useGoalPresets();
+  const { data: customNutrients = [] } = useCustomNutrients();
 
   // --- Goal Presets Mutations ---
   const { mutateAsync: deleteGoalPreset } = useDeletePresetMutation();
@@ -114,9 +117,25 @@ export const GoalsContent = ({
   const goalPreferences = nutrientDisplayPreferences.find(
     (p) => p.view_group === 'goal' && p.platform === platform
   );
-  const visibleNutrients = goalPreferences
-    ? goalPreferences.visible_nutrients
-    : Object.keys(goals);
+
+  const visibleNutrients = useMemo(() => {
+    const base = goalPreferences
+      ? goalPreferences.visible_nutrients
+      : Object.keys(DEFAULT_GOALS);
+
+    // In the goal editor, we should ensure the newly fixed fats are always visible
+    // if they are in DEFAULT_GOALS, even if the user hasn't toggled them yet.
+    const mustInclude = [
+      'saturated_fat',
+      'polyunsaturated_fat',
+      'monounsaturated_fat',
+      'trans_fat',
+    ];
+    const merged = Array.from(new Set([...base, ...mustInclude]));
+
+    // Also include custom nutrients in the visibility list so they aren't filtered out by NutrientInput
+    return [...merged, ...customNutrients.map((cn) => cn.name)];
+  }, [goalPreferences, customNutrients]);
 
   return (
     <div className="space-y-6">

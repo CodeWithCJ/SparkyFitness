@@ -55,6 +55,10 @@ import {
   useToggleFoodPublicMutation,
 } from '@/hooks/Foods/useFoods';
 import { useQueryClient } from '@tanstack/react-query';
+import {
+  getNutrientMetadata,
+  formatNutrientValue,
+} from '@/utils/nutrientUtils';
 
 const FoodDatabaseManager: React.FC = () => {
   const { t } = useTranslation();
@@ -73,31 +77,6 @@ const FoodDatabaseManager: React.FC = () => {
     return unit === 'kcal'
       ? t('common.kcalUnit', 'kcal')
       : t('common.kJUnit', 'kJ');
-  };
-
-  const nutrientDetails: {
-    [key: string]: { color: string; label: string; unit: string };
-  } = {
-    calories: {
-      color: 'text-gray-900 dark:text-gray-100',
-      label: getEnergyUnitString(),
-      unit: '',
-    },
-    protein: { color: 'text-blue-600', label: 'protein', unit: 'g' },
-    carbs: { color: 'text-orange-600', label: 'carbs', unit: 'g' },
-    fat: { color: 'text-yellow-600', label: 'fat', unit: 'g' },
-    dietary_fiber: { color: 'text-green-600', label: 'fiber', unit: 'g' },
-    sugar: { color: 'text-pink-500', label: 'sugar', unit: 'g' },
-    sodium: { color: 'text-purple-500', label: 'sodium', unit: 'mg' },
-    cholesterol: { color: 'text-indigo-500', label: 'cholesterol', unit: 'mg' },
-    saturated_fat: { color: 'text-red-500', label: 'sat fat', unit: 'g' },
-    trans_fat: { color: 'text-red-700', label: 'trans fat', unit: 'g' },
-    potassium: { color: 'text-teal-500', label: 'potassium', unit: 'mg' },
-    vitamin_a: { color: 'text-yellow-400', label: 'vit a', unit: 'mcg' },
-    vitamin_c: { color: 'text-orange-400', label: 'vit c', unit: 'mg' },
-    iron: { color: 'text-gray-500', label: 'iron', unit: 'mg' },
-    calcium: { color: 'text-blue-400', label: 'calcium', unit: 'mg' },
-    glycemic_index: { color: 'text-purple-600', label: 'GI', unit: '' },
   };
 
   const quickInfoPreferences =
@@ -435,16 +414,18 @@ const FoodDatabaseManager: React.FC = () => {
                   {foodData.foods.map((food) => (
                     <div
                       key={food.id}
-                      className="flex flex-col p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-3"
+                      className="flex flex-col p-2 bg-gray-50 dark:bg-gray-800 rounded-lg gap-2"
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span className="font-medium">{food.name}</span>
+                            <span className="font-medium text-base">
+                              {food.name}
+                            </span>
                             {food.brand && (
                               <Badge
                                 variant="secondary"
-                                className="text-xs w-fit"
+                                className="text-xs w-fit h-5 px-1.5"
                               >
                                 {food.brand}
                               </Badge>
@@ -453,7 +434,7 @@ const FoodDatabaseManager: React.FC = () => {
                             {food.shared_with_public && (
                               <Badge
                                 variant="outline"
-                                className="text-xs w-fit bg-green-50 text-green-700"
+                                className="text-xs w-fit bg-green-50 text-green-700 h-5 px-1.5"
                               >
                                 <Share2 className="h-3 w-3 mr-1" />
                                 {t('foodDatabaseManager.public', 'Public')}
@@ -462,7 +443,7 @@ const FoodDatabaseManager: React.FC = () => {
                           </div>
                         </div>
                         {/* Action Buttons */}
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-0.5 shrink-0">
                           {/* Share/Lock Button */}
                           <TooltipProvider>
                             <Tooltip>
@@ -470,6 +451,7 @@ const FoodDatabaseManager: React.FC = () => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  className="h-7 w-7 p-0"
                                   onClick={() =>
                                     togglePublicSharing({
                                       foodId: food.id,
@@ -514,6 +496,7 @@ const FoodDatabaseManager: React.FC = () => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  className="h-7 w-7 p-0"
                                   onClick={() => handleEdit(food)}
                                   disabled={!canEdit(food)} // Disable if not editable
                                 >
@@ -543,6 +526,7 @@ const FoodDatabaseManager: React.FC = () => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  className="h-7 w-7 p-0"
                                   onClick={() => handleDeleteRequest(food)}
                                   disabled={!canEdit(food)} // Disable if not editable
                                 >
@@ -565,7 +549,7 @@ const FoodDatabaseManager: React.FC = () => {
                             </Tooltip>
                           </TooltipProvider>
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 ml-2 mt-1">
                           {t('foodDatabaseManager.perServing', {
                             servingSize:
                               food.default_variant?.serving_size || 0,
@@ -575,38 +559,40 @@ const FoodDatabaseManager: React.FC = () => {
                           })}
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-2">
+                      <div className="mt-1">
+                        <div
+                          className="grid gap-y-1 gap-x-2 text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5"
+                          style={{
+                            gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '60px' : '70px'}, 1fr))`,
+                          }}
+                        >
                           {visibleNutrients.map((nutrient) => {
-                            const details = nutrientDetails[nutrient];
-                            if (!details) return null;
+                            const meta = getNutrientMetadata(nutrient);
                             const value =
                               (food.default_variant?.[
                                 nutrient as keyof FoodVariant
-                              ] as number) || 0; // This value is in kcal
+                              ] as number) ||
+                              (food.default_variant?.custom_nutrients?.[
+                                nutrient
+                              ] as number) ||
+                              0;
+
                             return (
-                              <div key={nutrient} className="whitespace-nowrap">
+                              <div key={nutrient} className="flex flex-col">
                                 <span
-                                  className={`font-medium ${details.color}`}
+                                  className={`font-medium text-sm ${meta.color}`}
                                 >
-                                  {typeof value === 'number'
-                                    ? nutrient === 'calories'
-                                      ? Math.round(
-                                          convertEnergy(
-                                            value,
-                                            'kcal',
-                                            energyUnit
-                                          )
-                                        )
-                                      : value.toFixed(
-                                          nutrient === 'calories' ? 0 : 1
-                                        )
-                                    : value}
-                                  {nutrient === 'calories'
-                                    ? getEnergyUnitString(energyUnit)
-                                    : details.unit}
-                                </span>{' '}
-                                {details.label}
+                                  {formatNutrientValue(nutrient, value, [])}
+                                  <span className="text-xs ml-0.5 text-gray-500">
+                                    {meta.unit}
+                                  </span>
+                                </span>
+                                <span
+                                  className="text-xs text-gray-500 truncate"
+                                  title={t(meta.label, meta.defaultLabel)}
+                                >
+                                  {t(meta.label, meta.defaultLabel)}
+                                </span>
                               </div>
                             );
                           })}

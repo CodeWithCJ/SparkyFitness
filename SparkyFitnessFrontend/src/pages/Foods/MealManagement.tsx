@@ -43,6 +43,10 @@ import {
 } from '@/hooks/Foods/useMeals';
 import { useQueryClient } from '@tanstack/react-query';
 import { mealKeys } from '@/api/keys/meals';
+import {
+  getNutrientMetadata,
+  formatNutrientValue,
+} from '@/utils/nutrientUtils';
 
 // This component is now a standalone library for managing meal templates.
 // Interactions with the meal plan calendar are handled by the calendar itself.
@@ -62,6 +66,27 @@ const MealManagement: React.FC = () => {
     useState<MealDeletionImpact | null>(null);
   const [mealToDelete, setMealToDelete] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const platform = isMobile ? 'mobile' : 'desktop';
+  const { nutrientDisplayPreferences, energyUnit, convertEnergy } =
+    usePreferences();
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal'
+      ? t('common.kcalUnit', 'kcal')
+      : t('common.kJUnit', 'kJ');
+  };
+
+  const quickInfoPreferences =
+    nutrientDisplayPreferences.find(
+      (p) => p.view_group === 'quick_info' && p.platform === platform
+    ) ||
+    nutrientDisplayPreferences.find(
+      (p) => p.view_group === 'quick_info' && p.platform === 'desktop'
+    );
+
+  const visibleNutrients = quickInfoPreferences
+    ? quickInfoPreferences.visible_nutrients
+    : ['calories', 'protein', 'carbs', 'fat'];
 
   const { data: meals } = useMeals(filter);
   const { mutateAsync: deleteMeal } = useDeleteMealMutation();
@@ -262,18 +287,21 @@ const MealManagement: React.FC = () => {
             <div className="space-y-4">
               {filteredMeals.map((meal) => (
                 <Card key={meal.id}>
-                  <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <h3 className="text-lg font-semibold">
+                  <CardContent className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold truncate">
                         {meal.name}
                         {meal.is_public && (
-                          <Badge variant="secondary" className="ml-2">
+                          <Badge
+                            variant="secondary"
+                            className="ml-2 h-5 px-1.5 text-xs"
+                          >
                             <Share2 className="h-3 w-3 mr-1" />
                             {t('mealManagement.public', 'Public')}
                           </Badge>
                         )}
                       </h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground truncate">
                         {meal.description ||
                           t('mealManagement.noDescription', {
                             defaultValue: 'No description',
@@ -281,50 +309,92 @@ const MealManagement: React.FC = () => {
                       </p>
 
                       {/* Nutrition Display */}
-                      <div className="flex flex-wrap gap-x-5 mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        {(() => {
-                          let totalCalories = 0,
-                            totalProtein = 0,
-                            totalCarbs = 0,
-                            totalFat = 0;
-                          if (meal.foods) {
-                            meal.foods.forEach((f) => {
-                              const scale = f.quantity / (f.serving_size || 1);
-                              totalCalories += (f.calories || 0) * scale;
-                              totalProtein += (f.protein || 0) * scale;
-                              totalCarbs += (f.carbs || 0) * scale;
-                              totalFat += (f.fat || 0) * scale;
+                      <div className="mt-1">
+                        <div
+                          className="grid gap-y-1 gap-x-2 text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5"
+                          style={{
+                            gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '60px' : '70px'}, 1fr))`,
+                          }}
+                        >
+                          {(() => {
+                            // Calculate totals for all visible nutrients
+                            const nutrientTotals: Record<string, number> = {};
+
+                            if (meal.foods) {
+                              meal.foods.forEach((f) => {
+                                const scale =
+                                  f.quantity / (f.serving_size || 1);
+
+                                visibleNutrients.forEach((nutrient) => {
+                                  // Handle calories separately or as a standard nutrient
+                                  // Check standard properties first
+                                  let val = 0;
+                                  if (
+                                    nutrient in f &&
+                                    typeof f[nutrient as keyof typeof f] ===
+                                      'number'
+                                  ) {
+                                    val = f[
+                                      nutrient as keyof typeof f
+                                    ] as number;
+                                  } else if (
+                                    f.custom_nutrients &&
+                                    nutrient in f.custom_nutrients
+                                  ) {
+                                    // Check custom nutrients
+                                    const customVal =
+                                      f.custom_nutrients[nutrient];
+                                    val =
+                                      typeof customVal === 'number'
+                                        ? customVal
+                                        : Number(customVal) || 0;
+                                  }
+
+                                  nutrientTotals[nutrient] =
+                                    (nutrientTotals[nutrient] || 0) +
+                                    val * scale;
+                                });
+                              });
+                            }
+
+                            return visibleNutrients.map((key) => {
+                              const meta = getNutrientMetadata(key);
+                              const rawVal = nutrientTotals[key] || 0;
+                              const val =
+                                key === 'calories'
+                                  ? Math.round(
+                                      convertEnergy(rawVal, 'kcal', energyUnit)
+                                    )
+                                  : rawVal;
+
+                              const unit =
+                                key === 'calories'
+                                  ? getEnergyUnitString(energyUnit)
+                                  : meta.unit;
+
+                              return (
+                                <div key={key} className="flex flex-col">
+                                  <span
+                                    className={`font-medium text-sm ${meta.color}`}
+                                  >
+                                    {key === 'calories'
+                                      ? val
+                                      : formatNutrientValue(key, val, [])}
+                                    <span className="text-xs ml-0.5 text-gray-500">
+                                      {unit}
+                                    </span>
+                                  </span>
+                                  <span
+                                    className="text-xs text-gray-500 truncate"
+                                    title={t(meta.label, meta.defaultLabel)}
+                                  >
+                                    {t(meta.label, meta.defaultLabel)}
+                                  </span>
+                                </div>
+                              );
                             });
-                          }
-                          return (
-                            <>
-                              <div className="whitespace-nowrap">
-                                <span className="font-medium text-gray-900 dark:text-gray-100">
-                                  {Math.round(totalCalories)}
-                                </span>{' '}
-                                kcal
-                              </div>
-                              <div className="whitespace-nowrap">
-                                <span className="font-medium text-blue-600">
-                                  {totalProtein.toFixed(1)}g
-                                </span>{' '}
-                                protein
-                              </div>
-                              <div className="whitespace-nowrap">
-                                <span className="font-medium text-orange-600">
-                                  {totalCarbs.toFixed(1)}g
-                                </span>{' '}
-                                carbs
-                              </div>
-                              <div className="whitespace-nowrap">
-                                <span className="font-medium text-yellow-600">
-                                  {totalFat.toFixed(1)}g
-                                </span>{' '}
-                                fat
-                              </div>
-                            </>
-                          );
-                        })()}
+                          })()}
+                        </div>
                       </div>
                     </div>
                     <div className="flex space-x-2">

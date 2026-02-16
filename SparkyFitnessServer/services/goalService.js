@@ -1,29 +1,57 @@
-const goalRepository = require('../models/goalRepository');
-const weeklyGoalPlanRepository = require('../models/weeklyGoalPlanRepository');
-const goalPresetRepository = require('../models/goalPresetRepository');
-const { log } = require('../config/logging');
-const { format, getDay } = require('date-fns');
+const goalRepository = require("../models/goalRepository");
+const weeklyGoalPlanRepository = require("../models/weeklyGoalPlanRepository");
+const goalPresetRepository = require("../models/goalPresetRepository");
+const { log } = require("../config/logging");
+const { format, getDay } = require("date-fns");
 
 // Helper function to calculate grams from percentages
-function calculateGramsFromPercentages(calories, protein_percentage, carbs_percentage, fat_percentage) {
-  const protein_grams = calories * (protein_percentage / 100) / 4;
-  const carbs_grams = calories * (carbs_percentage / 100) / 4;
-  const fat_grams = calories * (fat_percentage / 100) / 9;
+function calculateGramsFromPercentages(
+  calories,
+  protein_percentage,
+  carbs_percentage,
+  fat_percentage,
+) {
+  const protein_grams = (calories * (protein_percentage / 100)) / 4;
+  const carbs_grams = (calories * (carbs_percentage / 100)) / 4;
+  const fat_grams = (calories * (fat_percentage / 100)) / 9;
   return { protein_grams, carbs_grams, fat_grams };
 }
 
 async function getUserGoals(targetUserId, selectedDate) {
   try {
     if (!targetUserId) {
-      log('error', 'getUserGoals: targetUserId is undefined. Returning default goals.');
+      log(
+        "error",
+        "getUserGoals: targetUserId is undefined. Returning default goals.",
+      );
       return {
-        calories: 2000, protein: 150, carbs: 250, fat: 67, water_goal_ml: 1920, // Default 8 glasses * 240ml
-        saturated_fat: 20, polyunsaturated_fat: 10, monounsaturated_fat: 25, trans_fat: 0,
-        cholesterol: 300, sodium: 2300, potassium: 3500, dietary_fiber: 25, sugars: 50,
-        vitamin_a: 900, vitamin_c: 90, calcium: 1000, iron: 18,
-        target_exercise_calories_burned: 0, target_exercise_duration_minutes: 0,
-        protein_percentage: null, carbs_percentage: null, fat_percentage: null,
-        breakfast_percentage: 25, lunch_percentage: 25, dinner_percentage: 25, snacks_percentage: 25
+        calories: 2000,
+        protein: 150,
+        carbs: 250,
+        fat: 67,
+        water_goal_ml: 1920, // Default 8 glasses * 240ml
+        saturated_fat: 20,
+        polyunsaturated_fat: 10,
+        monounsaturated_fat: 25,
+        trans_fat: 0,
+        cholesterol: 300,
+        sodium: 2300,
+        potassium: 3500,
+        dietary_fiber: 25,
+        sugars: 50,
+        vitamin_a: 900,
+        vitamin_c: 90,
+        calcium: 1000,
+        iron: 18,
+        target_exercise_calories_burned: 0,
+        target_exercise_duration_minutes: 0,
+        protein_percentage: null,
+        carbs_percentage: null,
+        fat_percentage: null,
+        breakfast_percentage: 25,
+        lunch_percentage: 25,
+        dinner_percentage: 25,
+        snacks_percentage: 25,
       };
     }
 
@@ -31,52 +59,101 @@ async function getUserGoals(targetUserId, selectedDate) {
 
     if (!goals) {
       // Check active weekly plan
-      const activeWeeklyPlan = await weeklyGoalPlanRepository.getActiveWeeklyGoalPlan(targetUserId, selectedDate);
+      const activeWeeklyPlan =
+        await weeklyGoalPlanRepository.getActiveWeeklyGoalPlan(
+          targetUserId,
+          selectedDate,
+        );
       if (activeWeeklyPlan) {
         const dayOfWeek = getDay(new Date(selectedDate)); // Sunday is 0, Monday is 1, etc.
         let presetId;
         switch (dayOfWeek) {
-          case 0: presetId = activeWeeklyPlan.sunday_preset_id; break;
-          case 1: presetId = activeWeeklyPlan.monday_preset_id; break;
-          case 2: presetId = activeWeeklyPlan.tuesday_preset_id; break;
-          case 3: presetId = activeWeeklyPlan.wednesday_preset_id; break;
-          case 4: presetId = activeWeeklyPlan.thursday_preset_id; break;
-          case 5: presetId = activeWeeklyPlan.friday_preset_id; break;
-          case 6: presetId = activeWeeklyPlan.saturday_preset_id; break;
+          case 0:
+            presetId = activeWeeklyPlan.sunday_preset_id;
+            break;
+          case 1:
+            presetId = activeWeeklyPlan.monday_preset_id;
+            break;
+          case 2:
+            presetId = activeWeeklyPlan.tuesday_preset_id;
+            break;
+          case 3:
+            presetId = activeWeeklyPlan.wednesday_preset_id;
+            break;
+          case 4:
+            presetId = activeWeeklyPlan.thursday_preset_id;
+            break;
+          case 5:
+            presetId = activeWeeklyPlan.friday_preset_id;
+            break;
+          case 6:
+            presetId = activeWeeklyPlan.saturday_preset_id;
+            break;
         }
 
         if (presetId) {
-          goals = await goalPresetRepository.getGoalPresetById(presetId, targetUserId);
+          goals = await goalPresetRepository.getGoalPresetById(
+            presetId,
+            targetUserId,
+          );
         }
       }
     }
 
     if (!goals) {
       // Fallback to most recent goal before date (which includes default goal if goal_date is NULL)
-      goals = await goalRepository.getMostRecentGoalBeforeDate(targetUserId, selectedDate);
+      goals = await goalRepository.getMostRecentGoalBeforeDate(
+        targetUserId,
+        selectedDate,
+      );
     }
 
     // If still no goals, return hardcoded defaults
     if (!goals) {
       goals = {
-        calories: 2000, protein: 150, carbs: 250, fat: 67, water_goal_ml: 1920, // Default 8 glasses * 240ml
-        saturated_fat: 20, polyunsaturated_fat: 10, monounsaturated_fat: 25, trans_fat: 0,
-        cholesterol: 300, sodium: 2300, potassium: 3500, dietary_fiber: 25, sugars: 50,
-        vitamin_a: 900, vitamin_c: 90, calcium: 1000, iron: 18,
-        target_exercise_calories_burned: 0, target_exercise_duration_minutes: 0,
-        protein_percentage: null, carbs_percentage: null, fat_percentage: null,
-        breakfast_percentage: 25, lunch_percentage: 25, dinner_percentage: 25, snacks_percentage: 25
+        calories: 2000,
+        protein: 150,
+        carbs: 250,
+        fat: 67,
+        water_goal_ml: 1920, // Default 8 glasses * 240ml
+        saturated_fat: 20,
+        polyunsaturated_fat: 10,
+        monounsaturated_fat: 25,
+        trans_fat: 0,
+        cholesterol: 300,
+        sodium: 2300,
+        potassium: 3500,
+        dietary_fiber: 25,
+        sugars: 50,
+        vitamin_a: 900,
+        vitamin_c: 90,
+        calcium: 1000,
+        iron: 18,
+        target_exercise_calories_burned: 0,
+        target_exercise_duration_minutes: 0,
+        protein_percentage: null,
+        carbs_percentage: null,
+        fat_percentage: null,
+        breakfast_percentage: 25,
+        lunch_percentage: 25,
+        dinner_percentage: 25,
+        snacks_percentage: 25,
       };
     }
 
     // If percentages are set, calculate absolute grams for return
-    if (goals.protein_percentage !== null && goals.carbs_percentage !== null && goals.fat_percentage !== null) {
-      const { protein_grams, carbs_grams, fat_grams } = calculateGramsFromPercentages(
-        goals.calories,
-        goals.protein_percentage,
-        goals.carbs_percentage,
-        goals.fat_percentage
-      );
+    if (
+      goals.protein_percentage !== null &&
+      goals.carbs_percentage !== null &&
+      goals.fat_percentage !== null
+    ) {
+      const { protein_grams, carbs_grams, fat_grams } =
+        calculateGramsFromPercentages(
+          goals.calories,
+          goals.protein_percentage,
+          goals.carbs_percentage,
+          goals.fat_percentage,
+        );
       goals.protein = protein_grams;
       goals.carbs = carbs_grams;
       goals.fat = fat_grams;
@@ -84,7 +161,11 @@ async function getUserGoals(targetUserId, selectedDate) {
 
     return goals;
   } catch (error) {
-    log('error', `Error fetching goals for user ${targetUserId} on ${selectedDate}:`, error);
+    log(
+      "error",
+      `Error fetching goals for user ${targetUserId} on ${selectedDate}:`,
+      error,
+    );
     throw error;
   }
 }
@@ -92,53 +173,100 @@ async function getUserGoals(targetUserId, selectedDate) {
 async function manageGoalTimeline(authenticatedUserId, goalData) {
   try {
     const {
-      p_start_date, p_cascade, p_calories, p_protein, p_carbs, p_fat, p_water_goal_ml,
-      p_saturated_fat, p_polyunsaturated_fat, p_monounsaturated_fat, p_trans_fat,
-      p_cholesterol, p_sodium, p_potassium, p_dietary_fiber, p_sugars,
-      p_vitamin_a, p_vitamin_c, p_calcium, p_iron,
-      p_target_exercise_calories_burned, p_target_exercise_duration_minutes,
-      p_protein_percentage, p_carbs_percentage, p_fat_percentage,
-      p_breakfast_percentage, p_lunch_percentage, p_dinner_percentage, p_snacks_percentage
+      p_start_date,
+      p_cascade,
+      p_calories,
+      p_protein,
+      p_carbs,
+      p_fat,
+      p_water_goal_ml,
+      p_saturated_fat,
+      p_polyunsaturated_fat,
+      p_monounsaturated_fat,
+      p_trans_fat,
+      p_cholesterol,
+      p_sodium,
+      p_potassium,
+      p_dietary_fiber,
+      p_sugars,
+      p_vitamin_a,
+      p_vitamin_c,
+      p_calcium,
+      p_iron,
+      p_target_exercise_calories_burned,
+      p_target_exercise_duration_minutes,
+      p_protein_percentage,
+      p_carbs_percentage,
+      p_fat_percentage,
+      p_breakfast_percentage,
+      p_lunch_percentage,
+      p_dinner_percentage,
+      p_snacks_percentage,
+      custom_nutrients,
     } = goalData;
 
-    log('debug', `manageGoalTimeline - Received goalData: ${JSON.stringify(goalData)}`);
-    log('debug', `manageGoalTimeline - p_water_goal_ml: ${p_water_goal_ml}`);
+    log(
+      "debug",
+      `manageGoalTimeline - Received goalData: ${JSON.stringify(goalData)}`,
+    );
+    log("debug", `manageGoalTimeline - p_water_goal_ml: ${p_water_goal_ml}`);
 
     // If percentages are provided, calculate grams for storage
     let protein_to_store = p_protein;
     let carbs_to_store = p_carbs;
     let fat_to_store = p_fat;
 
-    if (typeof p_protein_percentage === 'number' && !isNaN(p_protein_percentage) &&
-        typeof p_carbs_percentage === 'number' && !isNaN(p_carbs_percentage) &&
-        typeof p_fat_percentage === 'number' && !isNaN(p_fat_percentage)) {
-      const { protein_grams, carbs_grams, fat_grams } = calculateGramsFromPercentages(
-        p_calories,
-        p_protein_percentage,
-        p_carbs_percentage,
-        p_fat_percentage
-      );
+    if (
+      typeof p_protein_percentage === "number" &&
+      !isNaN(p_protein_percentage) &&
+      typeof p_carbs_percentage === "number" &&
+      !isNaN(p_carbs_percentage) &&
+      typeof p_fat_percentage === "number" &&
+      !isNaN(p_fat_percentage)
+    ) {
+      const { protein_grams, carbs_grams, fat_grams } =
+        calculateGramsFromPercentages(
+          p_calories,
+          p_protein_percentage,
+          p_carbs_percentage,
+          p_fat_percentage,
+        );
       protein_to_store = protein_grams;
       carbs_to_store = carbs_grams;
       fat_to_store = fat_grams;
-      log('debug', `manageGoalTimeline - Calculated grams from percentages: Protein ${protein_to_store}, Carbs ${carbs_to_store}, Fat ${fat_to_store}`);
+      log(
+        "debug",
+        `manageGoalTimeline - Calculated grams from percentages: Protein ${protein_to_store}, Carbs ${carbs_to_store}, Fat ${fat_to_store}`,
+      );
     } else {
-      log('debug', `manageGoalTimeline - Using provided grams: Protein ${protein_to_store}, Carbs ${protein_to_store}, Fat ${fat_to_store}. Percentages were not all valid numbers.`);
+      log(
+        "debug",
+        `manageGoalTimeline - Using provided grams: Protein ${protein_to_store}, Carbs ${protein_to_store}, Fat ${fat_to_store}. Percentages were not all valid numbers.`,
+      );
     }
 
     // Helper to convert NaN to 0 for numeric fields, or null if specified
     const cleanNumber = (value, allow_null = false) => {
-      log('debug', `cleanNumber: Input value: ${value}, type: ${typeof value}, allow_null: ${allow_null}`);
+      log(
+        "debug",
+        `cleanNumber: Input value: ${value}, type: ${typeof value}, allow_null: ${allow_null}`,
+      );
       if (value === null || value === undefined) {
-        log('debug', `cleanNumber: Value is null/undefined, returning ${allow_null ? null : 0}`);
+        log(
+          "debug",
+          `cleanNumber: Value is null/undefined, returning ${allow_null ? null : 0}`,
+        );
         return allow_null ? null : 0;
       }
       const num = Number(value);
       if (isNaN(num)) {
-        log('debug', `cleanNumber: Value is NaN, returning ${allow_null ? null : 0}`);
+        log(
+          "debug",
+          `cleanNumber: Value is NaN, returning ${allow_null ? null : 0}`,
+        );
         return allow_null ? null : 0;
       }
-      log('debug', `cleanNumber: Returning cleaned number: ${num}`);
+      log("debug", `cleanNumber: Returning cleaned number: ${num}`);
       return num;
     };
 
@@ -163,44 +291,66 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
       vitamin_c: cleanNumber(p_vitamin_c),
       calcium: cleanNumber(p_calcium),
       iron: cleanNumber(p_iron),
-      target_exercise_calories_burned: cleanNumber(p_target_exercise_calories_burned),
-      target_exercise_duration_minutes: cleanNumber(p_target_exercise_duration_minutes),
+      target_exercise_calories_burned: cleanNumber(
+        p_target_exercise_calories_burned,
+      ),
+      target_exercise_duration_minutes: cleanNumber(
+        p_target_exercise_duration_minutes,
+      ),
       protein_percentage: cleanNumber(p_protein_percentage, true),
       carbs_percentage: cleanNumber(p_carbs_percentage, true),
       fat_percentage: cleanNumber(p_fat_percentage, true),
       breakfast_percentage: cleanNumber(p_breakfast_percentage, true),
       lunch_percentage: cleanNumber(p_lunch_percentage, true),
       dinner_percentage: cleanNumber(p_dinner_percentage, true),
-      snacks_percentage: cleanNumber(p_snacks_percentage, true)
+      snacks_percentage: cleanNumber(p_snacks_percentage, true),
+      custom_nutrients: custom_nutrients || {},
     };
 
     // If cascade is false, or if editing a past date, only update that specific date
-    if (!p_cascade || new Date(p_start_date) < new Date(format(new Date(), 'yyyy-MM-dd'))) {
-      log('debug', `manageGoalTimeline - Upserting single goal for date: ${p_start_date}. Final payload before upsert: ${JSON.stringify(goalPayload)}`);
+    if (
+      !p_cascade ||
+      new Date(p_start_date) < new Date(format(new Date(), "yyyy-MM-dd"))
+    ) {
+      log(
+        "debug",
+        `manageGoalTimeline - Upserting single goal for date: ${p_start_date}. Final payload before upsert: ${JSON.stringify(goalPayload)}`,
+      );
       await goalRepository.upsertGoal(goalPayload);
-      return { message: 'Goal for the specified date updated successfully.' };
+      return { message: "Goal for the specified date updated successfully." };
     } else {
       // For today or future dates with cascade: delete 6 months and insert new goals
-      log('info', `manageGoalTimeline - Updating goal for today or future date: ${p_start_date}. Applying 6-month cascade. Final payload before upsert: ${JSON.stringify(goalPayload)}`);
+      log(
+        "info",
+        `manageGoalTimeline - Updating goal for today or future date: ${p_start_date}. Applying 6-month cascade. Final payload before upsert: ${JSON.stringify(goalPayload)}`,
+      );
       const startDate = new Date(p_start_date);
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + 6);
 
       // Delete existing goals in the range to prevent conflicts and ensure clean slate
-      await goalRepository.deleteGoalsInRange(authenticatedUserId, p_start_date, format(endDate, 'yyyy-MM-dd'));
+      await goalRepository.deleteGoalsInRange(
+        authenticatedUserId,
+        p_start_date,
+        format(endDate, "yyyy-MM-dd"),
+      );
 
       // Insert the new goal, which will act as the template for the cascade
       await goalRepository.upsertGoal(goalPayload);
-      
+
       // The getMostRecentGoalBeforeDate function will now handle the cascading logic,
       // so we don't need to loop and insert for every single day.
       // We also remove the default goal to ensure this new goal becomes the baseline.
       await goalRepository.deleteDefaultGoal(authenticatedUserId);
 
-      return { message: 'Goal timeline managed successfully with cascade.' };
+      return { message: "Goal timeline managed successfully with cascade." };
     }
   } catch (error) {
-    log('error', `Error managing goal timeline for user ${authenticatedUserId}:`, error);
+    log(
+      "error",
+      `Error managing goal timeline for user ${authenticatedUserId}:`,
+      error,
+    );
     throw error;
   }
 }
