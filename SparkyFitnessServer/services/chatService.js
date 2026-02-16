@@ -36,6 +36,10 @@ async function getAiServiceSettings(authenticatedUserId, targetUserId) {
 async function getActiveAiServiceSetting(authenticatedUserId, targetUserId) {
   try {
     const setting = await chatRepository.getActiveAiServiceSetting(targetUserId);
+    if (setting) {
+      const source = setting.source || 'unknown';
+      log('info', `Active AI service setting for user ${targetUserId} (source: ${source})`);
+    }
     return setting; // Returns null if no active setting found
   } catch (error) {
     log('error', `Error fetching active AI service setting for user ${targetUserId} by ${authenticatedUserId}:`, error);
@@ -170,6 +174,10 @@ async function processChatMessage(messages, serviceConfigId, authenticatedUserId
     if (!aiService) {
       throw new Error('AI service setting not found for the provided ID.');
     }
+    
+    // Log which source was used
+    const source = aiService.source || 'unknown';
+    log('info', `Processing chat message for user ${authenticatedUserId} using AI service from ${source} (ID: ${serviceConfigId})`);
     
     // Ensure API key is present, unless it's Ollama
     if (aiService.service_type !== 'ollama' && !aiService.api_key) {
@@ -591,6 +599,10 @@ async function processFoodOptionsRequest(foodName, unit, authenticatedUserId, se
     if (!aiService) {
       throw new Error('AI service setting not found for the provided ID.');
     }
+    
+    // Log which source was used
+    const source = aiService.source || 'unknown';
+    log('info', `Processing food options request for user ${authenticatedUserId} using AI service from ${source} (ID: ${serviceConfigId})`);
     
     // Ensure API key is present, unless it's Ollama
     if (aiService.service_type !== 'ollama' && !aiService.api_key) {

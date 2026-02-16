@@ -314,6 +314,7 @@ app.use("/api/withings", withingsRoutes);
 app.use("/api/version", versionRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/admin/global-settings", globalSettingsRoutes);
+app.use("/api/global-settings", globalSettingsRoutes); // Public route for allow-user-ai-config
 app.use("/api/admin/oidc-settings", require("./routes/oidcSettingsRoutes"));
 app.use("/api/admin/backup", backupRoutes);
 app.use("/api/admin/auth", adminAuthRoutes);
