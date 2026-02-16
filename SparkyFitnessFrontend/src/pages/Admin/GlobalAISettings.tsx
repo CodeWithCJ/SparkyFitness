@@ -40,8 +40,10 @@ import {
 import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 import { type GlobalSettings } from '@/api/Admin/globalSettingsService';
 import { Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const GlobalAISettings = () => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { data: globalSettings, isLoading: settingsLoading } = useSettings();
   const { mutate: updateSettings } = useUpdateSettings();
@@ -76,8 +78,8 @@ const GlobalAISettings = () => {
     } catch (error: any) {
       console.error('Error loading global AI services:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to load global AI services',
+        title: t('settings.aiService.globalSettings.error'),
+        description: error.message || t('settings.aiService.globalSettings.errorLoading'),
         variant: 'destructive',
       });
     }
@@ -95,14 +97,14 @@ const GlobalAISettings = () => {
     updateSettings(newSettings, {
       onSuccess: () => {
         toast({
-          title: 'Success',
-          description: 'User AI configuration setting updated successfully',
+          title: t('settings.aiService.globalSettings.success'),
+          description: t('settings.aiService.globalSettings.successUpdatingConfig'),
         });
       },
       onError: () => {
         toast({
-          title: 'Error',
-          description: 'Failed to update user AI configuration setting',
+          title: t('settings.aiService.globalSettings.error'),
+          description: t('settings.aiService.globalSettings.errorUpdatingConfig'),
           variant: 'destructive',
         });
       },
@@ -119,8 +121,8 @@ const GlobalAISettings = () => {
       (newService.service_type !== 'ollama' && !newService.api_key)
     ) {
       toast({
-        title: 'Error',
-        description: 'Please fill in all required fields',
+        title: t('settings.aiService.globalSettings.error'),
+        description: t('settings.aiService.globalSettings.fillRequiredFields'),
         variant: 'destructive',
       });
       return;
@@ -141,8 +143,8 @@ const GlobalAISettings = () => {
       };
       await createGlobalAIService(serviceData);
       toast({
-        title: 'Success',
-        description: 'Global AI service added successfully',
+        title: t('settings.aiService.globalSettings.success'),
+        description: t('settings.aiService.globalSettings.successAdding'),
       });
       setNewService({
         service_name: '',
@@ -161,8 +163,8 @@ const GlobalAISettings = () => {
     } catch (error: any) {
       console.error('Error adding global AI service:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to add global AI service',
+        title: t('settings.aiService.globalSettings.error'),
+        description: error.message || t('settings.aiService.globalSettings.errorAdding'),
         variant: 'destructive',
       });
     } finally {
@@ -176,8 +178,8 @@ const GlobalAISettings = () => {
 
     if (!originalService) {
       toast({
-        title: 'Error',
-        description: 'Original service not found.',
+        title: t('settings.aiService.globalSettings.error'),
+        description: t('settings.aiService.globalSettings.errorOriginalNotFound'),
         variant: 'destructive',
       });
       setLoading(false);
@@ -200,8 +202,8 @@ const GlobalAISettings = () => {
     try {
       await updateGlobalAIService(serviceId, serviceToUpdate);
       toast({
-        title: 'Success',
-        description: 'Global AI service updated successfully',
+        title: t('settings.aiService.globalSettings.success'),
+        description: t('settings.aiService.globalSettings.successUpdating'),
       });
       setEditingService(null);
       setEditData({});
@@ -210,8 +212,8 @@ const GlobalAISettings = () => {
     } catch (error: any) {
       console.error('Error updating global AI service:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to update global AI service',
+        title: t('settings.aiService.globalSettings.error'),
+        description: error.message || t('settings.aiService.globalSettings.errorUpdating'),
         variant: 'destructive',
       });
     } finally {
@@ -220,23 +222,23 @@ const GlobalAISettings = () => {
   };
 
   const handleDeleteService = async (serviceId: string) => {
-    if (!confirm('Are you sure you want to delete this global AI service?'))
+    if (!confirm(t('settings.aiService.globalSettings.deleteConfirm')))
       return;
 
     setLoading(true);
     try {
       await deleteGlobalAIService(serviceId);
       toast({
-        title: 'Success',
-        description: 'Global AI service deleted successfully',
+        title: t('settings.aiService.globalSettings.success'),
+        description: t('settings.aiService.globalSettings.successDeleting'),
       });
       loadServices();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error deleting global AI service:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete global AI service',
+        title: t('settings.aiService.globalSettings.error'),
+        description: error.message || t('settings.aiService.globalSettings.errorDeleting'),
         variant: 'destructive',
       });
     } finally {
@@ -249,18 +251,18 @@ const GlobalAISettings = () => {
     try {
       const result = await syncGlobalSettingsFromEnv();
       toast({
-        title: 'Success',
+        title: t('settings.aiService.globalSettings.success'),
         description:
-          result.message || 'Environment variables synced successfully',
+          result.message || t('settings.aiService.globalSettings.successSyncing'),
       });
       loadServices();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error syncing from environment variables:', error);
       toast({
-        title: 'Error',
+        title: t('settings.aiService.globalSettings.error'),
         description:
-          error.message || 'Failed to sync from environment variables',
+          error.message || t('settings.aiService.globalSettings.errorSyncing'),
         variant: 'destructive',
       });
     } finally {
@@ -291,14 +293,14 @@ const GlobalAISettings = () => {
   };
 
   const getServiceTypes = () => [
-    { value: 'openai', label: 'OpenAI' },
-    { value: 'openai_compatible', label: 'OpenAI Compatible' },
-    { value: 'anthropic', label: 'Anthropic' },
-    { value: 'google', label: 'Google Gemini' },
-    { value: 'mistral', label: 'Mistral AI' },
-    { value: 'groq', label: 'Groq' },
-    { value: 'ollama', label: 'Ollama' },
-    { value: 'custom', label: 'Custom' },
+    { value: 'openai', label: t('settings.aiService.serviceTypes.openai') },
+    { value: 'openai_compatible', label: t('settings.aiService.serviceTypes.openaiCompatible') },
+    { value: 'anthropic', label: t('settings.aiService.serviceTypes.anthropic') },
+    { value: 'google', label: t('settings.aiService.serviceTypes.google') },
+    { value: 'mistral', label: t('settings.aiService.serviceTypes.mistral') },
+    { value: 'groq', label: t('settings.aiService.serviceTypes.groq') },
+    { value: 'ollama', label: t('settings.aiService.serviceTypes.ollama') },
+    { value: 'custom', label: t('settings.aiService.serviceTypes.custom') },
   ];
 
   const getModelOptions = (serviceType: string) => {
@@ -354,10 +356,10 @@ const GlobalAISettings = () => {
       <AccordionItem value="global-ai-settings" className="border rounded-lg">
         <AccordionTrigger
           className="flex items-center gap-2 p-4 hover:no-underline"
-          description="Global AI service settings are shared across all users. Users can override these with their own settings."
+          description={t('settings.aiService.globalSettings.description')}
         >
           <Globe className="h-5 w-5" />
-          Global AI Service Settings
+          {t('settings.aiService.globalSettings.title')}
         </AccordionTrigger>
         <AccordionContent className="p-4 pt-0 space-y-4">
           {/* User AI Config Toggle */}
@@ -365,13 +367,12 @@ const GlobalAISettings = () => {
             <div className="flex items-center justify-between p-4 border rounded-md mb-4">
               <div className="flex-1">
                 <Label htmlFor="allow_user_ai_config" className="font-medium">
-                  Allow Users to Configure AI Services
+                  {t('settings.aiService.globalSettings.allowUserConfig')}
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
-                  When enabled, users can add and manage their own AI service configurations.
-                  When disabled, users can only use the global AI service settings.
+                  {t('settings.aiService.globalSettings.allowUserConfigDescription')}
                   <span className="block mt-1 text-xs text-muted-foreground">
-                    Environment variable SPARKY_FITNESS_ALLOW_USER_AI_CONFIG takes precedence if set.
+                    {t('settings.aiService.globalSettings.allowUserConfigEnvNote')}
                   </span>
                 </p>
               </div>
@@ -392,13 +393,13 @@ const GlobalAISettings = () => {
               disabled={loading}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
-              Sync from Environment
+              {t('settings.aiService.globalSettings.syncFromEnv')}
             </Button>
           </div>
           {!showAddForm && (
             <Button onClick={() => setShowAddForm(true)} variant="outline">
               <Plus className="h-4 w-4 mr-2" />
-              Add New Global AI Service
+              {t('settings.aiService.globalSettings.addNewService')}
             </Button>
           )}
 
@@ -410,11 +411,11 @@ const GlobalAISettings = () => {
               }}
               className="border rounded-lg p-4 space-y-4"
             >
-              <h3 className="text-lg font-medium">Add New Global AI Service</h3>
+              <h3 className="text-lg font-medium">{t('settings.aiService.globalSettings.addNewService')}</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="new_service_name">Service Name</Label>
+                  <Label htmlFor="new_service_name">{t('settings.aiService.globalSettings.serviceName')}</Label>
                   <Input
                     id="new_service_name"
                     value={newService.service_name}
@@ -424,12 +425,12 @@ const GlobalAISettings = () => {
                         service_name: e.target.value,
                       }))
                     }
-                    placeholder="Organization OpenAI Service"
+                    placeholder={t('settings.aiService.globalSettings.serviceNamePlaceholder')}
                     autoComplete="username"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="new_service_type">Service Type</Label>
+                  <Label htmlFor="new_service_type">{t('settings.aiService.globalSettings.serviceType')}</Label>
                   <Select
                     value={newService.service_type}
                     onValueChange={(value) =>
@@ -456,8 +457,9 @@ const GlobalAISettings = () => {
 
               <div>
                 <Label htmlFor="new_api_key">
-                  API Key{' '}
-                  {newService.service_type === 'ollama' ? '(Optional)' : ''}
+                  {newService.service_type === 'ollama'
+                    ? t('settings.aiService.globalSettings.apiKeyOptional')
+                    : t('settings.aiService.globalSettings.apiKey')}
                 </Label>
                 <Input
                   id="new_api_key"
@@ -471,18 +473,18 @@ const GlobalAISettings = () => {
                   }
                   placeholder={
                     newService.service_type === 'ollama'
-                      ? 'Not required for Ollama'
-                      : 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+                      ? t('settings.aiService.globalSettings.apiKeyPlaceholderOllama')
+                      : t('settings.aiService.globalSettings.apiKeyPlaceholder')
                   }
                   autoComplete="new-password"
                 />
               </div>
 
-              {(newService.service_type === 'custom' ||
+                {(newService.service_type === 'custom' ||
                 newService.service_type === 'ollama' ||
                 newService.service_type === 'openai_compatible') && (
                   <div>
-                    <Label htmlFor="new_custom_url">Custom URL</Label>
+                    <Label htmlFor="new_custom_url">{t('settings.aiService.globalSettings.customUrl')}</Label>
                     <Input
                       id="new_custom_url"
                       value={newService.custom_url}
@@ -494,8 +496,8 @@ const GlobalAISettings = () => {
                       }
                       placeholder={
                         newService.service_type === 'ollama'
-                          ? 'http://localhost:11434'
-                          : 'https://api.example.com/v1'
+                          ? t('settings.aiService.globalSettings.customUrlPlaceholderOllama')
+                          : t('settings.aiService.globalSettings.customUrlPlaceholder')
                       }
                     />
                   </div>
@@ -515,14 +517,14 @@ const GlobalAISettings = () => {
                   }
                 />
                 <Label htmlFor="new_use_custom_model">
-                  Use Custom Model Name
+                  {t('settings.aiService.globalSettings.useCustomModel')}
                 </Label>
               </div>
 
               {!newService.showCustomModelInput &&
                 getModelOptions(newService.service_type).length > 0 && (
                   <div>
-                    <Label htmlFor="new_model_name_select">Model</Label>
+                    <Label htmlFor="new_model_name_select">{t('settings.aiService.globalSettings.model')}</Label>
                     <Select
                       value={newService.model_name}
                       onValueChange={(value) =>
@@ -533,7 +535,7 @@ const GlobalAISettings = () => {
                       }
                     >
                       <SelectTrigger id="new_model_name_select">
-                        <SelectValue placeholder="Select a model" />
+                        <SelectValue placeholder={t('settings.aiService.globalSettings.selectModel')} />
                       </SelectTrigger>
                       <SelectContent>
                         {getModelOptions(newService.service_type).map(
@@ -550,7 +552,7 @@ const GlobalAISettings = () => {
               {newService.showCustomModelInput && (
                 <div>
                   <Label htmlFor="new_custom_model_name_input">
-                    Custom Model Name
+                    {t('settings.aiService.globalSettings.customModelName')}
                   </Label>
                   <Input
                     id="new_custom_model_name_input"
@@ -561,14 +563,14 @@ const GlobalAISettings = () => {
                         custom_model_name: e.target.value,
                       }))
                     }
-                    placeholder="Enter custom model name"
+                    placeholder={t('settings.aiService.globalSettings.customModelNamePlaceholder')}
                   />
                 </div>
               )}
 
               <div>
                 <Label htmlFor="new_system_prompt">
-                  System Prompt (Additional Instructions)
+                  {t('settings.aiService.globalSettings.systemPrompt')}
                 </Label>
                 <Textarea
                   id="new_system_prompt"
@@ -579,7 +581,7 @@ const GlobalAISettings = () => {
                       system_prompt: e.target.value,
                     }))
                   }
-                  placeholder="Additional instructions for the AI assistant..."
+                  placeholder={t('settings.aiService.globalSettings.systemPromptPlaceholder')}
                   rows={3}
                 />
               </div>
@@ -592,13 +594,13 @@ const GlobalAISettings = () => {
                     setNewService((prev) => ({ ...prev, is_active: checked }))
                   }
                 />
-                <Label htmlFor="new_is_active">Set as active service</Label>
+                <Label htmlFor="new_is_active">{t('settings.aiService.globalSettings.setAsActive')}</Label>
               </div>
 
               <div className="flex gap-2">
                 <Button type="submit" disabled={loading}>
                   <Save className="h-4 w-4 mr-2" />
-                  Add Service
+                  {t('settings.aiService.globalSettings.addService')}
                 </Button>
                 <Button
                   type="button"
@@ -606,7 +608,7 @@ const GlobalAISettings = () => {
                   onClick={() => setShowAddForm(false)}
                 >
                   <X className="h-4 w-4 mr-2" />
-                  Cancel
+                  {t('settings.aiService.globalSettings.cancel')}
                 </Button>
               </div>
             </form>
@@ -615,7 +617,7 @@ const GlobalAISettings = () => {
           {services.length > 0 && (
             <>
               <Separator />
-              <h3 className="text-lg font-medium">Global Services</h3>
+              <h3 className="text-lg font-medium">{t('settings.aiService.globalSettings.globalServices')}</h3>
 
               <div className="space-y-4">
                 {services.map((service) => (
@@ -630,7 +632,7 @@ const GlobalAISettings = () => {
                       >
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <Label>Service Name</Label>
+                            <Label>{t('settings.aiService.globalSettings.serviceName')}</Label>
                             <Input
                               value={editData.service_name || ''}
                               onChange={(e) =>
@@ -642,7 +644,7 @@ const GlobalAISettings = () => {
                             />
                           </div>
                           <div>
-                            <Label htmlFor="edit_service_type">Service Type</Label>
+                            <Label htmlFor="edit_service_type">{t('settings.aiService.globalSettings.serviceType')}</Label>
                             <Select
                               value={editData.service_type || ''}
                               onValueChange={(value) =>
@@ -672,10 +674,9 @@ const GlobalAISettings = () => {
 
                         <div>
                           <Label>
-                            API Key{' '}
                             {editData.service_type === 'ollama'
-                              ? '(Optional)'
-                              : ''}
+                              ? t('settings.aiService.globalSettings.apiKeyOptional')
+                              : t('settings.aiService.globalSettings.apiKey')}
                           </Label>
                           <Input
                             type="password"
@@ -686,7 +687,7 @@ const GlobalAISettings = () => {
                                 api_key: e.target.value,
                               }))
                             }
-                            placeholder="Enter new API key to update"
+                            placeholder={t('settings.aiService.globalSettings.enterNewApiKey')}
                             autoComplete="off"
                           />
                         </div>
@@ -695,7 +696,7 @@ const GlobalAISettings = () => {
                           editData.service_type === 'ollama' ||
                           editData.service_type === 'openai_compatible') && (
                             <div>
-                              <Label>Custom URL</Label>
+                              <Label>{t('settings.aiService.globalSettings.customUrl')}</Label>
                               <Input
                                 value={editData.custom_url || ''}
                                 onChange={(e) =>
@@ -722,7 +723,7 @@ const GlobalAISettings = () => {
                             }
                           />
                           <Label htmlFor="edit_use_custom_model">
-                            Use Custom Model Name
+                            {t('settings.aiService.globalSettings.useCustomModel')}
                           </Label>
                         </div>
 
@@ -730,7 +731,7 @@ const GlobalAISettings = () => {
                           getModelOptions(editData.service_type || '').length >
                           0 && (
                             <div>
-                              <Label htmlFor="edit_model_name_select">Model</Label>
+                              <Label htmlFor="edit_model_name_select">{t('settings.aiService.globalSettings.model')}</Label>
                               <Select
                                 value={editData.model_name || ''}
                                 onValueChange={(value) =>
@@ -741,7 +742,7 @@ const GlobalAISettings = () => {
                                 }
                               >
                                 <SelectTrigger id="edit_model_name_select">
-                                  <SelectValue placeholder="Select a model" />
+                                  <SelectValue placeholder={t('settings.aiService.globalSettings.selectModel')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {getModelOptions(
@@ -757,7 +758,7 @@ const GlobalAISettings = () => {
                           )}
                         {editData.showCustomModelInput && (
                           <div>
-                            <Label>Custom Model Name</Label>
+                            <Label>{t('settings.aiService.globalSettings.customModelName')}</Label>
                             <Input
                               value={editData.custom_model_name || ''}
                               onChange={(e) =>
@@ -766,13 +767,13 @@ const GlobalAISettings = () => {
                                   custom_model_name: e.target.value,
                                 }))
                               }
-                              placeholder="Enter custom model name"
+                              placeholder={t('settings.aiService.globalSettings.customModelNamePlaceholder')}
                             />
                           </div>
                         )}
 
                         <div>
-                          <Label>System Prompt</Label>
+                          <Label>{t('settings.aiService.globalSettings.systemPrompt')}</Label>
                           <Textarea
                             value={editData.system_prompt || ''}
                             onChange={(e) =>
@@ -781,7 +782,7 @@ const GlobalAISettings = () => {
                                 system_prompt: e.target.value,
                               }))
                             }
-                            placeholder="Additional instructions..."
+                            placeholder={t('settings.aiService.globalSettings.systemPromptPlaceholder')}
                             rows={3}
                           />
                         </div>
@@ -796,13 +797,13 @@ const GlobalAISettings = () => {
                               }))
                             }
                           />
-                          <Label>Active service</Label>
+                          <Label>{t('settings.aiService.globalSettings.activeService')}</Label>
                         </div>
 
                         <div className="flex gap-2">
                           <Button type="submit" disabled={loading}>
                             <Save className="h-4 w-4 mr-2" />
-                            Save Changes
+                            {t('settings.aiService.globalSettings.saveChanges')}
                           </Button>
                           <Button
                             type="button"
@@ -810,7 +811,7 @@ const GlobalAISettings = () => {
                             onClick={cancelEditing}
                           >
                             <X className="h-4 w-4 mr-2" />
-                            Cancel
+                            {t('settings.aiService.globalSettings.cancel')}
                           </Button>
                         </div>
                       </form>
@@ -823,7 +824,7 @@ const GlobalAISettings = () => {
                                 {service.service_name}
                               </h4>
                               <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                Global
+                                {t('settings.aiService.globalSettings.global')}
                               </span>
                             </div>
                             <p className="text-sm text-muted-foreground">
@@ -855,7 +856,7 @@ const GlobalAISettings = () => {
 
                         {service.system_prompt && (
                           <div>
-                            <Label className="text-xs">System Prompt:</Label>
+                            <Label className="text-xs">{t('settings.aiService.globalSettings.systemPrompt')}:</Label>
                             <p className="text-sm text-muted-foreground mt-1 p-2 bg-muted rounded">
                               {service.system_prompt}
                             </p>
@@ -872,10 +873,9 @@ const GlobalAISettings = () => {
           {services.length === 0 && !showAddForm && (
             <div className="text-center py-8 text-muted-foreground">
               <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No global AI services configured yet.</p>
+              <p>{t('settings.aiService.globalSettings.noServices')}</p>
               <p className="text-sm">
-                Add a global AI service to provide default settings for all
-                users.
+                {t('settings.aiService.globalSettings.noServicesDescription')}
               </p>
             </div>
           )}
