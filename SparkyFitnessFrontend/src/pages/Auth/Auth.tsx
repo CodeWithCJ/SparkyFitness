@@ -79,20 +79,20 @@ const Auth = () => {
           loginSettings.oidc.providers.length === 1 &&
           loginSettings.oidc.enabled
         ) {
-          const providers = loginSettings.oidc.providers[0];
+          const provider = loginSettings.oidc.providers[0];
 
           // AUTO-REDIRECT LOGIC: Only when email is disabled and exactly 1 OIDC provider is active
           if (!loginSettings.email.enabled && !authUser && !authLoading) {
             console.log(
               'Auth Page: Auto-redirecting to OIDC provider:',
-              providers[0].id
+              provider.id
             );
             // Safety timeout to catch any late-arriving sessions
             const timer = setTimeout(() => {
               if (!authUser) {
                 initiateOidcLogin({
-                  providerId: providers[0].id,
-                  requestSignUp: providers[0].auto_register,
+                  providerId: provider.id,
+                  requestSignUp: provider.auto_register,
                 });
               }
             }, 800);
@@ -109,7 +109,7 @@ const Auth = () => {
     };
     fetchAuthSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loggingLevel, authUser, authLoading, navigate]);
+  }, [loggingLevel, authUser, authLoading, navigate, loginSettings]);
 
   // Passkey Conditional UI (Autofill)
   useEffect(() => {
