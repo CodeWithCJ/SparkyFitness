@@ -42,7 +42,7 @@ import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
 import type { Meal as MealType, FoodEntryMeal } from '@/types/meal';
 import type { FoodEntry } from '@/types/food';
 import type { ExpandedGoals } from '@/types/goals';
-import type { PresetExercise, WorkoutPreset } from '@/types/workout';
+import type { PresetExercise } from '@/types/workout';
 
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 
@@ -851,22 +851,6 @@ const Diary = () => {
     [debug, loggingLevel, handleDataChange]
   );
 
-  const handleExerciseAdded = useCallback(() => {
-    debug(loggingLevel, 'Exercise added, triggering data change.');
-    handleDataChange();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debug, loggingLevel, handleDataChange]);
-
-  const handleWorkoutPresetSelected = useCallback(
-    (preset: WorkoutPreset) => {
-      debug(loggingLevel, 'Workout preset selected:', preset);
-      // TODO: Fix this type mismatch
-      // setExercisesToLogFromPreset(preset.exercises.map(e => ({...e, reps: e.reps || null, weight: e.weight || null})) || []);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [debug, loggingLevel]
-  );
-
   const handleConvertToMealClick = useCallback(
     (mealType: string) => {
       setConvertToMealSourceMealType(mealType);
@@ -922,7 +906,6 @@ const Diary = () => {
                     mode="single"
                     selected={date}
                     onSelect={handleDateSelect}
-                    initialFocus
                     yearsRange={10} // Default to 10 years for general date selection
                   />
                 </PopoverContent>
@@ -946,7 +929,6 @@ const Diary = () => {
         <>
           <DiaryTopControls
             selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
             dayTotals={dayTotals}
             goals={goals}
             onGoalsUpdated={handleDataChange}
@@ -1002,93 +984,6 @@ const Diary = () => {
           </div>
 
           {/* Main Content - Meals and Exercise */}
-          {/* <div className="space-y-6">
-            <MealCard
-              meal={{ ...getMealData("breakfast"), selectedDate: selectedDate }}
-              totals={getMealTotals("breakfast")}
-              onFoodSelect={handleFoodSelect}
-              onEditEntry={handleEditEntry}
-              onEditFood={handleEditFood}
-              onRemoveEntry={(itemId, itemType) =>
-                handleRemoveEntry(itemId, itemType)
-              }
-              getEntryNutrition={getEntryNutrition}
-              onMealAdded={handleDataChange}
-              onCopyClick={handleCopyClick}
-              onCopyFromYesterday={handleCopyFromYesterday}
-              onConvertToMealClick={handleConvertToMealClick}
-              energyUnit={energyUnit}
-              convertEnergy={convertEnergy}
-              customNutrients={customNutrients}
-              key={`breakfast-${externalRefreshTrigger}`}
-            />
-            <MealCard
-              meal={{ ...getMealData("lunch"), selectedDate: selectedDate }}
-              totals={getMealTotals("lunch")}
-              onFoodSelect={handleFoodSelect}
-              onEditEntry={handleEditEntry}
-              onEditFood={handleEditFood}
-              onRemoveEntry={(itemId, itemType) =>
-                handleRemoveEntry(itemId, itemType)
-              }
-              getEntryNutrition={getEntryNutrition}
-              onMealAdded={handleDataChange}
-              onCopyClick={handleCopyClick}
-              onCopyFromYesterday={handleCopyFromYesterday}
-              onConvertToMealClick={handleConvertToMealClick}
-              energyUnit={energyUnit}
-              convertEnergy={convertEnergy}
-              customNutrients={customNutrients}
-              key={`lunch-${externalRefreshTrigger}`}
-            />
-            <MealCard
-              meal={{ ...getMealData("dinner"), selectedDate: selectedDate }}
-              totals={getMealTotals("dinner")}
-              onFoodSelect={handleFoodSelect}
-              onEditEntry={handleEditEntry}
-              onEditFood={handleEditFood}
-              onRemoveEntry={(itemId, itemType) =>
-                handleRemoveEntry(itemId, itemType)
-              }
-              getEntryNutrition={getEntryNutrition}
-              onMealAdded={handleDataChange}
-              onCopyClick={handleCopyClick}
-              onCopyFromYesterday={handleCopyFromYesterday}
-              onConvertToMealClick={handleConvertToMealClick}
-              energyUnit={energyUnit}
-              convertEnergy={convertEnergy}
-              customNutrients={customNutrients}
-              key={`dinner-${externalRefreshTrigger}`}
-            />
-            <MealCard
-              meal={{ ...getMealData("snacks"), selectedDate: selectedDate }}
-              totals={getMealTotals("snacks")}
-              onFoodSelect={handleFoodSelect}
-              onEditEntry={handleEditEntry}
-              onEditFood={handleEditFood}
-              onRemoveEntry={(itemId, itemType) =>
-                handleRemoveEntry(itemId, itemType)
-              }
-              getEntryNutrition={getEntryNutrition}
-              onMealAdded={handleDataChange}
-              onCopyClick={handleCopyClick}
-              onCopyFromYesterday={handleCopyFromYesterday}
-              onConvertToMealClick={handleConvertToMealClick}
-              energyUnit={energyUnit}
-              convertEnergy={convertEnergy}
-              customNutrients={customNutrients}
-              key={`snacks-${externalRefreshTrigger}`}
-            />
-
-            // {/* Exercise Section */}
-          {/* <ExerciseCard
-              selectedDate={selectedDate}
-              onExerciseChange={handleDataChange}
-              initialExercisesToLog={initialExercisesToLog}
-              onExercisesLogged={onExercisesLogged}
-              key={`exercise-${externalRefreshTrigger}`}
-            />
-          </div> */}
         </>
       )}
 

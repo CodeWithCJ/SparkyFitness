@@ -33,7 +33,6 @@ import {
   SugarCalculationAlgorithm,
   SugarCalculationAlgorithmLabels,
 } from '@/types/nutrientAlgorithms';
-import { createGoalPreset } from '@/services/goalPresetService';
 import {
   Dialog,
   DialogContent,
@@ -47,6 +46,11 @@ import { Save, PlayCircle } from 'lucide-react';
 
 import type { TFunction } from 'i18next';
 import MealPercentageManager from '@/components/MealPercentageManager';
+import { useCreatePresetMutation } from '@/hooks/Goals/useGoals';
+import {
+  convertMlToSelectedUnit,
+  convertSelectedUnitToMl,
+} from '@/utils/nutritionCalculations';
 
 interface PersonalPlanProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,11 +66,6 @@ interface PersonalPlanProps {
   setLocalWaterUnit: (unit: 'ml' | 'oz' | 'liter') => void;
   convertEnergy: (value: number, from: string, to: string) => number;
   getEnergyUnitString: (unit: string) => string;
-  convertMlToSelectedUnit: (ml: number, unit: 'ml' | 'oz' | 'liter') => number;
-  convertSelectedUnitToMl: (
-    value: number,
-    unit: 'ml' | 'oz' | 'liter'
-  ) => number;
   localSelectedDiet: string;
   setLocalSelectedDiet: (diet: string) => void;
   customPercentages: { carbs: number; protein: number; fat: number };
@@ -107,8 +106,6 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
   setLocalWaterUnit,
   convertEnergy,
   getEnergyUnitString,
-  convertMlToSelectedUnit,
-  convertSelectedUnitToMl,
   localSelectedDiet,
   setLocalSelectedDiet,
   customPercentages,
@@ -166,11 +163,10 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
 
   const [showDietApproach, setShowDietApproach] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [showMealDistribution, setShowMealDistribution] = useState(true);
   const [isSavePresetOpen, setIsSavePresetOpen] = useState(false);
   const [presetName, setPresetName] = useState('');
   const [isSavingPreset, setIsSavingPreset] = useState(false);
-
+  const { mutateAsync: createGoalPreset } = useCreatePresetMutation();
   const handleSavePreset = async () => {
     if (!presetName.trim()) {
       toast({
@@ -203,7 +199,7 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
       });
 
       // After saving preset, proceed to submit the plan as the active goal (finish onboarding)
-      await handleSubmit();
+      handleSubmit();
     } catch (error) {
       console.error('Error saving preset:', error);
       toast({

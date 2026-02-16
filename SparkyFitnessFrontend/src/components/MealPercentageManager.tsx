@@ -101,29 +101,33 @@ const MealPercentageManager = ({
     }
   }, [percentages]);
 
-  useEffect(() => {
-    onPercentagesChange(percentages);
-  }, [percentages, onPercentagesChange]);
-
-  const handleTemplateChange = useCallback((templateName: string) => {
-    if (templateName === 'Custom') return;
-    const template = distributionTemplates.find((t) => t.name === templateName);
-    if (template) {
-      setPercentages(template.values);
-      setLocks({
-        breakfast: false,
-        lunch: false,
-        dinner: false,
-        snacks: false,
-      });
-    }
-  }, []);
+  const handleTemplateChange = useCallback(
+    (templateName: string) => {
+      if (templateName === 'Custom') return;
+      const template = distributionTemplates.find(
+        (t) => t.name === templateName
+      );
+      if (template) {
+        const newValues = template.values;
+        setPercentages(newValues);
+        setLocks({
+          breakfast: false,
+          lunch: false,
+          dinner: false,
+          snacks: false,
+        });
+        onPercentagesChange(newValues);
+      }
+    },
+    [onPercentagesChange]
+  );
 
   const handleSliderChange = useCallback(
     (meal: keyof MealPercentages, value: number) => {
       setPercentages((prev) => {
         const newPercentages = { ...prev, [meal]: value };
 
+        onPercentagesChange(newPercentages);
         return autoBalance(newPercentages, meal, locks, selectedTemplateName);
       });
     },
@@ -185,7 +189,13 @@ const MealPercentageManager = ({
       unlockedMeals.forEach((m) => {
         newPercentages[m] = perMealShare;
       });
-      setPercentages(normalizePercentages(newPercentages, undefined, locks));
+      const finalPercentages = normalizePercentages(
+        newPercentages,
+        undefined,
+        locks
+      );
+      setPercentages(finalPercentages);
+      onPercentagesChange(finalPercentages);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [percentages, locks]);

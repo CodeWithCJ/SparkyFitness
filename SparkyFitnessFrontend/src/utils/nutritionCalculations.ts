@@ -200,3 +200,18 @@ export const convertMlToSelectedUnit = (
   // Apply decimal formatting based on unit
   return convertedValue; // Return raw converted value
 };
+
+export const convertSelectedUnitToMl = (
+  value: number,
+  unit: 'ml' | 'oz' | 'liter'
+): number => {
+  switch (unit) {
+    case 'oz':
+      return value * 29.5735;
+    case 'liter':
+      return value * 1000;
+    case 'ml':
+    default:
+      return value;
+  }
+};
