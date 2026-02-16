@@ -98,41 +98,15 @@ const NutritionChartsGrid = ({
   };
 
   const allNutritionCharts = useMemo(() => {
+    // Standard nutrients - use centralized chartColor
     const charts = Object.values(CENTRAL_NUTRIENT_CONFIG).map((n) => ({
       key: n.id,
       label: t(n.label, n.defaultLabel),
-      color:
-        n.id === 'calories'
-          ? '#8884d8'
-          : getNutrientMetadata(n.id)
-              .color.replace('text-', '')
-              .replace('-600', '')
-              .replace('-500', '')
-              .replace('gray-900', '#333'), // Basic color mapping
+      color: n.chartColor, // Use centralized chartColor
       unit: n.id === 'calories' ? energyUnit : n.unit,
     }));
 
-    // Override or fix colors for better chart visibility (CSS colors vs hex)
-    const colorMap: Record<string, string> = {
-      protein: '#82ca9d',
-      carbs: '#ffc658',
-      fat: '#ff7300',
-      dietary_fiber: '#fd79a8',
-      sugars: '#fdcb6e',
-      sodium: '#6c5ce7',
-      potassium: '#a29bfe',
-      saturated_fat: '#ff6b6b',
-      polyunsaturated_fat: '#4ecdc4',
-      monounsaturated_fat: '#45b7d1',
-      trans_fat: '#f9ca24',
-    };
-
-    const finalCharts = charts.map((c) => ({
-      ...c,
-      color: colorMap[c.key] || '#808080',
-    }));
-
-    // Generate deterministic color from string
+    // Generate deterministic color from string for custom nutrients
     const getStringColor = (str: string) => {
       const colors = [
         '#FF6B6B', // Red
@@ -160,7 +134,7 @@ const NutritionChartsGrid = ({
 
     // Add custom nutrients
     customNutrients.forEach((cn) => {
-      finalCharts.push({
+      charts.push({
         key: cn.name,
         label: cn.name,
         color: getStringColor(cn.name),
@@ -168,7 +142,7 @@ const NutritionChartsGrid = ({
       });
     });
 
-    return finalCharts;
+    return charts;
   }, [t, energyUnit, customNutrients]);
 
   const visibleCharts = reportChartPreferences

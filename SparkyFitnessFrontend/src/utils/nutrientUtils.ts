@@ -25,6 +25,7 @@ export const getNutrientMetadata = (
       defaultLabel: custom.name,
       unit: custom.unit,
       color: 'text-indigo-500', // Default color for custom nutrients
+      chartColor: '#6366f1', // indigo-500 for custom nutrient charts
       decimals: 1, // Default decimals for custom nutrients
       group: 'custom',
     };
@@ -37,6 +38,7 @@ export const getNutrientMetadata = (
     defaultLabel: key,
     unit: '',
     color: 'text-gray-500',
+    chartColor: '#6b7280', // gray-500 for unknown nutrient charts
     decimals: 1,
     group: 'custom',
   };

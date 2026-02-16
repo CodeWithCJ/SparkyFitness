@@ -3,7 +3,8 @@ export interface NutrientMetadata {
   label: string;
   defaultLabel: string;
   unit: string;
-  color: string;
+  color: string; // Tailwind class for UI text
+  chartColor: string; // Hex color for chart rendering
   decimals: number;
   group: 'macros' | 'fats' | 'minerals' | 'custom';
 }
@@ -15,6 +16,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Calories',
     unit: 'kcal',
     color: 'text-gray-900 dark:text-gray-100',
+    chartColor: '#22c55e', // green-500
     decimals: 0,
     group: 'macros',
   },
@@ -24,6 +26,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Protein',
     unit: 'g',
     color: 'text-blue-600',
+    chartColor: '#3b82f6', // blue-600
     decimals: 1,
     group: 'macros',
   },
@@ -33,6 +36,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Carbohydrates',
     unit: 'g',
     color: 'text-orange-600',
+    chartColor: '#f97316', // orange-600
     decimals: 1,
     group: 'macros',
   },
@@ -42,6 +46,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Fat',
     unit: 'g',
     color: 'text-yellow-600',
+    chartColor: '#eab308', // yellow-600
     decimals: 1,
     group: 'macros',
   },
@@ -51,6 +56,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Saturated Fat',
     unit: 'g',
     color: 'text-red-500',
+    chartColor: '#ef4444', // red-500
     decimals: 1,
     group: 'fats',
   },
@@ -60,6 +66,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Polyunsaturated Fat',
     unit: 'g',
     color: 'text-lime-500',
+    chartColor: '#84cc16', // lime-500
     decimals: 1,
     group: 'fats',
   },
@@ -69,6 +76,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Monounsaturated Fat',
     unit: 'g',
     color: 'text-emerald-500',
+    chartColor: '#10b981', // emerald-500
     decimals: 1,
     group: 'fats',
   },
@@ -78,6 +86,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Trans Fat',
     unit: 'g',
     color: 'text-red-700',
+    chartColor: '#b91c1c', // red-700
     decimals: 1,
     group: 'fats',
   },
@@ -87,6 +96,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Cholesterol',
     unit: 'mg',
     color: 'text-indigo-500',
+    chartColor: '#6366f1', // indigo-500
     decimals: 0,
     group: 'minerals',
   },
@@ -96,6 +106,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Sodium',
     unit: 'mg',
     color: 'text-purple-500',
+    chartColor: '#a855f7', // purple-500
     decimals: 0,
     group: 'minerals',
   },
@@ -105,6 +116,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Potassium',
     unit: 'mg',
     color: 'text-teal-500',
+    chartColor: '#14b8a6', // teal-500
     decimals: 0,
     group: 'minerals',
   },
@@ -114,6 +126,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Dietary Fiber',
     unit: 'g',
     color: 'text-green-600',
+    chartColor: '#16a34a', // green-600
     decimals: 1,
     group: 'minerals',
   },
@@ -123,6 +136,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Sugars',
     unit: 'g',
     color: 'text-pink-500',
+    chartColor: '#ec4899', // pink-500
     decimals: 1,
     group: 'minerals',
   },
@@ -132,6 +146,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Vitamin A',
     unit: 'µg',
     color: 'text-yellow-400',
+    chartColor: '#facc15', // yellow-400
     decimals: 0,
     group: 'minerals',
   },
@@ -141,6 +156,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Vitamin C',
     unit: 'mg',
     color: 'text-orange-400',
+    chartColor: '#fb923c', // orange-400
     decimals: 1,
     group: 'minerals',
   },
@@ -150,6 +166,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Calcium',
     unit: 'mg',
     color: 'text-blue-400',
+    chartColor: '#60a5fa', // blue-400
     decimals: 0,
     group: 'minerals',
   },
@@ -159,6 +176,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     defaultLabel: 'Iron',
     unit: 'mg',
     color: 'text-gray-500',
+    chartColor: '#6b7280', // gray-500
     decimals: 1,
     group: 'minerals',
   },

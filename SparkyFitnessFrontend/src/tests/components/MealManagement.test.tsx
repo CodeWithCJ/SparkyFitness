@@ -25,7 +25,19 @@ jest.mock('@/contexts/ActiveUserContext', () => ({
   useActiveUser: () => ({ activeUserId: 'test-user-id' }),
 }));
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ loggingLevel: 'debug', foodDisplayLimit: 100 }),
+  usePreferences: () => ({
+    loggingLevel: 'debug',
+    foodDisplayLimit: 100,
+    nutrientDisplayPreferences: [
+      {
+        view_group: 'quick_info',
+        platform: 'desktop',
+        visible_nutrients: ['calories', 'protein', 'carbs', 'fat'],
+      },
+    ],
+    energyUnit: 'kcal' as const,
+    convertEnergy: (value: number) => value,
+  }),
 }));
 
 // Mock toast

@@ -242,27 +242,10 @@ const MiniNutritionTrends = ({
       {visibleNutrients.map((nutrient) => {
         const metadata = getNutrientMetadata(nutrient, customNutrients);
         const details = {
-          color:
-            nutrient === 'calories'
-              ? '#22c55e'
-              : metadata.color
-                  .replace('text-', '')
-                  .replace('-600', '')
-                  .replace('-500', '')
-                  .replace('gray-900', '#333'),
+          color: metadata.chartColor || '#808080', // Use centralized chartColor with fallback for custom nutrients
           label: t(metadata.label, metadata.defaultLabel),
           unit: metadata.unit,
         };
-        // Fix some standard colors for charts specifically
-        const colorMap: Record<string, string> = {
-          protein: '#3b82f6',
-          carbs: '#f97316',
-          fat: '#eab308',
-          dietary_fiber: '#16a34a',
-        };
-        if (colorMap[nutrient]) details.color = colorMap[nutrient];
-
-        if (!details) return null;
 
         return (
           <MiniTrendChart
