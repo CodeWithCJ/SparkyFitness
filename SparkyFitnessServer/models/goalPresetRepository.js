@@ -1,16 +1,16 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
+const { getClient } = require("../db/poolManager");
+const { log } = require("../config/logging");
 
 async function createGoalPreset(presetData) {
   const client = await getClient(presetData.user_id); // User-specific operation
   try {
-    log('debug', 'createGoalPreset: Received presetData:', {
+    log("debug", "createGoalPreset: Received presetData:", {
       protein: presetData.protein,
       carbs: presetData.carbs,
       fat: presetData.fat,
       protein_percentage: presetData.protein_percentage,
       carbs_percentage: presetData.carbs_percentage,
-      fat_percentage: presetData.fat_percentage
+      fat_percentage: presetData.fat_percentage,
     });
     const result = await client.query(
       `INSERT INTO goal_presets (
@@ -20,19 +20,43 @@ async function createGoalPreset(presetData) {
         vitamin_a, vitamin_c, calcium, iron,
         target_exercise_calories_burned, target_exercise_duration_minutes,
         protein_percentage, carbs_percentage, fat_percentage,
-        breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage
+        breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
+        custom_nutrients
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
       RETURNING *`,
       [
-        presetData.user_id, presetData.preset_name, presetData.calories, presetData.protein, presetData.carbs, presetData.fat, presetData.water_goal,
-        presetData.saturated_fat, presetData.polyunsaturated_fat, presetData.monounsaturated_fat, presetData.trans_fat,
-        presetData.cholesterol, presetData.sodium, presetData.potassium, presetData.dietary_fiber, presetData.sugars,
-        presetData.vitamin_a, presetData.vitamin_c, presetData.calcium, presetData.iron,
-        presetData.target_exercise_calories_burned, presetData.target_exercise_duration_minutes,
-        presetData.protein_percentage, presetData.carbs_percentage, presetData.fat_percentage,
-        presetData.breakfast_percentage, presetData.lunch_percentage, presetData.dinner_percentage, presetData.snacks_percentage
-      ]
+        presetData.user_id,
+        presetData.preset_name,
+        presetData.calories,
+        presetData.protein,
+        presetData.carbs,
+        presetData.fat,
+        presetData.water_goal,
+        presetData.saturated_fat,
+        presetData.polyunsaturated_fat,
+        presetData.monounsaturated_fat,
+        presetData.trans_fat,
+        presetData.cholesterol,
+        presetData.sodium,
+        presetData.potassium,
+        presetData.dietary_fiber,
+        presetData.sugars,
+        presetData.vitamin_a,
+        presetData.vitamin_c,
+        presetData.calcium,
+        presetData.iron,
+        presetData.target_exercise_calories_burned,
+        presetData.target_exercise_duration_minutes,
+        presetData.protein_percentage,
+        presetData.carbs_percentage,
+        presetData.fat_percentage,
+        presetData.breakfast_percentage,
+        presetData.lunch_percentage,
+        presetData.dinner_percentage,
+        presetData.snacks_percentage,
+        presetData.custom_nutrients || {},
+      ],
     );
     return result.rows[0];
   } finally {
@@ -45,7 +69,7 @@ async function getGoalPresetsByUserId(userId) {
   try {
     const result = await client.query(
       `SELECT * FROM goal_presets WHERE user_id = $1 ORDER BY preset_name`,
-      [userId]
+      [userId],
     );
     return result.rows;
   } finally {
@@ -58,7 +82,7 @@ async function getGoalPresetById(presetId, userId) {
   try {
     const result = await client.query(
       `SELECT * FROM goal_presets WHERE id = $1 AND user_id = $2`,
-      [presetId, userId]
+      [presetId, userId],
     );
     return result.rows[0];
   } finally {
@@ -69,13 +93,13 @@ async function getGoalPresetById(presetId, userId) {
 async function updateGoalPreset(presetId, presetData) {
   const client = await getClient(presetData.user_id); // User-specific operation
   try {
-    log('debug', 'updateGoalPreset: Received presetData:', {
+    log("debug", "updateGoalPreset: Received presetData:", {
       protein: presetData.protein,
       carbs: presetData.carbs,
       fat: presetData.fat,
       protein_percentage: presetData.protein_percentage,
       carbs_percentage: presetData.carbs_percentage,
-      fat_percentage: presetData.fat_percentage
+      fat_percentage: presetData.fat_percentage,
     });
     const result = await client.query(
       `UPDATE goal_presets SET
@@ -86,19 +110,43 @@ async function updateGoalPreset(presetId, presetData) {
         target_exercise_calories_burned = $20, target_exercise_duration_minutes = $21,
         protein_percentage = $22, carbs_percentage = $23, fat_percentage = $24,
         breakfast_percentage = $25, lunch_percentage = $26, dinner_percentage = $27, snacks_percentage = $28,
+        custom_nutrients = $29,
         updated_at = now()
-      WHERE id = $29 AND user_id = $30
+      WHERE id = $30 AND user_id = $31
       RETURNING *`,
       [
-        presetData.preset_name, presetData.calories, presetData.protein, presetData.carbs, presetData.fat, presetData.water_goal,
-        presetData.saturated_fat, presetData.polyunsaturated_fat, presetData.monounsaturated_fat, presetData.trans_fat,
-        presetData.cholesterol, presetData.sodium, presetData.potassium, presetData.dietary_fiber, presetData.sugars,
-        presetData.vitamin_a, presetData.vitamin_c, presetData.calcium, presetData.iron,
-        presetData.target_exercise_calories_burned, presetData.target_exercise_duration_minutes,
-        presetData.protein_percentage, presetData.carbs_percentage, presetData.fat_percentage,
-        presetData.breakfast_percentage, presetData.lunch_percentage, presetData.dinner_percentage, presetData.snacks_percentage,
-        presetId, presetData.user_id
-      ]
+        presetData.preset_name,
+        presetData.calories,
+        presetData.protein,
+        presetData.carbs,
+        presetData.fat,
+        presetData.water_goal,
+        presetData.saturated_fat,
+        presetData.polyunsaturated_fat,
+        presetData.monounsaturated_fat,
+        presetData.trans_fat,
+        presetData.cholesterol,
+        presetData.sodium,
+        presetData.potassium,
+        presetData.dietary_fiber,
+        presetData.sugars,
+        presetData.vitamin_a,
+        presetData.vitamin_c,
+        presetData.calcium,
+        presetData.iron,
+        presetData.target_exercise_calories_burned,
+        presetData.target_exercise_duration_minutes,
+        presetData.protein_percentage,
+        presetData.carbs_percentage,
+        presetData.fat_percentage,
+        presetData.breakfast_percentage,
+        presetData.lunch_percentage,
+        presetData.dinner_percentage,
+        presetData.snacks_percentage,
+        presetData.custom_nutrients || {},
+        presetId,
+        presetData.user_id,
+      ],
     );
     return result.rows[0];
   } finally {
@@ -111,7 +159,7 @@ async function deleteGoalPreset(presetId, userId) {
   try {
     const result = await client.query(
       `DELETE FROM goal_presets WHERE id = $1 AND user_id = $2 RETURNING *`,
-      [presetId, userId]
+      [presetId, userId],
     );
     return result.rows[0];
   } finally {

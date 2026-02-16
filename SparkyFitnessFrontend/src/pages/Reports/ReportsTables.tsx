@@ -16,7 +16,10 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { debug, info } from '@/utils/logging';
 import { parseISO } from 'date-fns';
-import { formatNutrientValue, getNutrientUnit } from '@/lib/utils';
+import {
+  getNutrientMetadata,
+  formatNutrientValue,
+} from '@/utils/nutrientUtils';
 import { formatWeight } from '@/utils/numberFormatting';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import type { DailyFoodEntry as BaseDailyFoodEntry } from '@/services/reportsService';
@@ -391,32 +394,15 @@ const ReportsTables = ({
                     {t('reportsTables.quantity', 'Quantity')}
                   </TableHead>
                   {visibleNutrients.map((nutrient) => {
-                    // Check if it is a custom nutrient
-                    const customNutrient = customNutrients.find(
-                      (cn) => cn.name === nutrient
+                    const metadata = getNutrientMetadata(
+                      nutrient,
+                      customNutrients
                     );
-
-                    // Create a human-friendly label and only show unit when available
-                    const rawLabel = nutrient.replace(/_/g, ' ');
-                    const toTitleCase = (s: string) =>
-                      s
-                        .split(' ')
-                        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                        .join(' ');
-                    const label =
-                      nutrient === 'glycemic_index'
-                        ? t(
-                            'reports.foodDiaryExportHeaders.glycemicIndex',
-                            'Glycemic Index'
-                          )
-                        : toTitleCase(rawLabel);
-
-                    // Determine unit: use custom nutrient unit if available, otherwise standard logic
-                    const unit = customNutrient
-                      ? customNutrient.unit
-                      : nutrient === 'calories'
+                    const label = t(metadata.label, metadata.defaultLabel);
+                    const unit =
+                      nutrient === 'calories'
                         ? getEnergyUnitString(energyUnit)
-                        : getNutrientUnit(nutrient);
+                        : metadata.unit;
 
                     return (
                       <TableHead key={nutrient}>
@@ -482,35 +468,27 @@ const ReportsTables = ({
                           );
                         }
 
-                        // Handle custom nutrients
-                        if (
-                          customNutrients.some((cn) => cn.name === nutrient)
-                        ) {
-                          // Values are now top-level properties on the entry object due to backend changes
-                          const customNutrientValue = (
-                            Number(entry[nutrient]) || 0
-                          ).toFixed(1);
-                          return (
-                            <TableCell key={nutrient}>
-                              {entry.isTotal &&
-                              Number(customNutrientValue) === 0
-                                ? ''
-                                : customNutrientValue}
-                            </TableCell>
-                          );
-                        }
-
                         // Directly use the pre-calculated nutrient value from the entry
                         const value =
                           (entry[nutrient as keyof DailyFoodEntry] as number) ||
                           0;
+
+                        const displayValue =
+                          nutrient === 'calories'
+                            ? Math.round(
+                                convertEnergy(value, 'kcal', energyUnit)
+                              ).toString()
+                            : formatNutrientValue(
+                                nutrient,
+                                value,
+                                customNutrients
+                              );
+
                         return (
                           <TableCell key={nutrient}>
-                            {nutrient === 'calories'
-                              ? Math.round(
-                                  convertEnergy(value, 'kcal', energyUnit)
-                                )
-                              : formatNutrientValue(value, nutrient)}
+                            {entry.isTotal && Number(value) === 0
+                              ? ''
+                              : displayValue}
                           </TableCell>
                         );
                       })}

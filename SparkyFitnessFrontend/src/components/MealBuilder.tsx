@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +32,10 @@ import {
   useCreateMealMutation,
   useUpdateMealMutation,
 } from '@/hooks/Foods/useMeals';
+import {
+  getNutrientMetadata,
+  formatNutrientValue,
+} from '@/utils/nutrientUtils';
 
 interface MealBuilderProps {
   mealId?: string; // Optional: if editing an existing meal template
@@ -58,9 +62,33 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   initialServingSize,
   initialServingUnit,
 }) => {
-  const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
-  const { loggingLevel } = usePreferences();
+  const {
+    loggingLevel,
+    nutrientDisplayPreferences,
+    energyUnit,
+    convertEnergy,
+  } = usePreferences();
+  const { t } = useTranslation();
+
+  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    return unit === 'kcal'
+      ? t('common.kcalUnit', 'kcal')
+      : t('common.kJUnit', 'kJ');
+  };
+
+  const quickInfoPreferences =
+    nutrientDisplayPreferences.find(
+      (p) => p.view_group === 'quick_info' && p.platform === 'desktop' // Assuming dialog is primarily desktop-like or responsive enough
+    ) || nutrientDisplayPreferences.find((p) => p.view_group === 'quick_info');
+
+  const visibleNutrients = useMemo(
+    () =>
+      quickInfoPreferences
+        ? quickInfoPreferences.visible_nutrients
+        : ['calories', 'protein', 'carbs', 'fat'],
+    [quickInfoPreferences]
+  );
   const [mealName, setMealName] = useState('');
   const [mealDescription, setMealDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -474,23 +502,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   ]);
 
   const calculateMealNutrition = useCallback(() => {
-    let totalCalories = 0;
-    let totalProtein = 0;
-    let totalCarbs = 0;
-    let totalFat = 0;
-    let totalSodium = 0;
-    let totalPotassium = 0;
-    let totalFiber = 0;
-    let totalSugars = 0;
-    let totalSaturatedFat = 0;
-    let totalPolyunsaturatedFat = 0;
-    let totalMonounsaturatedFat = 0;
-    let totalTransFat = 0;
-    let totalCholesterol = 0;
-    let totalVitaminA = 0;
-    let totalVitaminC = 0;
-    let totalCalcium = 0;
-    let totalIron = 0;
+    // Initialize totals for all visible nutrients
+    const totals: Record<string, number> = {};
+    visibleNutrients.forEach((n) => (totals[n] = 0));
 
     // In food-diary mode, mealFoods are Base amounts, and servingSize is the multiplier
     // In meal-management mode, servingSize is just valid metadata, mealFoods are the definition
@@ -501,48 +515,34 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       // Use the nutritional information stored directly in the MealFood object
       const scale = mf.quantity / (mf.serving_size || 1);
 
-      totalCalories += (mf.calories || 0) * scale;
-      totalProtein += (mf.protein || 0) * scale;
-      totalCarbs += (mf.carbs || 0) * scale;
-      totalFat += (mf.fat || 0) * scale;
-      totalSodium += (mf.sodium || 0) * scale;
-      totalPotassium += (mf.potassium || 0) * scale;
-      totalFiber += (mf.dietary_fiber || 0) * scale;
-      totalSugars += (mf.sugars || 0) * scale;
-      totalSaturatedFat += (mf.saturated_fat || 0) * scale;
-      totalPolyunsaturatedFat += (mf.polyunsaturated_fat || 0) * scale;
-      totalMonounsaturatedFat += (mf.monounsaturated_fat || 0) * scale;
-      totalTransFat += (mf.trans_fat || 0) * scale;
-      totalCholesterol += (mf.cholesterol || 0) * scale;
-      totalVitaminA += (mf.vitamin_a || 0) * scale;
-      totalVitaminC += (mf.vitamin_c || 0) * scale;
-      totalCalcium += (mf.calcium || 0) * scale;
-      totalIron += (mf.iron || 0) * scale;
+      visibleNutrients.forEach((nutrient) => {
+        let val = 0;
+        // Check standard properties first
+        if (
+          nutrient in mf &&
+          typeof mf[nutrient as keyof typeof mf] === 'number'
+        ) {
+          val = mf[nutrient as keyof typeof mf] as number;
+        } else if (mf.custom_nutrients && nutrient in mf.custom_nutrients) {
+          // Check custom nutrients
+          const customVal = mf.custom_nutrients[nutrient];
+          val =
+            typeof customVal === 'number' ? customVal : Number(customVal) || 0;
+        }
+
+        totals[nutrient] = (totals[nutrient] || 0) + val * scale;
+      });
     });
 
-    return {
-      totalCalories: totalCalories * multiplier,
-      totalProtein: totalProtein * multiplier,
-      totalCarbs: totalCarbs * multiplier,
-      totalFat: totalFat * multiplier,
-      totalSodium: totalSodium * multiplier,
-      totalPotassium: totalPotassium * multiplier,
-      totalFiber: totalFiber * multiplier,
-      totalSugars: totalSugars * multiplier,
-      totalSaturatedFat: totalSaturatedFat * multiplier,
-      totalPolyunsaturatedFat: totalPolyunsaturatedFat * multiplier,
-      totalMonounsaturatedFat: totalMonounsaturatedFat * multiplier,
-      totalTransFat: totalTransFat * multiplier,
-      totalCholesterol: totalCholesterol * multiplier,
-      totalVitaminA: totalVitaminA * multiplier,
-      totalVitaminC: totalVitaminC * multiplier,
-      totalCalcium: totalCalcium * multiplier,
-      totalIron: totalIron * multiplier,
-    };
-  }, [mealFoods, servingSize, source]);
+    // Apply multiplier to all totals
+    Object.keys(totals).forEach((key) => {
+      totals[key] = totals[key] * multiplier;
+    });
 
-  const { totalCalories, totalProtein, totalCarbs, totalFat } =
-    calculateMealNutrition();
+    return totals;
+  }, [mealFoods, servingSize, source, visibleNutrients]);
+
+  const mealTotals = calculateMealNutrition();
 
   return (
     <div className="space-y-6 pt-4">
@@ -642,16 +642,49 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                       {mf.quantity} {mf.unit}
                     </div>
                     <div className="flex space-x-3 mt-1 sm:mt-0">
-                      <span>{calories.toFixed(0)} kcal</span>
-                      <span className="text-blue-500">
-                        P: {protein.toFixed(1)}g
-                      </span>
-                      <span className="text-green-500">
-                        C: {carbs.toFixed(1)}g
-                      </span>
-                      <span className="text-yellow-500">
-                        F: {fat.toFixed(1)}g
-                      </span>
+                      <div className="flex space-x-3 mt-1 sm:mt-0 flex-wrap gap-y-1">
+                        {visibleNutrients.map((key) => {
+                          const meta = getNutrientMetadata(key);
+                          let val = 0;
+                          // Calculate value for this specific food item
+                          if (
+                            key in mf &&
+                            typeof mf[key as keyof typeof mf] === 'number'
+                          ) {
+                            val = mf[key as keyof typeof mf] as number;
+                          } else if (
+                            mf.custom_nutrients &&
+                            key in mf.custom_nutrients
+                          ) {
+                            const customVal = mf.custom_nutrients[key];
+                            val =
+                              typeof customVal === 'number'
+                                ? customVal
+                                : Number(customVal) || 0;
+                          }
+
+                          const displayVal =
+                            key === 'calories'
+                              ? Math.round(
+                                  convertEnergy(val * scale, 'kcal', energyUnit)
+                                )
+                              : formatNutrientValue(key, val * scale, []);
+
+                          const unit =
+                            key === 'calories'
+                              ? getEnergyUnitString(energyUnit)
+                              : meta.unit;
+                          const label = t(meta.label, meta.defaultLabel);
+
+                          return (
+                            <span key={key} className={`${meta.color} mr-2`}>
+                              {key === 'calories' ? '' : `${label.charAt(0)}: `}
+                              {displayVal}
+                              {unit}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -701,17 +734,35 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             </Select>
           </div>
         </div>
-        <div className="text-sm text-muted-foreground">
-          {t(
-            'mealBuilder.totalNutrition',
-            'Total Nutrition: Calories: {{calories}}, Protein: {{protein}}g, Carbs: {{carbs}}g, Fat: {{fat}}g',
-            {
-              calories: totalCalories.toFixed(0),
-              protein: totalProtein.toFixed(1),
-              carbs: totalCarbs.toFixed(1),
-              fat: totalFat.toFixed(1),
-            }
-          )}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">
+            {t('mealBuilder.totalNutritionLabel', 'Total Nutrition:')}
+          </h4>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
+            {visibleNutrients.map((key, index) => {
+              const meta = getNutrientMetadata(key);
+              const val = mealTotals[key] || 0;
+              const displayVal =
+                key === 'calories'
+                  ? formatNutrientValue(
+                      key,
+                      convertEnergy(val, 'kcal', energyUnit),
+                      []
+                    )
+                  : formatNutrientValue(key, val, []);
+              const unit =
+                key === 'calories'
+                  ? getEnergyUnitString(energyUnit)
+                  : meta.unit;
+
+              return (
+                <div key={key} className="whitespace-nowrap">
+                  {t(meta.label, meta.defaultLabel)}: {displayVal}
+                  {unit}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

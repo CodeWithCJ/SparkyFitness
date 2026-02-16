@@ -13,6 +13,7 @@ import MealPercentageManager from '@/components/MealPercentageManager';
 import { Separator } from '@/components/ui/separator';
 
 import { DEFAULT_GOALS, NUTRIENT_CONFIG } from '@/constants/goals';
+import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
 import { WaterAndExerciseFields } from './WaterAndExerciseFields';
 import { NutrientInput } from './NutrientInput';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -24,6 +25,7 @@ import {
 } from '@/hooks/Goals/useGoals';
 import { useMemo, useState } from 'react';
 import { GoalPreset } from '@/api/Goals/goals';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 
 interface GoalPresetDialogProps {
   open: boolean;
@@ -50,6 +52,7 @@ export const GoalPresetDialog = ({
   const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { data: customNutrients } = useCustomNutrients();
   const [formData, setFormData] = useState<GoalPreset | null>(() => {
     if (!preset) {
       return { ...DEFAULT_GOALS, preset_name: '', id: undefined } as GoalPreset;
@@ -174,13 +177,14 @@ export const GoalPresetDialog = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs">
-                  Calories ({getEnergyUnitString(energyUnit)})
+                  {t('nutrition.calories')} ({getEnergyUnitString(energyUnit)})
                 </Label>
                 <Input
                   type="number"
+                  step={1}
                   value={Math.round(
                     convertEnergy(formData.calories, 'kcal', energyUnit)
-                  )}
+                  ).toFixed(0)}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -196,17 +200,22 @@ export const GoalPresetDialog = ({
               {(['protein', 'carbs', 'fat'] as const).map((m) => (
                 <div key={m} className="space-y-1.5">
                   <Label className="text-xs capitalize">
-                    {m} {macroInputType === 'grams' ? '(g)' : '(%)'}
+                    {t(CENTRAL_NUTRIENT_CONFIG[m].label, m)}{' '}
+                    {macroInputType === 'grams' ? '(g)' : '(%)'}
                   </Label>
                   <Input
                     max={100}
                     min={0}
                     type="number"
+                    step={0.1}
                     value={
                       macroInputType === 'grams'
-                        ? (formData[m] ?? '')
-                        : (formData[`${m}_percentage` as keyof GoalPreset] ??
-                          '')
+                        ? ((formData[m] as number) ?? 0).toFixed(1)
+                        : (
+                            (formData[
+                              `${m}_percentage` as keyof GoalPreset
+                            ] as number) ?? 0
+                          ).toFixed(1)
                     }
                     onChange={(e) =>
                       setFormData({
@@ -264,14 +273,26 @@ export const GoalPresetDialog = ({
               {NUTRIENT_CONFIG.filter(
                 (f) => !['protein', 'carbs', 'fat'].includes(f.id)
               ).map((f) => (
-                <NutrientInput
+                <NutrientInput<GoalPreset>
                   key={f.id}
-                  field={f}
+                  nutrientId={f.id}
                   state={formData}
                   setState={(val) => setFormData(val)}
                   visibleNutrients={visibleNutrients}
                 />
               ))}
+              {/* Custom Nutrients */}
+              {customNutrients?.map((cn) => {
+                return (
+                  <NutrientInput<GoalPreset>
+                    key={cn.id}
+                    nutrientId={cn.name}
+                    state={formData}
+                    setState={(val) => setFormData(val)}
+                    visibleNutrients={visibleNutrients}
+                  />
+                );
+              })}
             </div>
             <Separator />
             <WaterAndExerciseFields

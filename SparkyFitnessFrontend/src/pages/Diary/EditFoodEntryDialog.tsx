@@ -25,6 +25,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { foodVariantsOptions } from '@/hooks/Foods/useFoodVariants';
 import { updateFoodEntry } from '@/services/foodEntryService';
+import {
+  getNutrientMetadata,
+  formatNutrientValue,
+} from '@/utils/nutrientUtils';
 
 interface EditFoodEntryDialogProps {
   entry: FoodEntry | null;
@@ -410,58 +414,51 @@ const EditFoodEntryDialog = ({
                           )}
                         </div>
                       </div>
-                      <div>
-                        <Label className="text-sm">Protein (g)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.protein.toFixed(1)}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Carbs (g)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.carbs.toFixed(1)}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Fat (g)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.fat.toFixed(1)}
-                        </div>
-                      </div>
+                      {['protein', 'carbs', 'fat'].map((key) => {
+                        const meta = getNutrientMetadata(key, customNutrients);
+                        return (
+                          <div key={key}>
+                            <Label className="text-sm">
+                              {meta.label} ({meta.unit})
+                            </Label>
+                            <div className="text-lg font-medium">
+                              {formatNutrientValue(
+                                key,
+                                nutrition[key],
+                                customNutrients
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
                   <div>
                     <h4 className="font-medium mb-3">Fat Breakdown</h4>
                     <div className="grid grid-cols-4 gap-4">
-                      <div>
-                        <Label className="text-sm">Saturated Fat (g)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.saturated_fat.toFixed(1)}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">
-                          Polyunsaturated Fat (g)
-                        </Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.polyunsaturated_fat.toFixed(1)}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">
-                          Monounsaturated Fat (g)
-                        </Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.monounsaturated_fat.toFixed(1)}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Trans Fat (g)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.trans_fat.toFixed(1)}
-                        </div>
-                      </div>
+                      {[
+                        'saturated_fat',
+                        'polyunsaturated_fat',
+                        'monounsaturated_fat',
+                        'trans_fat',
+                      ].map((key) => {
+                        const meta = getNutrientMetadata(key, customNutrients);
+                        return (
+                          <div key={key}>
+                            <Label className="text-sm">
+                              {meta.label} ({meta.unit})
+                            </Label>
+                            <div className="text-lg font-medium">
+                              {formatNutrientValue(
+                                key,
+                                nutrition[key],
+                                customNutrients
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -470,71 +467,78 @@ const EditFoodEntryDialog = ({
                       Minerals & Other Nutrients
                     </h4>
                     <div className="grid grid-cols-4 gap-4">
-                      <div>
-                        <Label className="text-sm">Cholesterol (mg)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.cholesterol.toFixed(1)}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Sodium (mg)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.sodium.toFixed(1)}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Potassium (mg)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.potassium.toFixed(1)}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Dietary Fiber (g)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.dietary_fiber.toFixed(1)}
-                        </div>
-                      </div>
+                      {[
+                        'cholesterol',
+                        'sodium',
+                        'potassium',
+                        'dietary_fiber',
+                      ].map((key) => {
+                        const meta = getNutrientMetadata(key, customNutrients);
+                        return (
+                          <div key={key}>
+                            <Label className="text-sm">
+                              {meta.label} ({meta.unit})
+                            </Label>
+                            <div className="text-lg font-medium">
+                              {formatNutrientValue(
+                                key,
+                                nutrition[key],
+                                customNutrients
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
                   <div>
                     <h4 className="font-medium mb-3">Sugars & Vitamins</h4>
                     <div className="grid grid-cols-4 gap-4">
-                      <div>
-                        <Label className="text-sm">Sugars (g)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.sugars.toFixed(1)}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Vitamin A (μg)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.vitamin_a.toFixed(1)}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Vitamin C (mg)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.vitamin_c.toFixed(1)}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Calcium (mg)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.calcium.toFixed(1)}
-                        </div>
-                      </div>
+                      {['sugars', 'vitamin_a', 'vitamin_c', 'calcium'].map(
+                        (key) => {
+                          const meta = getNutrientMetadata(
+                            key,
+                            customNutrients
+                          );
+                          return (
+                            <div key={key}>
+                              <Label className="text-sm">
+                                {meta.label} ({meta.unit})
+                              </Label>
+                              <div className="text-lg font-medium">
+                                {formatNutrientValue(
+                                  key,
+                                  nutrition[key],
+                                  customNutrients
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                      )}
                     </div>
                   </div>
 
                   <div>
                     <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <Label className="text-sm">Iron (mg)</Label>
-                        <div className="text-lg font-medium">
-                          {nutrition.iron.toFixed(1)}
-                        </div>
-                      </div>
+                      {['iron'].map((key) => {
+                        const meta = getNutrientMetadata(key, customNutrients);
+                        return (
+                          <div key={key}>
+                            <Label className="text-sm">
+                              {meta.label} ({meta.unit})
+                            </Label>
+                            <div className="text-lg font-medium">
+                              {formatNutrientValue(
+                                key,
+                                nutrition[key],
+                                customNutrients
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -548,9 +552,11 @@ const EditFoodEntryDialog = ({
                               {nutrient.name} ({nutrient.unit})
                             </Label>
                             <div className="text-lg font-medium">
-                              {(
-                                nutrition.custom_nutrients[nutrient.name] || 0
-                              ).toFixed(1)}
+                              {formatNutrientValue(
+                                nutrient.name,
+                                nutrition.custom_nutrients[nutrient.name] || 0,
+                                customNutrients
+                              )}
                             </div>
                           </div>
                         ))}

@@ -1,5 +1,70 @@
 import { apiCall } from '@/services/api';
 import type { ExpandedGoals } from '@/types/goals';
+
+const PREDEFINED_GOAL_KEYS = [
+  'id',
+  'user_id',
+  'preset_name',
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'water_goal_ml',
+  'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
+  'trans_fat',
+  'cholesterol',
+  'sodium',
+  'potassium',
+  'dietary_fiber',
+  'sugars',
+  'vitamin_a',
+  'vitamin_c',
+  'calcium',
+  'iron',
+  'target_exercise_calories_burned',
+  'target_exercise_duration_minutes',
+  'protein_percentage',
+  'carbs_percentage',
+  'fat_percentage',
+  'breakfast_percentage',
+  'lunch_percentage',
+  'dinner_percentage',
+  'snacks_percentage',
+  'created_at',
+  'updated_at',
+];
+
+function flattenCustomNutrients<
+  T extends { custom_nutrients?: Record<string, number> },
+>(data: T): (T & Record<string, number>) | T {
+  if (!data) return data;
+  const { custom_nutrients, ...rest } = data;
+  return { ...rest, ...custom_nutrients } as T & Record<string, number>;
+}
+
+function unflattenCustomNutrients<T extends Record<string, unknown>>(
+  data: T
+): T & { custom_nutrients: Record<string, number> } {
+  if (!data) return data as T & { custom_nutrients: Record<string, number> };
+  const custom_nutrients: Record<string, number> = {};
+  const unflattened: Record<string, unknown> = {};
+
+  Object.keys(data).forEach((key) => {
+    if (PREDEFINED_GOAL_KEYS.includes(key)) {
+      unflattened[key] = data[key];
+    } else if (typeof data[key] === 'number') {
+      custom_nutrients[key] = data[key] as number;
+    } else {
+      unflattened[key] = data[key]; // Preserve other non-numeric keys
+    }
+  });
+
+  return { ...unflattened, custom_nutrients } as T & {
+    custom_nutrients: Record<string, number>;
+  };
+}
 export interface GoalPreset {
   id?: string;
   user_id?: string;
@@ -31,6 +96,7 @@ export interface GoalPreset {
   lunch_percentage: number;
   dinner_percentage: number;
   snacks_percentage: number;
+  custom_nutrients?: Record<string, number>;
 }
 
 export async function createGoalPreset(
@@ -38,20 +104,23 @@ export async function createGoalPreset(
 ): Promise<GoalPreset> {
   return apiCall('/goal-presets', {
     method: 'POST',
-    body: presetData,
-  });
+    body: unflattenCustomNutrients(
+      presetData as unknown as Record<string, unknown>
+    ),
+  }).then(flattenCustomNutrients);
 }
 
 export async function getGoalPresets(): Promise<GoalPreset[]> {
-  return apiCall('/goal-presets', {
+  const data = await apiCall('/goal-presets', {
     method: 'GET',
   });
+  return (data || []).map(flattenCustomNutrients);
 }
 
 export async function getGoalPresetById(id: string): Promise<GoalPreset> {
   return apiCall(`/goal-presets/${id}`, {
     method: 'GET',
-  });
+  }).then(flattenCustomNutrients);
 }
 
 export async function updateGoalPreset(
@@ -60,8 +129,10 @@ export async function updateGoalPreset(
 ): Promise<GoalPreset> {
   return apiCall(`/goal-presets/${id}`, {
     method: 'PUT',
-    body: presetData,
-  });
+    body: unflattenCustomNutrients(
+      presetData as unknown as Record<string, unknown>
+    ),
+  }).then(flattenCustomNutrients);
 }
 
 export async function deleteGoalPreset(id: string): Promise<void> {
@@ -132,7 +203,7 @@ export const loadGoals = async (
   const data = await apiCall(`/goals/for-date?${params.toString()}`, {
     method: 'GET',
   });
-  return (
+  return flattenCustomNutrients(
     data || {
       calories: 2000,
       protein: 150,
@@ -170,6 +241,9 @@ export const saveGoals = async (
   goals: ExpandedGoals,
   cascade: boolean
 ): Promise<void> => {
+  const unflattened = unflattenCustomNutrients(goals);
+  const { custom_nutrients, ...rest } = unflattened;
+
   await apiCall('/goals/manage-timeline', {
     method: 'POST',
     body: {
@@ -203,6 +277,7 @@ export const saveGoals = async (
       p_lunch_percentage: goals.lunch_percentage,
       p_dinner_percentage: goals.dinner_percentage,
       p_snacks_percentage: goals.snacks_percentage,
+      custom_nutrients,
     },
   });
 };

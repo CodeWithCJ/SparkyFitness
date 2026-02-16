@@ -1,4 +1,4 @@
-import React from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -21,6 +21,11 @@ import {
   getChartConfig,
 } from '@/utils/chartUtils';
 import type { UserCustomNutrient } from '@/types/customNutrient';
+import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
+import {
+  getNutrientMetadata,
+  formatNutrientValue,
+} from '@/utils/nutrientUtils';
 interface NutritionData {
   date: string;
   calories: number;
@@ -92,120 +97,79 @@ const NutritionChartsGrid = ({
     });
   };
 
-  const allNutritionCharts = [
-    {
-      key: 'calories',
-      label: t('nutritionCharts.calories', 'Calories'),
-      color: '#8884d8',
-      unit: energyUnit,
-    },
-    {
-      key: 'protein',
-      label: t('nutritionCharts.protein', 'Protein'),
-      color: '#82ca9d',
-      unit: 'g',
-    },
-    {
-      key: 'carbs',
-      label: t('nutritionCharts.carbs', 'Carbs'),
-      color: '#ffc658',
-      unit: 'g',
-    },
-    {
-      key: 'fat',
-      label: t('nutritionCharts.fat', 'Fat'),
-      color: '#ff7300',
-      unit: 'g',
-    },
-    {
-      key: 'saturated_fat',
-      label: t('nutritionCharts.saturated_fat', 'Saturated Fat'),
-      color: '#ff6b6b',
-      unit: 'g',
-    },
-    {
-      key: 'polyunsaturated_fat',
-      label: t('nutritionCharts.polyunsaturated_fat', 'Polyunsaturated Fat'),
-      color: '#4ecdc4',
-      unit: 'g',
-    },
-    {
-      key: 'monounsaturated_fat',
-      label: t('nutritionCharts.monounsaturated_fat', 'Monounsaturated Fat'),
-      color: '#45b7d1',
-      unit: 'g',
-    },
-    {
-      key: 'trans_fat',
-      label: t('nutritionCharts.trans_fat', 'Trans Fat'),
-      color: '#f9ca24',
-      unit: 'g',
-    },
-    {
-      key: 'cholesterol',
-      label: t('nutritionCharts.cholesterol', 'Cholesterol'),
-      color: '#eb4d4b',
-      unit: 'mg',
-    },
-    {
-      key: 'sodium',
-      label: t('nutritionCharts.sodium', 'Sodium'),
-      color: '#6c5ce7',
-      unit: 'mg',
-    },
-    {
-      key: 'potassium',
-      label: t('nutritionCharts.potassium', 'Potassium'),
-      color: '#a29bfe',
-      unit: 'mg',
-    },
-    {
-      key: 'dietary_fiber',
-      label: t('nutritionCharts.dietary_fiber', 'Dietary Fiber'),
-      color: '#fd79a8',
-      unit: 'g',
-    },
-    {
-      key: 'sugars',
-      label: t('nutritionCharts.sugars', 'Sugars'),
-      color: '#fdcb6e',
-      unit: 'g',
-    },
-    {
-      key: 'vitamin_a',
-      label: t('nutritionCharts.vitamin_a', 'Vitamin A'),
-      color: '#e17055',
-      unit: 'μg',
-    },
-    {
-      key: 'vitamin_c',
-      label: t('nutritionCharts.vitamin_c', 'Vitamin C'),
-      color: '#00b894',
-      unit: 'mg',
-    },
-    {
-      key: 'calcium',
-      label: t('nutritionCharts.calcium', 'Calcium'),
-      color: '#0984e3',
-      unit: 'mg',
-    },
-    {
-      key: 'iron',
-      label: t('nutritionCharts.iron', 'Iron'),
-      color: '#2d3436',
-      unit: 'mg',
-    },
-  ];
+  const allNutritionCharts = useMemo(() => {
+    const charts = Object.values(CENTRAL_NUTRIENT_CONFIG).map((n) => ({
+      key: n.id,
+      label: t(n.label, n.defaultLabel),
+      color:
+        n.id === 'calories'
+          ? '#8884d8'
+          : getNutrientMetadata(n.id)
+              .color.replace('text-', '')
+              .replace('-600', '')
+              .replace('-500', '')
+              .replace('gray-900', '#333'), // Basic color mapping
+      unit: n.id === 'calories' ? energyUnit : n.unit,
+    }));
 
-  // Dynamically add custom nutrients to allNutritionCharts
-  customNutrients.forEach((cn) => {
-    allNutritionCharts.push({
-      key: cn.name,
-      label: cn.name,
-      color: '#808080', // A default color for custom nutrients
-      unit: cn.unit,
+    // Override or fix colors for better chart visibility (CSS colors vs hex)
+    const colorMap: Record<string, string> = {
+      protein: '#82ca9d',
+      carbs: '#ffc658',
+      fat: '#ff7300',
+      dietary_fiber: '#fd79a8',
+      sugars: '#fdcb6e',
+      sodium: '#6c5ce7',
+      potassium: '#a29bfe',
+      saturated_fat: '#ff6b6b',
+      polyunsaturated_fat: '#4ecdc4',
+      monounsaturated_fat: '#45b7d1',
+      trans_fat: '#f9ca24',
+    };
+
+    const finalCharts = charts.map((c) => ({
+      ...c,
+      color: colorMap[c.key] || '#808080',
+    }));
+
+    // Generate deterministic color from string
+    const getStringColor = (str: string) => {
+      const colors = [
+        '#FF6B6B', // Red
+        '#4ECDC4', // Teal
+        '#45B7D1', // Cyan
+        '#FFA07A', // Salmon
+        '#98D8E3', // Light Blue
+        '#FFBE76', // Orange
+        '#FF7979', // Lighter Red
+        '#BADC58', // Green
+        '#DFF9FB', // Very Light Blue
+        '#F6E58D', // Yellow
+        '#686de0', // Purple
+        '#e056fd', // Violet
+        '#30336b', // Dark Blue
+        '#95afc0', // Blue Gray
+        '#22a6b3', // Dark Teal
+      ];
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return colors[Math.abs(hash) % colors.length];
+    };
+
+    // Add custom nutrients
+    customNutrients.forEach((cn) => {
+      finalCharts.push({
+        key: cn.name,
+        label: cn.name,
+        color: getStringColor(cn.name),
+        unit: cn.unit,
+      });
     });
-  });
+
+    return finalCharts;
+  }, [t, energyUnit, customNutrients]);
 
   const visibleCharts = reportChartPreferences
     ? allNutritionCharts.filter((chart) =>
@@ -213,11 +177,7 @@ const NutritionChartsGrid = ({
       )
     : allNutritionCharts;
 
-  const [isMounted, setIsMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const [isMounted, setIsMounted] = useState(true);
 
   if (!isMounted) {
     return (
@@ -290,20 +250,16 @@ const NutritionChartsGrid = ({
                           fontSize={10}
                           domain={yAxisDomain || undefined}
                           tickFormatter={(value: number) => {
-                            if (chart.unit === 'g') {
-                              return value.toFixed(1);
-                            } else if (chart.unit === 'mg') {
-                              return value.toFixed(2);
-                            } else if (chart.key === 'calories') {
-                              // Use chart.key === 'calories' to specifically target calories
+                            if (chart.key === 'calories') {
                               return Math.round(
                                 convertEnergy(value, 'kcal', energyUnit)
                               ).toString();
-                            } else if (chart.unit === 'μg') {
-                              return Math.round(value).toString();
-                            } else {
-                              return Math.round(value).toString(); // Default to rounding for other units
                             }
+                            return formatNutrientValue(
+                              chart.key,
+                              value,
+                              customNutrients
+                            );
                           }}
                         />
                         <Tooltip
@@ -318,29 +274,20 @@ const NutritionChartsGrid = ({
                             }
                             let numValue: number;
                             if (typeof value === 'string') {
-                              numValue = parseFloat(value); // Parse string to number
-                            } else if (typeof value === 'number') {
-                              numValue = value;
+                              numValue = parseFloat(value);
                             } else {
-                              return ['N/A']; // Should not happen if types are correct
+                              numValue = value;
                             }
 
-                            let formattedValue: string;
                             if (chart.key === 'calories') {
-                              // Use chart.key === 'calories' to specifically target calories
-                              formattedValue = Math.round(
-                                convertEnergy(numValue, 'kcal', energyUnit)
-                              ).toString();
-                            } else if (chart.unit === 'g') {
-                              formattedValue = numValue.toFixed(1);
-                            } else if (chart.unit === 'mg') {
-                              formattedValue = numValue.toFixed(2);
-                            } else if (chart.unit === 'μg') {
-                              formattedValue = Math.round(numValue).toString();
-                            } else {
-                              formattedValue = Math.round(numValue).toString();
+                              return [
+                                `${Math.round(convertEnergy(numValue, 'kcal', energyUnit))} ${chart.unit}`,
+                              ];
                             }
-                            return [`${formattedValue} ${chart.unit}`];
+
+                            return [
+                              `${formatNutrientValue(chart.key, numValue, customNutrients)} ${chart.unit}`,
+                            ];
                           }}
                           contentStyle={{
                             backgroundColor: 'hsl(var(--background))',

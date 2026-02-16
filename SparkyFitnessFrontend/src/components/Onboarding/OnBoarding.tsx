@@ -37,6 +37,7 @@ import type {
 import PersonalPlan from './PersonalPlan';
 import { useSubmitOnboarding } from '@/hooks/Onboarding/useOnboarding';
 import { useSaveGoalsMutation } from '@/hooks/Goals/useGoals';
+import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 
 interface OptionButtonProps {
   label: string;
@@ -180,6 +181,7 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
 
   const { mutateAsync: submitOnboardingData } = useSubmitOnboarding();
   const { mutateAsync: saveGoals } = useSaveGoalsMutation();
+  const { data: customNutrients } = useCustomNutrients();
 
   // Fetch existing user data on component mount to pre-populate the form
   useEffect(() => {
@@ -1075,6 +1077,7 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
             setLocalSugarAlgorithm={setLocalSugarAlgorithm}
             handleSubmit={handleSubmit}
             isSubmitting={isSubmitting}
+            customNutrients={customNutrients}
           />
         );
 

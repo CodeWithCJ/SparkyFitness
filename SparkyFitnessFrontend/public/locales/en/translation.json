@@ -8,6 +8,25 @@
     "settings": "Settings",
     "admin": "Admin"
   },
+  "nutrition": {
+    "calories": "Calories",
+    "protein": "Protein",
+    "carbohydrates": "Carbohydrates",
+    "fat": "Fat",
+    "saturatedFat": "Saturated Fat",
+    "polyunsaturatedFat": "Polyunsaturated Fat",
+    "monounsaturatedFat": "Monounsaturated Fat",
+    "transFat": "Trans Fat",
+    "cholesterol": "Cholesterol",
+    "sodium": "Sodium",
+    "potassium": "Potassium",
+    "dietaryFiber": "Dietary Fiber",
+    "sugars": "Sugars",
+    "vitaminA": "Vitamin A",
+    "vitaminC": "Vitamin C",
+    "calcium": "Calcium",
+    "iron": "Iron"
+  },
   "aboutDialog": {
     "title": "About SparkyFitness",
     "description1": "SparkyFitness: Built for Families. Powered by AI. Track food, fitness, water, and health — together.",

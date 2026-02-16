@@ -1,5 +1,5 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
+const { getClient } = require("../db/poolManager");
+const { log } = require("../config/logging");
 
 async function getGoalByDate(userId, selectedDate) {
   const client = await getClient(userId); // User-specific operation
@@ -11,12 +11,13 @@ async function getGoalByDate(userId, selectedDate) {
                vitamin_a, vitamin_c, calcium, iron,
                target_exercise_calories_burned, target_exercise_duration_minutes,
                protein_percentage, carbs_percentage, fat_percentage,
-               breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage
+               breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
+               custom_nutrients
         FROM user_goals
         WHERE goal_date = $1
         ORDER BY updated_at DESC, created_at DESC -- Prioritize most recently updated/created
         LIMIT 1`,
-      [selectedDate]
+      [selectedDate],
     );
     return result.rows[0];
   } finally {
@@ -34,12 +35,13 @@ async function getMostRecentGoalBeforeDate(userId, selectedDate) {
                vitamin_a, vitamin_c, calcium, iron,
                target_exercise_calories_burned, target_exercise_duration_minutes,
                protein_percentage, carbs_percentage, fat_percentage,
-               breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage
+               breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
+               custom_nutrients
        FROM user_goals
        WHERE (goal_date < $1 OR goal_date IS NULL)
        ORDER BY goal_date DESC NULLS LAST
        LIMIT 1`,
-      [selectedDate]
+      [selectedDate],
     );
     return result.rows[0];
   } finally {
@@ -59,9 +61,9 @@ async function upsertGoal(goalData) {
         target_exercise_calories_burned, target_exercise_duration_minutes,
         protein_percentage, carbs_percentage, fat_percentage,
         breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
-        created_at, updated_at
+        custom_nutrients, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
       ON CONFLICT (user_id, COALESCE(goal_date, '1900-01-01'::date))
       DO UPDATE SET
         calories = EXCLUDED.calories,
@@ -91,19 +93,43 @@ async function upsertGoal(goalData) {
         lunch_percentage = EXCLUDED.lunch_percentage,
         dinner_percentage = EXCLUDED.dinner_percentage,
         snacks_percentage = EXCLUDED.snacks_percentage,
+        custom_nutrients = EXCLUDED.custom_nutrients,
         updated_at = now()
       RETURNING *`,
       [
-        goalData.user_id, goalData.goal_date, goalData.calories, goalData.protein, goalData.carbs, goalData.fat, goalData.water_goal_ml,
-        goalData.saturated_fat, goalData.polyunsaturated_fat, goalData.monounsaturated_fat, goalData.trans_fat,
-        goalData.cholesterol, goalData.sodium, goalData.potassium, goalData.dietary_fiber, goalData.sugars,
-        goalData.vitamin_a, goalData.vitamin_c, goalData.calcium, goalData.iron,
-        goalData.target_exercise_calories_burned, goalData.target_exercise_duration_minutes,
-        goalData.protein_percentage, goalData.carbs_percentage, goalData.fat_percentage,
-        goalData.breakfast_percentage, goalData.lunch_percentage, goalData.dinner_percentage, goalData.snacks_percentage,
+        goalData.user_id,
+        goalData.goal_date,
+        goalData.calories,
+        goalData.protein,
+        goalData.carbs,
+        goalData.fat,
+        goalData.water_goal_ml,
+        goalData.saturated_fat,
+        goalData.polyunsaturated_fat,
+        goalData.monounsaturated_fat,
+        goalData.trans_fat,
+        goalData.cholesterol,
+        goalData.sodium,
+        goalData.potassium,
+        goalData.dietary_fiber,
+        goalData.sugars,
+        goalData.vitamin_a,
+        goalData.vitamin_c,
+        goalData.calcium,
+        goalData.iron,
+        goalData.target_exercise_calories_burned,
+        goalData.target_exercise_duration_minutes,
+        goalData.protein_percentage,
+        goalData.carbs_percentage,
+        goalData.fat_percentage,
+        goalData.breakfast_percentage,
+        goalData.lunch_percentage,
+        goalData.dinner_percentage,
+        goalData.snacks_percentage,
+        goalData.custom_nutrients || {},
         new Date(), // for created_at
-        new Date()  // for updated_at
-      ]
+        new Date(), // for updated_at
+      ],
     );
     return result.rows[0];
   } finally {
@@ -119,7 +145,7 @@ async function deleteGoalsInRange(userId, startDate, endDate) {
        WHERE goal_date >= $1
          AND goal_date < $2
          AND goal_date IS NOT NULL`,
-      [startDate, endDate]
+      [startDate, endDate],
     );
     return true;
   } finally {
@@ -133,7 +159,7 @@ async function deleteDefaultGoal(userId) {
     await client.query(
       `DELETE FROM user_goals
        WHERE goal_date IS NULL`,
-      []
+      [],
     );
     return true;
   } finally {

@@ -17,7 +17,6 @@ import {
   loadMiniNutritionTrendData,
   type DayData,
 } from '@/services/miniNutritionTrendsService';
-import { formatNutrientValue } from '@/lib/utils';
 
 import type { UserCustomNutrient } from '@/types/customNutrient';
 
@@ -26,6 +25,11 @@ interface MiniNutritionTrendsProps {
   refreshTrigger?: number;
   customNutrients?: UserCustomNutrient[]; // Add customNutrients prop
 }
+
+import {
+  getNutrientMetadata,
+  formatNutrientValue,
+} from '@/utils/nutrientUtils';
 
 const MiniNutritionTrends = ({
   selectedDate,
@@ -104,11 +108,16 @@ const MiniNutritionTrends = ({
       const nutrientValue = payload[0].value;
 
       const unitString =
-        nutrientName === 'calories' ? getEnergyUnitString(energyUnit) : '';
-      const convertedValue =
         nutrientName === 'calories'
-          ? Math.round(convertEnergy(nutrientValue, 'kcal', energyUnit))
-          : nutrientValue;
+          ? getEnergyUnitString(energyUnit)
+          : getNutrientMetadata(nutrientName, customNutrients).unit;
+
+      const displayValue =
+        nutrientName === 'calories'
+          ? Math.round(
+              convertEnergy(nutrientValue, 'kcal', energyUnit)
+            ).toString()
+          : formatNutrientValue(nutrientName, nutrientValue, customNutrients);
 
       return (
         <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded shadow-lg">
@@ -117,7 +126,7 @@ const MiniNutritionTrends = ({
           </p>
           <p className="text-xs text-gray-600 dark:text-gray-400">
             {nutrientName === 'dietary_fiber' ? 'Fiber' : nutrientName}:{' '}
-            {convertedValue}
+            {displayValue}
             {unitString}
           </p>
         </div>
@@ -143,36 +152,6 @@ const MiniNutritionTrends = ({
     ? summaryPreferences.visible_nutrients
     : ['calories', 'protein', 'carbs', 'fat', 'dietary_fiber'];
 
-  const nutrientDetails: { [key: string]: { color: string; label: string } } = {
-    calories: {
-      color: '#22c55e',
-      label: `${t('common.calories', 'Calories')} (${getEnergyUnitString(energyUnit)})`,
-    },
-    protein: { color: '#3b82f6', label: t('common.protein', 'Protein') },
-    carbs: { color: '#f97316', label: t('common.carbs', 'Carbs') },
-    fat: { color: '#eab308', label: t('common.fat', 'Fat') },
-    dietary_fiber: {
-      color: '#16a34a',
-      label: t('common.dietaryFiber', 'Fiber'),
-    },
-    sugars: { color: '#d946ef', label: t('common.sugars', 'Sugars') },
-    sodium: { color: '#8b5cf6', label: t('common.sodium', 'Sodium') },
-    cholesterol: {
-      color: '#ec4899',
-      label: t('common.cholesterol', 'Cholesterol'),
-    },
-    saturated_fat: {
-      color: '#ef4444',
-      label: t('common.saturatedFat', 'Saturated Fat'),
-    },
-    trans_fat: { color: '#f59e0b', label: t('common.transFat', 'Trans Fat') },
-    potassium: { color: '#14b8a6', label: t('common.potassium', 'Potassium') },
-    vitamin_a: { color: '#f59e0b', label: t('common.vitaminA', 'Vitamin A') },
-    vitamin_c: { color: '#f97316', label: t('common.vitaminC', 'Vitamin C') },
-    iron: { color: '#6b7280', label: t('common.iron', 'Iron') },
-    calcium: { color: '#3b82f6', label: t('common.calcium', 'Calcium') },
-  };
-
   // Memoize the chart component to prevent unnecessary re-renders of multiple charts
   const MiniTrendChart = memo(
     ({
@@ -194,13 +173,27 @@ const MiniNutritionTrends = ({
             className="text-xs font-medium"
             style={{ color: details.color }}
           >
-            {formatNutrientValue(
-              (data[data.length - 1]?.[nutrient as keyof DayData] as number) ||
-                0,
-              nutrient,
-              energyUnit,
-              convertEnergy
-            )}
+            {nutrient === 'calories'
+              ? Math.round(
+                  convertEnergy(
+                    (data[data.length - 1]?.[
+                      nutrient as keyof DayData
+                    ] as number) || 0,
+                    'kcal',
+                    energyUnit
+                  )
+                ).toString() +
+                ' ' +
+                getEnergyUnitString(energyUnit)
+              : formatNutrientValue(
+                  nutrient,
+                  (data[data.length - 1]?.[
+                    nutrient as keyof DayData
+                  ] as number) || 0,
+                  customNutrients
+                ) +
+                ' ' +
+                details.unit}
           </span>
         </div>
         <div className="h-6 w-full bg-gray-100 dark:bg-gray-800 rounded min-w-0">
@@ -247,20 +240,27 @@ const MiniNutritionTrends = ({
       </div>
 
       {visibleNutrients.map((nutrient) => {
-        let details = nutrientDetails[nutrient];
-
-        // Handle custom nutrients
-        if (!details && customNutrients) {
-          const customNutrient = customNutrients.find(
-            (cn) => cn.name === nutrient
-          );
-          if (customNutrient) {
-            details = {
-              color: '#8b5cf6', // Default purple color for custom nutrients
-              label: `${customNutrient.name} (${customNutrient.unit})`,
-            };
-          }
-        }
+        const metadata = getNutrientMetadata(nutrient, customNutrients);
+        const details = {
+          color:
+            nutrient === 'calories'
+              ? '#22c55e'
+              : metadata.color
+                  .replace('text-', '')
+                  .replace('-600', '')
+                  .replace('-500', '')
+                  .replace('gray-900', '#333'),
+          label: t(metadata.label, metadata.defaultLabel),
+          unit: metadata.unit,
+        };
+        // Fix some standard colors for charts specifically
+        const colorMap: Record<string, string> = {
+          protein: '#3b82f6',
+          carbs: '#f97316',
+          fat: '#eab308',
+          dietary_fiber: '#16a34a',
+        };
+        if (colorMap[nutrient]) details.color = colorMap[nutrient];
 
         if (!details) return null;
 
