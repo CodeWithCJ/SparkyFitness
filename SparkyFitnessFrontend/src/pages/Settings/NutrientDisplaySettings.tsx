@@ -19,6 +19,8 @@ const baseNutrients = [
   'sodium',
   'cholesterol',
   'saturated_fat',
+  'monounsaturated_fat',
+  'polyunsaturated_fat',
   'trans_fat',
   'potassium',
   'vitamin_a',

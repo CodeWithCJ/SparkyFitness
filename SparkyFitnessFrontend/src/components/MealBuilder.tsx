@@ -17,7 +17,7 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 import { warn, error } from '@/utils/logging';
-import type { Food, FoodVariant } from '@/types/food';
+import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
 import type { Meal, MealFood, MealPayload } from '@/types/meal';
 import {
   createFoodEntryMeal,
@@ -212,10 +212,25 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             serving_size: mealFoodToEdit.serving_size || 1,
             serving_unit:
               mealFoodToEdit.serving_unit || mealFoodToEdit.unit || 'serving',
-            calories: mealFoodToEdit.calories,
-            protein: mealFoodToEdit.protein,
-            carbs: mealFoodToEdit.carbs,
-            fat: mealFoodToEdit.fat,
+            calories: mealFoodToEdit.calories || 0,
+            protein: mealFoodToEdit.protein || 0,
+            carbs: mealFoodToEdit.carbs || 0,
+            fat: mealFoodToEdit.fat || 0,
+            saturated_fat: mealFoodToEdit.saturated_fat,
+            polyunsaturated_fat: mealFoodToEdit.polyunsaturated_fat,
+            monounsaturated_fat: mealFoodToEdit.monounsaturated_fat,
+            trans_fat: mealFoodToEdit.trans_fat,
+            cholesterol: mealFoodToEdit.cholesterol,
+            sodium: mealFoodToEdit.sodium,
+            potassium: mealFoodToEdit.potassium,
+            dietary_fiber: mealFoodToEdit.dietary_fiber,
+            sugars: mealFoodToEdit.sugars,
+            vitamin_a: mealFoodToEdit.vitamin_a,
+            vitamin_c: mealFoodToEdit.vitamin_c,
+            calcium: mealFoodToEdit.calcium,
+            iron: mealFoodToEdit.iron,
+            glycemic_index: mealFoodToEdit.glycemic_index as GlycemicIndex,
+            custom_nutrients: mealFoodToEdit.custom_nutrients,
           },
         };
         setSelectedFoodForUnitSelection(dummyFood);
@@ -245,6 +260,21 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         fat: selectedVariant.fat,
         serving_size: selectedVariant.serving_size,
         serving_unit: selectedVariant.serving_unit,
+        saturated_fat: selectedVariant.saturated_fat,
+        polyunsaturated_fat: selectedVariant.polyunsaturated_fat,
+        monounsaturated_fat: selectedVariant.monounsaturated_fat,
+        trans_fat: selectedVariant.trans_fat,
+        cholesterol: selectedVariant.cholesterol,
+        sodium: selectedVariant.sodium,
+        potassium: selectedVariant.potassium,
+        dietary_fiber: selectedVariant.dietary_fiber,
+        sugars: selectedVariant.sugars,
+        vitamin_a: selectedVariant.vitamin_a,
+        vitamin_c: selectedVariant.vitamin_c,
+        calcium: selectedVariant.calcium,
+        iron: selectedVariant.iron,
+        glycemic_index: selectedVariant.glycemic_index,
+        custom_nutrients: selectedVariant.custom_nutrients,
       };
 
       if (editingMealFood) {
@@ -337,6 +367,21 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           fat: mf.fat,
           serving_size: mf.serving_size,
           serving_unit: mf.serving_unit,
+          saturated_fat: mf.saturated_fat,
+          polyunsaturated_fat: mf.polyunsaturated_fat,
+          monounsaturated_fat: mf.monounsaturated_fat,
+          trans_fat: mf.trans_fat,
+          cholesterol: mf.cholesterol,
+          sodium: mf.sodium,
+          potassium: mf.potassium,
+          dietary_fiber: mf.dietary_fiber,
+          sugars: mf.sugars,
+          vitamin_a: mf.vitamin_a,
+          vitamin_c: mf.vitamin_c,
+          calcium: mf.calcium,
+          iron: mf.iron,
+          glycemic_index: mf.glycemic_index,
+          custom_nutrients: mf.custom_nutrients,
         })),
       };
 
@@ -433,6 +478,19 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     let totalProtein = 0;
     let totalCarbs = 0;
     let totalFat = 0;
+    let totalSodium = 0;
+    let totalPotassium = 0;
+    let totalFiber = 0;
+    let totalSugars = 0;
+    let totalSaturatedFat = 0;
+    let totalPolyunsaturatedFat = 0;
+    let totalMonounsaturatedFat = 0;
+    let totalTransFat = 0;
+    let totalCholesterol = 0;
+    let totalVitaminA = 0;
+    let totalVitaminC = 0;
+    let totalCalcium = 0;
+    let totalIron = 0;
 
     // In food-diary mode, mealFoods are Base amounts, and servingSize is the multiplier
     // In meal-management mode, servingSize is just valid metadata, mealFoods are the definition
@@ -447,6 +505,19 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       totalProtein += (mf.protein || 0) * scale;
       totalCarbs += (mf.carbs || 0) * scale;
       totalFat += (mf.fat || 0) * scale;
+      totalSodium += (mf.sodium || 0) * scale;
+      totalPotassium += (mf.potassium || 0) * scale;
+      totalFiber += (mf.dietary_fiber || 0) * scale;
+      totalSugars += (mf.sugars || 0) * scale;
+      totalSaturatedFat += (mf.saturated_fat || 0) * scale;
+      totalPolyunsaturatedFat += (mf.polyunsaturated_fat || 0) * scale;
+      totalMonounsaturatedFat += (mf.monounsaturated_fat || 0) * scale;
+      totalTransFat += (mf.trans_fat || 0) * scale;
+      totalCholesterol += (mf.cholesterol || 0) * scale;
+      totalVitaminA += (mf.vitamin_a || 0) * scale;
+      totalVitaminC += (mf.vitamin_c || 0) * scale;
+      totalCalcium += (mf.calcium || 0) * scale;
+      totalIron += (mf.iron || 0) * scale;
     });
 
     return {
@@ -454,6 +525,19 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       totalProtein: totalProtein * multiplier,
       totalCarbs: totalCarbs * multiplier,
       totalFat: totalFat * multiplier,
+      totalSodium: totalSodium * multiplier,
+      totalPotassium: totalPotassium * multiplier,
+      totalFiber: totalFiber * multiplier,
+      totalSugars: totalSugars * multiplier,
+      totalSaturatedFat: totalSaturatedFat * multiplier,
+      totalPolyunsaturatedFat: totalPolyunsaturatedFat * multiplier,
+      totalMonounsaturatedFat: totalMonounsaturatedFat * multiplier,
+      totalTransFat: totalTransFat * multiplier,
+      totalCholesterol: totalCholesterol * multiplier,
+      totalVitaminA: totalVitaminA * multiplier,
+      totalVitaminC: totalVitaminC * multiplier,
+      totalCalcium: totalCalcium * multiplier,
+      totalIron: totalIron * multiplier,
     };
   }, [mealFoods, servingSize, source]);
 

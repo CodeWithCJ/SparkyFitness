@@ -19,7 +19,7 @@ async function createMeal(mealData) {
         mealData.is_public,
         mealData.serving_size,
         mealData.serving_unit,
-      ]
+      ],
     );
     const newMeal = mealResult.rows[0];
 
@@ -35,7 +35,7 @@ async function createMeal(mealData) {
       ]);
       const mealFoodsQuery = format(
         `INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id`,
-        mealFoodsValues
+        mealFoodsValues,
       );
       await client.query(mealFoodsQuery);
     }
@@ -80,12 +80,15 @@ async function getMeals(userId, filter = "all") {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
                 f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat
+                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
+                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
+                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
+                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
          FROM meal_foods mf
          JOIN foods f ON mf.food_id = f.id
          LEFT JOIN food_variants fv ON mf.variant_id = fv.id
          WHERE mf.meal_id = $1`,
-        [meal.id]
+        [meal.id],
       );
       meal.foods = mealFoodsResult.rows;
     }
@@ -119,12 +122,15 @@ async function searchMeals(searchTerm, userId, limit = null) {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
                 f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat
+                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
+                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
+                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
+                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
          FROM meal_foods mf
          JOIN foods f ON mf.food_id = f.id
          LEFT JOIN food_variants fv ON mf.variant_id = fv.id
          WHERE mf.meal_id = $1`,
-        [meal.id]
+        [meal.id],
       );
       meal.foods = mealFoodsResult.rows;
     }
@@ -140,7 +146,7 @@ async function getMealById(mealId, userId) {
     const mealResult = await client.query(
       `SELECT id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at
        FROM meals WHERE id = $1`,
-      [mealId]
+      [mealId],
     );
     const meal = mealResult.rows[0];
 
@@ -148,12 +154,15 @@ async function getMealById(mealId, userId) {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
                 f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat
+                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
+                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
+                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
+                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
          FROM meal_foods mf
          JOIN foods f ON mf.food_id = f.id
          LEFT JOIN food_variants fv ON mf.variant_id = fv.id
          WHERE mf.meal_id = $1`,
-        [mealId]
+        [mealId],
       );
       meal.foods = mealFoodsResult.rows;
     }
@@ -185,7 +194,7 @@ async function updateMeal(mealId, userId, updateData) {
         updateData.serving_size,
         updateData.serving_unit,
         mealId,
-      ]
+      ],
     );
     const updatedMeal = result.rows[0];
 
@@ -206,7 +215,7 @@ async function updateMeal(mealId, userId, updateData) {
         ]);
         const mealFoodsQuery = format(
           `INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id`,
-          mealFoodsValues
+          mealFoodsValues,
         );
         await client.query(mealFoodsQuery);
       }
@@ -230,7 +239,7 @@ async function deleteMeal(mealId, userId) {
     // meal_foods will be cascade deleted due to ON DELETE CASCADE on meal_id
     const result = await client.query(
       "DELETE FROM meals WHERE id = $1 RETURNING id",
-      [mealId]
+      [mealId],
     );
     await client.query("COMMIT");
     return result.rowCount > 0;
@@ -252,7 +261,7 @@ async function createMealPlanEntry(planData) {
     if (!mealTypeId && planData.meal_type) {
       const typeRes = await client.query(
         "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)",
-        [planData.meal_type]
+        [planData.meal_type],
       );
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
       else throw new Error(`Invalid meal type: ${planData.meal_type}`);
@@ -274,7 +283,7 @@ async function createMealPlanEntry(planData) {
         planData.template_name,
         planData.day_of_week,
         planData.meal_plan_template_id,
-      ]
+      ],
     );
     return result.rows[0];
   } catch (error) {
@@ -320,7 +329,7 @@ async function getMealPlanEntries(userId, startDate, endDate) {
        LEFT JOIN food_variants fv ON mp.variant_id = fv.id
        WHERE mp.plan_date BETWEEN $1 AND $2
        ORDER BY mp.plan_date, mt.sort_order ASC`,
-      [startDate, endDate]
+      [startDate, endDate],
     );
     return result.rows;
   } finally {
@@ -335,7 +344,7 @@ async function updateMealPlanEntry(planId, userId, updateData) {
     if (!mealTypeId && updateData.meal_type) {
       const typeRes = await client.query(
         "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)",
-        [updateData.meal_type]
+        [updateData.meal_type],
       );
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
     }
@@ -369,7 +378,7 @@ async function updateMealPlanEntry(planId, userId, updateData) {
         updateData.day_of_week,
         updateData.meal_plan_template_id,
         planId,
-      ]
+      ],
     );
     return result.rows[0];
   } catch (error) {
@@ -385,7 +394,7 @@ async function deleteMealPlanEntry(planId, userId) {
   try {
     const result = await client.query(
       "DELETE FROM meal_plans WHERE id = $1 RETURNING id",
-      [planId]
+      [planId],
     );
     return result.rowCount > 0;
   } catch (error) {
@@ -418,7 +427,7 @@ async function getMealPlanEntryById(planId, userId) {
        LEFT JOIN meals m ON mp.meal_id = m.id
        LEFT JOIN foods f ON mp.food_id = f.id
        WHERE mp.id = $1`,
-      [planId]
+      [planId],
     );
     return result.rows[0];
   } finally {
@@ -435,7 +444,7 @@ async function createFoodEntryFromMealPlan(entryData) {
     if (!mealTypeId && entryData.meal_type) {
       const typeRes = await client.query(
         "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)",
-        [entryData.meal_type]
+        [entryData.meal_type],
       );
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
       else throw new Error(`Invalid meal type: ${entryData.meal_type}`);
@@ -453,7 +462,7 @@ async function createFoodEntryFromMealPlan(entryData) {
         entryData.entry_date,
         entryData.variant_id,
         entryData.meal_plan_id,
-      ]
+      ],
     );
     return result.rows[0];
   } catch (error) {
@@ -469,14 +478,14 @@ async function deleteMealPlanEntriesByTemplateId(templateId, userId) {
   try {
     const result = await client.query(
       "DELETE FROM meal_plans WHERE meal_plan_template_id = $1 RETURNING id",
-      [templateId]
+      [templateId],
     );
     return result.rowCount;
   } catch (error) {
     log(
       "error",
       `Error deleting meal plan entries for template ${templateId}:`,
-      error
+      error,
     );
     throw error;
   } finally {
@@ -505,12 +514,15 @@ async function getRecentMeals(userId, limit = null) {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
                 f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat
+                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
+                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
+                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
+                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
          FROM meal_foods mf
          JOIN foods f ON mf.food_id = f.id
          LEFT JOIN food_variants fv ON mf.variant_id = fv.id
          WHERE mf.meal_id = $1`,
-        [meal.id]
+        [meal.id],
       );
       meal.foods = mealFoodsResult.rows;
     }
@@ -546,12 +558,15 @@ async function getTopMeals(userId, limit = null) {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
                 f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat
+                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
+                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
+                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
+                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
          FROM meal_foods mf
          JOIN foods f ON mf.food_id = f.id
          LEFT JOIN food_variants fv ON mf.variant_id = fv.id
          WHERE mf.meal_id = $1`,
-        [meal.id]
+        [meal.id],
       );
       meal.foods = mealFoodsResult.rows;
     }
@@ -566,7 +581,7 @@ async function getMealOwnerId(mealId, userId) {
   try {
     const result = await client.query(
       "SELECT user_id FROM meals WHERE id = $1",
-      [mealId]
+      [mealId],
     );
     return result.rows[0] ? result.rows[0].user_id : null;
   } finally {
@@ -595,7 +610,7 @@ async function getMealsNeedingReview(userId) {
                AND uiu.ignored_at_timestamp = m.updated_at
          )
        ORDER BY fe.meal_id, fe.created_at DESC`,
-      [userId]
+      [userId],
     );
     return result.rows;
   } finally {
@@ -612,7 +627,7 @@ async function updateMealEntriesSnapshot(userId, mealId, newSnapshotData) {
           meal_name = $1
        WHERE user_id = $2 AND meal_id = $3
        RETURNING id`,
-      [newSnapshotData.meal_name, userId, mealId]
+      [newSnapshotData.meal_name, userId, mealId],
     );
     return result.rowCount;
   } finally {
@@ -626,7 +641,7 @@ async function clearUserIgnoredUpdate(userId, variantId) {
     await client.query(
       `DELETE FROM user_ignored_updates
        WHERE user_id = $1 AND variant_id = $2`,
-      [userId, variantId]
+      [userId, variantId],
     );
   } finally {
     client.release();
@@ -641,7 +656,7 @@ async function getMealDeletionImpact(mealId, userId) {
        FROM meal_plan_template_assignments mpta
        JOIN meal_plan_templates mpt ON mpta.template_id = mpt.id
        WHERE mpta.meal_id = $1`,
-      [mealId]
+      [mealId],
     );
 
     const usage = {
@@ -669,7 +684,7 @@ async function deleteMealPlanEntriesByMealId(mealId, userId) {
     const result = await client.query(
       `DELETE FROM meal_plan_template_assignments
        WHERE meal_id = $1 AND template_id IN (SELECT id FROM meal_plan_templates WHERE user_id = $2)`,
-      [mealId, userId]
+      [mealId, userId],
     );
     return result.rowCount;
   } catch (error) {
@@ -685,7 +700,7 @@ async function getMealPlanOwnerId(mealPlanId) {
   try {
     const result = await client.query(
       "SELECT user_id FROM meal_plans WHERE id = $1",
-      [mealPlanId]
+      [mealPlanId],
     );
     return result.rows[0] ? result.rows[0].user_id : null;
   } finally {
@@ -700,7 +715,7 @@ async function getPublicMeals(userId) {
       `SELECT id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at
        FROM meals
        WHERE is_public = TRUE
-       ORDER BY name ASC`
+       ORDER BY name ASC`,
     );
     return result.rows;
   } finally {
@@ -721,7 +736,7 @@ async function getFamilyMeals(userId) {
        JOIN family_access fa ON m.user_id = fa.owner_user_id
        WHERE fa.family_user_id = $1 AND fa.is_active = TRUE AND (fa.access_permissions->>'food_list')::boolean = TRUE
        ORDER BY m.name ASC`,
-      [userId]
+      [userId],
     );
     return result.rows;
   } finally {
