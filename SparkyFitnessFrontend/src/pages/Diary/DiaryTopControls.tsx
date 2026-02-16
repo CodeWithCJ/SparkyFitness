@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import EditGoals from './EditGoals';
 import WaterIntake from './WaterIntake';
 import DailyProgress from './DailyProgress';
 import MiniNutritionTrends from './MiniNutritionTrends';
@@ -9,6 +8,9 @@ import { debug } from '@/utils/logging';
 import { useTranslation } from 'react-i18next';
 
 import type { UserCustomNutrient } from '@/types/customNutrient';
+import EditGoalsForToday from '@/pages/Goals/EditGoalsForToday';
+import { useMemo } from 'react';
+import { DEFAULT_GOALS } from '@/constants/goals';
 
 interface Goals {
   calories: number; // Stored internally as kcal
@@ -30,7 +32,6 @@ interface DayTotals {
 
 interface DiaryTopControlsProps {
   selectedDate: string;
-  onDateChange: (date: string) => void;
   dayTotals?: DayTotals;
   goals?: Goals;
   onGoalsUpdated?: () => void;
@@ -46,7 +47,6 @@ interface DiaryTopControlsProps {
 
 const DiaryTopControls = ({
   selectedDate,
-  onDateChange,
   dayTotals = { calories: 0, protein: 0, carbs: 0, fat: 0, dietary_fiber: 0 },
   goals,
   onGoalsUpdated,
@@ -65,12 +65,15 @@ const DiaryTopControls = ({
       : t('common.kJUnit', 'kJ');
   };
   const { t } = useTranslation();
-  const summaryPreferences = nutrientDisplayPreferences.find(
-    (p) => p.view_group === 'summary' && p.platform === platform
+  const goalPreferences = nutrientDisplayPreferences.find(
+    (p) => p.view_group === 'goal' && p.platform === platform
   );
-  const visibleNutrients = summaryPreferences
-    ? summaryPreferences.visible_nutrients
-    : ['calories', 'protein', 'carbs', 'fat', 'dietary_fiber'];
+
+  const visibleNutrients = useMemo(() => {
+    return goalPreferences
+      ? goalPreferences.visible_nutrients
+      : Object.keys(DEFAULT_GOALS);
+  }, [goalPreferences]);
 
   const nutrientDetails: {
     [key: string]: { color: string; label: string; unit: string };
@@ -177,11 +180,9 @@ const DiaryTopControls = ({
               <CardTitle className="text-lg dark:text-slate-300">
                 {t('diary.nutritionSummary', 'Nutrition Summary')}
               </CardTitle>
-              <EditGoals
+              <EditGoalsForToday
                 selectedDate={selectedDate}
                 onGoalsUpdated={onGoalsUpdated}
-                energyUnit={energyUnit}
-                convertEnergy={convertEnergy}
               />
             </div>
           </CardHeader>

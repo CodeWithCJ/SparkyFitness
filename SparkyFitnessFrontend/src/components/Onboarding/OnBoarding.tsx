@@ -8,7 +8,6 @@ import {
   saveCheckInMeasurements,
   getMostRecentMeasurement,
 } from '@/services/checkInService';
-import { saveGoals } from '@/services/goalsService';
 import { apiCall } from '@/services/api';
 import { DEFAULT_GOALS } from '@/constants/goals';
 import { format, parseISO } from 'date-fns';
@@ -37,6 +36,7 @@ import type {
 } from '@/types/nutrientAlgorithms';
 import PersonalPlan from './PersonalPlan';
 import { useSubmitOnboarding } from '@/hooks/Onboarding/useOnboarding';
+import { useSaveGoalsMutation } from '@/hooks/Goals/useGoals';
 
 interface OptionButtonProps {
   label: string;
@@ -179,36 +179,7 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
   });
 
   const { mutateAsync: submitOnboardingData } = useSubmitOnboarding();
-  // Helper functions for water unit conversion
-  const convertMlToSelectedUnit = (
-    ml: number,
-    unit: 'ml' | 'oz' | 'liter'
-  ): number => {
-    switch (unit) {
-      case 'oz':
-        return Number((ml / 29.5735).toFixed(1));
-      case 'liter':
-        return Number((ml / 1000).toFixed(2));
-      case 'ml':
-      default:
-        return Math.round(ml);
-    }
-  };
-
-  const convertSelectedUnitToMl = (
-    value: number,
-    unit: 'ml' | 'oz' | 'liter'
-  ): number => {
-    switch (unit) {
-      case 'oz':
-        return Math.round(value * 29.5735);
-      case 'liter':
-        return Math.round(value * 1000);
-      case 'ml':
-      default:
-        return Math.round(value);
-    }
-  };
+  const { mutateAsync: saveGoals } = useSaveGoalsMutation();
 
   // Fetch existing user data on component mount to pre-populate the form
   useEffect(() => {
@@ -544,7 +515,7 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
         };
 
         if (newGoals) {
-          await saveGoals(todayStr, newGoals, true);
+          await saveGoals({ date: todayStr, goals: newGoals, cascade: true });
         }
       }
     } catch (e) {
@@ -1087,8 +1058,6 @@ const OnBoarding: React.FC<OnBoardingProps> = ({ onOnboardingComplete }) => {
             setLocalWaterUnit={setLocalWaterUnit}
             convertEnergy={convertEnergy}
             getEnergyUnitString={getEnergyUnitString}
-            convertMlToSelectedUnit={convertMlToSelectedUnit}
-            convertSelectedUnitToMl={convertSelectedUnitToMl}
             localSelectedDiet={localSelectedDiet}
             setLocalSelectedDiet={setLocalSelectedDiet}
             customPercentages={customPercentages}
