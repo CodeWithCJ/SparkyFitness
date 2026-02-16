@@ -3,6 +3,8 @@ const router = express.Router();
 const { authenticate, isAdmin } = require('../middleware/authMiddleware');
 const authService = require('../services/authService');
 const userRepository = require('../models/userRepository'); // Import userRepository
+const chatRepository = require('../models/chatRepository'); // Import chatRepository
+const { syncEnvToDatabase } = require('../services/aiConfigService'); // Import sync function
 const { log } = require('../config/logging');
 const { logAdminAction } = require('../services/authService'); // Import logAdminAction
 
@@ -446,6 +448,269 @@ router.post('/users/:userId/mfa/reset', async (req, res, next) => {
     res.status(200).json({ message: 'MFA reset successfully.' });
   } catch (error) {
     log('error', `Error resetting MFA for user ${req.params.userId} in adminRoutes:`, error);
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /admin/ai-service-settings/global:
+ *   get:
+ *     summary: Get all global AI service settings
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of global AI service settings
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/ai-service-settings/global', async (req, res, next) => {
+  try {
+    const settings = await chatRepository.getGlobalAiServiceSettings();
+    res.status(200).json(settings);
+  } catch (error) {
+    log('error', 'Error fetching global AI service settings:', error);
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /admin/ai-service-settings/global:
+ *   post:
+ *     summary: Create a new global AI service setting
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               service_name:
+ *                 type: string
+ *               service_type:
+ *                 type: string
+ *               api_key:
+ *                 type: string
+ *               custom_url:
+ *                 type: string
+ *               system_prompt:
+ *                 type: string
+ *               is_active:
+ *                 type: boolean
+ *               model_name:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Global AI service setting created
+ *       400:
+ *         description: Invalid request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.post('/ai-service-settings/global', async (req, res, next) => {
+  try {
+    const { service_name, service_type, api_key, custom_url, system_prompt, is_active, model_name } = req.body;
+
+    if (!service_name || !service_type) {
+      return res.status(400).json({ error: 'service_name and service_type are required.' });
+    }
+
+    if (service_type !== 'ollama' && !api_key) {
+      return res.status(400).json({ error: 'api_key is required for non-Ollama services.' });
+    }
+
+    const settingData = {
+      service_name,
+      service_type,
+      api_key,
+      custom_url: custom_url || null,
+      system_prompt: system_prompt || null,
+      is_active: is_active || false,
+      model_name: model_name || null,
+    };
+
+    const result = await chatRepository.upsertGlobalAiServiceSetting(settingData);
+    await logAdminAction(req.userId, null, 'GLOBAL_AI_SETTING_CREATED', { settingId: result.id, serviceName: service_name });
+    res.status(201).json(result);
+  } catch (error) {
+    log('error', 'Error creating global AI service setting:', error);
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /admin/ai-service-settings/global/{id}:
+ *   put:
+ *     summary: Update a global AI service setting
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               service_name:
+ *                 type: string
+ *               service_type:
+ *                 type: string
+ *               api_key:
+ *                 type: string
+ *               custom_url:
+ *                 type: string
+ *               system_prompt:
+ *                 type: string
+ *               is_active:
+ *                 type: boolean
+ *               model_name:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Global AI service setting updated
+ *       400:
+ *         description: Invalid request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Setting not found
+ */
+router.put('/ai-service-settings/global/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { service_name, service_type, api_key, custom_url, system_prompt, is_active, model_name } = req.body;
+
+    // Verify the setting exists and is global
+    const existing = await chatRepository.getGlobalAiServiceSettingById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Global AI service setting not found.' });
+    }
+
+    if (!service_name || !service_type) {
+      return res.status(400).json({ error: 'service_name and service_type are required.' });
+    }
+
+    const settingData = {
+      id,
+      service_name,
+      service_type,
+      api_key, // Will be encrypted in repository
+      custom_url: custom_url || null,
+      system_prompt: system_prompt || null,
+      is_active: is_active !== undefined ? is_active : existing.is_active,
+      model_name: model_name || null,
+    };
+
+    const result = await chatRepository.upsertGlobalAiServiceSetting(settingData);
+    await logAdminAction(req.userId, null, 'GLOBAL_AI_SETTING_UPDATED', { settingId: id, serviceName: service_name });
+    res.status(200).json(result);
+  } catch (error) {
+    log('error', `Error updating global AI service setting ${req.params.id}:`, error);
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /admin/ai-service-settings/global/{id}:
+ *   delete:
+ *     summary: Delete a global AI service setting
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Global AI service setting deleted
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Setting not found
+ */
+router.delete('/ai-service-settings/global/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Verify the setting exists and is global
+    const existing = await chatRepository.getGlobalAiServiceSettingById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Global AI service setting not found.' });
+    }
+
+    const success = await chatRepository.deleteGlobalAiServiceSetting(id);
+    if (success) {
+      await logAdminAction(req.userId, null, 'GLOBAL_AI_SETTING_DELETED', { settingId: id, serviceName: existing.service_name });
+      res.status(200).json({ message: 'Global AI service setting deleted successfully.' });
+    } else {
+      res.status(404).json({ error: 'Global AI service setting not found.' });
+    }
+  } catch (error) {
+    log('error', `Error deleting global AI service setting ${req.params.id}:`, error);
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /admin/ai-service-settings/global/sync-from-env:
+ *   post:
+ *     summary: Sync environment variables to global AI service setting
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Environment variables synced to database
+ *       400:
+ *         description: Invalid environment configuration
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.post('/ai-service-settings/global/sync-from-env', async (req, res, next) => {
+  try {
+    const result = await syncEnvToDatabase();
+    if (result) {
+      await logAdminAction(req.userId, null, 'GLOBAL_AI_SETTING_SYNCED_FROM_ENV', { settingId: result.id });
+      res.status(200).json({ 
+        message: 'Environment variables synced to global AI service setting successfully.',
+        setting: result
+      });
+    } else {
+      res.status(400).json({ error: 'No valid AI service configuration found in environment variables.' });
+    }
+  } catch (error) {
+    log('error', 'Error syncing environment variables to global AI service setting:', error);
     next(error);
   }
 });

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const globalSettingsRepository = require('../models/globalSettingsRepository');
 const { log } = require('../config/logging');
-const { isAdmin } = require('../middleware/authMiddleware');
+const { isAdmin, authenticate } = require('../middleware/authMiddleware');
 
 /**
  * @swagger
@@ -57,6 +57,35 @@ router.put('/', isAdmin, async (req, res) => {
     } catch (error) {
         log('error', `Error updating global auth settings: ${error.message}`);
         res.status(500).json({ message: 'Error updating global auth settings' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/global-settings/allow-user-ai-config:
+ *   get:
+ *     summary: Check if users are allowed to configure AI services (Public)
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Returns whether user AI config is allowed.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 allow_user_ai_config:
+ *                   type: boolean
+ */
+router.get('/allow-user-ai-config', authenticate, async (req, res) => {
+    try {
+        const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
+        res.json({ allow_user_ai_config: isAllowed });
+    } catch (error) {
+        log('error', `Error checking user AI config permission: ${error.message}`);
+        res.status(500).json({ message: 'Error checking user AI config permission' });
     }
 });
 

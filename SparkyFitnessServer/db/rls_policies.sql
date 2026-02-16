@@ -210,6 +210,17 @@ BEGIN
 END;
 $func$ LANGUAGE plpgsql STABLE;
 
+-- Helper function to check if authenticated user is admin
+CREATE OR REPLACE FUNCTION is_admin() RETURNS boolean
+LANGUAGE sql STABLE
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public."user" u
+    WHERE u.id = authenticated_user_id()
+    AND u.role = 'admin'
+  );
+$function$;
+
 -- Step 4: Define generic policy creation functions.
 CREATE OR REPLACE FUNCTION create_owner_policy(table_name text, id_column text DEFAULT 'user_id') RETURNS void
 LANGUAGE plpgsql
@@ -267,8 +278,39 @@ END;
 $_$;
 
 -- Step 5: Apply policies to all tables.
+-- Custom policy for ai_service_settings to support global settings
+-- Drop existing policy if it exists
+DROP POLICY IF EXISTS owner_policy ON public.ai_service_settings;
+-- SELECT policy: All authenticated users can read global settings, users can read their own
+CREATE POLICY ai_service_settings_select_policy ON public.ai_service_settings FOR SELECT TO PUBLIC
+USING (
+  (is_global = TRUE) OR 
+  (is_global = FALSE AND user_id = current_user_id())
+);
+-- INSERT policy: Users can create their own settings, admins can create global settings
+CREATE POLICY ai_service_settings_insert_policy ON public.ai_service_settings FOR INSERT TO PUBLIC
+WITH CHECK (
+  (is_global = FALSE AND user_id = current_user_id()) OR
+  (is_global = TRUE AND is_admin())
+);
+-- UPDATE policy: Users can update their own settings, admins can update global settings
+CREATE POLICY ai_service_settings_update_policy ON public.ai_service_settings FOR UPDATE TO PUBLIC
+USING (
+  (is_global = FALSE AND user_id = current_user_id()) OR
+  (is_global = TRUE AND is_admin())
+)
+WITH CHECK (
+  (is_global = FALSE AND user_id = current_user_id()) OR
+  (is_global = TRUE AND is_admin())
+);
+-- DELETE policy: Users can delete their own settings, admins can delete global settings
+CREATE POLICY ai_service_settings_delete_policy ON public.ai_service_settings FOR DELETE TO PUBLIC
+USING (
+  (is_global = FALSE AND user_id = current_user_id()) OR
+  (is_global = TRUE AND is_admin())
+);
+
 -- Owner-only access tables
-SELECT create_owner_policy('ai_service_settings');
 SELECT create_owner_policy('goal_presets');
 SELECT create_owner_policy('meal_plans');
 SELECT create_owner_policy('mood_entries');
