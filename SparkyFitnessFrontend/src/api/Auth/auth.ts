@@ -123,19 +123,6 @@ export const initiateOidcLogin = async (
   });
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const getOidcProviders = async (): Promise<any[]> => {
-  const response = await fetch('/api/auth/settings');
-  if (!response.ok) return [];
-  const data = await response.json();
-  return data.oidc?.providers || [];
-};
-
-export const checkOidcAvailability = async (): Promise<boolean> => {
-  const providers = await getOidcProviders();
-  return providers.length > 0;
-};
-
 export const getLoginSettings = async (): Promise<LoginSettings> => {
   const response = await fetch('/api/auth/settings');
   if (!response.ok) {

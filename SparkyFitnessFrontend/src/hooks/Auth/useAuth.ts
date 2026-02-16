@@ -6,7 +6,6 @@ import {
   loginUser,
   verifyMagicLink,
   getLoginSettings,
-  getOidcProviders,
   initiateOidcLogin,
   resetPassword,
   requestPasswordReset,
@@ -93,14 +92,6 @@ export const useAuthSettings = () => {
   return useQuery({
     queryKey: authKeys.settings,
     queryFn: getLoginSettings,
-  });
-};
-
-export const useOidcProvidersQuery = (enabled: boolean) => {
-  return useQuery({
-    queryKey: authKeys.oidcProviders,
-    queryFn: getOidcProviders,
-    enabled: enabled,
   });
 };
 

@@ -27,7 +27,6 @@ import {
   useAuthSettings,
   useInitiateOidcLoginMutation,
   useLoginUserMutation,
-  useOidcProvidersQuery,
   useRegisterUserMutation,
   useRequestMagicLinkMutation,
   useVerifyMagicLinkMutation,
@@ -58,9 +57,6 @@ const Auth = () => {
 
   const queryClient = useQueryClient();
   const { data: loginSettings } = useAuthSettings();
-  const { data: oidcProviders } = useOidcProvidersQuery(
-    !!loginSettings?.oidc?.enabled
-  );
   const { mutateAsync: loginUser } = useLoginUserMutation();
   const { mutateAsync: registerUser } = useRegisterUserMutation();
   const { mutateAsync: requestMagicLink } = useRequestMagicLinkMutation();
@@ -80,18 +76,13 @@ const Auth = () => {
       try {
         if (
           loginSettings &&
-          oidcProviders.length === 1 &&
+          loginSettings.oidc.providers.length === 1 &&
           loginSettings.oidc.enabled
         ) {
-          const providers = oidcProviders[0];
+          const providers = loginSettings.oidc.providers[0];
 
           // AUTO-REDIRECT LOGIC: Only when email is disabled and exactly 1 OIDC provider is active
-          if (
-            !loginSettings.email.enabled &&
-            providers.length === 1 &&
-            !authUser &&
-            !authLoading
-          ) {
+          if (!loginSettings.email.enabled && !authUser && !authLoading) {
             console.log(
               'Auth Page: Auto-redirecting to OIDC provider:',
               providers[0].id
@@ -476,7 +467,7 @@ const Auth = () => {
         ) : showMfaChallenge ? (
           <MfaChallenge {...mfaChallengeProps} />
         ) : (
-          <Card className="w-full max-w-md dark:bg-gray-">
+          <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <div className="flex items-center justify-center mb-4">
                 <img
@@ -607,7 +598,7 @@ const Auth = () => {
                     </Button>
                     {loginSettings?.oidc.enabled && (
                       <>
-                        {oidcProviders?.map((provider) => (
+                        {loginSettings.oidc.providers?.map((provider) => (
                           <Button
                             key={provider.id}
                             variant="outline"
@@ -710,8 +701,9 @@ const Auth = () => {
                 </Tabs>
               ) : (
                 <div>
-                  {loginSettings?.oidc.enabled && oidcProviders?.length > 0 ? (
-                    oidcProviders.map((provider) => (
+                  {loginSettings?.oidc.enabled &&
+                  loginSettings.oidc.providers?.length > 0 ? (
+                    loginSettings.oidc.providers.map((provider) => (
                       <Button
                         key={provider.id}
                         variant="outline"
