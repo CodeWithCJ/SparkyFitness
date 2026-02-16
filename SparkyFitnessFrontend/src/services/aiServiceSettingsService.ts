@@ -10,6 +10,8 @@ export interface AIService {
   is_active: boolean;
   model_name?: string;
   custom_model_name?: string; // Add custom_model_name to AIService interface
+  is_global?: boolean; // Indicates if this is a global setting
+  source?: 'user' | 'global' | 'environment'; // Indicates the source of the setting
 }
 
 export interface UserPreferences {
@@ -116,5 +118,58 @@ export const updateUserPreferences = async (
   return apiCall(`/user-preferences`, {
     method: 'PUT',
     body: preferences,
+  });
+};
+
+// Global AI Service Settings API calls (Admin only)
+export const getGlobalAIServices = async (): Promise<AIService[]> => {
+  try {
+    const services = await apiCall(`/admin/ai-service-settings/global`, {
+      method: 'GET',
+      suppress404Toast: true,
+    });
+    return services || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    if (err.message && err.message.includes('404')) {
+      return [];
+    }
+    throw err;
+  }
+};
+
+export const createGlobalAIService = async (
+  serviceData: Partial<AIService>
+): Promise<AIService> => {
+  return apiCall('/admin/ai-service-settings/global', {
+    method: 'POST',
+    body: serviceData,
+  });
+};
+
+export const updateGlobalAIService = async (
+  serviceId: string,
+  serviceUpdateData: Partial<AIService>
+): Promise<AIService> => {
+  return apiCall(`/admin/ai-service-settings/global/${serviceId}`, {
+    method: 'PUT',
+    body: serviceUpdateData,
+  });
+};
+
+export const deleteGlobalAIService = async (
+  serviceId: string
+): Promise<void> => {
+  return apiCall(`/admin/ai-service-settings/global/${serviceId}`, {
+    method: 'DELETE',
+  });
+};
+
+export const syncGlobalSettingsFromEnv = async (): Promise<{
+  message: string;
+  setting: AIService;
+}> => {
+  return apiCall('/admin/ai-service-settings/global/sync-from-env', {
+    method: 'POST',
   });
 };
