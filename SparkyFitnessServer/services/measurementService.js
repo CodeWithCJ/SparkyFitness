@@ -735,6 +735,7 @@ async function processMobileHealthData(
               entry_date: parsedDate,
               notes: `Source: ${source}, Activity Type: ${activityType}`,
               distance: distance,
+              sets: dataEntry.sets || null, // Pass sets if present for mobile workout sync
               // Add other exercise-related fields from mobileHealthData if available
             },
             actingUserId,
