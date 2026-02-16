@@ -41,10 +41,12 @@ import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 import { type GlobalSettings } from '@/api/Admin/globalSettingsService';
 import { Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 
 const GlobalAISettings = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: globalSettings, isLoading: settingsLoading } = useSettings();
   const { mutate: updateSettings } = useUpdateSettings();
   const [services, setServices] = useState<AIService[]>([]);
@@ -96,6 +98,8 @@ const GlobalAISettings = () => {
 
     updateSettings(newSettings, {
       onSuccess: () => {
+        // Invalidate the userAiConfigAllowed query so all users see the updated setting
+        queryClient.invalidateQueries({ queryKey: ['userAiConfigAllowed'] });
         toast({
           title: t('settings.aiService.globalSettings.success'),
           description: t('settings.aiService.globalSettings.successUpdatingConfig'),

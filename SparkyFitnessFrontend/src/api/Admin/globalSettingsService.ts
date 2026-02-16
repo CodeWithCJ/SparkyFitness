@@ -18,6 +18,13 @@ const globalSettingsService = {
       body: settings,
     });
   },
+
+  isUserAiConfigAllowed: async (): Promise<boolean> => {
+    const response = (await apiCall(
+      '/global-settings/allow-user-ai-config'
+    )) as { allow_user_ai_config: boolean };
+    return response.allow_user_ai_config;
+  },
 };
 
 export { globalSettingsService };

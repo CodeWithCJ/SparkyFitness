@@ -46,11 +46,17 @@ const AIServiceSettings = () => {
   const { toast } = useToast();
 
   // Check if user AI config is allowed
-  const { data: isUserConfigAllowed = true, isLoading: settingsLoading } = useQuery<boolean>({
+  // Default to false (restrictive) until we know the actual setting
+  // Poll every 10 seconds to detect admin changes to the setting
+  const { data: isUserConfigAllowed = false, isLoading: settingsLoading } = useQuery<boolean>({
     queryKey: ['userAiConfigAllowed'],
     queryFn: () => globalSettingsService.isUserAiConfigAllowed(),
     retry: false,
-    staleTime: 60000, // Cache for 1 minute
+    staleTime: 0, // Always consider stale, so it refetches when needed
+    refetchOnWindowFocus: true, // Refetch when user returns to the tab
+    refetchOnMount: true, // Refetch when component mounts
+    refetchInterval: 30000, // Poll every 30 seconds to detect admin changes (since query invalidation only works within same session)
+    refetchIntervalInBackground: false, // Only poll when tab is active
   });
 
   const [services, setServices] = useState<AIService[]>([]);
@@ -117,6 +123,24 @@ const AIServiceSettings = () => {
 
   // Handle override: create user-specific setting from global
   const handleOverrideGlobal = async () => {
+    if (settingsLoading) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const globalSetting = getActiveGlobalSetting();
     if (!globalSetting) {
       toast({
@@ -160,6 +184,24 @@ const AIServiceSettings = () => {
 
   // Handle revert: delete all user-specific settings to use global
   const handleRevertToGlobal = async () => {
+    if (settingsLoading) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!confirm(t('settings.aiService.userSettings.revertConfirm'))) {
       return;
     }
@@ -209,6 +251,25 @@ const AIServiceSettings = () => {
   };
 
   const handleAddService = async () => {
+    // Wait for settings to load before allowing action
+    if (settingsLoading) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (
       !user ||
       !newService.service_name ||
@@ -256,9 +317,17 @@ const AIServiceSettings = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error adding AI service:', error);
+      // Check if it's a 403 error (permission denied)
+      const errorMessage = error.message || t('settings.aiService.userSettings.errorAdding');
+      const is403Error = errorMessage.includes('403') || 
+                        errorMessage.includes('disabled') || 
+                        errorMessage.includes('Per-user AI service configuration is disabled');
+      
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: error.message || t('settings.aiService.userSettings.errorAdding'),
+        description: is403Error 
+          ? t('settings.aiService.userSettings.perUserDisabledDescription')
+          : errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -267,6 +336,24 @@ const AIServiceSettings = () => {
   };
 
   const handleUpdateService = async (serviceId: string) => {
+    if (settingsLoading) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
     const originalService = services.find((s) => s.id === serviceId);
 
@@ -274,6 +361,17 @@ const AIServiceSettings = () => {
       toast({
         title: t('settings.aiService.userSettings.error'),
         description: t('settings.aiService.userSettings.errorOriginalNotFound'),
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Prevent editing global services
+    if (originalService.is_global) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.managedByAdmin'),
         variant: 'destructive',
       });
       setLoading(false);
@@ -309,9 +407,16 @@ const AIServiceSettings = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating AI service:', error);
+      const errorMessage = error.message || t('settings.aiService.userSettings.errorUpdating');
+      const is403Error = errorMessage.includes('403') || 
+                        errorMessage.includes('disabled') || 
+                        errorMessage.includes('Per-user AI service configuration is disabled');
+      
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: error.message || t('settings.aiService.userSettings.errorUpdating'),
+        description: is403Error 
+          ? t('settings.aiService.userSettings.perUserDisabledDescription')
+          : errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -320,6 +425,34 @@ const AIServiceSettings = () => {
   };
 
   const handleDeleteService = async (serviceId: string) => {
+    if (settingsLoading) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const serviceToDelete = services.find((s) => s.id === serviceId);
+    if (serviceToDelete?.is_global) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.managedByAdmin'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!confirm(t('settings.aiService.userSettings.deleteConfirm'))) return;
 
     setLoading(true);
@@ -333,9 +466,16 @@ const AIServiceSettings = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error deleting AI service:', error);
+      const errorMessage = error.message || t('settings.aiService.userSettings.errorDeleting');
+      const is403Error = errorMessage.includes('403') || 
+                        errorMessage.includes('disabled') || 
+                        errorMessage.includes('Per-user AI service configuration is disabled');
+      
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: error.message || t('settings.aiService.userSettings.errorDeleting'),
+        description: is403Error 
+          ? t('settings.aiService.userSettings.perUserDisabledDescription')
+          : errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -344,6 +484,24 @@ const AIServiceSettings = () => {
   };
 
   const handleToggleActive = async (serviceId: string, isActive: boolean) => {
+    if (settingsLoading) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
     const originalService = services.find((s) => s.id === serviceId);
 
@@ -351,6 +509,17 @@ const AIServiceSettings = () => {
       toast({
         title: t('settings.aiService.userSettings.error'),
         description: t('settings.aiService.userSettings.errorOriginalNotFoundStatus'),
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Prevent toggling global services
+    if (originalService.is_global) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.managedByAdmin'),
         variant: 'destructive',
       });
       setLoading(false);
@@ -409,6 +578,24 @@ const AIServiceSettings = () => {
   };
 
   const startEditing = (service: AIService) => {
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (service.is_global) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.managedByAdmin'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setEditingService(service.id);
     setEditData({
       service_name: service.service_name,
