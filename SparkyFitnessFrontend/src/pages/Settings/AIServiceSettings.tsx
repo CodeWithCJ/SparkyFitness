@@ -47,17 +47,18 @@ const AIServiceSettings = () => {
 
   // Check if user AI config is allowed
   // Default to false (restrictive) until we know the actual setting
-  // Poll every 10 seconds to detect admin changes to the setting
-  const { data: isUserConfigAllowed = false, isLoading: settingsLoading } = useQuery<boolean>({
-    queryKey: ['userAiConfigAllowed'],
-    queryFn: () => globalSettingsService.isUserAiConfigAllowed(),
-    retry: false,
-    staleTime: 0, // Always consider stale, so it refetches when needed
-    refetchOnWindowFocus: true, // Refetch when user returns to the tab
-    refetchOnMount: true, // Refetch when component mounts
-    refetchInterval: 30000, // Poll every 30 seconds to detect admin changes (since query invalidation only works within same session)
-    refetchIntervalInBackground: false, // Only poll when tab is active
-  });
+  // Poll every 30 seconds to detect admin changes to the setting
+  const { data: isUserConfigAllowed = false, isLoading: settingsLoading } =
+    useQuery<boolean>({
+      queryKey: ['userAiConfigAllowed'],
+      queryFn: () => globalSettingsService.isUserAiConfigAllowed(),
+      retry: false,
+      staleTime: 0, // Always consider stale, so it refetches when needed
+      refetchOnWindowFocus: true, // Refetch when user returns to the tab
+      refetchOnMount: true, // Refetch when component mounts
+      refetchInterval: 30000, // Poll every 30 seconds to detect admin changes (since query invalidation only works within same session)
+      refetchIntervalInBackground: false, // Only poll when tab is active
+    });
 
   const [services, setServices] = useState<AIService[]>([]);
   const [preferences, setPreferences] = useState<UserPreferences>({
@@ -105,7 +106,8 @@ const AIServiceSettings = () => {
       console.error('Error loading AI services:', error);
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: error.message || t('settings.aiService.userSettings.errorLoading'),
+        description:
+          error.message || t('settings.aiService.userSettings.errorLoading'),
         variant: 'destructive',
       });
     }
@@ -135,7 +137,9 @@ const AIServiceSettings = () => {
     if (!isUserConfigAllowed) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
         variant: 'destructive',
       });
       return;
@@ -154,15 +158,16 @@ const AIServiceSettings = () => {
     setLoading(true);
     try {
       // Create a user-specific copy of the global setting
-      const overrideData = {
+      const overrideData: Partial<AIService> = {
         service_name: `${globalSetting.service_name} (My Override)`,
         service_type: globalSetting.service_type,
-        api_key: '', // User will need to enter their own API key
-        custom_url: globalSetting.custom_url,
+        custom_url: globalSetting.custom_url || undefined,
         system_prompt: globalSetting.system_prompt || '',
         is_active: true,
-        model_name: globalSetting.model_name || null,
+        model_name: globalSetting.model_name || undefined,
       };
+      // Don't include api_key if empty - user can add it later via edit
+      // This allows creating the override without an API key initially
       await addAIService(overrideData);
       toast({
         title: t('settings.aiService.userSettings.success'),
@@ -174,7 +179,8 @@ const AIServiceSettings = () => {
       console.error('Error overriding global settings:', error);
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: error.message || t('settings.aiService.userSettings.errorOverriding'),
+        description:
+          error.message || t('settings.aiService.userSettings.errorOverriding'),
         variant: 'destructive',
       });
     } finally {
@@ -196,7 +202,9 @@ const AIServiceSettings = () => {
     if (!isUserConfigAllowed) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
         variant: 'destructive',
       });
       return;
@@ -223,7 +231,8 @@ const AIServiceSettings = () => {
       console.error('Error reverting to global settings:', error);
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: error.message || t('settings.aiService.userSettings.errorReverting'),
+        description:
+          error.message || t('settings.aiService.userSettings.errorReverting'),
         variant: 'destructive',
       });
     } finally {
@@ -244,7 +253,9 @@ const AIServiceSettings = () => {
       console.error('Error loading preferences:', error);
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: error.message || t('settings.aiService.userSettings.errorLoadingPreferences'),
+        description:
+          error.message ||
+          t('settings.aiService.userSettings.errorLoadingPreferences'),
         variant: 'destructive',
       });
     }
@@ -264,7 +275,9 @@ const AIServiceSettings = () => {
     if (!isUserConfigAllowed) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
         variant: 'destructive',
       });
       return;
@@ -318,14 +331,16 @@ const AIServiceSettings = () => {
     } catch (error: any) {
       console.error('Error adding AI service:', error);
       // Check if it's a 403 error (permission denied)
-      const errorMessage = error.message || t('settings.aiService.userSettings.errorAdding');
-      const is403Error = errorMessage.includes('403') || 
-                        errorMessage.includes('disabled') || 
-                        errorMessage.includes('Per-user AI service configuration is disabled');
-      
+      const errorMessage =
+        error.message || t('settings.aiService.userSettings.errorAdding');
+      const is403Error =
+        errorMessage.includes('403') ||
+        errorMessage.includes('disabled') ||
+        errorMessage.includes('Per-user AI service configuration is disabled');
+
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: is403Error 
+        description: is403Error
           ? t('settings.aiService.userSettings.perUserDisabledDescription')
           : errorMessage,
         variant: 'destructive',
@@ -348,7 +363,9 @@ const AIServiceSettings = () => {
     if (!isUserConfigAllowed) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
         variant: 'destructive',
       });
       return;
@@ -407,14 +424,16 @@ const AIServiceSettings = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating AI service:', error);
-      const errorMessage = error.message || t('settings.aiService.userSettings.errorUpdating');
-      const is403Error = errorMessage.includes('403') || 
-                        errorMessage.includes('disabled') || 
-                        errorMessage.includes('Per-user AI service configuration is disabled');
-      
+      const errorMessage =
+        error.message || t('settings.aiService.userSettings.errorUpdating');
+      const is403Error =
+        errorMessage.includes('403') ||
+        errorMessage.includes('disabled') ||
+        errorMessage.includes('Per-user AI service configuration is disabled');
+
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: is403Error 
+        description: is403Error
           ? t('settings.aiService.userSettings.perUserDisabledDescription')
           : errorMessage,
         variant: 'destructive',
@@ -437,7 +456,9 @@ const AIServiceSettings = () => {
     if (!isUserConfigAllowed) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
         variant: 'destructive',
       });
       return;
@@ -466,14 +487,16 @@ const AIServiceSettings = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error deleting AI service:', error);
-      const errorMessage = error.message || t('settings.aiService.userSettings.errorDeleting');
-      const is403Error = errorMessage.includes('403') || 
-                        errorMessage.includes('disabled') || 
-                        errorMessage.includes('Per-user AI service configuration is disabled');
-      
+      const errorMessage =
+        error.message || t('settings.aiService.userSettings.errorDeleting');
+      const is403Error =
+        errorMessage.includes('403') ||
+        errorMessage.includes('disabled') ||
+        errorMessage.includes('Per-user AI service configuration is disabled');
+
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: is403Error 
+        description: is403Error
           ? t('settings.aiService.userSettings.perUserDisabledDescription')
           : errorMessage,
         variant: 'destructive',
@@ -496,7 +519,9 @@ const AIServiceSettings = () => {
     if (!isUserConfigAllowed) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
         variant: 'destructive',
       });
       return;
@@ -508,7 +533,9 @@ const AIServiceSettings = () => {
     if (!originalService) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: t('settings.aiService.userSettings.errorOriginalNotFoundStatus'),
+        description: t(
+          'settings.aiService.userSettings.errorOriginalNotFoundStatus'
+        ),
         variant: 'destructive',
       });
       setLoading(false);
@@ -546,7 +573,9 @@ const AIServiceSettings = () => {
       console.error('Error updating AI service status:', error);
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: error.message || t('settings.aiService.userSettings.errorUpdatingStatus'),
+        description:
+          error.message ||
+          t('settings.aiService.userSettings.errorUpdatingStatus'),
         variant: 'destructive',
       });
     } finally {
@@ -562,14 +591,18 @@ const AIServiceSettings = () => {
       await updateUserPreferences(preferences);
       toast({
         title: t('settings.aiService.userSettings.success'),
-        description: t('settings.aiService.userSettings.successUpdatingPreferences'),
+        description: t(
+          'settings.aiService.userSettings.successUpdatingPreferences'
+        ),
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating preferences:', error);
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: error.message || t('settings.aiService.userSettings.errorUpdatingPreferences'),
+        description:
+          error.message ||
+          t('settings.aiService.userSettings.errorUpdatingPreferences'),
         variant: 'destructive',
       });
     } finally {
@@ -581,7 +614,9 @@ const AIServiceSettings = () => {
     if (!isUserConfigAllowed) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: t('settings.aiService.userSettings.perUserDisabledDescription'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
         variant: 'destructive',
       });
       return;
@@ -619,8 +654,14 @@ const AIServiceSettings = () => {
 
   const getServiceTypes = () => [
     { value: 'openai', label: t('settings.aiService.serviceTypes.openai') },
-    { value: 'openai_compatible', label: t('settings.aiService.serviceTypes.openaiCompatible') },
-    { value: 'anthropic', label: t('settings.aiService.serviceTypes.anthropic') },
+    {
+      value: 'openai_compatible',
+      label: t('settings.aiService.serviceTypes.openaiCompatible'),
+    },
+    {
+      value: 'anthropic',
+      label: t('settings.aiService.serviceTypes.anthropic'),
+    },
     { value: 'google', label: t('settings.aiService.serviceTypes.google') },
     { value: 'mistral', label: t('settings.aiService.serviceTypes.mistral') },
     { value: 'groq', label: t('settings.aiService.serviceTypes.groq') },
@@ -688,7 +729,9 @@ const AIServiceSettings = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="auto_clear_history">{t('settings.aiService.userSettings.autoClearHistory')}</Label>
+            <Label htmlFor="auto_clear_history">
+              {t('settings.aiService.userSettings.autoClearHistory')}
+            </Label>
             <Select
               value={preferences.auto_clear_history}
               onValueChange={(value) =>
@@ -702,10 +745,18 @@ const AIServiceSettings = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="never">{t('settings.aiService.userSettings.neverClear')}</SelectItem>
-                <SelectItem value="session">{t('settings.aiService.userSettings.clearEachSession')}</SelectItem>
-                <SelectItem value="7days">{t('settings.aiService.userSettings.clearAfter7Days')}</SelectItem>
-                <SelectItem value="all">{t('settings.aiService.userSettings.clearAllHistory')}</SelectItem>
+                <SelectItem value="never">
+                  {t('settings.aiService.userSettings.neverClear')}
+                </SelectItem>
+                <SelectItem value="session">
+                  {t('settings.aiService.userSettings.clearEachSession')}
+                </SelectItem>
+                <SelectItem value="7days">
+                  {t('settings.aiService.userSettings.clearAfter7Days')}
+                </SelectItem>
+                <SelectItem value="all">
+                  {t('settings.aiService.userSettings.clearAllHistory')}
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground mt-1">
@@ -739,7 +790,9 @@ const AIServiceSettings = () => {
                 </span>
               </div>
               <p className="text-xs text-amber-700 dark:text-amber-300 mt-2">
-                {t('settings.aiService.userSettings.perUserDisabledDescription')}
+                {t(
+                  'settings.aiService.userSettings.perUserDisabledDescription'
+                )}
               </p>
             </div>
           )}
@@ -761,7 +814,9 @@ const AIServiceSettings = () => {
                     disabled={loading}
                   >
                     <User className="h-4 w-4 mr-2" />
-                    {t('settings.aiService.userSettings.overrideGlobalSettings')}
+                    {t(
+                      'settings.aiService.userSettings.overrideGlobalSettings'
+                    )}
                   </Button>
                 )}
                 {hasUserOverride() && (
@@ -802,11 +857,15 @@ const AIServiceSettings = () => {
               }}
               className="border rounded-lg p-4 space-y-4"
             >
-              <h3 className="text-lg font-medium">{t('settings.aiService.userSettings.addNewService')}</h3>
+              <h3 className="text-lg font-medium">
+                {t('settings.aiService.userSettings.addNewService')}
+              </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="new_service_name">{t('settings.aiService.userSettings.serviceName')}</Label>
+                  <Label htmlFor="new_service_name">
+                    {t('settings.aiService.userSettings.serviceName')}
+                  </Label>
                   <Input
                     id="new_service_name"
                     value={newService.service_name}
@@ -816,12 +875,16 @@ const AIServiceSettings = () => {
                         service_name: e.target.value,
                       }))
                     }
-                    placeholder={t('settings.aiService.userSettings.serviceNamePlaceholder')}
+                    placeholder={t(
+                      'settings.aiService.userSettings.serviceNamePlaceholder'
+                    )}
                     autoComplete="username"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="new_service_type">{t('settings.aiService.userSettings.serviceType')}</Label>
+                  <Label htmlFor="new_service_type">
+                    {t('settings.aiService.userSettings.serviceType')}
+                  </Label>
                   <Select
                     value={newService.service_type}
                     onValueChange={(value) =>
@@ -864,14 +927,18 @@ const AIServiceSettings = () => {
                   }
                   placeholder={
                     newService.service_type === 'ollama'
-                      ? t('settings.aiService.userSettings.apiKeyPlaceholderOllama')
+                      ? t(
+                          'settings.aiService.userSettings.apiKeyPlaceholderOllama'
+                        )
                       : t('settings.aiService.userSettings.apiKeyPlaceholder')
                   }
                   autoComplete="new-password"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   {newService.service_type === 'ollama'
-                    ? t('settings.aiService.userSettings.apiKeyDescriptionOllama')
+                    ? t(
+                        'settings.aiService.userSettings.apiKeyDescriptionOllama'
+                      )
                     : t('settings.aiService.userSettings.apiKeyDescription')}
                 </p>
               </div>
@@ -879,25 +946,31 @@ const AIServiceSettings = () => {
               {(newService.service_type === 'custom' ||
                 newService.service_type === 'ollama' ||
                 newService.service_type === 'openai_compatible') && (
-                  <div>
-                    <Label htmlFor="new_custom_url">{t('settings.aiService.userSettings.customUrl')}</Label>
-                    <Input
-                      id="new_custom_url"
-                      value={newService.custom_url}
-                      onChange={(e) =>
-                        setNewService((prev) => ({
-                          ...prev,
-                          custom_url: e.target.value,
-                        }))
-                      }
-                      placeholder={
-                        newService.service_type === 'ollama'
-                          ? t('settings.aiService.userSettings.customUrlPlaceholderOllama')
-                          : t('settings.aiService.userSettings.customUrlPlaceholder')
-                      }
-                    />
-                  </div>
-                )}
+                <div>
+                  <Label htmlFor="new_custom_url">
+                    {t('settings.aiService.userSettings.customUrl')}
+                  </Label>
+                  <Input
+                    id="new_custom_url"
+                    value={newService.custom_url}
+                    onChange={(e) =>
+                      setNewService((prev) => ({
+                        ...prev,
+                        custom_url: e.target.value,
+                      }))
+                    }
+                    placeholder={
+                      newService.service_type === 'ollama'
+                        ? t(
+                            'settings.aiService.userSettings.customUrlPlaceholderOllama'
+                          )
+                        : t(
+                            'settings.aiService.userSettings.customUrlPlaceholder'
+                          )
+                    }
+                  />
+                </div>
+              )}
 
               <div className="flex items-center space-x-2 mb-4">
                 <Switch
@@ -920,7 +993,9 @@ const AIServiceSettings = () => {
               {!newService.showCustomModelInput &&
                 getModelOptions(newService.service_type).length > 0 && (
                   <div>
-                    <Label htmlFor="new_model_name_select">{t('settings.aiService.userSettings.model')}</Label>
+                    <Label htmlFor="new_model_name_select">
+                      {t('settings.aiService.userSettings.model')}
+                    </Label>
                     <Select
                       value={newService.model_name}
                       onValueChange={(value) =>
@@ -931,7 +1006,11 @@ const AIServiceSettings = () => {
                       }
                     >
                       <SelectTrigger id="new_model_name_select">
-                        <SelectValue placeholder={t('settings.aiService.userSettings.selectModel')} />
+                        <SelectValue
+                          placeholder={t(
+                            'settings.aiService.userSettings.selectModel'
+                          )}
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {getModelOptions(newService.service_type).map(
@@ -959,10 +1038,14 @@ const AIServiceSettings = () => {
                         custom_model_name: e.target.value,
                       }))
                     }
-                    placeholder={t('settings.aiService.userSettings.customModelNamePlaceholder')}
+                    placeholder={t(
+                      'settings.aiService.userSettings.customModelNamePlaceholder'
+                    )}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    {t('settings.aiService.userSettings.customModelNameDescription')}
+                    {t(
+                      'settings.aiService.userSettings.customModelNameDescription'
+                    )}
                   </p>
                 </div>
               )}
@@ -980,7 +1063,9 @@ const AIServiceSettings = () => {
                       system_prompt: e.target.value,
                     }))
                   }
-                  placeholder={t('settings.aiService.userSettings.systemPromptPlaceholder')}
+                  placeholder={t(
+                    'settings.aiService.userSettings.systemPromptPlaceholder'
+                  )}
                   rows={3}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
@@ -996,7 +1081,9 @@ const AIServiceSettings = () => {
                     setNewService((prev) => ({ ...prev, is_active: checked }))
                   }
                 />
-                <Label htmlFor="new_is_active">{t('settings.aiService.userSettings.setAsActive')}</Label>
+                <Label htmlFor="new_is_active">
+                  {t('settings.aiService.userSettings.setAsActive')}
+                </Label>
               </div>
 
               <div className="flex gap-2">
@@ -1042,7 +1129,11 @@ const AIServiceSettings = () => {
                         >
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor="edit_service_name">{t('settings.aiService.userSettings.serviceName')}</Label>
+                              <Label htmlFor="edit_service_name">
+                                {t(
+                                  'settings.aiService.userSettings.serviceName'
+                                )}
+                              </Label>
                               <Input
                                 id="edit_service_name"
                                 value={editData.service_name || ''}
@@ -1055,7 +1146,11 @@ const AIServiceSettings = () => {
                               />
                             </div>
                             <div>
-                              <Label htmlFor="edit_service_type">{t('settings.aiService.userSettings.serviceType')}</Label>
+                              <Label htmlFor="edit_service_type">
+                                {t(
+                                  'settings.aiService.userSettings.serviceType'
+                                )}
+                              </Label>
                               <Select
                                 value={editData.service_type || ''}
                                 onValueChange={(value) =>
@@ -1086,7 +1181,9 @@ const AIServiceSettings = () => {
                           <div>
                             <Label htmlFor="edit_api_key">
                               {editData.service_type === 'ollama'
-                                ? t('settings.aiService.userSettings.apiKeyOptional')
+                                ? t(
+                                    'settings.aiService.userSettings.apiKeyOptional'
+                                  )
                                 : t('settings.aiService.userSettings.apiKey')}
                             </Label>
                             <Input
@@ -1101,35 +1198,45 @@ const AIServiceSettings = () => {
                               }
                               placeholder={
                                 editData.service_type === 'ollama'
-                                  ? t('settings.aiService.userSettings.apiKeyPlaceholderOllama')
-                                  : t('settings.aiService.userSettings.apiKeyPlaceholder')
+                                  ? t(
+                                      'settings.aiService.userSettings.apiKeyPlaceholderOllama'
+                                    )
+                                  : t(
+                                      'settings.aiService.userSettings.apiKeyPlaceholder'
+                                    )
                               }
                               autoComplete="off"
                             />
                             <p className="text-xs text-muted-foreground mt-1">
                               {editData.service_type === 'ollama'
-                                ? t('settings.aiService.userSettings.apiKeyDescriptionOllama')
-                                : t('settings.aiService.userSettings.apiKeyUpdateDescription')}
+                                ? t(
+                                    'settings.aiService.userSettings.apiKeyDescriptionOllama'
+                                  )
+                                : t(
+                                    'settings.aiService.userSettings.apiKeyUpdateDescription'
+                                  )}
                             </p>
                           </div>
 
                           {(editData.service_type === 'custom' ||
                             editData.service_type === 'ollama' ||
                             editData.service_type === 'openai_compatible') && (
-                              <div>
-                                <Label htmlFor="edit_custom_url">{t('settings.aiService.userSettings.customUrl')}</Label>
-                                <Input
-                                  id="edit_custom_url"
-                                  value={editData.custom_url || ''}
-                                  onChange={(e) =>
-                                    setEditData((prev) => ({
-                                      ...prev,
-                                      custom_url: e.target.value,
-                                    }))
-                                  }
-                                />
-                              </div>
-                            )}
+                            <div>
+                              <Label htmlFor="edit_custom_url">
+                                {t('settings.aiService.userSettings.customUrl')}
+                              </Label>
+                              <Input
+                                id="edit_custom_url"
+                                value={editData.custom_url || ''}
+                                onChange={(e) =>
+                                  setEditData((prev) => ({
+                                    ...prev,
+                                    custom_url: e.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                          )}
 
                           <div className="flex items-center space-x-2 mb-4">
                             <Switch
@@ -1145,15 +1252,19 @@ const AIServiceSettings = () => {
                               }
                             />
                             <Label htmlFor="edit_use_custom_model">
-                              {t('settings.aiService.userSettings.useCustomModel')}
+                              {t(
+                                'settings.aiService.userSettings.useCustomModel'
+                              )}
                             </Label>
                           </div>
 
                           {!editData.showCustomModelInput &&
-                            getModelOptions(editData.service_type || '').length >
-                            0 && (
+                            getModelOptions(editData.service_type || '')
+                              .length > 0 && (
                               <div>
-                                <Label htmlFor="edit_model_name_select">{t('settings.aiService.userSettings.model')}</Label>
+                                <Label htmlFor="edit_model_name_select">
+                                  {t('settings.aiService.userSettings.model')}
+                                </Label>
                                 <Select
                                   value={editData.model_name || ''}
                                   onValueChange={(value) =>
@@ -1164,7 +1275,11 @@ const AIServiceSettings = () => {
                                   }
                                 >
                                   <SelectTrigger id="edit_model_name_select">
-                                    <SelectValue placeholder={t('settings.aiService.userSettings.selectModel')} />
+                                    <SelectValue
+                                      placeholder={t(
+                                        'settings.aiService.userSettings.selectModel'
+                                      )}
+                                    />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {getModelOptions(
@@ -1180,7 +1295,11 @@ const AIServiceSettings = () => {
                             )}
                           {editData.showCustomModelInput && (
                             <div>
-                              <Label>{t('settings.aiService.userSettings.customModelName')}</Label>
+                              <Label>
+                                {t(
+                                  'settings.aiService.userSettings.customModelName'
+                                )}
+                              </Label>
                               <Input
                                 value={editData.custom_model_name || ''}
                                 onChange={(e) =>
@@ -1189,16 +1308,24 @@ const AIServiceSettings = () => {
                                     custom_model_name: e.target.value,
                                   }))
                                 }
-                                placeholder={t('settings.aiService.userSettings.customModelNamePlaceholder')}
+                                placeholder={t(
+                                  'settings.aiService.userSettings.customModelNamePlaceholder'
+                                )}
                               />
                               <p className="text-xs text-muted-foreground mt-1">
-                                {t('settings.aiService.userSettings.customModelNameDescription')}
+                                {t(
+                                  'settings.aiService.userSettings.customModelNameDescription'
+                                )}
                               </p>
                             </div>
                           )}
 
                           <div>
-                            <Label htmlFor="edit_system_prompt">{t('settings.aiService.userSettings.systemPrompt')}</Label>
+                            <Label htmlFor="edit_system_prompt">
+                              {t(
+                                'settings.aiService.userSettings.systemPrompt'
+                              )}
+                            </Label>
                             <Textarea
                               id="edit_system_prompt"
                               value={editData.system_prompt || ''}
@@ -1208,11 +1335,15 @@ const AIServiceSettings = () => {
                                   system_prompt: e.target.value,
                                 }))
                               }
-                              placeholder={t('settings.aiService.userSettings.systemPromptPlaceholder')}
+                              placeholder={t(
+                                'settings.aiService.userSettings.systemPromptPlaceholder'
+                              )}
                               rows={3}
                             />
                             <p className="text-xs text-muted-foreground mt-1">
-                              {t('settings.aiService.userSettings.systemPromptDescription')}
+                              {t(
+                                'settings.aiService.userSettings.systemPromptDescription'
+                              )}
                             </p>
                           </div>
 
@@ -1226,7 +1357,11 @@ const AIServiceSettings = () => {
                                 }))
                               }
                             />
-                            <Label>{t('settings.aiService.userSettings.activeService')}</Label>
+                            <Label>
+                              {t(
+                                'settings.aiService.userSettings.activeService'
+                              )}
+                            </Label>
                           </div>
                           <div className="flex gap-2">
                             <Button type="submit" disabled={loading}>
@@ -1255,12 +1390,16 @@ const AIServiceSettings = () => {
                                 {service.is_global ? (
                                   <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-xs flex items-center gap-1">
                                     <Globe className="h-3 w-3" />
-                                    {t('settings.aiService.userSettings.global')}
+                                    {t(
+                                      'settings.aiService.userSettings.global'
+                                    )}
                                   </span>
                                 ) : (
                                   <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full text-xs flex items-center gap-1">
                                     <User className="h-3 w-3" />
-                                    {t('settings.aiService.userSettings.yourSetting')}
+                                    {t(
+                                      'settings.aiService.userSettings.yourSetting'
+                                    )}
                                   </span>
                                 )}
                               </div>
@@ -1268,8 +1407,10 @@ const AIServiceSettings = () => {
                                 {getServiceTypes().find(
                                   (t) => t.value === service.service_type
                                 )?.label || service.service_type}
-                                {service.model_name && ` - ${service.model_name}`}
-                                {service.custom_url && ` - ${service.custom_url}`}
+                                {service.model_name &&
+                                  ` - ${service.model_name}`}
+                                {service.custom_url &&
+                                  ` - ${service.custom_url}`}
                               </p>
                             </div>
                             <div className="flex items-center gap-2">
@@ -1312,7 +1453,9 @@ const AIServiceSettings = () => {
                               )}
                               {service.is_global && (
                                 <span className="text-xs text-muted-foreground">
-                                  {t('settings.aiService.userSettings.managedByAdmin')}
+                                  {t(
+                                    'settings.aiService.userSettings.managedByAdmin'
+                                  )}
                                 </span>
                               )}
                             </div>
@@ -1320,7 +1463,12 @@ const AIServiceSettings = () => {
 
                           {service.system_prompt && (
                             <div>
-                              <Label className="text-xs">{t('settings.aiService.userSettings.systemPrompt')}:</Label>
+                              <Label className="text-xs">
+                                {t(
+                                  'settings.aiService.userSettings.systemPrompt'
+                                )}
+                                :
+                              </Label>
                               <p className="text-sm text-muted-foreground mt-1 p-2 bg-muted rounded">
                                 {service.system_prompt}
                               </p>
@@ -1352,7 +1500,9 @@ const AIServiceSettings = () => {
               )}
               {!isUserConfigAllowed && (
                 <p className="text-sm">
-                  {t('settings.aiService.userSettings.noServicesDescriptionDisabled')}
+                  {t(
+                    'settings.aiService.userSettings.noServicesDescriptionDisabled'
+                  )}
                 </p>
               )}
             </div>

@@ -125,13 +125,13 @@ async function getAiServiceSettingsByUserId(userId) {
   try {
     // Get user-specific settings
     const userResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global FROM ai_service_settings WHERE is_global = FALSE AND user_id = $1 ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global, system_prompt FROM ai_service_settings WHERE is_global = FALSE AND user_id = $1 ORDER BY created_at DESC',
       [userId]
     );
     
     // Get global settings (all authenticated users can read)
     const globalResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global FROM ai_service_settings WHERE is_global = TRUE ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global, system_prompt FROM ai_service_settings WHERE is_global = TRUE ORDER BY created_at DESC',
       []
     );
     
@@ -151,7 +151,7 @@ async function getActiveAiServiceSetting(userId) {
   try {
     // Priority 1: User-specific active setting
     const userResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global FROM ai_service_settings WHERE is_active = TRUE AND is_global = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_global = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
       [userId]
     );
     
@@ -163,7 +163,7 @@ async function getActiveAiServiceSetting(userId) {
     
     // Priority 2: Database global active setting
     const globalResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global FROM ai_service_settings WHERE is_active = TRUE AND is_global = TRUE ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_global = TRUE ORDER BY created_at DESC LIMIT 1',
       []
     );
     
@@ -358,7 +358,7 @@ async function getGlobalAiServiceSettings() {
   const client = await getSystemClient(); // Use system client for global operations
   try {
     const result = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global, created_at, updated_at FROM ai_service_settings WHERE is_global = TRUE ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global, system_prompt, created_at, updated_at FROM ai_service_settings WHERE is_global = TRUE ORDER BY created_at DESC',
       []
     );
     return result.rows;

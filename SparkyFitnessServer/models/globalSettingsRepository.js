@@ -88,14 +88,6 @@ async function isUserAiConfigAllowed() {
     }
 }
 
-module.exports = {
-    getGlobalSettings,
-    saveGlobalSettings,
-    getMfaMandatorySetting,
-    setMfaMandatorySetting,
-    isUserAiConfigAllowed,
-};
-
 async function getMfaMandatorySetting() {
     const client = await getSystemClient();
     try {
@@ -118,3 +110,11 @@ async function setMfaMandatorySetting(isMandatory) {
         client.release();
     }
 }
+
+module.exports = {
+    getGlobalSettings,
+    saveGlobalSettings,
+    getMfaMandatorySetting,
+    setMfaMandatorySetting,
+    isUserAiConfigAllowed,
+};

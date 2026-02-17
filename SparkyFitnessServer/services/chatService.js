@@ -9,9 +9,9 @@ async function handleAiServiceSettings(action, serviceData, authenticatedUserId)
   try {
     if (action === 'save_ai_service_settings') {
       serviceData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
-      if (!serviceData.id && serviceData.service_type !== 'ollama' && !serviceData.api_key) {
-        throw new Error('API key is required for adding a new AI service.');
-      }
+      // Allow creating services without API keys - they can be added later via update
+      // API key validation happens when actually using the service (in processChatMessage)
+      // This enables the override workflow where users create a service and add API key later
       const result = await chatRepository.upsertAiServiceSetting(serviceData);
       return { message: 'AI service settings saved successfully.', setting: result };
     }
