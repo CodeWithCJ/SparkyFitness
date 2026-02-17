@@ -35,7 +35,7 @@ interface ImportFromCSVProps {
 }
 
 const generateUniqueId = () =>
-  `temp_${Math.random().toString(36).substr(2, 9)}`;
+  `temp_${Math.random().toString(36).slice(2, 11)}`;
 
 const requiredHeaders = [
   'name',
@@ -83,7 +83,6 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     {}
   );
   const [rawCsvText, setRawCsvText] = useState<string>('');
-  const [showUnmappedDialog, setShowUnmappedDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseCSV = (text: string): ExerciseCSVData[] => {
@@ -263,7 +262,6 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
         setFileHeaders(parsedFileHeaders);
         setHeaderMapping(initialMapping);
         setRawCsvText(text);
-        setShowUnmappedDialog(false);
         setShowMapping(true);
         toast({
           title: t(

@@ -1,5 +1,5 @@
 import { apiCall } from './api';
-import type { Exercise } from './exerciseSearchService';
+import type { Exercise } from '../api/Exercises/exerciseSearchService';
 import type { SleepAnalyticsData } from '../types';
 
 export interface NutritionData {

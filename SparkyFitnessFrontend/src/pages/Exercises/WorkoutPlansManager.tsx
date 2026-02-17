@@ -1,5 +1,4 @@
-import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -16,52 +15,32 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { error } from '@/utils/logging';
-import {
-  getWorkoutPlanTemplates,
-  createWorkoutPlanTemplate,
-  updateWorkoutPlanTemplate,
-  deleteWorkoutPlanTemplate,
-} from '@/services/workoutPlanTemplateService'; // Assuming this service exists
 import type { WorkoutPlanTemplate } from '@/types/workout';
 import AddWorkoutPlanDialog from './AddWorkoutPlanDialog';
+import {
+  useCreateWorkoutPlanTemplateMutation,
+  useDeleteWorkoutPlanTemplateMutation,
+  useUpdateWorkoutPlanTemplateMutation,
+  useWorkoutPlanTemplates,
+} from '@/hooks/Exercises/useWorkoutPlans';
 
 const WorkoutPlansManager = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { loggingLevel } = usePreferences();
-  const [plans, setPlans] = useState<WorkoutPlanTemplate[]>([]);
   const [isAddPlanDialogOpen, setIsAddPlanDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<WorkoutPlanTemplate | null>(
     null
   );
 
-  useEffect(() => {
-    if (user?.id) {
-      loadPlans();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
-  const loadPlans = async () => {
-    if (!user?.id) return;
-    try {
-      const fetchedPlans = await getWorkoutPlanTemplates();
-      setPlans(
-        fetchedPlans.sort((a, b) => a.plan_name.localeCompare(b.plan_name))
-      );
-    } catch (err) {
-      error(loggingLevel, 'Error loading workout plans:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'workoutPlansManager.failedToLoadPlans',
-          'Failed to load workout plans.'
-        ),
-        variant: 'destructive',
-      });
-    }
-  };
+  const { data: plans } = useWorkoutPlanTemplates(user.id);
+  const { mutateAsync: createWorkoutPlanTemplate } =
+    useCreateWorkoutPlanTemplateMutation();
+  const { mutateAsync: updateWorkoutPlanTemplate } =
+    useUpdateWorkoutPlanTemplateMutation();
+  const { mutateAsync: deleteWorkoutPlanTemplate } =
+    useDeleteWorkoutPlanTemplateMutation();
 
   const handleCreatePlan = async (
     newPlanData: Omit<
@@ -71,26 +50,10 @@ const WorkoutPlansManager = () => {
   ) => {
     if (!user?.id) return;
     try {
-      await createWorkoutPlanTemplate(user.id, newPlanData);
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'workoutPlansManager.createSuccess',
-          'Workout plan created successfully.'
-        ),
-      });
-      loadPlans();
+      await createWorkoutPlanTemplate({ userId: user.id, data: newPlanData });
       setIsAddPlanDialogOpen(false);
     } catch (err) {
       error(loggingLevel, 'Error creating workout plan:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'workoutPlansManager.createError',
-          'Failed to create workout plan.'
-        ),
-        variant: 'destructive',
-      });
     }
   };
 
@@ -100,27 +63,11 @@ const WorkoutPlansManager = () => {
   ) => {
     if (!user?.id) return;
     try {
-      await updateWorkoutPlanTemplate(planId, updatedPlanData);
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'workoutPlansManager.updateSuccess',
-          'Workout plan updated successfully.'
-        ),
-      });
-      loadPlans();
+      await updateWorkoutPlanTemplate({ id: planId, data: updatedPlanData });
       setIsEditDialogOpen(false);
       setSelectedPlan(null);
     } catch (err) {
       error(loggingLevel, 'Error updating workout plan:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'workoutPlansManager.updateError',
-          'Failed to update workout plan.'
-        ),
-        variant: 'destructive',
-      });
     }
   };
 
@@ -128,24 +75,8 @@ const WorkoutPlansManager = () => {
     if (!user?.id) return;
     try {
       await deleteWorkoutPlanTemplate(planId);
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'workoutPlansManager.deleteSuccess',
-          'Workout plan deleted successfully.'
-        ),
-      });
-      loadPlans();
     } catch (err) {
       error(loggingLevel, 'Error deleting workout plan:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'workoutPlansManager.deleteError',
-          'Failed to delete workout plan.'
-        ),
-        variant: 'destructive',
-      });
     }
   };
 
@@ -164,31 +95,21 @@ const WorkoutPlansManager = () => {
         });
         return;
       }
-      await updateWorkoutPlanTemplate(planId, {
-        ...planToUpdate,
-        is_active: isActive,
+      await updateWorkoutPlanTemplate({
+        id: planId,
+        data: {
+          ...planToUpdate,
+          is_active: isActive,
+        },
       });
-      toast({
-        title: t('common.success', 'Success'),
-        description: t('workoutPlansManager.toggleStatusSuccess', {
-          status: isActive ? 'activated' : 'deactivated',
-          defaultValue: `Workout plan ${isActive ? 'activated' : 'deactivated'} successfully.`,
-        }),
-      });
-      loadPlans();
     } catch (err) {
       error(loggingLevel, 'Error toggling workout plan active status:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'workoutPlansManager.toggleStatusError',
-          'Failed to toggle workout plan active status.'
-        ),
-        variant: 'destructive',
-      });
     }
   };
 
+  if (!plans) {
+    return;
+  }
   return (
     <>
       <div className="flex flex-row items-center justify-end space-y-0 pb-2">

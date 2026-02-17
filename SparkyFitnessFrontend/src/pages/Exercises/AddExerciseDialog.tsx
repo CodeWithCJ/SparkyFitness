@@ -23,13 +23,15 @@ import ExerciseSearch from './ExerciseSearch';
 import WorkoutPresetSelector from './WorkoutPresetSelector';
 import ExerciseImportCSV, { type ExerciseCSVData } from './ExerciseImportCSV';
 import ExerciseEntryHistoryImportCSV from './ExerciseEntryHistoryImportCSV';
-import { createExercise } from '@/services/exerciseService';
 import type { WorkoutPreset } from '@/types/workout';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { XCircle } from 'lucide-react';
-import { apiCall } from '@/services/api';
-import type { Exercise } from '@/services/exerciseSearchService';
+import type { Exercise } from '@/api/Exercises/exerciseSearchService';
+import {
+  useCreateExerciseMutation,
+  useImportExercisesJsonMutation,
+} from '@/hooks/Exercises/useExercises';
 
 interface AddExerciseDialogProps {
   open: boolean;
@@ -78,6 +80,10 @@ const AddExerciseDialog = ({
   const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(
     null
   ); // For reordering
+
+  const { mutateAsync: createExercise } = useCreateExerciseMutation();
+  const { mutateAsync: importExerciseFromJson } =
+    useImportExercisesJsonMutation();
 
   const handleExerciseSelect = (
     exercise: Exercise,
@@ -237,18 +243,7 @@ const AddExerciseDialog = ({
     exerciseDataArray: Omit<ExerciseCSVData, 'id'>[]
   ) => {
     try {
-      const res = await apiCall(`/exercises/import-json`, {
-        method: 'POST',
-        body: JSON.stringify({ exercises: exerciseDataArray }),
-      });
-
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'exercise.addExerciseDialog.importSuccess',
-          'Exercise data imported successfully'
-        ),
-      });
+      await importExerciseFromJson(exerciseDataArray);
       onOpenChange(false);
     } catch (error) {
       if (error?.status === 409 && error.data?.duplicates) {
@@ -268,17 +263,6 @@ const AddExerciseDialog = ({
           ),
           variant: 'destructive',
           duration: 10000,
-        });
-      } else {
-        toast({
-          title: t('common.errorOccurred', 'An Error Occurred'),
-          description:
-            error.message ||
-            t(
-              'exercise.addExerciseDialog.importError',
-              'Failed to import exercise data. Please try again.'
-            ),
-          variant: 'destructive',
         });
       }
     }

@@ -1,0 +1,115 @@
+import {
+  searchExercises,
+  searchExternalExercises,
+  getRecentExercises,
+  getTopExercises,
+  addExternalExerciseToUserExercises,
+  addNutritionixExercise,
+  addFreeExerciseDBExercise,
+  Exercise,
+} from '@/api/Exercises/exerciseSearchService';
+import { exerciseKeys, exerciseSearchKeys } from '@/api/keys/exercises';
+import i18n from '@/i18n';
+import {
+  getExternalDataProviders,
+  getProviderCategory,
+} from '@/services/externalProviderService';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+export const internalSearchOptions = (
+  query: string,
+  equipment: string[],
+  muscles: string[]
+) => ({
+  queryKey: exerciseSearchKeys.search.internal(query, equipment, muscles),
+  queryFn: () => searchExercises(query, equipment, muscles),
+  enabled:
+    query.trim().length > 0 || equipment.length > 0 || muscles.length > 0,
+  staleTime: 1000 * 60 * 5,
+});
+
+export const externalSearchOptions = (
+  query: string,
+  pId: string | null,
+  pType: string | null,
+  eq: string[],
+  mus: string[],
+  limit?: number
+) => ({
+  queryKey: exerciseSearchKeys.search.external(
+    query,
+    pId || '',
+    pType || '',
+    eq,
+    mus,
+    limit
+  ),
+  queryFn: () => searchExternalExercises(query, pId!, pType!, eq, mus, limit),
+  enabled:
+    !!pId &&
+    !!pType &&
+    (query.trim().length > 0 || eq.length > 0 || mus.length > 0),
+  staleTime: 1000 * 60 * 10,
+});
+
+export const recentExercisesOptions = (userId: string, limit: number = 5) => ({
+  queryKey: exerciseSearchKeys.suggestions.recent(userId, limit),
+  queryFn: () => getRecentExercises(userId, limit),
+  enabled: !!userId,
+  meta: {
+    errorMessage: i18n.t(
+      'exercise.suggestions.recentLoadError',
+      'Failed to load recent exercises.'
+    ),
+  },
+});
+
+export const topExercisesOptions = (userId: string, limit: number = 5) => ({
+  queryKey: exerciseSearchKeys.suggestions.top(userId, limit),
+  queryFn: () => getTopExercises(userId, limit),
+  enabled: !!userId,
+  meta: {
+    errorMessage: i18n.t(
+      'exercise.suggestions.topLoadError',
+      'Failed to load top exercises.'
+    ),
+  },
+});
+
+// Verfügbare Provider
+export const exerciseProvidersOptions = {
+  queryKey: exerciseSearchKeys.providers,
+  queryFn: async () => {
+    const fetched = await getExternalDataProviders();
+    return fetched.filter(
+      (p) => getProviderCategory(p).includes('exercise') && p.is_active
+    );
+  },
+};
+
+export const useAddExerciseMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      exercise,
+      type,
+    }: {
+      exercise: Exercise;
+      type: string;
+    }) => {
+      if (type === 'wger')
+        return addExternalExerciseToUserExercises(exercise.id);
+      if (type === 'nutritionix') return addNutritionixExercise(exercise);
+      if (type === 'free-exercise-db')
+        return addFreeExerciseDBExercise(exercise.id);
+      throw new Error('Unknown provider type');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: exerciseSearchKeys.search.all,
+      });
+      queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
+    },
+  });
+};

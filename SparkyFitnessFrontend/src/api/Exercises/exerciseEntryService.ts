@@ -1,8 +1,8 @@
-import { apiCall } from './api';
-import { getExerciseEntriesForDate as getDailyExerciseEntries } from './dailyProgressService';
+import { apiCall } from '@/services/api';
+import { getExerciseEntriesForDate as getDailyExerciseEntries } from '@/services/dailyProgressService';
 import type { Exercise } from './exerciseSearchService';
 import { parseJsonArray } from './exerciseService';
-import type { ExerciseProgressData } from './reportsService';
+import type { ExerciseProgressData } from '@/services/reportsService';
 import type { WorkoutPresetSet } from '@/types/workout';
 import type { ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor';
 import { debug } from '@/utils/logging';
@@ -232,24 +232,26 @@ export const deleteExercisePresetEntry = async (
   });
 };
 
+export interface UpdateExerciseEntryPayload {
+  duration_minutes?: number;
+  calories_burned?: number;
+  notes?: string;
+  sets?: WorkoutPresetSet[];
+  image_url?: string;
+  distance?: number;
+  avg_heart_rate?: number;
+  imageFile?: File | null;
+  activity_details?: {
+    id?: string;
+    provider_name?: string;
+    detail_type: string;
+    detail_data: string;
+  }[];
+}
+
 export const updateExerciseEntry = async (
   entryId: string,
-  payload: {
-    duration_minutes?: number;
-    calories_burned?: number;
-    notes?: string;
-    sets?: WorkoutPresetSet[];
-    image_url?: string;
-    distance?: number;
-    avg_heart_rate?: number;
-    imageFile?: File | null;
-    activity_details?: {
-      id?: string;
-      provider_name?: string;
-      detail_type: string;
-      detail_data: string;
-    }[]; // New field
-  }
+  payload: UpdateExerciseEntryPayload // New field
 ): Promise<ExerciseEntry> => {
   const { imageFile, ...entryData } = payload;
   const loggingLevel = getUserLoggingLevel();
@@ -316,24 +318,6 @@ export const getExerciseProgressData = async (
   }));
 };
 
-export const searchExercises = async (
-  query: string,
-  filterType: string
-): Promise<Exercise[]> => {
-  if (!query.trim()) {
-    return [];
-  }
-  const params = new URLSearchParams({
-    searchTerm: query,
-    ownershipFilter: filterType,
-  });
-  const data = await apiCall(`/exercises?${params.toString()}`, {
-    method: 'GET',
-    suppress404Toast: true, // Suppress toast for 404
-  });
-  return data.exercises || []; // Return empty array if 404 or no exercises found
-};
-
 export const getExerciseHistory = async (
   exerciseId: string,
   limit: number = 5
@@ -348,4 +332,12 @@ export const getExerciseHistory = async (
     }
   );
   return response;
+};
+
+export const fetchExerciseDetails = async (
+  exerciseId: string
+): Promise<{ calories_per_hour: number }> => {
+  return apiCall(`/exercises/${exerciseId}`, {
+    method: 'GET',
+  });
 };

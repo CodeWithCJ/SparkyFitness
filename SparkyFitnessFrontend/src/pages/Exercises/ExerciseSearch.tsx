@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,21 +12,7 @@ import {
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, warn, error } from '@/utils/logging';
-import { apiCall } from '@/services/api';
-import {
-  searchExercises as searchExercisesService,
-  searchExternalExercises,
-  addExternalExerciseToUserExercises,
-  addNutritionixExercise,
-  addFreeExerciseDBExercise,
-  type Exercise,
-  getRecentExercises,
-  getTopExercises,
-} from '@/services/exerciseSearchService';
-import {
-  getFreeExerciseDBMuscleGroups,
-  getFreeExerciseDBEquipment,
-} from '@/services/freeExerciseDBSchemaService';
+import { type Exercise } from '@/api/Exercises/exerciseSearchService';
 import {
   Plus,
   Loader2,
@@ -36,14 +22,23 @@ import {
   Volume2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import {
-  getExternalDataProviders,
-  type DataProvider,
-  getProviderCategory,
-} from '@/services/externalProviderService';
+import { type DataProvider } from '@/services/externalProviderService';
 import { Badge } from '@/components/ui/badge';
 import { Share2, Users } from 'lucide-react';
 import BodyMapFilter from './BodyMapFilter';
+import {
+  useFreeExerciseDBEquipment,
+  useFreeExerciseDBMuscleGroups,
+} from '@/hooks/Exercises/useFreeExerciseDB';
+import {
+  exerciseProvidersOptions,
+  externalSearchOptions,
+  internalSearchOptions,
+  recentExercisesOptions,
+  topExercisesOptions,
+  useAddExerciseMutation,
+} from '@/hooks/Exercises/useExerciseSearch';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ExerciseSearchProps {
   onExerciseSelect: (
@@ -60,8 +55,6 @@ interface ExerciseSearchProps {
 const ExerciseSearch = ({
   onExerciseSelect,
   showInternalTab = true,
-  selectedDate,
-  onLogSuccess = () => {},
   disableTabs = false,
   initialSearchSource,
 }: ExerciseSearchProps) => {
@@ -82,13 +75,12 @@ const ExerciseSearch = ({
   const [recentExercises, setRecentExercises] = useState<Exercise[]>([]);
   const [topExercises, setTopExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchSource, setSearchSource] = useState<'internal' | 'external'>(
+  const searchSource =
     disableTabs && initialSearchSource
       ? initialSearchSource
       : showInternalTab
         ? 'internal'
-        : 'external'
-  );
+        : 'external';
   const [providers, setProviders] = useState<DataProvider[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
     null
@@ -99,11 +91,12 @@ const ExerciseSearch = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [equipmentFilter, setEquipmentFilter] = useState<string[]>([]); // New state for equipment filter
   const [muscleGroupFilter, setMuscleGroupFilter] = useState<string[]>([]); // New state for muscle group filter
-  const [availableEquipment, setAvailableEquipment] = useState<string[]>([]); // New state for available equipment
-  const [availableMuscleGroups, setAvailableMuscleGroups] = useState<string[]>(
-    []
-  ); // New state for available muscle groups
   const [hasSearchedExternal, setHasSearchedExternal] = useState(false); // New state to track if external search has been performed
+
+  const queryClient = useQueryClient();
+  const { data: availableMuscleGroups = [] } = useFreeExerciseDBMuscleGroups();
+  const { data: availableEquipment = [] } = useFreeExerciseDBEquipment();
+  const { mutateAsync: addExercise } = useAddExerciseMutation();
 
   const handleSearch = async (query: string, isInitialLoad = false) => {
     debug(
@@ -140,11 +133,12 @@ const ExerciseSearch = ({
       );
       // If no search term and no filters, fetch recent and top exercises
       try {
-        const recent = await getRecentExercises(
-          user?.id || '',
-          itemDisplayLimit
+        const recent = await queryClient.fetchQuery(
+          recentExercisesOptions(user?.id || '', itemDisplayLimit)
         );
-        const top = await getTopExercises(user?.id || '', itemDisplayLimit);
+        const top = await queryClient.fetchQuery(
+          topExercisesOptions(user?.id || '', itemDisplayLimit)
+        );
         // Combine and deduplicate
         setRecentExercises(recent);
         setTopExercises(top);
@@ -155,14 +149,6 @@ const ExerciseSearch = ({
           'ExerciseSearch: Error fetching recent/top exercises:',
           err
         );
-        toast({
-          title: t('common.errorOccurred', 'Error'),
-          description: t(
-            'exercise.exerciseSearch.failedToLoadRecentTopExercises',
-            'Failed to load recent and top exercises.'
-          ),
-          variant: 'destructive',
-        });
       }
       setLoading(false);
       return;
@@ -174,10 +160,8 @@ const ExerciseSearch = ({
       if (searchSource === 'internal') {
         setRecentExercises([]);
         setTopExercises([]);
-        data = await searchExercisesService(
-          query,
-          equipmentFilter,
-          muscleGroupFilter
+        data = await queryClient.fetchQuery(
+          internalSearchOptions(query, equipmentFilter, muscleGroupFilter)
         );
       } else {
         if (!selectedProviderId || !selectedProviderType) {
@@ -188,13 +172,15 @@ const ExerciseSearch = ({
           setLoading(false);
           return;
         }
-        data = await searchExternalExercises(
-          query,
-          selectedProviderId,
-          selectedProviderType,
-          equipmentFilter,
-          muscleGroupFilter,
-          itemDisplayLimit
+        data = await queryClient.fetchQuery(
+          externalSearchOptions(
+            query,
+            selectedProviderId,
+            selectedProviderType,
+            equipmentFilter,
+            muscleGroupFilter,
+            itemDisplayLimit
+          )
         ); // Pass ID, Type, filters, and itemDisplayLimit
       }
       info(loggingLevel, 'ExerciseSearch: Exercises search results:', data);
@@ -221,23 +207,10 @@ const ExerciseSearch = ({
   ): Promise<Exercise | undefined> => {
     setLoading(true);
     try {
-      let newExercise: Exercise | undefined;
-      if (selectedProviderType === 'wger') {
-        newExercise = await addExternalExerciseToUserExercises(exercise.id);
-      } else if (selectedProviderType === 'nutritionix') {
-        newExercise = await addNutritionixExercise(exercise); // Call new function to add Nutritionix exercise
-      } else if (selectedProviderType === 'free-exercise-db') {
-        // Handle free-exercise-db
-        newExercise = await addFreeExerciseDBExercise(exercise.id);
-      } else {
-        warn(
-          loggingLevel,
-          'ExerciseSearch: Unknown provider for adding external exercise:',
-          selectedProviderType
-        );
-        return undefined;
-      }
-
+      const newExercise = await addExercise({
+        exercise,
+        type: selectedProviderType,
+      });
       if (newExercise) {
         toast({
           title: t('common.success', 'Success'),
@@ -299,63 +272,6 @@ const ExerciseSearch = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, equipmentFilter, muscleGroupFilter, searchSource]);
 
-  useEffect(() => {
-    const fetchFilters = async () => {
-      try {
-        const [equipment, muscleGroups] = await Promise.all([
-          getFreeExerciseDBEquipment(),
-          getFreeExerciseDBMuscleGroups(),
-        ]);
-
-        let finalEquipment = [...equipment];
-        let finalMuscleGroups = [...muscleGroups];
-
-        if (searchSource === 'external' && selectedProviderType === 'wger') {
-          const { uniqueMuscles, uniqueEquipment } = await apiCall(
-            '/exercises/wger-filters'
-          );
-          finalEquipment = [
-            ...new Set([...finalEquipment, ...uniqueEquipment]),
-          ];
-          finalMuscleGroups = [
-            ...new Set([...finalMuscleGroups, ...uniqueMuscles]),
-          ];
-        }
-
-        setAvailableEquipment(finalEquipment);
-        debug(
-          loggingLevel,
-          'ExerciseSearch: Fetched available equipment:',
-          finalEquipment
-        );
-
-        setAvailableMuscleGroups(finalMuscleGroups);
-        debug(
-          loggingLevel,
-          'ExerciseSearch: Fetched available muscle groups:',
-          finalMuscleGroups
-        );
-      } catch (err) {
-        error(
-          loggingLevel,
-          'ExerciseSearch: Error fetching equipment types or muscle groups:',
-          err
-        );
-        toast({
-          title: t('common.errorOccurred', 'Error'),
-          description: t(
-            'exercise.exerciseSearch.failedToLoadFilterOptions',
-            'Failed to load filter options: {{errorMessage}}',
-            { errorMessage: err instanceof Error ? err.message : String(err) }
-          ),
-          variant: 'destructive',
-        });
-      }
-    };
-    fetchFilters();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loggingLevel, toast]);
-
   const fetchProviders = useCallback(async () => {
     debug(
       loggingLevel,
@@ -363,24 +279,8 @@ const ExerciseSearch = ({
       searchSource
     );
     try {
-      const fetchedProviders = await getExternalDataProviders();
-      debug(
-        loggingLevel,
-        'ExerciseSearch: Fetched providers:',
-        fetchedProviders
-      );
-      const exerciseProviders = fetchedProviders.filter((p) => {
-        const categories = getProviderCategory(p);
-        debug(
-          loggingLevel,
-          `ExerciseSearch: Filtering provider: ${p.provider_name}, categories: ${categories.join(', ')}, is_active: ${p.is_active}`
-        );
-        return categories.includes('exercise') && p.is_active;
-      });
-      debug(
-        loggingLevel,
-        'ExerciseSearch: Filtered exercise providers:',
-        exerciseProviders
+      const exerciseProviders = await queryClient.fetchQuery(
+        exerciseProvidersOptions
       );
       setProviders(exerciseProviders);
       if (exerciseProviders.length > 0) {
@@ -404,7 +304,7 @@ const ExerciseSearch = ({
         variant: 'destructive',
       });
     }
-  }, [loggingLevel, toast, searchSource]); // Dependencies for useCallback
+  }, [loggingLevel, toast, searchSource, queryClient]); // Dependencies for useCallback
 
   useEffect(() => {
     if (searchSource === 'external') {
@@ -462,10 +362,6 @@ const ExerciseSearch = ({
         ? prev.filter((item) => item !== muscle)
         : [...prev, muscle]
     );
-  };
-
-  const handleLogSuccess = () => {
-    onLogSuccess(); // Trigger refresh in parent component (e.g., FoodDiary)
   };
 
   return (

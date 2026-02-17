@@ -15,11 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
-import { fetchExerciseDetails } from '@/services/editExerciseEntryService';
-import {
-  updateExerciseEntry,
-  type ExerciseEntry,
-} from '@/services/exerciseEntryService';
+import { type ExerciseEntry } from '@/api/Exercises/exerciseEntryService';
 import type { WorkoutPresetSet } from '@/types/workout';
 import { excerciseWorkoutSetTypes } from '@/constants/excerciseWorkoutSetTypes';
 import ExerciseActivityDetailsEditor, {
@@ -60,6 +56,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import ExerciseHistoryDisplay from '@/components/ExerciseHistoryDisplay';
+import {
+  exerciseDetailsOptions,
+  useUpdateExerciseEntryMutation,
+} from '@/hooks/Exercises/useExerciseEntries';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;
@@ -316,6 +317,10 @@ const EditExerciseEntryDialog = ({
     ActivityDetailKeyValuePair[]
   >([]); // New state for activity details
   const [showCaloriesWarning, setShowCaloriesWarning] = useState(false);
+  const { mutateAsync: updateExerciseEntry } = useUpdateExerciseEntryMutation();
+
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     debug(
       loggingLevel,
@@ -480,8 +485,8 @@ const EditExerciseEntryDialog = ({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = sets.findIndex((s, i) => `set-${i}` === active.id);
-      const newIndex = sets.findIndex((s, i) => `set-${i}` === over.id);
+      const oldIndex = sets.findIndex((_s, i) => `set-${i}` === active.id);
+      const newIndex = sets.findIndex((_s, i) => `set-${i}` === over.id);
       setSets((items) => {
         const reorderedSets = arrayMove(items, oldIndex, newIndex);
         return reorderedSets.map((set, index) => ({
@@ -506,7 +511,9 @@ const EditExerciseEntryDialog = ({
         'EditExerciseEntryDialog: Fetching exercise details for recalculation:',
         entry.exercise_id
       );
-      const exerciseData = await fetchExerciseDetails(entry.exercise_id);
+      const exerciseData = await queryClient.fetchQuery(
+        exerciseDetailsOptions(entry.exercise_id)
+      );
 
       const caloriesPerHour = exerciseData?.calories_per_hour || 300;
       const totalDurationFromSets = sets.reduce(
@@ -515,7 +522,7 @@ const EditExerciseEntryDialog = ({
       );
       const totalDuration = totalDurationFromSets;
 
-      let caloriesBurned;
+      let caloriesBurned: number;
       if (caloriesBurnedInput !== '' && caloriesBurnedInput !== 0) {
         caloriesBurned = caloriesBurnedInput;
       } else {
@@ -528,28 +535,31 @@ const EditExerciseEntryDialog = ({
         caloriesBurned
       );
 
-      await updateExerciseEntry(entry.id, {
-        duration_minutes: totalDuration,
-        calories_burned: caloriesBurned,
-        notes: notes,
-        sets: sets.map((set) => ({
-          ...set,
-          weight: convertWeight(set.weight ?? 0, weightUnit, 'kg'),
-        })),
-        imageFile: imageFile,
-        image_url: imageUrl,
-        distance:
-          distanceInput === ''
-            ? null
-            : convertDistance(Number(distanceInput), distanceUnit, 'km'),
-        avg_heart_rate:
-          avgHeartRateInput === '' ? null : Number(avgHeartRateInput),
-        activity_details: activityDetails.map((detail) => ({
-          id: detail.id,
-          provider_name: detail.provider_name,
-          detail_type: detail.key, // Use key as detail_type
-          detail_data: detail.value, // Send the raw value, backend will handle JSONB storage
-        })),
+      await updateExerciseEntry({
+        id: entry.id,
+        data: {
+          duration_minutes: totalDuration,
+          calories_burned: caloriesBurned,
+          notes: notes,
+          sets: sets.map((set) => ({
+            ...set,
+            weight: convertWeight(set.weight ?? 0, weightUnit, 'kg'),
+          })),
+          imageFile: imageFile,
+          image_url: imageUrl,
+          distance:
+            distanceInput === ''
+              ? null
+              : convertDistance(Number(distanceInput), distanceUnit, 'km'),
+          avg_heart_rate:
+            avgHeartRateInput === '' ? null : Number(avgHeartRateInput),
+          activity_details: activityDetails.map((detail) => ({
+            id: detail.id,
+            provider_name: detail.provider_name,
+            detail_type: detail.key, // Use key as detail_type
+            detail_data: detail.value, // Send the raw value, backend will handle JSONB storage
+          })),
+        },
       });
 
       info(

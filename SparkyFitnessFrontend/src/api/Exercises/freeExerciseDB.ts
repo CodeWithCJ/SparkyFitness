@@ -65,3 +65,8 @@ export async function getFreeExerciseDBEquipment(): Promise<string[]> {
   }
   return [];
 }
+
+export interface WgetFilterReturn {
+  uniqueEquipment: string[];
+  uniqueMuscles: string[];
+}

@@ -1,14 +1,11 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { debug, error } from '@/utils/logging';
-import { getExerciseHistory } from '@/services/exerciseEntryService';
-import type { ExerciseEntry } from '@/services/exerciseEntryService';
+import { useExerciseHistory } from '@/hooks/Exercises/useExercises';
 
 interface ExerciseHistoryDisplayProps {
   exerciseId: string;
@@ -20,37 +17,12 @@ const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
   limit = 5,
 }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const { loggingLevel, weightUnit, convertWeight } = usePreferences();
-  const [history, setHistory] = useState<ExerciseEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { weightUnit, convertWeight } = usePreferences();
   const [isMinimized, setIsMinimized] = useState(true);
-
-  useEffect(() => {
-    const fetchHistory = async () => {
-      if (!user?.id || !exerciseId) return;
-      setLoading(true);
-      try {
-        const fetchedHistory = await getExerciseHistory(exerciseId, limit);
-        setHistory(fetchedHistory);
-        debug(
-          loggingLevel,
-          `Fetched history for exercise ${exerciseId}:`,
-          fetchedHistory
-        );
-      } catch (err) {
-        error(
-          loggingLevel,
-          `Error fetching exercise history for ${exerciseId}:`,
-          err
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchHistory();
-  }, [user?.id, exerciseId, limit, loggingLevel]);
+  const { data: history, isLoading: loading } = useExerciseHistory(
+    exerciseId,
+    limit
+  );
 
   if (loading) {
     return (

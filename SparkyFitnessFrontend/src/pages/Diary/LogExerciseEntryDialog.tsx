@@ -14,7 +14,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn, error } from '@/utils/logging';
-import { createExerciseEntry } from '@/services/exerciseEntryService';
 import { useToast } from '@/hooks/use-toast';
 import ExerciseHistoryDisplay from '../../components/ExerciseHistoryDisplay';
 import type { ExerciseToLog, WorkoutPresetSet } from '@/types/workout';
@@ -54,6 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useCreateExerciseEntryMutation } from '@/hooks/Exercises/useExerciseEntries';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
@@ -266,11 +266,9 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     convertWeight,
     convertDistance,
   } = usePreferences();
-  const { toast } = useToast();
 
   const [sets, setSets] = useState<WorkoutPresetSet[]>([]);
   const [notes, setNotes] = useState<string>('');
-  const [imageUrl, setImageUrl] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(
@@ -282,6 +280,8 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     ActivityDetailKeyValuePair[]
   >([]); // New state for activity details
 
+  const { mutateAsync: createExerciseEntry } = useCreateExerciseEntryMutation();
+
   useEffect(() => {
     if (isOpen && exercise) {
       setSets(
@@ -290,7 +290,6 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
           : [{ set_number: 1, set_type: 'Working Set', reps: 10, weight: 0 }]
       );
       setNotes(initialNotes ?? '');
-      setImageUrl(initialImageUrl ?? '');
       setImageFile(null);
       // If the exercise has a calories_per_hour, pre-fill the caloriesBurnedInput
       if (exercise?.calories_per_hour && exercise.duration) {
@@ -388,10 +387,10 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     if (over && active.id !== over.id) {
       setSets((items) => {
         const oldIndex = items.findIndex(
-          (item, index) => `set-${index}` === active.id
+          (_item, index) => `set-${index}` === active.id
         );
         const newIndex = items.findIndex(
-          (item, index) => `set-${index}` === over.id
+          (_item, index) => `set-${index}` === over.id
         );
         const newItems = arrayMove(items, oldIndex, newIndex);
         return newItems.map((item, index) => ({
@@ -467,15 +466,6 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         loggingLevel,
         `LogExerciseEntryDialog: Exercise entry saved successfully for ${exercise.name}`
       );
-      toast({
-        title: t('exercise.logExerciseEntryDialog.successTitle', 'Success'),
-        description: t(
-          'exercise.logExerciseEntryDialog.successDescription',
-          'Exercise "{{exerciseName}}" logged successfully.',
-          { exerciseName: exercise.name }
-        ),
-        variant: 'default',
-      });
       onSaveSuccess();
       onClose();
     } catch (err) {
@@ -484,15 +474,6 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         'LogExerciseEntryDialog: Error saving exercise entry:',
         err
       );
-      toast({
-        title: t('exercise.logExerciseEntryDialog.errorTitle', 'Error'),
-        description: t(
-          'exercise.logExerciseEntryDialog.errorDescription',
-          'Failed to log exercise: {{errorMessage}}',
-          { errorMessage: err instanceof Error ? err.message : String(err) }
-        ),
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
     }

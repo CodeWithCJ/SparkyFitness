@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import type { Exercise } from '@/services/exerciseSearchService';
+import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn } from '@/utils/logging';
 
@@ -151,17 +151,6 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
       imageTimerRef.current = null;
     }
   }, [loggingLevel]);
-
-  const startPlayback = useCallback(() => {
-    info(loggingLevel, '[startPlayback] Setting isPlaying to true.');
-    if (instructions.length > 0) {
-      setIsPlaying(true);
-      // speakInstruction will be called by the useEffect watching isPlaying and currentInstructionIndex
-      startImageSlideshow();
-    } else {
-      info(loggingLevel, '[startPlayback] No instructions to play.');
-    }
-  }, [instructions, startImageSlideshow, loggingLevel]);
 
   const pausePlayback = useCallback(() => {
     info(loggingLevel, '[pausePlayback] Pausing playback.');

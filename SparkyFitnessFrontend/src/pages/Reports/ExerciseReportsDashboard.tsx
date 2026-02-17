@@ -26,7 +26,6 @@ import PrProgressionChart from './PrProgressionChart';
 import ExerciseVarietyScore from './ExerciseVarietyScore';
 import SetPerformanceAnalysisChart from './SetPerformanceAnalysisChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { info, error } from '@/utils/logging';
 import ActivityReportVisualizer from './ActivityReportVisualizer';
@@ -34,15 +33,16 @@ import type {
   ExerciseDashboardData,
   ExerciseProgressData,
 } from '@/services/reportsService';
-import { getExerciseProgressData } from '@/services/exerciseEntryService';
 import {
   getAvailableEquipment,
   getAvailableMuscleGroups,
   getAvailableExercises,
-} from '@/services/exerciseSearchService';
+} from '@/api/Exercises/exerciseSearchService';
 import { subDays, subYears, parseISO } from 'date-fns';
 
 import { formatNumber, formatWeight } from '@/utils/numberFormatting';
+import { useQueryClient } from '@tanstack/react-query';
+import { exerciseProgressOptions } from '@/hooks/Exercises/useExercises';
 
 // Utility function to calculate total tonnage
 const calculateTotalTonnage = (
@@ -108,7 +108,6 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
   onDrilldown,
 }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const { loggingLevel, formatDateInUserTimezone, weightUnit, convertWeight } =
     usePreferences();
   const [selectedExercisesForChart, setSelectedExercisesForChart] = useState<
@@ -135,6 +134,7 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
   const [aggregationLevel, setAggregationLevel] = useState<string>('daily'); // New state for aggregation level
   const [comparisonPeriod, setComparisonPeriod] = useState<string | null>(null); // New state for comparison period
   const [isMounted, setIsMounted] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setIsMounted(true);
@@ -180,11 +180,6 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
     }
   }, [selectedExercise, availableExercises]);
 
-  const saveLayout = (layout: string[]) => {
-    setWidgetLayout(layout);
-    localStorage.setItem('exerciseDashboardLayout', JSON.stringify(layout));
-  };
-
   useEffect(() => {
     const fetchFilterOptions = async () => {
       try {
@@ -225,11 +220,13 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             'exercise.editExerciseEntryDialog.unknownExercise',
             'Unknown Exercise'
           );
-        const data = await getExerciseProgressData(
-          exerciseId,
-          startDate,
-          endDate,
-          aggregationLevel
+        const data = await queryClient.fetchQuery(
+          exerciseProgressOptions(
+            exerciseId,
+            startDate,
+            endDate,
+            aggregationLevel
+          )
         );
         allFetchedExerciseData[exerciseId] = data.map((entry) => ({
           ...entry,
@@ -247,11 +244,13 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             endDate,
             comparisonPeriod
           );
-          const compData = await getExerciseProgressData(
-            exerciseId,
-            compStartDate,
-            compEndDate,
-            aggregationLevel
+          const compData = await queryClient.fetchQuery(
+            exerciseProgressOptions(
+              exerciseId,
+              compStartDate,
+              compEndDate,
+              aggregationLevel
+            )
           );
           allFetchedComparisonData[exerciseId] = compData.map((entry) => ({
             ...entry,

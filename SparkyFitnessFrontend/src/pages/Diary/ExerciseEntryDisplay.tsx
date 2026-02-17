@@ -1,5 +1,4 @@
 import type React from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Tooltip,
   TooltipContent,
@@ -17,8 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { Dumbbell, Edit, Trash2, Settings, Play } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import type { ExerciseEntry } from '@/services/exerciseEntryService';
-import type { Exercise } from '@/services/exerciseSearchService';
+import type { ExerciseEntry } from '@/api/Exercises/exerciseEntryService';
+import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';
 
 interface ExerciseEntryDisplayProps {
@@ -50,8 +49,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
   convertEnergy,
   getEnergyUnitString,
 }) => {
-  const { t } = useTranslation();
-  const { weightUnit, convertWeight, loggingLevel } = usePreferences(); // Destructure loggingLevel from usePreferences
+  const { weightUnit, convertWeight } = usePreferences(); // Destructure loggingLevel from usePreferences
 
   return (
     <div

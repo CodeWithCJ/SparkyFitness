@@ -1,4 +1,4 @@
-import { apiCall } from './api';
+import { apiCall } from '@/services/api';
 
 export interface Exercise {
   id: string;

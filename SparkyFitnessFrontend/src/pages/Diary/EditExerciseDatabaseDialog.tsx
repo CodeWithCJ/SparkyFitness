@@ -20,12 +20,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { XCircle } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { updateExercise } from '@/services/exerciseService';
 
-import type { Exercise } from '@/services/exerciseSearchService';
+import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import { error } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useUpdateExerciseMutation } from '@/hooks/Exercises/useExercises';
 
 interface EditExerciseDatabaseDialogProps {
   open: boolean;
@@ -81,6 +80,8 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
   const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(
     null
   );
+
+  const { mutateAsync: updateExercise } = useUpdateExerciseMutation();
 
   useEffect(() => {
     if (exerciseToEdit) {
@@ -146,26 +147,11 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
         formData.append('images', file);
       });
 
-      await updateExercise(exerciseToEdit.id, formData);
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'exerciseCard.exerciseUpdated',
-          'Exercise updated successfully in database'
-        ),
-      });
+      await updateExercise({ id: exerciseToEdit.id, payload: formData });
       onOpenChange(false);
       onSaveSuccess();
     } catch (err) {
       error(loggingLevel, 'Error updating exercise in database:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'exerciseCard.failedToUpdateExercise',
-          'Failed to update exercise in database'
-        ),
-        variant: 'destructive',
-      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -188,85 +174,6 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
     loggingLevel,
     t,
   ]);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const filesArray = Array.from(e.target.files);
-      setNewExerciseImageFiles((prevImages) => [...prevImages, ...filesArray]);
-      filesArray.forEach((file) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setNewExerciseImageUrls((prevUrls) => [
-            ...prevUrls,
-            reader.result as string,
-          ]);
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-  };
-
-  const handleRemoveImage = (indexToRemove: number) => {
-    setNewExerciseImageFiles((prevImages) =>
-      prevImages.filter((_, index) => index !== indexToRemove)
-    );
-    setNewExerciseImageUrls((prevUrls) =>
-      prevUrls.filter((_, index) => index !== indexToRemove)
-    );
-  };
-
-  const handleDragStart = (
-    e: React.DragEvent<HTMLDivElement>,
-    index: number
-  ) => {
-    setDraggedImageIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, index: number) => {
-    e.preventDefault();
-    if (draggedImageIndex === null || draggedImageIndex === index) {
-      return;
-    }
-
-    const reorderedImages = [...editExerciseImages];
-    const reorderedNewImages = [...newExerciseImageFiles];
-    const reorderedNewImageUrls = [...newExerciseImageUrls];
-
-    const allImages = [...reorderedImages, ...reorderedNewImageUrls];
-    const allFiles = [...reorderedNewImages];
-
-    const targetIndex = index; // Target index in the combined array
-
-    if (draggedImageIndex < reorderedImages.length) {
-      // Dragging an existing image
-      const [draggedItem] = reorderedImages.splice(draggedImageIndex, 1);
-      allImages.splice(targetIndex, 0, draggedItem);
-    } else {
-      // Dragging a new image
-      const draggedNewImageIndex = draggedImageIndex - reorderedImages.length;
-      const [draggedFile] = reorderedNewImages.splice(draggedNewImageIndex, 1);
-      const [draggedUrl] = reorderedNewImageUrls.splice(
-        draggedNewImageIndex,
-        1
-      );
-
-      allImages.splice(targetIndex, 0, draggedUrl);
-      allFiles.splice(targetIndex, 0, draggedFile);
-    }
-
-    // Reconstruct the separate arrays
-    setEditExerciseImages(allImages.slice(0, reorderedImages.length));
-    setNewExerciseImageUrls(allImages.slice(reorderedImages.length));
-    setNewExerciseImageFiles(allFiles); // This might need more complex re-mapping if files are reordered across existing/new boundary
-
-    setDraggedImageIndex(null);
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -557,7 +464,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
                     <div
                       key={`existing-${index}`}
                       draggable
-                      onDragStart={(e) => setDraggedImageIndex(index)}
+                      onDragStart={() => setDraggedImageIndex(index)}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
                         e.preventDefault();
@@ -601,19 +508,13 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
                     <div
                       key={`new-${index}`}
                       draggable
-                      onDragStart={(e) =>
+                      onDragStart={() =>
                         setDraggedImageIndex(editExerciseImages.length + index)
                       }
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
                         e.preventDefault();
                         if (draggedImageIndex === null) return;
-
-                        const allImages = [
-                          ...editExerciseImages,
-                          ...newExerciseImageUrls,
-                        ];
-                        const allFiles = [...newExerciseImageFiles];
 
                         const targetIndex = index + editExerciseImages.length;
 
