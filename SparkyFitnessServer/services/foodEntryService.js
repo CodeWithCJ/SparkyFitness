@@ -1,8 +1,9 @@
 const foodRepository = require("../models/foodRepository");
-const foodEntryMealRepository = require("../models/foodEntryMealRepository"); // New import
+const foodEntryMealRepository = require("../models/foodEntryMealRepository");
 const mealService = require("./mealService");
 const { log } = require("../config/logging");
 const mealTypeRepository = require("../models/mealType");
+const { sanitizeCustomNutrients } = require("../utils/foodUtils");
 
 // Helper functions (already defined)
 function getGlycemicIndexValue(category) {
@@ -44,8 +45,9 @@ async function createFoodEntry(authenticatedUserId, actingUserId, entryData) {
   try {
     const entryWithUser = {
       ...entryData,
-      user_id: entryData.user_id || authenticatedUserId, // Use provided user_id (target) or default to authenticated
-      created_by_user_id: actingUserId, // The user performing the action
+      user_id: entryData.user_id || authenticatedUserId,
+      created_by_user_id: actingUserId,
+      custom_nutrients: sanitizeCustomNutrients(entryData.custom_nutrients),
     };
     log(
       "info",
@@ -140,7 +142,7 @@ async function updateFoodEntry(
       calcium: variant.calcium,
       iron: variant.iron,
       glycemic_index: variant.glycemic_index,
-      custom_nutrients: variant.custom_nutrients,
+      custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
     };
 
     const updatedEntry = await foodRepository.updateFoodEntry(
@@ -336,7 +338,7 @@ async function copyFoodEntries(
           calcium: entry.calcium,
           iron: entry.iron,
           glycemic_index: entry.glycemic_index,
-          custom_nutrients: entry.custom_nutrients || {},
+          custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
         });
         log(
           "debug",
@@ -486,7 +488,7 @@ async function copyFoodEntriesFromYesterday(
           calcium: entry.calcium,
           iron: entry.iron,
           glycemic_index: entry.glycemic_index,
-          custom_nutrients: entry.custom_nutrients || {},
+          custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
         });
       } else {
         log(
@@ -674,7 +676,7 @@ async function createFoodEntryMeal(
         calcium: variant.calcium,
         iron: variant.iron,
         glycemic_index: variant.glycemic_index,
-        custom_nutrients: variant.custom_nutrients,
+        custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
 
       // Scale the food quantity by the multiplier
@@ -845,7 +847,7 @@ async function updateFoodEntryMeal(
         calcium: variant.calcium,
         iron: variant.iron,
         glycemic_index: variant.glycemic_index,
-        custom_nutrients: variant.custom_nutrients,
+        custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
 
       // Scale the food quantity
@@ -960,9 +962,17 @@ async function getFoodEntryMealWithComponents(
         typeof entry.custom_nutrients === "object"
       ) {
         Object.entries(entry.custom_nutrients).forEach(([name, value]) => {
-          if (typeof value === "number") {
+          if (
+            value === null ||
+            value === undefined ||
+            String(value).trim() === ""
+          ) {
+            return; // Skip empty, null, or whitespace-only values
+          }
+          const numValue = Number(value);
+          if (!isNaN(numValue)) {
             totalCustomNutrients[name] =
-              (totalCustomNutrients[name] || 0) + value * ratio;
+              (totalCustomNutrients[name] || 0) + numValue * ratio;
           }
         });
       }
@@ -1120,9 +1130,17 @@ async function getFoodEntryMealsByDate(
           typeof entry.custom_nutrients === "object"
         ) {
           Object.entries(entry.custom_nutrients).forEach(([name, value]) => {
-            if (typeof value === "number") {
+            if (
+              value === null ||
+              value === undefined ||
+              String(value).trim() === ""
+            ) {
+              return; // Skip empty, null, or whitespace-only values
+            }
+            const numValue = Number(value);
+            if (!isNaN(numValue)) {
               totalCustomNutrients[name] =
-                (totalCustomNutrients[name] || 0) + value * ratio;
+                (totalCustomNutrients[name] || 0) + numValue * ratio;
             }
           });
         }

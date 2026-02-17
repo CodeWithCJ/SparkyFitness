@@ -5,7 +5,7 @@ async function getNutritionData(
   userId,
   startDate,
   endDate,
-  customNutrients = []
+  customNutrients = [],
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -16,14 +16,14 @@ async function getNutritionData(
     const customNutrientsSelectInner1 = customNutrients
       .map(
         (cn) =>
-          `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`
+          `(COALESCE(NULLIF(fe.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`,
       )
       .join(",\n           ");
     // Note: fe_meal.quantity is already scaled, so do NOT multiply by fem.quantity
     const customNutrientsSelectInner2 = customNutrients
       .map(
         (cn) =>
-          `SUM(COALESCE((fe_meal.custom_nutrients->>'${cn.name}')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`
+          `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`,
       )
       .join(",\n           ");
 
@@ -110,7 +110,7 @@ async function getNutritionData(
        ) AS combined_nutrition
        GROUP BY entry_date
        ORDER BY entry_date`,
-      [userId, startDate, endDate]
+      [userId, startDate, endDate],
     );
     return result.rows;
   } finally {
@@ -122,7 +122,7 @@ async function getTabularFoodData(
   userId,
   startDate,
   endDate,
-  customNutrients = []
+  customNutrients = [],
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -130,7 +130,7 @@ async function getTabularFoodData(
     const customNutrientsSelectCTE = customNutrients
       .map(
         (cn) =>
-          `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`
+          `(COALESCE(NULLIF(fe.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`,
       )
       .join(",\n          ");
     const customNutrientsSelectOuter = customNutrients
@@ -321,7 +321,7 @@ async function getTabularFoodData(
         fem.user_id, 
         fem.quantity
       ORDER BY entry_date, sort_order ASC, food_name ASC`,
-      [userId, startDate, endDate]
+      [userId, startDate, endDate],
     );
     return result.rows;
   } finally {
@@ -334,7 +334,7 @@ async function getMeasurementData(userId, startDate, endDate) {
   try {
     const result = await client.query(
       `SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, weight, neck, waist, hips, steps FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date`,
-      [userId, startDate, endDate]
+      [userId, startDate, endDate],
     );
     return result.rows;
   } finally {
@@ -346,13 +346,13 @@ async function getCustomMeasurementsData(
   userId,
   categoryId,
   startDate,
-  endDate
+  endDate,
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT category_id, TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, entry_hour AS hour, value, notes, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4 ORDER BY entry_date, entry_timestamp`,
-      [userId, categoryId, startDate, endDate]
+      [userId, categoryId, startDate, endDate],
     );
     return result.rows;
   } finally {
@@ -364,7 +364,7 @@ async function getMiniNutritionTrends(
   userId,
   startDate,
   endDate,
-  customNutrients = []
+  customNutrients = [],
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -377,14 +377,14 @@ async function getMiniNutritionTrends(
     const customNutrientsSelectInner1 = customNutrients
       .map(
         (cn) =>
-          `(COALESCE((fe.custom_nutrients->>'${cn.name}')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`
+          `(COALESCE(NULLIF(fe.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`,
       )
       .join(",\n           ");
     // Note: fe_meal.quantity is already scaled, so do NOT multiply by fem.quantity
     const customNutrientsSelectInner2 = customNutrients
       .map(
         (cn) =>
-          `SUM(COALESCE((fe_meal.custom_nutrients->>'${cn.name}')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`
+          `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`,
       )
       .join(",\n           ");
 
@@ -471,7 +471,7 @@ async function getMiniNutritionTrends(
        ) AS combined_nutrition
        GROUP BY entry_date
        ORDER BY entry_date`,
-      [userId, startDate, endDate]
+      [userId, startDate, endDate],
     );
     return result.rows;
   } finally {
@@ -485,7 +485,7 @@ async function getExerciseEntries(
   endDate,
   equipment,
   muscle,
-  exercise
+  exercise,
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
