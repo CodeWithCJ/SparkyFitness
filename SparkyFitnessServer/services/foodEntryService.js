@@ -4,6 +4,18 @@ const mealService = require("./mealService");
 const { log } = require("../config/logging");
 const mealTypeRepository = require("../models/mealType");
 
+function sanitizeCustomNutrients(customNutrients) {
+  if (!customNutrients || typeof customNutrients !== "object") return {};
+  const sanitized = {};
+  for (const [key, value] of Object.entries(customNutrients)) {
+    // Only keep non-empty, non-null values
+    if (value !== "" && value !== null && value !== undefined) {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
 // Helper functions (already defined)
 function getGlycemicIndexValue(category) {
   switch (category) {
@@ -44,8 +56,9 @@ async function createFoodEntry(authenticatedUserId, actingUserId, entryData) {
   try {
     const entryWithUser = {
       ...entryData,
-      user_id: entryData.user_id || authenticatedUserId, // Use provided user_id (target) or default to authenticated
-      created_by_user_id: actingUserId, // The user performing the action
+      user_id: entryData.user_id || authenticatedUserId,
+      created_by_user_id: actingUserId,
+      custom_nutrients: sanitizeCustomNutrients(entryData.custom_nutrients),
     };
     log(
       "info",
@@ -140,7 +153,7 @@ async function updateFoodEntry(
       calcium: variant.calcium,
       iron: variant.iron,
       glycemic_index: variant.glycemic_index,
-      custom_nutrients: variant.custom_nutrients,
+      custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
     };
 
     const updatedEntry = await foodRepository.updateFoodEntry(
@@ -336,7 +349,7 @@ async function copyFoodEntries(
           calcium: entry.calcium,
           iron: entry.iron,
           glycemic_index: entry.glycemic_index,
-          custom_nutrients: entry.custom_nutrients || {},
+          custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
         });
         log(
           "debug",
@@ -486,7 +499,7 @@ async function copyFoodEntriesFromYesterday(
           calcium: entry.calcium,
           iron: entry.iron,
           glycemic_index: entry.glycemic_index,
-          custom_nutrients: entry.custom_nutrients || {},
+          custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
         });
       } else {
         log(
@@ -674,7 +687,7 @@ async function createFoodEntryMeal(
         calcium: variant.calcium,
         iron: variant.iron,
         glycemic_index: variant.glycemic_index,
-        custom_nutrients: variant.custom_nutrients,
+        custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
 
       // Scale the food quantity by the multiplier
@@ -845,7 +858,7 @@ async function updateFoodEntryMeal(
         calcium: variant.calcium,
         iron: variant.iron,
         glycemic_index: variant.glycemic_index,
-        custom_nutrients: variant.custom_nutrients,
+        custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
 
       // Scale the food quantity
@@ -960,9 +973,10 @@ async function getFoodEntryMealWithComponents(
         typeof entry.custom_nutrients === "object"
       ) {
         Object.entries(entry.custom_nutrients).forEach(([name, value]) => {
-          if (typeof value === "number") {
+          const numValue = Number(value);
+          if (!isNaN(numValue)) {
             totalCustomNutrients[name] =
-              (totalCustomNutrients[name] || 0) + value * ratio;
+              (totalCustomNutrients[name] || 0) + numValue * ratio;
           }
         });
       }
@@ -1120,9 +1134,10 @@ async function getFoodEntryMealsByDate(
           typeof entry.custom_nutrients === "object"
         ) {
           Object.entries(entry.custom_nutrients).forEach(([name, value]) => {
-            if (typeof value === "number") {
+            const numValue = Number(value);
+            if (!isNaN(numValue)) {
               totalCustomNutrients[name] =
-                (totalCustomNutrients[name] || 0) + value * ratio;
+                (totalCustomNutrients[name] || 0) + numValue * ratio;
             }
           });
         }
