@@ -1,20 +1,9 @@
 const foodRepository = require("../models/foodRepository");
-const foodEntryMealRepository = require("../models/foodEntryMealRepository"); // New import
+const foodEntryMealRepository = require("../models/foodEntryMealRepository");
 const mealService = require("./mealService");
 const { log } = require("../config/logging");
 const mealTypeRepository = require("../models/mealType");
-
-function sanitizeCustomNutrients(customNutrients) {
-  if (!customNutrients || typeof customNutrients !== "object") return {};
-  const sanitized = {};
-  for (const [key, value] of Object.entries(customNutrients)) {
-    // Only keep non-empty, non-null values
-    if (value !== "" && value !== null && value !== undefined) {
-      sanitized[key] = value;
-    }
-  }
-  return sanitized;
-}
+const { sanitizeCustomNutrients } = require("../utils/foodUtils");
 
 // Helper functions (already defined)
 function getGlycemicIndexValue(category) {

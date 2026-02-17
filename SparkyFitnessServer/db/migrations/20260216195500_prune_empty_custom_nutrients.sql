@@ -8,7 +8,7 @@ SET custom_nutrients = (
   FROM jsonb_each_text(custom_nutrients)
   WHERE value != ''
 )
-WHERE custom_nutrients != '{}'::jsonb;
+WHERE custom_nutrients IS NOT NULL AND custom_nutrients != '{}'::jsonb;
 
 -- 2. Clean up food variants (the blueprints for future entries)
 UPDATE public.food_variants 
@@ -17,7 +17,7 @@ SET custom_nutrients = (
   FROM jsonb_each_text(custom_nutrients)
   WHERE value != ''
 )
-WHERE custom_nutrients != '{}'::jsonb;
+WHERE custom_nutrients IS NOT NULL AND custom_nutrients != '{}'::jsonb;
 
 -- 3. Clean up user goals
 UPDATE public.user_goals
