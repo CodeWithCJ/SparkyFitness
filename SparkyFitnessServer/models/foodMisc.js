@@ -168,11 +168,11 @@ async function getDailyNutritionSummary(userId, date) {
         COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_dietary_fiber,
         COALESCE(
           (
-            SELECT jsonb_object_agg(key, NULLIF(value, '')::numeric)
+            SELECT jsonb_object_agg(key, NULLIF(TRIM(value), '')::numeric)
             FROM (
               SELECT
                 key,
-                SUM((NULLIF(value, '')::numeric) * fe2.quantity / NULLIF(fe2.serving_size, 0)) as value
+                SUM((NULLIF(TRIM(value), '')::numeric) * fe2.quantity / NULLIF(fe2.serving_size, 0)) as value
               FROM food_entries fe2
               CROSS JOIN LATERAL jsonb_each_text(fe2.custom_nutrients)
               WHERE fe2.user_id = $1 AND fe2.entry_date = $2

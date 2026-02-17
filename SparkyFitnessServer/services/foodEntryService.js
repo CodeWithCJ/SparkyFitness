@@ -962,6 +962,13 @@ async function getFoodEntryMealWithComponents(
         typeof entry.custom_nutrients === "object"
       ) {
         Object.entries(entry.custom_nutrients).forEach(([name, value]) => {
+          if (
+            value === null ||
+            value === undefined ||
+            String(value).trim() === ""
+          ) {
+            return; // Skip empty, null, or whitespace-only values
+          }
           const numValue = Number(value);
           if (!isNaN(numValue)) {
             totalCustomNutrients[name] =
@@ -1123,6 +1130,13 @@ async function getFoodEntryMealsByDate(
           typeof entry.custom_nutrients === "object"
         ) {
           Object.entries(entry.custom_nutrients).forEach(([name, value]) => {
+            if (
+              value === null ||
+              value === undefined ||
+              String(value).trim() === ""
+            ) {
+              return; // Skip empty, null, or whitespace-only values
+            }
             const numValue = Number(value);
             if (!isNaN(numValue)) {
               totalCustomNutrients[name] =

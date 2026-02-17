@@ -6,7 +6,7 @@ UPDATE public.food_entries
 SET custom_nutrients = (
   SELECT COALESCE(jsonb_object_agg(key, value), '{}'::jsonb)
   FROM jsonb_each_text(custom_nutrients)
-  WHERE value != ''
+  WHERE TRIM(value) != ''
 )
 WHERE custom_nutrients IS NOT NULL AND custom_nutrients != '{}'::jsonb;
 
@@ -15,7 +15,7 @@ UPDATE public.food_variants
 SET custom_nutrients = (
   SELECT COALESCE(jsonb_object_agg(key, value), '{}'::jsonb)
   FROM jsonb_each_text(custom_nutrients)
-  WHERE value != ''
+  WHERE TRIM(value) != ''
 )
 WHERE custom_nutrients IS NOT NULL AND custom_nutrients != '{}'::jsonb;
 
@@ -24,7 +24,7 @@ UPDATE public.user_goals
 SET custom_nutrients = (
   SELECT COALESCE(jsonb_object_agg(key, value), '{}'::jsonb)
   FROM jsonb_each_text(custom_nutrients)
-  WHERE value != ''
+  WHERE TRIM(value) != ''
 )
 WHERE custom_nutrients IS NOT NULL AND custom_nutrients != '{}'::jsonb;
 
@@ -33,6 +33,6 @@ UPDATE public.goal_presets
 SET custom_nutrients = (
   SELECT COALESCE(jsonb_object_agg(key, value), '{}'::jsonb)
   FROM jsonb_each_text(custom_nutrients)
-  WHERE value != ''
+  WHERE TRIM(value) != ''
 )
 WHERE custom_nutrients IS NOT NULL AND custom_nutrients != '{}'::jsonb;
