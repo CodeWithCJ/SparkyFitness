@@ -1,5 +1,5 @@
-import { apiCall } from './api';
-import type { WorkoutPreset, PaginatedWorkoutPresets } from '@/types/workout';
+import { apiCall } from '@/services/api';
+import type { PaginatedWorkoutPresets, WorkoutPreset } from '@/types/workout';
 
 export const getWorkoutPresets = async (
   page: number,

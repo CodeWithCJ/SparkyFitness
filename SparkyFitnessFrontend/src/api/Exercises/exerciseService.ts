@@ -1,5 +1,6 @@
-import { apiCall } from './api';
+import { apiCall } from '@/services/api';
 import { Exercise } from './exerciseSearchService';
+import { ExerciseCSVData } from '@/pages/Exercises/ExerciseImportCSV';
 
 // Helper function to safely parse JSON strings that might be arrays
 export const parseJsonArray = (
@@ -59,7 +60,7 @@ export interface ExerciseDeletionImpact {
   otherUserReferences?: number;
 }
 
-interface ExercisePayload {
+export interface ExercisePayload {
   name: string;
   category: string;
   calories_per_hour: number;
@@ -244,5 +245,52 @@ export const importExercisesFromCSV = async (
     method: 'POST',
     body: formData,
     isFormData: true,
+  });
+};
+export const importExercisesFromJson = async (
+  exercises: Omit<ExerciseCSVData, 'id'>[]
+): Promise<unknown> => {
+  return apiCall('/exercises/import-json', {
+    method: 'POST',
+    body: { exercises },
+  });
+};
+export interface HistoryImportEntry {
+  entry_date: string;
+  id: string;
+  exercise_name: string;
+  preset_name?: string;
+  entry_notes?: string;
+  calories_burned?: number;
+  distance?: number;
+  avg_heart_rate?: number;
+  exercise_category?: string;
+  calories_per_hour?: number;
+  exercise_description?: string;
+  exercise_source?: string;
+  exercise_force?: string;
+  exercise_level?: string;
+  exercise_mechanic?: string;
+  exercise_equipment?: string[];
+  primary_muscles?: string[];
+  secondary_muscles?: string[];
+  instructions?: string[];
+  sets?: {
+    set_number: number;
+    set_type?: string;
+    reps?: number;
+    weight?: number;
+    duration_min?: number;
+    rest_time_sec?: number;
+    notes?: string;
+  }[];
+  activity_details?: unknown[];
+}
+export const importExerciseHistory = async (
+  entries: HistoryImportEntry[]
+): Promise<unknown> => {
+  return apiCall('/exercise-entries/import-history-csv', {
+    method: 'POST',
+    body: { entries },
   });
 };

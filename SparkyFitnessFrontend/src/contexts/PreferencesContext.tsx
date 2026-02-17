@@ -27,7 +27,7 @@ import { BmrAlgorithm } from '@/services/bmrService';
 import { BodyFatAlgorithm } from '@/services/bodyCompositionService';
 
 // Function to fetch user preferences from the backend
-const fetchUserPreferences = async (userId: string) => {
+const fetchUserPreferences = async () => {
   try {
     const data = await apiCall(`/user-preferences`, {
       method: 'GET',
@@ -572,7 +572,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const loadPreferences = useCallback(async () => {
     if (!user) return;
     try {
-      const data = await fetchUserPreferences(user.id);
+      const data = await fetchUserPreferences();
       if (data) {
         setWeightUnitState(data.default_weight_unit);
         setMeasurementUnitState(data.default_measurement_unit);

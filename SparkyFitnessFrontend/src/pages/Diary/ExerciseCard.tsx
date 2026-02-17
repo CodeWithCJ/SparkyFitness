@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,34 +16,28 @@ import ExercisePlaybackModal from '@/pages/Diary/ExercisePlaybackModal';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn, error } from '@/utils/logging';
 import { toast } from '@/hooks/use-toast';
-import {
-  fetchExerciseEntries,
-  deleteExerciseEntry,
-  deleteExercisePresetEntry, // Import the new function
-  type ExerciseEntry,
-  logWorkoutPreset, // Import the new function
-  type GroupedExerciseEntry, // Import GroupedExerciseEntry
-} from '@/services/exerciseEntryService';
-import {
-  getSuggestedExercises,
-  loadExercises,
-  createExercise,
-  type ExerciseOwnershipFilter,
-} from '@/services/exerciseService';
-import type { Exercise } from '@/services/exerciseSearchService';
+import { type ExerciseEntry } from '@/api/Exercises/exerciseEntryService';
+import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import type {
   WorkoutPresetSet,
   WorkoutPreset,
   PresetExercise,
   ExerciseToLog,
 } from '@/types/workout';
-import { getExerciseById } from '@/services/exerciseService';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import ExercisePresetEntryDisplay from './ExercisePresetEntryDisplay';
 import EditExerciseDatabaseDialog from './EditExerciseDatabaseDialog';
 import AddExerciseDialog from '@/pages/Exercises/AddExerciseDialog';
 import LogExerciseEntryDialog from '@/pages/Diary/LogExerciseEntryDialog';
+import {
+  useDeleteExerciseEntryMutation,
+  useDeleteExercisePresetEntryMutation,
+  useExerciseEntries,
+  useLogWorkoutPresetMutation,
+} from '@/hooks/Exercises/useExerciseEntries';
+import { useQueryClient } from '@tanstack/react-query';
+import { exerciseByIdOptions } from '@/hooks/Exercises/useExercises';
 
 // New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
 interface PresetExerciseToLog extends Exercise {
@@ -69,49 +63,15 @@ const ExerciseCard = ({
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
-  const {
-    loggingLevel,
-    itemDisplayLimit,
-    weightUnit,
-    convertWeight,
-    energyUnit,
-    convertEnergy,
-    getEnergyUnitString,
-  } = usePreferences(); // Get logging level, energyUnit, convertEnergy
+  const { loggingLevel, energyUnit, convertEnergy, getEnergyUnitString } =
+    usePreferences(); // Get logging level, energyUnit, convertEnergy
   debug(
     loggingLevel,
     'ExerciseCard component rendered for date:',
     selectedDate
   );
-  const [exerciseEntries, setExerciseEntries] = useState<
-    GroupedExerciseEntry[]
-  >([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const addDialogRef = useRef<HTMLDivElement>(null); // Declare addDialogRef
-  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(
-    null
-  );
-  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(
-    null
-  ); // New state for selected exercise object
-  const [duration, setDuration] = useState<number>(30);
-  const [notes, setNotes] = useState<string>('');
-  const [loading, setLoading] = useState(true);
   const [editingEntry, setEditingEntry] = useState<ExerciseEntry | null>(null); // Use ExerciseEntry from service
-  const [searchTerm, setSearchTerm] = useState(''); // Keep for internal search
-  const [searchLoading, setSearchLoading] = useState(false); // Keep for internal search
-  const [filterType, setFilterType] = useState<ExerciseOwnershipFilter>('all'); // Keep for internal search
-  const [searchMode, setSearchMode] = useState<
-    'internal' | 'external' | 'custom'
-  >('internal'); // New state for search mode
-  const [recentExercises, setRecentExercises] = useState<Exercise[]>([]);
-  const [topExercises, setTopExercises] = useState<Exercise[]>([]);
-  const [searchResults, setSearchResults] = useState<Exercise[]>([]);
-  const [newExerciseName, setNewExerciseName] = useState('');
-  const [newExerciseCategory, setNewExerciseCategory] = useState('general');
-  const [newExerciseCalories, setNewExerciseCalories] = useState(300);
-  const [newExerciseDescription, setNewExerciseDescription] = useState('');
-  const [showDurationDialog, setShowDurationDialog] = useState(false);
   const [isPlaybackModalOpen, setIsPlaybackModalOpen] = useState(false); // State for playback modal
   const [exerciseToPlay, setExerciseToPlay] = useState<Exercise | null>(null); // State for exercise to play
   const [isLogExerciseDialogOpen, setIsLogExerciseDialogOpen] = useState(false); // State for LogExerciseEntryDialog
@@ -120,8 +80,6 @@ const ExerciseCard = ({
   >([]); // Queue for multiple exercises
   const [currentExerciseToLog, setCurrentExerciseToLog] =
     useState<ExerciseToLog | null>(null); // Current exercise being logged
-  const [exerciseEntriesRefreshTrigger, setExerciseEntriesRefreshTrigger] =
-    useState(0); // New state for refreshing exercise entries
   const [
     isEditExerciseDatabaseDialogOpen,
     setIsEditExerciseDatabaseDialogOpen,
@@ -133,52 +91,14 @@ const ExerciseCard = ({
   const currentUserId = activeUserId || user?.id;
   debug(loggingLevel, 'Current user ID:', currentUserId);
 
-  const _fetchExerciseEntries = useCallback(async () => {
-    debug(loggingLevel, 'Fetching exercise entries for date:', selectedDate);
-    setLoading(true);
-    try {
-      const data: GroupedExerciseEntry[] =
-        await fetchExerciseEntries(selectedDate); // Use imported fetchExerciseEntries
-      info(loggingLevel, 'Exercise entries fetched successfully:', data);
-      setExerciseEntries(data || []);
-      debug(
-        loggingLevel,
-        'ExerciseCard: exerciseEntries state updated to:',
-        data
-      );
-    } catch (err) {
-      error(loggingLevel, 'Error fetching exercise entries:', err);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    currentUserId,
-    selectedDate,
-    loggingLevel,
-    exerciseEntriesRefreshTrigger,
-  ]); // Add refresh trigger to dependencies
+  const queryClient = useQueryClient();
+  const { mutateAsync: deleteExerciseEntry } = useDeleteExerciseEntryMutation();
+  const { mutateAsync: deleteExercisePresetEntry } =
+    useDeleteExercisePresetEntryMutation();
+  const { mutateAsync: logWorkoutPreset } = useLogWorkoutPresetMutation();
 
-  useEffect(() => {
-    debug(
-      loggingLevel,
-      'currentUserId, selectedDate, or exerciseEntriesRefreshTrigger useEffect triggered.',
-      {
-        currentUserId,
-        selectedDate,
-        exerciseEntriesRefreshTrigger,
-      }
-    );
-    if (currentUserId) {
-      _fetchExerciseEntries();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    currentUserId,
-    selectedDate,
-    _fetchExerciseEntries,
-    exerciseEntriesRefreshTrigger,
-  ]); // Add refresh trigger to dependencies
+  const { data: exerciseEntries, isLoading: loading } =
+    useExerciseEntries(selectedDate);
 
   // Effect to handle initialExercisesToLog prop
   useEffect(() => {
@@ -193,7 +113,9 @@ const ExerciseCard = ({
         const fetchedExercises = await Promise.all(
           initialExercisesToLog.map(async (presetEx) => {
             try {
-              const fullExercise = await getExerciseById(presetEx.exercise_id);
+              const fullExercise = await queryClient.fetchQuery(
+                exerciseByIdOptions(presetEx.exercise_id)
+              );
               // Create WorkoutPresetSet array based on presetEx.sets, reps, and weight
               const sets: WorkoutPresetSet[] = Array.from(
                 { length: presetEx.sets },
@@ -243,83 +165,16 @@ const ExerciseCard = ({
     };
 
     processInitialExercises();
-  }, [initialExercisesToLog, loggingLevel]);
-
-  useEffect(() => {
-    const performInternalSearch = async () => {
-      if (!currentUserId) return;
-
-      setSearchLoading(true);
-      try {
-        const { exercises } = await loadExercises(
-          searchTerm,
-          'all', // categoryFilter
-          filterType
-        );
-        setSearchResults(exercises);
-        info(loggingLevel, 'Internal exercise search results:', exercises);
-      } catch (err) {
-        error(loggingLevel, 'Error during internal exercise search:', err);
-      } finally {
-        setSearchLoading(false);
-      }
-    };
-
-    const fetchSuggested = async () => {
-      if (currentUserId) {
-        debug(
-          loggingLevel,
-          'Fetching suggested exercises with limit:',
-          itemDisplayLimit
-        );
-        const { recentExercises, topExercises } =
-          await getSuggestedExercises(itemDisplayLimit);
-        info(loggingLevel, 'Suggested exercises data:', {
-          recentExercises,
-          topExercises,
-        });
-        setRecentExercises(recentExercises);
-        setTopExercises(topExercises);
-      }
-    };
-
-    if (isAddDialogOpen && searchMode === 'internal') {
-      if (searchTerm.trim() === '') {
-        fetchSuggested();
-        setSearchResults([]);
-      } else {
-        const delayDebounceFn = setTimeout(() => {
-          performInternalSearch();
-        }, 300); // Debounce search to avoid excessive API calls
-        return () => clearTimeout(delayDebounceFn);
-      }
-    }
-  }, [
-    searchTerm,
-    filterType,
-    currentUserId,
-    loggingLevel,
-    searchMode,
-    isAddDialogOpen,
-    itemDisplayLimit,
-  ]);
+  }, [initialExercisesToLog, loggingLevel, queryClient]);
 
   const handleOpenAddDialog = () => {
     debug(loggingLevel, 'Opening add exercise dialog.');
     setIsAddDialogOpen(true);
-    setSelectedExerciseId(null); // Reset selected exercise
-    setSelectedExercise(null); // Reset selected exercise object
-    setDuration(30);
-    setNotes('');
   };
 
   const handleCloseAddDialog = useCallback(() => {
     debug(loggingLevel, 'Closing add exercise dialog.');
     setIsAddDialogOpen(false);
-    setSelectedExerciseId(null);
-    setSelectedExercise(null);
-    setDuration(30);
-    setNotes('');
   }, [loggingLevel]);
 
   const handleExerciseSelect = (
@@ -358,7 +213,6 @@ const ExerciseCard = ({
 
   const handleDataChange = useCallback(() => {
     debug(loggingLevel, 'Handling data change, incrementing refresh trigger.');
-    setExerciseEntriesRefreshTrigger((prev) => prev + 1); // Increment trigger to force refresh
     onExerciseChange(); // Still call parent's onExerciseChange for broader diary refresh if needed
     handleCloseAddDialog(); // Close the add exercise dialog
   }, [loggingLevel, onExerciseChange, handleCloseAddDialog]);
@@ -367,7 +221,7 @@ const ExerciseCard = ({
     async (preset: WorkoutPreset) => {
       debug(loggingLevel, 'Workout preset selected in ExerciseCard:', preset);
       try {
-        await logWorkoutPreset(preset.id, selectedDate);
+        await logWorkoutPreset({ presetId: preset.id, date: selectedDate });
         toast({
           title: 'Success',
           description: `Workout preset "${preset.name}" logged successfully.`,
@@ -389,96 +243,14 @@ const ExerciseCard = ({
         setIsAddDialogOpen(false); // Close the add dialog
       }
     },
-    [loggingLevel, selectedDate, handleDataChange, onExercisesLogged]
+    [
+      loggingLevel,
+      selectedDate,
+      handleDataChange,
+      onExercisesLogged,
+      logWorkoutPreset,
+    ]
   );
-
-  const handleAddCustomExercise = async (sourceMode: 'custom') => {
-    if (!user) return;
-    try {
-      const newExercise = {
-        name: newExerciseName,
-        category: newExerciseCategory,
-        calories_per_hour: newExerciseCalories,
-        description: newExerciseDescription,
-        user_id: user.id,
-        is_custom: true,
-      };
-      const createdExercise = await createExercise(newExercise);
-      toast({
-        title: 'Success',
-        description: 'Exercise added successfully',
-      });
-      // When adding custom, it's a single exercise, so clear queue and set current
-      setExercisesToLogQueue([
-        { ...createdExercise, duration: 0, sets: [], reps: 0, weight: 0 },
-      ]); // Add default duration and empty sets
-      setCurrentExerciseToLog({
-        ...createdExercise,
-        duration: 0,
-        sets: [],
-        reps: 0,
-        weight: 0,
-      });
-      setIsLogExerciseDialogOpen(true);
-      setIsAddDialogOpen(false);
-      setNewExerciseName('');
-      setNewExerciseCategory('general');
-      setNewExerciseCalories(300);
-      setNewExerciseDescription('');
-    } catch (error) {
-      console.error('Error adding exercise:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add exercise',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleAddToDiary = async () => {
-    debug(loggingLevel, 'Handling add to diary.');
-    if (!selectedExerciseId || !selectedExercise) {
-      // Check for selectedExercise object
-      warn(loggingLevel, 'Submit called with no exercise selected.');
-      toast({
-        title: 'Error',
-        description: 'Please select an exercise.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const caloriesPerHour = selectedExercise.calories_per_hour || 300;
-    const caloriesBurned = Math.round((caloriesPerHour / 60) * duration); // Calculated in kcal
-    debug(loggingLevel, 'Calculated calories burned:', caloriesBurned);
-
-    try {
-      // This function is no longer used directly, as LogExerciseEntryDialog handles creation
-      // await addExerciseEntry({
-      //   exercise_id: selectedExerciseId,
-      //   duration_minutes: duration,
-      //   calories_burned: caloriesBurned,
-      //   entry_date: selectedDate,
-      //   notes: notes,
-      // });
-      info(loggingLevel, 'Exercise entry added successfully.');
-      toast({
-        title: 'Success',
-        description: 'Exercise entry added successfully.',
-      });
-      _fetchExerciseEntries(); // Call the memoized local function
-      onExerciseChange();
-      setShowDurationDialog(false);
-      handleCloseAddDialog();
-    } catch (err) {
-      error(loggingLevel, 'Error adding exercise entry:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to add exercise entry.',
-        variant: 'destructive',
-      });
-    }
-  };
 
   const handleDeleteExerciseEntry = async (entryId: string) => {
     debug(loggingLevel, 'Handling delete individual exercise entry:', entryId);
@@ -489,19 +261,9 @@ const ExerciseCard = ({
         'Individual exercise entry deleted successfully:',
         entryId
       );
-      toast({
-        title: 'Success',
-        description: 'Exercise entry deleted successfully.',
-      });
-      _fetchExerciseEntries(); // Call the memoized local function
       onExerciseChange();
     } catch (err) {
       error(loggingLevel, 'Error deleting individual exercise entry:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete exercise entry.',
-        variant: 'destructive',
-      });
     }
   };
 
@@ -518,19 +280,9 @@ const ExerciseCard = ({
         'Exercise preset entry deleted successfully:',
         presetEntryId
       );
-      toast({
-        title: 'Success',
-        description: 'Exercise preset entry deleted successfully.',
-      });
-      _fetchExerciseEntries(); // Call the memoized local function
       onExerciseChange();
     } catch (err) {
       error(loggingLevel, 'Error deleting exercise preset entry:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete exercise preset entry.',
-        variant: 'destructive',
-      });
     }
   };
 
@@ -543,7 +295,6 @@ const ExerciseCard = ({
   const handleEditComplete = () => {
     debug(loggingLevel, 'Handling edit exercise entry complete.');
     setEditingEntry(null);
-    _fetchExerciseEntries(); // Call the memoized local function
     onExerciseChange();
     info(loggingLevel, 'Exercise entry edit complete and refresh triggered.');
   };
@@ -575,28 +326,24 @@ const ExerciseCard = ({
         exerciseId
       );
       try {
-        const exercise = await getExerciseById(exerciseId);
+        const exercise = await queryClient.fetchQuery(
+          exerciseByIdOptions(exerciseId)
+        );
         setExerciseToEditInDatabase(exercise);
         setIsEditExerciseDatabaseDialogOpen(true);
       } catch (err) {
         error(loggingLevel, 'Failed to fetch exercise for editing:', err);
-        toast({
-          title: 'Error',
-          description: 'Failed to load exercise details for editing.',
-          variant: 'destructive',
-        });
       }
     },
-    [loggingLevel]
+    [loggingLevel, queryClient]
   );
 
   const handleSaveExerciseDatabaseEdit = useCallback(() => {
     debug(loggingLevel, 'Exercise database edit saved. Refreshing entries.');
     setIsEditExerciseDatabaseDialogOpen(false);
     setExerciseToEditInDatabase(null);
-    _fetchExerciseEntries(); // Refresh the exercise entries in the card
     onExerciseChange(); // Notify parent of change
-  }, [loggingLevel, _fetchExerciseEntries, onExerciseChange]);
+  }, [loggingLevel, onExerciseChange]);
 
   if (loading) {
     debug(loggingLevel, 'ExerciseCard is loading.');

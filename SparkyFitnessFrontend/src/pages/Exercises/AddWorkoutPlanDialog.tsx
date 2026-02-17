@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
@@ -46,10 +46,8 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getWorkoutPresets } from '@/services/workoutPresetService';
 import { Card } from '@/components/ui/card';
-import { loadExercises } from '@/services/exerciseService';
-import type { Exercise } from '@/services/exerciseSearchService';
+import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -65,6 +63,7 @@ import AddExerciseDialog from './AddExerciseDialog';
 import ExerciseHistoryDisplay from '../../components/ExerciseHistoryDisplay';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug } from '@/utils/logging';
+import { useWorkoutPresets } from '@/hooks/Exercises/useWorkoutPresets';
 
 interface AddWorkoutPlanDialogProps {
   isOpen: boolean;
@@ -378,7 +377,7 @@ const SortableAssignmentItem = React.memo(
                   ) {
                     return (
                       <div className="text-xs text-muted-foreground mt-1">
-                        {preset.exercises.map((ex, idx) => (
+                        {preset.exercises.slice(0, 10).map((ex, idx) => (
                           <p
                             key={idx}
                             className="flex flex-wrap items-center gap-x-4 gap-y-1"
@@ -495,8 +494,6 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
   const [endDate, setEndDate] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [assignments, setAssignments] = useState<WorkoutPlanAssignment[]>([]);
-  const [workoutPresets, setWorkoutPresets] = useState<WorkoutPreset[]>([]);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
   const [selectedDayForAssignment, setSelectedDayForAssignment] = useState<
     number | null
@@ -504,12 +501,14 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
   const [copiedAssignment, setCopiedAssignment] =
     useState<WorkoutPlanAssignment | null>(null);
 
+  const { data: presetData } = useWorkoutPresets(user?.id);
+
+  const workoutPresets = useMemo(
+    () => presetData?.pages.flatMap((page) => page.presets) ?? [],
+    [presetData]
+  );
   useEffect(() => {
     if (isOpen) {
-      if (user?.id) {
-        fetchPresetsAndExercises();
-      }
-
       if (initialData) {
         setPlanName(initialData.plan_name);
         setDescription(initialData.description);
@@ -561,41 +560,8 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, user?.id, initialData]);
 
-  const fetchPresetsAndExercises = async () => {
-    if (!user?.id) return;
-    try {
-      const [presets, { exercises: fetchedExercises }] = await Promise.all([
-        getWorkoutPresets(1, 1000), // Fetch all presets for selection
-        loadExercises(user.id),
-      ]);
-      setWorkoutPresets(presets.presets);
-      setExercises(fetchedExercises);
-    } catch (error) {
-      toast({
-        title: t('addWorkoutPlanDialog.errorToastTitle', 'Error'),
-        description: t(
-          'addWorkoutPlanDialog.errorToastDescription',
-          'Failed to load workout presets or exercises.'
-        ),
-        variant: 'destructive',
-      });
-      console.error('Error fetching presets or exercises:', error);
-    }
-  };
-
   const handleRemoveAssignment = (index: number) => {
     setAssignments((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleAssignmentChange = (
-    index: number,
-    field: keyof WorkoutPlanAssignment,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    value: any
-  ) => {
-    setAssignments((prev) =>
-      prev.map((a, i) => (i === index ? { ...a, [field]: value } : a))
-    );
   };
 
   const handleSetChangeInPlan = useCallback(
@@ -904,7 +870,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
       start_date: startDate,
       end_date: endDate || null,
       is_active: isActive,
-      assignments: assignmentsToSave.map((a, index) => {
+      assignments: assignmentsToSave.map((a) => {
         // Calculate sort_order within its day
         const dayAssignments = assignmentsToSave.filter(
           (da) => da.day_of_week === a.day_of_week

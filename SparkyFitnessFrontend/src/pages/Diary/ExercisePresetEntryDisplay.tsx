@@ -14,8 +14,8 @@ import { debug } from '@/utils/logging';
 import type {
   GroupedExerciseEntry,
   ExerciseEntry,
-} from '@/services/exerciseEntryService';
-import type { Exercise } from '@/services/exerciseSearchService';
+} from '@/api/Exercises/exerciseEntryService';
+import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';

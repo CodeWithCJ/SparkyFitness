@@ -1,18 +1,10 @@
-import { apiCall } from './api';
+import { apiCall } from '@/services/api';
 import type { WorkoutPlanTemplate } from '@/types/workout';
 
 export const getWorkoutPlanTemplates = async (): Promise<
   WorkoutPlanTemplate[]
 > => {
   return apiCall('/workout-plan-templates', {
-    method: 'GET',
-  });
-};
-
-export const getWorkoutPlanTemplateById = async (
-  id: string
-): Promise<WorkoutPlanTemplate> => {
-  return apiCall(`/workout-plan-templates/${id}`, {
     method: 'GET',
   });
 };
@@ -45,13 +37,5 @@ export const deleteWorkoutPlanTemplate = async (
 ): Promise<{ message: string }> => {
   return apiCall(`/workout-plan-templates/${id}`, {
     method: 'DELETE',
-  });
-};
-
-export const getActiveWorkoutPlanForDate = async (
-  date: string
-): Promise<WorkoutPlanTemplate | null> => {
-  return apiCall(`/workout-plan-templates/active/${date}`, {
-    method: 'GET',
   });
 };

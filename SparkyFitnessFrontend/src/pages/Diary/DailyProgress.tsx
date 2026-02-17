@@ -21,7 +21,7 @@ import {
   getCheckInMeasurementsForDate,
   type CheckInMeasurement,
 } from '@/services/dailyProgressService';
-import type { GroupedExerciseEntry } from '@/services/exerciseEntryService';
+import type { GroupedExerciseEntry } from '@/api/Exercises/exerciseEntryService';
 import { getMostRecentMeasurement } from '@/services/checkInService';
 import type { FoodEntry } from '@/types/food';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,8 +51,6 @@ const DailyProgress = ({
     energyUnit
   );
 
-  const { water_display_unit } = usePreferences(); // Add water_display_unit from preferences
-
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal'
       ? t('common.kcalUnit', 'kcal')
@@ -60,21 +58,6 @@ const DailyProgress = ({
   };
 
   // Helper functions for unit conversion
-  const convertMlToSelectedUnit = (
-    ml: number | null | undefined,
-    unit: 'ml' | 'oz' | 'liter'
-  ): number => {
-    const safeMl = typeof ml === 'number' && !isNaN(ml) ? ml : 0;
-    switch (unit) {
-      case 'oz':
-        return safeMl / 29.5735;
-      case 'liter':
-        return safeMl / 1000;
-      case 'ml':
-      default:
-        return safeMl;
-    }
-  };
 
   const [dailyGoals, setDailyGoals] = useState({
     calories: 2000, // Stored internally as kcal

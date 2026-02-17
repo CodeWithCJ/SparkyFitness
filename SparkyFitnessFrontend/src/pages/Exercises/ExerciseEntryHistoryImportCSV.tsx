@@ -1,9 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Papa from 'papaparse';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { apiCall } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -23,8 +22,6 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { Upload, Download, Loader2, Plus, Trash2, Copy } from 'lucide-react';
 import { format, parse } from 'date-fns';
-import { useAuth } from '@/hooks/useAuth';
-import { getUserPreferences } from '@/services/preferenceService';
 import type { UserPreferences } from '@/services/preferenceService';
 import {
   Tooltip,
@@ -32,6 +29,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useImportExerciseHistoryMutation } from '@/hooks/Exercises/useExercises';
+import { HistoryImportEntry } from '@/api/Exercises/exerciseService';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 // Define the shape of a single row from the CSV
 interface CsvRow {
@@ -120,48 +120,18 @@ const ExerciseEntryHistoryImportCSV = ({
   onImportComplete,
 }: ExerciseEntryHistoryImportCSVProps) => {
   const { t } = useTranslation();
-  const { user } = useAuth(); // Use useAuth hook
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [selectedDateFormat, setSelectedDateFormat] = useState<string>(
-    dateFormats[0].value
-  ); // Explicitly type useState
-  const [parsedData, setParsedData] = useState<CsvRow[]>([]);
   const [groupedEntries, setGroupedEntries] = useState<GroupedExerciseEntry[]>(
     []
   );
-  const [userPreferences, setUserPreferences] =
-    useState<UserPreferences | null>(null); // State for user preferences
+  useState<UserPreferences | null>(null); // State for user preferences
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Update selectedDateFormat when userPreferences change
-  useEffect(() => {
-    if (userPreferences?.date_format) {
-      setSelectedDateFormat(userPreferences.date_format);
-    }
-  }, [userPreferences]);
-
-  useEffect(() => {
-    const fetchPreferences = async () => {
-      if (user?.id) {
-        try {
-          const preferences = await getUserPreferences('INFO'); // Assuming "INFO" as a default logging level
-          setUserPreferences(preferences);
-        } catch (error) {
-          console.error('Failed to fetch user preferences:', error);
-          toast({
-            title: t('common.error', 'Error'),
-            description: t(
-              'settings.preferences.fetchError',
-              'Failed to load user preferences.'
-            ),
-            variant: 'destructive',
-          });
-        }
-      }
-    };
-    fetchPreferences();
-  }, [user?.id, t]);
+  const { dateFormat, weightUnit, distanceUnit } = usePreferences();
+  const { mutateAsync: importAsCsv } = useImportExerciseHistoryMutation();
+  const [selectedDateFormat, setSelectedDateFormat] =
+    useState<string>(dateFormat);
 
   const dropdownFields = new Set([
     'exercise_force',
@@ -183,7 +153,6 @@ const ExerciseEntryHistoryImportCSV = ({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       setFile(event.target.files[0]);
-      setParsedData([]);
       setGroupedEntries([]);
     } else {
       setFile(null);
@@ -231,7 +200,6 @@ const ExerciseEntryHistoryImportCSV = ({
           return;
         }
 
-        setParsedData(rows);
         groupAndValidateData(rows);
         setLoading(false);
       },
@@ -448,22 +416,12 @@ const ExerciseEntryHistoryImportCSV = ({
 
     setLoading(true);
     try {
-      const response = await apiCall('/exercise-entries/import-history-csv', {
-        method: 'POST',
-        body: JSON.stringify({
-          entries: groupedEntries.map((entry) => ({
-            ...entry,
-            entry_date: format(entry.entry_date, 'yyyy-MM-dd'), // Format date to YYYY-MM-DD
-          })),
-        }),
-      });
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'exercise.importHistoryCSV.importSuccess',
-          'Historical exercise entries imported successfully.'
-        ),
-      });
+      const entries: HistoryImportEntry[] = groupedEntries.map((entry) => ({
+        ...entry,
+        entry_date: format(entry.entry_date, 'yyyy-MM-dd'),
+      }));
+
+      await importAsCsv(entries);
       onImportComplete();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -495,7 +453,6 @@ const ExerciseEntryHistoryImportCSV = ({
 
   const handleClearData = () => {
     setFile(null);
-    setParsedData([]);
     setGroupedEntries([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -810,28 +767,16 @@ const ExerciseEntryHistoryImportCSV = ({
           </div>
         </div>
 
-        {userPreferences ? (
-          <p className="mb-4 text-sm text-muted-foreground">
-            {t(
-              'exercise.importHistoryCSV.unitsHint',
-              'Expected units in CSV: Weight: {{weightUnit}}; Distance: {{distanceUnit}}; Duration: Minutes; Rest Time: Seconds; Calories Burned: Calories',
-              {
-                weightUnit:
-                  userPreferences.weight_unit === 'lbs' ? 'Lbs' : 'Kg',
-                distanceUnit:
-                  userPreferences.distance_unit === 'miles' ? 'Miles' : 'Km',
-              }
-            )}
-          </p>
-        ) : (
-          <p className="mb-4 text-sm text-muted-foreground">
-            {t(
-              'exercise.importHistoryCSV.unitsHint',
-              'Expected units in CSV: Weight: Kg/Lbs (based on preferences); Distance: Km/Miles (based on preferences); Duration: Minutes; Rest Time: Seconds; Calories Burned: Calories'
-            )}
-          </p>
-        )}
-
+        <p className="mb-4 text-sm text-muted-foreground">
+          {t(
+            'exercise.importHistoryCSV.unitsHint',
+            'Expected units in CSV: Weight: {{weightUnit}}; Distance: {{distanceUnit}}; Duration: Minutes; Rest Time: Seconds; Calories Burned: Calories',
+            {
+              weightUnit: weightUnit === 'lbs' ? 'Lbs' : 'Kg',
+              distanceUnit: distanceUnit === 'miles' ? 'Miles' : 'Km',
+            }
+          )}
+        </p>
         <div className="flex flex-col space-y-4 mb-6">
           <div className="flex items-center space-x-2">
             <Input

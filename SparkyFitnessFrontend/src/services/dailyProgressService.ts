@@ -9,7 +9,7 @@ export interface Goals {
 }
 
 import type { FoodEntry } from '@/types/food';
-import type { GroupedExerciseEntry } from './exerciseEntryService';
+import type { GroupedExerciseEntry } from '../api/Exercises/exerciseEntryService';
 
 import type { WorkoutPresetSet } from '@/types/workout';
 

@@ -42,18 +42,22 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAuth } from '@/hooks/useAuth';
 import { error } from '@/utils/logging';
 import {
-  loadExercises,
-  updateExercise,
-  deleteExercise,
-  updateExerciseShareStatus,
-  getExerciseDeletionImpact,
   type ExerciseDeletionImpact,
-  updateExerciseEntriesSnapshot,
   type ExerciseOwnershipFilter,
-} from '@/services/exerciseService';
-import type { Exercise as ExerciseInterface } from '@/services/exerciseSearchService';
+} from '@/api/Exercises/exerciseService';
+import type { Exercise as ExerciseInterface } from '@/api/Exercises/exerciseSearchService';
 import WorkoutPresetsManager from './WorkoutPresetsManager';
 import WorkoutPlansManager from '@/pages/Exercises/WorkoutPlansManager';
+import {
+  exerciseDeletionImpactOptions,
+  useDeleteExerciseMutation,
+  useExercises,
+  useUpdateExerciseEntriesSnapshotMutation,
+  useUpdateExerciseMutation,
+  useUpdateExerciseShareStatusMutation,
+} from '@/hooks/Exercises/useExercises';
+import { useQueryClient } from '@tanstack/react-query';
+import { exerciseKeys } from '@/api/keys/exercises';
 
 const ExerciseDatabaseManager = () => {
   const { t } = useTranslation();
@@ -66,8 +70,7 @@ const ExerciseDatabaseManager = () => {
       : t('common.kJUnit', 'kJ');
   };
   // Existing states for Exercise management
-  const [exercises, setExercises] = useState<ExerciseInterface[]>([]);
-  const [totalExercisesCount, setTotalExercisesCount] = useState(0);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [ownershipFilter, setOwnershipFilter] =
@@ -114,56 +117,32 @@ const ExerciseDatabaseManager = () => {
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [syncExerciseId, setSyncExerciseId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user?.id) {
-      loadExercisesData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
-  const loadExercisesData = async () => {
-    if (!user?.id) return;
-    try {
-      const response = await loadExercises(
-        searchTerm,
-        categoryFilter,
-        ownershipFilter,
-        currentPage,
-        itemsPerPage
-      );
-      setExercises(response.exercises);
-      setTotalExercisesCount(response.totalCount);
-    } catch (err) {
-      error(loggingLevel, 'Error loading exercises:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'exercise.databaseManager.failedToLoadExercises',
-          'Failed to load exercises'
-        ),
-        variant: 'destructive',
-      });
-    }
-  };
-
-  useEffect(() => {
-    loadExercisesData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    user?.id,
+  const queryClient = useQueryClient();
+  const { data } = useExercises(
     searchTerm,
     categoryFilter,
     ownershipFilter,
     currentPage,
     itemsPerPage,
-  ]);
+    user.id
+  );
+  const { mutateAsync: updateExercise } = useUpdateExerciseMutation();
+  const { mutateAsync: updateExerciseEntriesSnapshot } =
+    useUpdateExerciseEntriesSnapshotMutation();
+  const { mutateAsync: updateExerciseShareStatus } =
+    useUpdateExerciseShareStatusMutation();
+  const { mutateAsync: deleteExercise } = useDeleteExerciseMutation();
 
+  const currentExercises = data ? data.exercises : [];
+  const totalExercisesCount = data ? data.totalCount : 0;
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, categoryFilter, ownershipFilter, itemsPerPage]);
 
+  if (!data) {
+    return;
+  }
   const totalPages = Math.ceil(totalExercisesCount / itemsPerPage);
-  const currentExercises = exercises;
 
   const handleEditExercise = async () => {
     if (!selectedExercise) return;
@@ -194,19 +173,10 @@ const ExerciseDatabaseManager = () => {
         formData.append('images', file);
       });
 
-      await updateExercise(selectedExercise.id, formData);
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'exercise.databaseManager.editSuccess',
-          'Exercise edited successfully'
-        ),
-      });
+      await updateExercise({ id: selectedExercise.id, payload: formData });
       if (user?.id === selectedExercise.user_id) {
         setSyncExerciseId(selectedExercise.id);
         setShowSyncConfirmation(true);
-      } else {
-        loadExercisesData();
       }
       setIsEditDialogOpen(false);
       setSelectedExercise(null);
@@ -214,34 +184,20 @@ const ExerciseDatabaseManager = () => {
       setNewExerciseImageUrls([]);
     } catch (err) {
       error(loggingLevel, 'Error editing exercise:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'exercise.databaseManager.failedToEditExercise',
-          'Failed to edit exercise'
-        ),
-        variant: 'destructive',
-      });
     }
   };
 
   const handleDeleteRequest = async (exercise: ExerciseInterface) => {
     if (!user) return;
     try {
-      const impact = await getExerciseDeletionImpact(exercise.id);
+      const impact = await queryClient.fetchQuery(
+        exerciseDeletionImpactOptions(exercise.id)
+      );
       setDeletionImpact(impact);
       setExerciseToDelete(exercise);
       setShowDeleteConfirmation(true);
     } catch (err) {
       error(loggingLevel, 'Error fetching deletion impact:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'exercise.databaseManager.failedToFetchDeletionImpact',
-          'Could not fetch deletion impact. Please try again.'
-        ),
-        variant: 'destructive',
-      });
     }
   };
 
@@ -253,7 +209,10 @@ const ExerciseDatabaseManager = () => {
         deletionImpact &&
         !deletionImpact.isUsedByOthers &&
         deletionImpact.exerciseEntriesCount > 0;
-      const response = await deleteExercise(exerciseToDelete.id, shouldForce);
+      const response = await deleteExercise({
+        id: exerciseToDelete.id,
+        forceDelete: shouldForce,
+      });
       // Interpret server response status for user feedback
       if (response && response.status) {
         if (
@@ -295,17 +254,8 @@ const ExerciseDatabaseManager = () => {
           ),
         });
       }
-      loadExercisesData();
     } catch (err) {
       error(loggingLevel, 'Error deleting exercise:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'exercise.databaseManager.failedToDeleteExercise',
-          'Failed to delete exercise.'
-        ),
-        variant: 'destructive',
-      });
     } finally {
       setShowDeleteConfirmation(false);
       setExerciseToDelete(null);
@@ -313,86 +263,11 @@ const ExerciseDatabaseManager = () => {
     }
   };
 
-  const handleShareExercise = async (exerciseId: string, share: boolean) => {
-    try {
-      await updateExerciseShareStatus(exerciseId, share);
-      toast({
-        title: t('common.success', 'Success'),
-        description: t('exercise.databaseManager.shareStatusSuccess', {
-          shareStatus: share ? 'shared' : 'unshared',
-        }),
-      });
-      loadExercisesData();
-    } catch (err) {
-      error(loggingLevel, 'Error sharing exercise:', err);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'exercise.databaseManager.failedToShareExercise',
-          'Failed to share exercise'
-        ),
-        variant: 'destructive',
-      });
-    }
-  };
-
   const handleSyncConfirmation = async () => {
     if (syncExerciseId) {
-      try {
-        await updateExerciseEntriesSnapshot(syncExerciseId);
-        toast({
-          title: t('common.success', 'Success'),
-          description: t(
-            'exercise.databaseManager.syncSuccess',
-            'Past diary entries have been updated.'
-          ),
-        });
-      } catch (error) {
-        toast({
-          title: t('common.error', 'Error'),
-          description: t(
-            'exercise.databaseManager.syncError',
-            'Failed to update past diary entries.'
-          ),
-          variant: 'destructive',
-        });
-      }
+      await updateExerciseEntriesSnapshot(syncExerciseId);
     }
     setShowSyncConfirmation(false);
-    loadExercisesData();
-  };
-
-  const getExerciseSourceBadge = (
-    exercise: ExerciseInterface,
-    currentUserId: string | undefined
-  ) => {
-    if (!exercise.user_id) {
-      return (
-        <Badge variant="outline" className="text-xs w-fit">
-          {t('exercise.databaseManager.badgeSystem', 'System')}
-        </Badge>
-      );
-    }
-
-    if (exercise.user_id === currentUserId) {
-      return (
-        <Badge variant="secondary" className="text-xs w-fit">
-          {t('exercise.databaseManager.badgePrivate', 'Private')}
-        </Badge>
-      );
-    }
-
-    if (exercise.user_id !== currentUserId && !exercise.shared_with_public) {
-      return (
-        <Badge
-          variant="outline"
-          className="text-xs w-fit bg-blue-50 text-blue-700"
-        >
-          {t('exercise.databaseManager.badgeFamily', 'Family')}
-        </Badge>
-      );
-    }
-    return null; // No badge from getExerciseSourceBadge if it's public and not owned by user
   };
 
   return (
@@ -683,10 +558,10 @@ const ExerciseDatabaseManager = () => {
                           variant="ghost"
                           size="icon"
                           onClick={() =>
-                            handleShareExercise(
-                              exercise.id,
-                              !exercise.shared_with_public
-                            )
+                            updateExerciseShareStatus({
+                              id: exercise.id,
+                              sharedWithPublic: !exercise.shared_with_public,
+                            })
                           }
                           className="h-8 w-8"
                           disabled={exercise.user_id !== user?.id} // Disable if not owned by user
@@ -854,7 +729,7 @@ const ExerciseDatabaseManager = () => {
                   </PaginationItem>
 
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNumber;
+                    let pageNumber: number;
                     if (totalPages <= 5) {
                       pageNumber = i + 1;
                     } else if (currentPage <= 3) {
@@ -930,8 +805,10 @@ const ExerciseDatabaseManager = () => {
       <AddExerciseDialog
         open={isAddExerciseDialogOpen}
         onOpenChange={setIsAddExerciseDialogOpen}
-        onExerciseAdded={loadExercisesData}
         mode="database-manager"
+        onExerciseAdded={() => {
+          queryClient.invalidateQueries({ queryKey: exerciseKeys.lists() });
+        }}
       />
       {/* Edit Exercise Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -1312,12 +1189,6 @@ const ExerciseDatabaseManager = () => {
                         onDrop={(e) => {
                           e.preventDefault();
                           if (draggedImageIndex === null) return;
-
-                          const allImages = [
-                            ...editExerciseImages,
-                            ...newExerciseImageUrls,
-                          ];
-                          const allFiles = [...newExerciseImageFiles];
 
                           const targetIndex = index + editExerciseImages.length;
 

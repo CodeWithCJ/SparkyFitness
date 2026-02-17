@@ -56,7 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Exercise } from '@/services/exerciseSearchService';
+import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 
 interface WorkoutPresetFormProps {
   isOpen: boolean;

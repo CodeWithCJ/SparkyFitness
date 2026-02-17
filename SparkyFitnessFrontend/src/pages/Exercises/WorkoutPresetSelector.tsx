@@ -1,14 +1,11 @@
 import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import type { WorkoutPreset } from '@/types/workout';
-import { getWorkoutPresets } from '@/services/workoutPresetService';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
-import { debug, info, error } from '@/utils/logging';
-import { usePreferences } from '@/contexts/PreferencesContext';
+import { useWorkoutPresets } from '@/hooks/Exercises/useWorkoutPresets';
+import { useAuth } from '@/hooks/useAuth';
 
 interface WorkoutPresetSelectorProps {
   onPresetSelected: (preset: WorkoutPreset) => void;
@@ -18,62 +15,21 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
   onPresetSelected,
 }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const { loggingLevel } = usePreferences();
   const [searchTerm, setSearchTerm] = useState('');
-  const [allPresets, setAllPresets] = useState<WorkoutPreset[]>([]);
-  const [filteredPresets, setFilteredPresets] = useState<WorkoutPreset[]>([]);
-  const [recentPresets, setRecentPresets] = useState<WorkoutPreset[]>([]);
-  const [topPresets, setTopPresets] = useState<WorkoutPreset[]>([]);
+  const { user } = useAuth();
 
-  const fetchWorkoutPresets = useCallback(async () => {
-    if (!user?.id) return;
-    debug(loggingLevel, 'WorkoutPresetSelector: Fetching workout presets.');
-    try {
-      const paginatedResult = await getWorkoutPresets(1, 20); // Fetching up to 100 presets for now
-      info(
-        loggingLevel,
-        'WorkoutPresetSelector: Fetched presets:',
-        paginatedResult
-      );
-      const presets = paginatedResult.presets;
-      setAllPresets(presets);
-      // For now, just use a simple slice for recent/top.
-      // In a real app, this would involve more sophisticated logic
-      // based on user history or popularity.
-      setRecentPresets(presets.slice(0, 3));
-      setTopPresets(presets.slice(3, 6));
-    } catch (err) {
-      error(
-        loggingLevel,
-        'WorkoutPresetSelector: Failed to load workout presets:',
-        err
-      );
-      toast({
-        title: t('common.errorOccurred', 'Error'),
-        description: t(
-          'workoutPresetsManager.failedToLoadPresets',
-          'Failed to load workout presets.'
-        ),
-        variant: 'destructive',
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, loggingLevel, toast]);
+  const { data: presetData } = useWorkoutPresets(user?.id);
 
-  useEffect(() => {
-    fetchWorkoutPresets();
-  }, [fetchWorkoutPresets]);
+  const allPresets = useMemo(
+    () => presetData?.pages.flatMap((page) => page.presets) ?? [],
+    [presetData]
+  );
+  const recentPresets = allPresets.slice(0, 3);
+  const topPresets = allPresets.slice(3, 6);
 
-  useEffect(() => {
-    const lowerCaseSearchTerm = searchTerm.toLowerCase();
-
-    setFilteredPresets(
-      allPresets.filter((preset) =>
-        preset.name.toLowerCase().includes(lowerCaseSearchTerm)
-      )
-    );
-  }, [searchTerm, allPresets]);
+  const filteredPresets = allPresets.filter((preset) =>
+    preset.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handlePresetClick = (preset: WorkoutPreset) => {
     onPresetSelected(preset);
