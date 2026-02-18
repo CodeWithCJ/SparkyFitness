@@ -422,7 +422,8 @@ applyMigrations()
     }
 
     // Sync AI service configuration from environment variables to database if enabled
-    const shouldSyncEnvToDb = process.env.SPARKY_FITNESS_AI_SYNC_ENV_TO_DB === 'true' || process.env.SPARKY_FITNESS_AI_SYNC_ENV_TO_DB === '1';
+    const { getBooleanEnv } = require('./utils/env');
+    const shouldSyncEnvToDb = getBooleanEnv('SPARKY_FITNESS_AI_SYNC_ENV_TO_DB', false);
     if (shouldSyncEnvToDb) {
       try {
         const result = await syncEnvToDatabase();

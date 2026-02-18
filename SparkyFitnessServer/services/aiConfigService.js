@@ -1,6 +1,7 @@
 const { encrypt, ENCRYPTION_KEY } = require('../security/encryption');
 const { log } = require('../config/logging');
 const { getClient, getSystemClient } = require('../db/poolManager');
+const { getBooleanEnv } = require('../utils/env');
 
 /**
  * Get AI service configuration from environment variables
@@ -13,7 +14,7 @@ function getAiServiceFromEnv() {
   const modelName = process.env.SPARKY_FITNESS_AI_MODEL_NAME;
   const customUrl = process.env.SPARKY_FITNESS_AI_CUSTOM_URL;
   const systemPrompt = process.env.SPARKY_FITNESS_AI_SYSTEM_PROMPT;
-  const isActive = process.env.SPARKY_FITNESS_AI_IS_ACTIVE === 'true' || process.env.SPARKY_FITNESS_AI_IS_ACTIVE === '1';
+  const isActive = getBooleanEnv('SPARKY_FITNESS_AI_IS_ACTIVE', true);
 
   // Check if env var config is available (at minimum, we need service_type and service_name)
   if (!serviceType || !serviceName) {

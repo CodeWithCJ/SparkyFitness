@@ -1,5 +1,6 @@
 const { getSystemClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
+const { getBooleanEnv } = require('../utils/env');
 
 async function getGlobalSettings() {
     const client = await getSystemClient(); // System-level operation
@@ -12,8 +13,7 @@ async function getGlobalSettings() {
             
             // Environment variable is source of truth if set
             if (process.env.SPARKY_FITNESS_ALLOW_USER_AI_CONFIG !== undefined) {
-                const envValue = process.env.SPARKY_FITNESS_ALLOW_USER_AI_CONFIG === 'true' || 
-                                 process.env.SPARKY_FITNESS_ALLOW_USER_AI_CONFIG === '1';
+                const envValue = getBooleanEnv('SPARKY_FITNESS_ALLOW_USER_AI_CONFIG', true);
                 settings.allow_user_ai_config = envValue;
                 log('info', `[GLOBAL SETTINGS REPO] allow_user_ai_config overridden by environment variable: ${envValue}`);
             }
@@ -56,8 +56,7 @@ async function saveGlobalSettings(settings) {
             
             // Apply environment variable override if set
             if (process.env.SPARKY_FITNESS_ALLOW_USER_AI_CONFIG !== undefined) {
-                const envValue = process.env.SPARKY_FITNESS_ALLOW_USER_AI_CONFIG === 'true' || 
-                                 process.env.SPARKY_FITNESS_ALLOW_USER_AI_CONFIG === '1';
+                const envValue = getBooleanEnv('SPARKY_FITNESS_ALLOW_USER_AI_CONFIG', true);
                 savedSettings.allow_user_ai_config = envValue;
             }
         }
@@ -70,8 +69,7 @@ async function saveGlobalSettings(settings) {
 async function isUserAiConfigAllowed() {
     // Environment variable is source of truth if set
     if (process.env.SPARKY_FITNESS_ALLOW_USER_AI_CONFIG !== undefined) {
-        const envValue = process.env.SPARKY_FITNESS_ALLOW_USER_AI_CONFIG === 'true' || 
-                         process.env.SPARKY_FITNESS_ALLOW_USER_AI_CONFIG === '1';
+        const envValue = getBooleanEnv('SPARKY_FITNESS_ALLOW_USER_AI_CONFIG', true);
         log('info', `[GLOBAL SETTINGS REPO] User AI config allowed (from env): ${envValue}`);
         return envValue;
     }
