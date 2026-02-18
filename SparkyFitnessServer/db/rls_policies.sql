@@ -278,36 +278,36 @@ END;
 $_$;
 
 -- Step 5: Apply policies to all tables.
--- Custom policy for ai_service_settings to support global settings
+-- Custom policy for ai_service_settings to support public settings
 -- Drop existing policy if it exists
 DROP POLICY IF EXISTS owner_policy ON public.ai_service_settings;
--- SELECT policy: All authenticated users can read global settings, users can read their own
+-- SELECT policy: All authenticated users can read public settings, users can read their own
 CREATE POLICY ai_service_settings_select_policy ON public.ai_service_settings FOR SELECT TO PUBLIC
 USING (
-  (is_global = TRUE) OR 
-  (is_global = FALSE AND user_id = current_user_id())
+  (is_public = TRUE) OR 
+  (is_public = FALSE AND user_id = current_user_id())
 );
--- INSERT policy: Users can create their own settings, admins can create global settings
+-- INSERT policy: Users can create their own settings, admins can create public settings
 CREATE POLICY ai_service_settings_insert_policy ON public.ai_service_settings FOR INSERT TO PUBLIC
 WITH CHECK (
-  (is_global = FALSE AND user_id = current_user_id()) OR
-  (is_global = TRUE AND is_admin())
+  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = TRUE AND is_admin())
 );
--- UPDATE policy: Users can update their own settings, admins can update global settings
+-- UPDATE policy: Users can update their own settings, admins can update public settings
 CREATE POLICY ai_service_settings_update_policy ON public.ai_service_settings FOR UPDATE TO PUBLIC
 USING (
-  (is_global = FALSE AND user_id = current_user_id()) OR
-  (is_global = TRUE AND is_admin())
+  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = TRUE AND is_admin())
 )
 WITH CHECK (
-  (is_global = FALSE AND user_id = current_user_id()) OR
-  (is_global = TRUE AND is_admin())
+  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = TRUE AND is_admin())
 );
--- DELETE policy: Users can delete their own settings, admins can delete global settings
+-- DELETE policy: Users can delete their own settings, admins can delete public settings
 CREATE POLICY ai_service_settings_delete_policy ON public.ai_service_settings FOR DELETE TO PUBLIC
 USING (
-  (is_global = FALSE AND user_id = current_user_id()) OR
-  (is_global = TRUE AND is_admin())
+  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = TRUE AND is_admin())
 );
 
 -- Owner-only access tables

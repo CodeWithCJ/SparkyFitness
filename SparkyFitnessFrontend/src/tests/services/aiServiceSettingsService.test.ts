@@ -26,13 +26,10 @@ describe('aiServiceSettingsService', () => {
 
       const result = await aiServiceSettingsService.getAIServices();
 
-      expect(mockApiCall).toHaveBeenCalledWith(
-        '/chat/ai-service-settings',
-        {
-          method: 'GET',
-          suppress404Toast: true,
-        }
-      );
+      expect(mockApiCall).toHaveBeenCalledWith('/chat/ai-service-settings', {
+        method: 'GET',
+        suppress404Toast: true,
+      });
       expect(result).toEqual(mockServices);
     });
 
@@ -49,9 +46,9 @@ describe('aiServiceSettingsService', () => {
       const error = new Error('500 Internal Server Error');
       mockApiCall.mockRejectedValue(error);
 
-      await expect(
-        aiServiceSettingsService.getAIServices()
-      ).rejects.toThrow('500 Internal Server Error');
+      await expect(aiServiceSettingsService.getAIServices()).rejects.toThrow(
+        '500 Internal Server Error'
+      );
     });
   });
 
@@ -90,8 +87,7 @@ describe('aiServiceSettingsService', () => {
       };
       mockApiCall.mockResolvedValue(mockService);
 
-      const result =
-        await aiServiceSettingsService.getActiveAiServiceSetting();
+      const result = await aiServiceSettingsService.getActiveAiServiceSetting();
 
       expect(mockApiCall).toHaveBeenCalledWith(
         '/chat/ai-service-settings/active',
@@ -107,8 +103,7 @@ describe('aiServiceSettingsService', () => {
       const error = new Error('404 Not Found');
       mockApiCall.mockRejectedValue(error);
 
-      const result =
-        await aiServiceSettingsService.getActiveAiServiceSetting();
+      const result = await aiServiceSettingsService.getActiveAiServiceSetting();
 
       expect(result).toBeNull();
     });
@@ -226,7 +221,7 @@ describe('aiServiceSettingsService', () => {
           id: '1',
           service_name: 'Global OpenAI',
           service_type: 'openai',
-          is_global: true,
+          is_public: true,
         },
       ];
       mockApiCall.mockResolvedValue(mockServices);
@@ -260,7 +255,7 @@ describe('aiServiceSettingsService', () => {
         service_type: 'openai',
         api_key: 'sk-test',
       };
-      const mockResponse = { id: '1', ...serviceData, is_global: true };
+      const mockResponse = { id: '1', ...serviceData, is_public: true };
       mockApiCall.mockResolvedValue(mockResponse);
 
       const result =
@@ -315,31 +310,6 @@ describe('aiServiceSettingsService', () => {
           method: 'DELETE',
         }
       );
-    });
-  });
-
-  describe('syncGlobalSettingsFromEnv', () => {
-    it('syncs global settings from environment variables', async () => {
-      const mockResponse = {
-        message: 'Settings synced successfully',
-        setting: {
-          id: '1',
-          service_name: 'Env OpenAI',
-          service_type: 'openai',
-        },
-      };
-      mockApiCall.mockResolvedValue(mockResponse);
-
-      const result =
-        await aiServiceSettingsService.syncGlobalSettingsFromEnv();
-
-      expect(mockApiCall).toHaveBeenCalledWith(
-        '/admin/ai-service-settings/global/sync-from-env',
-        {
-          method: 'POST',
-        }
-      );
-      expect(result).toEqual(mockResponse);
     });
   });
 });

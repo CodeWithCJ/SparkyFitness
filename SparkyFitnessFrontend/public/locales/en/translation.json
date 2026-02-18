@@ -488,7 +488,6 @@
         "description": "Global AI service settings are shared across all users. Users can override these with their own settings.",
         "allowUserConfig": "Allow Users to Configure AI Services",
         "allowUserConfigDescription": "When enabled, users can add and manage their own AI service configurations. When disabled, users can only use the global AI service settings.",
-        "allowUserConfigEnvNote": "Environment variable SPARKY_FITNESS_ALLOW_USER_AI_CONFIG takes precedence if set.",
         "syncFromEnv": "Sync from Environment",
         "addNewService": "Add New Global AI Service",
         "addService": "Add Service",

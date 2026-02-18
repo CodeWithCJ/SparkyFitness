@@ -60,8 +60,8 @@ router.post('/', authenticate, async (req, res, next) => {
         });
       }
       
-      // Only allow user-specific settings (not global)
-      if (service_data && service_data.is_global) {
+      // Only allow user-specific settings (not public)
+      if (service_data && service_data.is_public) {
         return res.status(403).json({ 
           error: 'Only administrators can create or modify global AI service settings.' 
         });
@@ -141,8 +141,8 @@ router.get('/ai-service-settings', authenticate, authorize('ai_service_settings'
     // If user AI config is disabled, only return global settings
     const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
     if (!isAllowed) {
-      const globalOnly = settings.filter(s => s.is_global);
-      return res.status(200).json(globalOnly);
+      const publicOnly = settings.filter(s => s.is_public);
+      return res.status(200).json(publicOnly);
     }
     
     res.status(200).json(settings);
@@ -231,7 +231,7 @@ router.delete('/ai-service-settings/:id', authenticate, authorize('ai_service_se
     // Verify the setting is user-specific (not global) before deletion
     const settings = await chatService.getAiServiceSettings(req.userId, req.userId);
     const setting = settings.find(s => s.id === id);
-    if (setting && setting.is_global) {
+    if (setting && setting.is_public) {
       return res.status(403).json({ 
         error: 'Only administrators can delete global AI service settings.' 
       });

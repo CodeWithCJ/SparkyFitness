@@ -10,7 +10,7 @@ export interface AIService {
   is_active: boolean;
   model_name?: string;
   custom_model_name?: string; // Add custom_model_name to AIService interface
-  is_global?: boolean; // Indicates if this is a global setting
+  is_public?: boolean; // Indicates if this is a public setting
   source?: 'user' | 'global' | 'environment'; // Indicates the source of the setting
 }
 
@@ -162,14 +162,5 @@ export const deleteGlobalAIService = async (
 ): Promise<void> => {
   return apiCall(`/admin/ai-service-settings/global/${serviceId}`, {
     method: 'DELETE',
-  });
-};
-
-export const syncGlobalSettingsFromEnv = async (): Promise<{
-  message: string;
-  setting: AIService;
-}> => {
-  return apiCall('/admin/ai-service-settings/global/sync-from-env', {
-    method: 'POST',
   });
 };

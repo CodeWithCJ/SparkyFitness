@@ -16,19 +16,19 @@ Object.defineProperty(window, 'matchMedia', {
     matches: false,
     media: query,
     onchange: null,
-    addListener: () => { },
-    removeListener: () => { },
-    addEventListener: () => { },
-    removeEventListener: () => { },
-    dispatchEvent: () => { },
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => {},
   }),
 });
 
 // Polyfill ResizeObserver
 class ResizeObserver {
-  observe() { }
-  unobserve() { }
-  disconnect() { }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
 }
 window.ResizeObserver = ResizeObserver;
 
@@ -60,6 +60,7 @@ if (!global.PointerEvent) {
       this.twist = params.twist || 0;
     }
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   global.PointerEvent = PointerEvent as any;
 }
 
@@ -69,7 +70,9 @@ if (!global.PointerEvent) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (HTMLElement.prototype as any).releasePointerCapture = jest.fn();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(HTMLElement.prototype as any).hasPointerCapture = jest.fn().mockReturnValue(false);
+(HTMLElement.prototype as any).hasPointerCapture = jest
+  .fn()
+  .mockReturnValue(false);
 
 // Mock scrollIntoView
 if (typeof Element.prototype.scrollIntoView !== 'function') {
