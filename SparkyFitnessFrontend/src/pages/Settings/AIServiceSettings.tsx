@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Bot, Plus, X } from 'lucide-react';
+import { Bot, Plus } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,47 +15,85 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import {
-  getAIServices,
-  getPreferences,
-  addAIService,
-  updateAIService,
-  deleteAIService,
-  updateUserPreferences,
-  type AIService,
-  type UserPreferences,
+import type {
+  AIService,
+  UserPreferences,
 } from '@/services/aiServiceSettingsService';
-import { globalSettingsService } from '@/api/Admin/globalSettingsService';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { UserChatPreferences } from '@/components/ai/UserChatPreferences';
 import { GlobalOverrideBanner } from '@/components/ai/GlobalOverrideBanner';
 import { ServiceForm } from '@/components/ai/ServiceForm';
 import { UserServiceListItem } from '@/components/ai/UserServiceListItem';
 import { getModelOptions } from '@/utils/aiServiceUtils';
+import {
+  useAIServices,
+  useUserAIPreferences,
+  useAddAIService,
+  useUpdateAIService,
+  useDeleteAIService,
+  useUpdateUserAIPreferences,
+} from '@/hooks/AI/useAIServiceSettings';
+import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 
 const AIServiceSettings = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Check if user AI config is allowed
+  // TanStack Query hooks
   const { data: isUserConfigAllowed = false, isLoading: settingsLoading } =
-    useQuery<boolean>({
-      queryKey: ['userAiConfigAllowed'],
-      queryFn: () => globalSettingsService.isUserAiConfigAllowed(),
-      retry: false,
-      staleTime: 0,
-      refetchOnWindowFocus: true,
-      refetchOnMount: true,
-      refetchInterval: 30000,
-      refetchIntervalInBackground: false,
-    });
+    useUserAiConfigAllowed();
+  const {
+    data: services = [],
+    isLoading: servicesLoading,
+    refetch: refetchServices,
+  } = useAIServices();
+  const { data: preferencesData, isLoading: preferencesLoading } =
+    useUserAIPreferences();
 
-  const [services, setServices] = useState<AIService[]>([]);
-  const [preferences, setPreferences] = useState<UserPreferences>({
-    auto_clear_history: 'never',
-  });
+  // Mutations
+  const { mutateAsync: addService, isPending: isAdding } = useAddAIService();
+  const { mutateAsync: updateService, isPending: isUpdating } =
+    useUpdateAIService();
+  const { mutateAsync: deleteService, isPending: isDeleting } =
+    useDeleteAIService();
+  const { mutateAsync: updatePreferences, isPending: isUpdatingPreferences } =
+    useUpdateUserAIPreferences();
+
+  const loading = isAdding || isUpdating || isDeleting || isUpdatingPreferences;
+
+  // Use derived state for preferences, but allow local editing
+  // Initialize from query data using lazy initializer
+  const defaultPreferences = useMemo(
+    () => ({
+      auto_clear_history: preferencesData?.auto_clear_history || 'never',
+    }),
+    [preferencesData?.auto_clear_history]
+  );
+  const [preferences, setPreferences] =
+    useState<UserPreferences>(defaultPreferences);
+
+  // Update local state when server data changes (user hasn't made local changes)
+  // This handles the case where preferences are loaded asynchronously
+  // We need to sync server data to local state for form editing
+  useEffect(() => {
+    if (preferencesData?.auto_clear_history) {
+      setPreferences((prev) => {
+        // Only update if user hasn't changed it locally (still has default)
+        if (
+          prev.auto_clear_history === 'never' ||
+          prev.auto_clear_history === defaultPreferences.auto_clear_history
+        ) {
+          return {
+            auto_clear_history: preferencesData.auto_clear_history,
+          };
+        }
+        return prev;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferencesData?.auto_clear_history]);
+
   const [newService, setNewService] = useState({
     service_name: '',
     service_type: 'openai',
@@ -76,36 +114,9 @@ const AIServiceSettings = () => {
     showCustomModelInput: false,
   });
   const [showAddForm, setShowAddForm] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      loadServices();
-      loadPreferences();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const loadServices = async () => {
-    if (!user) return;
-
-    try {
-      const data = await getAIServices();
-      setServices(data);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error loading AI services:', error);
-      toast({
-        title: t('settings.aiService.userSettings.error'),
-        description:
-          error.message || t('settings.aiService.userSettings.errorLoading'),
-        variant: 'destructive',
-      });
-    }
-  };
 
   const hasUserOverride = () => {
     return services.some((s) => !s.is_public && s.is_active);
@@ -146,7 +157,6 @@ const AIServiceSettings = () => {
       return;
     }
 
-    setLoading(true);
     try {
       const overrideData: Partial<AIService> = {
         service_name: `${globalSetting.service_name} (My Override)`,
@@ -156,23 +166,11 @@ const AIServiceSettings = () => {
         is_active: true,
         model_name: globalSetting.model_name || undefined,
       };
-      await addAIService(overrideData);
-      toast({
-        title: t('settings.aiService.userSettings.success'),
-        description: t('settings.aiService.userSettings.successOverriding'),
-      });
-      loadServices();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+      await addService(overrideData);
+      // Success toast is handled by the mutation meta
+    } catch (error) {
+      // Error toast is handled by the mutation meta
       console.error('Error overriding global settings:', error);
-      toast({
-        title: t('settings.aiService.userSettings.error'),
-        description:
-          error.message || t('settings.aiService.userSettings.errorOverriding'),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -197,48 +195,22 @@ const AIServiceSettings = () => {
       return;
     }
 
-    setLoading(true);
     try {
       const userSettings = services.filter((s) => !s.is_public);
+      // Delete all user settings sequentially
       for (const setting of userSettings) {
-        await deleteAIService(setting.id);
+        await deleteService(setting.id);
       }
       toast({
         title: t('settings.aiService.userSettings.success'),
         description: t('settings.aiService.userSettings.successReverting'),
       });
-      loadServices();
       setRevertDialogOpen(false);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error reverting to global settings:', error);
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description:
-          error.message || t('settings.aiService.userSettings.errorReverting'),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadPreferences = async () => {
-    if (!user) return;
-
-    try {
-      const data = await getPreferences();
-      setPreferences({
-        auto_clear_history: data.auto_clear_history || 'never',
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error loading preferences:', error);
-      toast({
-        title: t('settings.aiService.userSettings.error'),
-        description:
-          error.message ||
-          t('settings.aiService.userSettings.errorLoadingPreferences'),
+        description: t('settings.aiService.userSettings.errorReverting'),
         variant: 'destructive',
       });
     }
@@ -278,7 +250,6 @@ const AIServiceSettings = () => {
       return;
     }
 
-    setLoading(true);
     try {
       const serviceData = {
         service_name: newService.service_name,
@@ -291,11 +262,8 @@ const AIServiceSettings = () => {
           ? newService.custom_model_name
           : newService.model_name || null,
       };
-      await addAIService(serviceData);
-      toast({
-        title: t('settings.aiService.userSettings.success'),
-        description: t('settings.aiService.userSettings.successAdding'),
-      });
+      await addService(serviceData);
+      // Reset form
       setNewService({
         service_name: '',
         service_type: 'openai',
@@ -308,26 +276,26 @@ const AIServiceSettings = () => {
         showCustomModelInput: false,
       });
       setShowAddForm(false);
-      loadServices();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error adding AI service:', error);
+      // Success toast is handled by the mutation meta
+    } catch (error: unknown) {
+      // Check for 403 errors and show appropriate message
       const errorMessage =
-        error.message || t('settings.aiService.userSettings.errorAdding');
+        error instanceof Error ? error.message : String(error);
       const is403Error =
         errorMessage.includes('403') ||
         errorMessage.includes('disabled') ||
         errorMessage.includes('Per-user AI service configuration is disabled');
 
-      toast({
-        title: t('settings.aiService.userSettings.error'),
-        description: is403Error
-          ? t('settings.aiService.userSettings.perUserDisabledDescription')
-          : errorMessage,
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+      if (is403Error) {
+        toast({
+          title: t('settings.aiService.userSettings.error'),
+          description: t(
+            'settings.aiService.userSettings.perUserDisabledDescription'
+          ),
+          variant: 'destructive',
+        });
+      }
+      // Other errors are handled by the mutation meta
     }
   };
 
@@ -352,7 +320,6 @@ const AIServiceSettings = () => {
       return;
     }
 
-    setLoading(true);
     const originalService = services.find((s) => s.id === serviceId);
 
     if (!originalService) {
@@ -361,7 +328,6 @@ const AIServiceSettings = () => {
         description: t('settings.aiService.userSettings.errorOriginalNotFound'),
         variant: 'destructive',
       });
-      setLoading(false);
       return;
     }
 
@@ -371,7 +337,6 @@ const AIServiceSettings = () => {
         description: t('settings.aiService.userSettings.managedByAdmin'),
         variant: 'destructive',
       });
-      setLoading(false);
       return;
     }
 
@@ -389,33 +354,29 @@ const AIServiceSettings = () => {
     }
 
     try {
-      await updateAIService(serviceId, serviceToUpdate);
-      toast({
-        title: t('settings.aiService.userSettings.success'),
-        description: t('settings.aiService.userSettings.successUpdating'),
-      });
+      await updateService({ serviceId, serviceData: serviceToUpdate });
       setEditingService(null);
       setEditData({});
-      loadServices();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error updating AI service:', error);
+      // Success toast is handled by the mutation meta
+    } catch (error: unknown) {
+      // Check for 403 errors and show appropriate message
       const errorMessage =
-        error.message || t('settings.aiService.userSettings.errorUpdating');
+        error instanceof Error ? error.message : String(error);
       const is403Error =
         errorMessage.includes('403') ||
         errorMessage.includes('disabled') ||
         errorMessage.includes('Per-user AI service configuration is disabled');
 
-      toast({
-        title: t('settings.aiService.userSettings.error'),
-        description: is403Error
-          ? t('settings.aiService.userSettings.perUserDisabledDescription')
-          : errorMessage,
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+      if (is403Error) {
+        toast({
+          title: t('settings.aiService.userSettings.error'),
+          description: t(
+            'settings.aiService.userSettings.perUserDisabledDescription'
+          ),
+          variant: 'destructive',
+        });
+      }
+      // Other errors are handled by the mutation meta
     }
   };
 
@@ -452,35 +413,30 @@ const AIServiceSettings = () => {
       return;
     }
 
-    setLoading(true);
     try {
-      await deleteAIService(serviceToDelete);
-      toast({
-        title: t('settings.aiService.userSettings.success'),
-        description: t('settings.aiService.userSettings.successDeleting'),
-      });
-      loadServices();
+      await deleteService(serviceToDelete);
       setDeleteDialogOpen(false);
       setServiceToDelete(null);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error deleting AI service:', error);
+      // Success toast is handled by the mutation meta
+    } catch (error: unknown) {
+      // Check for 403 errors and show appropriate message
       const errorMessage =
-        error.message || t('settings.aiService.userSettings.errorDeleting');
+        error instanceof Error ? error.message : String(error);
       const is403Error =
         errorMessage.includes('403') ||
         errorMessage.includes('disabled') ||
         errorMessage.includes('Per-user AI service configuration is disabled');
 
-      toast({
-        title: t('settings.aiService.userSettings.error'),
-        description: is403Error
-          ? t('settings.aiService.userSettings.perUserDisabledDescription')
-          : errorMessage,
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+      if (is403Error) {
+        toast({
+          title: t('settings.aiService.userSettings.error'),
+          description: t(
+            'settings.aiService.userSettings.perUserDisabledDescription'
+          ),
+          variant: 'destructive',
+        });
+      }
+      // Other errors are handled by the mutation meta
     }
   };
 
@@ -505,7 +461,6 @@ const AIServiceSettings = () => {
       return;
     }
 
-    setLoading(true);
     const originalService = services.find((s) => s.id === serviceId);
 
     if (!originalService) {
@@ -516,7 +471,6 @@ const AIServiceSettings = () => {
         ),
         variant: 'destructive',
       });
-      setLoading(false);
       return;
     }
 
@@ -526,7 +480,6 @@ const AIServiceSettings = () => {
         description: t('settings.aiService.userSettings.managedByAdmin'),
         variant: 'destructive',
       });
-      setLoading(false);
       return;
     }
 
@@ -536,53 +489,29 @@ const AIServiceSettings = () => {
     };
 
     try {
-      await updateAIService(serviceId, serviceToUpdate);
+      await updateService({ serviceId, serviceData: serviceToUpdate });
       toast({
         title: t('settings.aiService.userSettings.success'),
         description: isActive
           ? t('settings.aiService.userSettings.serviceActivated')
           : t('settings.aiService.userSettings.serviceDeactivated'),
       });
-      loadServices();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+      // Success toast for update is handled by the mutation meta, but we add a specific one for toggle
+    } catch (error) {
+      // Error toast is handled by the mutation meta
       console.error('Error updating AI service status:', error);
-      toast({
-        title: t('settings.aiService.userSettings.error'),
-        description:
-          error.message ||
-          t('settings.aiService.userSettings.errorUpdatingStatus'),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleUpdatePreferences = async () => {
     if (!user) return;
 
-    setLoading(true);
     try {
-      await updateUserPreferences(preferences);
-      toast({
-        title: t('settings.aiService.userSettings.success'),
-        description: t(
-          'settings.aiService.userSettings.successUpdatingPreferences'
-        ),
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+      await updatePreferences(preferences);
+      // Success toast is handled by the mutation meta
+    } catch (error) {
+      // Error toast is handled by the mutation meta
       console.error('Error updating preferences:', error);
-      toast({
-        title: t('settings.aiService.userSettings.error'),
-        description:
-          error.message ||
-          t('settings.aiService.userSettings.errorUpdatingPreferences'),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 

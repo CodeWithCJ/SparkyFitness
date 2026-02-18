@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import {
   Accordion,
   AccordionContent,
@@ -20,13 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import {
-  getGlobalAIServices,
-  createGlobalAIService,
-  updateGlobalAIService,
-  deleteGlobalAIService,
-  type AIService,
-} from '@/services/aiServiceSettingsService';
+import type { AIService } from '@/services/aiServiceSettingsService';
 import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 import { type GlobalSettings } from '@/api/Admin/globalSettingsService';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +28,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ServiceForm } from '@/components/ai/ServiceForm';
 import { ServiceList } from '@/components/ai/ServiceList';
 import { getModelOptions } from '@/utils/aiServiceUtils';
+import {
+  useGlobalAIServices,
+  useCreateGlobalAIService,
+  useUpdateGlobalAIService,
+  useDeleteGlobalAIService,
+} from '@/hooks/AI/useGlobalAIServiceSettings';
+import { userAiConfigKeys } from '@/api/keys/admin';
 
 const GlobalAISettings = () => {
   const { t } = useTranslation();
@@ -41,7 +42,21 @@ const GlobalAISettings = () => {
   const queryClient = useQueryClient();
   const { data: globalSettings, isLoading: settingsLoading } = useSettings();
   const { mutate: updateSettings } = useUpdateSettings();
-  const [services, setServices] = useState<AIService[]>([]);
+
+  // TanStack Query hooks
+  const { data: services = [], isLoading: servicesLoading } =
+    useGlobalAIServices();
+
+  // Mutations
+  const { mutateAsync: createService, isPending: isCreating } =
+    useCreateGlobalAIService();
+  const { mutateAsync: updateService, isPending: isUpdating } =
+    useUpdateGlobalAIService();
+  const { mutateAsync: deleteService, isPending: isDeleting } =
+    useDeleteGlobalAIService();
+
+  const loading = isCreating || isUpdating || isDeleting;
+
   const [newService, setNewService] = useState({
     service_name: '',
     service_type: 'openai',
@@ -62,29 +77,8 @@ const GlobalAISettings = () => {
     showCustomModelInput: false,
   });
   const [showAddForm, setShowAddForm] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
-
-  const loadServices = useCallback(async () => {
-    try {
-      const data = await getGlobalAIServices();
-      setServices(data);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error loading global AI services:', error);
-      toast({
-        title: t('settings.aiService.globalSettings.error'),
-        description:
-          error.message || t('settings.aiService.globalSettings.errorLoading'),
-        variant: 'destructive',
-      });
-    }
-  }, [toast, t]);
-
-  useEffect(() => {
-    loadServices();
-  }, [loadServices]);
 
   const handleAllowUserConfigChange = (checked: boolean) => {
     if (!globalSettings) return;
@@ -97,7 +91,7 @@ const GlobalAISettings = () => {
     updateSettings(newSettings, {
       onSuccess: () => {
         // Invalidate the userAiConfigAllowed query so all users see the updated setting
-        queryClient.invalidateQueries({ queryKey: ['userAiConfigAllowed'] });
+        queryClient.invalidateQueries({ queryKey: userAiConfigKeys.all });
         toast({
           title: t('settings.aiService.globalSettings.success'),
           description: t(
@@ -130,7 +124,6 @@ const GlobalAISettings = () => {
       return;
     }
 
-    setLoading(true);
     try {
       const serviceData = {
         service_name: newService.service_name,
@@ -143,11 +136,8 @@ const GlobalAISettings = () => {
           ? newService.custom_model_name
           : newService.model_name || null,
       };
-      await createGlobalAIService(serviceData);
-      toast({
-        title: t('settings.aiService.globalSettings.success'),
-        description: t('settings.aiService.globalSettings.successAdding'),
-      });
+      await createService(serviceData);
+      // Reset form
       setNewService({
         service_name: '',
         service_type: 'openai',
@@ -160,23 +150,14 @@ const GlobalAISettings = () => {
         showCustomModelInput: false,
       });
       setShowAddForm(false);
-      loadServices();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+      // Success toast is handled by the mutation meta
+    } catch (error) {
+      // Error toast is handled by the mutation meta
       console.error('Error adding global AI service:', error);
-      toast({
-        title: t('settings.aiService.globalSettings.error'),
-        description:
-          error.message || t('settings.aiService.globalSettings.errorAdding'),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleUpdateService = async (serviceId: string) => {
-    setLoading(true);
     const originalService = services.find((s) => s.id === serviceId);
 
     if (!originalService) {
@@ -187,7 +168,6 @@ const GlobalAISettings = () => {
         ),
         variant: 'destructive',
       });
-      setLoading(false);
       return;
     }
 
@@ -205,52 +185,27 @@ const GlobalAISettings = () => {
     }
 
     try {
-      await updateGlobalAIService(serviceId, serviceToUpdate);
-      toast({
-        title: t('settings.aiService.globalSettings.success'),
-        description: t('settings.aiService.globalSettings.successUpdating'),
-      });
+      await updateService({ serviceId, serviceData: serviceToUpdate });
       setEditingService(null);
       setEditData({});
-      loadServices();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+      // Success toast is handled by the mutation meta
+    } catch (error) {
+      // Error toast is handled by the mutation meta
       console.error('Error updating global AI service:', error);
-      toast({
-        title: t('settings.aiService.globalSettings.error'),
-        description:
-          error.message || t('settings.aiService.globalSettings.errorUpdating'),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleDeleteService = async () => {
     if (!serviceToDelete) return;
 
-    setLoading(true);
     try {
-      await deleteGlobalAIService(serviceToDelete);
-      toast({
-        title: t('settings.aiService.globalSettings.success'),
-        description: t('settings.aiService.globalSettings.successDeleting'),
-      });
-      loadServices();
+      await deleteService(serviceToDelete);
       setDeleteDialogOpen(false);
       setServiceToDelete(null);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+      // Success toast is handled by the mutation meta
+    } catch (error) {
+      // Error toast is handled by the mutation meta
       console.error('Error deleting global AI service:', error);
-      toast({
-        title: t('settings.aiService.globalSettings.error'),
-        description:
-          error.message || t('settings.aiService.globalSettings.errorDeleting'),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
