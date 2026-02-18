@@ -108,11 +108,11 @@ const AIServiceSettings = () => {
   };
 
   const hasUserOverride = () => {
-    return services.some((s) => !s.is_global && s.is_active);
+    return services.some((s) => !s.is_public && s.is_active);
   };
 
   const getActiveGlobalSetting = () => {
-    return services.find((s) => s.is_global && s.is_active);
+    return services.find((s) => s.is_public && s.is_active);
   };
 
   const handleOverrideGlobal = async () => {
@@ -199,7 +199,7 @@ const AIServiceSettings = () => {
 
     setLoading(true);
     try {
-      const userSettings = services.filter((s) => !s.is_global);
+      const userSettings = services.filter((s) => !s.is_public);
       for (const setting of userSettings) {
         await deleteAIService(setting.id);
       }
@@ -365,7 +365,7 @@ const AIServiceSettings = () => {
       return;
     }
 
-    if (originalService.is_global) {
+    if (originalService.is_public) {
       toast({
         title: t('settings.aiService.userSettings.error'),
         description: t('settings.aiService.userSettings.managedByAdmin'),
@@ -443,7 +443,7 @@ const AIServiceSettings = () => {
     }
 
     const serviceToDeleteObj = services.find((s) => s.id === serviceToDelete);
-    if (serviceToDeleteObj?.is_global) {
+    if (serviceToDeleteObj?.is_public) {
       toast({
         title: t('settings.aiService.userSettings.error'),
         description: t('settings.aiService.userSettings.managedByAdmin'),
@@ -520,7 +520,7 @@ const AIServiceSettings = () => {
       return;
     }
 
-    if (originalService.is_global) {
+    if (originalService.is_public) {
       toast({
         title: t('settings.aiService.userSettings.error'),
         description: t('settings.aiService.userSettings.managedByAdmin'),
@@ -598,7 +598,7 @@ const AIServiceSettings = () => {
       return;
     }
 
-    if (service.is_global) {
+    if (service.is_public) {
       toast({
         title: t('settings.aiService.userSettings.error'),
         description: t('settings.aiService.userSettings.managedByAdmin'),
@@ -701,7 +701,7 @@ const AIServiceSettings = () => {
 
               <div className="space-y-4">
                 {services
-                  .filter((service) => isUserConfigAllowed || service.is_global)
+                  .filter((service) => isUserConfigAllowed || service.is_public)
                   .map((service) => (
                     <UserServiceListItem
                       key={service.id}

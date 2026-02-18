@@ -86,7 +86,7 @@ export const UserServiceListItem = ({
           <div>
             <div className="flex items-center gap-2">
               <h4 className="font-medium">{service.service_name}</h4>
-              {service.is_global ? (
+              {service.is_public ? (
                 <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-xs flex items-center gap-1">
                   <Globe className="h-3 w-3" />
                   {t('settings.aiService.userSettings.global')}
@@ -105,19 +105,19 @@ export const UserServiceListItem = ({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {!service.is_global && isUserConfigAllowed && (
+            {!service.is_public && isUserConfigAllowed && (
               <Switch
                 checked={service.is_active}
                 onCheckedChange={onToggleActive}
                 disabled={loading}
               />
             )}
-            {service.is_global && service.is_active && (
+            {service.is_public && service.is_active && (
               <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full text-xs">
                 {t('settings.aiService.userSettings.active')}
               </span>
             )}
-            {!service.is_global && isUserConfigAllowed && (
+            {!service.is_public && isUserConfigAllowed && (
               <>
                 <Button
                   variant="outline"
@@ -138,7 +138,7 @@ export const UserServiceListItem = ({
                 </Button>
               </>
             )}
-            {service.is_global && (
+            {service.is_public && (
               <span className="text-xs text-muted-foreground">
                 {t('settings.aiService.userSettings.managedByAdmin')}
               </span>

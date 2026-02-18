@@ -85,7 +85,7 @@ export const ServiceListItem = ({
           <div>
             <div className="flex items-center gap-2">
               <h4 className="font-medium">{service.service_name}</h4>
-              {showGlobalBadge && service.is_global && (
+              {showGlobalBadge && service.is_public && (
                 <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
                   {t(`${translationPrefix}.global`)}
                 </span>

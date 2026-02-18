@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Globe, RefreshCw } from 'lucide-react';
+import { Plus, Globe } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +25,6 @@ import {
   createGlobalAIService,
   updateGlobalAIService,
   deleteGlobalAIService,
-  syncGlobalSettingsFromEnv,
   type AIService,
 } from '@/services/aiServiceSettingsService';
 import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
@@ -255,31 +254,6 @@ const GlobalAISettings = () => {
     }
   };
 
-  const handleSyncFromEnv = async () => {
-    setLoading(true);
-    try {
-      const result = await syncGlobalSettingsFromEnv();
-      toast({
-        title: t('settings.aiService.globalSettings.success'),
-        description:
-          result.message ||
-          t('settings.aiService.globalSettings.successSyncing'),
-      });
-      loadServices();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error syncing from environment variables:', error);
-      toast({
-        title: t('settings.aiService.globalSettings.error'),
-        description:
-          error.message || t('settings.aiService.globalSettings.errorSyncing'),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const startEditing = (service: AIService) => {
     setEditingService(service.id);
     setEditData({
@@ -329,11 +303,6 @@ const GlobalAISettings = () => {
                   {t(
                     'settings.aiService.globalSettings.allowUserConfigDescription'
                   )}
-                  <span className="block mt-1 text-xs text-muted-foreground">
-                    {t(
-                      'settings.aiService.globalSettings.allowUserConfigEnvNote'
-                    )}
-                  </span>
                 </p>
               </div>
               <Switch
@@ -345,17 +314,6 @@ const GlobalAISettings = () => {
             </div>
           )}
 
-          <div className="flex justify-end mb-4">
-            <Button
-              onClick={handleSyncFromEnv}
-              variant="outline"
-              size="sm"
-              disabled={loading}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              {t('settings.aiService.globalSettings.syncFromEnv')}
-            </Button>
-          </div>
           {!showAddForm && (
             <Button onClick={() => setShowAddForm(true)} variant="outline">
               <Plus className="h-4 w-4 mr-2" />

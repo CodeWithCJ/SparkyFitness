@@ -4,7 +4,6 @@ const { authenticate, isAdmin } = require('../middleware/authMiddleware');
 const authService = require('../services/authService');
 const userRepository = require('../models/userRepository'); // Import userRepository
 const chatRepository = require('../models/chatRepository'); // Import chatRepository
-const { syncEnvToDatabase } = require('../services/aiConfigService'); // Import sync function
 const { log } = require('../config/logging');
 const { logAdminAction } = require('../services/authService'); // Import logAdminAction
 
@@ -679,40 +678,5 @@ router.delete('/ai-service-settings/global/:id', async (req, res, next) => {
   }
 });
 
-/**
- * @swagger
- * /admin/ai-service-settings/global/sync-from-env:
- *   post:
- *     summary: Sync environment variables to global AI service setting
- *     tags: [System & Admin]
- *     security:
- *       - cookieAuth: []
- *     responses:
- *       200:
- *         description: Environment variables synced to database
- *       400:
- *         description: Invalid environment configuration
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden
- */
-router.post('/ai-service-settings/global/sync-from-env', async (req, res, next) => {
-  try {
-    const result = await syncEnvToDatabase();
-    if (result) {
-      await logAdminAction(req.userId, null, 'GLOBAL_AI_SETTING_SYNCED_FROM_ENV', { settingId: result.id });
-      res.status(200).json({ 
-        message: 'Environment variables synced to global AI service setting successfully.',
-        setting: result
-      });
-    } else {
-      res.status(400).json({ error: 'No valid AI service configuration found in environment variables.' });
-    }
-  } catch (error) {
-    log('error', 'Error syncing environment variables to global AI service setting:', error);
-    next(error);
-  }
-});
 
 module.exports = router;

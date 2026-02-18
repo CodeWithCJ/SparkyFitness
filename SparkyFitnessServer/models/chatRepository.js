@@ -1,7 +1,6 @@
 const { getClient, getSystemClient } = require('../db/poolManager');
 const { encrypt, decrypt, ENCRYPTION_KEY } = require('../security/encryption');
 const { log } = require('../config/logging');
-const { getAiServiceFromEnv } = require('../services/aiConfigService');
 
 async function upsertAiServiceSetting(settingData) {
   const client = await getClient(settingData.user_id); // User-specific operation
@@ -57,16 +56,6 @@ async function upsertAiServiceSetting(settingData) {
 }
 
 async function getAiServiceSettingForBackend(id, userId) {
-  // Handle special case for environment variable config
-  if (id === 'env-config') {
-    const envConfig = getAiServiceFromEnv();
-    if (envConfig) {
-      log('debug', `Using environment variable AI service configuration (ID: env-config) for user ${userId}`);
-      return { ...envConfig, id: 'env-config', source: 'environment' };
-    }
-    return null;
-  }
-
   const client = await getClient(userId); // User-specific operation
   try {
     // Try to get setting (can be user-specific or global)
@@ -86,7 +75,7 @@ async function getAiServiceSettingForBackend(id, userId) {
       }
     }
     
-    const source = setting.is_global ? 'global' : 'user';
+    const source = setting.is_public ? 'global' : 'user';
     log('debug', `Retrieved AI service setting ${id} (source: ${source}) for user ${userId}`);
     return { ...setting, api_key: decryptedApiKey, source };
   } finally {
@@ -125,22 +114,22 @@ async function getAiServiceSettingsByUserId(userId) {
   try {
     // Get user-specific settings
     const userResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global, system_prompt FROM ai_service_settings WHERE is_global = FALSE AND user_id = $1 ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_public = FALSE AND user_id = $1 ORDER BY created_at DESC',
       [userId]
     );
     
     // Get global settings (all authenticated users can read)
     const globalResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global, system_prompt FROM ai_service_settings WHERE is_global = TRUE ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
       []
     );
     
-    // Combine results: user settings first, then global settings
-    // Add is_global flag to distinguish them
-    const userSettings = userResult.rows.map(row => ({ ...row, is_global: false }));
-    const globalSettings = globalResult.rows.map(row => ({ ...row, is_global: true }));
+    // Combine results: user settings first, then public settings
+    // Add is_public flag to distinguish them
+    const userSettings = userResult.rows.map(row => ({ ...row, is_public: false }));
+    const publicSettings = globalResult.rows.map(row => ({ ...row, is_public: true }));
     
-    return [...userSettings, ...globalSettings];
+    return [...userSettings, ...publicSettings];
   } finally {
     client.release();
   }
@@ -151,7 +140,7 @@ async function getActiveAiServiceSetting(userId) {
   try {
     // Priority 1: User-specific active setting
     const userResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_global = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_public = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
       [userId]
     );
     
@@ -163,7 +152,7 @@ async function getActiveAiServiceSetting(userId) {
     
     // Priority 2: Database global active setting
     const globalResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_global = TRUE ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_public = TRUE ORDER BY created_at DESC LIMIT 1',
       []
     );
     
@@ -171,13 +160,6 @@ async function getActiveAiServiceSetting(userId) {
       const setting = globalResult.rows[0];
       log('debug', `Using global database AI service setting for user ${userId}: ${setting.id}`);
       return { ...setting, source: 'global' };
-    }
-    
-    // Priority 3: Environment variable configuration
-    const envConfig = getAiServiceFromEnv();
-    if (envConfig && envConfig.is_active) {
-      log('debug', `Using environment variable AI service configuration for user ${userId}`);
-      return { ...envConfig, id: 'env-config', source: 'environment' };
     }
     
     log('debug', `No active AI service setting found for user ${userId}`);
@@ -325,7 +307,7 @@ async function upsertGlobalAiServiceSetting(settingData) {
           api_key_iv = COALESCE($8, api_key_iv),
           api_key_tag = COALESCE($9, api_key_tag),
           updated_at = now()
-        WHERE id = $10 AND is_global = TRUE RETURNING *`,
+        WHERE id = $10 AND is_public = TRUE RETURNING *`,
         [
           settingData.service_name, settingData.service_type, settingData.custom_url,
           settingData.system_prompt, settingData.is_active, settingData.model_name,
@@ -338,7 +320,7 @@ async function upsertGlobalAiServiceSetting(settingData) {
       // Insert new global service
       const result = await client.query(
         `INSERT INTO ai_service_settings (
-          user_id, is_global, service_name, service_type, custom_url, system_prompt,
+          user_id, is_public, service_name, service_type, custom_url, system_prompt,
           is_active, model_name, encrypted_api_key, api_key_iv, api_key_tag, created_at, updated_at
         ) VALUES (NULL, TRUE, $1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now()) RETURNING *`,
         [
@@ -358,7 +340,7 @@ async function getGlobalAiServiceSettings() {
   const client = await getSystemClient(); // Use system client for global operations
   try {
     const result = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global, system_prompt, created_at, updated_at FROM ai_service_settings WHERE is_global = TRUE ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, created_at, updated_at FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
       []
     );
     return result.rows;
@@ -371,7 +353,7 @@ async function getGlobalAiServiceSettingById(id) {
   const client = await getSystemClient(); // Use system client for global operations
   try {
     const result = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_global FROM ai_service_settings WHERE id = $1 AND is_global = TRUE',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public FROM ai_service_settings WHERE id = $1 AND is_public = TRUE',
       [id]
     );
     return result.rows[0];
@@ -384,7 +366,7 @@ async function deleteGlobalAiServiceSetting(id) {
   const client = await getSystemClient(); // Use system client for global operations
   try {
     const result = await client.query(
-      'DELETE FROM ai_service_settings WHERE id = $1 AND is_global = TRUE RETURNING id',
+      'DELETE FROM ai_service_settings WHERE id = $1 AND is_public = TRUE RETURNING id',
       [id]
     );
     return result.rowCount > 0;
