@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/authMiddleware');
 const chatService = require('../services/chatService');
+const globalSettingsRepository = require('../models/globalSettingsRepository');
 
 /**
  * @swagger
@@ -51,6 +52,21 @@ router.post('/', authenticate, async (req, res, next) => {
 
   try {
     if (action === 'save_ai_service_settings') {
+      // Check if user AI config is allowed
+      const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
+      if (!isAllowed) {
+        return res.status(403).json({ 
+          error: 'Per-user AI service configuration is disabled. Please use the global AI service settings configured by your administrator.' 
+        });
+      }
+      
+      // Only allow user-specific settings (not public)
+      if (service_data && service_data.is_public) {
+        return res.status(403).json({ 
+          error: 'Only administrators can create or modify global AI service settings.' 
+        });
+      }
+      
       const result = await chatService.handleAiServiceSettings(action, service_data, req.userId);
       return res.status(200).json(result);
     }
@@ -121,6 +137,14 @@ router.post('/clear-old-history', authenticate, async (req, res, next) => {
 router.get('/ai-service-settings', authenticate, authorize('ai_service_settings'), async (req, res, next) => {
   try {
     const settings = await chatService.getAiServiceSettings(req.userId, req.userId);
+    
+    // If user AI config is disabled, only return global settings
+    const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
+    if (!isAllowed) {
+      const publicOnly = settings.filter(s => s.is_public);
+      return res.status(200).json(publicOnly);
+    }
+    
     res.status(200).json(settings);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -196,6 +220,23 @@ router.delete('/ai-service-settings/:id', authenticate, authorize('ai_service_se
     return res.status(400).json({ error: 'AI Service ID is required.' });
   }
   try {
+    // Check if user AI config is allowed
+    const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
+    if (!isAllowed) {
+      return res.status(403).json({ 
+        error: 'Per-user AI service configuration is disabled. Please use the global AI service settings configured by your administrator.' 
+      });
+    }
+    
+    // Verify the setting is user-specific (not global) before deletion
+    const settings = await chatService.getAiServiceSettings(req.userId, req.userId);
+    const setting = settings.find(s => s.id === id);
+    if (setting && setting.is_public) {
+      return res.status(403).json({ 
+        error: 'Only administrators can delete global AI service settings.' 
+      });
+    }
+    
     const result = await chatService.deleteAiServiceSetting(req.userId, id);
     res.status(200).json(result);
   } catch (error) {

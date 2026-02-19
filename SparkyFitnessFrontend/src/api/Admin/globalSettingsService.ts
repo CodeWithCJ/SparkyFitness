@@ -4,6 +4,7 @@ export interface GlobalSettings {
   enable_email_password_login: boolean;
   is_oidc_active: boolean;
   is_mfa_mandatory: boolean;
+  allow_user_ai_config?: boolean;
 }
 
 const globalSettingsService = {
@@ -16,6 +17,13 @@ const globalSettingsService = {
       method: 'PUT',
       body: settings,
     });
+  },
+
+  isUserAiConfigAllowed: async (): Promise<boolean> => {
+    const response = (await apiCall(
+      '/global-settings/allow-user-ai-config'
+    )) as { allow_user_ai_config: boolean };
+    return response.allow_user_ai_config;
   },
 };
 

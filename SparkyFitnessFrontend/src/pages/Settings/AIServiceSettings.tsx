@@ -1,121 +1,255 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Bot, Plus, Trash2, Edit, Save, X } from 'lucide-react';
+import { Bot, Plus } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import {
-  getAIServices,
-  getPreferences,
-  addAIService,
-  updateAIService,
-  deleteAIService,
-  updateUserPreferences,
-  type AIService,
-  type UserPreferences,
+import type {
+  AIService,
+  UserPreferences,
 } from '@/services/aiServiceSettingsService';
+import { useTranslation } from 'react-i18next';
+import { UserChatPreferences } from '@/components/ai/UserChatPreferences';
+import { GlobalOverrideBanner } from '@/components/ai/GlobalOverrideBanner';
+import { ServiceForm } from '@/components/ai/ServiceForm';
+import { UserServiceListItem } from '@/components/ai/UserServiceListItem';
+import { getModelOptions } from '@/utils/aiServiceUtils';
+import {
+  useAIServices,
+  useUserAIPreferences,
+  useAddAIService,
+  useUpdateAIService,
+  useDeleteAIService,
+  useUpdateUserAIPreferences,
+} from '@/hooks/AI/useAIServiceSettings';
+import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 
 const AIServiceSettings = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [services, setServices] = useState<AIService[]>([]);
-  const [preferences, setPreferences] = useState<UserPreferences>({
-    auto_clear_history: 'never',
-  });
+
+  // TanStack Query hooks
+  const { data: isUserConfigAllowed = false, isLoading: settingsLoading } =
+    useUserAiConfigAllowed();
+  const {
+    data: services = [],
+    isLoading: servicesLoading,
+    refetch: refetchServices,
+  } = useAIServices();
+  const { data: preferencesData, isLoading: preferencesLoading } =
+    useUserAIPreferences();
+
+  // Mutations
+  const { mutateAsync: addService, isPending: isAdding } = useAddAIService();
+  const { mutateAsync: updateService, isPending: isUpdating } =
+    useUpdateAIService();
+  const { mutateAsync: deleteService, isPending: isDeleting } =
+    useDeleteAIService();
+  const { mutateAsync: updatePreferences, isPending: isUpdatingPreferences } =
+    useUpdateUserAIPreferences();
+
+  const loading = isAdding || isUpdating || isDeleting || isUpdatingPreferences;
+
+  // Use derived state for preferences, but allow local editing
+  // Initialize from query data using lazy initializer
+  const defaultPreferences = useMemo(
+    () => ({
+      auto_clear_history: preferencesData?.auto_clear_history || 'never',
+    }),
+    [preferencesData?.auto_clear_history]
+  );
+  const [preferences, setPreferences] =
+    useState<UserPreferences>(defaultPreferences);
+
+  // Update local state when server data changes (user hasn't made local changes)
+  // This handles the case where preferences are loaded asynchronously
+  // We need to sync server data to local state for form editing
+  useEffect(() => {
+    if (preferencesData?.auto_clear_history) {
+      setPreferences((prev) => {
+        // Only update if user hasn't changed it locally (still has default)
+        if (
+          prev.auto_clear_history === 'never' ||
+          prev.auto_clear_history === defaultPreferences.auto_clear_history
+        ) {
+          return {
+            auto_clear_history: preferencesData.auto_clear_history,
+          };
+        }
+        return prev;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferencesData?.auto_clear_history]);
+
   const [newService, setNewService] = useState({
     service_name: '',
     service_type: 'openai',
-    api_key: '', // Initialize with empty string for API key input
+    api_key: '',
     custom_url: '',
     system_prompt: '',
     is_active: false,
     model_name: '',
-    custom_model_name: '', // Add custom_model_name to newService state
-    showCustomModelInput: false, // New state to control visibility
+    custom_model_name: '',
+    showCustomModelInput: false,
   });
   const [editingService, setEditingService] = useState<string | null>(null);
   const [editData, setEditData] = useState<
     Partial<AIService & { showCustomModelInput?: boolean; api_key?: string }>
   >({
-    // Add api_key to editData type
-    api_key: '', // Initialize with empty string for API key input
-    custom_model_name: '', // Add custom_model_name to editData state
-    showCustomModelInput: false, // New state to control visibility
+    api_key: '',
+    custom_model_name: '',
+    showCustomModelInput: false,
   });
   const [showAddForm, setShowAddForm] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      loadServices();
-      loadPreferences();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  const hasUserOverride = () => {
+    return services.some((s) => !s.is_public && s.is_active);
+  };
 
-  const loadServices = async () => {
-    if (!user) return;
+  const getActiveGlobalSetting = () => {
+    return services.find((s) => s.is_public && s.is_active);
+  };
 
-    try {
-      const data = await getAIServices();
-      setServices(data);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error loading AI services:', error);
+  const handleOverrideGlobal = async () => {
+    if (settingsLoading) {
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to load AI services',
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
         variant: 'destructive',
       });
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const globalSetting = getActiveGlobalSetting();
+    if (!globalSetting) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.errorNoGlobalSetting'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const overrideData: Partial<AIService> = {
+        service_name: `${globalSetting.service_name} (My Override)`,
+        service_type: globalSetting.service_type,
+        custom_url: globalSetting.custom_url || undefined,
+        system_prompt: globalSetting.system_prompt || '',
+        is_active: true,
+        model_name: globalSetting.model_name || undefined,
+      };
+      await addService(overrideData);
+      // Success toast is handled by the mutation meta
+    } catch (error) {
+      // Error toast is handled by the mutation meta
+      console.error('Error overriding global settings:', error);
     }
   };
 
-  const loadPreferences = async () => {
-    if (!user) return;
+  const handleRevertToGlobal = async () => {
+    if (settingsLoading) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
-      const data = await getPreferences();
-      setPreferences({
-        auto_clear_history: data.auto_clear_history || 'never',
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error loading preferences:', error);
+      const userSettings = services.filter((s) => !s.is_public);
+      // Delete all user settings sequentially
+      for (const setting of userSettings) {
+        await deleteService(setting.id);
+      }
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to load preferences',
+        title: t('settings.aiService.userSettings.success'),
+        description: t('settings.aiService.userSettings.successReverting'),
+      });
+      setRevertDialogOpen(false);
+    } catch (error) {
+      console.error('Error reverting to global settings:', error);
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.errorReverting'),
         variant: 'destructive',
       });
     }
   };
 
   const handleAddService = async () => {
+    if (settingsLoading) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (
       !user ||
       !newService.service_name ||
       (newService.service_type !== 'ollama' && !newService.api_key)
     ) {
       toast({
-        title: 'Error',
-        description: 'Please fill in all required fields',
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.fillRequiredFields'),
         variant: 'destructive',
       });
       return;
     }
 
-    setLoading(true);
     try {
       const serviceData = {
         service_name: newService.service_name,
@@ -126,127 +260,226 @@ const AIServiceSettings = () => {
         is_active: newService.is_active,
         model_name: newService.showCustomModelInput
           ? newService.custom_model_name
-          : newService.model_name || null, // Prioritize custom_model_name if showCustomModelInput is true
+          : newService.model_name || null,
       };
-      await addAIService(serviceData);
-      toast({
-        title: 'Success',
-        description: 'AI service added successfully',
-      });
+      await addService(serviceData);
+      // Reset form
       setNewService({
         service_name: '',
         service_type: 'openai',
-        api_key: '', // Clear the API key field
+        api_key: '',
         custom_url: '',
         system_prompt: '',
         is_active: false,
         model_name: '',
-        custom_model_name: '', // Clear custom_model_name field
-        showCustomModelInput: false, // Clear showCustomModelInput field
+        custom_model_name: '',
+        showCustomModelInput: false,
       });
       setShowAddForm(false);
-      loadServices();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error adding AI service:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to add AI service',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+      // Success toast is handled by the mutation meta
+    } catch (error: unknown) {
+      // Check for 403 errors and show appropriate message
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const is403Error =
+        errorMessage.includes('403') ||
+        errorMessage.includes('disabled') ||
+        errorMessage.includes('Per-user AI service configuration is disabled');
+
+      if (is403Error) {
+        toast({
+          title: t('settings.aiService.userSettings.error'),
+          description: t(
+            'settings.aiService.userSettings.perUserDisabledDescription'
+          ),
+          variant: 'destructive',
+        });
+      }
+      // Other errors are handled by the mutation meta
     }
   };
 
   const handleUpdateService = async (serviceId: string) => {
-    setLoading(true);
+    if (settingsLoading) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const originalService = services.find((s) => s.id === serviceId);
 
     if (!originalService) {
       toast({
-        title: 'Error',
-        description: 'Original service not found.',
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.errorOriginalNotFound'),
         variant: 'destructive',
       });
-      setLoading(false);
       return;
     }
 
-    // Create a complete service object by merging original with edited data
+    if (originalService.is_public) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.managedByAdmin'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const serviceToUpdate: Partial<AIService> = {
-      ...originalService, // Start with all original fields
-      ...editData, // Overlay with edited fields (including temporary api_key if provided)
-      id: serviceId, // Ensure ID is correct
+      ...originalService,
+      ...editData,
+      id: serviceId,
       model_name: editData.showCustomModelInput
         ? editData.custom_model_name
-        : editData.model_name || null, // Prioritize custom_model_name if showCustomModelInput is true
+        : editData.model_name || null,
     };
 
-    // If api_key is empty in editData, it means the user did not enter a new one.
-    // In this case, we explicitly remove it from the payload to instruct the backend
-    // to retain the existing encrypted key, rather than overwriting it with an empty string.
     if (serviceToUpdate.api_key === '') {
       delete serviceToUpdate.api_key;
     }
 
     try {
-      await updateAIService(serviceId, serviceToUpdate); // Pass the complete object
-      toast({
-        title: 'Success',
-        description: 'AI service updated successfully',
-      });
+      await updateService({ serviceId, serviceData: serviceToUpdate });
       setEditingService(null);
       setEditData({});
-      loadServices();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error updating AI service:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update AI service',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+      // Success toast is handled by the mutation meta
+    } catch (error: unknown) {
+      // Check for 403 errors and show appropriate message
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const is403Error =
+        errorMessage.includes('403') ||
+        errorMessage.includes('disabled') ||
+        errorMessage.includes('Per-user AI service configuration is disabled');
+
+      if (is403Error) {
+        toast({
+          title: t('settings.aiService.userSettings.error'),
+          description: t(
+            'settings.aiService.userSettings.perUserDisabledDescription'
+          ),
+          variant: 'destructive',
+        });
+      }
+      // Other errors are handled by the mutation meta
     }
   };
 
-  const handleDeleteService = async (serviceId: string) => {
-    if (!confirm('Are you sure you want to delete this AI service?')) return;
+  const handleDeleteService = async () => {
+    if (!serviceToDelete) return;
 
-    setLoading(true);
-    try {
-      await deleteAIService(serviceId);
+    if (settingsLoading) {
       toast({
-        title: 'Success',
-        description: 'AI service deleted successfully',
-      });
-      loadServices();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error deleting AI service:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete AI service',
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const serviceToDeleteObj = services.find((s) => s.id === serviceToDelete);
+    if (serviceToDeleteObj?.is_public) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.managedByAdmin'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await deleteService(serviceToDelete);
+      setDeleteDialogOpen(false);
+      setServiceToDelete(null);
+      // Success toast is handled by the mutation meta
+    } catch (error: unknown) {
+      // Check for 403 errors and show appropriate message
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const is403Error =
+        errorMessage.includes('403') ||
+        errorMessage.includes('disabled') ||
+        errorMessage.includes('Per-user AI service configuration is disabled');
+
+      if (is403Error) {
+        toast({
+          title: t('settings.aiService.userSettings.error'),
+          description: t(
+            'settings.aiService.userSettings.perUserDisabledDescription'
+          ),
+          variant: 'destructive',
+        });
+      }
+      // Other errors are handled by the mutation meta
     }
   };
 
   const handleToggleActive = async (serviceId: string, isActive: boolean) => {
-    setLoading(true);
+    if (settingsLoading) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: 'Please wait while settings are being loaded...',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const originalService = services.find((s) => s.id === serviceId);
 
     if (!originalService) {
       toast({
-        title: 'Error',
-        description: 'Original service not found for status update.',
+        title: t('settings.aiService.userSettings.error'),
+        description: t(
+          'settings.aiService.userSettings.errorOriginalNotFoundStatus'
+        ),
         variant: 'destructive',
       });
-      setLoading(false);
+      return;
+    }
+
+    if (originalService.is_public) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.managedByAdmin'),
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -256,63 +489,66 @@ const AIServiceSettings = () => {
     };
 
     try {
-      // Use updateAIService instead of updateAIServiceStatus to send full object
-      await updateAIService(serviceId, serviceToUpdate);
+      await updateService({ serviceId, serviceData: serviceToUpdate });
       toast({
-        title: 'Success',
-        description: `AI service ${isActive ? 'activated' : 'deactivated'}`,
+        title: t('settings.aiService.userSettings.success'),
+        description: isActive
+          ? t('settings.aiService.userSettings.serviceActivated')
+          : t('settings.aiService.userSettings.serviceDeactivated'),
       });
-      loadServices();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+      // Success toast for update is handled by the mutation meta, but we add a specific one for toggle
+    } catch (error) {
+      // Error toast is handled by the mutation meta
       console.error('Error updating AI service status:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update AI service status',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleUpdatePreferences = async () => {
     if (!user) return;
 
-    setLoading(true);
     try {
-      await updateUserPreferences(preferences);
-      toast({
-        title: 'Success',
-        description: 'Chat preferences updated successfully',
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+      await updatePreferences(preferences);
+      // Success toast is handled by the mutation meta
+    } catch (error) {
+      // Error toast is handled by the mutation meta
       console.error('Error updating preferences:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update preferences',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
   const startEditing = (service: AIService) => {
+    if (!isUserConfigAllowed) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t(
+          'settings.aiService.userSettings.perUserDisabledDescription'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (service.is_public) {
+      toast({
+        title: t('settings.aiService.userSettings.error'),
+        description: t('settings.aiService.userSettings.managedByAdmin'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setEditingService(service.id);
     setEditData({
       service_name: service.service_name,
       service_type: service.service_type,
-      api_key: '', // API key is not loaded for editing for security
+      api_key: '',
       custom_url: service.custom_url,
       system_prompt: service.system_prompt || '',
       is_active: service.is_active,
       model_name: service.model_name || '',
-      custom_model_name: service.model_name || '', // Initialize custom_model_name with current model_name
+      custom_model_name: service.model_name || '',
       showCustomModelInput: service.model_name
         ? !getModelOptions(service.service_type).includes(service.model_name)
-        : false, // Determine initial state
+        : false,
     });
   };
 
@@ -321,636 +557,98 @@ const AIServiceSettings = () => {
     setEditData({});
   };
 
-  const getServiceTypes = () => [
-    { value: 'openai', label: 'OpenAI' },
-    { value: 'openai_compatible', label: 'OpenAI Compatible' },
-    { value: 'anthropic', label: 'Anthropic' },
-    { value: 'google', label: 'Google Gemini' },
-    { value: 'mistral', label: 'Mistral AI' },
-    { value: 'groq', label: 'Groq' },
-    { value: 'ollama', label: 'Ollama' },
-    { value: 'custom', label: 'Custom' },
-  ];
+  const openDeleteDialog = (serviceId: string) => {
+    setServiceToDelete(serviceId);
+    setDeleteDialogOpen(true);
+  };
 
-  const getModelOptions = (serviceType: string) => {
-    switch (serviceType) {
-      case 'openai':
-      case 'openai_compatible':
-        return [
-          'gpt-4o',
-          'gpt-4o-mini',
-          'gpt-4-turbo',
-          'gpt-4',
-          'gpt-3.5-turbo',
-          'o1-preview',
-          'o1-mini',
-        ];
-      case 'anthropic':
-        return [
-          'claude-3-5-sonnet-20241022',
-          'claude-3-opus-20240229',
-          'claude-3-sonnet-20240229',
-          'claude-3-haiku-20240307',
-        ];
-      case 'google':
-        return [
-          'gemini-pro',
-          'gemini-pro-vision',
-          'gemini-1.5-pro',
-          'gemini-1.5-flash',
-        ];
-      case 'mistral':
-        return [
-          'mistral-large-latest',
-          'mistral-medium-latest',
-          'mistral-small-latest',
-          'open-mistral-7b',
-          'open-mixtral-8x7b',
-        ];
-      case 'groq':
-        return [
-          'llama-3.1-8b-instant',
-          'llama-3.3-70b-versatile',
-          'meta-llama/llama-guard-4-12b',
-          'whisper-large-v3',
-          'whisper-large-v3-turbo',
-        ];
-      default:
-        return [];
-    }
+  const openRevertDialog = () => {
+    setRevertDialogOpen(true);
   };
 
   return (
     <div className="space-y-6">
-      {/* Chat History Preferences */}
+      <UserChatPreferences
+        preferences={preferences}
+        onPreferencesChange={setPreferences}
+        onSave={handleUpdatePreferences}
+        loading={loading}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
-            Chat Preferences
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="auto_clear_history">Auto Clear Chat History</Label>
-            <Select
-              value={preferences.auto_clear_history}
-              onValueChange={(value) =>
-                setPreferences((prev) => ({
-                  ...prev,
-                  auto_clear_history: value,
-                }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="never">Never clear</SelectItem>
-                <SelectItem value="session">Clear each session</SelectItem>
-                <SelectItem value="7days">Clear after 7 days</SelectItem>
-                <SelectItem value="all">Clear all history</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              Controls how chat history is preserved for AI context
-            </p>
-          </div>
-
-          <Button onClick={handleUpdatePreferences} disabled={loading}>
-            <Save className="h-4 w-4 mr-2" />
-            Save Chat Preferences
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* AI Services */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5" />
-            AI Services
+            {t('settings.aiService.userSettings.title')}
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2">
-            Note: Not all AI models and services have been fully tested for all
-            features. Please verify functionality after configuration.
+            {t('settings.aiService.userSettings.note')}
           </p>
+          <GlobalOverrideBanner
+            activeGlobalSetting={getActiveGlobalSetting()}
+            hasUserOverride={hasUserOverride()}
+            onOverride={handleOverrideGlobal}
+            onRevert={openRevertDialog}
+            loading={loading}
+            isUserConfigAllowed={isUserConfigAllowed}
+          />
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Add New Service Button */}
-          {!showAddForm && (
+          {isUserConfigAllowed && !showAddForm && (
             <Button onClick={() => setShowAddForm(true)} variant="outline">
               <Plus className="h-4 w-4 mr-2" />
-              Add New AI Service
+              {t('settings.aiService.userSettings.addNewService')}
             </Button>
           )}
 
-          {/* Add New Service Form */}
-          {showAddForm && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleAddService();
-              }}
-              className="border rounded-lg p-4 space-y-4"
-            >
-              <h3 className="text-lg font-medium">Add New AI Service</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="new_service_name">Service Name</Label>
-                  <Input
-                    id="new_service_name"
-                    value={newService.service_name}
-                    onChange={(e) =>
-                      setNewService((prev) => ({
-                        ...prev,
-                        service_name: e.target.value,
-                      }))
-                    }
-                    placeholder="My OpenAI Service"
-                    autoComplete="username"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="new_service_type">Service Type</Label>
-                  <Select
-                    value={newService.service_type}
-                    onValueChange={(value) =>
-                      setNewService((prev) => ({
-                        ...prev,
-                        service_type: value,
-                        model_name: '',
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getServiceTypes().map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="new_api_key">
-                  API Key{' '}
-                  {newService.service_type === 'ollama' ? '(Optional)' : ''}
-                </Label>
-                <Input
-                  id="new_api_key"
-                  type="password"
-                  value={newService.api_key}
-                  onChange={(e) =>
-                    setNewService((prev) => ({
-                      ...prev,
-                      api_key: e.target.value,
-                    }))
-                  }
-                  placeholder={
-                    newService.service_type === 'ollama'
-                      ? 'Not required for Ollama'
-                      : 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-                  }
-                  autoComplete="new-password"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {newService.service_type === 'ollama'
-                    ? 'API key is optional for Ollama. If provided, it will be stored encrypted.'
-                    : 'Your API key for the selected service. This will be stored encrypted.'}
-                </p>
-              </div>
-
-              {(newService.service_type === 'custom' ||
-                newService.service_type === 'ollama' ||
-                newService.service_type === 'openai_compatible') && (
-                <div>
-                  <Label htmlFor="new_custom_url">Custom URL</Label>
-                  <Input
-                    id="new_custom_url"
-                    value={newService.custom_url}
-                    onChange={(e) =>
-                      setNewService((prev) => ({
-                        ...prev,
-                        custom_url: e.target.value,
-                      }))
-                    }
-                    placeholder={
-                      newService.service_type === 'ollama'
-                        ? 'http://localhost:11434'
-                        : newService.service_type === 'openai_compatible'
-                          ? 'https://api.example.com/v1'
-                          : 'https://api.example.com/v1'
-                    }
-                  />
-                </div>
-              )}
-
-              <div className="flex items-center space-x-2 mb-4">
-                <Switch
-                  id="new_use_custom_model"
-                  checked={newService.showCustomModelInput}
-                  onCheckedChange={(checked) =>
-                    setNewService((prev) => ({
-                      ...prev,
-                      showCustomModelInput: checked,
-                      model_name: '',
-                      custom_model_name: '',
-                    }))
-                  }
-                />
-                <Label htmlFor="new_use_custom_model">
-                  Use Custom Model Name
-                </Label>
-              </div>
-
-              {!newService.showCustomModelInput &&
-                getModelOptions(newService.service_type).length > 0 && (
-                  <div>
-                    <Label htmlFor="new_model_name_select">Model</Label>
-                    <Select
-                      value={newService.model_name}
-                      onValueChange={(value) =>
-                        setNewService((prev) => ({
-                          ...prev,
-                          model_name: value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger id="new_model_name_select">
-                        <SelectValue placeholder="Select a model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getModelOptions(newService.service_type).map(
-                          (model) => (
-                            <SelectItem key={model} value={model}>
-                              {model}
-                            </SelectItem>
-                          )
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              {newService.showCustomModelInput && (
-                <div>
-                  <Label htmlFor="new_custom_model_name_input">
-                    Custom Model Name
-                  </Label>
-                  <Input
-                    id="new_custom_model_name_input"
-                    value={newService.custom_model_name}
-                    onChange={(e) =>
-                      setNewService((prev) => ({
-                        ...prev,
-                        custom_model_name: e.target.value,
-                      }))
-                    }
-                    placeholder="Enter custom model name"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Enter the exact name of your custom model.
-                  </p>
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="new_system_prompt">
-                  System Prompt (Additional Instructions)
-                </Label>
-                <Textarea
-                  id="new_system_prompt"
-                  value={newService.system_prompt}
-                  onChange={(e) =>
-                    setNewService((prev) => ({
-                      ...prev,
-                      system_prompt: e.target.value,
-                    }))
-                  }
-                  placeholder="Additional instructions for the AI assistant..."
-                  rows={3}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  These instructions will be added to the AI context in addition
-                  to project documentation
-                </p>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="new_is_active"
-                  checked={newService.is_active}
-                  onCheckedChange={(checked) =>
-                    setNewService((prev) => ({ ...prev, is_active: checked }))
-                  }
-                />
-                <Label htmlFor="new_is_active">Set as active service</Label>
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="submit" disabled={loading}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Add Service
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowAddForm(false)}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-              </div>
-            </form>
+          {isUserConfigAllowed && showAddForm && (
+            <div className="border rounded-lg p-4">
+              <h3 className="text-lg font-medium mb-4">
+                {t('settings.aiService.userSettings.addNewService')}
+              </h3>
+              <ServiceForm
+                formData={newService}
+                onFormDataChange={(data) =>
+                  setNewService((prev) => ({ ...prev, ...data }))
+                }
+                onSubmit={handleAddService}
+                onCancel={() => setShowAddForm(false)}
+                loading={loading}
+                translationPrefix="settings.aiService.userSettings"
+              />
+            </div>
           )}
 
-          {/* Configured Services */}
           {services.length > 0 && (
             <>
               <Separator />
-              <h3 className="text-lg font-medium">Configured Services</h3>
+              <h3 className="text-lg font-medium">
+                {isUserConfigAllowed
+                  ? t('settings.aiService.userSettings.configuredServices')
+                  : t('settings.aiService.userSettings.availableServices')}
+              </h3>
 
               <div className="space-y-4">
-                {services.map((service) => (
-                  <div key={service.id} className="border rounded-lg p-4">
-                    {editingService === service.id ? (
-                      // Edit Mode
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          handleUpdateService(service.id);
-                        }}
-                        className="space-y-4"
-                      >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label>Service Name</Label>
-                            <Input
-                              value={editData.service_name || ''}
-                              onChange={(e) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  service_name: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label>Service Type</Label>
-                            <Select
-                              value={editData.service_type || ''}
-                              onValueChange={(value) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  service_type: value,
-                                  model_name: '',
-                                }))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {getServiceTypes().map((type) => (
-                                  <SelectItem
-                                    key={type.value}
-                                    value={type.value}
-                                  >
-                                    {type.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>
-                            API Key{' '}
-                            {editData.service_type === 'ollama'
-                              ? '(Optional)'
-                              : ''}
-                          </Label>
-                          <Input
-                            type="password"
-                            value={editData.api_key || ''}
-                            onChange={(e) =>
-                              setEditData((prev) => ({
-                                ...prev,
-                                api_key: e.target.value,
-                              }))
-                            }
-                            placeholder={
-                              editData.service_type === 'ollama'
-                                ? 'Not required for Ollama'
-                                : 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-                            }
-                            autoComplete="off"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {editData.service_type === 'ollama'
-                              ? 'API key is optional for Ollama. If provided, it will be stored encrypted.'
-                              : 'Enter your API key if you wish to update it. It will be stored encrypted.'}
-                          </p>
-                        </div>
-
-                        {(editData.service_type === 'custom' ||
-                          editData.service_type === 'ollama' ||
-                          editData.service_type === 'openai_compatible') && (
-                          <div>
-                            <Label>Custom URL</Label>
-                            <Input
-                              value={editData.custom_url || ''}
-                              onChange={(e) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  custom_url: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                        )}
-
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Switch
-                            id="edit_use_custom_model"
-                            checked={editData.showCustomModelInput || false}
-                            onCheckedChange={(checked) =>
-                              setEditData((prev) => ({
-                                ...prev,
-                                showCustomModelInput: checked,
-                                model_name: '',
-                                custom_model_name: '',
-                              }))
-                            }
-                          />
-                          <Label htmlFor="edit_use_custom_model">
-                            Use Custom Model Name
-                          </Label>
-                        </div>
-
-                        {!editData.showCustomModelInput &&
-                          getModelOptions(editData.service_type || '').length >
-                            0 && (
-                            <div>
-                              <Label>Model</Label>
-                              <Select
-                                value={editData.model_name || ''}
-                                onValueChange={(value) =>
-                                  setEditData((prev) => ({
-                                    ...prev,
-                                    model_name: value,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a model" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {getModelOptions(
-                                    editData.service_type || ''
-                                  ).map((model) => (
-                                    <SelectItem key={model} value={model}>
-                                      {model}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                        {editData.showCustomModelInput && (
-                          <div>
-                            <Label>Custom Model Name</Label>
-                            <Input
-                              value={editData.custom_model_name || ''}
-                              onChange={(e) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  custom_model_name: e.target.value,
-                                }))
-                              }
-                              placeholder="Enter custom model name"
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Enter the exact name of your custom model.
-                            </p>
-                          </div>
-                        )}
-
-                        <div>
-                          <Label>System Prompt (Additional Instructions)</Label>
-                          <Textarea
-                            value={editData.system_prompt || ''}
-                            onChange={(e) =>
-                              setEditData((prev) => ({
-                                ...prev,
-                                system_prompt: e.target.value,
-                              }))
-                            }
-                            placeholder="Additional instructions for the AI assistant..."
-                            rows={3}
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            These instructions will be added to the AI context
-                            in addition to project documentation
-                          </p>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={editData.is_active || false}
-                            onCheckedChange={(checked) =>
-                              setEditData((prev) => ({
-                                ...prev,
-                                is_active: checked,
-                              }))
-                            }
-                          />
-                          <Label>Active service</Label>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button type="submit" disabled={loading}>
-                            <Save className="h-4 w-4 mr-2" />
-                            Save Changes
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={cancelEditing}
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Cancel
-                          </Button>
-                        </div>
-                      </form>
-                    ) : (
-                      // View Mode
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-medium">
-                              {service.service_name}
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              {getServiceTypes().find(
-                                (t) => t.value === service.service_type
-                              )?.label || service.service_type}
-                              {service.model_name && ` - ${service.model_name}`}
-                              {service.custom_url && ` - ${service.custom_url}`}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={service.is_active}
-                              onCheckedChange={(checked) =>
-                                handleToggleActive(service.id, checked)
-                              }
-                              disabled={loading}
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => startEditing(service)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteService(service.id)}
-                              disabled={loading}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        {service.system_prompt && (
-                          <div>
-                            <Label className="text-xs">System Prompt:</Label>
-                            <p className="text-sm text-muted-foreground mt-1 p-2 bg-muted rounded">
-                              {service.system_prompt}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Removed display of API Key Env Var as it's no longer relevant for user-provided keys */}
-                        {/* {service.is_active && (
-                            <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                              Active
-                            </span>
-                          )} */}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {services
+                  .filter((service) => isUserConfigAllowed || service.is_public)
+                  .map((service) => (
+                    <UserServiceListItem
+                      key={service.id}
+                      service={service}
+                      isEditing={editingService === service.id}
+                      editData={editData}
+                      onEditDataChange={setEditData}
+                      onStartEdit={() => startEditing(service)}
+                      onCancelEdit={cancelEditing}
+                      onUpdate={() => handleUpdateService(service.id)}
+                      onDelete={() => openDeleteDialog(service.id)}
+                      onToggleActive={(isActive) =>
+                        handleToggleActive(service.id, isActive)
+                      }
+                      loading={loading}
+                      isUserConfigAllowed={isUserConfigAllowed}
+                    />
+                  ))}
               </div>
             </>
           )}
@@ -958,14 +656,71 @@ const AIServiceSettings = () => {
           {services.length === 0 && !showAddForm && (
             <div className="text-center py-8 text-muted-foreground">
               <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No AI services configured yet.</p>
-              <p className="text-sm">
-                Add your first AI service to get started with Sparky.
-              </p>
+              <p>{t('settings.aiService.userSettings.noServices')}</p>
+              {isUserConfigAllowed && (
+                <p className="text-sm">
+                  {t('settings.aiService.userSettings.noServicesDescription')}
+                </p>
+              )}
+              {!isUserConfigAllowed && (
+                <p className="text-sm">
+                  {t(
+                    'settings.aiService.userSettings.noServicesDescriptionDisabled'
+                  )}
+                </p>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t('settings.aiService.userSettings.deleteConfirm')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('settings.aiService.userSettings.deleteConfirm')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setServiceToDelete(null)}>
+              {t('settings.aiService.userSettings.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteService}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('settings.aiService.userSettings.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={revertDialogOpen} onOpenChange={setRevertDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t('settings.aiService.userSettings.revertConfirm')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('settings.aiService.userSettings.revertConfirm')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRevertDialogOpen(false)}>
+              {t('settings.aiService.userSettings.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRevertToGlobal}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('settings.aiService.userSettings.useGlobalSettings')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -8,16 +8,32 @@ const ipaddr = require('ipaddr.js');
 function isPrivateNetworkAddress(hostname) {
   if (!hostname) return false;
 
-  const lowerHostname = hostname.toLowerCase();
+  let cleanHostname = hostname.toLowerCase();
+
+  // Try to clean up port if present using URL parser
+  // We prepend http:// to ensure it parses as a URL from a hostname string
+  try {
+    // Check if it already has a protocol, if not add one
+    const urlStr = cleanHostname.match(/^[a-z]+:\/\//) ? cleanHostname : `http://${cleanHostname}`;
+    const url = new URL(urlStr);
+    cleanHostname = url.hostname;
+
+    // Remove brackets for IPv6 [::1] -> ::1 as ipaddr.js expects raw address
+    if (cleanHostname.startsWith('[') && cleanHostname.endsWith(']')) {
+      cleanHostname = cleanHostname.slice(1, -1);
+    }
+  } catch (err) {
+    // If URL parsing fails, proceed with original string
+  }
 
   // Check localhost explicitly as it's not an IP address
-  if (lowerHostname === 'localhost') {
+  if (cleanHostname === 'localhost') {
     return true;
   }
 
   try {
     // Parse the hostname as an IP address
-    const addr = ipaddr.parse(lowerHostname);
+    const addr = ipaddr.parse(cleanHostname);
     const range = addr.range();
 
     // Check for various private/local ranges
