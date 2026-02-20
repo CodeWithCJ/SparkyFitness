@@ -583,6 +583,7 @@ const ExternalProviderSettings = () => {
         description: 'Garmin data synchronization initiated.',
       });
       loadProviders();
+      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Garmin sync:', error);
@@ -662,6 +663,7 @@ const ExternalProviderSettings = () => {
         description: 'Fitbit data synchronization initiated.',
       });
       loadProviders();
+      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Fitbit sync:', error);
@@ -744,6 +746,7 @@ const ExternalProviderSettings = () => {
         description: 'Polar data synchronization initiated.',
       });
       loadProviders();
+      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Polar sync:', error);
@@ -769,6 +772,7 @@ const ExternalProviderSettings = () => {
         description: `Hevy data ${fullSync ? 'full history' : 'recent'} synchronization initiated.`,
       });
       loadProviders();
+      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Hevy sync:', error);
