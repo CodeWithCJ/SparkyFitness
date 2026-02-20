@@ -1,10 +1,7 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  oidcSettingsService,
-  type OidcProvider,
-} from '../../api/Admin/oidcSettingsService';
+import { type OidcProvider } from '../../api/Admin/oidcSettingsService';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {

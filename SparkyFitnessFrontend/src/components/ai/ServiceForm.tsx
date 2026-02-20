@@ -13,7 +13,6 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Save, X } from 'lucide-react';
 import { getServiceTypes, getModelOptions } from '@/utils/aiServiceUtils';
-import type { AIService } from '@/services/aiServiceSettingsService';
 
 interface ServiceFormData {
   service_name: string;

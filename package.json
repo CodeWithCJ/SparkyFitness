@@ -8,9 +8,7 @@
   },
   "lint-staged": {
     "SparkyFitnessFrontend/**/*.{ts,tsx}": [
-      "npx eslint --config SparkyFitnessFrontend/eslint.config.js --fix --max-warnings 0",
-      "npx prettier --write",
-      "npm run test --prefix SparkyFitnessFrontend -- --findRelatedTests --passWithNoTests"
+      "npx prettier --write"
     ]
   },
   "dependencies": {

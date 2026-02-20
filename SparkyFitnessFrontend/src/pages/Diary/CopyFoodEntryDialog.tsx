@@ -1,11 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription, // Import DialogDescription
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -27,11 +27,8 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { debug, info, warn, error } from '@/utils/logging';
-import {
-  getMealTypes,
-  type MealTypeDefinition,
-} from '@/services/mealTypeService';
+import { debug, info, warn } from '@/utils/logging';
+import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 
 interface CopyFoodEntryDialogProps {
   isOpen: boolean;
@@ -40,12 +37,12 @@ interface CopyFoodEntryDialogProps {
   sourceMealType: string;
 }
 
-const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
+const CopyFoodEntryDialog = ({
   isOpen,
   onClose,
   onCopy,
   sourceMealType,
-}) => {
+}: CopyFoodEntryDialogProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, loggingLevel } = usePreferences();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
@@ -54,48 +51,9 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
   const [selectedMealType, setSelectedMealType] =
     useState<string>(sourceMealType);
 
-  const [availableMealTypes, setAvailableMealTypes] = useState<
-    MealTypeDefinition[]
-  >([]);
+  const { data: availableMealTypes } = useMealTypes();
 
-  React.useEffect(() => {
-    const fetchTypes = async () => {
-      if (isOpen) {
-        try {
-          const types = await getMealTypes();
-          setAvailableMealTypes(types);
-        } catch (err) {
-          error(loggingLevel, 'Error loading meal types in copy dialog:', err);
-        }
-      }
-    };
-    fetchTypes();
-  }, [isOpen, loggingLevel]);
-
-  // Update selectedMealType when sourceMealType changes
-  React.useEffect(() => {
-    setSelectedMealType(sourceMealType);
-  }, [sourceMealType]);
-
-  const handleDateSelect = useCallback(
-    (date: Date | undefined) => {
-      setSelectedDate(date);
-      debug(loggingLevel, 'Selected date in dialog:', date);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [debug, loggingLevel]
-  );
-
-  const handleMealTypeChange = useCallback(
-    (value: string) => {
-      setSelectedMealType(value);
-      debug(loggingLevel, 'Selected meal type in dialog:', value);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [debug, loggingLevel]
-  );
-
-  const handleCopyClick = useCallback(() => {
+  const handleCopyClick = () => {
     if (selectedDate) {
       const formattedDate = formatDateInUserTimezone(
         selectedDate,
@@ -110,17 +68,7 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
     } else {
       warn(loggingLevel, 'No date selected for copying.');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedDate,
-    selectedMealType,
-    onCopy,
-    onClose,
-    formatDateInUserTimezone,
-    info,
-    loggingLevel,
-    warn,
-  ]);
+  };
 
   const getDisplayName = (name: string) => {
     const lower = name.toLowerCase();
@@ -171,8 +119,10 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  initialFocus
+                  onSelect={(date) => {
+                    setSelectedDate(date);
+                    debug(loggingLevel, 'Selected date in dialog:', date);
+                  }}
                 />
               </PopoverContent>
             </Popover>
@@ -182,7 +132,10 @@ const CopyFoodEntryDialog: React.FC<CopyFoodEntryDialogProps> = ({
               {t('copyFoodEntryDialog.mealType', 'Meal Type')}
             </Label>
             <Select
-              onValueChange={handleMealTypeChange}
+              onValueChange={(value) => {
+                setSelectedMealType(value);
+                debug(loggingLevel, 'Selected meal type in dialog:', value);
+              }}
               value={selectedMealType}
             >
               <SelectTrigger className="col-span-3">

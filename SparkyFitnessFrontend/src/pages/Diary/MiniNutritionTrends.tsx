@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LineChart,
@@ -7,163 +7,127 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  TooltipProps,
 } from 'recharts';
-import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { parseISO, subDays } from 'date-fns';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import {
-  loadMiniNutritionTrendData,
-  type DayData,
-} from '@/services/miniNutritionTrendsService';
-
 import type { UserCustomNutrient } from '@/types/customNutrient';
-
-interface MiniNutritionTrendsProps {
-  selectedDate: string;
-  refreshTrigger?: number;
-  customNutrients?: UserCustomNutrient[]; // Add customNutrients prop
-}
-
 import {
   getNutrientMetadata,
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
+import { getEnergyUnitString } from '@/utils/nutritionCalculations';
+import { DayData } from '@/api/Diary/foodEntryService';
+import { useMiniNutritionTrendData } from '@/hooks/Foods/useFoods';
 
-const MiniNutritionTrends = ({
-  selectedDate,
-  refreshTrigger,
-  customNutrients = [],
-}: MiniNutritionTrendsProps) => {
-  const { t } = useTranslation();
-  const { user } = useAuth();
-  const { activeUserId } = useActiveUser();
-  const [chartData, setChartData] = useState<DayData[]>([]);
-  const [isMounted, setIsMounted] = useState(false);
-  const {
-    formatDateInUserTimezone,
-    nutrientDisplayPreferences,
-    energyUnit,
-    convertEnergy,
-  } = usePreferences();
-  const isMobile = useIsMobile();
-  const platform = isMobile ? 'mobile' : 'desktop';
+interface MiniNutritionTrendsProps {
+  selectedDate: string;
+  customNutrients?: UserCustomNutrient[];
+}
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+interface ChartDetails {
+  color: string;
+  label: string;
+  unit: string;
+}
 
-  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal'
-      ? t('common.kcalUnit', 'kcal')
-      : t('common.kJUnit', 'kJ');
-  };
+interface PayloadItem {
+  name: string;
+  value: number;
+  dataKey: string;
+  payload: DayData; // This matches the DayData type from your service
+}
+interface CustomTooltipProps extends TooltipProps<number, string> {
+  energyUnit: 'kcal' | 'kJ';
+  convertEnergy: (
+    value: number,
+    from: 'kcal' | 'kJ',
+    to: 'kcal' | 'kJ'
+  ) => number;
+  customNutrients: UserCustomNutrient[];
+  formatDate: (date: Date, formatStr: string) => string;
+  payload?: PayloadItem[];
+  label?: string;
+}
 
-  useEffect(() => {
-    if (user && activeUserId) {
-      loadTrendData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    user,
-    activeUserId,
-    selectedDate,
-    formatDateInUserTimezone,
-    refreshTrigger,
-  ]);
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+  energyUnit,
+  convertEnergy,
+  customNutrients,
+  formatDate,
+}: CustomTooltipProps) => {
+  if (active && payload && payload.length) {
+    const nutrientName = payload[0].dataKey as string;
+    const nutrientValue = payload[0].value as number;
 
-  const loadTrendData = async () => {
-    try {
-      // Calculate date range (past 14 days from selected date for mini charts) in user's timezone
-      const endDate = parseISO(selectedDate); // Parse selectedDate as a calendar date
-      const startDate = subDays(endDate, 13); // 14 days total including selected date
+    const unitString =
+      nutrientName === 'calories'
+        ? getEnergyUnitString(energyUnit)
+        : getNutrientMetadata(nutrientName, customNutrients).unit;
 
-      const startDateStr = formatDateInUserTimezone(startDate, 'yyyy-MM-dd');
-      const endDateStr = formatDateInUserTimezone(endDate, 'yyyy-MM-dd');
+    const displayValue =
+      nutrientName === 'calories'
+        ? Math.round(
+            convertEnergy(nutrientValue, 'kcal', energyUnit)
+          ).toString()
+        : formatNutrientValue(nutrientName, nutrientValue, customNutrients);
 
-      // Get food entries for the past 14 days - use activeUserId
-      const fetchedChartData = await loadMiniNutritionTrendData(
-        activeUserId,
-        startDateStr,
-        endDateStr
-      );
-      setChartData(fetchedChartData);
-    } catch (error) {
-      console.error('Error loading mini trend data:', error);
-    }
-  };
-
-  const CustomTooltip = ({
-    active,
-    payload,
-    label,
-    energyUnit,
-    convertEnergy,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      const nutrientName = payload[0].dataKey;
-      const nutrientValue = payload[0].value;
-
-      const unitString =
-        nutrientName === 'calories'
-          ? getEnergyUnitString(energyUnit)
-          : getNutrientMetadata(nutrientName, customNutrients).unit;
-
-      const displayValue =
-        nutrientName === 'calories'
-          ? Math.round(
-              convertEnergy(nutrientValue, 'kcal', energyUnit)
-            ).toString()
-          : formatNutrientValue(nutrientName, nutrientValue, customNutrients);
-
-      return (
-        <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded shadow-lg">
-          <p className="text-xs font-medium text-gray-900 dark:text-gray-100">
-            {formatDateInUserTimezone(parseISO(label), 'MMM dd')}
-          </p>
-          <p className="text-xs text-gray-600 dark:text-gray-400">
-            {nutrientName === 'dietary_fiber' ? 'Fiber' : nutrientName}:{' '}
-            {displayValue}
-            {unitString}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  if (!isMounted || chartData.length === 0) {
     return (
-      <div className="mt-4 p-3 text-center text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        {chartData.length === 0
-          ? 'No trend data available for the past 14 days'
-          : 'Loading charts...'}
+      <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded shadow-lg">
+        <p className="text-xs font-medium text-gray-900 dark:text-gray-100">
+          {formatDate(parseISO(label), 'MMM dd')}
+        </p>
+        <p className="text-xs text-gray-600 dark:text-gray-400">
+          {nutrientName === 'dietary_fiber' ? 'Fiber' : nutrientName}:{' '}
+          {displayValue} {unitString}
+        </p>
       </div>
     );
   }
+  return null;
+};
 
-  const summaryPreferences = nutrientDisplayPreferences.find(
-    (p) => p.view_group === 'summary' && p.platform === platform
-  );
-  const visibleNutrients = summaryPreferences
-    ? summaryPreferences.visible_nutrients
-    : ['calories', 'protein', 'carbs', 'fat', 'dietary_fiber'];
+interface MiniTrendChartProps {
+  nutrient: string;
+  details: ChartDetails;
+  data: DayData[];
+  energyUnit: 'kcal' | 'kJ';
+  convertEnergy: (
+    value: number,
+    from: 'kcal' | 'kJ',
+    to: 'kcal' | 'kJ'
+  ) => number;
+  customNutrients: UserCustomNutrient[];
+  formatDate: (date: Date, formatStr: string) => string;
+}
 
-  // Memoize the chart component to prevent unnecessary re-renders of multiple charts
-  const MiniTrendChart = memo(
-    ({
-      nutrient,
-      details,
-      data,
-    }: {
-      nutrient: string;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      details: any;
-      data: DayData[];
-    }) => (
+const MiniTrendChart = memo(
+  ({
+    nutrient,
+    details,
+    data,
+    energyUnit,
+    convertEnergy,
+    customNutrients,
+    formatDate,
+  }: MiniTrendChartProps) => {
+    const lastValue =
+      (data[data.length - 1]?.[nutrient as keyof DayData] as number) || 0;
+
+    const displayValue =
+      nutrient === 'calories'
+        ? Math.round(convertEnergy(lastValue, 'kcal', energyUnit)).toString()
+        : formatNutrientValue(nutrient, lastValue, customNutrients);
+
+    const unitDisplay =
+      nutrient === 'calories' ? getEnergyUnitString(energyUnit) : details.unit;
+
+    return (
       <div className="space-y-1">
         <div className="flex justify-between items-center">
           <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -173,37 +137,11 @@ const MiniNutritionTrends = ({
             className="text-xs font-medium"
             style={{ color: details.color }}
           >
-            {nutrient === 'calories'
-              ? Math.round(
-                  convertEnergy(
-                    (data[data.length - 1]?.[
-                      nutrient as keyof DayData
-                    ] as number) || 0,
-                    'kcal',
-                    energyUnit
-                  )
-                ).toString() +
-                ' ' +
-                getEnergyUnitString(energyUnit)
-              : formatNutrientValue(
-                  nutrient,
-                  (data[data.length - 1]?.[
-                    nutrient as keyof DayData
-                  ] as number) || 0,
-                  customNutrients
-                ) +
-                ' ' +
-                details.unit}
+            {displayValue} {unitDisplay}
           </span>
         </div>
         <div className="h-6 w-full bg-gray-100 dark:bg-gray-800 rounded min-w-0">
-          <ResponsiveContainer
-            width="100%"
-            height={24}
-            minWidth={0}
-            minHeight={0}
-            debounce={100}
-          >
+          <ResponsiveContainer width="100%" height={24} debounce={100}>
             <LineChart data={data}>
               <XAxis dataKey="date" hide />
               <YAxis hide />
@@ -213,6 +151,8 @@ const MiniNutritionTrends = ({
                   <CustomTooltip
                     energyUnit={energyUnit}
                     convertEnergy={convertEnergy}
+                    customNutrients={customNutrients}
+                    formatDate={formatDate}
                   />
                 }
               />
@@ -228,10 +168,65 @@ const MiniNutritionTrends = ({
           </ResponsiveContainer>
         </div>
       </div>
-    )
+    );
+  }
+);
+
+MiniTrendChart.displayName = 'MiniTrendChart';
+
+const MiniNutritionTrends = ({
+  selectedDate,
+  customNutrients = [],
+}: MiniNutritionTrendsProps) => {
+  const { t } = useTranslation();
+  const { activeUserId } = useActiveUser();
+  const isMobile = useIsMobile();
+  const platform = isMobile ? 'mobile' : 'desktop';
+  const {
+    formatDateInUserTimezone,
+    nutrientDisplayPreferences,
+    energyUnit,
+    convertEnergy,
+  } = usePreferences();
+
+  const dateRange = useMemo(() => {
+    const endDate = parseISO(selectedDate);
+    const startDate = subDays(endDate, 13);
+    return {
+      start: formatDateInUserTimezone(startDate, 'yyyy-MM-dd'),
+      end: formatDateInUserTimezone(endDate, 'yyyy-MM-dd'),
+    };
+  }, [selectedDate, formatDateInUserTimezone]);
+
+  const { data: chartData = [], isLoading } = useMiniNutritionTrendData(
+    activeUserId || undefined,
+    dateRange.start,
+    dateRange.end
   );
 
-  MiniTrendChart.displayName = 'MiniTrendChart';
+  if (isLoading) {
+    return (
+      <div className="mt-4 p-3 text-center text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        Loading charts...
+      </div>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <div className="mt-4 p-3 text-center text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        No trend data available for the past 14 days
+      </div>
+    );
+  }
+
+  const summaryPreferences = nutrientDisplayPreferences.find(
+    (p) => p.view_group === 'summary' && p.platform === platform
+  );
+
+  const visibleNutrients = summaryPreferences
+    ? summaryPreferences.visible_nutrients
+    : ['calories', 'protein', 'carbs', 'fat', 'dietary_fiber'];
 
   return (
     <div className="mt-4 space-y-3">
@@ -241,8 +236,8 @@ const MiniNutritionTrends = ({
 
       {visibleNutrients.map((nutrient) => {
         const metadata = getNutrientMetadata(nutrient, customNutrients);
-        const details = {
-          color: metadata.chartColor || '#808080', // Use centralized chartColor with fallback for custom nutrients
+        const details: ChartDetails = {
+          color: metadata.chartColor || '#808080',
           label: t(metadata.label, metadata.defaultLabel),
           unit: metadata.unit,
         };
@@ -253,6 +248,10 @@ const MiniNutritionTrends = ({
             nutrient={nutrient}
             details={details}
             data={chartData}
+            energyUnit={energyUnit}
+            convertEnergy={convertEnergy}
+            customNutrients={customNutrients}
+            formatDate={formatDateInUserTimezone}
           />
         );
       })}

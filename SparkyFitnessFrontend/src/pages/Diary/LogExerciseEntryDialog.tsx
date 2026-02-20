@@ -13,20 +13,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { debug, info, warn, error } from '@/utils/logging';
-import { useToast } from '@/hooks/use-toast';
+import { error } from '@/utils/logging';
 import ExerciseHistoryDisplay from '../../components/ExerciseHistoryDisplay';
 import type { ExerciseToLog, WorkoutPresetSet } from '@/types/workout';
-import {
-  Plus,
-  X,
-  Copy,
-  GripVertical,
-  Repeat,
-  Weight,
-  Timer,
-  Activity,
-} from 'lucide-react';
+import { Plus } from 'lucide-react';
 import ExerciseActivityDetailsEditor, {
   type ActivityDetailKeyValuePair,
 } from '../../components/ExerciseActivityDetailsEditor';
@@ -37,28 +27,20 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   arrayMove,
-  useSortable,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { excerciseWorkoutSetTypes } from '@/constants/excerciseWorkoutSetTypes';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useCreateExerciseEntryMutation } from '@/hooks/Exercises/useExerciseEntries';
+import { SortableSetItem } from './ExerciseSortableItems';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  exercise: ExerciseToLog | null; // Change type to ExerciseToLog
+  exercise: ExerciseToLog | null;
   selectedDate: string;
   onSaveSuccess: () => void;
   initialSets?: WorkoutPresetSet[];
@@ -73,178 +55,6 @@ interface LogExerciseEntryDialogProps {
   getEnergyUnitString: (unit: 'kcal' | 'kJ') => string;
 }
 
-const SortableSetItem = React.memo(
-  ({
-    set,
-    index,
-    handleSetChange,
-    handleDuplicateSet,
-    handleRemoveSet,
-    weightUnit,
-    t,
-  }: {
-    set: WorkoutPresetSet;
-    index: number;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleSetChange: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleDuplicateSet: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleRemoveSet: Function;
-    weightUnit: string;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    t: Function;
-  }) => {
-    const { attributes, listeners, setNodeRef, transform, transition } =
-      useSortable({ id: `set-${index}` });
-
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-    };
-
-    return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        className="flex items-center space-x-2"
-        {...attributes}
-      >
-        <div {...listeners}>
-          <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-8 gap-2 flex-grow">
-          <div className="md:col-span-1">
-            <Label>
-              {t('exercise.logExerciseEntryDialog.setLabel', 'Set')}
-            </Label>
-            <p className="font-medium p-2">{set.set_number}</p>
-          </div>
-          <div className="md:col-span-2">
-            <Label>
-              {t('exercise.logExerciseEntryDialog.typeLabel', 'Type')}
-            </Label>
-            <Select
-              value={set.set_type}
-              onValueChange={(value) =>
-                handleSetChange(index, 'set_type', value)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {excerciseWorkoutSetTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="md:col-span-1">
-            <Label className="flex items-center">
-              <Repeat className="h-4 w-4 mr-1" style={{ color: '#3b82f6' }} />
-              {t('exercise.logExerciseEntryDialog.repsLabel', 'Reps')}
-            </Label>
-            <Input
-              type="number"
-              value={set.reps ?? ''}
-              onChange={(e) =>
-                handleSetChange(index, 'reps', Number(e.target.value))
-              }
-            />
-          </div>
-          <div className="md:col-span-1">
-            <Label className="flex items-center">
-              <Weight className="h-4 w-4 mr-1" style={{ color: '#ef4444' }} />
-              {t('exercise.logExerciseEntryDialog.weightLabel', 'Weight')} (
-              {weightUnit})
-            </Label>
-            <Input
-              type="number"
-              value={set.weight ?? ''}
-              onChange={(e) =>
-                handleSetChange(index, 'weight', Number(e.target.value))
-              }
-            />
-          </div>
-          <div className="md:col-span-1">
-            <Label className="flex items-center">
-              <Activity className="h-4 w-4 mr-1" style={{ color: '#10b981' }} />
-              {t('exercise.logExerciseEntryDialog.rpeLabel', 'RPE')}
-            </Label>
-            <Input
-              type="number"
-              min="0"
-              max="10"
-              step="0.5"
-              value={set.rpe ?? ''}
-              onChange={(e) => {
-                const val =
-                  e.target.value === '' ? undefined : Number(e.target.value);
-                handleSetChange(index, 'rpe', val);
-              }}
-              placeholder="1-10"
-            />
-          </div>
-          <div className="md:col-span-1">
-            <Label className="flex items-center">
-              <Timer className="h-4 w-4 mr-1" style={{ color: '#f97316' }} />
-              {t('exercise.logExerciseEntryDialog.durationLabel', 'Duration')}
-            </Label>
-            <Input
-              type="number"
-              value={set.duration ?? ''}
-              onChange={(e) =>
-                handleSetChange(index, 'duration', Number(e.target.value))
-              }
-            />
-          </div>
-          <div className="md:col-span-1">
-            <Label className="flex items-center">
-              <Timer className="h-4 w-4 mr-1" style={{ color: '#8b5cf6' }} />
-              {t('exercise.logExerciseEntryDialog.restLabel', 'Rest (s)')}
-            </Label>
-            <Input
-              type="number"
-              value={set.rest_time ?? ''}
-              onChange={(e) =>
-                handleSetChange(index, 'rest_time', Number(e.target.value))
-              }
-            />
-          </div>
-          <div className="col-span-1 md:col-span-8">
-            <Label>
-              {t('exercise.logExerciseEntryDialog.notesLabel', 'Notes')}
-            </Label>
-            <Textarea
-              value={set.notes ?? ''}
-              onChange={(e) => handleSetChange(index, 'notes', e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="flex flex-col space-y-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDuplicateSet(index)}
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleRemoveSet(index)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    );
-  }
-);
-
 const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   isOpen,
   onClose,
@@ -252,8 +62,6 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   selectedDate,
   onSaveSuccess,
   initialSets,
-  initialNotes,
-  initialImageUrl,
   energyUnit,
   convertEnergy,
   getEnergyUnitString,
@@ -267,74 +75,40 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     convertDistance,
   } = usePreferences();
 
-  const [sets, setSets] = useState<WorkoutPresetSet[]>([]);
   const [notes, setNotes] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(
-    ''
-  ); // New state for user-provided calories
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [distanceInput, setDistanceInput] = useState<number | ''>('');
   const [avgHeartRateInput, setAvgHeartRateInput] = useState<number | ''>('');
   const [activityDetails, setActivityDetails] = useState<
     ActivityDetailKeyValuePair[]
-  >([]); // New state for activity details
+  >([]);
 
-  const { mutateAsync: createExerciseEntry } = useCreateExerciseEntryMutation();
+  const { mutateAsync: createExerciseEntry, isPending: loading } =
+    useCreateExerciseEntryMutation();
 
-  useEffect(() => {
-    if (isOpen && exercise) {
-      setSets(
-        initialSets && initialSets.length > 0
-          ? initialSets
-          : [{ set_number: 1, set_type: 'Working Set', reps: 10, weight: 0 }]
-      );
-      setNotes(initialNotes ?? '');
-      setImageFile(null);
-      // If the exercise has a calories_per_hour, pre-fill the caloriesBurnedInput
+  const [sets, setSets] = useState<WorkoutPresetSet[]>(() =>
+    initialSets && initialSets.length > 0
+      ? initialSets
+      : [{ set_number: 1, set_type: 'Working Set', reps: 10, weight: 0 }]
+  );
+
+  const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(
+    () => {
       if (exercise?.calories_per_hour && exercise.duration) {
-        // Assume exercise.calories_per_hour and exercise.duration are in units that result in kcal
-        setCaloriesBurnedInput(
-          Math.round((exercise.calories_per_hour / 60) * exercise.duration)
-        ); // This value is in kcal
-      } else {
-        setCaloriesBurnedInput('');
+        return Math.round(
+          (exercise.calories_per_hour / 60) * exercise.duration
+        );
       }
-      setDistanceInput(
-        exercise?.distance
-          ? Number(
-              convertDistance(exercise.distance, 'km', distanceUnit).toFixed(1)
-            )
-          : ''
-      );
-      setAvgHeartRateInput(exercise?.avg_heart_rate || '');
-      debug(
-        loggingLevel,
-        `LogExerciseEntryDialog: Opened for exercise ${exercise.name} on ${selectedDate}`
-      );
+      return '';
     }
-  }, [
-    isOpen,
-    exercise,
-    selectedDate,
-    loggingLevel,
-    initialSets,
-    initialNotes,
-    initialImageUrl,
-    distanceUnit,
-    convertDistance,
-  ]);
+  );
 
   const handleSetChange = (
     index: number,
     field: keyof WorkoutPresetSet,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    value: any
+    value: string | number | undefined
   ) => {
-    debug(
-      loggingLevel,
-      `[LogExerciseEntryDialog] handleSetChange: index=${index}, field=${field}, value=${value}, weightUnit=${weightUnit}`
-    );
     setSets((prev) => {
       const newSets = [...prev];
       newSets[index] = { ...newSets[index], [field]: value };
@@ -367,7 +141,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
 
   const handleRemoveSet = (index: number) => {
     setSets((prev) => {
-      if (prev.length === 1) return prev; // Prevent removing the last set
+      if (prev.length === 1) return prev;
       let newSets = prev.filter((_, i) => i !== index);
       newSets = newSets.map((s, i) => ({ ...s, set_number: i + 1 }));
       return newSets;
@@ -381,8 +155,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     })
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setSets((items) => {
@@ -402,31 +175,36 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   };
 
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
       setImageFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
     } else {
       setImageFile(null);
+      setPreviewUrl(null);
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   const handleSave = async () => {
     if (!exercise) {
-      warn(
-        loggingLevel,
-        t(
-          'exercise.logExerciseEntryDialog.noExerciseSelected',
-          'LogExerciseEntryDialog: Attempted to save without a selected exercise.'
-        )
-      );
       return;
     }
 
-    setLoading(true);
     try {
       let finalCaloriesBurned = null;
       if (caloriesBurnedInput !== '') {
-        // Convert user-provided calories back to kcal if the display unit is kJ
         finalCaloriesBurned = convertEnergy(
           Number(caloriesBurnedInput),
           energyUnit,
@@ -434,15 +212,23 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         );
       }
 
+      const mappedDetails = activityDetails
+        .map((detail) => ({
+          provider_name: detail.provider_name,
+          detail_type: detail.detail_type || '',
+          detail_data: detail.value,
+        }))
+        .filter((detail) => detail.detail_type !== '');
+
       const entryData = {
         exercise_id: exercise.id,
         sets: sets.map((set) => ({
           ...set,
-          weight: convertWeight(set.weight, weightUnit, 'kg'), // Corrected to save as kg
+          weight: convertWeight(set.weight ?? 0, weightUnit, 'kg'),
         })),
         notes: notes,
         entry_date: selectedDate,
-        calories_burned: finalCaloriesBurned, // Use the potentially converted value
+        calories_burned: finalCaloriesBurned,
         duration_minutes: sets.reduce(
           (acc, set) => acc + (set.duration || 0),
           0
@@ -454,18 +240,10 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
             : convertDistance(Number(distanceInput), distanceUnit, 'km'),
         avg_heart_rate:
           avgHeartRateInput === '' ? null : Number(avgHeartRateInput),
-        activity_details: activityDetails.map((detail) => ({
-          provider_name: detail.provider_name,
-          detail_type: detail.detail_type,
-          detail_data: detail.value, // Send the raw value, backend will handle JSONB storage
-        })),
+        ...(mappedDetails.length > 0 && { activity_details: mappedDetails }),
       };
 
       await createExerciseEntry(entryData);
-      info(
-        loggingLevel,
-        `LogExerciseEntryDialog: Exercise entry saved successfully for ${exercise.name}`
-      );
       onSaveSuccess();
       onClose();
     } catch (err) {
@@ -474,8 +252,6 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         'LogExerciseEntryDialog: Error saving exercise entry:',
         err
       );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -510,12 +286,11 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                   <SortableSetItem
                     key={`set-${index}`}
                     set={set}
-                    index={index}
+                    setIndex={index}
                     handleSetChange={handleSetChange}
                     handleDuplicateSet={handleDuplicateSet}
                     handleRemoveSet={handleRemoveSet}
                     weightUnit={weightUnit}
-                    t={t}
                   />
                 ))}
               </div>
@@ -646,10 +421,10 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
               accept="image/*"
               onChange={handleImageUpload}
             />
-            {imageFile && (
+            {previewUrl && (
               <div className="mt-2">
                 <img
-                  src={URL.createObjectURL(imageFile)}
+                  src={previewUrl}
                   alt={t(
                     'exercise.logExerciseEntryDialog.imagePreviewAlt',
                     'Preview'

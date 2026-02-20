@@ -1,3 +1,5 @@
+import { MealTotals } from '@/pages/Diary/Diary';
+
 export interface NutrientMetadata {
   id: string;
   label: string;
@@ -180,4 +182,25 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     decimals: 1,
     group: 'minerals',
   },
+};
+
+export const EMPTY_MEAL_TOTALS: MealTotals = {
+  calories: 0,
+  protein: 0,
+  carbs: 0,
+  fat: 0,
+  dietary_fiber: 0,
+  sugars: 0,
+  sodium: 0,
+  cholesterol: 0,
+  saturated_fat: 0,
+  monounsaturated_fat: 0,
+  polyunsaturated_fat: 0,
+  trans_fat: 0,
+  potassium: 0,
+  vitamin_a: 0,
+  vitamin_c: 0,
+  iron: 0,
+  calcium: 0,
+  custom_nutrients: {},
 };

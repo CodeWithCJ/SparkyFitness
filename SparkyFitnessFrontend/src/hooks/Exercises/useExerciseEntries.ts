@@ -12,6 +12,7 @@ import {
 } from '@/api/Exercises/exerciseEntryService';
 import { exerciseEntryKeys, exerciseKeys } from '@/api/keys/exercises';
 import i18n from '@/i18n';
+import { dailyProgressKeys } from '@/api/keys/diary';
 
 // --- Queries ---
 
@@ -64,12 +65,12 @@ export const useUpdateExerciseEntryMutation = () => {
       id: string;
       data: UpdateExerciseEntryPayload;
     }) => updateExerciseEntry(id, data),
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: exerciseEntryKeys.byDate(data.entry_date),
+        queryKey: exerciseEntryKeys.all,
       });
       queryClient.invalidateQueries({
-        queryKey: exerciseEntryKeys.history(data.exercise_id),
+        queryKey: dailyProgressKeys.all,
       });
     },
     meta: {

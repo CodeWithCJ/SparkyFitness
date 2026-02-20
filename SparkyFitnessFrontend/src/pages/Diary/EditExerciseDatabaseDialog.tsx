@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -51,555 +51,318 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
 }) => {
   const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
-
-  const [editExerciseName, setEditExerciseName] = useState('');
-  const [editExerciseCategory, setEditExerciseCategory] = useState('general');
-  const [editExerciseCalories, setEditExerciseCalories] = useState(300);
-  const [editExerciseDescription, setEditExerciseDescription] = useState('');
-  const [editExerciseLevel, setEditExerciseLevel] = useState('');
-  const [editExerciseForce, setEditExerciseForce] = useState('');
-  const [editExerciseMechanic, setEditExerciseMechanic] = useState('');
-  const [editExerciseEquipment, setEditExerciseEquipment] = useState<string[]>(
-    []
-  );
-  const [editExercisePrimaryMuscles, setEditExercisePrimaryMuscles] = useState<
-    string[]
-  >([]);
-  const [editExerciseSecondaryMuscles, setEditExerciseSecondaryMuscles] =
-    useState<string[]>([]);
-  const [editExerciseInstructions, setEditExerciseInstructions] = useState<
-    string[]
-  >([]);
-  const [editExerciseImages, setEditExerciseImages] = useState<string[]>([]);
-  const [newExerciseImageFiles, setNewExerciseImageFiles] = useState<File[]>(
-    []
-  );
-  const [newExerciseImageUrls, setNewExerciseImageUrls] = useState<string[]>(
-    []
-  );
-  const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(
-    null
-  );
-
   const { mutateAsync: updateExercise } = useUpdateExerciseMutation();
 
-  useEffect(() => {
-    if (exerciseToEdit) {
-      setEditExerciseName(exerciseToEdit.name);
-      setEditExerciseCategory(exerciseToEdit.category);
-      setEditExerciseCalories(exerciseToEdit.calories_per_hour); // Assumed to be in kcal
-      setEditExerciseDescription(exerciseToEdit.description || '');
-      setEditExerciseLevel(exerciseToEdit.level?.toLowerCase() || '');
-      setEditExerciseForce(exerciseToEdit.force?.toLowerCase() || '');
-      setEditExerciseMechanic(exerciseToEdit.mechanic?.toLowerCase() || '');
-      setEditExerciseEquipment(
-        Array.isArray(exerciseToEdit.equipment) ? exerciseToEdit.equipment : []
-      );
-      setEditExercisePrimaryMuscles(
-        Array.isArray(exerciseToEdit.primary_muscles)
-          ? exerciseToEdit.primary_muscles
-          : []
-      );
-      setEditExerciseSecondaryMuscles(
-        Array.isArray(exerciseToEdit.secondary_muscles)
-          ? exerciseToEdit.secondary_muscles
-          : []
-      );
-      setEditExerciseInstructions(
-        Array.isArray(exerciseToEdit.instructions)
-          ? exerciseToEdit.instructions
-          : []
-      );
-      setEditExerciseImages(
-        Array.isArray(exerciseToEdit.images) ? exerciseToEdit.images : []
-      );
-      setNewExerciseImageFiles([]);
-      setNewExerciseImageUrls([]);
-    }
-  }, [exerciseToEdit]);
+  // 1. Alle Hooks MÜSSEN am Anfang stehen
+  const [prevId, setPrevId] = useState<string | undefined>(undefined);
+  const [formData, setFormData] = useState<Partial<Exercise>>({});
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
-  const handleSaveExerciseDatabaseEdit = useCallback(async () => {
+  // 2. Derived State Sync (statt useEffect und ohne Early Return davor)
+  if (exerciseToEdit && exerciseToEdit.id !== prevId) {
+    setPrevId(exerciseToEdit.id);
+    setFormData({
+      name: exerciseToEdit.name || '',
+      category: exerciseToEdit.category || '',
+      calories_per_hour: exerciseToEdit.calories_per_hour || 0,
+      description: exerciseToEdit.description || '',
+      level: exerciseToEdit.level?.toLowerCase() || '',
+      force: exerciseToEdit.force?.toLowerCase() || '',
+      mechanic: exerciseToEdit.mechanic?.toLowerCase() || '',
+      equipment: Array.isArray(exerciseToEdit.equipment)
+        ? exerciseToEdit.equipment
+        : [],
+      primary_muscles: Array.isArray(exerciseToEdit.primary_muscles)
+        ? exerciseToEdit.primary_muscles
+        : [],
+      secondary_muscles: Array.isArray(exerciseToEdit.secondary_muscles)
+        ? exerciseToEdit.secondary_muscles
+        : [],
+      instructions: Array.isArray(exerciseToEdit.instructions)
+        ? exerciseToEdit.instructions
+        : [],
+      images: exerciseToEdit.images ? exerciseToEdit.images : [],
+    });
+    setImageFiles([]);
+    setImageUrls([]);
+  }
+
+  const handleSaveExerciseDatabaseEdit = async () => {
     if (!exerciseToEdit) return;
 
     try {
-      const formData = new FormData();
-      const updatedExerciseData: Partial<Exercise> = {
-        name: editExerciseName,
-        category: editExerciseCategory,
+      const data = new FormData();
+      const updatedData = {
+        ...formData,
         calories_per_hour: convertEnergy(
-          editExerciseCalories,
+          formData.calories_per_hour || 0,
           energyUnit,
           'kcal'
-        ), // Convert back to kcal for saving
-        description: editExerciseDescription,
-        level: editExerciseLevel,
-        force: editExerciseForce,
-        mechanic: editExerciseMechanic,
-        equipment: editExerciseEquipment,
-        primary_muscles: editExercisePrimaryMuscles,
-        secondary_muscles: editExerciseSecondaryMuscles,
-        instructions: editExerciseInstructions,
-        images: editExerciseImages,
+        ),
       };
 
-      formData.append('exerciseData', JSON.stringify(updatedExerciseData));
-      newExerciseImageFiles.forEach((file) => {
-        formData.append('images', file);
-      });
+      data.append('exerciseData', JSON.stringify(updatedData));
+      imageFiles.forEach((file) => data.append('images', file));
 
-      await updateExercise({ id: exerciseToEdit.id, payload: formData });
+      await updateExercise({ id: exerciseToEdit.id, payload: data });
       onOpenChange(false);
       onSaveSuccess();
     } catch (err) {
       error(loggingLevel, 'Error updating exercise in database:', err);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    exerciseToEdit,
-    editExerciseName,
-    editExerciseCategory,
-    editExerciseCalories,
-    editExerciseDescription,
-    editExerciseLevel,
-    editExerciseForce,
-    editExerciseMechanic,
-    editExerciseEquipment,
-    editExercisePrimaryMuscles,
-    editExerciseSecondaryMuscles,
-    editExerciseInstructions,
-    editExerciseImages,
-    newExerciseImageFiles,
-    onOpenChange,
-    onSaveSuccess,
-    loggingLevel,
-    t,
-  ]);
+  };
 
+  const handleFieldChange = (field: keyof Exercise, value: unknown) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleArrayStringChange = (field: keyof Exercise, value: string) => {
+    handleFieldChange(
+      field,
+      value.split(',').map((s) => s.trim())
+    );
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[625px] overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>
-            {t(
-              'exerciseCard.editExerciseInDatabase',
-              'Edit Exercise in Database'
-            )}
+            {t('exerciseCard.editExerciseInDatabase', 'Edit Exercise')}
           </DialogTitle>
           <DialogDescription>
-            {t(
-              'exerciseCard.editExerciseInDatabaseDescription',
-              'Edit the details of the selected exercise in the database.'
-            )}
+            {t('exerciseCard.editExerciseDescription', 'Edit details below.')}
           </DialogDescription>
         </DialogHeader>
-        {exerciseToEdit && (
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-db-name" className="text-right">
-                {t('exerciseCard.name', 'Name')}
-              </Label>
-              <Input
-                id="edit-db-name"
-                value={editExerciseName}
-                onChange={(e) => setEditExerciseName(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-db-category" className="text-right">
-                {t('exerciseCard.category', 'Category')}
-              </Label>
-              <Select
-                onValueChange={setEditExerciseCategory}
-                defaultValue={editExerciseCategory}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue
-                    placeholder={t(
-                      'exerciseCard.selectCategory',
-                      'Select a category'
-                    )}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="general">
-                    {t('exerciseCard.categoryGeneral', 'General')}
-                  </SelectItem>
-                  <SelectItem value="strength">
-                    {t('exerciseCard.categoryStrength', 'Strength')}
-                  </SelectItem>
-                  <SelectItem value="cardio">
-                    {t('exerciseCard.categoryCardio', 'Cardio')}
-                  </SelectItem>
-                  <SelectItem value="yoga">
-                    {t('exerciseCard.categoryYoga', 'Yoga')}
-                  </SelectItem>
-                  <SelectItem value="powerlifting">
-                    {t('exerciseCard.categoryPowerlifting', 'Powerlifting')}
-                  </SelectItem>
-                  <SelectItem value="olympic weightlifting">
-                    {t(
-                      'exerciseCard.categoryOlympicWeightlifting',
-                      'Olympic Weightlifting'
-                    )}
-                  </SelectItem>
-                  <SelectItem value="strongman">
-                    {t('exerciseCard.categoryStrongman', 'Strongman')}
-                  </SelectItem>
-                  <SelectItem value="plyometrics">
-                    {t('exerciseCard.categoryPlyometrics', 'Plyometrics')}
-                  </SelectItem>
-                  <SelectItem value="stretching">
-                    {t('exerciseCard.categoryStretching', 'Stretching')}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-db-calories" className="text-right">
-                {t(
-                  'exerciseCard.caloriesPerHour',
-                  `Calories/Hour (${getEnergyUnitString(energyUnit)})`
-                )}
-              </Label>
-              <Input
-                id="edit-db-calories"
-                type="number"
-                value={Math.round(
-                  convertEnergy(editExerciseCalories, 'kcal', energyUnit)
-                ).toString()}
-                onChange={(e) =>
-                  setEditExerciseCalories(
-                    Number(
-                      convertEnergy(Number(e.target.value), energyUnit, 'kcal')
-                    )
-                  )
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-db-level" className="text-right">
-                {t('exerciseCard.level', 'Level')}
-              </Label>
-              <Select
-                onValueChange={setEditExerciseLevel}
-                defaultValue={editExerciseLevel}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue
-                    placeholder={t('exerciseCard.selectLevel', 'Select level')}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="beginner">
-                    {t('exerciseCard.levelBeginner', 'Beginner')}
-                  </SelectItem>
-                  <SelectItem value="intermediate">
-                    {t('exerciseCard.levelIntermediate', 'Intermediate')}
-                  </SelectItem>
-                  <SelectItem value="expert">
-                    {t('exerciseCard.levelExpert', 'Expert')}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-db-force" className="text-right">
-                {t('exerciseCard.force', 'Force')}
-              </Label>
-              <Select
-                onValueChange={setEditExerciseForce}
-                defaultValue={editExerciseForce}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue
-                    placeholder={t('exerciseCard.selectForce', 'Select force')}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pull">
-                    {t('exerciseCard.forcePull', 'Pull')}
-                  </SelectItem>
-                  <SelectItem value="push">
-                    {t('exerciseCard.forcePush', 'Push')}
-                  </SelectItem>
-                  <SelectItem value="static">
-                    {t('exerciseCard.forceStatic', 'Static')}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-db-mechanic" className="text-right">
-                {t('exerciseCard.mechanic', 'Mechanic')}
-              </Label>
-              <Select
-                onValueChange={setEditExerciseMechanic}
-                defaultValue={editExerciseMechanic}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue
-                    placeholder={t(
-                      'exerciseCard.selectMechanic',
-                      'Select mechanic'
-                    )}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="isolation">
-                    {t('exerciseCard.mechanicIsolation', 'Isolation')}
-                  </SelectItem>
-                  <SelectItem value="compound">
-                    {t('exerciseCard.mechanicCompound', 'Compound')}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="edit-db-equipment" className="text-right mt-1">
-                {t('exerciseCard.equipment', 'Equipment (comma-separated)')}
-              </Label>
-              <Input
-                id="edit-db-equipment"
-                value={editExerciseEquipment.join(', ')}
-                onChange={(e) =>
-                  setEditExerciseEquipment(
-                    e.target.value.split(',').map((s) => s.trim())
-                  )
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label
-                htmlFor="edit-db-primary-muscles"
-                className="text-right mt-1"
-              >
-                {t(
-                  'exerciseCard.primaryMuscles',
-                  'Primary Muscles (comma-separated)'
-                )}
-              </Label>
-              <Input
-                id="edit-db-primary-muscles"
-                value={editExercisePrimaryMuscles.join(', ')}
-                onChange={(e) =>
-                  setEditExercisePrimaryMuscles(
-                    e.target.value.split(',').map((s) => s.trim())
-                  )
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label
-                htmlFor="edit-db-secondary-muscles"
-                className="text-right mt-1"
-              >
-                {t(
-                  'exerciseCard.secondaryMuscles',
-                  'Secondary Muscles (comma-separated)'
-                )}
-              </Label>
-              <Input
-                id="edit-db-secondary-muscles"
-                value={editExerciseSecondaryMuscles.join(', ')}
-                onChange={(e) =>
-                  setEditExerciseSecondaryMuscles(
-                    e.target.value.split(',').map((s) => s.trim())
-                  )
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="edit-db-instructions" className="text-right mt-1">
-                {t('exerciseCard.instructions', 'Instructions (one per line)')}
-              </Label>
-              <Textarea
-                id="edit-db-instructions"
-                value={editExerciseInstructions.join('\n')}
-                onChange={(e) =>
-                  setEditExerciseInstructions(
-                    e.target.value.split('\n').map((s) => s.trim())
-                  )
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="edit-db-images" className="text-right mt-1">
-                {t('exerciseCard.images', 'Images')}
-              </Label>
-              <div className="col-span-3">
-                <Input
-                  id="edit-db-images"
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={(e) => {
-                    if (e.target.files) {
-                      const filesArray = Array.from(e.target.files);
-                      setNewExerciseImageFiles((prev) => [
-                        ...prev,
-                        ...filesArray,
-                      ]);
-                      filesArray.forEach((file) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setNewExerciseImageUrls((prev) => [
-                            ...prev,
-                            reader.result as string,
-                          ]);
-                        };
-                        reader.readAsDataURL(file);
-                      });
-                    }
-                  }}
-                  className="col-span-3"
+
+        <div className="grid gap-4 py-4">
+          {/* Name */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">
+              {t('exerciseCard.name', 'Name')}
+            </Label>
+            <Input
+              id="name"
+              value={formData.name || ''}
+              onChange={(e) => handleFieldChange('name', e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+
+          {/* Category */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              {t('exerciseCard.category', 'Category')}
+            </Label>
+            <Select
+              value={formData.category}
+              onValueChange={(val) => handleFieldChange('category', val)}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue
+                  placeholder={t(
+                    'exerciseCard.selectCategory',
+                    'Select category'
+                  )}
                 />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {editExerciseImages.map((url, index) => (
-                    <div
-                      key={`existing-${index}`}
-                      draggable
-                      onDragStart={() => setDraggedImageIndex(index)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        if (draggedImageIndex === null) return;
-                        const newImages = [...editExerciseImages];
-                        const [draggedItem] = newImages.splice(
-                          draggedImageIndex,
-                          1
-                        );
-                        newImages.splice(index, 0, draggedItem);
-                        setEditExerciseImages(newImages);
-                        setDraggedImageIndex(null);
-                      }}
-                      className="relative w-24 h-24 cursor-grab"
-                    >
-                      <img
-                        src={
-                          url.startsWith('http')
-                            ? url
-                            : `/uploads/exercises/${url}`
-                        }
-                        alt={`existing ${index}`}
-                        className="w-full h-full object-cover rounded"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                        onClick={() =>
-                          setEditExerciseImages((prev) =>
-                            prev.filter((_, i) => i !== index)
-                          )
-                        }
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  {newExerciseImageUrls.map((url, index) => (
-                    <div
-                      key={`new-${index}`}
-                      draggable
-                      onDragStart={() =>
-                        setDraggedImageIndex(editExerciseImages.length + index)
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  'general',
+                  'strength',
+                  'cardio',
+                  'yoga',
+                  'powerlifting',
+                  'strongman',
+                  'plyometrics',
+                  'stretching',
+                ].map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Calories */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              {t(
+                'exerciseCard.caloriesPerHour',
+                `Calories/Hour (${getEnergyUnitString(energyUnit)})`
+              )}
+            </Label>
+            <Input
+              type="number"
+              value={Math.round(
+                convertEnergy(
+                  formData.calories_per_hour || 0,
+                  'kcal',
+                  energyUnit
+                )
+              )}
+              onChange={(e) =>
+                handleFieldChange(
+                  'calories_per_hour',
+                  convertEnergy(Number(e.target.value), energyUnit, 'kcal')
+                )
+              }
+              className="col-span-3"
+            />
+          </div>
+
+          {/* Level */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              {t('exerciseCard.level', 'Level')}
+            </Label>
+            <Select
+              value={formData.level}
+              onValueChange={(val) => handleFieldChange('level', val)}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="beginner">
+                  {t('exerciseCard.levelBeginner', 'Beginner')}
+                </SelectItem>
+                <SelectItem value="intermediate">
+                  {t('exerciseCard.levelIntermediate', 'Intermediate')}
+                </SelectItem>
+                <SelectItem value="expert">
+                  {t('exerciseCard.levelExpert', 'Expert')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Equipment */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              {t('exerciseCard.equipment', 'Equipment')}
+            </Label>
+            <Input
+              value={(formData.equipment || []).join(', ')}
+              onChange={(e) =>
+                handleArrayStringChange('equipment', e.target.value)
+              }
+              className="col-span-3"
+            />
+          </div>
+
+          {/* Instructions */}
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right mt-1">
+              {t('exerciseCard.instructions', 'Instructions')}
+            </Label>
+            <Textarea
+              value={(formData.instructions || []).join('\n')}
+              onChange={(e) =>
+                handleFieldChange(
+                  'instructions',
+                  e.target.value.split('\n').map((s) => s.trim())
+                )
+              }
+              className="col-span-3"
+            />
+          </div>
+
+          {/* Images Logic */}
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right mt-1">
+              {t('exerciseCard.images', 'Images')}
+            </Label>
+            <div className="col-span-3 space-y-2">
+              <Input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => {
+                  if (e.target.files) {
+                    const files = Array.from(e.target.files);
+                    setImageFiles((prev) => [...prev, ...files]);
+                    files.forEach((file) => {
+                      const reader = new FileReader();
+                      reader.onloadend = () =>
+                        setImageUrls((prev) => [
+                          ...prev,
+                          reader.result as string,
+                        ]);
+                      reader.readAsDataURL(file);
+                    });
+                  }
+                }}
+              />
+              <div className="flex flex-wrap gap-2">
+                {(formData.images || []).map((url, index) => (
+                  <div key={`existing-${index}`} className="relative w-20 h-20">
+                    <img
+                      src={
+                        url.startsWith('http')
+                          ? url
+                          : `/uploads/exercises/${url}`
                       }
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        if (draggedImageIndex === null) return;
-
-                        const targetIndex = index + editExerciseImages.length;
-
-                        if (draggedImageIndex < editExerciseImages.length) {
-                          // Dragging an existing image
-                          const newExistingImages = [...editExerciseImages];
-                          const [draggedItem] = newExistingImages.splice(
-                            draggedImageIndex,
-                            1
-                          );
-                          newExistingImages.splice(targetIndex, 0, draggedItem);
-                          setEditExerciseImages(newExistingImages);
-                        } else {
-                          // Dragging a new image
-                          const newNewImageFiles = [...newExerciseImageFiles];
-                          const newNewImageUrls = [...newExerciseImageUrls];
-
-                          const draggedNewImageIndex =
-                            draggedImageIndex - editExerciseImages.length;
-                          const [draggedFile] = newNewImageFiles.splice(
-                            draggedNewImageIndex,
-                            1
-                          );
-                          const [draggedUrl] = newNewImageUrls.splice(
-                            draggedNewImageIndex,
-                            1
-                          );
-
-                          newNewImageFiles.splice(
-                            targetIndex - editExerciseImages.length,
-                            0,
-                            draggedFile
-                          );
-                          newNewImageUrls.splice(
-                            targetIndex - editExerciseImages.length,
-                            0,
-                            draggedUrl
-                          );
-
-                          setNewExerciseImageFiles(newNewImageFiles);
-                          setNewExerciseImageUrls(newNewImageUrls);
-                        }
-                        setDraggedImageIndex(null);
-                      }}
-                      className="relative w-24 h-24 cursor-grab"
+                      className="w-full h-full object-cover rounded"
+                      alt=""
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-1 -right-1 h-5 w-5"
+                      onClick={() =>
+                        handleFieldChange(
+                          'images',
+                          formData.images?.filter((_, i) => i !== index)
+                        )
+                      }
                     >
-                      <img
-                        src={url}
-                        alt={`preview ${index}`}
-                        className="w-full h-full object-cover rounded"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                        onClick={() => {
-                          setNewExerciseImageFiles((prev) =>
-                            prev.filter((_, i) => i !== index)
-                          );
-                          setNewExerciseImageUrls((prev) =>
-                            prev.filter((_, i) => i !== index)
-                          );
-                        }}
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                      <XCircle className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+                {imageUrls.map((url, index) => (
+                  <div key={`new-${index}`} className="relative w-20 h-20">
+                    <img
+                      src={url}
+                      className="w-full h-full object-cover rounded border-2 border-green-500"
+                      alt=""
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-1 -right-1 h-5 w-5"
+                      onClick={() => {
+                        setImageFiles((prev) =>
+                          prev.filter((_, i) => i !== index)
+                        );
+                        setImageUrls((prev) =>
+                          prev.filter((_, i) => i !== index)
+                        );
+                      }}
+                    >
+                      <XCircle className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="edit-db-description" className="text-right mt-1">
-                {t('exerciseCard.description', 'Description')}
-              </Label>
-              <Textarea
-                id="edit-db-description"
-                value={editExerciseDescription}
-                onChange={(e) => setEditExerciseDescription(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
           </div>
-        )}
+
+          {/* Description */}
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right mt-1">
+              {t('exerciseCard.description', 'Description')}
+            </Label>
+            <Textarea
+              value={formData.description || ''}
+              onChange={(e) => handleFieldChange('description', e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+        </div>
+
         <Button onClick={handleSaveExerciseDatabaseEdit}>
           {t('exerciseCard.saveChanges', 'Save Changes')}
         </Button>
