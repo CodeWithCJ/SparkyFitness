@@ -6,7 +6,7 @@ const { log } = require("../config/logging");
 
 /**
  * @swagger
- * /dashboard/stats:
+ * /api/dashboard/stats:
  *   get:
  *     summary: Get dashboard statistics for external widgets
  *     tags: [Dashboard]

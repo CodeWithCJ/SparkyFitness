@@ -18,17 +18,17 @@ async function getDashboardStats(userId, date) {
       exerciseEntries,
       userProfile,
       userPreferences,
+      latestMeasurements,
+      checkInMeasurements,
     ] = await Promise.all([
       goalRepository.getMostRecentGoalBeforeDate(userId, date),
       reportRepository.getNutritionData(userId, date, date, []),
       reportRepository.getExerciseEntries(userId, date, date),
       userRepository.getUserProfile(userId),
       preferenceRepository.getUserPreferences(userId),
+      measurementRepository.getLatestMeasurement(userId),
+      measurementRepository.getCheckInMeasurementsByDate(userId, date),
     ]);
-
-    // Latest weight for calculation
-    const latestMeasurements =
-      await measurementRepository.getLatestMeasurement(userId);
 
     // 1. Goal Calories
     const goalCalories = parseFloat(goals?.calories) || 2000;
@@ -49,8 +49,6 @@ async function getDashboardStats(userId, date) {
     });
 
     // 4. Steps Calories
-    const checkInMeasurements =
-      await measurementRepository.getCheckInMeasurementsByDate(userId, date);
     const stepsCount = parseInt(checkInMeasurements?.steps || 0);
 
     let weightKg = parseFloat(latestMeasurements?.weight) || 70;
@@ -62,9 +60,16 @@ async function getDashboardStats(userId, date) {
 
     if (userProfile && userPreferences) {
       const dob = userProfile.date_of_birth;
-      const age = dob
-        ? new Date().getFullYear() - new Date(dob).getFullYear()
-        : 30;
+      let age = 30;
+      if (dob) {
+        const today = new Date();
+        const birthDate = new Date(dob);
+        age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+      }
       const gender = userProfile.gender || "male";
       const bmrAlgorithm = userPreferences.bmr_algorithm || "Mifflin-St Jeor";
       const bodyFat = latestMeasurements?.body_fat_percentage;
