@@ -42,7 +42,9 @@ describe("food database sorting", () => {
     const queryStr = lastCall[0];
 
     expect(queryStr).not.toContain("DISTINCT ON");
-    expect(queryStr).toContain("ORDER BY fv.calories DESC, f.name ASC");
+    expect(queryStr).toContain(
+      "ORDER BY fv.calories DESC NULLS LAST, f.name ASC, f.id ASC",
+    );
   });
 
   it("should construct a valid query when sorting by name", async () => {
@@ -54,7 +56,7 @@ describe("food database sorting", () => {
     const queryStr = lastCall[0];
 
     expect(queryStr).not.toContain("DISTINCT ON");
-    expect(queryStr).toContain("ORDER BY f.name ASC");
+    expect(queryStr).toContain("ORDER BY f.name ASC, f.id ASC");
   });
 
   it("should fallback to default sort for invalid sortBy", async () => {
@@ -65,6 +67,6 @@ describe("food database sorting", () => {
     const lastCall = mockClient.query.mock.calls[0];
     const queryStr = lastCall[0];
 
-    expect(queryStr).toContain("ORDER BY f.name ASC");
+    expect(queryStr).toContain("ORDER BY f.name ASC, f.id ASC");
   });
 });

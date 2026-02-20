@@ -427,7 +427,7 @@ async function getFoodsWithPagination(
       WHERE ${whereClauses.join(" AND ")}
     `;
 
-    let orderByClause = "f.name ASC";
+    let orderByClause = "f.name ASC, f.id ASC";
     if (sortBy) {
       const [sortField, sortOrder] = sortBy.split(":");
       const nutritionSortFields = ["calories", "protein", "carbs", "fat"];
@@ -439,9 +439,9 @@ async function getFoodsWithPagination(
         allowedSortOrders.includes(sortOrder)
       ) {
         if (nutritionSortFields.includes(sortField)) {
-          orderByClause = `fv.${sortField} ${sortOrder.toUpperCase()}, f.name ASC`;
+          orderByClause = `fv.${sortField} ${sortOrder.toUpperCase()} NULLS LAST, f.name ASC, f.id ASC`;
         } else {
-          orderByClause = `f.${sortField} ${sortOrder.toUpperCase()}`;
+          orderByClause = `f.${sortField} ${sortOrder.toUpperCase()}, f.id ASC`;
         }
       } else {
         log(
