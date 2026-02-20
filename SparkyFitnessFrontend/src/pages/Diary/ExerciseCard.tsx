@@ -506,7 +506,11 @@ const ExerciseCard = ({
 
         {/* Log Exercise Entry Dialog */}
         <LogExerciseEntryDialog
-          key={isLogExerciseDialogOpen ? 'open' : 'close'}
+          key={
+            isLogExerciseDialogOpen
+              ? `open-${currentExerciseToLog?.id}`
+              : 'close'
+          }
           isOpen={isLogExerciseDialogOpen}
           onClose={() => {
             setIsLogExerciseDialogOpen(false);

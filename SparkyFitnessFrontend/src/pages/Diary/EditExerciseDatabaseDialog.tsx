@@ -93,16 +93,8 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
 
     try {
       const data = new FormData();
-      const updatedData = {
-        ...formData,
-        calories_per_hour: convertEnergy(
-          formData.calories_per_hour || 0,
-          energyUnit,
-          'kcal'
-        ),
-      };
 
-      data.append('exerciseData', JSON.stringify(updatedData));
+      data.append('exerciseData', JSON.stringify(formData));
       imageFiles.forEach((file) => data.append('images', file));
 
       await updateExercise({ id: exerciseToEdit.id, payload: data });
@@ -120,7 +112,12 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
   const handleArrayStringChange = (field: keyof Exercise, value: string) => {
     handleFieldChange(
       field,
-      value.split(',').map((s) => s.trim())
+      value
+        ? value
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : []
     );
   };
   return (
@@ -176,6 +173,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
                   'strongman',
                   'plyometrics',
                   'stretching',
+                  'olympic weightlifting',
                 ].map((cat) => (
                   <SelectItem key={cat} value={cat}>
                     {cat.charAt(0).toUpperCase() + cat.slice(1)}
@@ -237,7 +235,82 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
               </SelectContent>
             </Select>
           </div>
+          {/* Force */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              {t('exerciseCard.force', 'Force')}
+            </Label>
+            <Select
+              value={formData.force}
+              onValueChange={(val) => handleFieldChange('force', val)}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pull">
+                  {t('exerciseCard.forcePull', 'Pull')}
+                </SelectItem>
+                <SelectItem value="push">
+                  {t('exerciseCard.forcePush', 'Push')}
+                </SelectItem>
+                <SelectItem value="static">
+                  {t('exerciseCard.forceStatic', 'Static')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
+          {/* Mechanic */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              {t('exerciseCard.mechanic', 'Mechanic')}
+            </Label>
+            <Select
+              value={formData.mechanic}
+              onValueChange={(val) => handleFieldChange('mechanic', val)}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="isolation">
+                  {t('exerciseCard.mechanicIsolation', 'Isolation')}
+                </SelectItem>
+                <SelectItem value="compound">
+                  {t('exerciseCard.mechanicCompound', 'Compound')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Primary Muscles */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              {t('exerciseCard.primaryMuscles', 'Primary Muscles')}
+            </Label>
+            <Input
+              value={(formData.primary_muscles || []).join(', ')}
+              onChange={(e) =>
+                handleArrayStringChange('primary_muscles', e.target.value)
+              }
+              className="col-span-3"
+            />
+          </div>
+
+          {/* Secondary Muscles */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              {t('exerciseCard.secondaryMuscles', 'Secondary Muscles')}
+            </Label>
+            <Input
+              value={(formData.secondary_muscles || []).join(', ')}
+              onChange={(e) =>
+                handleArrayStringChange('secondary_muscles', e.target.value)
+              }
+              className="col-span-3"
+            />
+          </div>
           {/* Equipment */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">

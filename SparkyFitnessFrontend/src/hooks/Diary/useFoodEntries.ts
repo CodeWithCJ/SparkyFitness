@@ -186,8 +186,6 @@ export const useCreateFoodEntryMealMutation = () => {
   return useMutation({
     mutationFn: createFoodEntryMeal,
     onSuccess: (_, variables) => {
-      console.log(variables.entry_date);
-
       queryClient.invalidateQueries({
         queryKey: foodEntryMealKeys.byDate(variables.entry_date),
       });

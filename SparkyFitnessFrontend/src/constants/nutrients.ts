@@ -1,4 +1,4 @@
-import { MealTotals } from '@/pages/Diary/Diary';
+import { MealTotals } from '@/types/meal';
 
 export interface NutrientMetadata {
   id: string;

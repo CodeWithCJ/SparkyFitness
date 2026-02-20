@@ -87,11 +87,15 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   const { mutateAsync: createExerciseEntry, isPending: loading } =
     useCreateExerciseEntryMutation();
 
-  const [sets, setSets] = useState<WorkoutPresetSet[]>(() =>
-    initialSets && initialSets.length > 0
-      ? initialSets
-      : [{ set_number: 1, set_type: 'Working Set', reps: 10, weight: 0 }]
-  );
+  const [sets, setSets] = useState<WorkoutPresetSet[]>(() => {
+    if (initialSets && initialSets.length > 0) {
+      return initialSets.map((set) => ({
+        ...set,
+        weight: convertWeight(set.weight || 0, 'kg', weightUnit),
+      }));
+    }
+    return [{ set_number: 1, set_type: 'Working Set', reps: 10, weight: 0 }];
+  });
 
   const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(
     () => {
@@ -203,15 +207,6 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     }
 
     try {
-      let finalCaloriesBurned = null;
-      if (caloriesBurnedInput !== '') {
-        finalCaloriesBurned = convertEnergy(
-          Number(caloriesBurnedInput),
-          energyUnit,
-          'kcal'
-        );
-      }
-
       const mappedDetails = activityDetails
         .map((detail) => ({
           provider_name: detail.provider_name,
@@ -228,7 +223,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         })),
         notes: notes,
         entry_date: selectedDate,
-        calories_burned: finalCaloriesBurned,
+        calories_burned: Number(caloriesBurnedInput),
         duration_minutes: sets.reduce(
           (acc, set) => acc + (set.duration || 0),
           0

@@ -1,8 +1,7 @@
 import { EMPTY_MEAL_TOTALS } from '@/constants/nutrients';
 import i18n from '@/i18n';
-import { MealTotals } from '@/pages/Diary/Diary';
 import type { FoodEntry, FoodVariant } from '@/types/food';
-import { FoodEntryMeal } from '@/types/meal';
+import { FoodEntryMeal, MealTotals } from '@/types/meal';
 
 // Utility functions for nutrition calculations
 
