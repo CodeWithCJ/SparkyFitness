@@ -328,12 +328,29 @@ async function createExerciseEntry(
     // Check for existing entry
     // treat entries without a preset ID as unique if their exercise_id, entry_date, and source match.
     // For entries within a preset, we always allow duplicates (no uniqueness check).
-    // For HealthKit/HealthConnect, skip uniqueness check to allow multiple workouts of the same type per day.
-    const skipDuplicateCheck = ["HealthKit", "HealthConnect"].includes(
-      entrySource,
-    );
+    const syncDuplicateCheck = entryData.source_id ? true : false;
+    const skipManualDuplicateCheck = [
+      "HealthKit",
+      "HealthConnect",
+      "Fitbit",
+    ].includes(entrySource);
+
     let existingEntryResult;
-    if (!exercisePresetEntryId && !skipDuplicateCheck) {
+
+    // 1. Attempt precise sync deduplication via source_id if available
+    if (syncDuplicateCheck) {
+      existingEntryResult = await client.query(
+        "SELECT id FROM exercise_entries WHERE user_id = $1 AND source = $2 AND source_id = $3",
+        [userId, entrySource, entryData.source_id],
+      );
+    }
+
+    // 2. If no source_id match and NOT a sync source, fall back to "Manual" deduplication (name/date)
+    if (
+      !existingEntryResult?.rows?.length &&
+      !exercisePresetEntryId &&
+      !skipManualDuplicateCheck
+    ) {
       if (entryData.workout_plan_assignment_id) {
         // If it's linked to a workout plan assignment, it's unique by that assignment ID and date.
         existingEntryResult = await client.query(
@@ -403,8 +420,8 @@ async function createExerciseEntry(
           snapshot.name, // exercise_name
           snapshot.calories_per_hour,
           snapshot.category,
-          entrySource, // Use entrySource for the entry's source
-          snapshot.source_id, // source_id still comes from the exercise definition
+          entrySource,
+          entryData.source_id || snapshot.source_id, // Use entryData.source_id if available (instance ID), fallback to snapshot (def ID)
           snapshot.force,
           snapshot.level,
           snapshot.mechanic,

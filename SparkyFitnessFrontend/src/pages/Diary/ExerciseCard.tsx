@@ -38,6 +38,7 @@ import {
 } from '@/hooks/Exercises/useExerciseEntries';
 import { useQueryClient } from '@tanstack/react-query';
 import { exerciseByIdOptions } from '@/hooks/Exercises/useExercises';
+import { exerciseEntryKeys } from '@/api/keys/exercises';
 
 // New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
 interface PresetExerciseToLog extends Exercise {
@@ -99,6 +100,19 @@ const ExerciseCard = ({
 
   const { data: exerciseEntries, isLoading: loading } =
     useExerciseEntries(selectedDate);
+
+  // Invalidate exercise entry cache when a diary refresh event is dispatched
+  // (e.g. after a Fitbit sync completes from the Settings page)
+  useEffect(() => {
+    const handleDiaryRefresh = () => {
+      debug(loggingLevel, 'ExerciseCard: foodDiaryRefresh event received, invalidating exercise query cache.');
+      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+    };
+    window.addEventListener('foodDiaryRefresh', handleDiaryRefresh);
+    return () => {
+      window.removeEventListener('foodDiaryRefresh', handleDiaryRefresh);
+    };
+  }, [queryClient, loggingLevel]);
 
   // Effect to handle initialExercisesToLog prop
   useEffect(() => {

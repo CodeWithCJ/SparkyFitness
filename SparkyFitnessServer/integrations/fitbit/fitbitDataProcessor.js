@@ -536,7 +536,6 @@ async function processFitbitActivities(
 
   for (const activity of data.activities) {
     const entryDate = activity.startTime.substring(0, 10);
-    const startIso = parseFitbitTime(activity.startTime, timezoneOffset);
 
     // Safety filter to prevent processing very old data
     if (startDate && entryDate < startDate) {
@@ -554,15 +553,6 @@ async function processFitbitActivities(
     }
 
     const exerciseName = activity.activityName || "Fitbit Activity";
-
-    // Filtering: Skip creating exercise entries for "Walk" if user prefers them as steps only
-    if (exerciseName.toLowerCase() === "walk") {
-      log(
-        "info",
-        `[fitbitDataProcessor] Skipping exercise entry for "Walk" as it is treated as steps only. Day: ${entryDate}`,
-      );
-      continue;
-    }
 
     let exercise = await exerciseRepository.findExerciseByNameAndUserId(
       exerciseName,
@@ -623,28 +613,44 @@ async function processFitbitActivities(
     }
   }
 
-  // Step Fallback: If we have accumulated activity steps, check if they are higher than the current daily total
-  for (const [date, totalActivitySteps] of Object.entries(stepsPerDay)) {
-    try {
-      // Get current step measurement
-      const existingMeasurements =
-        await measurementRepository.getCheckInMeasurementsByDate(userId, date);
+  // Step Fallback Optimization: Fetch all measurements in one range query to avoid queries-in-a-loop
+  const dates = Object.keys(stepsPerDay).sort();
+  if (dates.length === 0) return;
 
+  const startDateRange = dates[0];
+  const endDateRange = dates[dates.length - 1];
+
+  try {
+    const existingMeasurements =
+      await measurementRepository.getCheckInMeasurementsByDateRange(
+        userId,
+        startDateRange,
+        endDateRange,
+      );
+
+    // Map existing measurements by date for O(1) lookups
+    const measurementsByDate = {};
+    if (existingMeasurements && Array.isArray(existingMeasurements)) {
+      existingMeasurements.forEach((m) => {
+        measurementsByDate[m.entry_date.toISOString().split("T")[0]] = m;
+      });
+    }
+
+    for (const [date, totalActivitySteps] of Object.entries(stepsPerDay)) {
+      const existing = measurementsByDate[date];
       const currentSteps =
-        existingMeasurements && existingMeasurements.steps
-          ? parseInt(existingMeasurements.steps, 10)
-          : 0;
+        existing && existing.steps ? parseInt(existing.steps, 10) : 0;
 
       log(
         "debug",
         `[fitbitDataProcessor] Date: ${date}, Activity Steps: ${totalActivitySteps}, Current Steps: ${currentSteps}`,
       );
 
-      // Only upsert if our activity total is higher (handles missing daily summary or manual activity additions)
+      // Only upsert if our activity total is higher
       if (totalActivitySteps > currentSteps) {
         log(
           "info",
-          `[fitbitDataProcessor] Fallback: Activity steps (${totalActivitySteps}) > recorded daily total (${currentSteps}) for ${date}. Updating daily steps.`,
+          `[fitbitDataProcessor] Fallback: Activity steps (${totalActivitySteps}) > recorded daily total (${currentSteps}) for ${date}. Updating.`,
         );
         await measurementRepository.upsertStepData(
           userId,
@@ -653,12 +659,12 @@ async function processFitbitActivities(
           date,
         );
       }
-    } catch (err) {
-      log(
-        "error",
-        `[fitbitDataProcessor] Error in step fallback update for ${date}: ${err.message}`,
-      );
     }
+  } catch (err) {
+    log(
+      "error",
+      `[fitbitDataProcessor] Error in optimized step fallback: ${err.message}`,
+    );
   }
 }
 
