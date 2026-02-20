@@ -33,9 +33,7 @@ interface DayTotals {
 interface DiaryTopControlsProps {
   selectedDate: string;
   dayTotals?: DayTotals;
-  goals?: Goals;
-  onGoalsUpdated?: () => void;
-  refreshTrigger?: number;
+  goals: Goals;
   energyUnit: 'kcal' | 'kJ';
   convertEnergy: (
     value: number,
@@ -54,8 +52,6 @@ const DiaryTopControls = ({
   selectedDate,
   dayTotals = { calories: 0, protein: 0, carbs: 0, fat: 0, dietary_fiber: 0 },
   goals,
-  onGoalsUpdated,
-  refreshTrigger = 0,
   energyUnit,
   convertEnergy,
   customNutrients = [], // Default to empty array
@@ -84,17 +80,13 @@ const DiaryTopControls = ({
     selectedDate,
     dayTotals,
     goals,
-    refreshTrigger,
   });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
       {/* Left Column - Daily Calorie Goal (20% width) */}
       <div className="lg:col-span-1 space-y-4 h-full">
-        <DailyProgress
-          selectedDate={selectedDate}
-          refreshTrigger={refreshTrigger}
-        />
+        <DailyProgress selectedDate={selectedDate} />
       </div>
 
       {/* Middle Column - Nutrition Summary with Edit Goals and Micro Charts (60% width) */}
@@ -105,10 +97,7 @@ const DiaryTopControls = ({
               <CardTitle className="text-lg dark:text-slate-300">
                 {t('diary.nutritionSummary', 'Nutrition Summary')}
               </CardTitle>
-              <EditGoalsForToday
-                selectedDate={selectedDate}
-                onGoalsUpdated={onGoalsUpdated}
-              />
+              <EditGoalsForToday selectedDate={selectedDate} />
             </div>
           </CardHeader>
           <CardContent className="pb-4">
@@ -175,8 +164,7 @@ const DiaryTopControls = ({
             </div>
             <MiniNutritionTrends
               selectedDate={selectedDate}
-              refreshTrigger={refreshTrigger}
-              customNutrients={customNutrients} // Pass customNutrients to chart
+              customNutrients={customNutrients}
             />
           </CardContent>
         </Card>

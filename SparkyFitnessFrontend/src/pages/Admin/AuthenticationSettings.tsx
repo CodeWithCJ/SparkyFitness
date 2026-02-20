@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Info, Lock, Clipboard } from 'lucide-react';
+import { Info, Clipboard } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -11,7 +11,6 @@ import { type GlobalSettings } from '../../api/Admin/globalSettingsService';
 import { toast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import OidcSettings from './OidcSettings';
 import { Button } from '@/components/ui/button';
 import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 

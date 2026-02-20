@@ -4,7 +4,7 @@ import {
   saveFood,
 } from '@/services/enhancedCustomFoodFormService';
 import { Food, FoodVariant } from '@/types/food';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const foodVariantsOptions = (foodId: string) => ({
   queryKey: foodVariantKeys.byFood(foodId),
@@ -14,6 +14,13 @@ export const foodVariantsOptions = (foodId: string) => ({
     errorMessage: 'Failed to load food variants.',
   },
 });
+
+export const useFoodVariants = (foodId: string, isEnabled: boolean = true) => {
+  return useQuery({
+    ...foodVariantsOptions(foodId),
+    enabled: !!foodId && isEnabled,
+  });
+};
 
 export const useSaveFoodMutation = () => {
   const queryClient = useQueryClient();

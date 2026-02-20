@@ -1,5 +1,3 @@
-import { useTranslation } from 'react-i18next';
-
 export interface ServiceType {
   value: string;
   label: string;

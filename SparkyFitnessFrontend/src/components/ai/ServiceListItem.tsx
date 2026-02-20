@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Globe } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import { getServiceTypes } from '@/utils/aiServiceUtils';
 import type { AIService } from '@/services/aiServiceSettingsService';
 import { ServiceForm } from './ServiceForm';

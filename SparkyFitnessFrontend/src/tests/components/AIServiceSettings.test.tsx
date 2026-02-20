@@ -3,7 +3,6 @@ import '@testing-library/jest-dom';
 import AIServiceSettings from '@/pages/Settings/AIServiceSettings';
 import { renderWithClient } from '../test-utils';
 import * as aiServiceSettingsService from '@/services/aiServiceSettingsService';
-import * as globalSettingsService from '@/api/Admin/globalSettingsService';
 
 // Mock react-i18next
 const translations: Record<string, string> = {

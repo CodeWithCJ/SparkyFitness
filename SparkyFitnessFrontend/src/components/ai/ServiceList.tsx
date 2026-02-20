@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { Separator } from '@/components/ui/separator';
-import { Globe } from 'lucide-react';
 import type { AIService } from '@/services/aiServiceSettingsService';
 import { ServiceListItem } from './ServiceListItem';
 

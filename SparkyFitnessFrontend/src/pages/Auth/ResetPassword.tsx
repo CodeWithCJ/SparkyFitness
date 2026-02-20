@@ -12,7 +12,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { debug, info, error } from '@/utils/logging';
+import { debug, info } from '@/utils/logging';
 import useToggle from '@/hooks/use-toggle';
 import PasswordToggle from '@/components/PasswordToggle';
 import { useResetPasswordMutation } from '@/hooks/Auth/useAuth';

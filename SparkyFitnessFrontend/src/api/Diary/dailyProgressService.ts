@@ -1,4 +1,4 @@
-import { apiCall } from './api';
+import { apiCall } from '../../services/api';
 
 export interface Goals {
   calories: number;
@@ -9,7 +9,7 @@ export interface Goals {
 }
 
 import type { FoodEntry } from '@/types/food';
-import type { GroupedExerciseEntry } from '../api/Exercises/exerciseEntryService';
+import type { GroupedExerciseEntry } from '../Exercises/exerciseEntryService';
 
 import type { WorkoutPresetSet } from '@/types/workout';
 

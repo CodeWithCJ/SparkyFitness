@@ -11,6 +11,8 @@ import AddExternalProviderForm from './AddExternalProviderForm';
 import ExternalProviderList from './ExternalProviderList';
 import GarminConnectSettings from './GarminConnectSettings';
 import { syncHevyData } from '@/api/Integrations/integrations';
+import { exerciseEntryKeys } from '@/api/keys/exercises';
+import { useQueryClient } from '@tanstack/react-query';
 
 export interface ExternalDataProvider {
   id: string;
@@ -68,6 +70,7 @@ const ExternalProviderSettings = () => {
   const [garminClientStateFromAddForm, setGarminClientStateFromAddForm] =
     useState<string | null>(null);
 
+  const queryClient = useQueryClient();
   const loadProviders = useCallback(async () => {
     if (!user) return;
 
@@ -583,6 +586,7 @@ const ExternalProviderSettings = () => {
         description: 'Garmin data synchronization initiated.',
       });
       loadProviders();
+      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Garmin sync:', error);
@@ -662,6 +666,7 @@ const ExternalProviderSettings = () => {
         description: 'Fitbit data synchronization initiated.',
       });
       loadProviders();
+      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Fitbit sync:', error);
@@ -744,6 +749,7 @@ const ExternalProviderSettings = () => {
         description: 'Polar data synchronization initiated.',
       });
       loadProviders();
+      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Polar sync:', error);
@@ -769,6 +775,7 @@ const ExternalProviderSettings = () => {
         description: `Hevy data ${fullSync ? 'full history' : 'recent'} synchronization initiated.`,
       });
       loadProviders();
+      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Hevy sync:', error);

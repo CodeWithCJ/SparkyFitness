@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -9,490 +8,102 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAuth } from '@/hooks/useAuth';
-import { useActiveUser } from '@/contexts/ActiveUserContext';
+
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { debug, info, warn, error } from '@/utils/logging';
-import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
+import { debug } from '@/utils/logging';
+
 import {
-  getGoalsForDate,
-  getFoodEntriesForDate,
-  getExerciseEntriesForDate,
-  getCheckInMeasurementsForDate,
-  type CheckInMeasurement,
-} from '@/services/dailyProgressService';
-import type { GroupedExerciseEntry } from '@/api/Exercises/exerciseEntryService';
-import { getMostRecentMeasurement } from '@/services/checkInService';
-import type { FoodEntry } from '@/types/food';
-import { Skeleton } from '@/components/ui/skeleton';
-import { getUserPreferences } from '@/services/preferenceService';
-import { calculateBmr, type BmrAlgorithm } from '@/services/bmrService';
-import { userManagementService } from '@/api/Admin/userManagementService';
+  useDailyGoals,
+  useDailyFoodIntake,
+  useDailyExerciseStats,
+  useDailySteps,
+  useCalculatedBMR,
+} from '@/hooks/Diary/useDailyProgress';
+import { DailyProgressSkeleton } from './DailyProgressSkeleton';
+import { getEnergyUnitString } from '@/utils/nutritionCalculations';
+import { EnergyCircle } from './EnergyProgressCircle';
 
-const DailyProgress = ({
-  selectedDate,
-  refreshTrigger,
-}: {
-  selectedDate: string;
-  refreshTrigger?: number;
-}) => {
+const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const { activeUserId } = useActiveUser();
   const { loggingLevel, calorieGoalAdjustmentMode, energyUnit, convertEnergy } =
-    usePreferences(); // Import calorieGoalAdjustmentMode, energyUnit, convertEnergy
-  debug(
-    loggingLevel,
-    'DailyProgress: Component rendered for date:',
-    selectedDate,
-    'Calorie Goal Adjustment Mode:',
-    calorieGoalAdjustmentMode,
-    'Energy Unit:',
-    energyUnit
-  );
+    usePreferences();
 
-  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal'
-      ? t('common.kcalUnit', 'kcal')
-      : t('common.kJUnit', 'kJ');
-  };
+  const { data: goals, isLoading: loadingGoals } = useDailyGoals(selectedDate);
+  const { data: foodData, isLoading: loadingFood } =
+    useDailyFoodIntake(selectedDate);
+  const { data: exerciseData, isLoading: loadingExercise } =
+    useDailyExerciseStats(selectedDate);
+  const { data: stepsData, isLoading: loadingSteps } =
+    useDailySteps(selectedDate);
+  const { bmr, includeInNet } = useCalculatedBMR();
 
-  // Helper functions for unit conversion
+  const isLoading =
+    loadingGoals || loadingFood || loadingExercise || loadingSteps;
 
-  const [dailyGoals, setDailyGoals] = useState({
-    calories: 2000, // Stored internally as kcal
-    protein: 150,
-    carbs: 250,
-    fat: 67,
-    water_goal_ml: 1920, // Default to 8 glasses * 240ml
-  });
-  const [dailyIntake, setDailyIntake] = useState({
-    calories: 0, // Stored internally as kcal
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-    water_ml: 0,
-  });
-  const [exerciseCalories, setExerciseCalories] = useState(0); // This will now store non-"Active Calories" exercise (kcal)
-  const [activeCaloriesFromExercise, setActiveCaloriesFromExercise] =
-    useState(0); // New state for "Active Calories" (kcal)
-  const [stepsCalories, setStepsCalories] = useState(0); // (kcal)
-  const [dailySteps, setDailySteps] = useState(0);
-  const [bmr, setBmr] = useState<number | null>(null); // (kcal)
-  const [includeBmrInNetCalories, setIncludeBmrInNetCalories] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const currentUserId = activeUserId || user?.id;
-  debug(loggingLevel, 'DailyProgress: Current user ID:', currentUserId);
-
-  useEffect(() => {
-    debug(
-      loggingLevel,
-      'DailyProgress: currentUserId, selectedDate, refreshTrigger useEffect triggered.',
-      { currentUserId, selectedDate, refreshTrigger, calorieGoalAdjustmentMode }
-    );
-    if (currentUserId) {
-      loadGoalsAndIntake();
-    }
-
-    const handleRefresh = () => {
-      info(
-        loggingLevel,
-        'DailyProgress: Received refresh event, triggering data reload.'
-      );
-      loadGoalsAndIntake();
-    };
-
-    window.addEventListener('foodDiaryRefresh', handleRefresh);
-    window.addEventListener('measurementsRefresh', handleRefresh);
-
-    return () => {
-      window.removeEventListener('foodDiaryRefresh', handleRefresh);
-      window.removeEventListener('measurementsRefresh', handleRefresh);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    currentUserId,
-    selectedDate,
-    refreshTrigger,
-    loggingLevel,
-    calorieGoalAdjustmentMode,
-    energyUnit,
-  ]);
-
-  // Convert steps to calories (roughly 0.04 calories per step for average person)
-  const convertStepsToCalories = (steps: number): number => {
-    debug(loggingLevel, 'DailyProgress: Converting steps to calories:', steps);
-    return Math.round(steps * 0.04); // Returns kcal
-  };
-
-  const loadGoalsAndIntake = async () => {
-    info(
-      loggingLevel,
-      'DailyProgress: Loading goals and intake for date:',
-      selectedDate
-    );
-    try {
-      setLoading(true);
-
-      // Parallelize all data fetching
-      debug(loggingLevel, 'DailyProgress: Fetching all data in parallel...');
-      const [
-        goalsData,
-        entriesData,
-        exerciseData,
-        stepsData,
-        prefs,
-        mostRecentWeight,
-        mostRecentHeight,
-        mostRecentBodyFat,
-        userProfile,
-      ] = await Promise.all([
-        getGoalsForDate(selectedDate),
-        getFoodEntriesForDate(selectedDate),
-        getExerciseEntriesForDate(selectedDate),
-        getCheckInMeasurementsForDate(selectedDate),
-        getUserPreferences(loggingLevel),
-        getMostRecentMeasurement('weight'),
-        getMostRecentMeasurement('height'),
-        getMostRecentMeasurement('body_fat_percentage'),
-        userManagementService.getUserProfile(currentUserId),
-      ]);
-
-      // Process Goals
-      info(loggingLevel, 'DailyProgress: Goals loaded:', goalsData);
-      setDailyGoals({
-        calories: goalsData.calories || 2000,
-        protein: goalsData.protein || 150,
-        carbs: goalsData.carbs || 250,
-        fat: goalsData.fat || 67,
-        water_goal_ml: goalsData.water_goal_ml || 1920,
-      });
-
-      // Process Food Entries
-      info(
-        loggingLevel,
-        `DailyProgress: Fetched ${entriesData.length} food entries.`
-      );
-      const totals = (entriesData as FoodEntry[]).reduce(
-        (acc, entry) => {
-          const nutrition = calculateFoodEntryNutrition(entry);
-          acc.calories += nutrition.calories;
-          acc.protein += nutrition.protein;
-          acc.carbs += nutrition.carbs;
-          acc.fat += nutrition.fat;
-          acc.water_ml += nutrition.water_ml;
-          return acc;
-        },
-        { calories: 0, protein: 0, carbs: 0, fat: 0, water_ml: 0 }
-      );
-      info(loggingLevel, 'DailyProgress: Daily intake calculated:', totals);
-      setDailyIntake({
-        calories: Math.round(totals.calories),
-        protein: Math.round(totals.protein),
-        carbs: Math.round(totals.carbs),
-        fat: Math.round(totals.fat),
-        water_ml: Math.round(totals.water_ml),
-      });
-
-      // Process Exercise Entries
-      info(
-        loggingLevel,
-        `DailyProgress: Fetched ${exerciseData.length} exercise entries.`
-      );
-      let activeCaloriesFromExercise = 0;
-      let otherExerciseCalories = 0;
-      (exerciseData as GroupedExerciseEntry[]).forEach((groupedEntry) => {
-        if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
-          groupedEntry.exercises.forEach((entry) => {
-            if (entry.exercise_snapshot?.name === 'Active Calories') {
-              activeCaloriesFromExercise += Number(entry.calories_burned || 0);
-            } else {
-              otherExerciseCalories += Number(entry.calories_burned || 0);
-            }
-          });
-        } else if (groupedEntry.type === 'individual') {
-          if (groupedEntry.exercise_snapshot?.name === 'Active Calories') {
-            activeCaloriesFromExercise += Number(
-              groupedEntry.calories_burned || 0
-            );
-          } else {
-            otherExerciseCalories += Number(groupedEntry.calories_burned || 0);
-          }
-        }
-      });
-      info(
-        loggingLevel,
-        'DailyProgress: Active Calories from Exercise:',
-        activeCaloriesFromExercise
-      );
-      info(
-        loggingLevel,
-        'DailyProgress: Other Exercise Calories:',
-        otherExerciseCalories
-      );
-      setExerciseCalories(otherExerciseCalories);
-      setActiveCaloriesFromExercise(activeCaloriesFromExercise);
-
-      // Process Steps
-      if (stepsData && (stepsData as CheckInMeasurement).steps) {
-        const currentSteps = (stepsData as CheckInMeasurement).steps;
-        info(loggingLevel, 'DailyProgress: Daily steps loaded:', currentSteps);
-        setDailySteps(currentSteps);
-        const stepsCaloriesBurned = convertStepsToCalories(
-          Number(currentSteps)
-        );
-        info(
-          loggingLevel,
-          'DailyProgress: Calories burned from steps:',
-          stepsCaloriesBurned
-        );
-        setStepsCalories(stepsCaloriesBurned);
-      } else {
-        info(loggingLevel, 'DailyProgress: No daily steps found.');
-        setDailySteps(0);
-        setStepsCalories(0);
-      }
-
-      // Process BMR
-      if (prefs && currentUserId) {
-        setIncludeBmrInNetCalories(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (prefs as any).include_bmr_in_net_calories || false
-        );
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const age = (userProfile as any)?.date_of_birth
-          ? new Date().getFullYear() -
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            new Date((userProfile as any).date_of_birth).getFullYear()
-          : 0;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const gender = (userProfile as any)?.gender;
-
-        if (
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (prefs as any).bmr_algorithm &&
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (mostRecentWeight as any)?.weight &&
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (mostRecentHeight as any)?.height &&
-          age &&
-          gender
-        ) {
-          try {
-            const bmrValue = calculateBmr(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (prefs as any).bmr_algorithm as BmrAlgorithm,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (mostRecentWeight as any).weight,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (mostRecentHeight as any).height,
-              age,
-              gender,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (mostRecentBodyFat as any)?.body_fat_percentage
-            );
-            setBmr(bmrValue);
-          } catch (bmrError) {
-            error(
-              loggingLevel,
-              'DailyProgress: Error calculating BMR:',
-              bmrError
-            );
-            setBmr(null);
-          }
-        } else {
-          warn(
-            loggingLevel,
-            'DailyProgress: Missing data for BMR calculation.',
-            {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              bmr_algorithm: (prefs as any).bmr_algorithm,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              weight: (mostRecentWeight as any)?.weight,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              height: (mostRecentHeight as any)?.height,
-              age,
-              gender,
-            }
-          );
-          setBmr(null);
-        }
-      } else {
-        setBmr(null);
-      }
-
-      info(
-        loggingLevel,
-        'DailyProgress: Goals and intake loaded successfully.'
-      );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      error(loggingLevel, 'DailyProgress: Error in loadGoalsAndIntake:', err);
-    } finally {
-      setLoading(false);
-      debug(loggingLevel, 'DailyProgress: Loading state set to false.');
-    }
-  };
-
-  if (loading) {
-    debug(loggingLevel, 'DailyProgress: Displaying loading message.');
-    return (
-      <div>
-        <Card className="h-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center space-x-2 text-base">
-              <Skeleton className="w-4 h-4 rounded-full" />
-              <Skeleton className="h-4 w-48" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-center">
-                <div className="relative w-32 h-32 rounded-full bg-gray-200 dark:bg-slate-700 flex items-center justify-center">
-                  <div className="absolute inset-0 flex flex-col items-center justify-center space-y-1">
-                    <Skeleton className="h-6 w-12" />
-                    <Skeleton className="h-3 w-16" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                <div className="space-y-1">
-                  <Skeleton className="h-6 w-12 mx-auto" />
-                  <Skeleton className="h-3 w-16 mx-auto" />
-                </div>
-                <div className="space-y-1">
-                  <Skeleton className="h-6 w-12 mx-auto" />
-                  <Skeleton className="h-3 w-16 mx-auto" />
-                </div>
-                <div className="space-y-1">
-                  <Skeleton className="h-6 w-12 mx-auto" />
-                  <Skeleton className="h-3 w-16 mx-auto" />
-                </div>
-              </div>
-
-              <div className="text-center p-2 rounded-lg bg-gray-100 dark:bg-slate-800 space-y-1">
-                <Skeleton className="h-4 w-full mx-auto" />
-                <Skeleton className="h-3 w-full mx-auto" />
-                <Skeleton className="h-3 w-full mx-auto" />
-              </div>
-
-              <div className="text-center p-2 rounded-lg bg-gray-100 dark:bg-slate-800">
-                <Skeleton className="h-4 w-full mx-auto" />
-                <Skeleton className="h-3 w-full mx-auto mt-1" />
-              </div>
-
-              {/* <div className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-3 w-10" />
-                </div>
-                <Skeleton className="h-2 w-full" />
-              </div> */}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  if (isLoading) {
+    return <DailyProgressSkeleton />;
   }
 
-  // Calculate total calories burned based on user's refined logic:
-  // Sum all exercise calories *except* those explicitly categorized as "Active Calories".
-  // Then, add either the "Active Calories" (if present and greater than 0) or the "stepsCalories" (if "Active Calories" are 0 or not present).
-  const totalOtherExerciseCaloriesBurned = Math.round(Number(exerciseCalories)); // This now holds 'otherExerciseCalories'
+  const goalCalories = goals?.calories || 2000;
+  const eatenCalories = foodData?.totals.calories || 0;
+
+  const otherExerciseCalories = exerciseData?.otherCalories || 0;
+  const activeCaloriesFromExercise = exerciseData?.activeCalories || 0;
+  const stepsCalories = stepsData?.calories || 0;
+  const dailySteps = stepsData?.steps || 0;
 
   let activeOrStepsCaloriesToAdd = 0;
   if (activeCaloriesFromExercise > 0) {
-    activeOrStepsCaloriesToAdd = Math.round(Number(activeCaloriesFromExercise));
-    info(
-      loggingLevel,
-      'DailyProgress: Including Active Calories from exercise entries:',
-      activeOrStepsCaloriesToAdd
-    );
+    activeOrStepsCaloriesToAdd = activeCaloriesFromExercise;
   } else {
-    activeOrStepsCaloriesToAdd = Math.round(Number(stepsCalories));
-    info(
-      loggingLevel,
-      'DailyProgress: No Active Calories from exercise entries, including Step Calories:',
-      activeOrStepsCaloriesToAdd
-    );
+    activeOrStepsCaloriesToAdd = stepsCalories;
   }
 
-  const bmrCalories = includeBmrInNetCalories && bmr ? bmr : 0;
-  const finalTotalCaloriesBurned =
-    totalOtherExerciseCaloriesBurned + activeOrStepsCaloriesToAdd + bmrCalories;
+  const bmrCalories = includeInNet && bmr ? bmr : 0;
 
-  info(
-    loggingLevel,
-    'DailyProgress: Final Total calories burned (Exercise + Active/Steps + BMR?):',
-    finalTotalCaloriesBurned
-  );
+  const totalCaloriesBurned =
+    otherExerciseCalories + activeOrStepsCaloriesToAdd + bmrCalories;
 
-  let caloriesRemaining: number;
+  const netCalories = eatenCalories - totalCaloriesBurned;
 
-  // Net Calories is always Eaten - Burned (Total) for metabolic visibility
-  const netCalories =
-    Math.round(dailyIntake.calories) - finalTotalCaloriesBurned;
-
+  let caloriesRemaining = 0;
   if (calorieGoalAdjustmentMode === 'dynamic') {
-    // Dynamic Goal: burned calories are effectively added to the budget
-    // Formula: Remaining = Goal - Net  => Goal - (Eaten - Burned) => Goal + Burned - Eaten
-    caloriesRemaining = dailyGoals.calories - netCalories;
+    caloriesRemaining = goalCalories - netCalories;
   } else {
-    // Fixed Goal: daily calorie goal remains constant
-    // Formula: Remaining = Goal - Eaten
-    caloriesRemaining = dailyGoals.calories - Math.round(dailyIntake.calories);
+    caloriesRemaining = goalCalories - eatenCalories;
   }
 
-  const calorieProgress = Math.max(
-    0,
-    ((calorieGoalAdjustmentMode === 'dynamic'
-      ? netCalories
-      : Math.round(dailyIntake.calories)) /
-      dailyGoals.calories) *
-      100
-  );
-  debug(loggingLevel, 'DailyProgress: Calculated progress values:', {
-    finalTotalCaloriesBurned,
-    netCalories,
-    caloriesRemaining,
-    calorieProgress,
-    calorieGoalAdjustmentMode,
+  const numerator =
+    calorieGoalAdjustmentMode === 'dynamic' ? netCalories : eatenCalories;
+  const calorieProgress = Math.max(0, (numerator / goalCalories) * 100);
+
+  // --- Display Conversion (to kJ or kcal) ---
+  const display = {
+    remaining: Math.round(convertEnergy(caloriesRemaining, 'kcal', energyUnit)),
+    eaten: Math.round(convertEnergy(eatenCalories, 'kcal', energyUnit)),
+    burnedTotal: Math.round(
+      convertEnergy(totalCaloriesBurned, 'kcal', energyUnit)
+    ),
+    goal: Math.round(convertEnergy(goalCalories, 'kcal', energyUnit)),
+    exerciseOther: Math.round(
+      convertEnergy(otherExerciseCalories, 'kcal', energyUnit)
+    ),
+    exerciseActive: Math.round(
+      convertEnergy(activeCaloriesFromExercise, 'kcal', energyUnit)
+    ),
+    steps: Math.round(convertEnergy(stepsCalories, 'kcal', energyUnit)),
+    bmr: bmr ? Math.round(convertEnergy(bmr, 'kcal', energyUnit)) : 0,
+    net: Math.round(convertEnergy(netCalories, 'kcal', energyUnit)),
+  };
+
+  debug(loggingLevel, 'DailyProgress: Calculated values', {
+    date: selectedDate,
+    raw: { eatenCalories, totalCaloriesBurned, netCalories },
+    display,
   });
 
-  // Convert all displayed energy values to the user's preferred unit
-  const displayedCaloriesRemaining = Math.round(
-    convertEnergy(caloriesRemaining, 'kcal', energyUnit)
-  );
-  const displayedDailyIntakeCalories = Math.round(
-    convertEnergy(dailyIntake.calories, 'kcal', energyUnit)
-  );
-  const displayedFinalTotalCaloriesBurned = Math.round(
-    convertEnergy(finalTotalCaloriesBurned, 'kcal', energyUnit)
-  );
-  const displayedDailyGoalCalories = Math.round(
-    convertEnergy(dailyGoals.calories, 'kcal', energyUnit)
-  );
-  const displayedExerciseCalories = Math.round(
-    convertEnergy(exerciseCalories, 'kcal', energyUnit)
-  );
-  const displayedActiveCaloriesFromExercise = Math.round(
-    convertEnergy(activeCaloriesFromExercise, 'kcal', energyUnit)
-  );
-  const displayedStepsCalories = Math.round(
-    convertEnergy(stepsCalories, 'kcal', energyUnit)
-  );
-  const displayedBmr = bmr
-    ? Math.round(convertEnergy(bmr, 'kcal', energyUnit))
-    : 0;
-  const displayedNetCalories = Math.round(
-    convertEnergy(netCalories, 'kcal', energyUnit)
-  );
-
-  info(loggingLevel, 'DailyProgress: Rendering daily progress card.');
   return (
-    <Card className="h-full ">
+    <Card className="h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center space-x-2 text-base">
           <Target className="w-4 h-4 text-green-500" />
@@ -503,60 +114,34 @@ const DailyProgress = ({
       </CardHeader>
       <CardContent className="pb-4">
         <div className="space-y-4">
-          {/* Energy Circle - Reduced size */}
-          <div className="flex items-center justify-center">
-            <div className="relative w-32 h-32">
-              <svg
-                className="w-32 h-32 transform -rotate-90"
-                viewBox="0 0 36 36"
-              >
-                <path
-                  className="text-gray-200 dark:text-slate-400"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  fill="transparent"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                <path
-                  className="text-green-500"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  fill="transparent"
-                  strokeDasharray={`${Math.min(calorieProgress, 100)}, 100`}
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <div className="text-xl font-bold text-gray-900 dark:text-gray-50">
-                  {displayedCaloriesRemaining}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {t('exercise.dailyProgress.remaining', 'remaining')}{' '}
-                  {getEnergyUnitString(energyUnit)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Energy Breakdown - Compact */}
+          {/* Energy Circle */}
+          <EnergyCircle
+            remaining={display.remaining}
+            progress={calorieProgress}
+            unit={energyUnit}
+          />
+          {/* Energy Breakdown */}
           <div className="grid grid-cols-3 gap-2 text-center text-sm">
+            {/* Eaten */}
             <div className="space-y-1">
               <div className="flex items-center justify-center text-lg font-bold text-green-600">
                 <Utensils className="w-4 h-4 mr-1" />
-                {displayedDailyIntakeCalories}
+                {display.eaten}
               </div>
               <div className="text-xs text-gray-500">
                 {t('exercise.dailyProgress.eaten', 'eaten')}{' '}
                 {getEnergyUnitString(energyUnit)}
               </div>
             </div>
+
+            {/* Burned (with Tooltip) */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="space-y-1">
+                  <div className="space-y-1 cursor-help">
                     <div className="flex items-center justify-center text-lg font-bold text-orange-600">
                       <Flame className="w-4 h-4 mr-1" />
-                      {displayedFinalTotalCaloriesBurned}
+                      {display.burnedTotal}
                     </div>
                     <div className="text-xs text-gray-500">
                       {t('exercise.dailyProgress.burned', 'burned')}{' '}
@@ -571,31 +156,33 @@ const DailyProgress = ({
                       'Burned Energy Breakdown:'
                     )}
                   </p>
-                  {exerciseCalories > 0 && (
+
+                  {otherExerciseCalories > 0 && (
                     <p>
                       {t(
                         'exercise.dailyProgress.otherExerciseCalories',
                         'Other Exercise: {{exerciseCalories}} {{energyUnit}}',
                         {
-                          exerciseCalories: displayedExerciseCalories,
+                          exerciseCalories: display.exerciseOther,
                           energyUnit: getEnergyUnitString(energyUnit),
                         }
                       )}
                     </p>
                   )}
+
                   {activeCaloriesFromExercise > 0 && (
                     <p>
                       {t(
                         'exercise.dailyProgress.activeCalories',
                         'Active Calories: {{activeCaloriesFromExercise}} {{energyUnit}}',
                         {
-                          activeCaloriesFromExercise:
-                            displayedActiveCaloriesFromExercise,
+                          activeCaloriesFromExercise: display.exerciseActive,
                           energyUnit: getEnergyUnitString(energyUnit),
                         }
                       )}
                     </p>
                   )}
+
                   {stepsCalories > 0 && activeCaloriesFromExercise === 0 && (
                     <p>
                       {t(
@@ -603,30 +190,32 @@ const DailyProgress = ({
                         'Steps: {{dailySteps}} = {{stepsCalories}} {{energyUnit}}',
                         {
                           dailySteps: dailySteps.toLocaleString(),
-                          stepsCalories: displayedStepsCalories,
+                          stepsCalories: display.steps,
                           energyUnit: getEnergyUnitString(energyUnit),
                         }
                       )}
                     </p>
                   )}
-                  {bmr && !isNaN(bmr) && (
+
+                  {bmr && (
                     <p>
                       {t(
                         'exercise.dailyProgress.bmrCalories',
                         'BMR: {{bmr}} {{energyUnit}}',
                         {
-                          bmr: displayedBmr,
+                          bmr: display.bmr,
                           energyUnit: getEnergyUnitString(energyUnit),
                         }
                       )}
                     </p>
                   )}
+
                   <p>
                     {t(
                       'exercise.dailyProgress.totalCaloriesBurned',
                       'Total: {{totalCaloriesBurned}} {{energyUnit}}',
                       {
-                        totalCaloriesBurned: displayedFinalTotalCaloriesBurned,
+                        totalCaloriesBurned: display.burnedTotal,
                         energyUnit: getEnergyUnitString(energyUnit),
                       }
                     )}
@@ -634,20 +223,22 @@ const DailyProgress = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <div className="space-y-1 ">
+
+            {/* Goal */}
+            <div className="space-y-1">
               <div className="flex items-center justify-center text-lg font-bold dark:text-slate-400 text-gray-900">
                 <Flag className="w-4 h-4 mr-1" />
-                {displayedDailyGoalCalories}
+                {display.goal}
               </div>
-              <div className="text-xs dark:text-slate-400 text-gray-500 ">
+              <div className="text-xs dark:text-slate-400 text-gray-500">
                 {t('exercise.dailyProgress.goal', 'goal')}{' '}
                 {getEnergyUnitString(energyUnit)}
               </div>
             </div>
           </div>
 
-          {/* Energy Burned Breakdown - More compact */}
-          {(exerciseCalories > 0 || stepsCalories > 0 || bmr) && (
+          {/* Detailed Burned Breakdown (Visible if data present) */}
+          {(otherExerciseCalories > 0 || stepsCalories > 0 || bmr) && (
             <div className="text-center p-2 bg-blue-50 rounded-lg space-y-1">
               <div className="text-sm font-medium text-blue-700">
                 {t(
@@ -655,31 +246,33 @@ const DailyProgress = ({
                   'Energy Burned Breakdown'
                 )}
               </div>
-              {exerciseCalories > 0 && (
+
+              {otherExerciseCalories > 0 && (
                 <div className="text-xs text-blue-600">
                   {t(
                     'exercise.dailyProgress.otherExerciseCalories',
                     'Other Exercise: {{exerciseCalories}} {{energyUnit}}',
                     {
-                      exerciseCalories: displayedExerciseCalories,
+                      exerciseCalories: display.exerciseOther,
                       energyUnit: getEnergyUnitString(energyUnit),
                     }
                   )}
                 </div>
               )}
+
               {activeCaloriesFromExercise > 0 && (
                 <div className="text-xs text-blue-600">
                   {t(
                     'exercise.dailyProgress.activeCalories',
                     'Active Calories: {{activeCaloriesFromExercise}} {{energyUnit}}',
                     {
-                      activeCaloriesFromExercise:
-                        displayedActiveCaloriesFromExercise,
+                      activeCaloriesFromExercise: display.exerciseActive,
                       energyUnit: getEnergyUnitString(energyUnit),
                     }
                   )}
                 </div>
               )}
+
               {stepsCalories > 0 && activeCaloriesFromExercise === 0 && (
                 <div className="text-xs text-blue-600 flex items-center justify-center gap-1">
                   <Zap className="w-3 h-3" />
@@ -688,19 +281,20 @@ const DailyProgress = ({
                     'Steps: {{dailySteps}} = {{stepsCalories}} {{energyUnit}}',
                     {
                       dailySteps: dailySteps.toLocaleString(),
-                      stepsCalories: displayedStepsCalories,
+                      stepsCalories: display.steps,
                       energyUnit: getEnergyUnitString(energyUnit),
                     }
                   )}
                 </div>
               )}
-              {bmr && !isNaN(bmr) && (
+
+              {bmr && (
                 <div className="text-xs text-blue-600">
                   {t(
                     'exercise.dailyProgress.bmrCalories',
                     'BMR: {{bmr}} {{energyUnit}}',
                     {
-                      bmr: displayedBmr,
+                      bmr: display.bmr,
                       energyUnit: getEnergyUnitString(energyUnit),
                     }
                   )}
@@ -709,14 +303,14 @@ const DailyProgress = ({
             </div>
           )}
 
-          {/* Net Energy Display - Compact */}
+          {/* Net Energy Display */}
           <div className="text-center p-2 dark:bg-slate-300 bg-gray-50 rounded-lg">
-            <div className="text-sm font-medium dark:text-black text-gray-700 ">
+            <div className="text-sm font-medium dark:text-black text-gray-700">
               {t(
                 'exercise.dailyProgress.netEnergy',
                 'Net Energy: {{netCalories}}',
                 {
-                  netCalories: displayedNetCalories,
+                  netCalories: display.net,
                   energyUnit: getEnergyUnitString(energyUnit),
                 }
               )}
@@ -726,15 +320,15 @@ const DailyProgress = ({
                 'exercise.dailyProgress.netEnergyBreakdown',
                 '{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned',
                 {
-                  dailyIntakeCalories: displayedDailyIntakeCalories,
-                  finalTotalCaloriesBurned: displayedFinalTotalCaloriesBurned,
+                  dailyIntakeCalories: display.eaten,
+                  finalTotalCaloriesBurned: display.burnedTotal,
                   energyUnit: getEnergyUnitString(energyUnit),
                 }
               )}
             </div>
           </div>
 
-          {/* Progress Bar - Compact */}
+          {/* Progress Bar */}
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span>

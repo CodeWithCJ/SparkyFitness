@@ -17,16 +17,19 @@ import {
   History,
   Utensils,
   ClipboardCopy,
-  PlusCircle, // Adding PlusCircle icon for "Convert to Meal"
+  PlusCircle,
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import EnhancedFoodSearch from '../../components/EnhancedFoodSearch';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { debug, info } from '@/utils/logging';
-
-import type { Food, FoodVariant, FoodEntry, GlycemicIndex } from '@/types/food';
+import { debug } from '@/utils/logging';
+import {
+  getNutrientMetadata,
+  formatNutrientValue,
+} from '@/utils/nutrientUtils';
+import { useCopyFoodEntriesFromYesterdayMutation } from '@/hooks/Diary/useFoodEntries';
+import type { Food, FoodEntry, GlycemicIndex } from '@/types/food';
 import type { Meal, FoodEntryMeal } from '@/types/meal';
 
 interface MealTotals {
@@ -47,8 +50,8 @@ interface MealTotals {
   vitamin_c?: number;
   iron?: number;
   calcium?: number;
-  glycemic_index?: GlycemicIndex; // Add glycemic_index to MealTotals
-  custom_nutrients?: Record<string, number>; // Add custom_nutrients support
+  glycemic_index?: GlycemicIndex;
+  custom_nutrients?: Record<string, number>;
 }
 
 import type { UserCustomNutrient } from '@/types/customNutrient';
@@ -57,22 +60,20 @@ interface MealCardProps {
   meal: {
     name: string;
     type: string;
-    entries: (FoodEntry | FoodEntryMeal)[]; // Updated to accept both types
+    entries: (FoodEntry | FoodEntryMeal)[];
     targetCalories?: number;
     selectedDate: string;
   };
   totals: MealTotals;
+  selectedDate: string;
   onFoodSelect: (item: Food | Meal, mealType: string) => void;
-  onEditEntry: (entry: FoodEntry | FoodEntryMeal) => void; // Updated to accept both types
-  onEditFood: (food: Food) => void;
+  onEditEntry: (entry: FoodEntry | FoodEntryMeal) => void;
   onRemoveEntry: (
     itemId: string,
     itemType: 'foodEntry' | 'foodEntryMeal'
-  ) => Promise<void>; // Updated signature to match FoodDiary's handleRemoveEntry
-  getEntryNutrition: (entry: FoodEntry | FoodEntryMeal) => MealTotals; // Updated to accept both types
-  onMealAdded: () => void;
+  ) => Promise<void>;
+  getEntryNutrition: (entry: FoodEntry | FoodEntryMeal) => MealTotals;
   onCopyClick: (mealType: string) => void;
-  onCopyFromYesterday: (mealType: string) => void;
   onConvertToMealClick: (mealType: string) => void;
   energyUnit: 'kcal' | 'kJ';
   convertEnergy: (
@@ -85,30 +86,22 @@ interface MealCardProps {
   onFoodSearchClose?: () => void;
 }
 
-import {
-  getNutrientMetadata,
-  formatNutrientValue,
-} from '@/utils/nutrientUtils';
-
 const MealCard = ({
   meal,
   totals,
   onFoodSelect,
   onEditEntry,
-  onEditFood,
   onRemoveEntry,
   getEntryNutrition,
-  onMealAdded,
   onCopyClick,
-  onCopyFromYesterday,
   onConvertToMealClick,
   energyUnit,
   convertEnergy,
-  customNutrients = [],
+  selectedDate,
   shouldOpenFoodSearch,
   onFoodSearchClose,
+  customNutrients = [], // Default to empty array
 }: MealCardProps) => {
-  const { user } = useAuth();
   const { t } = useTranslation();
   const { loggingLevel, nutrientDisplayPreferences } = usePreferences();
   const isMobile = useIsMobile();
@@ -125,6 +118,8 @@ const MealCard = ({
     }
   };
 
+  const { mutate: copyFoodEntriesFromYesterday } =
+    useCopyFoodEntriesFromYesterdayMutation();
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal'
       ? t('common.kcalUnit', 'kcal')
@@ -133,27 +128,6 @@ const MealCard = ({
   debug(loggingLevel, 'MealCard: Component rendered for meal:', meal.name);
   debug(loggingLevel, 'MealCard: meal.entries:', meal.entries);
   const [editingFood, setEditingFood] = useState<Food | null>(null); // Changed from editingFoodEntry to editingFood
-
-  const handleEditFood = (food: Food) => {
-    // This now expects a Food
-    debug(loggingLevel, 'MealCard: Handling edit food for food:', food.id);
-    setEditingFood(food); // Set the food object to be edited
-  };
-
-  const handleSaveFood = () => {
-    debug(loggingLevel, 'MealCard: Handling save food.');
-    if (editingFood) {
-      onEditFood(editingFood); // Pass the edited food
-    }
-    setEditingFood(null);
-    info(loggingLevel, 'MealCard: Food saved and refresh triggered.');
-  };
-
-  const handleCancelFood = () => {
-    debug(loggingLevel, 'MealCard: Handling cancel food.');
-    setEditingFood(null);
-    info(loggingLevel, 'MealCard: Food edit cancelled.');
-  };
 
   const quickInfoPreferences =
     nutrientDisplayPreferences.find(
@@ -199,8 +173,6 @@ const MealCard = ({
       .map((cn) => cn.name),
   ];
 
-  const allDisplayableNutrients = [...summableNutrients, 'glycemic_index'];
-
   const defaultNutrients = [
     'calories',
     'protein',
@@ -211,10 +183,6 @@ const MealCard = ({
 
   const quickInfoNutrients = quickInfoPreferences
     ? quickInfoPreferences.visible_nutrients
-    : defaultNutrients;
-
-  const foodDatabaseNutrients = foodDatabasePreferences
-    ? foodDatabasePreferences.visible_nutrients
     : defaultNutrients;
 
   debug(loggingLevel, 'MealCard: isMobile:', isMobile);
@@ -229,9 +197,13 @@ const MealCard = ({
   const visibleNutrientsForGrid = quickInfoNutrients.filter((nutrient) =>
     summableNutrients.includes(nutrient)
   );
-  const foodDatabaseVisibleNutrients = foodDatabaseNutrients.filter(
-    (nutrient) => summableNutrients.includes(nutrient)
-  );
+
+  const handleCopyFromYesterday = () => {
+    copyFoodEntriesFromYesterday({
+      mealType: meal.type,
+      targetDate: selectedDate,
+    });
+  };
 
   return (
     <>
@@ -326,7 +298,7 @@ const MealCard = ({
               </Button>
               <Button
                 size="default"
-                onClick={() => onCopyFromYesterday(meal.type)}
+                onClick={handleCopyFromYesterday}
                 title="Copy food entries from yesterday's meal"
               >
                 <History className="w-4 h-4" />

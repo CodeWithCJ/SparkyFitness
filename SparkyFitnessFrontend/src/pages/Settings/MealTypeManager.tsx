@@ -22,7 +22,7 @@ import {
   updateMealType,
   deleteMealType,
   type MealTypeDefinition,
-} from '@/services/mealTypeService';
+} from '@/api/Diary/mealTypeService';
 import { Badge } from '@/components/ui/badge';
 
 const MealTypeManager = () => {

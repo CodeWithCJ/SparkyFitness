@@ -31,19 +31,19 @@ export const presetKeys = {
 };
 
 export const exerciseSearchKeys = {
-  all: ['exercises'] as const,
-  providers: ['exercises', 'providers'] as const,
+  all: ['exerciseSearch'] as const,
+  providers: ['exerciseSearch', 'providers'] as const,
   filters: {
-    all: ['exercises', 'filters'] as const,
-    equipment: () => ['exercises', 'filters', 'equipment'] as const,
-    muscles: () => ['exercises', 'filters', 'muscles'] as const,
-    wger: () => ['exercises', 'filters', 'wger'] as const,
+    all: ['exerciseSearch', 'filters'] as const,
+    equipment: () => ['exerciseSearch', 'filters', 'equipment'] as const,
+    muscles: () => ['exerciseSearch', 'filters', 'muscles'] as const,
+    wger: () => ['exerciseSearch', 'filters', 'wger'] as const,
   },
   search: {
-    all: ['exercises', 'search'] as const,
+    all: ['exerciseSearch', 'search'] as const,
     internal: (query: string, equipment: string[], muscles: string[]) =>
       [
-        'exercises',
+        'exerciseSearch',
         'search',
         'internal',
         { query, equipment, muscles },
@@ -57,7 +57,7 @@ export const exerciseSearchKeys = {
       limit?: number
     ) =>
       [
-        'exercises',
+        'exerciseSearch',
         'search',
         'external',
         query,
@@ -68,9 +68,9 @@ export const exerciseSearchKeys = {
   },
   suggestions: {
     recent: (userId: string, limit: number) =>
-      ['exercises', 'recent', userId, { limit }] as const,
+      ['exerciseSearch', 'recent', userId, { limit }] as const,
     top: (userId: string, limit: number) =>
-      ['exercises', 'top', userId, { limit }] as const,
+      ['exerciseSearch', 'top', userId, { limit }] as const,
   },
 };
 

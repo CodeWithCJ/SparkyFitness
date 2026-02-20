@@ -2,7 +2,8 @@ import { foodKeys, providerKeys } from '@/api/keys/meals';
 import {
   createFoodEntry,
   FoodEntryCreateData,
-} from '@/services/foodEntryService';
+  loadMiniNutritionTrendData,
+} from '@/api/Diary/foodEntryService';
 import {
   deleteFood,
   FoodFilter,
@@ -22,6 +23,7 @@ import {
 } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
+import { reportKeys } from '@/api/keys/diary';
 
 export const useFoods = (
   searchTerm: string,
@@ -109,6 +111,12 @@ export const foodViewOptions = (foodId: string) => ({
     ),
   },
 });
+export const useFoodView = (foodId: string, isEnabled: boolean = true) => {
+  return useQuery({
+    ...foodViewOptions(foodId),
+    enabled: !!foodId && isEnabled,
+  });
+};
 
 export const searchMealieOptions = (
   query: string,
@@ -212,6 +220,25 @@ export const useUpdateFoodEntriesSnapshotMutation = () => {
       successMessage: t(
         'foodDatabaseManager.foodSnapshotUpdatedSuccessfully',
         'Food entries snapshot updated successfully.'
+      ),
+    },
+  });
+};
+export const useMiniNutritionTrendData = (
+  userId: string | undefined,
+  startDate: string,
+  endDate: string
+) => {
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: reportKeys.nutritionTrendDetail(userId || '', startDate, endDate),
+    queryFn: () => loadMiniNutritionTrendData(userId!, startDate, endDate),
+    enabled: !!userId && !!startDate && !!endDate,
+    meta: {
+      errorMessage: t(
+        'reports.miniNutritionTrendsError',
+        'Failed to load nutrition trend data.'
       ),
     },
   });

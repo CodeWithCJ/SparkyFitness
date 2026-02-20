@@ -12,6 +12,7 @@ import {
 } from '@/api/Exercises/exerciseEntryService';
 import { exerciseEntryKeys, exerciseKeys } from '@/api/keys/exercises';
 import i18n from '@/i18n';
+import { dailyProgressKeys } from '@/api/keys/diary';
 
 // --- Queries ---
 
@@ -20,6 +21,8 @@ export const useExerciseEntries = (date: string) => {
     queryKey: exerciseEntryKeys.byDate(date),
     queryFn: () => fetchExerciseEntries(date),
     enabled: !!date,
+    staleTime: 0, // Always consider data stale so it refetches when needed
+    refetchOnWindowFocus: true, // Refetch when user returns to the tab after a sync
   });
 };
 
@@ -62,12 +65,12 @@ export const useUpdateExerciseEntryMutation = () => {
       id: string;
       data: UpdateExerciseEntryPayload;
     }) => updateExerciseEntry(id, data),
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: exerciseEntryKeys.byDate(data.entry_date),
+        queryKey: exerciseEntryKeys.all,
       });
       queryClient.invalidateQueries({
-        queryKey: exerciseEntryKeys.history(data.exercise_id),
+        queryKey: dailyProgressKeys.all,
       });
     },
     meta: {

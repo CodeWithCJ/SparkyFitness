@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -22,10 +22,7 @@ import {
 } from '@/utils/chartUtils';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
-import {
-  getNutrientMetadata,
-  formatNutrientValue,
-} from '@/utils/nutrientUtils';
+import { formatNutrientValue } from '@/utils/nutrientUtils';
 interface NutritionData {
   date: string;
   calories: number;
