@@ -19,11 +19,6 @@ import { toast } from '@/hooks/use-toast';
 import { warn, error } from '@/utils/logging';
 import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
 import type { Meal, MealFood, MealPayload } from '@/types/meal';
-import {
-  createFoodEntryMeal,
-  updateFoodEntryMeal,
-  getFoodEntryMealWithComponents,
-} from '@/services/foodEntryService';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import FoodSearchDialog from './FoodSearchDialog';
 import { useQueryClient } from '@tanstack/react-query';
@@ -36,10 +31,14 @@ import {
   getNutrientMetadata,
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
+import {
+  foodEntryMealDetailsOptions,
+  useCreateFoodEntryMealMutation,
+  useUpdateFoodEntryMealMutation,
+} from '@/hooks/Diary/useFoodEntries';
 
 interface MealBuilderProps {
   mealId?: string; // Optional: if editing an existing meal template
-  onSave?: (meal: Meal) => void;
   onCancel?: () => void;
   initialFoods?: MealFood[]; // New prop for food diary entries
   source?: 'meal-management' | 'food-diary'; // New prop to differentiate context
@@ -48,11 +47,11 @@ interface MealBuilderProps {
   foodEntryMealType?: string; // New prop for food diary editing
   initialServingSize?: number;
   initialServingUnit?: string;
+  onSave?: () => void;
 }
 
 const MealBuilder: React.FC<MealBuilderProps> = ({
   mealId,
-  onSave,
   onCancel,
   initialFoods,
   source = 'meal-management', // Default to meal-management
@@ -61,6 +60,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   foodEntryMealType,
   initialServingSize,
   initialServingUnit,
+  onSave,
 }) => {
   const { activeUserId } = useActiveUser();
   const {
@@ -111,6 +111,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 
   const { mutateAsync: updateMeal } = useUpdateMealMutation();
   const { mutateAsync: createMeal } = useCreateMealMutation();
+  const { mutateAsync: createFoodEntryMeal } = useCreateFoodEntryMealMutation();
+  const { mutateAsync: updateFoodEntryMeal } = useUpdateFoodEntryMealMutation();
   useEffect(() => {
     const fetchMealData = async () => {
       if (!activeUserId) return;
@@ -128,19 +130,13 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           }
         } catch (err) {
           error(loggingLevel, 'Failed to fetch meal for editing:', err);
-          toast({
-            title: t('mealBuilder.errorTitle', 'Error'),
-            description: t(
-              'mealBuilder.loadMealError',
-              'Failed to load meal for editing.'
-            ),
-            variant: 'destructive',
-          });
         }
       } else if (source === 'food-diary' && foodEntryId) {
         // Use foodEntryId for food-diary editing
         try {
-          const loggedMeal = await getFoodEntryMealWithComponents(foodEntryId);
+          const loggedMeal = await queryClient.fetchQuery(
+            foodEntryMealDetailsOptions(foodEntryId)
+          );
           if (loggedMeal) {
             const quantity = loggedMeal.quantity || 1;
             setMealName(loggedMeal.name);
@@ -157,14 +153,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             `Failed to fetch logged meal with components for foodEntryId ${foodEntryId}:`,
             err
           );
-          toast({
-            title: t('mealBuilder.errorTitle', 'Error'),
-            description: t(
-              'mealBuilder.loadFoodDiaryMealError',
-              'Failed to load food diary meal for editing.'
-            ),
-            variant: 'destructive',
-          });
         }
       } else if (source === 'food-diary' && !foodEntryId && mealId) {
         // NEW: Fetch template for logging new meal
@@ -184,14 +172,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             'Failed to fetch meal template for logging:',
             err
           );
-          toast({
-            title: t('mealBuilder.errorTitle', 'Error'),
-            description: t(
-              'mealBuilder.loadMealError',
-              'Failed to load meal template.'
-            ),
-            variant: 'destructive',
-          });
         }
       } else if (initialFoods) {
         // For new food-diary entries or when initialFoods are pre-loaded
@@ -219,127 +199,120 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     foodEntryMealType,
   ]); // Update dependency array
 
-  const handleAddFoodToMeal = useCallback((food: Food) => {
+  const handleAddFoodToMeal = (food: Food) => {
     setSelectedFoodForUnitSelection(food);
     setEditingMealFood(null); // Clear editing state when adding new food
     setIsFoodUnitSelectorOpen(true);
-  }, []);
+  };
 
-  const handleEditFoodInMeal = useCallback(
-    (index: number) => {
-      const mealFoodToEdit = mealFoods[index];
-      if (mealFoodToEdit) {
-        // Create a dummy Food object for FoodUnitSelector
-        // This is a workaround as FoodUnitSelector expects a Food object
-        const dummyFood: Food = {
-          id: mealFoodToEdit.food_id,
-          name: mealFoodToEdit.food_name || '',
-          is_custom: false, // Assuming foods added to meals are not always custom, or this property is not relevant for editing quantity/unit
-          default_variant: {
-            id: mealFoodToEdit.variant_id,
-            serving_size: mealFoodToEdit.serving_size || 1,
-            serving_unit:
-              mealFoodToEdit.serving_unit || mealFoodToEdit.unit || 'serving',
-            calories: mealFoodToEdit.calories || 0,
-            protein: mealFoodToEdit.protein || 0,
-            carbs: mealFoodToEdit.carbs || 0,
-            fat: mealFoodToEdit.fat || 0,
-            saturated_fat: mealFoodToEdit.saturated_fat,
-            polyunsaturated_fat: mealFoodToEdit.polyunsaturated_fat,
-            monounsaturated_fat: mealFoodToEdit.monounsaturated_fat,
-            trans_fat: mealFoodToEdit.trans_fat,
-            cholesterol: mealFoodToEdit.cholesterol,
-            sodium: mealFoodToEdit.sodium,
-            potassium: mealFoodToEdit.potassium,
-            dietary_fiber: mealFoodToEdit.dietary_fiber,
-            sugars: mealFoodToEdit.sugars,
-            vitamin_a: mealFoodToEdit.vitamin_a,
-            vitamin_c: mealFoodToEdit.vitamin_c,
-            calcium: mealFoodToEdit.calcium,
-            iron: mealFoodToEdit.iron,
-            glycemic_index: mealFoodToEdit.glycemic_index as GlycemicIndex,
-            custom_nutrients: mealFoodToEdit.custom_nutrients,
-          },
-        };
-        setSelectedFoodForUnitSelection(dummyFood);
-        setEditingMealFood({ mealFood: mealFoodToEdit, index });
-        setIsFoodUnitSelectorOpen(true);
-      }
-    },
-    [mealFoods]
-  );
-
-  const handleFoodUnitSelected = useCallback(
-    (
-      food: Food,
-      quantity: number,
-      unit: string,
-      selectedVariant: FoodVariant
-    ) => {
-      const updatedMealFood: MealFood = {
-        food_id: food.id,
-        food_name: food.name,
-        variant_id: selectedVariant.id,
-        quantity: quantity,
-        unit: unit,
-        calories: selectedVariant.calories,
-        protein: selectedVariant.protein,
-        carbs: selectedVariant.carbs,
-        fat: selectedVariant.fat,
-        serving_size: selectedVariant.serving_size,
-        serving_unit: selectedVariant.serving_unit,
-        saturated_fat: selectedVariant.saturated_fat,
-        polyunsaturated_fat: selectedVariant.polyunsaturated_fat,
-        monounsaturated_fat: selectedVariant.monounsaturated_fat,
-        trans_fat: selectedVariant.trans_fat,
-        cholesterol: selectedVariant.cholesterol,
-        sodium: selectedVariant.sodium,
-        potassium: selectedVariant.potassium,
-        dietary_fiber: selectedVariant.dietary_fiber,
-        sugars: selectedVariant.sugars,
-        vitamin_a: selectedVariant.vitamin_a,
-        vitamin_c: selectedVariant.vitamin_c,
-        calcium: selectedVariant.calcium,
-        iron: selectedVariant.iron,
-        glycemic_index: selectedVariant.glycemic_index,
-        custom_nutrients: selectedVariant.custom_nutrients,
+  const handleEditFoodInMeal = (index: number) => {
+    const mealFoodToEdit = mealFoods[index];
+    if (mealFoodToEdit) {
+      // Create a dummy Food object for FoodUnitSelector
+      // This is a workaround as FoodUnitSelector expects a Food object
+      const dummyFood: Food = {
+        id: mealFoodToEdit.food_id,
+        name: mealFoodToEdit.food_name || '',
+        is_custom: false, // Assuming foods added to meals are not always custom, or this property is not relevant for editing quantity/unit
+        default_variant: {
+          id: mealFoodToEdit.variant_id,
+          serving_size: mealFoodToEdit.serving_size || 1,
+          serving_unit:
+            mealFoodToEdit.serving_unit || mealFoodToEdit.unit || 'serving',
+          calories: mealFoodToEdit.calories || 0,
+          protein: mealFoodToEdit.protein || 0,
+          carbs: mealFoodToEdit.carbs || 0,
+          fat: mealFoodToEdit.fat || 0,
+          saturated_fat: mealFoodToEdit.saturated_fat,
+          polyunsaturated_fat: mealFoodToEdit.polyunsaturated_fat,
+          monounsaturated_fat: mealFoodToEdit.monounsaturated_fat,
+          trans_fat: mealFoodToEdit.trans_fat,
+          cholesterol: mealFoodToEdit.cholesterol,
+          sodium: mealFoodToEdit.sodium,
+          potassium: mealFoodToEdit.potassium,
+          dietary_fiber: mealFoodToEdit.dietary_fiber,
+          sugars: mealFoodToEdit.sugars,
+          vitamin_a: mealFoodToEdit.vitamin_a,
+          vitamin_c: mealFoodToEdit.vitamin_c,
+          calcium: mealFoodToEdit.calcium,
+          iron: mealFoodToEdit.iron,
+          glycemic_index: mealFoodToEdit.glycemic_index as GlycemicIndex,
+          custom_nutrients: mealFoodToEdit.custom_nutrients,
+        },
       };
+      setSelectedFoodForUnitSelection(dummyFood);
+      setEditingMealFood({ mealFood: mealFoodToEdit, index });
+      setIsFoodUnitSelectorOpen(true);
+    }
+  };
 
-      if (editingMealFood) {
-        // Update existing meal food
-        setMealFoods((prev) => {
-          const newMealFoods = [...prev];
-          newMealFoods[editingMealFood.index] = updatedMealFood;
-          return newMealFoods;
-        });
-        toast({
-          title: t('mealBuilder.successTitle', 'Success'),
-          description: t('mealBuilder.foodUpdatedInMeal', {
-            foodName: food.name,
-            defaultValue: `${food.name} updated in meal.`,
-          }),
-        });
-      } else {
-        // Add new meal food
-        setMealFoods((prev) => [...prev, updatedMealFood]);
-        toast({
-          title: t('mealBuilder.successTitle', 'Success'),
-          description: t('mealBuilder.foodAddedToMeal', {
-            foodName: food.name,
-            defaultValue: `${food.name} added to meal.`,
-          }),
-        });
-      }
+  const handleFoodUnitSelected = (
+    food: Food,
+    quantity: number,
+    unit: string,
+    selectedVariant: FoodVariant
+  ) => {
+    const updatedMealFood: MealFood = {
+      food_id: food.id,
+      food_name: food.name,
+      variant_id: selectedVariant.id,
+      quantity: quantity,
+      unit: unit,
+      calories: selectedVariant.calories,
+      protein: selectedVariant.protein,
+      carbs: selectedVariant.carbs,
+      fat: selectedVariant.fat,
+      serving_size: selectedVariant.serving_size,
+      serving_unit: selectedVariant.serving_unit,
+      saturated_fat: selectedVariant.saturated_fat,
+      polyunsaturated_fat: selectedVariant.polyunsaturated_fat,
+      monounsaturated_fat: selectedVariant.monounsaturated_fat,
+      trans_fat: selectedVariant.trans_fat,
+      cholesterol: selectedVariant.cholesterol,
+      sodium: selectedVariant.sodium,
+      potassium: selectedVariant.potassium,
+      dietary_fiber: selectedVariant.dietary_fiber,
+      sugars: selectedVariant.sugars,
+      vitamin_a: selectedVariant.vitamin_a,
+      vitamin_c: selectedVariant.vitamin_c,
+      calcium: selectedVariant.calcium,
+      iron: selectedVariant.iron,
+      glycemic_index: selectedVariant.glycemic_index,
+      custom_nutrients: selectedVariant.custom_nutrients,
+    };
 
-      setIsFoodUnitSelectorOpen(false);
-      setSelectedFoodForUnitSelection(null);
-      setEditingMealFood(null); // Clear editing state
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [editingMealFood, mealFoods]
-  );
+    if (editingMealFood) {
+      // Update existing meal food
+      setMealFoods((prev) => {
+        const newMealFoods = [...prev];
+        newMealFoods[editingMealFood.index] = updatedMealFood;
+        return newMealFoods;
+      });
+      toast({
+        title: t('mealBuilder.successTitle', 'Success'),
+        description: t('mealBuilder.foodUpdatedInMeal', {
+          foodName: food.name,
+          defaultValue: `${food.name} updated in meal.`,
+        }),
+      });
+    } else {
+      // Add new meal food
+      setMealFoods((prev) => [...prev, updatedMealFood]);
+      toast({
+        title: t('mealBuilder.successTitle', 'Success'),
+        description: t('mealBuilder.foodAddedToMeal', {
+          foodName: food.name,
+          defaultValue: `${food.name} added to meal.`,
+        }),
+      });
+    }
 
-  const handleRemoveFoodFromMeal = useCallback((index: number) => {
+    setIsFoodUnitSelectorOpen(false);
+    setSelectedFoodForUnitSelection(null);
+    setEditingMealFood(null); // Clear editing state
+  };
+
+  const handleRemoveFoodFromMeal = (index: number) => {
     setMealFoods((prev) => prev.filter((_, i) => i !== index));
     toast({
       title: t('mealBuilder.removedTitle', 'Removed'),
@@ -348,10 +321,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         'Food removed from meal.'
       ),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  };
 
-  const handleSaveMeal = useCallback(async () => {
+  const handleSaveMeal = async () => {
     if (mealFoods.length === 0) {
       toast({
         title: t('mealBuilder.errorTitle', 'Error'),
@@ -420,7 +392,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         } else {
           resultMeal = await createMeal({ mealPayload: mealData });
         }
-        onSave?.(resultMeal);
+        onSave();
       } catch (err) {
         error(loggingLevel, 'Error saving meal:', err);
       }
@@ -452,54 +424,19 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       try {
         if (foodEntryId) {
           // Use foodEntryId for an update
-          await updateFoodEntryMeal(foodEntryId, foodEntryMealData);
-          toast({
-            title: t('mealBuilder.successTitle', 'Success'),
-            description: t(
-              'mealBuilder.foodDiaryEntryUpdatedSuccess',
-              'Food diary meal entry updated successfully!'
-            ),
+          await updateFoodEntryMeal({
+            id: foodEntryId,
+            data: foodEntryMealData,
           });
         } else {
           await createFoodEntryMeal(foodEntryMealData);
-          toast({
-            title: t('mealBuilder.successTitle', 'Success'),
-            description: t(
-              'mealBuilder.foodDiaryEntryCreatedSuccess',
-              'Food diary meal entry created successfully!'
-            ),
-          });
         }
-        onSave?.({} as Meal); // onSave expects a Meal, pass a dummy or refactor if needed, ensure it's not null or undefined
+        onSave();
       } catch (err) {
         error(loggingLevel, 'Error updating food diary meal entry:', err);
-        toast({
-          title: t('mealBuilder.errorTitle', 'Error'),
-          description: t('mealBuilder.foodDiarySaveError', {
-            error: err instanceof Error ? err.message : String(err),
-            defaultValue: `Failed to update food diary meal entry: ${err instanceof Error ? err.message : String(err)}`,
-          }),
-          variant: 'destructive',
-        });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    mealName,
-    mealDescription,
-    isPublic,
-    mealFoods,
-    mealId,
-    activeUserId,
-    onSave,
-    loggingLevel,
-    source,
-    foodEntryId,
-    foodEntryDate,
-    foodEntryMealType,
-    servingSize,
-    servingUnit,
-  ]);
+  };
 
   const calculateMealNutrition = useCallback(() => {
     // Initialize totals for all visible nutrients
@@ -608,10 +545,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           <div className="space-y-2">
             {mealFoods.map((mf, index) => {
               const scale = mf.quantity / (mf.serving_size || 1);
-              const calories = (mf.calories || 0) * scale;
-              const protein = (mf.protein || 0) * scale;
-              const carbs = (mf.carbs || 0) * scale;
-              const fat = (mf.fat || 0) * scale;
 
               return (
                 <div
@@ -739,7 +672,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             {t('mealBuilder.totalNutritionLabel', 'Total Nutrition:')}
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
-            {visibleNutrients.map((key, index) => {
+            {visibleNutrients.map((key) => {
               const meta = getNutrientMetadata(key);
               const val = mealTotals[key] || 0;
               const displayVal =

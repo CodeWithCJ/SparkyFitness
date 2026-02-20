@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import type { WorkoutPreset } from '@/types/workout';

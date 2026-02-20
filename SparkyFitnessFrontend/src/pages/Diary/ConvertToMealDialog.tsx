@@ -1,5 +1,4 @@
-import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -13,52 +12,35 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { toast } from '@/hooks/use-toast';
-import { createMealFromDiary } from '@/api/Foods/meals';
-import { debug, info, error } from '@/utils/logging';
+import { debug } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useCreateMealFromDiaryMutation } from '@/hooks/Diary/useMealTypes';
 
 interface ConvertToMealDialogProps {
   isOpen: boolean;
   onClose: () => void;
   selectedDate: string;
   mealType: string;
-  onMealCreated: () => void;
 }
 
-const ConvertToMealDialog: React.FC<ConvertToMealDialogProps> = ({
+const ConvertToMealDialog = ({
   isOpen,
   onClose,
   selectedDate,
   mealType,
-  onMealCreated,
-}) => {
+}: ConvertToMealDialogProps) => {
   const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
-  const [mealName, setMealName] = useState('');
+  const [mealName, setMealName] = useState(
+    `${t(`common.${mealType}`, mealType)} - ${selectedDate}`
+  );
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      // Set a default meal name based on the meal type and date
-      const defaultName = `${t(`common.${mealType}`, mealType)} - ${selectedDate}`;
-      setMealName(defaultName);
-      setDescription('');
-      setIsPublic(false);
-      debug(
-        loggingLevel,
-        'ConvertToMealDialog: Dialog opened with mealType:',
-        mealType,
-        'and selectedDate:',
-        selectedDate
-      );
-    }
-  }, [isOpen, mealType, selectedDate, t, loggingLevel]);
+  const { mutate: createMealFromDiary, isPending: isLoading } =
+    useCreateMealFromDiaryMutation();
 
-  const handleSubmit = useCallback(async () => {
-    setIsLoading(true);
+  const handleSubmit = async () => {
     debug(loggingLevel, 'ConvertToMealDialog: Submitting new meal with data:', {
       mealName,
       description,
@@ -66,51 +48,21 @@ const ConvertToMealDialog: React.FC<ConvertToMealDialogProps> = ({
       selectedDate,
       mealType,
     });
-    try {
-      await createMealFromDiary(
-        selectedDate,
+    createMealFromDiary(
+      {
+        date: selectedDate,
         mealType,
         mealName,
         description,
-        isPublic
-      );
-      toast({
-        title: t('mealCreation.success', 'Success'),
-        description: t(
-          'mealCreation.mealCreatedSuccessfully',
-          'Meal created successfully from diary entries.'
-        ),
-      });
-      info(loggingLevel, 'ConvertToMealDialog: Meal created successfully.');
-      onMealCreated();
-      onClose();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      error(loggingLevel, 'ConvertToMealDialog: Error creating meal:', err);
-      toast({
-        title: t('mealCreation.error', 'Error'),
-        description:
-          err.response?.data?.error ||
-          t(
-            'mealCreation.failedToCreateMeal',
-            'Failed to create meal from diary entries.'
-          ),
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [
-    mealName,
-    description,
-    isPublic,
-    selectedDate,
-    mealType,
-    onMealCreated,
-    onClose,
-    t,
-    loggingLevel,
-  ]);
+        isPublic,
+      },
+      {
+        onSuccess: () => {
+          onClose();
+        },
+      }
+    );
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

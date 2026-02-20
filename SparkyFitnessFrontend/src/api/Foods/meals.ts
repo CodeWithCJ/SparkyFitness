@@ -100,17 +100,6 @@ export const logMealPlanEntryToDiary = async (
   });
 };
 
-export const logDayMealPlanToDiary = async (
-  planDate: string,
-  targetDate?: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any[]> => {
-  return await apiCall(`/meals/plan/log-day-to-diary`, {
-    method: 'POST',
-    body: { plan_date: planDate, target_date: targetDate },
-  });
-};
-
 export const createMealFromDiary = async (
   date: string,
   mealType: string,

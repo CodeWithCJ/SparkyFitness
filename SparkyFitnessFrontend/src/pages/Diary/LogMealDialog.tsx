@@ -7,8 +7,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import MealBuilder from '../../components/MealBuilder';
-import type { Meal } from '@/types/meal';
-import { usePreferences } from '@/contexts/PreferencesContext';
+import type { Meal, MealFood } from '@/types/meal';
 
 interface LogMealDialogProps {
   mealTemplate: Meal | null;
@@ -16,7 +15,6 @@ interface LogMealDialogProps {
   onOpenChange: (open: boolean) => void;
   date: string;
   mealType: string;
-  onSave: () => void;
 }
 
 const LogMealDialog: React.FC<LogMealDialogProps> = ({
@@ -25,12 +23,8 @@ const LogMealDialog: React.FC<LogMealDialogProps> = ({
   onOpenChange,
   date,
   mealType,
-  onSave,
 }) => {
-  const { loggingLevel } = usePreferences();
-
   const handleSave = () => {
-    onSave();
     onOpenChange(false);
   };
 
@@ -40,7 +34,7 @@ const LogMealDialog: React.FC<LogMealDialogProps> = ({
   // The search result from repository usually includes flattened variant info,
   // but let's make sure MealBuilder accepts it as MealFood[].
   // The repository returns fields that match MealFood interface quite well.
-  const initialFoods = mealTemplate.foods || [];
+  const initialFoods: MealFood[] = mealTemplate.foods || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

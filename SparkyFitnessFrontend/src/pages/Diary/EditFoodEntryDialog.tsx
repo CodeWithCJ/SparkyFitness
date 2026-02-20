@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, FormEvent, useMemo, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,305 +16,135 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { debug, info, warn, error } from '@/utils/logging';
+import { info, warn, error } from '@/utils/logging';
 import type { FoodVariant, FoodEntry } from '@/types/food';
-import { foodViewOptions } from '@/hooks/Foods/useFoods';
-import { useQueryClient } from '@tanstack/react-query';
+import { useFoodView } from '@/hooks/Foods/useFoods';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
-import { foodVariantsOptions } from '@/hooks/Foods/useFoodVariants';
-import { updateFoodEntry } from '@/services/foodEntryService';
-import {
-  getNutrientMetadata,
-  formatNutrientValue,
-} from '@/utils/nutrientUtils';
+import { useFoodVariants } from '@/hooks/Foods/useFoodVariants';
+import { useUpdateFoodEntryMutation } from '@/hooks/Diary/useFoodEntries';
+import { calculateNutrition } from '@/utils/nutritionCalculations';
+import { NutrientGrid } from './NutrientsGrid';
 
 interface EditFoodEntryDialogProps {
   entry: FoodEntry | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: () => void;
 }
 
 const EditFoodEntryDialog = ({
   entry,
   open,
   onOpenChange,
-  onSave,
 }: EditFoodEntryDialogProps) => {
-  const { loggingLevel, energyUnit, convertEnergy } = usePreferences(); // Get logging level, energyUnit, convertEnergy
-  debug(loggingLevel, 'EditFoodEntryDialog component rendered.', {
-    entry,
-    open,
-  });
+  const { loggingLevel, energyUnit, convertEnergy } = usePreferences();
 
-  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal' ? 'kcal' : 'kJ';
-  };
-  const [quantity, setQuantity] = useState(1);
-  const [selectedVariant, setSelectedVariant] = useState<FoodVariant | null>(
-    null
+  const [quantity, setQuantity] = useState<number>(entry?.quantity || 1);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    entry?.variant_id || null
   );
-  const [variants, setVariants] = useState<FoodVariant[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [latestVariant, setLatestVariant] = useState<FoodVariant | null>(null);
-  const queryClient = useQueryClient();
 
   const { data: customNutrients } = useCustomNutrients();
+  const { data: foodData, isLoading: isLoadingFood } = useFoodView(
+    entry?.food_id || ''
+  );
+  const { data: variantsData, isLoading: isLoadingVariants } = useFoodVariants(
+    entry?.food_id || ''
+  );
+  const { mutateAsync: updateFoodEntry } = useUpdateFoodEntryMutation();
 
-  const focusAndSelect = useCallback((e) => {
-    if (e) {
-      e.focus();
-      e.select();
-    }
-  }, []);
+  const loading = isLoadingFood || isLoadingVariants;
+  const isEditingAllowed = open && !!entry && !entry.meal_id;
+
+  const inputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    debug(loggingLevel, 'EditFoodEntryDialog entry/open useEffect triggered.', {
-      entry,
-      open,
-    });
-    if (entry && open) {
-      setQuantity(entry.quantity || 1);
-      loadFoodAndVariants(); // Call new function to load both food and variants
+    if (open && !loading && inputRef.current) {
+      // Kleiner Timeout hilft oft bei Dialog-Animationen von Radix UI
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 50);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entry, open]);
+  }, [open, loading]);
 
-  const loadFoodAndVariants = async () => {
-    debug(
-      loggingLevel,
-      'Loading food and variants for food ID:',
-      entry?.food_id
-    );
-    if (!entry) {
-      warn(loggingLevel, 'loadFoodAndVariants called with no entry.');
-      return;
+  const variants = useMemo(() => {
+    if (!isEditingAllowed || !foodData || !variantsData || !entry) return [];
+
+    const defaultVariant =
+      foodData.default_variant || variantsData.find((v) => v.is_default);
+
+    const primaryUnit: FoodVariant = defaultVariant
+      ? {
+          ...defaultVariant,
+          calories: defaultVariant.calories || 0,
+          protein: defaultVariant.protein || 0,
+          carbs: defaultVariant.carbs || 0,
+          fat: defaultVariant.fat || 0,
+          custom_nutrients: defaultVariant.custom_nutrients || {},
+        }
+      : ({
+          id: entry.food_id,
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          custom_nutrients: {},
+        } as FoodVariant);
+
+    const variantsFromDb = variantsData
+      .filter((v) => v.id !== primaryUnit.id)
+      .map((variant) => ({
+        ...variant,
+        calories: variant.calories || 0,
+        protein: variant.protein || 0,
+        carbs: variant.carbs || 0,
+        fat: variant.fat || 0,
+        custom_nutrients: variant.custom_nutrients || {},
+      }));
+
+    return [primaryUnit, ...variantsFromDb];
+  }, [foodData, variantsData, entry, isEditingAllowed]);
+
+  const selectedVariant = useMemo(() => {
+    if (!variants.length) return null;
+    if (selectedVariantId) {
+      return variants.find((v) => v.id === selectedVariantId) || variants[0];
     }
-
-    if (entry.meal_id) {
-      // This is an aggregated meal entry, editing is not supported in the same way.
-      // We can disable the form or show a message.
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Fetch latest food details
-      const foodData = await queryClient.fetchQuery(
-        foodViewOptions(entry.food_id)
-      );
-
-      // Fetch latest variants for the food
-      const variantsData = await queryClient.fetchQuery(
-        foodVariantsOptions(entry.food_id)
-      );
-
-      // Determine the primary unit from the fetched food data's default variant
-      const defaultVariant =
-        foodData.default_variant || variantsData.find((v) => v.is_default);
-      const primaryUnit: FoodVariant = defaultVariant
-        ? {
-            id: defaultVariant.id,
-            serving_size: defaultVariant.serving_size,
-            serving_unit: defaultVariant.serving_unit,
-            calories: defaultVariant.calories || 0, // kcal
-            protein: defaultVariant.protein || 0,
-            carbs: defaultVariant.carbs || 0,
-            fat: defaultVariant.fat || 0,
-            saturated_fat: defaultVariant.saturated_fat || 0,
-            polyunsaturated_fat: defaultVariant.polyunsaturated_fat || 0,
-            monounsaturated_fat: defaultVariant.monounsaturated_fat || 0,
-            trans_fat: defaultVariant.trans_fat || 0,
-            cholesterol: defaultVariant.cholesterol || 0,
-            sodium: defaultVariant.sodium || 0,
-            potassium: defaultVariant.potassium || 0,
-            dietary_fiber: defaultVariant.dietary_fiber || 0,
-            sugars: defaultVariant.sugars || 0,
-            vitamin_a: defaultVariant.vitamin_a || 0,
-            vitamin_c: defaultVariant.vitamin_c || 0,
-            calcium: defaultVariant.calcium || 0,
-            iron: defaultVariant.iron || 0,
-            custom_nutrients: defaultVariant.custom_nutrients || {},
-          }
-        : {
-            // Fallback if no default variant found
-            id: entry.food_id,
-            serving_size: 100,
-            serving_unit: 'g',
-            calories: 0, // kcal
-            protein: 0,
-            carbs: 0,
-            fat: 0,
-            saturated_fat: 0,
-            polyunsaturated_fat: 0,
-            monounsaturated_fat: 0,
-            trans_fat: 0,
-            cholesterol: 0,
-            sodium: 0,
-            potassium: 0,
-            dietary_fiber: 0,
-            sugars: 0,
-            vitamin_a: 0,
-            vitamin_c: 0,
-            calcium: 0,
-            iron: 0,
-            custom_nutrients: {},
-          };
-
-      let combinedVariants: FoodVariant[] = [primaryUnit];
-
-      if (variantsData && variantsData.length > 0) {
-        info(loggingLevel, 'Food variants loaded successfully:', variantsData);
-        const variantsFromDb = variantsData.map((variant) => ({
-          id: variant.id,
-          serving_size: variant.serving_size,
-          serving_unit: variant.serving_unit,
-          calories: variant.calories || 0, // kcal
-          protein: variant.protein || 0,
-          carbs: variant.carbs || 0,
-          fat: variant.fat || 0,
-          saturated_fat: variant.saturated_fat || 0,
-          polyunsaturated_fat: variant.polyunsaturated_fat || 0,
-          monounsaturated_fat: variant.monounsaturated_fat || 0,
-          trans_fat: variant.trans_fat || 0,
-          cholesterol: variant.cholesterol || 0,
-          sodium: variant.sodium || 0,
-          potassium: variant.potassium || 0,
-          dietary_fiber: variant.dietary_fiber || 0,
-          sugars: variant.sugars || 0,
-          vitamin_a: variant.vitamin_a || 0,
-          vitamin_c: variant.vitamin_c || 0,
-          calcium: variant.calcium || 0,
-          iron: variant.iron || 0,
-          custom_nutrients: variant.custom_nutrients || {},
-        }));
-
-        // Ensure the primary unit is always included and is the first option.
-        // Then, add any other variants from the database that are not the primary unit (based on ID).
-        const otherVariants = variantsFromDb.filter(
-          (variant) => variant.id !== primaryUnit.id
-        );
-        combinedVariants = [primaryUnit, ...otherVariants];
-      } else {
-        info(
-          loggingLevel,
-          'No additional variants found, using primary food unit only.'
-        );
-      }
-
-      setVariants(combinedVariants);
-
-      // Set selected variant based on entry.variant_id or default to primaryUnit
-      const initialSelectedVariant =
-        combinedVariants.find(
-          (v) =>
-            (entry.variant_id && v.id === entry.variant_id) ||
-            (!entry.variant_id && v.id === primaryUnit.id) // If no variant_id, use the default variant
-        ) || primaryUnit;
-      setSelectedVariant(initialSelectedVariant);
-      setLatestVariant(initialSelectedVariant); // Set latest variant for nutrition calculation
-      debug(loggingLevel, 'Selected variant:', initialSelectedVariant);
-    } catch (err) {
-      error(loggingLevel, 'Error loading food or variants:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return variants[0];
+  }, [variants, selectedVariantId]);
 
   if (!entry) return null;
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    debug(loggingLevel, 'Handling save food entry.');
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (!selectedVariant) {
       warn(loggingLevel, 'Save called with no selected variant.');
       return;
     }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const updateData: any = {
-        quantity: quantity,
+      const updateData = {
+        quantity,
         unit: selectedVariant.serving_unit,
         variant_id:
-          selectedVariant.id === 'default-variant'
-            ? null
-            : selectedVariant.id || null,
+          selectedVariant.id === 'default-variant' ? null : selectedVariant.id,
       };
-      debug(loggingLevel, 'Update data for food entry:', updateData);
 
-      await updateFoodEntry(entry.id, updateData);
+      await updateFoodEntry({ id: entry.id, data: updateData });
 
       info(loggingLevel, 'Food entry updated successfully:', entry.id);
-      toast({
-        title: 'Success',
-        description: 'Food entry updated successfully',
-      });
-
-      onSave();
       onOpenChange(false);
     } catch (err) {
       error(loggingLevel, 'Error updating food entry:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to update food entry',
-        variant: 'destructive',
-      });
     }
   };
 
-  const calculateNutrition = () => {
-    debug(loggingLevel, 'Calculating nutrition for edit dialog.');
-    if (!latestVariant || !entry) {
-      // Use latestVariant for calculation
-      warn(loggingLevel, 'calculateNutrition called with missing data.', {
-        latestVariant,
-        entry,
-      });
-      return null;
-    }
-
-    // Calculate the ratio based on quantity vs serving size of the selected variant
-    const ratio = quantity / latestVariant.serving_size; // Use latestVariant
-    debug(loggingLevel, 'Calculated ratio for edit dialog:', ratio);
-
-    // Apply the ratio to the selected variant's nutrition values
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const nutrition: any = {
-      calories: latestVariant.calories * ratio || 0, // Use latestVariant, this is in kcal
-      protein: latestVariant.protein * ratio || 0, // Use latestVariant
-      carbs: latestVariant.carbs * ratio || 0, // Use latestVariant
-      fat: latestVariant.fat * ratio || 0, // Use latestVariant
-      saturated_fat: latestVariant.saturated_fat * ratio || 0, // Use latestVariant
-      polyunsaturated_fat: latestVariant.polyunsaturated_fat * ratio || 0, // Use latestVariant
-      monounsaturated_fat: latestVariant.monounsaturated_fat * ratio || 0, // Use latestVariant
-      trans_fat: latestVariant.trans_fat * ratio || 0, // Use latestVariant
-      cholesterol: latestVariant.cholesterol * ratio || 0, // Use latestVariant
-      sodium: latestVariant.sodium * ratio || 0, // Use latestVariant
-      potassium: latestVariant.potassium * ratio || 0, // Use latestVariant
-      dietary_fiber: latestVariant.dietary_fiber * ratio || 0, // Use latestVariant
-      sugars: latestVariant.sugars * ratio || 0, // Use latestVariant
-      vitamin_a: latestVariant.vitamin_a * ratio || 0, // Use latestVariant
-      vitamin_c: latestVariant.vitamin_c * ratio || 0, // Use latestVariant
-      calcium: latestVariant.calcium * ratio || 0, // Use latestVariant
-      iron: latestVariant.iron * ratio || 0, // Use latestVariant
-      custom_nutrients: {},
-    };
-
-    if (latestVariant.custom_nutrients) {
-      for (const key in latestVariant.custom_nutrients) {
-        nutrition.custom_nutrients[key] =
-          Number(latestVariant.custom_nutrients[key]) * ratio || 0;
-      }
-    }
-
-    debug(loggingLevel, 'Calculated nutrition for edit dialog:', nutrition);
-    return nutrition;
-  };
-
-  const nutrition = calculateNutrition();
+  const nutrition = selectedVariant
+    ? calculateNutrition(selectedVariant, quantity)
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -355,15 +185,8 @@ const EditFoodEntryDialog = ({
                     step="0.1"
                     min="0.1"
                     value={quantity}
-                    ref={focusAndSelect}
-                    onChange={(e) => {
-                      debug(
-                        loggingLevel,
-                        'Quantity changed in edit dialog:',
-                        e.target.value
-                      );
-                      setQuantity(Number(e.target.value));
-                    }}
+                    ref={inputRef}
+                    onChange={(e) => setQuantity(Number(e.target.value))}
                   />
                 </div>
 
@@ -371,15 +194,7 @@ const EditFoodEntryDialog = ({
                   <Label htmlFor="unit">Unit</Label>
                   <Select
                     value={selectedVariant?.id || ''}
-                    onValueChange={(value) => {
-                      debug(
-                        loggingLevel,
-                        'Unit selected in edit dialog:',
-                        value
-                      );
-                      const variant = variants.find((v) => v.id === value);
-                      setSelectedVariant(variant || null);
-                    }}
+                    onValueChange={setSelectedVariantId}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -395,196 +210,15 @@ const EditFoodEntryDialog = ({
                 </div>
               </div>
 
-              {nutrition && (
+              {nutrition && customNutrients && (
                 <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-3">Macronutrients</h4>
-                    <div className="grid grid-cols-4 gap-4">
-                      <div>
-                        <Label className="text-sm">
-                          Calories ({getEnergyUnitString(energyUnit)})
-                        </Label>
-                        <div className="text-lg font-medium">
-                          {Math.round(
-                            convertEnergy(
-                              nutrition.calories,
-                              'kcal',
-                              energyUnit
-                            )
-                          )}
-                        </div>
-                      </div>
-                      {['protein', 'carbs', 'fat'].map((key) => {
-                        const meta = getNutrientMetadata(key, customNutrients);
-                        return (
-                          <div key={key}>
-                            <Label className="text-sm">
-                              {meta.label} ({meta.unit})
-                            </Label>
-                            <div className="text-lg font-medium">
-                              {formatNutrientValue(
-                                key,
-                                nutrition[key],
-                                customNutrients
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-3">Fat Breakdown</h4>
-                    <div className="grid grid-cols-4 gap-4">
-                      {[
-                        'saturated_fat',
-                        'polyunsaturated_fat',
-                        'monounsaturated_fat',
-                        'trans_fat',
-                      ].map((key) => {
-                        const meta = getNutrientMetadata(key, customNutrients);
-                        return (
-                          <div key={key}>
-                            <Label className="text-sm">
-                              {meta.label} ({meta.unit})
-                            </Label>
-                            <div className="text-lg font-medium">
-                              {formatNutrientValue(
-                                key,
-                                nutrition[key],
-                                customNutrients
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-3">
-                      Minerals & Other Nutrients
-                    </h4>
-                    <div className="grid grid-cols-4 gap-4">
-                      {[
-                        'cholesterol',
-                        'sodium',
-                        'potassium',
-                        'dietary_fiber',
-                      ].map((key) => {
-                        const meta = getNutrientMetadata(key, customNutrients);
-                        return (
-                          <div key={key}>
-                            <Label className="text-sm">
-                              {meta.label} ({meta.unit})
-                            </Label>
-                            <div className="text-lg font-medium">
-                              {formatNutrientValue(
-                                key,
-                                nutrition[key],
-                                customNutrients
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-3">Sugars & Vitamins</h4>
-                    <div className="grid grid-cols-4 gap-4">
-                      {['sugars', 'vitamin_a', 'vitamin_c', 'calcium'].map(
-                        (key) => {
-                          const meta = getNutrientMetadata(
-                            key,
-                            customNutrients
-                          );
-                          return (
-                            <div key={key}>
-                              <Label className="text-sm">
-                                {meta.label} ({meta.unit})
-                              </Label>
-                              <div className="text-lg font-medium">
-                                {formatNutrientValue(
-                                  key,
-                                  nutrition[key],
-                                  customNutrients
-                                )}
-                              </div>
-                            </div>
-                          );
-                        }
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="grid grid-cols-1 gap-4">
-                      {['iron'].map((key) => {
-                        const meta = getNutrientMetadata(key, customNutrients);
-                        return (
-                          <div key={key}>
-                            <Label className="text-sm">
-                              {meta.label} ({meta.unit})
-                            </Label>
-                            <div className="text-lg font-medium">
-                              {formatNutrientValue(
-                                key,
-                                nutrition[key],
-                                customNutrients
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {customNutrients.length > 0 && nutrition.custom_nutrients && (
-                    <div>
-                      <h4 className="font-medium mb-3">Custom Nutrients</h4>
-                      <div className="grid grid-cols-4 gap-4">
-                        {customNutrients.map((nutrient) => (
-                          <div key={nutrient.id}>
-                            <Label className="text-sm">
-                              {nutrient.name} ({nutrient.unit})
-                            </Label>
-                            <div className="text-lg font-medium">
-                              {formatNutrientValue(
-                                nutrient.name,
-                                nutrition.custom_nutrients[nutrient.name] || 0,
-                                customNutrients
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="bg-muted p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">
-                      Base Values (per {selectedVariant?.serving_size}{' '}
-                      {selectedVariant?.serving_unit}):
-                    </h4>
-                    <div className="grid grid-cols-4 gap-4 text-sm">
-                      <div>
-                        {Math.round(
-                          convertEnergy(
-                            selectedVariant?.calories || 0,
-                            'kcal',
-                            energyUnit
-                          )
-                        )}{' '}
-                        {getEnergyUnitString(energyUnit)}
-                      </div>
-                      <div>{selectedVariant?.protein || 0}g protein</div>
-                      <div>{selectedVariant?.carbs || 0}g carbs</div>
-                      <div>{selectedVariant?.fat || 0}g fat</div>
-                    </div>
-                  </div>
+                  <NutrientGrid
+                    baseVariant={selectedVariant}
+                    nutrition={nutrition}
+                    customNutrients={customNutrients}
+                    energyUnit={energyUnit}
+                    convertEnergy={convertEnergy}
+                  />
                 </div>
               )}
 

@@ -18,6 +18,10 @@ jest.mock('react-i18next', () => ({
       return key;
     },
   }),
+  initReactI18next: {
+    type: '3rdParty',
+    init: () => {},
+  },
 }));
 
 // Mock contexts
@@ -64,7 +68,7 @@ jest.mock('@/api/Foods/meals', () => ({
   getMealById: (...args: unknown[]) => mockGetMealById(...args),
 }));
 
-jest.mock('@/services/foodEntryService', () => ({
+jest.mock('@/api/Diary/foodEntryService', () => ({
   createFoodEntryMeal: jest.fn(),
   updateFoodEntryMeal: jest.fn(),
   getFoodEntryMealWithComponents: jest.fn(),
@@ -201,7 +205,7 @@ describe('MealBuilder', () => {
     });
 
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith(mockResult);
+      expect(onSave).toHaveBeenCalledWith();
     });
   });
 
@@ -239,7 +243,7 @@ describe('MealBuilder', () => {
     });
 
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith(mockUpdated);
+      expect(onSave).toHaveBeenCalledWith();
     });
   });
 });

@@ -141,3 +141,26 @@ export interface FoodEntryMeal {
   glycemic_index?: string; // Aggregated glycemic index
   custom_nutrients?: Record<string, string | number>;
 }
+
+export interface MealTotals {
+  calories: number; // Stored internally as kcal
+  protein: number;
+  carbs: number;
+  fat: number;
+  dietary_fiber: number;
+  sugars: number;
+  sodium: number;
+  cholesterol: number;
+  saturated_fat: number;
+  monounsaturated_fat: number;
+  polyunsaturated_fat: number;
+  trans_fat: number;
+  potassium: number;
+  vitamin_a: number;
+  vitamin_c: number;
+  iron: number;
+  calcium: number;
+  custom_nutrients?: Record<string, number>; // Add custom_nutrients support
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any; // Allow custom nutrients
+}

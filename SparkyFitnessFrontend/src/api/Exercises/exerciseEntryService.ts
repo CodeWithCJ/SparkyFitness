@@ -1,5 +1,5 @@
 import { apiCall } from '@/services/api';
-import { getExerciseEntriesForDate as getDailyExerciseEntries } from '@/services/dailyProgressService';
+import { getExerciseEntriesForDate as getDailyExerciseEntries } from '@/api/Diary/dailyProgressService';
 import type { Exercise } from './exerciseSearchService';
 import { parseJsonArray } from './exerciseService';
 import type { ExerciseProgressData } from '@/services/reportsService';
@@ -284,10 +284,12 @@ export const updateExerciseEntry = async (
       isFormData: true,
     });
   } else {
+    // workaround because the backend deletes the image when an url is in the request
+    const { image_url, ...dataToSend } = entryData;
     // If no new image, send as JSON
     return apiCall(`/exercise-entries/${entryId}`, {
       method: 'PUT',
-      body: entryData,
+      body: dataToSend,
       headers: { 'Content-Type': 'application/json' },
     });
   }

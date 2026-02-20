@@ -1,9 +1,9 @@
-import { apiCall } from './api';
+import { apiCall } from '../../services/api';
 import type { MealFood } from '@/types/meal';
 import type { FoodEntryMeal } from '@/types/meal';
 import type { FoodEntry } from '@/types/food';
 
-interface FoodEntryUpdateData {
+export interface FoodEntryUpdateData {
   quantity?: number;
   unit?: string;
 }
@@ -18,6 +18,35 @@ export const updateFoodEntry = async (
     body: data,
   });
   return response;
+};
+
+export interface DayData {
+  date: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  dietary_fiber: number;
+}
+
+export const loadMiniNutritionTrendData = async (
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<DayData[]> => {
+  const params = new URLSearchParams({
+    userId,
+    startDate,
+    endDate,
+  });
+  const data = await apiCall(
+    `/reports/mini-nutrition-trends?${params.toString()}`,
+    {
+      method: 'GET',
+      suppress404Toast: true, // Suppress toast for 404
+    }
+  );
+  return data || []; // Return empty array if 404 (no data found)
 };
 
 export interface FoodEntryCreateData {
@@ -58,7 +87,7 @@ export const loadFoodEntries = async (date: string): Promise<FoodEntry[]> => {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const loadGoals = async (date: string): Promise<any> => {
+export const loadDiaryGoals = async (date: string): Promise<any> => {
   // Adjust return type as needed
   const response = await apiCall(`/goals/by-date/${date}`, {
     method: 'GET',
@@ -71,8 +100,7 @@ export const copyFoodEntries = async (
   sourceMealType: string,
   targetDate: string,
   targetMealType: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any> => {
+): Promise<unknown> => {
   const response = await apiCall('/food-entries/copy', {
     method: 'POST',
     body: { sourceDate, sourceMealType, targetDate, targetMealType },
@@ -83,8 +111,7 @@ export const copyFoodEntries = async (
 export const copyFoodEntriesFromYesterday = async (
   mealType: string,
   targetDate: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any> => {
+): Promise<unknown> => {
   const response = await apiCall('/food-entries/copy-yesterday', {
     method: 'POST',
     body: { mealType, targetDate },

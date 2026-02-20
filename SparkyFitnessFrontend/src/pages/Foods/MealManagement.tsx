@@ -19,7 +19,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Edit, Trash2, Eye, Filter, Share2, Lock } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { toast } from '@/hooks/use-toast';
 import { error } from '@/utils/logging';
 import type { Meal, MealFood, MealPayload } from '@/types/meal';
 import { type MealFilter } from '@/api/Foods/meals';
@@ -126,7 +125,7 @@ const MealManagement: React.FC = () => {
     }
   };
 
-  const handleMealSave = (meal: Meal) => {
+  const handleMealSave = () => {
     setShowMealBuilderDialog(false);
     queryClient.invalidateQueries({ queryKey: mealKeys.all });
   };

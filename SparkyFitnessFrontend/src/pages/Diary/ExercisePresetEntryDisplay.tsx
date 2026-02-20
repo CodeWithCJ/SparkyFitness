@@ -9,8 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import { debug } from '@/utils/logging';
+import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import type {
   GroupedExerciseEntry,
   ExerciseEntry,
@@ -158,31 +157,6 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                 </div>
               </>
             )}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      debug(
-                        loggingLevel,
-                        'Edit preset entry clicked:',
-                        presetEntry.id
-                      );
-                    }}
-                    className="h-8 w-8"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    {t('exerciseCard.editPresetEntry', 'Edit Preset Entry')}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>

@@ -38,7 +38,6 @@ import type { UserCustomNutrient } from '@/types/customNutrient';
 
 interface EditGoalsProps {
   selectedDate: string;
-  onGoalsUpdated: () => void;
 }
 
 const calculateGrams = (
@@ -348,10 +347,7 @@ const EditGoalsForm = ({
   );
 };
 
-const EditGoalsForToday = ({
-  selectedDate,
-  onGoalsUpdated,
-}: EditGoalsProps) => {
+const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
   const { user } = useAuth();
   const { formatDate } = usePreferences();
   const [open, setOpen] = useState(false);
@@ -380,7 +376,6 @@ const EditGoalsForToday = ({
         cascade: false,
       });
       setOpen(false);
-      onGoalsUpdated();
     } catch (error) {
       console.error('Error saving goals:', error);
     }

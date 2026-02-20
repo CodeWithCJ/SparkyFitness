@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,11 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import EditExerciseEntryDialog from './EditExerciseEntryDialog';
 import ExercisePlaybackModal from '@/pages/Diary/ExercisePlaybackModal';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { debug, info, warn, error } from '@/utils/logging';
-import { toast } from '@/hooks/use-toast';
-import { type ExerciseEntry } from '@/api/Exercises/exerciseEntryService';
+import { debug, info, error } from '@/utils/logging';
+import {
+  GroupedExerciseEntry,
+  type ExerciseEntry,
+} from '@/api/Exercises/exerciseEntryService';
 import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import type {
   WorkoutPresetSet,
@@ -38,7 +40,6 @@ import {
 } from '@/hooks/Exercises/useExerciseEntries';
 import { useQueryClient } from '@tanstack/react-query';
 import { exerciseByIdOptions } from '@/hooks/Exercises/useExercises';
-import { exerciseEntryKeys } from '@/api/keys/exercises';
 
 // New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
 interface PresetExerciseToLog extends Exercise {
@@ -50,22 +51,20 @@ interface PresetExerciseToLog extends Exercise {
 
 interface ExerciseCardProps {
   selectedDate: string;
-  onExerciseChange: () => void;
-  initialExercisesToLog?: PresetExercise[]; // Change type to PresetExercise[]
-  onExercisesLogged: () => void; // New prop to signal that exercises have been logged
+  initialExercisesToLog?: PresetExercise[];
+  onExercisesLogged: () => void;
 }
 
 const ExerciseCard = ({
   selectedDate,
-  onExerciseChange,
-  initialExercisesToLog, // Destructure new prop
-  onExercisesLogged, // Destructure new prop
+  initialExercisesToLog,
+  onExercisesLogged,
 }: ExerciseCardProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const { loggingLevel, energyUnit, convertEnergy, getEnergyUnitString } =
-    usePreferences(); // Get logging level, energyUnit, convertEnergy
+    usePreferences();
   debug(
     loggingLevel,
     'ExerciseCard component rendered for date:',
@@ -78,16 +77,15 @@ const ExerciseCard = ({
   const [isLogExerciseDialogOpen, setIsLogExerciseDialogOpen] = useState(false); // State for LogExerciseEntryDialog
   const [exercisesToLogQueue, setExercisesToLogQueue] = useState<
     ExerciseToLog[]
-  >([]); // Queue for multiple exercises
+  >([]);
   const [currentExerciseToLog, setCurrentExerciseToLog] =
-    useState<ExerciseToLog | null>(null); // Current exercise being logged
+    useState<ExerciseToLog | null>(null);
   const [
     isEditExerciseDatabaseDialogOpen,
     setIsEditExerciseDatabaseDialogOpen,
   ] = useState(false);
   const [exerciseToEditInDatabase, setExerciseToEditInDatabase] =
     useState<Exercise | null>(null);
-  // const [expandedPresets, setExpandedPresets] = useState<Set<string>>(new Set()); // State to manage expanded presets - moved to ExercisePresetEntryDisplay
 
   const currentUserId = activeUserId || user?.id;
   debug(loggingLevel, 'Current user ID:', currentUserId);
@@ -101,32 +99,10 @@ const ExerciseCard = ({
   const { data: exerciseEntries, isLoading: loading } =
     useExerciseEntries(selectedDate);
 
-  // Invalidate exercise entry cache when a diary refresh event is dispatched
-  // (e.g. after a Fitbit sync completes from the Settings page)
-  useEffect(() => {
-    const handleDiaryRefresh = () => {
-      debug(
-        loggingLevel,
-        'ExerciseCard: foodDiaryRefresh event received, invalidating exercise query cache.'
-      );
-      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
-    };
-    window.addEventListener('foodDiaryRefresh', handleDiaryRefresh);
-    return () => {
-      window.removeEventListener('foodDiaryRefresh', handleDiaryRefresh);
-    };
-  }, [queryClient, loggingLevel]);
-
   // Effect to handle initialExercisesToLog prop
   useEffect(() => {
     const processInitialExercises = async () => {
       if (initialExercisesToLog && initialExercisesToLog.length > 0) {
-        debug(
-          loggingLevel,
-          'ExerciseCard: Received initial exercises to log:',
-          initialExercisesToLog
-        );
-
         const fetchedExercises = await Promise.all(
           initialExercisesToLog.map(async (presetEx) => {
             try {
@@ -172,11 +148,6 @@ const ExerciseCard = ({
           setCurrentExerciseToLog(validExercisesToLog[0]);
           setIsLogExerciseDialogOpen(true);
           setIsAddDialogOpen(false); // Close the add dialog if it's open
-        } else {
-          warn(
-            loggingLevel,
-            'No valid exercises to log from initialExercisesToLog.'
-          );
         }
       }
     };
@@ -189,10 +160,10 @@ const ExerciseCard = ({
     setIsAddDialogOpen(true);
   };
 
-  const handleCloseAddDialog = useCallback(() => {
+  const handleCloseAddDialog = () => {
     debug(loggingLevel, 'Closing add exercise dialog.');
     setIsAddDialogOpen(false);
-  }, [loggingLevel]);
+  };
 
   const handleExerciseSelect = (
     exercise?: Exercise,
@@ -204,7 +175,7 @@ const ExerciseCard = ({
         loggingLevel,
         'General refresh triggered (no specific exercise selected).'
       );
-      handleDataChange(); // Trigger a full data refresh for the card
+      handleCloseAddDialog(); // Close the add exercise dialog
       return;
     }
 
@@ -228,46 +199,22 @@ const ExerciseCard = ({
     setIsAddDialogOpen(false);
   };
 
-  const handleDataChange = useCallback(() => {
-    debug(loggingLevel, 'Handling data change, incrementing refresh trigger.');
-    onExerciseChange(); // Still call parent's onExerciseChange for broader diary refresh if needed
-    handleCloseAddDialog(); // Close the add exercise dialog
-  }, [loggingLevel, onExerciseChange, handleCloseAddDialog]);
-
-  const handleWorkoutPresetSelected = useCallback(
-    async (preset: WorkoutPreset) => {
-      debug(loggingLevel, 'Workout preset selected in ExerciseCard:', preset);
-      try {
-        await logWorkoutPreset({ presetId: preset.id, date: selectedDate });
-        toast({
-          title: 'Success',
-          description: `Workout preset "${preset.name}" logged successfully.`,
-        });
-        handleDataChange(); // Refresh exercise entries
-        onExercisesLogged(); // Signal to parent that exercises have been logged
-      } catch (err) {
-        error(
-          loggingLevel,
-          `Error logging workout preset "${preset.name}":`,
-          err
-        );
-        toast({
-          title: 'Error',
-          description: `Failed to log workout preset "${preset.name}".`,
-          variant: 'destructive',
-        });
-      } finally {
-        setIsAddDialogOpen(false); // Close the add dialog
-      }
-    },
-    [
-      loggingLevel,
-      selectedDate,
-      handleDataChange,
-      onExercisesLogged,
-      logWorkoutPreset,
-    ]
-  );
+  const handleWorkoutPresetSelected = async (preset: WorkoutPreset) => {
+    debug(loggingLevel, 'Workout preset selected in ExerciseCard:', preset);
+    try {
+      await logWorkoutPreset({ presetId: preset.id, date: selectedDate });
+      handleCloseAddDialog(); // Close the add exercise dialog
+      onExercisesLogged(); // Signal to parent that exercises have been logged
+    } catch (err) {
+      error(
+        loggingLevel,
+        `Error logging workout preset "${preset.name}":`,
+        err
+      );
+    } finally {
+      setIsAddDialogOpen(false); // Close the add dialog
+    }
+  };
 
   const handleDeleteExerciseEntry = async (entryId: string) => {
     debug(loggingLevel, 'Handling delete individual exercise entry:', entryId);
@@ -278,7 +225,6 @@ const ExerciseCard = ({
         'Individual exercise entry deleted successfully:',
         entryId
       );
-      onExerciseChange();
     } catch (err) {
       error(loggingLevel, 'Error deleting individual exercise entry:', err);
     }
@@ -297,7 +243,6 @@ const ExerciseCard = ({
         'Exercise preset entry deleted successfully:',
         presetEntryId
       );
-      onExerciseChange();
     } catch (err) {
       error(loggingLevel, 'Error deleting exercise preset entry:', err);
     }
@@ -312,7 +257,6 @@ const ExerciseCard = ({
   const handleEditComplete = () => {
     debug(loggingLevel, 'Handling edit exercise entry complete.');
     setEditingEntry(null);
-    onExerciseChange();
     info(loggingLevel, 'Exercise entry edit complete and refresh triggered.');
   };
 
@@ -332,7 +276,7 @@ const ExerciseCard = ({
       setIsLogExerciseDialogOpen(false);
       onExercisesLogged(); // Signal to parent that exercises have been logged
     }
-    handleDataChange(); // Refresh exercise entries
+    handleCloseAddDialog(); // Close the add exercise dialog
   };
 
   const handleEditExerciseDatabase = useCallback(
@@ -355,98 +299,64 @@ const ExerciseCard = ({
     [loggingLevel, queryClient]
   );
 
-  const handleSaveExerciseDatabaseEdit = useCallback(() => {
+  const handleSaveExerciseDatabaseEdit = () => {
     debug(loggingLevel, 'Exercise database edit saved. Refreshing entries.');
     setIsEditExerciseDatabaseDialogOpen(false);
     setExerciseToEditInDatabase(null);
-    onExerciseChange(); // Notify parent of change
-  }, [loggingLevel, onExerciseChange]);
+  };
+
+  const stats = useMemo(() => {
+    let calories = 0;
+    let duration = 0;
+    let setsCount = 0;
+    let hrSum = 0;
+    let hrCount = 0;
+    if (!exerciseEntries || !Array.isArray(exerciseEntries)) {
+      return {
+        totalCalories: 0,
+        totalDuration: 0,
+        totalSets: 0,
+        averageHeartRate: 0,
+      };
+    }
+
+    exerciseEntries.forEach((groupedEntry) => {
+      const isPreset = groupedEntry.type === 'preset' && groupedEntry.exercises;
+      const items = isPreset ? groupedEntry.exercises! : [groupedEntry];
+
+      items.forEach((entry: ExerciseEntry | GroupedExerciseEntry) => {
+        // Calories
+        const cal = entry.calories_burned;
+        if (!isNaN(cal)) calories += cal;
+
+        // Duration & Sets
+        if (entry.sets) {
+          setsCount += entry.sets.length;
+          duration += entry.sets.reduce(
+            (sum: number, set: WorkoutPresetSet) => sum + (set.duration || 0),
+            0
+          );
+        }
+
+        // Heart Rate
+        if (entry.avg_heart_rate) {
+          hrSum += entry.avg_heart_rate;
+          hrCount++;
+        }
+      });
+    });
+
+    return {
+      totalCalories: calories,
+      totalDuration: duration,
+      totalSets: setsCount,
+      averageHeartRate: hrCount > 0 ? hrSum / hrCount : 0,
+    };
+  }, [exerciseEntries]);
 
   if (loading) {
-    debug(loggingLevel, 'ExerciseCard is loading.');
     return <div>Loading exercises...</div>;
   }
-  debug(loggingLevel, 'ExerciseCard finished loading.');
-
-  const totalExerciseCaloriesBurned = exerciseEntries.reduce(
-    (sum, groupedEntry) => {
-      // This value is in kcal
-      if (groupedEntry.type === 'individual') {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const calories = parseFloat(groupedEntry.calories_burned as any);
-        return sum + (isNaN(calories) ? 0 : calories);
-      } else if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
-        return (
-          sum +
-          groupedEntry.exercises.reduce((presetSum, entry) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const calories = parseFloat(entry.calories_burned as any);
-            return presetSum + (isNaN(calories) ? 0 : calories);
-          }, 0)
-        );
-      }
-      return sum;
-    },
-    0
-  );
-
-  const totalDurationMinutes = exerciseEntries.reduce((sum, groupedEntry) => {
-    let entryDuration = 0;
-    if (groupedEntry.type === 'individual' && groupedEntry.sets) {
-      entryDuration = groupedEntry.sets.reduce(
-        (setSum, set) => setSum + (set.duration || 0),
-        0
-      );
-    } else if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
-      entryDuration = groupedEntry.exercises.reduce((presetSum, entry) => {
-        return (
-          presetSum +
-          (entry.sets
-            ? entry.sets.reduce(
-                (setSum, set) => setSum + (set.duration || 0),
-                0
-              )
-            : 0)
-        );
-      }, 0);
-    }
-    return sum + entryDuration;
-  }, 0);
-
-  const totalSets = exerciseEntries.reduce((sum, groupedEntry) => {
-    if (groupedEntry.type === 'individual' && groupedEntry.sets) {
-      return sum + groupedEntry.sets.length;
-    } else if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
-      return (
-        sum +
-        groupedEntry.exercises.reduce((presetSum, entry) => {
-          return presetSum + (entry.sets ? entry.sets.length : 0);
-        }, 0)
-      );
-    }
-    return sum;
-  }, 0);
-
-  const totalHeartRates = exerciseEntries.reduce(
-    (acc, groupedEntry) => {
-      if (groupedEntry.type === 'individual' && groupedEntry.avg_heart_rate) {
-        acc.sum += groupedEntry.avg_heart_rate;
-        acc.count++;
-      } else if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
-        groupedEntry.exercises.forEach((entry) => {
-          if (entry.avg_heart_rate) {
-            acc.sum += entry.avg_heart_rate;
-            acc.count++;
-          }
-        });
-      }
-      return acc;
-    },
-    { sum: 0, count: 0 }
-  );
-
-  const averageHeartRate =
-    totalHeartRates.count > 0 ? totalHeartRates.sum / totalHeartRates.count : 0;
 
   return (
     <Card>
@@ -528,7 +438,7 @@ const ExerciseCard = ({
               <div className="grid grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100">
-                    {totalSets}
+                    {stats.totalSets}
                   </div>
                   <div className="text-xs text-gray-500">
                     {t('common.totalSets', 'Total Sets')}
@@ -536,7 +446,7 @@ const ExerciseCard = ({
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100">
-                    {formatMinutesToHHMM(totalDurationMinutes)}
+                    {formatMinutesToHHMM(stats.totalDuration)}
                   </div>
                   <div className="text-xs text-gray-500">
                     {t('common.minutesUnit', 'Min')}
@@ -544,7 +454,9 @@ const ExerciseCard = ({
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100">
-                    {averageHeartRate > 0 ? Math.round(averageHeartRate) : 0}
+                    {stats.averageHeartRate > 0
+                      ? Math.round(stats.averageHeartRate)
+                      : 0}
                   </div>
                   <div className="text-xs text-gray-500">
                     {t('common.avgHrUnit', 'Avg HR')}
@@ -553,11 +465,7 @@ const ExerciseCard = ({
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100">
                     {Math.round(
-                      convertEnergy(
-                        totalExerciseCaloriesBurned,
-                        'kcal',
-                        energyUnit
-                      )
+                      convertEnergy(stats.totalCalories, 'kcal', energyUnit)
                     )}
                   </div>
                   <div className="text-xs text-gray-500">
@@ -572,6 +480,7 @@ const ExerciseCard = ({
         {/* Edit Exercise Entry Dialog */}
         {editingEntry && (
           <EditExerciseEntryDialog
+            key={editingEntry ? 'open' : 'close'}
             entry={editingEntry as ExerciseEntry}
             open={!!editingEntry}
             onOpenChange={(open) => {
@@ -597,6 +506,11 @@ const ExerciseCard = ({
 
         {/* Log Exercise Entry Dialog */}
         <LogExerciseEntryDialog
+          key={
+            isLogExerciseDialogOpen
+              ? `open-${currentExerciseToLog?.id}`
+              : 'close'
+          }
           isOpen={isLogExerciseDialogOpen}
           onClose={() => {
             setIsLogExerciseDialogOpen(false);
@@ -610,13 +524,12 @@ const ExerciseCard = ({
           energyUnit={energyUnit}
           convertEnergy={convertEnergy}
           getEnergyUnitString={getEnergyUnitString}
-          // initialReps, initialWeight, etc. are not valid props for LogExerciseEntryDialog
-          // The dialog should handle these internally based on the 'exercise' prop.
         />
       </CardContent>
 
       {/* Edit Exercise Database Dialog */}
       <EditExerciseDatabaseDialog
+        key={isEditExerciseDatabaseDialogOpen ? 'open' : 'close'}
         open={isEditExerciseDatabaseDialogOpen}
         onOpenChange={setIsEditExerciseDatabaseDialogOpen}
         exerciseToEdit={exerciseToEditInDatabase}
