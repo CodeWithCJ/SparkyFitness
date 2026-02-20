@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { loadSecrets } = require("./utils/secretLoader");
+const { loadSecrets } = require("../utils/secretLoader");
 
 // Mock environment variables
 process.env.TEST_SECRET_FILE = path.resolve(__dirname, "test_secret.txt");
