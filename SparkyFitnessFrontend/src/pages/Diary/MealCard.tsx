@@ -80,7 +80,9 @@ interface MealCardProps {
     fromUnit: 'kcal' | 'kJ',
     toUnit: 'kcal' | 'kJ'
   ) => number;
-  customNutrients?: UserCustomNutrient[]; // Add customNutrients prop
+  customNutrients?: UserCustomNutrient[];
+  shouldOpenFoodSearch?: boolean;
+  onFoodSearchClose?: () => void;
 }
 
 import {
@@ -102,13 +104,26 @@ const MealCard = ({
   onConvertToMealClick,
   energyUnit,
   convertEnergy,
-  customNutrients = [], // Default to empty array
+  customNutrients = [],
+  shouldOpenFoodSearch,
+  onFoodSearchClose,
 }: MealCardProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const { loggingLevel, nutrientDisplayPreferences } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
+  const [internalFoodSearchOpen, setInternalFoodSearchOpen] = useState(false);
+
+  // Check if food search is open to handle state changes
+  const isFoodSearchOpen = shouldOpenFoodSearch || internalFoodSearchOpen;
+
+  const handleFoodSearchOpenChange = (open: boolean) => {
+    setInternalFoodSearchOpen(open);
+    if (!open && onFoodSearchClose) {
+      onFoodSearchClose();
+    }
+  };
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal'
@@ -237,7 +252,10 @@ const MealCard = ({
               </span>
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-4 justify-end">
-              <Dialog>
+              <Dialog
+                open={isFoodSearchOpen}
+                onOpenChange={handleFoodSearchOpenChange}
+              >
                 <DialogTrigger asChild>
                   <Button
                     size="default"

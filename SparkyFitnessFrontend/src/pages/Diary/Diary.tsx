@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -72,6 +73,8 @@ interface MealTotals {
 const Diary = () => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
+  const location = useLocation();
+  const navigate = useNavigate();
   const {
     formatDate,
     formatDateInUserTimezone,
@@ -134,6 +137,9 @@ const Diary = () => {
   >([]);
   const [selectedMealType, setSelectedMealType] = useState<string>('');
   const [selectedMealTypeId, setSelectedMealTypeId] = useState<string>('');
+  const [openFoodSearchForMealType, setOpenFoodSearchForMealType] = useState<
+    string | null
+  >(null);
 
   const currentUserId = activeUserId;
   const { data: customNutrients } = useCustomNutrients();
@@ -158,6 +164,32 @@ const Diary = () => {
       fetchMealTypes();
     }
   }, [currentUserId, loggingLevel]);
+
+  // Handle navigation for opening food search dialog
+  useEffect(() => {
+    const state = location.state as { openFoodSearchForMeal?: string };
+    console.log('[Diary] Location state:', state);
+    if (state?.openFoodSearchForMeal && availableMealTypes.length > 0) {
+      const mealType = state.openFoodSearchForMeal;
+      info(
+        loggingLevel,
+        `Diary: Opening food search for meal type: ${mealType}`
+      );
+      console.log(`[Diary] Setting openFoodSearchForMealType to: ${mealType}`);
+
+      // Set which meal dialog should open
+      setOpenFoodSearchForMealType(mealType);
+
+      // Clear the navigation state for next render
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [
+    location.state,
+    availableMealTypes,
+    loggingLevel,
+    navigate,
+    location.pathname,
+  ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const normalizeGlycemicIndex = useCallback((value: any): GlycemicIndex => {
@@ -984,6 +1016,11 @@ const Diary = () => {
                   energyUnit={energyUnit}
                   convertEnergy={convertEnergy}
                   customNutrients={customNutrients}
+                  shouldOpenFoodSearch={
+                    openFoodSearchForMealType?.toLowerCase() ===
+                    mealTypeObj.name.toLowerCase()
+                  }
+                  onFoodSearchClose={() => setOpenFoodSearchForMealType(null)}
                 />
               ))}
 
