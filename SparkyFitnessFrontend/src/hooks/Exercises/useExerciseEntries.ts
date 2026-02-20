@@ -20,7 +20,7 @@ export const useExerciseEntries = (date: string) => {
     queryKey: exerciseEntryKeys.byDate(date),
     queryFn: () => fetchExerciseEntries(date),
     enabled: !!date,
-    staleTime: 0,           // Always consider data stale so it refetches when needed
+    staleTime: 0, // Always consider data stale so it refetches when needed
     refetchOnWindowFocus: true, // Refetch when user returns to the tab after a sync
   });
 };
