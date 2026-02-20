@@ -1,5 +1,4 @@
-import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -8,7 +7,6 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useFasting } from '@/contexts/FastingContext';
 import FastingTimerRing from '../Fasting/FastingTimerRing';
 import { useNavigate } from 'react-router-dom';
 import { Play, Timer, Square } from 'lucide-react';
@@ -33,37 +31,26 @@ import { FASTING_PRESETS } from '@/constants/fastingPresets';
 import { parseISO, addHours, differenceInMinutes } from 'date-fns';
 import EndFastDialog from '../Fasting/EndFastDialog';
 import FastingZoneBar from '../Fasting/FastingZoneBar';
-import { getFastingStats, type FastingStats } from '@/services/fastingService';
+import {
+  useCurrentFast,
+  useEndFastMutation,
+  useFastingStats,
+  useStartFastMutation,
+} from '@/hooks/Fasting/useFasting';
 
-interface HomeDashboardFastingProps {
-  onFastUpdate?: () => void;
-}
-
-const HomeDashboardFasting: React.FC<HomeDashboardFastingProps> = ({
-  onFastUpdate,
-}) => {
-  const { activeFast, isLoading, startFast, endFast } = useFasting();
+const HomeDashboardFasting = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
   const [showStartDialog, setShowStartDialog] = useState(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('16-8');
   const [showEndDialog, setShowEndDialog] = useState(false);
-  const [stats, setStats] = useState<FastingStats | null>(null);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/immutability
-    loadStats();
-  }, [activeFast]);
+  const { data: activeFast, isLoading } = useCurrentFast();
+  const { mutateAsync: startFast } = useStartFastMutation();
+  const { mutateAsync: endFast } = useEndFastMutation();
 
-  const loadStats = async () => {
-    try {
-      const s = await getFastingStats();
-      setStats(s);
-    } catch (e) {
-      console.error('Failed to load fasting stats', e);
-    }
-  };
+  const { data: stats } = useFastingStats();
 
   if (isLoading) return <Card className="h-64 animate-pulse" />;
 
@@ -74,17 +61,28 @@ const HomeDashboardFasting: React.FC<HomeDashboardFastingProps> = ({
     const start = new Date();
     const end = addHours(start, preset.fastingHours);
 
-    await startFast(start, end, preset.name);
+    await startFast({
+      startTime: start,
+      targetEndTime: end,
+      fastingType: preset.name,
+    });
     setShowStartDialog(false);
   };
 
-  const handleEndFast = async () => {
-    await endFast(undefined, undefined); // No weight/mood passed as per new design
-    setShowEndDialog(false);
-    loadStats();
-    if (onFastUpdate) onFastUpdate();
+  const handleEndFast = async (
+    weight: number,
+    mood: { value: number; notes: string },
+    start: Date,
+    end: Date
+  ) => {
+    await endFast({
+      id: activeFast.id,
+      startTime: start,
+      endTime: end,
+      weight: weight,
+      mood: mood,
+    });
   };
-
   const formatDuration = () => {
     if (!activeFast) return '';
     const mins = differenceInMinutes(
@@ -232,11 +230,8 @@ const HomeDashboardFasting: React.FC<HomeDashboardFastingProps> = ({
         durationFormatted={formatDuration()}
         initialStartISO={activeFast?.start_time ?? null}
         initialEndISO={new Date().toISOString()}
-        onEnd={async (_weight, _mood, start, end) => {
-          await endFast(_weight, _mood, start, end);
-          setShowEndDialog(false);
-          loadStats();
-          if (onFastUpdate) onFastUpdate();
+        onEnd={async (weight, mood, start, end) => {
+          handleEndFast(weight, mood, start, end);
         }}
       />
     </Card>

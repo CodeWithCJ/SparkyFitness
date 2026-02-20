@@ -20,7 +20,6 @@ import axios from 'axios';
 import { Toaster } from '@/components/ui/toaster';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { FastingProvider } from '@/contexts/FastingContext';
 import OidcCallback from '@/components/OidcCallback';
 import { useActiveUser } from './contexts/ActiveUserContext';
 import { toast } from './hooks/use-toast';
@@ -263,14 +262,7 @@ const App = () => {
                       }
                     >
                       <Route index element={<Diary />} />
-                      <Route
-                        path="checkin"
-                        element={
-                          <FastingProvider>
-                            <CheckIn />
-                          </FastingProvider>
-                        }
-                      />
+                      <Route path="checkin" element={<CheckIn />} />
                       <Route
                         path="reports"
                         element={

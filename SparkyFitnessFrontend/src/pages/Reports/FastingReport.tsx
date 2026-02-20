@@ -15,7 +15,7 @@ import {
   Line,
   CartesianGrid,
 } from 'recharts';
-import type { FastingLog } from '@/services/fastingService';
+import type { FastingLog } from '@/api/Fasting/fastingService';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 import ZoomableChart from '@/components/ZoomableChart';

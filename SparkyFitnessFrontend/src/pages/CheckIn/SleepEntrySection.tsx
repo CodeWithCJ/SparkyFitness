@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { api } from '@/services/api';
 import { debug, info, warn, error } from '@/utils/logging';
 import { toast as sonnerToast } from 'sonner';
 import { Trash2, Edit, Save, X } from 'lucide-react';
@@ -19,8 +18,16 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { parseISO, differenceInMinutes, addDays } from 'date-fns';
-import type { SleepEntry, SleepStageEvent } from '@/types';
+import type { SleepStageEvent } from '@/types';
 import SleepTimelineEditor from './SleepTimelineEditor';
+import {
+  useDeleteSleepEntryMutation,
+  useSaveSleepEntryMutation,
+  useSleepEntriesQuery,
+  useUpdateSleepEntryMutation,
+} from '@/hooks/CheckIn/useSleep';
+import { useQueryClient } from '@tanstack/react-query';
+import { sleepKeys } from '@/api/keys/checkin';
 
 // Helper to aggregate sleep stages from stage_events (same approach as reports page)
 const aggregateSleepStages = (stageEvents: SleepStageEvent[] | undefined) => {
@@ -71,54 +78,19 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
   const [sleepSessions, setSleepSessions] = useState<
     Array<{ bedtime: string; wakeTime: string; stageEvents: SleepStageEvent[] }>
   >([{ bedtime: '', wakeTime: '', stageEvents: [] }]);
-  const [sleepEntries, setSleepEntries] = useState<SleepEntry[]>([]);
-  const [loading, setLoading] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null); // New state for editing
 
   const currentUserId = activeUserId;
 
-  useEffect(() => {
-    if (currentUserId && selectedDate) {
-      fetchSleepEntries();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId, selectedDate]);
+  const { data: sleepEntries, isLoading: loading } = useSleepEntriesQuery(
+    selectedDate,
+    selectedDate
+  );
 
-  const fetchSleepEntries = async () => {
-    if (!currentUserId) {
-      warn(
-        loggingLevel,
-        'SleepEntrySection: fetchSleepEntries called with no current user ID.'
-      );
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await api.get(
-        `/sleep/details?startDate=${selectedDate}&endDate=${selectedDate}`
-      );
-      setSleepEntries(response);
-      info(
-        loggingLevel,
-        'SleepEntrySection: Sleep entries fetched successfully:',
-        response
-      );
-    } catch (err) {
-      error(
-        loggingLevel,
-        'SleepEntrySection: Error fetching sleep entries:',
-        err
-      );
-      sonnerToast.error(
-        t(
-          'sleepEntrySection.failedToLoadSleepEntries',
-          'Failed to load sleep entries'
-        )
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { mutateAsync: saveSleepEntry } = useSaveSleepEntryMutation();
+  const { mutateAsync: updateSleepEntry } = useUpdateSleepEntryMutation();
+  const { mutateAsync: deleteSleepEntry } = useDeleteSleepEntryMutation();
+  const queryClient = useQueryClient();
 
   const handleSleepSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,7 +125,6 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
       }
     }
 
-    setLoading(true);
     try {
       for (const session of sleepSessions) {
         const parsedBedtime = parseISO(`${selectedDate}T${session.bedtime}`);
@@ -186,32 +157,15 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
             })),
         };
 
-        await api.post('/sleep/manual_entry', { body: sleepEntryData });
+        await saveSleepEntry(sleepEntryData);
         info(
           loggingLevel,
           'SleepEntrySection: Sleep entry saved successfully.'
         );
       }
-      sonnerToast.success(
-        t(
-          'sleepEntrySection.sleepEntriesSavedSuccessfully',
-          'Sleep entries saved successfully!'
-        )
-      );
       setSleepSessions([{ bedtime: '', wakeTime: '', stageEvents: [] }]); // Reset form
-      fetchSleepEntries(); // Refresh list
     } catch (err) {
       error(loggingLevel, 'SleepEntrySection: Error saving sleep entry:', err);
-      toast({
-        title: t('sleepEntrySection.error', 'Error'),
-        description: t(
-          'sleepEntrySection.failedToSaveSleepEntry',
-          'Failed to save sleep entry'
-        ),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -297,86 +251,28 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
     newBedtime: string,
     newWakeTime: string
   ) => {
-    debug(
-      loggingLevel,
-      `SleepEntrySection: handleSaveExistingEntryStageEvents for entry ${entryId}`,
-      events,
-      newBedtime,
-      newWakeTime
-    );
-    if (!currentUserId) {
-      warn(
-        loggingLevel,
-        'SleepEntrySection: handleSaveExistingEntryStageEvents called with no current user ID.'
-      );
-      return;
-    }
-    setLoading(true);
-    try {
-      // Update the local state first for immediate visual feedback
-      setSleepEntries((prevEntries) =>
-        prevEntries.map((entry) =>
-          entry.id === entryId
-            ? {
-                ...entry,
-                stage_events: events,
-                bedtime: newBedtime,
-                wake_time: newWakeTime,
-              }
-            : entry
-        )
-      );
+    if (!currentUserId) return;
 
-      // Prepare events for API: assign entry_id and remove temporary IDs
-      const eventsForApi = events.map((event) => ({
-        ...event,
-        entry_id: entryId,
-        id: event.id.startsWith('temp-') ? undefined : event.id,
-      }));
+    const eventsForApi = events.map((event) => ({
+      ...event,
+      entry_id: entryId,
+      id: event.id.startsWith('temp-') ? undefined : event.id,
+    }));
 
-      const parsedBedtime = parseISO(newBedtime);
-      const parsedWakeTime = parseISO(newWakeTime);
-      const durationInMinutes = differenceInMinutes(
-        parsedWakeTime,
-        parsedBedtime
-      );
-      const durationInSeconds = durationInMinutes * 60;
+    const durationInSeconds =
+      differenceInMinutes(parseISO(newWakeTime), parseISO(newBedtime)) * 60;
 
-      await api.put(`/sleep/${entryId}`, {
-        body: {
-          stage_events: eventsForApi,
-          bedtime: newBedtime,
-          wake_time: newWakeTime,
-          duration_in_seconds: durationInSeconds,
-        },
-      });
-      sonnerToast.success(
-        t(
-          'sleepEntrySection.stagesUpdatedSuccessfully',
-          'Sleep stages and times updated successfully!'
-        )
-      );
-      info(
-        loggingLevel,
-        `SleepEntrySection: Sleep stages and times for entry ${entryId} updated successfully.`
-      );
-    } catch (err) {
-      error(
-        loggingLevel,
-        `SleepEntrySection: Error updating sleep stages and times for entry ${entryId}:`,
-        err
-      );
-      toast({
-        title: t('sleepEntrySection.error', 'Error'),
-        description: t(
-          'sleepEntrySection.failedToUpdateSleepStages',
-          'Failed to update sleep stages and times'
-        ),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+    await updateSleepEntry({
+      id: entryId,
+      data: {
+        stage_events: eventsForApi,
+        bedtime: newBedtime,
+        wake_time: newWakeTime,
+        duration_in_seconds: durationInSeconds,
+      },
+    });
+
+    setEditingEntryId(null);
   };
 
   const handleDiscardExistingEntryStageEvents = (entryId: string) => {
@@ -385,7 +281,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
       `SleepEntrySection: handleDiscardExistingEntryStageEvents for entry ${entryId}`
     );
     // Re-fetch the entry to revert changes
-    fetchSleepEntries();
+    queryClient.invalidateQueries({ queryKey: sleepKeys.all });
     sonnerToast.info(
       t(
         'sleepEntrySection.stagesDiscarded',
@@ -402,35 +298,18 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
       );
       return;
     }
-    setLoading(true);
     try {
-      await api.delete(`/sleep/${entryId}`);
-      sonnerToast.success(
-        t(
-          'sleepEntrySection.sleepEntryDeletedSuccessfully',
-          'Sleep entry deleted successfully!'
-        )
-      );
-      fetchSleepEntries(); // Refresh the list after deletion
+      await deleteSleepEntry(entryId);
     } catch (err) {
       error(
         loggingLevel,
         `SleepEntrySection: Error deleting sleep entry ${entryId}:`,
         err
       );
-      toast({
-        title: t('sleepEntrySection.error', 'Error'),
-        description: t(
-          'sleepEntrySection.failedToDeleteSleepEntry',
-          'Failed to delete sleep entry'
-        ),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
+  if (loading) return <div>Loading...</div>;
   return (
     <Card>
       <CardHeader>
@@ -734,15 +613,6 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                         wakeTime={parsedWakeTimeForEditor.toISOString()}
                         initialStageEvents={entry.stage_events || []}
                         isEditing={editingEntryId === entry.id} // Pass isEditing prop
-                        onStageEventsPreviewChange={(events) => {
-                          setSleepEntries((prevEntries) =>
-                            prevEntries.map((prevEntry) =>
-                              prevEntry.id === entry.id
-                                ? { ...prevEntry, stage_events: events }
-                                : prevEntry
-                            )
-                          );
-                        }}
                         onSaveStageEvents={(
                           events,
                           newBedtime,
