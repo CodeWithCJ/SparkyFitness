@@ -105,7 +105,10 @@ const ExerciseCard = ({
   // (e.g. after a Fitbit sync completes from the Settings page)
   useEffect(() => {
     const handleDiaryRefresh = () => {
-      debug(loggingLevel, 'ExerciseCard: foodDiaryRefresh event received, invalidating exercise query cache.');
+      debug(
+        loggingLevel,
+        'ExerciseCard: foodDiaryRefresh event received, invalidating exercise query cache.'
+      );
       queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
     };
     window.addEventListener('foodDiaryRefresh', handleDiaryRefresh);
