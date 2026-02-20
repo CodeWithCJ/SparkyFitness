@@ -72,6 +72,7 @@ const withingsService = require("./integrations/withings/withingsService"); // I
 const garminConnectService = require("./integrations/garminconnect/garminConnectService"); // Import garminConnectService
 const garminService = require("./services/garminService"); // Import garminService
 const fitbitService = require("./services/fitbitService"); // Import fitbitService
+const dashboardRoutes = require("./routes/dashboardRoutes");
 const mealTypeRoutes = require("./routes/mealTypeRoutes");
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
@@ -317,6 +318,7 @@ app.use("/api/foods", foodRoutes);
 app.use("/api/food-entries", foodEntryRoutes);
 app.use("/api/food-entry-meals", foodEntryMealRoutes);
 app.use("/api/meals", mealRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/user-preferences", preferenceRoutes);
 app.use("/api/preferences/nutrient-display", nutrientDisplayPreferenceRoutes);
