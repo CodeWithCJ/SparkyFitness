@@ -287,15 +287,27 @@ async function syncFitbitData(userId, syncType = "manual") {
     };
 
     log("debug", `[fitbitService] Fetching heart rate for ${userId}...`);
+    log("debug", `[fitbitService] Fetching heart rate for ${userId}...`);
     const heartRateData = await safeFetch(
       () =>
-        fitbitIntegrationService.fetchHeartRate(userId, endDate, accessToken),
+        fitbitIntegrationService.fetchHeartRate(
+          userId,
+          startDate,
+          endDate,
+          accessToken,
+        ),
       "heart rate",
     );
 
     log("debug", `[fitbitService] Fetching steps for ${userId}...`);
     const stepsData = await safeFetch(
-      () => fitbitIntegrationService.fetchSteps(userId, endDate, accessToken),
+      () =>
+        fitbitIntegrationService.fetchSteps(
+          userId,
+          startDate,
+          endDate,
+          accessToken,
+        ),
       "steps",
     );
 
@@ -325,20 +337,37 @@ async function syncFitbitData(userId, syncType = "manual") {
 
     log("debug", `[fitbitService] Fetching SpO2 for ${userId}...`);
     const spo2Data = await safeFetch(
-      () => fitbitIntegrationService.fetchSpO2(userId, endDate, accessToken),
+      () =>
+        fitbitIntegrationService.fetchSpO2(
+          userId,
+          startDate,
+          endDate,
+          accessToken,
+        ),
       "SpO2",
     );
 
     log("debug", `[fitbitService] Fetching temperature for ${userId}...`);
     const tempData = await safeFetch(
       () =>
-        fitbitIntegrationService.fetchTemperature(userId, endDate, accessToken),
+        fitbitIntegrationService.fetchTemperature(
+          userId,
+          startDate,
+          endDate,
+          accessToken,
+        ),
       "temperature",
     );
 
     log("debug", `[fitbitService] Fetching HRV for ${userId}...`);
     const hrvData = await safeFetch(
-      () => fitbitIntegrationService.fetchHRV(userId, endDate, accessToken),
+      () =>
+        fitbitIntegrationService.fetchHRV(
+          userId,
+          startDate,
+          endDate,
+          accessToken,
+        ),
       "HRV",
     );
 
@@ -347,6 +376,7 @@ async function syncFitbitData(userId, syncType = "manual") {
       () =>
         fitbitIntegrationService.fetchRespiratoryRate(
           userId,
+          startDate,
           endDate,
           accessToken,
         ),
@@ -358,6 +388,7 @@ async function syncFitbitData(userId, syncType = "manual") {
       () =>
         fitbitIntegrationService.fetchActiveZoneMinutes(
           userId,
+          startDate,
           endDate,
           accessToken,
         ),
@@ -369,6 +400,7 @@ async function syncFitbitData(userId, syncType = "manual") {
       () =>
         fitbitIntegrationService.fetchActivityMinutes(
           userId,
+          startDate,
           endDate,
           accessToken,
         ),
@@ -400,7 +432,13 @@ async function syncFitbitData(userId, syncType = "manual") {
 
     log("debug", `[fitbitService] Fetching water for ${userId}...`);
     const waterData = await safeFetch(
-      () => fitbitIntegrationService.fetchWater(userId, endDate, accessToken),
+      () =>
+        fitbitIntegrationService.fetchWater(
+          userId,
+          startDate,
+          endDate,
+          accessToken,
+        ),
       "water",
     );
 
@@ -409,6 +447,7 @@ async function syncFitbitData(userId, syncType = "manual") {
       () =>
         fitbitIntegrationService.fetchCardioFitnessScore(
           userId,
+          startDate,
           endDate,
           accessToken,
         ),
@@ -420,6 +459,7 @@ async function syncFitbitData(userId, syncType = "manual") {
       () =>
         fitbitIntegrationService.fetchCoreTemperature(
           userId,
+          startDate,
           endDate,
           accessToken,
         ),
