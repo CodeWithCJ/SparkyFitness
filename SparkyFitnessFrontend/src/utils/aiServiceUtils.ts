@@ -76,7 +76,7 @@ export const getModelOptions = (serviceType: string): string[] => {
         'qwen/qwen-2.5-72b-instruct:free',
         'deepseek/deepseek-chat',
         'deepseek/deepseek-r1:free',
-        'meta-llama/llama-3.1-405b:free'
+        'meta-llama/llama-3.1-405b:free',
       ];
     default:
       return [];
