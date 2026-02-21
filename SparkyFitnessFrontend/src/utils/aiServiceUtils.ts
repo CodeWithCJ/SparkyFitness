@@ -17,6 +17,10 @@ export const getServiceTypes = (t: (key: string) => string): ServiceType[] => [
   { value: 'mistral', label: t('settings.aiService.serviceTypes.mistral') },
   { value: 'groq', label: t('settings.aiService.serviceTypes.groq') },
   { value: 'ollama', label: t('settings.aiService.serviceTypes.ollama') },
+  {
+    value: 'openrouter',
+    label: t('settings.aiService.serviceTypes.openrouter'),
+  },
   { value: 'custom', label: t('settings.aiService.serviceTypes.custom') },
 ];
 
@@ -62,6 +66,17 @@ export const getModelOptions = (serviceType: string): string[] => {
         'meta-llama/llama-guard-4-12b',
         'whisper-large-v3',
         'whisper-large-v3-turbo',
+      ];
+    case 'openrouter':
+      return [
+        'google/gemma-2-9b-it:free',
+        'google/gemma-3-27b-it:free',
+        'meta-llama/llama-3.2-3b-instruct:free',
+        'meta-llama/llama-3.1-8b-instruct:free',
+        'qwen/qwen-2.5-72b-instruct:free',
+        'deepseek/deepseek-chat',
+        'deepseek/deepseek-r1:free',
+        'meta-llama/llama-3.1-405b:free'
       ];
     default:
       return [];

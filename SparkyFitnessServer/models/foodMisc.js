@@ -168,7 +168,7 @@ async function getDailyNutritionSummary(userId, date) {
         COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_dietary_fiber,
         COALESCE(
           (
-            SELECT jsonb_object_agg(key, NULLIF(TRIM(value), '')::numeric)
+            SELECT jsonb_object_agg(key, value)
             FROM (
               SELECT
                 key,

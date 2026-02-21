@@ -143,6 +143,11 @@ export const processUserInput = async (
       userDate
     );
 
+    // If the service returned an error (action: 'none'), return it directly
+    if (aiResponse.action === 'none') {
+      return aiResponse;
+    }
+
     let parsedResponse: {
       intent: string;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

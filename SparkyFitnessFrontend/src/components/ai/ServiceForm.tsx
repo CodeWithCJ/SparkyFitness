@@ -154,8 +154,6 @@ export const ServiceForm = ({
           onCheckedChange={(checked) =>
             onFormDataChange({
               showCustomModelInput: checked,
-              model_name: '',
-              custom_model_name: '',
             })
           }
         />
