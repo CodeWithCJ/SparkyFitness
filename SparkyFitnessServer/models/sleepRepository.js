@@ -331,7 +331,7 @@ async function getAggregatedSleepStageDataByDateRange(userId, startDate, endDate
     }
 }
 
-async function updateSleepEntry(userId, entryId, updateData) {
+async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
     const client = await getClient(userId);
     try {
         await client.query('BEGIN');
