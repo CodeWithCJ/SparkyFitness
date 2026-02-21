@@ -637,7 +637,9 @@ const AIServiceSettings = () => {
                       service={service}
                       isEditing={editingService === service.id}
                       editData={editData}
-                      onEditDataChange={setEditData}
+                      onEditDataChange={(data) =>
+                        setEditData((prev) => ({ ...prev, ...data }))
+                      }
                       onStartEdit={() => startEditing(service)}
                       onCancelEdit={cancelEditing}
                       onUpdate={() => handleUpdateService(service.id)}
