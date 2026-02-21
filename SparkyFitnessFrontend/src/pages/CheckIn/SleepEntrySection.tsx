@@ -82,7 +82,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
 
   const currentUserId = activeUserId;
 
-  const { data: sleepEntries, isLoading: loading } = useSleepEntriesQuery(
+  const { data: sleepEntries = [], isLoading: loading } = useSleepEntriesQuery(
     selectedDate,
     selectedDate
   );

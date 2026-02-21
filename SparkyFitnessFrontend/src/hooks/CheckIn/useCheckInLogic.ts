@@ -506,8 +506,15 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
 
       const categoryMap = new Map(customCategories.map((c) => [c.id, c]));
 
-      const savePromises = Object.entries(customValues).map(
-        async ([categoryId, inputValue]) => {
+      const savePromises = Object.entries(customValues)
+        .filter(([categoryId, inputValue]) => {
+          const isChanged =
+            inputValue !== (derivedCustomValues[categoryId] || '') ||
+            (customNotes[categoryId] || '') !==
+              (derivedCustomNotes[categoryId] || '');
+          return isChanged;
+        })
+        .map(async ([categoryId, inputValue]) => {
           const category = categoryMap.get(categoryId);
 
           if (!category) return;
@@ -538,8 +545,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
           }
 
           return saveCustomMeasurement(customMeasurementData);
-        }
-      );
+        });
 
       await Promise.all(savePromises);
     } catch (error) {
