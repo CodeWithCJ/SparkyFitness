@@ -218,7 +218,7 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
       </svg>
 
       <div className="absolute z-10 flex flex-col items-center text-center px-4">
-        <div className="text-4xl font-extrabold font-mono tracking-tight">
+        <div className="text-2xl font-extrabold font-mono tracking-tight">
           {formatTime(elapsedMs)}
         </div>
         <div

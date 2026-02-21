@@ -21,7 +21,7 @@ import {
 import {
   getFastingDataRange,
   type FastingLog,
-} from '@/services/fastingService';
+} from '@/api/Fasting/fastingService';
 import { FastingReport } from '@/pages/Reports/FastingReport';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
@@ -67,7 +67,7 @@ import {
 import type { MoodEntry, StressDataPoint } from '@/types';
 import { getExerciseDashboardData } from '@/services/reportsService';
 import { getRawStressData } from '@/services/customMeasurementService';
-import { getMoodEntries } from '@/services/moodService';
+import { getMoodEntries } from '@/api/CheckIn/moodService';
 import MoodChart from '@/pages/Reports/MoodChart';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 

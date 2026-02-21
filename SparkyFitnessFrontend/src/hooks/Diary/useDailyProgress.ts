@@ -16,7 +16,7 @@ import {
   getGoalsForDate,
 } from '@/api/Diary/dailyProgressService';
 import { userManagementService } from '@/api/Admin/userManagementService';
-import { getMostRecentMeasurement } from '@/services/checkInService';
+import { getMostRecentMeasurement } from '@/api/CheckIn/checkInService';
 import { calculateBmr } from '@/services/bmrService';
 
 export const useDailyGoals = (date: string) => {

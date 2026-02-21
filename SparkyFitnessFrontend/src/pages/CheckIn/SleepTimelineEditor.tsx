@@ -20,13 +20,8 @@ interface SleepTimelineEditorProps {
   wakeTime: string;
   initialStageEvents?: SleepStageEvent[];
   onStageEventsPreviewChange?: (events: SleepStageEvent[]) => void;
-  onSaveStageEvents?: (
-    events: SleepStageEvent[],
-    newBedtime: string,
-    newWakeTime: string
-  ) => void;
-  onDiscardChanges?: () => void;
   isEditing?: boolean; // New prop
+  onTimeChange?: (newBedtimeHHmm: string, newWakeTimeHHmm: string) => void;
   entryDetails?: {
     // New prop for displaying details
     bedtime: string;
@@ -58,10 +53,9 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
   wakeTime,
   initialStageEvents = [],
   onStageEventsPreviewChange,
-  onSaveStageEvents,
-  onDiscardChanges,
   isEditing = false,
   entryDetails,
+  onTimeChange,
 }) => {
   const { t } = useTranslation();
   const parsedBedtime = useMemo(() => parseISO(bedtime), [bedtime]);
@@ -72,7 +66,6 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
   );
 
   const [stageEvents, setStageEvents] = useState<SleepStageEvent[]>([]);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [selectedStageType, setSelectedStageType] = useState<
     'awake' | 'rem' | 'light' | 'deep' | null
   >(null);
@@ -112,7 +105,6 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
         },
       ]);
     }
-    setHasUnsavedChanges(false);
   }, [initialStageEvents, parsedBedtime, parsedWakeTime, totalDurationMinutes]);
 
   const getNearest15MinuteInterval = useCallback((date: Date) => {
@@ -231,7 +223,6 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
             );
             return [...filteredEvents, newEvent];
           });
-          setHasUnsavedChanges(true);
         }
       }
     },
@@ -298,7 +289,6 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
       }, []);
 
     setStageEvents(consolidatedEvents); // Update local state with consolidated events
-    setHasUnsavedChanges(true); // Mark as unsaved after consolidation
 
     if (onStageEventsPreviewChange) {
       onStageEventsPreviewChange(consolidatedEvents);
@@ -317,42 +307,8 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
     };
   }, [isDragging, handleMouseUp]);
 
-  const handleSave = () => {
-    if (onSaveStageEvents) {
-      onSaveStageEvents(stageEvents, editableBedtime, editableWakeTime);
-      setHasUnsavedChanges(false);
-    }
-  };
-
-  const handleDiscard = () => {
-    if (onDiscardChanges) {
-      onDiscardChanges();
-    }
-    // Revert to initial state
-    const filteredInitialEvents =
-      (initialStageEvents?.filter(Boolean) as SleepStageEvent[]) || [];
-    if (filteredInitialEvents.length > 0) {
-      setStageEvents(filteredInitialEvents);
-    } else {
-      const duration = totalDurationMinutes * 60;
-      setStageEvents([
-        {
-          id: `initial-light-${Date.now()}`,
-          entry_id: '',
-          stage_type: 'light',
-          start_time: parsedBedtime.toISOString(),
-          end_time: parsedWakeTime.toISOString(),
-          duration_in_seconds: duration,
-        },
-      ]);
-    }
-    setHasUnsavedChanges(false);
-    setEditableBedtime(format(parsedBedtime, 'HH:mm'));
-    setEditableWakeTime(format(parsedWakeTime, 'HH:mm'));
-  };
-
   return (
-    <div className="sleep-timeline-editor border p-4 rounded-lg mb-4">
+    <div className="sleep-timeline-editor border p-4 rounded-lg my-4">
       {entryDetails && (
         <div className="mb-4 text-sm text-gray-600 grid grid-cols-2 gap-x-4 gap-y-1 md:grid-cols-4">
           {isEditing ? (
@@ -367,7 +323,8 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                   value={editableBedtime}
                   onChange={(e) => {
                     setEditableBedtime(e.target.value);
-                    setHasUnsavedChanges(true);
+                    if (onTimeChange)
+                      onTimeChange(e.target.value, editableWakeTime);
                   }}
                 />
               </div>
@@ -381,7 +338,8 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                   value={editableWakeTime}
                   onChange={(e) => {
                     setEditableWakeTime(e.target.value);
-                    setHasUnsavedChanges(true);
+                    if (onTimeChange)
+                      onTimeChange(editableBedtime, e.target.value);
                   }}
                 />
               </div>
@@ -438,7 +396,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                     ? SLEEP_STAGE_COLORS[
                         stageType as keyof typeof SLEEP_STAGE_COLORS
                       ]
-                    : '#E5E7EB',
+                    : undefined,
               }}
               className="text-black"
             >
@@ -453,7 +411,6 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
             onClick={() => {
               setStageEvents([]); // Clear all stage events
               setSelectedStageType(null); // Set to clear mode
-              setHasUnsavedChanges(true); // Mark as unsaved
               if (onStageEventsPreviewChange) {
                 onStageEventsPreviewChange([]); // Notify parent of cleared events
               }
@@ -485,17 +442,17 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
 
       <div
         ref={timelineRef}
-        className={`relative h-12 bg-gray-100 rounded-md ${isEditing ? 'cursor-crosshair' : ''}`}
+        className={`relative h-12 bg-muted rounded-md ${isEditing ? 'cursor-crosshair' : ''}`}
         onMouseDown={isEditing ? handleMouseDown : undefined}
         onMouseMove={isEditing ? handleMouseMove : undefined}
         onMouseUp={isEditing ? handleMouseUp : undefined}
         onMouseLeave={isEditing ? handleMouseUp : undefined}
       >
         {/* Time Axis - hourly markers */}
-        <div className="absolute inset-0 flex text-xs text-gray-500">
+        <div className="absolute inset-0 flex text-xs ">
           {Array.from({ length: totalDurationMinutes / 60 + 1 }).map((_, i) => {
             const hourTime = addMinutes(parsedBedtime, i * 60);
-            const left = ((i * 60) / totalDurationMinutes) * 100;
+            const left = ((i * 60) / (totalDurationMinutes || 1)) * 100;
             return (
               <span
                 key={`hour-${i}`}
