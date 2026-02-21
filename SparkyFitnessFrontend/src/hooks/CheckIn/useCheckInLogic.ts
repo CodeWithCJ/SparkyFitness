@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format, parseISO, subDays } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -31,6 +31,32 @@ import {
 import { useFastingHistory } from '@/hooks/Fasting/useFasting';
 import type { CustomMeasurement } from '@/api/CheckIn/checkInService';
 
+function useDerivedState<T>(derivedValue: T, selectedDate: string) {
+  const [stateMap, setStateMap] = useState<Record<string, T>>({});
+
+  const value =
+    stateMap[selectedDate] !== undefined
+      ? stateMap[selectedDate]
+      : derivedValue;
+
+  const setValue = useCallback(
+    (newValue: React.SetStateAction<T>) => {
+      setStateMap((prev) => {
+        const current =
+          prev[selectedDate] !== undefined ? prev[selectedDate] : derivedValue;
+        const resolvedValue =
+          typeof newValue === 'function'
+            ? (newValue as (prevState: T) => T)(current)
+            : newValue;
+        return { ...prev, [selectedDate]: resolvedValue };
+      });
+    },
+    [selectedDate, derivedValue]
+  );
+
+  return [value, setValue] as const;
+}
+
 export const useCheckInLogic = (currentUserId: string | undefined) => {
   const { t } = useTranslation();
   const {
@@ -46,23 +72,31 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     formatDateInUserTimezone(new Date(), 'yyyy-MM-dd')
   );
 
-  const { mutateAsync: saveCheckInMeasurements } =
+  const { mutateAsync: saveCheckInMeasurements, isPending: isSavingCheckIn } =
     useSaveCheckInMeasurementsMutation();
-  const { mutateAsync: saveCustomMeasurement } =
+  const { mutateAsync: saveCustomMeasurement, isPending: isSavingCustom } =
     useSaveCustomMeasurementMutation();
-  const { mutateAsync: deleteCustomMeasurement } =
+  const { mutateAsync: deleteCustomMeasurement, isPending: isDeletingCustom } =
     useDeleteCustomMeasurementMutation();
-  const { mutateAsync: updateCheckInMeasurementField } =
-    useUpdateCheckInMeasurementFieldMutation();
-  const { mutateAsync: saveMoodEntry } = useSaveMoodEntryMutation();
+  const {
+    mutateAsync: updateCheckInMeasurementField,
+    isPending: isUpdatingField,
+  } = useUpdateCheckInMeasurementFieldMutation();
+  const { mutateAsync: saveMoodEntry, isPending: isSavingMood } =
+    useSaveMoodEntryMutation();
+
+  const loading =
+    isSavingCheckIn ||
+    isSavingCustom ||
+    isDeletingCustom ||
+    isUpdatingField ||
+    isSavingMood;
 
   const { data: customCategories = [] } = useCustomCategories();
-  const { data: existingCheckIn, isSuccess: checkInSuccess } =
+  const { data: existingCheckIn } =
     useExistingCheckInMeasurements(selectedDate);
-  const { data: existingCustom, isSuccess: customSuccess } =
-    useExistingCustomMeasurements(selectedDate);
-  const { data: existingMood, isSuccess: moodSuccess } =
-    useMoodEntryByDate(selectedDate);
+  const { data: existingCustom } = useExistingCustomMeasurements(selectedDate);
+  const { data: existingMood } = useMoodEntryByDate(selectedDate);
 
   const { data: recentCustom = [] } = useRecentCustomMeasurements();
   const startDate = format(subDays(new Date(), 30), 'yyyy-MM-dd');
@@ -73,187 +107,146 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   );
   const { data: recentFasting = [] } = useFastingHistory(10, 0);
 
-  const [weight, setWeight] = useState('');
-  const [neck, setNeck] = useState('');
-  const [waist, setWaist] = useState('');
-  const [hips, setHips] = useState('');
-  const [steps, setSteps] = useState('');
-  const [height, setHeight] = useState('');
-  const [bodyFatPercentage, setBodyFatPercentage] = useState('');
-  const [mood, setMood] = useState<number>(50);
-  const [moodNotes, setMoodNotes] = useState<string>('');
-  const [customValues, setCustomValues] = useState<{ [key: string]: string }>(
-    {}
-  );
-  const [customNotes, setCustomNotes] = useState<{ [key: string]: string }>({});
   const [useMostRecentForCalculation, setUseMostRecentForCalculation] =
     useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const shouldConvertCustomMeasurement = (unit: string) => {
+  const shouldConvertCustomMeasurement = useCallback((unit: string) => {
     const convertibleUnits = ['kg', 'lbs', 'cm', 'inches'];
     return convertibleUnits.includes(unit.toLowerCase());
-  };
+  }, []);
 
-  // 1. Sync Existing CheckIn
-  useEffect(() => {
-    if (checkInSuccess) {
-      if (existingCheckIn) {
-        const convertedWeight =
-          existingCheckIn.weight !== undefined &&
-          existingCheckIn.weight !== null
-            ? convertWeight(existingCheckIn.weight, 'kg', defaultWeightUnit)
-            : NaN;
-        setWeight(
-          typeof convertedWeight === 'number' && !isNaN(convertedWeight)
-            ? convertedWeight.toFixed(1)
-            : ''
+  const derivedWeight = useMemo(() => {
+    const w = existingCheckIn?.weight;
+    if (w == null) return '';
+    const converted = convertWeight(w, 'kg', defaultWeightUnit);
+    return !isNaN(converted) ? converted.toFixed(1) : '';
+  }, [existingCheckIn?.weight, convertWeight, defaultWeightUnit]);
+
+  const derivedNeck = useMemo(() => {
+    const n = existingCheckIn?.neck;
+    if (n == null) return '';
+    const converted = convertMeasurement(n, 'cm', defaultMeasurementUnit);
+    return !isNaN(converted) ? converted.toFixed(1) : '';
+  }, [existingCheckIn?.neck, convertMeasurement, defaultMeasurementUnit]);
+
+  const derivedWaist = useMemo(() => {
+    const w = existingCheckIn?.waist;
+    if (w == null) return '';
+    const converted = convertMeasurement(w, 'cm', defaultMeasurementUnit);
+    return !isNaN(converted) ? converted.toFixed(1) : '';
+  }, [existingCheckIn?.waist, convertMeasurement, defaultMeasurementUnit]);
+
+  const derivedHips = useMemo(() => {
+    const h = existingCheckIn?.hips;
+    if (h == null) return '';
+    const converted = convertMeasurement(h, 'cm', defaultMeasurementUnit);
+    return !isNaN(converted) ? converted.toFixed(1) : '';
+  }, [existingCheckIn?.hips, convertMeasurement, defaultMeasurementUnit]);
+
+  const derivedHeight = useMemo(() => {
+    const h = existingCheckIn?.height;
+    if (h == null) return '';
+    const converted = convertMeasurement(h, 'cm', defaultMeasurementUnit);
+    return !isNaN(converted) ? converted.toFixed(1) : '';
+  }, [existingCheckIn?.height, convertMeasurement, defaultMeasurementUnit]);
+
+  const derivedBodyFat = useMemo(() => {
+    return existingCheckIn?.body_fat_percentage?.toString() || '';
+  }, [existingCheckIn?.body_fat_percentage]);
+
+  const derivedSteps = useMemo(() => {
+    return existingCheckIn?.steps?.toString() || '';
+  }, [existingCheckIn?.steps]);
+
+  const derivedMood = useMemo(() => {
+    return existingMood?.mood_value ?? 50;
+  }, [existingMood?.mood_value]);
+
+  const derivedMoodNotes = useMemo(() => {
+    return existingMood?.notes || '';
+  }, [existingMood?.notes]);
+
+  const { derivedCustomValues, derivedCustomNotes } = useMemo(() => {
+    const newCustomValues: Record<string, string> = {};
+    const newCustomNotes: Record<string, string> = {};
+
+    if (
+      existingCustom &&
+      existingCustom.length > 0 &&
+      customCategories &&
+      customCategories.length > 0
+    ) {
+      existingCustom.forEach((measurement: CustomMeasurement) => {
+        const category = customCategories.find(
+          (c) => c.id === measurement.category_id
         );
-
-        const convertedNeck =
-          existingCheckIn.neck !== undefined && existingCheckIn.neck !== null
-            ? convertMeasurement(
-                existingCheckIn.neck,
-                'cm',
-                defaultMeasurementUnit
-              )
-            : NaN;
-        setNeck(
-          typeof convertedNeck === 'number' && !isNaN(convertedNeck)
-            ? convertedNeck.toFixed(1)
-            : ''
-        );
-
-        const convertedWaist =
-          existingCheckIn.waist !== undefined && existingCheckIn.waist !== null
-            ? convertMeasurement(
-                existingCheckIn.waist,
-                'cm',
-                defaultMeasurementUnit
-              )
-            : NaN;
-        setWaist(
-          typeof convertedWaist === 'number' && !isNaN(convertedWaist)
-            ? convertedWaist.toFixed(1)
-            : ''
-        );
-
-        const convertedHips =
-          existingCheckIn.hips !== undefined && existingCheckIn.hips !== null
-            ? convertMeasurement(
-                existingCheckIn.hips,
-                'cm',
-                defaultMeasurementUnit
-              )
-            : NaN;
-        setHips(
-          typeof convertedHips === 'number' && !isNaN(convertedHips)
-            ? convertedHips.toFixed(1)
-            : ''
-        );
-
-        const convertedHeight =
-          existingCheckIn.height !== undefined &&
-          existingCheckIn.height !== null
-            ? convertMeasurement(
-                existingCheckIn.height,
-                'cm',
-                defaultMeasurementUnit
-              )
-            : NaN;
-        setHeight(
-          typeof convertedHeight === 'number' && !isNaN(convertedHeight)
-            ? convertedHeight.toFixed(1)
-            : ''
-        );
-
-        setBodyFatPercentage(
-          existingCheckIn.body_fat_percentage?.toString() || ''
-        );
-        setSteps(existingCheckIn.steps?.toString() || '');
-      } else {
-        setWeight('');
-        setNeck('');
-        setWaist('');
-        setHips('');
-        setSteps('');
-        setHeight('');
-        setBodyFatPercentage('');
-      }
-    }
-  }, [
-    existingCheckIn,
-    checkInSuccess,
-    convertWeight,
-    defaultWeightUnit,
-    convertMeasurement,
-    defaultMeasurementUnit,
-  ]);
-
-  // 2. Sync Mood
-  useEffect(() => {
-    if (moodSuccess) {
-      if (existingMood) {
-        setMood(existingMood.mood_value);
-        setMoodNotes(existingMood.notes || '');
-      } else {
-        setMood(50);
-        setMoodNotes('');
-      }
-    }
-  }, [existingMood, moodSuccess]);
-
-  // 3. Sync Custom Measurements
-  useEffect(() => {
-    if (customSuccess && customCategories.length > 0) {
-      if (existingCustom && existingCustom.length > 0) {
-        const newCustomValues: { [key: string]: string } = {};
-        const newCustomNotes: { [key: string]: string } = {};
-
-        existingCustom.forEach((measurement: CustomMeasurement) => {
-          const category = customCategories.find(
-            (c) => c.id === measurement.category_id
+        if (category && category.frequency !== 'Unlimited') {
+          const isConvertible = shouldConvertCustomMeasurement(
+            category.measurement_type
           );
-          if (category && category.frequency !== 'Unlimited') {
-            const isConvertible = shouldConvertCustomMeasurement(
-              category.measurement_type
-            );
-            if (category.data_type === 'numeric') {
-              newCustomValues[measurement.category_id] = isConvertible
-                ? (() => {
-                    const converted = convertMeasurement(
-                      Number(measurement.value),
-                      'cm',
-                      defaultMeasurementUnit
-                    );
-                    return typeof converted === 'number' && !isNaN(converted)
-                      ? converted.toFixed(1)
-                      : '';
-                  })()
-                : measurement.value !== null && measurement.value !== undefined
-                  ? measurement.value.toString()
-                  : '';
-            } else {
-              newCustomValues[measurement.category_id] =
-                measurement.value.toString() || '';
-            }
-            newCustomNotes[measurement.category_id] = measurement.notes || '';
+          if (category.data_type === 'numeric') {
+            newCustomValues[measurement.category_id] = isConvertible
+              ? (() => {
+                  const converted = convertMeasurement(
+                    Number(measurement.value),
+                    'cm',
+                    defaultMeasurementUnit
+                  );
+                  return typeof converted === 'number' && !isNaN(converted)
+                    ? converted.toFixed(1)
+                    : '';
+                })()
+              : measurement.value !== null && measurement.value !== undefined
+                ? measurement.value.toString()
+                : '';
+          } else {
+            newCustomValues[measurement.category_id] =
+              measurement.value?.toString() || '';
           }
-        });
-        setCustomValues(newCustomValues);
-        setCustomNotes(newCustomNotes);
-      } else {
-        setCustomValues({});
-        setCustomNotes({});
-      }
+          newCustomNotes[measurement.category_id] = measurement.notes || '';
+        }
+      });
     }
+    return {
+      derivedCustomValues: newCustomValues,
+      derivedCustomNotes: newCustomNotes,
+    };
   }, [
     existingCustom,
-    customSuccess,
     customCategories,
     convertMeasurement,
     defaultMeasurementUnit,
+    shouldConvertCustomMeasurement,
   ]);
+
+  const [weight, setWeight] = useDerivedState<string>(
+    derivedWeight,
+    selectedDate
+  );
+  const [neck, setNeck] = useDerivedState<string>(derivedNeck, selectedDate);
+  const [waist, setWaist] = useDerivedState<string>(derivedWaist, selectedDate);
+  const [hips, setHips] = useDerivedState<string>(derivedHips, selectedDate);
+  const [height, setHeight] = useDerivedState<string>(
+    derivedHeight,
+    selectedDate
+  );
+  const [steps, setSteps] = useDerivedState<string>(derivedSteps, selectedDate);
+  const [bodyFatPercentage, setBodyFatPercentage] = useDerivedState<string>(
+    derivedBodyFat,
+    selectedDate
+  );
+  const [mood, setMood] = useDerivedState<number>(derivedMood, selectedDate);
+  const [moodNotes, setMoodNotes] = useDerivedState<string>(
+    derivedMoodNotes,
+    selectedDate
+  );
+  const [customValues, setCustomValues] = useDerivedState<
+    Record<string, string>
+  >(derivedCustomValues, selectedDate);
+  const [customNotes, setCustomNotes] = useDerivedState<Record<string, string>>(
+    derivedCustomNotes,
+    selectedDate
+  );
 
   const recentMeasurements = useMemo(() => {
     const allMeasurements: CombinedMeasurement[] = [];
@@ -445,7 +438,6 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     e.preventDefault();
 
     if (!currentUserId) return;
-    setLoading(true);
 
     try {
       const moodToSend = mood ?? 50;
@@ -550,8 +542,8 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       );
 
       await Promise.all(savePromises);
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error(error);
     }
   };
 

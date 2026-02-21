@@ -178,7 +178,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                         </span>
                       ) : (
                         <span>
-                          {formattedDisplayValue?.toString().slice(0, 50)}{' '}
+                          {formattedDisplayValue?.toString()?.slice(0, 50)}{' '}
                           <span className="text-xs text-muted-foreground ml-0.5">
                             {displayUnit}
                           </span>

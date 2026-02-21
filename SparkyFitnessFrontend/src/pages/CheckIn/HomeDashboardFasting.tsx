@@ -48,7 +48,7 @@ const HomeDashboardFasting = () => {
 
   const { data: activeFast, isLoading } = useCurrentFast();
   const { mutateAsync: startFast } = useStartFastMutation();
-  const { mutateAsync: endFast } = useEndFastMutation();
+  const { mutate: endFast } = useEndFastMutation();
 
   const { data: stats } = useFastingStats();
 
@@ -69,13 +69,14 @@ const HomeDashboardFasting = () => {
     setShowStartDialog(false);
   };
 
-  const handleEndFast = async (
+  const handleEndFast = (
     weight: number,
     mood: { value: number; notes: string },
     start: Date,
     end: Date
   ) => {
-    await endFast({
+    if (!activeFast) return;
+    endFast({
       id: activeFast.id,
       startTime: start,
       endTime: end,
@@ -230,7 +231,7 @@ const HomeDashboardFasting = () => {
         durationFormatted={formatDuration()}
         initialStartISO={activeFast?.start_time ?? null}
         initialEndISO={new Date().toISOString()}
-        onEnd={async (weight, mood, start, end) => {
+        onEnd={(weight, mood, start, end) => {
           handleEndFast(weight, mood, start, end);
         }}
       />

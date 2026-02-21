@@ -92,6 +92,11 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
   const { mutateAsync: deleteSleepEntry } = useDeleteSleepEntryMutation();
   const queryClient = useQueryClient();
 
+  const [existingEditDraft, setExistingEditDraft] = useState<{
+    stageEvents: SleepStageEvent[];
+    bedtime: string;
+    wakeTime: string;
+  } | null>(null);
   const handleSleepSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -126,11 +131,10 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
     }
 
     try {
-      for (const session of sleepSessions) {
+      const savePromises = sleepSessions.map(async (session) => {
         const parsedBedtime = parseISO(`${selectedDate}T${session.bedtime}`);
         let parsedWakeTime = parseISO(`${selectedDate}T${session.wakeTime}`);
 
-        // If wake time is earlier than bedtime, assume it's on the next day
         if (parsedWakeTime < parsedBedtime) {
           parsedWakeTime = addDays(parsedWakeTime, 1);
         }
@@ -152,8 +156,8 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
             .map((event) => ({
               ...event,
               duration_in_seconds: Number(event.duration_in_seconds) || 0,
-              entry_id: '', // Will be assigned by the backend
-              id: event.id.startsWith('temp-') ? undefined : event.id, // Remove temporary IDs for new events
+              entry_id: '',
+              id: event.id.startsWith('temp-') ? undefined : event.id,
             })),
         };
 
@@ -162,7 +166,9 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
           loggingLevel,
           'SleepEntrySection: Sleep entry saved successfully.'
         );
-      }
+      });
+
+      await Promise.all(savePromises);
       setSleepSessions([{ bedtime: '', wakeTime: '', stageEvents: [] }]); // Reset form
     } catch (err) {
       error(loggingLevel, 'SleepEntrySection: Error saving sleep entry:', err);
@@ -390,17 +396,6 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                       onStageEventsPreviewChange={(events) =>
                         handleStageEventsPreviewChange(index, events)
                       }
-                      onSaveStageEvents={(events, newBedtime, newWakeTime) =>
-                        handleSaveNewSessionStageEvents(
-                          index,
-                          events,
-                          newBedtime,
-                          newWakeTime
-                        )
-                      }
-                      onDiscardChanges={() =>
-                        handleDiscardNewSessionStageEvents(index)
-                      }
                     />
                   );
                 })()}
@@ -513,7 +508,10 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                               <Button
                                 variant="outline"
                                 size="icon"
-                                onClick={() => setEditingEntryId(null)} // Cancel editing
+                                onClick={() => {
+                                  setEditingEntryId(null);
+                                  setExistingEditDraft(null);
+                                }}
                               >
                                 <X className="h-4 w-4" />
                               </Button>
@@ -530,18 +528,16 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => {
-                                  const entryToSave = sleepEntries.find(
-                                    (e) => e.id === editingEntryId
-                                  );
-                                  if (entryToSave) {
+                                  if (existingEditDraft) {
                                     handleSaveExistingEntryStageEvents(
-                                      entryToSave.id,
-                                      entryToSave.stage_events || [],
-                                      entryToSave.bedtime,
-                                      entryToSave.wake_time
+                                      entry.id,
+                                      existingEditDraft.stageEvents,
+                                      existingEditDraft.bedtime,
+                                      existingEditDraft.wakeTime
                                     );
+                                  } else {
+                                    setEditingEntryId(null);
                                   }
-                                  setEditingEntryId(null);
                                 }}
                               >
                                 <Save className="h-4 w-4" />
@@ -560,7 +556,14 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                             <Button
                               variant="outline"
                               size="icon"
-                              onClick={() => setEditingEntryId(entry.id)} // Start editing
+                              onClick={() => {
+                                setEditingEntryId(entry.id);
+                                setExistingEditDraft({
+                                  stageEvents: entry.stage_events || [],
+                                  bedtime: entry.bedtime,
+                                  wakeTime: entry.wake_time,
+                                });
+                              }}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -613,22 +616,27 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                         wakeTime={parsedWakeTimeForEditor.toISOString()}
                         initialStageEvents={entry.stage_events || []}
                         isEditing={editingEntryId === entry.id} // Pass isEditing prop
-                        onSaveStageEvents={(
-                          events,
-                          newBedtime,
-                          newWakeTime
-                        ) => {
-                          handleSaveExistingEntryStageEvents(
-                            entry.id,
-                            events,
-                            newBedtime,
-                            newWakeTime
-                          );
-                          setEditingEntryId(null); // Exit editing mode after saving
-                        }}
-                        onDiscardChanges={() => {
-                          handleDiscardExistingEntryStageEvents(entry.id);
-                          setEditingEntryId(null); // Exit editing mode after discarding
+                        onTimeChange={(bHHmm, wHHmm) => {
+                          try {
+                            const bIso = parseISO(
+                              `${selectedDate}T${bHHmm}`
+                            ).toISOString();
+                            let wIso = parseISO(`${selectedDate}T${wHHmm}`);
+                            if (wIso < parseISO(`${selectedDate}T${bHHmm}`)) {
+                              wIso = addDays(wIso, 1);
+                            }
+                            setExistingEditDraft((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    bedtime: bIso,
+                                    wakeTime: wIso.toISOString(),
+                                  }
+                                : null
+                            );
+                          } catch (error) {
+                            console.error(error);
+                          }
                         }}
                         // Pass basic sleep entry details to SleepTimelineEditor for display
                         entryDetails={{

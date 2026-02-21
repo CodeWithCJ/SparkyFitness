@@ -20,13 +20,8 @@ interface SleepTimelineEditorProps {
   wakeTime: string;
   initialStageEvents?: SleepStageEvent[];
   onStageEventsPreviewChange?: (events: SleepStageEvent[]) => void;
-  onSaveStageEvents?: (
-    events: SleepStageEvent[],
-    newBedtime: string,
-    newWakeTime: string
-  ) => void;
-  onDiscardChanges?: () => void;
   isEditing?: boolean; // New prop
+  onTimeChange?: (newBedtimeHHmm: string, newWakeTimeHHmm: string) => void;
   entryDetails?: {
     // New prop for displaying details
     bedtime: string;
@@ -60,6 +55,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
   onStageEventsPreviewChange,
   isEditing = false,
   entryDetails,
+  onTimeChange,
 }) => {
   const { t } = useTranslation();
   const parsedBedtime = useMemo(() => parseISO(bedtime), [bedtime]);
@@ -327,6 +323,8 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                   value={editableBedtime}
                   onChange={(e) => {
                     setEditableBedtime(e.target.value);
+                    if (onTimeChange)
+                      onTimeChange(e.target.value, editableWakeTime);
                   }}
                 />
               </div>
@@ -340,6 +338,8 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                   value={editableWakeTime}
                   onChange={(e) => {
                     setEditableWakeTime(e.target.value);
+                    if (onTimeChange)
+                      onTimeChange(editableBedtime, e.target.value);
                   }}
                 />
               </div>
@@ -452,7 +452,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
         <div className="absolute inset-0 flex text-xs ">
           {Array.from({ length: totalDurationMinutes / 60 + 1 }).map((_, i) => {
             const hourTime = addMinutes(parsedBedtime, i * 60);
-            const left = ((i * 60) / totalDurationMinutes) * 100;
+            const left = ((i * 60) / (totalDurationMinutes || 1)) * 100;
             return (
               <span
                 key={`hour-${i}`}
