@@ -29,6 +29,15 @@ export const linkPolarFlowAccount = async (
   });
 };
 
+export const linkStravaAccount = async (
+  data: IntegrationPayload
+): Promise<void> => {
+  return apiCall('/integrations/strava/callback', {
+    method: 'POST',
+    body: data,
+  });
+};
+
 export const syncHevyData = async (
   fullSync: boolean = false,
   providerId?: string
