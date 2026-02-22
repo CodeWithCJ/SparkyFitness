@@ -13,6 +13,7 @@ import {
 import { Heart } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
+import { getHRStatus } from '@/utils/reportUtil';
 
 interface HeartRateDataPoint {
   date: string;
@@ -23,38 +24,7 @@ interface SleepHeartRateCardProps {
   data: HeartRateDataPoint[];
 }
 
-// Get status based on resting heart rate - returns translation key
-const getHRStatus = (
-  value: number
-): { statusKey: string; statusDefault: string; color: string } => {
-  if (value < 60) {
-    return {
-      statusKey: 'reports.heartRateAthletic',
-      statusDefault: 'Athletic',
-      color: '#22c55e',
-    };
-  } else if (value <= 80) {
-    return {
-      statusKey: 'reports.heartRateNormal',
-      statusDefault: 'Normal',
-      color: '#22c55e',
-    };
-  } else if (value <= 100) {
-    return {
-      statusKey: 'reports.heartRateElevated',
-      statusDefault: 'Elevated',
-      color: '#f97316',
-    };
-  } else {
-    return {
-      statusKey: 'reports.heartRateHigh',
-      statusDefault: 'High',
-      color: '#ef4444',
-    };
-  }
-};
-
-const SleepHeartRateCard: React.FC<SleepHeartRateCardProps> = ({ data }) => {
+const SleepHeartRateCard = ({ data }: SleepHeartRateCardProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);

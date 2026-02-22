@@ -27,9 +27,10 @@ export const foodEntryMealKeys = {
   detail: (id: string) => [...foodEntryMealKeys.details(), id] as const,
 };
 
-export const reportKeys = {
-  all: ['reports'] as const,
-  nutritionTrends: () => [...reportKeys.all, 'mini-nutrition-trends'] as const,
+export const diaryReportKeys = {
+  all: ['diaryReports'] as const,
+  nutritionTrends: () =>
+    [...diaryReportKeys.all, 'mini-nutrition-trends'] as const,
   nutritionTrendDetail: (userId: string, startDate: string, endDate: string) =>
-    [...reportKeys.nutritionTrends(), userId, startDate, endDate] as const,
+    [...diaryReportKeys.nutritionTrends(), userId, startDate, endDate] as const,
 };
