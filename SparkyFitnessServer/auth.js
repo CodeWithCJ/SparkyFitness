@@ -173,8 +173,11 @@ const auth = betterAuth({
   // Advanced session options
   advanced: {
     cookiePrefix: "sparky",
+    // DROP SECURE FLAG if private network access is enabled (typically for local IP access over HTTP)
     useSecureCookies:
-      process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("https"),
+      process.env.ALLOW_PRIVATE_NETWORK_CORS === "true"
+        ? false
+        : process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("https"),
     trustProxy: true,
     crossSubDomainCookies: {
       enabled: false,

@@ -104,6 +104,7 @@ app.use(
     origin: createCorsOriginChecker(
       process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080",
       allowPrivateNetworks,
+      process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS,
     ),
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
