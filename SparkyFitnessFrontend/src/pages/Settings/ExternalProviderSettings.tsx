@@ -30,7 +30,8 @@ export interface ExternalDataProvider {
     | 'usda'
     | 'fitbit'
     | 'polar'
-    | 'hevy';
+    | 'hevy'
+    | 'strava';
   app_id: string | null;
   app_key: string | null;
   is_active: boolean;
@@ -52,6 +53,8 @@ export interface ExternalDataProvider {
   polar_token_expires?: string;
   hevy_last_sync_at?: string;
   hevy_connect_status?: 'connected' | 'disconnected';
+  strava_last_sync_at?: string;
+  strava_token_expires?: string;
   is_strictly_private?: boolean;
 }
 
@@ -248,6 +251,35 @@ const ExternalProviderSettings = () => {
           console.error('Failed to fetch Hevy status:', hevyError);
         }
       }
+
+      // Fetch Strava status if applicable
+      const stravaProviders = updatedProviders.filter(
+        (p: ExternalDataProvider) => p.provider_type === 'strava' && p.has_token
+      );
+      if (stravaProviders.length > 0) {
+        for (const provider of stravaProviders) {
+          try {
+            const stravaStatus = await apiCall(`/integrations/strava/status`);
+            setProviders((prev) =>
+              prev.map((p) =>
+                p.id === provider.id
+                  ? {
+                      ...p,
+                      strava_last_sync_at: stravaStatus.lastSyncAt,
+                      strava_token_expires: stravaStatus.tokenExpiresAt,
+                    }
+                  : p
+              )
+            );
+          } catch (stravaError) {
+            console.error(
+              'Failed to fetch Strava specific status for provider:',
+              provider.id,
+              stravaError
+            );
+          }
+        }
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error loading external data providers:', error);
@@ -319,11 +351,21 @@ const ExternalProviderSettings = () => {
         editData.provider_type === 'polar'
           ? editData.polar_token_expires
           : null,
+      strava_last_sync_at:
+        editData.provider_type === 'strava'
+          ? editData.strava_last_sync_at
+          : null,
+      strava_token_expires:
+        editData.provider_type === 'strava'
+          ? editData.strava_token_expires
+          : null,
       sync_frequency:
         editData.provider_type === 'withings' ||
         editData.provider_type === 'garmin' ||
         editData.provider_type === 'fitbit' ||
-        editData.provider_type === 'hevy'
+        editData.provider_type === 'hevy' ||
+        editData.provider_type === 'strava' ||
+        editData.provider_type === 'polar'
           ? editData.sync_frequency
           : null,
     };
@@ -789,6 +831,86 @@ const ExternalProviderSettings = () => {
     }
   };
 
+  const handleConnectStrava = async (providerId: string) => {
+    setLoading(true);
+    try {
+      const response = await apiCall(`/integrations/strava/authorize`, {
+        method: 'GET',
+      });
+      if (response && response.url) {
+        window.location.href = response.url;
+      } else {
+        throw new Error('Failed to get Strava authorization URL.');
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('Error connecting to Strava:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to connect to Strava: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnectStrava = async (providerId: string) => {
+    if (
+      !confirm(
+        'Are you sure you want to disconnect from Strava? This will revoke access.'
+      )
+    )
+      return;
+
+    setLoading(true);
+    try {
+      await apiCall(`/integrations/strava/disconnect`, {
+        method: 'POST',
+      });
+      toast({
+        title: 'Success',
+        description: 'Disconnected from Strava successfully.',
+      });
+      loadProviders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('Error disconnecting from Strava:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to disconnect from Strava: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualSyncStrava = async (providerId: string) => {
+    setLoading(true);
+    try {
+      await apiCall(`/integrations/strava/sync`, {
+        method: 'POST',
+      });
+      toast({
+        title: 'Success',
+        description: 'Strava data synchronization initiated.',
+      });
+      loadProviders();
+      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('Error initiating manual Strava sync:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to initiate manual Strava sync: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const startEditing = (provider: ExternalDataProvider) => {
     setEditingProvider(provider.id);
     setEditData({
@@ -830,6 +952,7 @@ const ExternalProviderSettings = () => {
     { value: 'garmin', label: 'Garmin' },
     { value: 'fitbit', label: 'Fitbit' },
     { value: 'polar', label: 'Polar Flow' },
+    { value: 'strava', label: 'Strava' },
     { value: 'hevy', label: 'Hevy' },
     { value: 'usda', label: 'USDA' },
   ];
@@ -853,6 +976,7 @@ const ExternalProviderSettings = () => {
             handleConnectWithings={handleConnectWithings}
             handleConnectFitbit={handleConnectFitbit}
             handleConnectPolar={handleConnectPolar}
+            handleConnectStrava={handleConnectStrava}
             onGarminMfaRequired={handleGarminMfaRequiredFromAddForm}
           />
 
@@ -897,6 +1021,9 @@ const ExternalProviderSettings = () => {
                 handleManualSyncPolar={handleManualSyncPolar}
                 handleDisconnectPolar={handleDisconnectPolar}
                 handleManualSyncHevy={handleManualSyncHevy}
+                handleConnectStrava={handleConnectStrava}
+                handleDisconnectStrava={handleDisconnectStrava}
+                handleManualSyncStrava={handleManualSyncStrava}
                 startEditing={startEditing}
                 handleDeleteProvider={handleDeleteProvider}
                 toggleProviderPublicSharing={toggleProviderPublicSharing}

@@ -1,4 +1,3 @@
-import type React from 'react';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
@@ -91,10 +90,10 @@ interface ActivityData {
   workout: WorkoutData | null;
 }
 
-const ActivityReportVisualizer: React.FC<ActivityReportVisualizerProps> = ({
+const ActivityReportVisualizer = ({
   exerciseEntryId,
   providerName,
-}) => {
+}: ActivityReportVisualizerProps) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

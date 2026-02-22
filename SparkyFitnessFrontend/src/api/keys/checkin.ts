@@ -1,6 +1,7 @@
 export const checkInKeys = {
   all: ['checkIn'] as const,
-  customCategories: () => [...checkInKeys.all, 'customCategories'] as const,
+  customCategories: (userId?: string) =>
+    [...checkInKeys.all, 'customCategories', userId] as const,
   recentCustom: () => [...checkInKeys.all, 'recentCustom'] as const,
   recentStandard: (startDate: string, endDate: string) =>
     [...checkInKeys.all, 'recentStandard', startDate, endDate] as const,
@@ -10,6 +11,8 @@ export const checkInKeys = {
     [...checkInKeys.all, 'existingCustom', date] as const,
   mostRecent: (type: string) =>
     [...checkInKeys.all, 'mostRecent', type] as const,
+  customEntries: (categoryId: string, userId?: string) =>
+    [...checkInKeys.all, 'customEntries', categoryId, userId] as const,
 };
 
 export const moodKeys = {

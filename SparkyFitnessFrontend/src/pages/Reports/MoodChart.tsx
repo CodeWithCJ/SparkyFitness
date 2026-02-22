@@ -19,7 +19,7 @@ interface MoodChartProps {
   title: string;
 }
 
-const MoodChart: React.FC<MoodChartProps> = ({ data, title }) => {
+const MoodChart = ({ data, title }: MoodChartProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);
@@ -27,9 +27,6 @@ const MoodChart: React.FC<MoodChartProps> = ({ data, title }) => {
   React.useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  // Add logging to check the data prop
-  console.log('MoodChart: Received data prop:', data);
 
   const formattedData = data.map((entry) => ({
     date: entry.entry_date,
