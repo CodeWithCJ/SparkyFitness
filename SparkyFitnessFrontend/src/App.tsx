@@ -53,6 +53,9 @@ const FitbitCallback = lazy(
   () => import('@/pages/Integrations/FitbitCallback')
 );
 const PolarCallback = lazy(() => import('@/pages/Integrations/PolarCallback'));
+const StravaCallback = lazy(
+  () => import('@/pages/Integrations/StravaCallback')
+);
 
 declare module '@tanstack/react-query' {
   interface Register {
@@ -250,6 +253,10 @@ const App = () => {
                       element={<FitbitCallback />}
                     />
                     <Route path="/polar/callback" element={<PolarCallback />} />
+                    <Route
+                      path="/strava/callback"
+                      element={<StravaCallback />}
+                    />
                     <Route path="/oidc-callback" element={<OidcCallback />} />
                     <Route
                       path="/"
