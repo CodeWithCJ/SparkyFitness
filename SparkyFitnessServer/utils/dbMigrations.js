@@ -10,7 +10,7 @@ async function applyMigrations() {
   const client = await getSystemClient();
   try {
     // The preflightChecks.js script now ensures these variables are set.
-    const appUser = process.env.SPARKY_FITNESS_APP_DB_USER;
+    const appUser = `"${process.env.SPARKY_FITNESS_APP_DB_USER.replace(/"/g, '""')}"`;
     const appPassword = process.env.SPARKY_FITNESS_APP_DB_PASSWORD;
 
     // Ensure the application role exists
