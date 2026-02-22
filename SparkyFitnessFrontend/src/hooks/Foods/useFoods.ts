@@ -23,7 +23,7 @@ import {
 } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
-import { reportKeys } from '@/api/keys/diary';
+import { diaryReportKeys } from '@/api/keys/diary';
 
 export const useFoods = (
   searchTerm: string,
@@ -232,7 +232,11 @@ export const useMiniNutritionTrendData = (
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: reportKeys.nutritionTrendDetail(userId || '', startDate, endDate),
+    queryKey: diaryReportKeys.nutritionTrendDetail(
+      userId || '',
+      startDate,
+      endDate
+    ),
     queryFn: () => loadMiniNutritionTrendData(userId!, startDate, endDate),
     enabled: !!userId && !!startDate && !!endDate,
     meta: {

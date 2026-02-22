@@ -1,13 +1,8 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { api } from '@/services/api';
-import { info, error } from '@/utils/logging';
 import { toast as sonnerToast } from 'sonner';
 import type {
-  SleepEntry,
   SleepStageEvent,
   SleepAnalyticsData,
   CombinedSleepData,
@@ -16,51 +11,20 @@ import type {
 import SleepAnalyticsTable from './SleepAnalyticsTable';
 import SleepAnalyticsCharts from './SleepAnalyticsCharts';
 import { useTranslation } from 'react-i18next';
+import { useSleepEntriesQuery } from '@/hooks/CheckIn/useSleep';
 
 interface SleepReportProps {
   startDate: string;
   endDate: string;
 }
 
-const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
+const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
   const { t } = useTranslation();
-  const { activeUserId } = useActiveUser();
-  const { formatDateInUserTimezone, loggingLevel, dateFormat } =
-    usePreferences();
-  const [sleepEntries, setSleepEntries] = useState<SleepEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (activeUserId && startDate && endDate) {
-      fetchSleepData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeUserId, startDate, endDate]);
-
-  const fetchSleepData = async () => {
-    setLoading(true);
-    try {
-      const response = await api.get(
-        `/sleep?startDate=${startDate}&endDate=${endDate}`
-      );
-      setSleepEntries(response);
-      info(
-        loggingLevel,
-        'SleepReport: Sleep entries fetched successfully:',
-        response
-      );
-    } catch (err) {
-      error(loggingLevel, 'SleepReport: Error fetching sleep entries:', err);
-      sonnerToast.error(
-        t(
-          'sleepReport.failedToLoadSleepEntries',
-          'Failed to load sleep entries'
-        )
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { formatDateInUserTimezone, dateFormat } = usePreferences();
+  const { data: sleepEntries = [], isLoading: loading } = useSleepEntriesQuery(
+    startDate,
+    endDate
+  );
 
   const exportSleepDataToCSV = (data: CombinedSleepData[]) => {
     if (!data.length) {
@@ -135,7 +99,6 @@ const SleepReport: React.FC<SleepReportProps> = ({ startDate, endDate }) => {
           new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
       )
       .map((entry) => {
-        const totalSleepDuration = entry.duration_in_seconds / 60; // in minutes
         const timeAsleep = entry.time_asleep_in_seconds
           ? entry.time_asleep_in_seconds / 60
           : 0; // in minutes

@@ -280,7 +280,7 @@ const ExerciseSearch = ({
     );
     try {
       const exerciseProviders = await queryClient.fetchQuery(
-        exerciseProvidersOptions
+        exerciseProvidersOptions()
       );
       setProviders(exerciseProviders);
       if (exerciseProviders.length > 0) {

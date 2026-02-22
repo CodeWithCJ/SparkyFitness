@@ -368,11 +368,16 @@ async function disconnectFitbit(userId) {
  * API Fetching Functions
  */
 
-async function fetchHeartRate(userId, date = "today", providedToken = null) {
+async function fetchHeartRate(
+  userId,
+  startDate,
+  endDate,
+  providedToken = null,
+) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/activities/heart/date/${date}/1d.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/activities/heart/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -390,11 +395,11 @@ async function fetchHeartRate(userId, date = "today", providedToken = null) {
   }
 }
 
-async function fetchSteps(userId, date = "today", providedToken = null) {
+async function fetchSteps(userId, startDate, endDate, providedToken = null) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/activities/steps/date/${date}/1d.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/activities/steps/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -434,11 +439,11 @@ async function fetchWeight(userId, startDate, endDate, providedToken = null) {
   }
 }
 
-async function fetchSpO2(userId, date = "today", providedToken = null) {
+async function fetchSpO2(userId, startDate, endDate, providedToken = null) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/spo2/date/${date}.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/spo2/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -456,11 +461,16 @@ async function fetchSpO2(userId, date = "today", providedToken = null) {
   }
 }
 
-async function fetchTemperature(userId, date = "today", providedToken = null) {
+async function fetchTemperature(
+  userId,
+  startDate,
+  endDate,
+  providedToken = null,
+) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/temp/skin/date/${date}.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/temp/skin/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -561,12 +571,13 @@ async function fetchSleep(userId, startDate, endDate, providedToken = null) {
 
 async function fetchRespiratoryRate(
   userId,
-  date = "today",
+  startDate,
+  endDate,
   providedToken = null,
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   const response = await axios.get(
-    `${FITBIT_API_BASE_URL}/1/user/-/br/date/${date}.json`,
+    `${FITBIT_API_BASE_URL}/1/user/-/br/date/${startDate}/${endDate}.json`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -577,10 +588,10 @@ async function fetchRespiratoryRate(
   return response.data;
 }
 
-async function fetchHRV(userId, date = "today", providedToken = null) {
+async function fetchHRV(userId, startDate, endDate, providedToken = null) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   const response = await axios.get(
-    `${FITBIT_API_BASE_URL}/1/user/-/hrv/date/${date}.json`,
+    `${FITBIT_API_BASE_URL}/1/user/-/hrv/date/${startDate}/${endDate}.json`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -593,12 +604,13 @@ async function fetchHRV(userId, date = "today", providedToken = null) {
 
 async function fetchActiveZoneMinutes(
   userId,
-  date = "today",
+  startDate,
+  endDate,
   providedToken = null,
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   const response = await axios.get(
-    `${FITBIT_API_BASE_URL}/1/user/-/activities/active-zone-minutes/date/${date}/1d.json`,
+    `${FITBIT_API_BASE_URL}/1/user/-/activities/active-zone-minutes/date/${startDate}/${endDate}.json`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -609,11 +621,11 @@ async function fetchActiveZoneMinutes(
   return response.data;
 }
 
-async function fetchWater(userId, date = "today", providedToken = null) {
+async function fetchWater(userId, startDate, endDate, providedToken = null) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/foods/log/water/date/${date}.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/foods/log/water/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -633,7 +645,8 @@ async function fetchWater(userId, date = "today", providedToken = null) {
 
 async function fetchActivityMinutes(
   userId,
-  date = "today",
+  startDate,
+  endDate,
   providedToken = null,
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
@@ -648,7 +661,7 @@ async function fetchActivityMinutes(
     // Add a 500ms delay between individual metric fetches to avoid 429
     await new Promise((resolve) => setTimeout(resolve, 500));
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/activities/tracker/${metric}/date/${date}/1d.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/activities/tracker/${metric}/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -663,13 +676,14 @@ async function fetchActivityMinutes(
 
 async function fetchCardioFitnessScore(
   userId,
-  date = "today",
+  startDate,
+  endDate,
   providedToken = null,
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/cardio-fitness-score.json?date=${date}`,
+      `${FITBIT_API_BASE_URL}/1/user/-/cardioscore/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -689,13 +703,14 @@ async function fetchCardioFitnessScore(
 
 async function fetchCoreTemperature(
   userId,
-  date = "today",
+  startDate,
+  endDate,
   providedToken = null,
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/temp/core/date/${date}.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/temp/core/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,

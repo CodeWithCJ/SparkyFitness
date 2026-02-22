@@ -2,6 +2,9 @@ services:
   sparkyfitness-db:
     image: postgres:15-alpine
     restart: always
+    # Uncomment below to expose PostgreSQL to the host (e.g., for pgAdmin, DBeaver).
+    # ports:
+    #   - "${SPARKY_FITNESS_DB_PORT:-5432}:5432"
     environment:
       POSTGRES_DB: ${SPARKY_FITNESS_DB_NAME:?Variable is required and must be set}
       POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:?Variable is required and must be set}
@@ -23,7 +26,7 @@ services:
       SPARKY_FITNESS_DB_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
       SPARKY_FITNESS_APP_DB_USER: ${SPARKY_FITNESS_APP_DB_USER:-sparkyapp}
       SPARKY_FITNESS_APP_DB_PASSWORD: ${SPARKY_FITNESS_APP_DB_PASSWORD:?Variable is required and must be set}
-      SPARKY_FITNESS_DB_PORT: ${SPARKY_FITNESS_DB_PORT:-5432}      
+      SPARKY_FITNESS_DB_PORT: 5432 # Uses internal container port. Do NOT change this if SPARKY_FITNESS_DB_HOST is using container name.
       SPARKY_FITNESS_API_ENCRYPTION_KEY: ${SPARKY_FITNESS_API_ENCRYPTION_KEY:?Variable is required and must be set}
       # Uncomment the line below and comment the line above to use a file-based secret
       # SPARKY_FITNESS_API_ENCRYPTION_KEY_FILE: /run/secrets/sparkyfitness_api_key

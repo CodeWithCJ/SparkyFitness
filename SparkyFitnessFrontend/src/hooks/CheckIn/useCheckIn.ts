@@ -15,10 +15,10 @@ import {
 } from '@/api/CheckIn/checkInService';
 import { checkInKeys } from '@/api/keys/checkin';
 
-export const useCustomCategories = () => {
+export const useCustomCategories = (userId?: string) => {
   return useQuery({
-    queryKey: checkInKeys.customCategories(),
-    queryFn: loadCustomCategories,
+    queryKey: checkInKeys.customCategories(userId),
+    queryFn: () => loadCustomCategories(userId),
     meta: {
       errorMessage: i18n.t(
         'checkIn.failedToLoadCategories',

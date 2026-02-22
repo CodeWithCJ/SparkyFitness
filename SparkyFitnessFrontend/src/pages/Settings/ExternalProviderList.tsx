@@ -51,6 +51,9 @@ interface ExternalProviderListProps {
   handleConnectPolar: (providerId: string) => void;
   handleManualSyncPolar: (providerId: string) => void;
   handleDisconnectPolar: (providerId: string) => void;
+  handleConnectStrava: (providerId: string) => void;
+  handleManualSyncStrava: (providerId: string) => void;
+  handleDisconnectStrava: (providerId: string) => void;
   handleManualSyncHevy: (
     providerId: string,
     fullSync?: boolean
@@ -85,6 +88,9 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
   handleConnectPolar,
   handleManualSyncPolar,
   handleDisconnectPolar,
+  handleConnectStrava,
+  handleManualSyncStrava,
+  handleDisconnectStrava,
   handleManualSyncHevy,
   startEditing,
   handleDeleteProvider,
@@ -494,6 +500,79 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                   </p>
                 </>
               )}
+              {editData.provider_type === 'strava' && (
+                <>
+                  <div>
+                    <Label>Client ID</Label>
+                    <Input
+                      type="text"
+                      value={editData.app_id || ''}
+                      onChange={(e) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          app_id: e.target.value,
+                        }))
+                      }
+                      placeholder="Enter Strava Client ID"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <Label>Client Secret</Label>
+                    <Input
+                      type="password"
+                      value={editData.app_key || ''}
+                      onChange={(e) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          app_key: e.target.value,
+                        }))
+                      }
+                      placeholder="Enter Strava Client Secret"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground col-span-2">
+                    Strava integration uses OAuth2. You will be redirected to
+                    Strava to authorize access after adding or updating the
+                    provider.
+                    <br />
+                    In your{' '}
+                    <a
+                      href="https://www.strava.com/settings/api"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 underline"
+                    >
+                      Strava API Dashboard
+                    </a>
+                    , you must set your "Authorization Callback Domain" to:
+                    <strong className="flex items-center">
+                      {window.location.hostname}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="ml-2 h-5 w-5"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigator.clipboard.writeText(
+                            window.location.hostname
+                          );
+                          toast({
+                            title: 'Copied!',
+                            description: 'Domain copied to clipboard.',
+                          });
+                        }}
+                      >
+                        <Clipboard className="h-4 w-4" />
+                      </Button>
+                    </strong>
+                    and ensuring your local URL is correct if testing locally.
+                    Note: Strava callback URL on the server is configured to:
+                    <strong>{`${window.location.origin}/strava/callback`}</strong>
+                  </p>
+                </>
+              )}
               {editData.provider_type === 'hevy' && (
                 <>
                   <div>
@@ -519,7 +598,9 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
               {(editData.provider_type === 'withings' ||
                 editData.provider_type === 'garmin' ||
                 editData.provider_type === 'fitbit' ||
-                editData.provider_type === 'polar') && (
+                editData.provider_type === 'strava' ||
+                editData.provider_type === 'polar' ||
+                editData.provider_type === 'hevy') && (
                 <div>
                   <Label htmlFor="edit_sync_frequency">Sync Frequency</Label>
                   <Select
@@ -777,6 +858,53 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                         </TooltipProvider>
                       </>
                     )}
+
+                  {provider.provider_type === 'strava' &&
+                    provider.is_active &&
+                    provider.has_token && (
+                      <>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleManualSyncStrava(provider.id)
+                                }
+                                disabled={loading}
+                                className="ml-2 text-blue-500"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Sync Now</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleDisconnectStrava(provider.id)
+                                }
+                                disabled={loading}
+                                className="ml-2 text-red-500"
+                              >
+                                <Link2Off className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Disconnect</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </>
+                    )}
                   {provider.provider_type === 'hevy' && provider.is_active && (
                     <>
                       <TooltipProvider>
@@ -904,6 +1032,20 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                           </Button>
                         )}
 
+                      {/* Connect Strava Button */}
+                      {provider.provider_type === 'strava' &&
+                        provider.is_active &&
+                        !provider.has_token && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleConnectStrava(provider.id)}
+                            disabled={loading}
+                          >
+                            Connect Strava
+                          </Button>
+                        )}
+
                       {/* Edit Button */}
                       <Button
                         variant="outline"
@@ -1001,6 +1143,18 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                         ` - Sync: ${provider.sync_frequency}`}
                     </>
                   )}
+                  {provider.provider_type === 'polar' && (
+                    <>
+                      {provider.sync_frequency &&
+                        ` - Sync: ${provider.sync_frequency}`}
+                    </>
+                  )}
+                  {provider.provider_type === 'strava' && (
+                    <>
+                      {provider.sync_frequency &&
+                        ` - Sync: ${provider.sync_frequency}`}
+                    </>
+                  )}
                 </p>
                 {provider.provider_type === 'withings' &&
                   provider.has_token && (
@@ -1047,11 +1201,58 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                     )}
                   </div>
                 )}
+                {provider.provider_type === 'polar' && provider.has_token && (
+                  <div className="text-sm text-muted-foreground">
+                    {provider.polar_last_sync_at && (
+                      <span>
+                        Last Sync:{' '}
+                        {new Date(provider.polar_last_sync_at).toLocaleString()}
+                      </span>
+                    )}
+                    {provider.polar_last_sync_at &&
+                      provider.polar_token_expires && <span> | </span>}
+                    {provider.polar_token_expires && (
+                      <span>
+                        Token Expires:{' '}
+                        {new Date(
+                          provider.polar_token_expires
+                        ).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {provider.provider_type === 'strava' && provider.has_token && (
+                  <div className="text-sm text-muted-foreground">
+                    {provider.strava_last_sync_at && (
+                      <span>
+                        Last Sync:{' '}
+                        {new Date(
+                          provider.strava_last_sync_at
+                        ).toLocaleString()}
+                      </span>
+                    )}
+                    {provider.strava_last_sync_at &&
+                      provider.strava_token_expires && <span> | </span>}
+                    {provider.strava_token_expires && (
+                      <span>
+                        Token Expires:{' '}
+                        {new Date(
+                          provider.strava_token_expires
+                        ).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               {/* Contributing Note for specific providers */}
-              {['fitbit', 'withings', 'polar', 'garmin', 'hevy'].includes(
-                provider.provider_type
-              ) && (
+              {[
+                'fitbit',
+                'withings',
+                'polar',
+                'garmin',
+                'hevy',
+                'strava',
+              ].includes(provider.provider_type) && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-2 text-xs text-yellow-800 dark:text-yellow-200 mt-2 flex items-center gap-1">
                   <strong>Note from CodewithCJ:</strong> I don't own{' '}
                   {provider.provider_name} device/subscription.

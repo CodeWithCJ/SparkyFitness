@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -18,37 +17,11 @@ interface ExerciseVarietyScoreProps {
   } | null;
 }
 
-const ExerciseVarietyScore: React.FC<ExerciseVarietyScoreProps> = ({
-  varietyData,
-}) => {
+const ExerciseVarietyScore = ({ varietyData }: ExerciseVarietyScoreProps) => {
   const { t } = useTranslation();
-  const [isMounted, setIsMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   if (!varietyData || Object.keys(varietyData).length === 0) {
     return null;
-  }
-
-  if (!isMounted) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {t('reports.exerciseVarietyScore', 'Exercise Variety Score')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px] flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-            <span className="text-xs text-muted-foreground">
-              {t('common.loading', 'Loading...')}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    );
   }
 
   const chartData = Object.entries(varietyData).map(([muscle, count]) => ({

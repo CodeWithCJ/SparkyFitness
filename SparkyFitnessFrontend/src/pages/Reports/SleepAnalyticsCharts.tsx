@@ -73,7 +73,7 @@ interface SleepAnalyticsChartsProps {
 
 const DEFAULT_HYPNOGRAMS_SHOWN = 2;
 
-const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({
+const SleepAnalyticsCharts = ({
   sleepAnalyticsData,
   sleepHypnogramData,
   spo2Data,
@@ -81,7 +81,7 @@ const SleepAnalyticsCharts: React.FC<SleepAnalyticsChartsProps> = ({
   respirationData,
   heartRateData,
   latestSleepEntry,
-}) => {
+}: SleepAnalyticsChartsProps) => {
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
   const { resolvedTheme } = useTheme();
   const { t } = useTranslation();

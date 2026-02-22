@@ -333,6 +333,7 @@ async function createExerciseEntry(
       "HealthKit",
       "HealthConnect",
       "Fitbit",
+      "Strava",
     ].includes(entrySource);
 
     let existingEntryResult;

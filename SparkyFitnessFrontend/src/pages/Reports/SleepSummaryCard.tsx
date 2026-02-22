@@ -9,9 +9,7 @@ interface SleepSummaryCardProps {
   latestSleepEntry: SleepEntry | null;
 }
 
-const SleepSummaryCard: React.FC<SleepSummaryCardProps> = ({
-  latestSleepEntry,
-}) => {
+const SleepSummaryCard = ({ latestSleepEntry }: SleepSummaryCardProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
 

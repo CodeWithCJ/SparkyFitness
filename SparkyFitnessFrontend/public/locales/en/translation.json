@@ -628,6 +628,7 @@
         "serviceActivated": "AI service activated",
         "serviceDeactivated": "AI service deactivated",
         "errorOriginalNotFound": "Original service not found.",
+        "enterNewApiKey": "Enter new API key to update",
         "errorOriginalNotFoundStatus": "Original service not found for status update.",
         "errorNoGlobalSetting": "No active global setting found to override",
         "successOverriding": "Global settings overridden. You can now customize your own settings.",
@@ -646,6 +647,7 @@
         "mistral": "Mistral AI",
         "groq": "Groq",
         "ollama": "Ollama",
+        "openrouter": "OpenRouter",
         "custom": "Custom"
       }
     },

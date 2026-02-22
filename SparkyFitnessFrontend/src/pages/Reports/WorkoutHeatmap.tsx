@@ -1,4 +1,3 @@
-import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { info } from '@/utils/logging';
@@ -8,14 +7,12 @@ interface WorkoutHeatmapProps {
   workoutDates: string[]; // Array of 'YYYY-MM-DD' strings
 }
 
-const WorkoutHeatmap: React.FC<WorkoutHeatmapProps> = ({ workoutDates }) => {
+const WorkoutHeatmap = ({ workoutDates }: WorkoutHeatmapProps) => {
   const { t } = useTranslation();
   const { loggingLevel, formatDateInUserTimezone } = usePreferences();
   info(loggingLevel, 'WorkoutHeatmap: Rendering component.');
 
   const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth(); // 0-indexed
 
   const generateMonthData = (year: number, month: number) => {
     const firstDayOfMonth = new Date(year, month, 1);
@@ -70,7 +67,7 @@ const WorkoutHeatmap: React.FC<WorkoutHeatmapProps> = ({ workoutDates }) => {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-          {monthsToDisplay.map((monthInfo, monthIndex) => (
+          {monthsToDisplay.map((monthInfo) => (
             <div
               key={`${monthInfo.year}-${monthInfo.month}`}
               className="flex flex-col items-center"

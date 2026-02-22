@@ -2,6 +2,7 @@ import {
   linkFitbitAccount,
   linkPolarFlowAccount,
   linkWithingsAccount,
+  linkStravaAccount,
 } from '@/api/Integrations/integrations';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +37,24 @@ export const useLinkWithingsMutation = () => {
       errorMessage: t(
         'integrations.withingsError',
         'Failed to link Withings account. Please try again.'
+      ),
+    },
+  });
+};
+
+export const useLinkStravaMutation = () => {
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: linkStravaAccount,
+    meta: {
+      successMessage: t(
+        'integrations.stravaSuccess',
+        'Your Strava account has been successfully linked.'
+      ),
+      errorMessage: t(
+        'integrations.stravaError',
+        'Failed to link Strava account. Please try again.'
       ),
     },
   });
