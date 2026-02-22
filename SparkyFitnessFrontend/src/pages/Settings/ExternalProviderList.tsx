@@ -1206,9 +1206,7 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                     {provider.polar_last_sync_at && (
                       <span>
                         Last Sync:{' '}
-                        {new Date(
-                          provider.polar_last_sync_at
-                        ).toLocaleString()}
+                        {new Date(provider.polar_last_sync_at).toLocaleString()}
                       </span>
                     )}
                     {provider.polar_last_sync_at &&
@@ -1247,9 +1245,14 @@ const ExternalProviderList: React.FC<ExternalProviderListProps> = ({
                 )}
               </div>
               {/* Contributing Note for specific providers */}
-              {['fitbit', 'withings', 'polar', 'garmin', 'hevy', 'strava'].includes(
-                provider.provider_type
-              ) && (
+              {[
+                'fitbit',
+                'withings',
+                'polar',
+                'garmin',
+                'hevy',
+                'strava',
+              ].includes(provider.provider_type) && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-2 text-xs text-yellow-800 dark:text-yellow-200 mt-2 flex items-center gap-1">
                   <strong>Note from CodewithCJ:</strong> I don't own{' '}
                   {provider.provider_name} device/subscription.
