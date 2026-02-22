@@ -159,6 +159,15 @@ const auth = betterAuth({
     cookieCache: {
       enabled: false, // Disabled to prevent stale data after manual DB updates
     },
+    fields: {
+      id: "id",
+      userId: "user_id",
+      expiresAt: "expires_at",
+      ipAddress: "ip_address",
+      userAgent: "user_agent",
+      createdAt: "created_at",
+      updatedAt: "updated_at",
+    },
   },
 
   // Advanced session options
@@ -208,17 +217,6 @@ const auth = betterAuth({
         defaultValue: false,
         returned: true,
       },
-    },
-  },
-  session: {
-    fields: {
-      id: "id",
-      userId: "user_id",
-      expiresAt: "expires_at",
-      ipAddress: "ip_address",
-      userAgent: "user_agent",
-      createdAt: "created_at",
-      updatedAt: "updated_at",
     },
   },
   account: {
